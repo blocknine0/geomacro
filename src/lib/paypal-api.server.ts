@@ -11,6 +11,7 @@ const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 const MAX_NETWORK_RESPONSE_BYTES = 16 * 1024;
 const TIMEOUT_MS = 10_000;
 const MAX_WEBHOOK_CLOCK_SKEW_MS = 5 * 60_000;
+const SAFE_OAUTH_TOKEN = /^[^\\u0000-\\u001f\\u007f]{1,4096}$/;
 const SAFE_VALUE = /^[^\u0000-\u001f\u007f]{1,512}$/;
 
 export type PayPalServerConfiguration = Readonly<{
@@ -81,7 +82,7 @@ export async function paypalAccessToken(config: PayPalServerConfiguration, fetch
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const json = await paypalJson(response);
-  if (typeof json.access_token !== "string" || !SAFE_VALUE.test(json.access_token))
+  if (typeof json.access_token !== "string" || !SAFE_OAUTH_TOKEN.test(json.access_token))
     throw new Error("PAYPAL_OAUTH_RESPONSE_INVALID");
   return json.access_token;
 }
@@ -127,7 +128,7 @@ export async function verifyPayPalWebhook(input: {
   // Refuse non-PayPal certificate hosts and unexpected schemes; never fetch
   // the supplied certificate URL directly.
   const cert = new URL(certUrl);
-  if (cert.protocol !== "https:" ||
+  if (cert.protocol !== "https:" || cert.port || cert.username || cert.password ||
       !["api.paypal.com", "api.sandbox.paypal.com", "api-m.paypal.com", "api-m.sandbox.paypal.com"].includes(cert.hostname) ||
       !cert.pathname.startsWith("/v1/notifications/certs/"))
     throw new Error("PAYPAL_WEBHOOK_CERT_URL_INVALID");
