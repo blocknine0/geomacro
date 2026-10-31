@@ -12,7 +12,9 @@ import {getInternalNewsScores,putInternalNewsScores}
 import {publishInternalSignedNewsScores} from "../ops/publish-internal-signed-news-scores.ts";
 import worker from "../../workers/control-plane/src/index.mjs";
 
-const NOW=Date.parse("2026-10-28T12:00:00.000Z");
+// Keep signed test inputs inside the enforced 72h TTL as CI dates advance.
+// Production signing/clock verification is deliberately unchanged.
+const NOW=Date.now()-60_000;
 const original=generateKeyPairSync("ed25519"),pub=original.publicKey.export({format:"der",type:"spki"}).toString("base64");
 const material={key_id:"private-test-issuer",public_key_spki_b64:pub,
  private_key_pkcs8_b64:original.privateKey.export({format:"der",type:"pkcs8"}).toString("base64")};
