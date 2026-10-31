@@ -189,6 +189,34 @@ describe("production no-charge on-demand search without Coinbase configuration",
     expect(mocks.settle).not.toHaveBeenCalled();
     expect(response.headers.has("payment-required")).toBe(false);
   },15_000);
+  it("returns free HTTP 200 research status only for reached but empty original search",async()=>{
+    mocks.discover.mockResolvedValueOnce({
+      discovery:{
+        status:"DISCOVERY_OBSERVED_NOT_YET_VERIFIED",searched_in_parallel:true,
+        categories:["geopolitics","macro","rare_earth"],country_iso3:"CHN",
+        checked_at:"2026-10-11T12:00:00Z",network_attempts:3,
+        query_fingerprint_sha256:"a".repeat(64),
+        reached_source_families:2,source_probes:[],
+      },
+      private_candidates:[],private_original_review_candidates:[],
+      duplicate_original_headline_count:0,private_macro_changes:[],
+      private_verified_country_name:"China",
+    });
+    const response=await post("live_on_demand");
+    const body=await response.json();
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.response_kind).toBe("NO_CHARGE_RESEARCH_EVIDENCE_STATUS");
+    expect(body.on_demand.official_pair_review.payment_eligible).toBe(false);
+    expect(body.on_demand.official_pair_review.independent_same_event_claims_verified).toBe(0);
+    expect(body.historical_baseline_verified_in_this_response).toBe(false);
+    expect(body.chargeable).toBe(false);
+    expect(body.payment_required_now).toBe(false);
+    expect(body.execution_authorized).toBe(false);
+    expect(body).not.toHaveProperty("error");
+    expect(mocks.coinbaseConfig).not.toHaveBeenCalled();
+    expect(mocks.settle).not.toHaveBeenCalled();
+  });
   it("does not treat unverified original article candidates as sufficient evidence",async()=>{
     mocks.discover.mockResolvedValueOnce({
       discovery:{
