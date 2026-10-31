@@ -163,7 +163,7 @@ export async function captureApprovedPayPalOrder(input:{
     throw Error("PAYPAL_ORDER_NOT_OWNED");
   if(intent.state==="settled")return {ok:true,idempotent_replay:true,funded:true};
   const completion=await paypalJson(cfg,"/v2/checkout/orders/"+input.orderId+"/capture",{
-    method:"POST",headers:{"PayPal-Request-Id":intent.id},
+    method:"POST",headers:{"PayPal-Request-Id":intent.id},body:"{}",
   },fetcher);
   if(completion.status!=="COMPLETED")throw Error("PAYPAL_CAPTURE_NOT_COMPLETED");
   const units=Array.isArray(completion.purchase_units)?completion.purchase_units:[];
@@ -175,6 +175,40 @@ export async function captureApprovedPayPalOrder(input:{
   return {ok:true,funded:true,...result};
 }
 
+/** Verified full refunds suspend the associated credits. Partial refund
+ * handling is deliberately held for manual reconciliation; it never issues
+ * additional credits or reports a successful refund recovery. */
+export async function reconcileCompletedPayPalRefund(refundId:string,
+  fetcher:typeof fetch=fetch) {
+  const cfg=liveConfig();
+  if(!CAPTURE_ID.test(refundId))throw Error("PAYPAL_REFUND_ID_INVALID");
+  const refund=await paypalJson(cfg,"/v2/payments/refunds/"+refundId,{},fetcher);
+  const related=record(record(refund.supplementary_data).related_ids);
+  const captureId=related.capture_id;
+  const amount=record(refund.amount);
+  if(refund.id!==refundId || refund.status!=="COMPLETED" ||
+     typeof captureId!=="string" || !CAPTURE_ID.test(captureId) ||
+     amount.currency_code!=="USD" || cents(amount.value)===null)
+    throw Error("PAYPAL_REFUND_READBACK_INVALID");
+  const db=requireRiskSupabase();
+  const existing=await db.from("commercial_paid_credit_receipts")
+    .select("id,paid_usd_cents,provider_capture_id")
+    .eq("provider_capture_id",captureId).maybeSingle();
+  if(existing.error || !existing.data)
+    throw Error("PAYPAL_REFUND_RECEIPT_NOT_FOUND");
+  // Suspend immediately only for a full, provider-confirmed refund. A
+  // partially-refunded order requires an explicit operator reconciliation.
+  if(existing.data.paid_usd_cents!==cents(amount.value))
+    throw Error("PAYPAL_PARTIAL_REFUND_MANUAL_REVIEW_REQUIRED");
+  const revoked=await db.rpc("revoke_refunded_paypal_credits",{
+    p_capture_id:captureId,p_refund_id:refundId,
+  });
+  if(revoked.error || !record(revoked.data).ok)
+    throw Error("PAYPAL_REFUND_REVOKE_FAILED");
+  return {ok:true,refund_reconciled:true,credits_suspended:true,
+    idempotent_replay:record(revoked.data).idempotent_replay===true};
+}
+
 /** Reject unsupported webhook events. Only signed, live, separately read-back
  * captures can ever invoke the credit ledger RPC. */
 export async function handlePayPalPaidWebhook(rawBody:string,headers:Headers,
@@ -183,9 +217,16 @@ export async function handlePayPalPaidWebhook(rawBody:string,headers:Headers,
     throw Error("PAYPAL_WEBHOOK_TOO_LARGE");
   const cfg=liveConfig();
   const verified=await verifyPayPalWebhook({rawBody,headers,config:cfg,fetcher});
+  const body=record(JSON.parse(rawBody)),resource=record(body.resource);
+  if(verified.eventType==="PAYMENT.CAPTURE.REFUNDED") {
+    const refundId=resource.id;
+    if(typeof refundId!=="string"||!CAPTURE_ID.test(refundId))
+      throw Error("PAYPAL_REFUND_ID_INVALID");
+    return {ok:true,accepted:true,awaited_refund:true,
+      ...(await reconcileCompletedPayPalRefund(refundId,fetcher))};
+  }
   if(verified.eventType!=="PAYMENT.CAPTURE.COMPLETED")
     return {ok:true,accepted:false,reason:"EVENT_NOT_FUNDABLE"};
-  const body=record(JSON.parse(rawBody)),resource=record(body.resource);
   const captureId=resource.id;
   if(typeof captureId!=="string"||!CAPTURE_ID.test(captureId))
     throw Error("PAYPAL_CAPTURE_ID_INVALID");
