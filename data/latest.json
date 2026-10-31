@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-31T10:16:24.786Z",
+  "checked_at": "2026-10-31T12:36:17.687Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -1109,6 +1109,25 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2abe42c4",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published GDP estimates for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published GDP estimates for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-30",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -4628,6 +4647,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-68c3ce7e",
+      "category": "geopolitics",
+      "title": "Geomacro finds India rejected laws affecting national sovereignty; votes at UN against US embargo on Cuba - ANI News",
+      "what_changed": "A monitored source feed reports: India rejected laws affecting national sovereignty; votes at UN against US embargo on Cuba - ANI News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "sanctions and trade restrictions",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-28T20:22:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-a8cd5453",
       "category": "rare_earth",
       "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Kosmo Online",
@@ -4713,44 +4751,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T13:59:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-b6389d05",
-      "category": "rare_earth",
-      "title": "Geomacro finds Fastmarkets launched calculated fob China battery-grade lithium prices - Fastmarkets",
-      "what_changed": "A monitored source feed reports: Fastmarkets launched calculated fob China battery-grade lithium prices - Fastmarkets. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T11:34:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-fc9ebd7a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports",
-      "what_changed": "A monitored source feed reports: Copper Explorer launched 10000-Foot Nevada Drill Program as Global Supply Shortage Fears Grow - Streetwise Reports. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T10:41:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
