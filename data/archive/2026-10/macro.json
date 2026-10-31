@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-31T05:26:12.577Z",
+  "updated_at": "2026-10-31T08:30:04.347Z",
   "signals": [
+    {
+      "id": "macro-a7ca2ca0",
+      "category": "macro",
+      "title": "Geomacro finds China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T07:09:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f97bc52f",
       "category": "macro",

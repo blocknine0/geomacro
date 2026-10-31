@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-31T05:26:12.577Z",
+  "checked_at": "2026-10-31T08:30:04.347Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-2e6116a3",
+      "category": "rare_earth",
+      "title": "Geomacro finds China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T07:09:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-be28ba3f",
       "category": "geopolitics",
@@ -4438,6 +4457,25 @@
       "severity": null
     },
     {
+      "id": "macro-6951a92c",
+      "category": "macro",
+      "title": "Geomacro finds Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times",
+      "what_changed": "A monitored source feed reports: Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-a7ed764d",
       "category": "rare_earth",
       "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - The Manila Times",
@@ -4717,44 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-657a5549",
-      "category": "rare_earth",
-      "title": "Geomacro finds Australia's PLS signed 20-year power pact with Fortescue unit for Pilgangoora mine - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Australia's PLS signed 20-year power pact with Fortescue unit for Pilgangoora mine - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T06:48:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-1c5ca1c4",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto proposed 56% pay jump for CEO as mining sector fights for talent",
-      "what_changed": "A monitored source feed reports: Rio Tinto proposed 56% pay jump for CEO as mining sector fights for talent. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T06:31:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
