@@ -34,10 +34,10 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
       network: "eip155:8453", asset: "USDC",
       minimum_usdc: "0.02", maximum_usdc: "0.05",
     });
-    expect(page).toContain("GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc");
-    expect(page).toContain("GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc");
-    expect(page).toContain("<CapabilityPriceSchedule />");
-    expect(page).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
+    expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc");
+    expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(GEOMACRO_CAPABILITY_PRICING_VERSION).toBe("geomacro.capability-usdc.v2");
     const rows = publicCapabilityPricingCatalog();
     expect(rows.every((row) => row.capability !== "gri_read")).toBe(true);
