@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-31T17:47:01.014Z",
+  "checked_at": "2026-10-31T22:20:38.692Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-9f348676",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı",
+      "what_changed": "A monitored source feed reports: Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T21:43:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-3db221eb",
       "category": "rare_earth",
@@ -4514,6 +4533,44 @@
       "severity": null
     },
     {
+      "id": "macro-2a82138c",
+      "category": "macro",
+      "title": "Geomacro finds Glaukos projected $1B 2027 revenue as it raises 2026 net sales guidance to $775M-$785M",
+      "what_changed": "A monitored source feed reports: Glaukos projected $1B 2027 revenue as it raises 2026 net sales guidance to $775M-$785M. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:20:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f1a42584",
+      "category": "macro",
+      "title": "Geomacro finds Equinix forecast Q4 2026 total revenue growth of 12%-13% while raising full-year outlook",
+      "what_changed": "A monitored source feed reports: Equinix forecast Q4 2026 total revenue growth of 12%-13% while raising full-year outlook. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T02:11:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-a9e6bad8",
       "category": "geopolitics",
       "title": "Geomacro finds Chadchart rejected claims of flood-relief dispute - Bangkok Post",
@@ -4552,6 +4609,25 @@
       "severity": null
     },
     {
+      "id": "macro-6951a92c",
+      "category": "macro",
+      "title": "Geomacro finds Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times",
+      "what_changed": "A monitored source feed reports: Gold cut losses as Fed pauses and stays silent on future hikes - The Business Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-a7ed764d",
       "category": "rare_earth",
       "title": "Geomacro finds Study confirmed FireFly on track to be a significant copper producer - The Manila Times",
@@ -4584,6 +4660,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-aefaa056",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve held interest rates steady despite inflation",
+      "what_changed": "A monitored source feed reports: Federal Reserve held interest rates steady despite inflation. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-29T00:07:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4660,101 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: meduza.io"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-f2d0e683",
-      "category": "geopolitics",
-      "title": "Geomacro finds Sudan Fact-Finding Mission warned about drone attacks, repression in El Obeid",
-      "what_changed": "A monitored source feed reports: Sudan Fact-Finding Mission warned about drone attacks, repression in El Obeid. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T22:16:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.radiotamazuj.org"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-355e33bb",
-      "category": "rare_earth",
-      "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Malaysian Reserve",
-      "what_changed": "A monitored source feed reports: PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Malaysian Reserve. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T21:44:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-a8cd5453",
-      "category": "rare_earth",
-      "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Kosmo Online",
-      "what_changed": "A monitored source feed reports: PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Kosmo Online. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T20:14:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-a8ef77dc",
-      "category": "rare_earth",
-      "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Investing News Network",
-      "what_changed": "A monitored source feed reports: PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - Investing News Network. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T19:21:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-8617100c",
-      "category": "rare_earth",
-      "title": "Geomacro finds PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Manila Times",
-      "what_changed": "A monitored source feed reports: PMET Resources announced Federal Funding of C$1.2 Million to its 100%-owned subsidiary Innova Lithium for Shaakichiuwaanaan Access Road - The Manila Times. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T18:28:51.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
