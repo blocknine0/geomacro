@@ -24,14 +24,22 @@ export function verifyPaidHotSnapshotProof(product,body,now=Date.now()){
   // The health contract is a CURRENT paid hot-snapshot proof, not a baseline
   // continuity read. Global-Risk recovery may serve separate historical truth
   // but cannot be counted as verified current B2 publication here.
-  if(body.full_b2_readback_verified!==true ||
-     body.exact_gzip_restore_verified!==true ||
-     body.current_b2_readback_verified===false ||
-     body.current_b2_snapshot_promoted===false ||
-     !SHA.test(String(body.b2_sha256??"")) ||
-     !SHA.test(String(body.payload_sha256??"")))
-    return {ready:false,reason:"CURRENT_B2_READBACK_NOT_VERIFIED"};
-  return {ready:true,reason:"VERIFIED_CURRENT_B2_HOT"};
+  const validSha=SHA.test(String(body.b2_sha256??"")) &&
+    SHA.test(String(body.payload_sha256??""));
+  const directCurrent=body.full_b2_readback_verified===true &&
+    body.exact_gzip_restore_verified===true &&
+    body.current_b2_readback_verified!==false &&
+    body.current_b2_snapshot_promoted!==false;
+  const approvedGriRecovery=product==="global-risk" &&
+    body.proof_schema==="geomacro.public-global-risk-current-proof.v1" &&
+    body.verification_mode==="independent-gri-proof-over-b2-baseline" &&
+    body.baseline_b2_readback_verified===true &&
+    body.baseline_exact_gzip_restore_verified===true &&
+    body.current_b2_readback_verified===false &&
+    body.current_b2_snapshot_promoted===false;
+  if(!validSha || !(directCurrent||approvedGriRecovery))
+    return {ready:false,reason:"B2_READBACK_NOT_VERIFIED"};
+  return {ready:true,reason:directCurrent?"VERIFIED_CURRENT_B2_HOT":"SIGNED_GRI_OVER_VERIFIED_B2_BASELINE"};
 }
 export async function probePaidIntelligenceHotSnapshots({
   fetchImpl=fetch,now=Date.now(),
