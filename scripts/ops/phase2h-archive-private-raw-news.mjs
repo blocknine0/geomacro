@@ -99,22 +99,27 @@ export function createPhase2hCanonicalD1({
    // OFFSET stays stable here: no metadata mutation occurs until ALL rows are
    // read and independently verified by B2. Never double-read a raw body.
    const rows=[];
-   let pageSize=25,attempts=0;
-   while(rows.length<300){
+   let pageSize=25,maxRows=300,attempts=0;
+   while(rows.length<maxRows){
     if(++attempts>42)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
     let result;
     try{
      result=await sql(
       "SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ? OFFSET ?",
-      [Math.min(pageSize,300-rows.length),rows.length]
+      [Math.min(pageSize,maxRows-rows.length),rows.length]
      );
     }catch(error){
      // At most one downgrade to 10 rows. The unchanged quota governor still
      // controls the archive; this never overrides provider admission.
-     if(pageSize===25&&
-        error instanceof Error&&
-        error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
-      pageSize=10;
+     if(error instanceof Error&&
+        error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"&&
+        (pageSize===25||pageSize===10)){
+      // A provider returning a response-size limit to BOTH 25- and 10-row
+      // raw JSON batches gets a final 5-row option. Restrict the whole B2
+      // batch to 100 originals so the fixed 42 D1-query budget holds.
+      // No additional B2 PUT, permission change, raw copy or paid action.
+      pageSize=pageSize===25?10:5;
+      if(pageSize===5)maxRows=100;
       continue;
      }
      throw error;
