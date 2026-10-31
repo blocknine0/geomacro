@@ -80,7 +80,15 @@ export function createPhase2hCanonicalD1({
   const doc=await response.json();
   if(!response.ok||doc.success!==true||!Array.isArray(doc.result)||
      doc.result.length!==1||doc.result[0]?.success===false||
-     !Array.isArray(doc.result[0]?.results))fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+     !Array.isArray(doc.result[0]?.results)){
+   // Only numeric HTTP/provider codes reach Actions logs. Never log SQL,
+   // private original JSON, request payload, access token or provider body.
+   const upstream=doc?.errors?.[0]?.code;
+   const safeCode=Number.isSafeInteger(upstream)&&upstream>=0&&upstream<=999999?
+     upstream:"REDACTED";
+   console.error("::warning::PHASE2H_RAW_D1_HTTP_"+response.status+"_CODE_"+safeCode);
+   fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+  }
   return doc.result[0];
  };
  return {
