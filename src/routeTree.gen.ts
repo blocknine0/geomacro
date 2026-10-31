@@ -73,15 +73,15 @@ import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './rou
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
 import { Route as ApiV1IntelligenceStructuredAnswerRouteImport } from './routes/api.v1.intelligence.structured-answer'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
-import { Route as ApiV1PaymentsCryptoQuoteRouteImport } from './routes/api.v1.payments.crypto.quote'
-import { Route as ApiV1PaymentsCryptoVerifyRouteImport } from './routes/api.v1.payments.crypto.verify'
-import { Route as ApiV1PaymentsPaypalCaptureOrderRouteImport } from './routes/api.v1.payments.paypal_.capture-order'
-import { Route as ApiV1PaymentsPaypalCreateOrderRouteImport } from './routes/api.v1.payments.paypal_.create-order'
 import { Route as ApiV1PaymentsPaypalRouteImport } from './routes/api.v1.payments.paypal'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
 import { Route as ApiX402RiskAvailabilityRouteImport } from './routes/api.x402.risk_.availability'
+import { Route as ApiV1PaymentsCryptoQuoteRouteImport } from './routes/api.v1.payments.crypto.quote'
+import { Route as ApiV1PaymentsCryptoVerifyRouteImport } from './routes/api.v1.payments.crypto.verify'
+import { Route as ApiV1PaymentsPaypalCaptureOrderRouteImport } from './routes/api.v1.payments.paypal_.capture-order'
+import { Route as ApiV1PaymentsPaypalCreateOrderRouteImport } from './routes/api.v1.payments.paypal_.create-order'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -407,26 +407,6 @@ const ApiV1IntelligenceStructuredAnswerRoute =
     path: '/api/v1/intelligence/structured-answer',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiV1PaymentsCryptoQuoteRoute = ApiV1PaymentsCryptoQuoteRouteImport.update({
-  id: '/api/v1/payments/crypto/quote',
-  path: '/api/v1/payments/crypto/quote',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1PaymentsCryptoVerifyRoute = ApiV1PaymentsCryptoVerifyRouteImport.update({
-  id: '/api/v1/payments/crypto/verify',
-  path: '/api/v1/payments/crypto/verify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1PaymentsPaypalCaptureOrderRoute = ApiV1PaymentsPaypalCaptureOrderRouteImport.update({
-  id: '/api/v1/payments/paypal_/capture-order',
-  path: '/api/v1/payments/paypal/capture-order',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1PaymentsPaypalCreateOrderRoute = ApiV1PaymentsPaypalCreateOrderRouteImport.update({
-  id: '/api/v1/payments/paypal_/create-order',
-  path: '/api/v1/payments/paypal/create-order',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1PaymentsNetworksRoute = ApiV1PaymentsNetworksRouteImport.update({
   id: '/api/v1/payments/networks',
   path: '/api/v1/payments/networks',
@@ -459,6 +439,30 @@ const ApiX402RiskAvailabilityRoute = ApiX402RiskAvailabilityRouteImport.update({
   path: '/api/x402/risk/availability',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PaymentsCryptoQuoteRoute =
+  ApiV1PaymentsCryptoQuoteRouteImport.update({
+    id: '/api/v1/payments/crypto/quote',
+    path: '/api/v1/payments/crypto/quote',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1PaymentsCryptoVerifyRoute =
+  ApiV1PaymentsCryptoVerifyRouteImport.update({
+    id: '/api/v1/payments/crypto/verify',
+    path: '/api/v1/payments/crypto/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1PaymentsPaypalCaptureOrderRoute =
+  ApiV1PaymentsPaypalCaptureOrderRouteImport.update({
+    id: '/api/v1/payments/paypal_/capture-order',
+    path: '/api/v1/payments/paypal/capture-order',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV1PaymentsPaypalCreateOrderRoute =
+  ApiV1PaymentsPaypalCreateOrderRouteImport.update({
+    id: '/api/v1/payments/paypal_/create-order',
+    path: '/api/v1/payments/paypal/create-order',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -524,16 +528,16 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
-  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
-  '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
-  '/api/v1/payments/paypal/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
+  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
+  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
+  '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
+  '/api/v1/payments/paypal/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -599,16 +603,16 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
-  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
-  '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
-  '/api/v1/payments/paypal/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk/availability': typeof ApiX402RiskAvailabilityRoute
+  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
+  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
+  '/api/v1/payments/paypal/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
+  '/api/v1/payments/paypal/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -675,16 +679,16 @@ export interface FileRoutesById {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
-  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
-  '/api/v1/payments/paypal_/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
-  '/api/v1/payments/paypal_/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
   '/api/x402/risk_/availability': typeof ApiX402RiskAvailabilityRoute
+  '/api/v1/payments/crypto/quote': typeof ApiV1PaymentsCryptoQuoteRoute
+  '/api/v1/payments/crypto/verify': typeof ApiV1PaymentsCryptoVerifyRoute
+  '/api/v1/payments/paypal_/capture-order': typeof ApiV1PaymentsPaypalCaptureOrderRoute
+  '/api/v1/payments/paypal_/create-order': typeof ApiV1PaymentsPaypalCreateOrderRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -752,20 +756,16 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
-    | '/api/v1/payments/crypto/quote'
-    | '/api/v1/payments/crypto/verify'
-    | '/api/v1/payments/paypal/capture-order'
-    | '/api/v1/payments/paypal/create-order'
-    | '/api/v1/payments/crypto/quote'
-    | '/api/v1/payments/crypto/verify'
-    | '/api/v1/payments/paypal_/capture-order'
-    | '/api/v1/payments/paypal_/create-order'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
+    | '/api/v1/payments/crypto/quote'
+    | '/api/v1/payments/crypto/verify'
+    | '/api/v1/payments/paypal/capture-order'
+    | '/api/v1/payments/paypal/create-order'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -831,16 +831,16 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
-    | '/api/v1/payments/crypto/quote'
-    | '/api/v1/payments/crypto/verify'
-    | '/api/v1/payments/paypal/capture-order'
-    | '/api/v1/payments/paypal/create-order'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
     | '/api/x402/risk/availability'
+    | '/api/v1/payments/crypto/quote'
+    | '/api/v1/payments/crypto/verify'
+    | '/api/v1/payments/paypal/capture-order'
+    | '/api/v1/payments/paypal/create-order'
   id:
     | '__root__'
     | '/'
@@ -912,6 +912,10 @@ export interface FileRouteTypes {
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
     | '/api/x402/risk_/availability'
+    | '/api/v1/payments/crypto/quote'
+    | '/api/v1/payments/crypto/verify'
+    | '/api/v1/payments/paypal_/capture-order'
+    | '/api/v1/payments/paypal_/create-order'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -978,16 +982,16 @@ export interface RootRouteChildren {
   ApiV1IntelligenceProductsAvailabilityRoute: typeof ApiV1IntelligenceProductsAvailabilityRoute
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
   ApiV1IntelligenceStructuredAnswerRoute: typeof ApiV1IntelligenceStructuredAnswerRoute
-  ApiV1PaymentsCryptoQuoteRoute: typeof ApiV1PaymentsCryptoQuoteRoute
-  ApiV1PaymentsCryptoVerifyRoute: typeof ApiV1PaymentsCryptoVerifyRoute
-  ApiV1PaymentsPaypalCaptureOrderRoute: typeof ApiV1PaymentsPaypalCaptureOrderRoute
-  ApiV1PaymentsPaypalCreateOrderRoute: typeof ApiV1PaymentsPaypalCreateOrderRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPaypalRoute: typeof ApiV1PaymentsPaypalRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
   ApiX402RiskAvailabilityRoute: typeof ApiX402RiskAvailabilityRoute
+  ApiV1PaymentsCryptoQuoteRoute: typeof ApiV1PaymentsCryptoQuoteRoute
+  ApiV1PaymentsCryptoVerifyRoute: typeof ApiV1PaymentsCryptoVerifyRoute
+  ApiV1PaymentsPaypalCaptureOrderRoute: typeof ApiV1PaymentsPaypalCaptureOrderRoute
+  ApiV1PaymentsPaypalCreateOrderRoute: typeof ApiV1PaymentsPaypalCreateOrderRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1433,34 +1437,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1IntelligenceStructuredAnswerRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/v1/payments/crypto/quote': {
-      id: '/api/v1/payments/crypto/quote'
-      path: '/api/v1/payments/crypto/quote'
-      fullPath: '/api/v1/payments/crypto/quote'
-      preLoaderRoute: typeof ApiV1PaymentsCryptoQuoteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/payments/crypto/verify': {
-      id: '/api/v1/payments/crypto/verify'
-      path: '/api/v1/payments/crypto/verify'
-      fullPath: '/api/v1/payments/crypto/verify'
-      preLoaderRoute: typeof ApiV1PaymentsCryptoVerifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/payments/paypal_/capture-order': {
-      id: '/api/v1/payments/paypal_/capture-order'
-      path: '/api/v1/payments/paypal/capture-order'
-      fullPath: '/api/v1/payments/paypal/capture-order'
-      preLoaderRoute: typeof ApiV1PaymentsPaypalCaptureOrderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/payments/paypal_/create-order': {
-      id: '/api/v1/payments/paypal_/create-order'
-      path: '/api/v1/payments/paypal/create-order'
-      fullPath: '/api/v1/payments/paypal/create-order'
-      preLoaderRoute: typeof ApiV1PaymentsPaypalCreateOrderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/v1/payments/networks': {
       id: '/api/v1/payments/networks'
       path: '/api/v1/payments/networks'
@@ -1501,6 +1477,34 @@ declare module '@tanstack/react-router' {
       path: '/api/x402/risk/availability'
       fullPath: '/api/x402/risk/availability'
       preLoaderRoute: typeof ApiX402RiskAvailabilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/payments/crypto/quote': {
+      id: '/api/v1/payments/crypto/quote'
+      path: '/api/v1/payments/crypto/quote'
+      fullPath: '/api/v1/payments/crypto/quote'
+      preLoaderRoute: typeof ApiV1PaymentsCryptoQuoteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/payments/crypto/verify': {
+      id: '/api/v1/payments/crypto/verify'
+      path: '/api/v1/payments/crypto/verify'
+      fullPath: '/api/v1/payments/crypto/verify'
+      preLoaderRoute: typeof ApiV1PaymentsCryptoVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/payments/paypal_/capture-order': {
+      id: '/api/v1/payments/paypal_/capture-order'
+      path: '/api/v1/payments/paypal/capture-order'
+      fullPath: '/api/v1/payments/paypal/capture-order'
+      preLoaderRoute: typeof ApiV1PaymentsPaypalCaptureOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/payments/paypal_/create-order': {
+      id: '/api/v1/payments/paypal_/create-order'
+      path: '/api/v1/payments/paypal/create-order'
+      fullPath: '/api/v1/payments/paypal/create-order'
+      preLoaderRoute: typeof ApiV1PaymentsPaypalCreateOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1573,16 +1577,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
   ApiV1IntelligenceStructuredAnswerRoute:
     ApiV1IntelligenceStructuredAnswerRoute,
-  ApiV1PaymentsCryptoQuoteRoute: ApiV1PaymentsCryptoQuoteRoute,
-  ApiV1PaymentsCryptoVerifyRoute: ApiV1PaymentsCryptoVerifyRoute,
-  ApiV1PaymentsPaypalCaptureOrderRoute: ApiV1PaymentsPaypalCaptureOrderRoute,
-  ApiV1PaymentsPaypalCreateOrderRoute: ApiV1PaymentsPaypalCreateOrderRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPaypalRoute: ApiV1PaymentsPaypalRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
   ApiX402RiskAvailabilityRoute: ApiX402RiskAvailabilityRoute,
+  ApiV1PaymentsCryptoQuoteRoute: ApiV1PaymentsCryptoQuoteRoute,
+  ApiV1PaymentsCryptoVerifyRoute: ApiV1PaymentsCryptoVerifyRoute,
+  ApiV1PaymentsPaypalCaptureOrderRoute: ApiV1PaymentsPaypalCaptureOrderRoute,
+  ApiV1PaymentsPaypalCreateOrderRoute: ApiV1PaymentsPaypalCreateOrderRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
