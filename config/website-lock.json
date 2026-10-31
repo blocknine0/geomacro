@@ -962,5 +962,25 @@
     "predge_unchanged": true,
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true
+  },
+  "approved_inline_dual_rail_pricing_20261101": {
+    "approval": "Founder explicitly requested on 2026-11-01 that the payment methods be shown directly and separately on the GeoMacro /pricing page as in the Lovable experience, without opening a checkout modal. Real-money payments remain locked.",
+    "approved_source_commit": "aab76802a2bbd6ebe3c68013b80978277ea0e750",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "design": "Always-visible inline payment methods section with plan/pack selection and PayPal/card + Base/Polygon USDC tabs; no modal.",
+    "preview_only": true,
+    "production_funds_authorized": false,
+    "paypal_capture_authorized": false,
+    "usdc_transfer_authorized": false,
+    "credits_issued": 0,
+    "website_lock_remains_active": true,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
