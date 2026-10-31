@@ -79,8 +79,14 @@ export async function sendOtpWithProviderFailover({
  const previous=await db.prepare(`SELECT status FROM customer_email_dispatch_attempts
     WHERE challenge_id=? AND status IN ('accepted','unknown') LIMIT 1`).bind(challengeId).first();
  if(previous)return {ok:false,code:"CUSTOMER_EMAIL_ALREADY_SUBMITTED"};
+ const configured=PROVIDERS.filter(p=>conf(env,p));
+ if(configured.length===0)return {ok:false,code:"CUSTOMER_EMAIL_PROVIDERS_NOT_CONFIGURED"};
+ // D1 primary-key reservation serializes concurrent requests for one challenge.
+ const lock=await db.prepare(`INSERT OR IGNORE INTO customer_email_dispatch_challenges
+   (challenge_id,started_at) VALUES (?,?)`).bind(challengeId,now).run();
+ if(lock?.meta?.changes!==1)return {ok:false,code:"CUSTOMER_EMAIL_ALREADY_SUBMITTED"};
  let ready=0,quotaBlocked=0;
- for(const p of PROVIDERS){
+ for(const p of configured){
   const c=conf(env,p);
   if(!c)continue;
   ready++;
