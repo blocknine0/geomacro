@@ -1,7 +1,7 @@
 import {useEffect,useState} from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Clock3, Radio, Globe2, TrendingUp, Gem } from "lucide-react";
-import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchHomeDerivedNews } from "@/lib/home-derived-news-client";
 import { findCardFromObservedRelease,type FindCardV1 } from "@/lib/find-card-v1";
 import { selectHomepageFreeFind,homeFindsPulse,eligibleHomeFindCards,parseHomepageFindsFeed,mergeHomepageFindCards,publicHomeFindCopy } from "@/lib/homepage-free-finds";
 import {isConcreteHomeFind} from "@/lib/intelligence-concrete-publication";
@@ -47,7 +47,7 @@ export function LiveIntelligenceShowcase({initialFindCards=[]}:{initialFindCards
         // This is the established, independently guarded public D1 reader:
         // it bypasses a temporarily unhealthy site RPC/runtime path.
         try {
-          const signals=await fetchDirectDerivedNews();
+          const signals=await fetchHomeDerivedNews();
           const now=Date.now();
           const next=signals.map(s=>findCardFromObservedRelease(s,now))
             .filter((v):v is FindCardV1=>v!==null);
