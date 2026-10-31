@@ -11,7 +11,7 @@ const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 const MAX_NETWORK_RESPONSE_BYTES = 16 * 1024;
 const TIMEOUT_MS = 10_000;
 const MAX_WEBHOOK_CLOCK_SKEW_MS = 5 * 60_000;
-const SAFE_OAUTH_TOKEN = /^[^\\u0000-\\u001f\\u007f]{1,4096}$/;
+const SAFE_OAUTH_TOKEN = /^[!-~]{1,4096}$/;
 const SAFE_VALUE = /^[^\u0000-\u001f\u007f]{1,512}$/;
 
 export type PayPalServerConfiguration = Readonly<{
