@@ -153,7 +153,39 @@ export async function acceptEarningPilotLive({
   steps.push({check:"three_domain_offer_catalog",status:"PASS"});
   // Read one extra PUBLIC catalog; never call the paid POST or accept payment.
   // A merchant's exact-price receipt MUST still come from the canonical 402.
-  const firstSalePrice=verifyFirstSalePriceManifest(await get("/api/v1/pricing"));
+  const publicPricing=await get("/api/v1/pricing");
+  let firstSalePrice;
+  try {
+    firstSalePrice=verifyFirstSalePriceManifest(publicPricing);
+  } catch(error) {
+    // PR diagnostics run BEFORE this pricing version can be published.
+    // Do not pretend the old deployed catalog is compatible, and never
+    // authorize payment or treat this as an accepted production preflight.
+    // Main/push acceptance remains strict and throws the original error.
+    if(diagnosticOnly &&
+       publicPricing?.pricing_version==="geomacro.capability-usdc.v1" &&
+       error instanceof Error &&
+       error.message==="FIRST_SALE_PRICING_MANIFEST_INVALID"){
+      return {
+        schema_version:SCHEMA,ok:false,diagnostic_only:true,
+        checked_at:now.toISOString(),
+        country_profile:alternateProfile?"ALTERNATE_COUNTRIES_DIAGNOSTIC_ONLY":"DEFAULT_COUNTRIES",
+        expected_pricing_version:"geomacro.capability-usdc.v2",
+        observed_pricing_version:"geomacro.capability-usdc.v1",
+        failure_code:"LEGACY_DEPLOYED_PRICING_DIAGNOSTIC_ONLY",
+        first_earning_ready:false,first_sale_exact_product_preflight_verified:false,
+        no_funds_preflight_complete:false,
+        exact_main_published:exactMainPublished,
+        source_identities_disclosed:false,raw_upstream_disclosed:false,
+        payment_header_submitted:false,checkout_or_settlement_attempted:false,
+        payment_authorized:false,real_funds_touched:false,
+        price_advertised_as_authoritative:false,
+        checks:[...steps,{check:"pricing_catalog",
+          status:"PUBLISHED_LEGACY_VERSION_NOT_ELIGIBLE"}],
+      };
+    }
+    throw error;
+  }
 
   let eligibleCount=0,lockedCount=0,quoteReadyCount=0;
   let firstSaleExplicitEligible=0,firstSaleExplicitQuoteReady=0;
