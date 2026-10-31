@@ -25,8 +25,8 @@ export function validateMacroState(s,now=Date.now()){
   const day=Date.parse(String(fx.reference_date??"")+"T00:00:00Z");
   if(fx.provider!=="ECB_DAILY_REFERENCE"||fx.base!=="EUR"||fx.intraday_live_verified!==false||fx.transaction_price!==false||
      !/^\\d{4}-\\d{2}-\\d{2}$/.test(fx.reference_date)||
-     new Date(day).toISOString().slice(0,10)!==fx.reference_date||
      !Number.isFinite(day)||day>now||now-day>8*86400000||
+     new Date(day).toISOString().slice(0,10)!==fx.reference_date||
      !Array.isArray(fx.rates)||fx.rates.length!==3||
      fx.rates.some((q,i)=>q.currency!==["USD","GBP","JPY"][i]||!Number.isFinite(q.per_eur)||q.per_eur<=0||q.per_eur>=1000000))return false;
  }
