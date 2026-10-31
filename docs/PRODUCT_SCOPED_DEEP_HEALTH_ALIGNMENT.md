@@ -7,7 +7,14 @@ Geomacro now has **two different product contracts**:
 1. `GET /api/health?deep=1`: **legacy signed** Intelligence + GRI v1.2 + Risk Indices. It still requires actual current signed B2/D1 hot snapshots, independent readbacks, and the original verified score methodology. If current snapshots are expired, this MUST remain HTTP 503. Neither source-time updating nor a source-retrieval-only proof may make this health return 200.
 2. `GET /api/health?deep=1&profile=live-structured`: new **unsigned direct-fetch structured observation** service. This checks all three category paths on demand via the existing source-scoped `liveStructuredData` function with D1 fallback disabled. No GRO, signing, B2/D1 intelligence snapshot or Supabase activation is a requirement for this new product. Healthy HTTP 200 means **three reviewed, usable request-time structured category outputs**, not 195-country signed risk, current original news coverage, or a market-tick guarantee. Any missing/blocked category must produce HTTP 503 and a per-category failure state.
 
-The `profile` query must be exactly `live-structured` with `deep=1`. All other profile requests return HTTP 400 rather than unexpectedly falling through and calling old signed products. Existing /api/health shallow and legacy deep response bodies/statuses remain unchanged.
+A separate `profile=verified-baseline` is also accepted **only with `deep=1`**.
+This read-only profile independently reports genuinely verified last-known B2/Edge
+baseline availability and HTTP 200 with `degraded:true` only when at least one
+baseline is readable; if none is readable it returns HTTP 503. It never
+claims stale signed current products are live and never authorizes payment.
+Unsupported profiles return HTTP 400. Existing `/api/health?deep=1` signed
+paid response/status and shallow health remain unchanged. See
+`docs/ops/PRODUCT_SCOPED_DEEP_HEALTH_ALIGNMENT.md` for the publisher cycle.
 
 ## New deep-health proof shape
 
