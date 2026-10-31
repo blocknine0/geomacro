@@ -129,3 +129,16 @@ test("official dedicated BLS ECI publisher RSS resolves when generic latest-numb
  assert.equal(result.items[0].five_part.evidence_and_confidence.paid_eligible,false);
  assert.equal(result.items[0].original_published_at,"2026-10-30T08:00:00.000Z");
 });
+
+test("RSS XML tag parsing accepts real whitespace/CDATA without escaped literal backslashes",async()=>{
+ const xmlWithAttributes='<?xml version="1.0"?><rss><channel><item>'+
+  '<title lang="en"><![CDATA[United Nations announces sanctions on Ukraine exports]]></title>'+
+  '<link>https://news.un.org/en/story/2026/10/1234567</link>'+
+  '<pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ const fake=async()=>({status:200,redirected:false,
+  headers:{get:()=> "application/rss+xml"},text:async()=>xmlWithAttributes});
+ const result=await p0bFirstPartyFeedNews({countryIso3:"UKR",countryName:"Ukraine",
+  category:"geopolitics",question:"Ukraine sanctions",now,fetchImpl:fake});
+ assert.equal(result.items.length,1);
+ assert.equal(result.items[0].paid_eligible,false);
+});
