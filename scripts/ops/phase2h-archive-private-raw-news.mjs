@@ -103,7 +103,7 @@ export function createPhase2hCanonicalD1({
     }catch(error){
      // At most one downgrade to 10 rows. The unchanged quota governor still
      // controls the archive; this never overrides provider admission.
-     if(pageSize===25&&rows.length===0&&
+     if(pageSize===25&&
         error instanceof Error&&
         error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
       pageSize=10;
