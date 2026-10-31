@@ -3,17 +3,12 @@
  * Annual statistical observations are never current news, event verification,
  * charge permission, mining-absence proof or a signed response.
  */
-import {createHash} from "node:crypto";
 import {COUNTRIES_195} from "./canonical-country-registry-195";
 import type {MineralStatisticalObservation} from "./mineral-statistical-baseline";
+import {loadQualifiedMcsRelease} from "./qualified-mcs-country-digest.server";
 
 const RELEASE="https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release";
 const COMTRADE="https://comtradeapi.un.org/";
-const USGS_DOWNLOADS=Object.freeze([
- "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7/MCS2026_Commodities_Data.csv",
- "https://www.sciencebase.gov/catalog/file/get/696a75d5d4be0228872d3bf8/MCS2026_Commodities_Data.csv"
-]);
-const FILE_SHA="582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5";
 const REPORTERS="https://comtradeapi.un.org/files/v1/app/reference/Reporters.json";
 const COMMODITY=new Map([
  ["lithium","lithium"],["cobalt","cobalt"],["copper","copper"],
@@ -32,27 +27,6 @@ async function bounded(url:string,fetchImpl:Fetcher,max:number,accept:string){
  const bytes=new Uint8Array(await res.arrayBuffer());
  if(bytes.byteLength>max)throw Error("OFFICIAL_STATISTICAL_RESPONSE_OVERSIZE");
  return bytes;
-}
-function rowsCsv(bytes:Uint8Array){
- // The MCS release is Windows-1252; preserving accented country names matters.
- const text=new TextDecoder("windows-1252",{fatal:true}).decode(bytes);
- const rows:string[][]=[];let row:string[]=[],field="",quoted=false;
- for(let i=0;i<text.length;i++){
-  const c=text[i];
-  if(c==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++;}else quoted=!quoted;continue;}
-  if(!quoted&&c===","){row.push(field);field="";continue;}
-  if(!quoted&&(c==="\n"||c==="\r")){
-   if(c==="\r"&&text[i+1]==="\n")i++;
-   row.push(field);field="";if(row.some(x=>x.trim()))rows.push(row);row=[];continue;
-  }
-  field+=c;
- }
- if(quoted)throw Error("USGS_CSV_INVALID");
- if(field||row.length){row.push(field);rows.push(row);}
- const heads=rows.shift()?.map(x=>x.trim().replace(/^\uFEFF/u,""))??[];
- const required=["Country","Commodity","Year","Statistics","Unit","Value"];
- if(!required.every(x=>heads.includes(x))||rows.length>100_000)throw Error("USGS_CSV_COLUMNS_INVALID");
- return rows.map(values=>Object.fromEntries(heads.map((h,i)=>[h,(values[i]??"").trim()])));
 }
 function countryOf(label:string){
  const normal=(s:string)=>s.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]/gu,"").trim();
@@ -87,17 +61,12 @@ function usgsScope(rows:Record<string,string>[],iso3:string,commodity:string){
  });
  return matched.sort((a,b)=>b.reference_year-a.reference_year).slice(0,3);
 }
-async function usgs(iso3:string,commodity:string,fetchImpl:Fetcher){
- // Pinned fixed official endpoints, NEVER follow a URL obtained from provider
- // metadata. This prevents origin/path injection as well as extra redirects.
- for(const url of USGS_DOWNLOADS){
-  try{
-   const bytes=await bounded(url,fetchImpl,8*1024*1024,"text/csv");
-   if(createHash("sha256").update(bytes).digest("hex")!==FILE_SHA)continue;
-   return usgsScope(rowsCsv(bytes),iso3,commodity);
-  }catch{/* Try the second already-pinned ScienceBase item only. */}
- }
- return [];
+async function usgs(iso3:string,commodity:string,fetchImpl:Fetcher,now:Date){
+ // Reuse the existing production MCS2026 verifier: DataCite CC0 right,
+ // canonical ScienceBase metadata, bounded redirects, exact source SHA and
+ // 10-minute memoized release. Never create a second weaker download path.
+ const release=await loadQualifiedMcsRelease({fetchImpl,now,noCache:fetchImpl!==fetch});
+ return release?usgsScope(release.rows,iso3,commodity):[];
 }
 function reporterCode(body:unknown,iso3:string){
  const records=(body as {results?:unknown})?.results;
@@ -142,7 +111,7 @@ export async function fetchOfficialMineralStatisticalObservations(input:{
  // One official USGS CSV (2026 release) + at most one reporter reference and
  // two Comtrade no-key annual preview queries. Never query arbitrary URLs.
  const [a,b]=await Promise.allSettled([
-   usgs(iso3,commodity,fetchImpl),
+   usgs(iso3,commodity,fetchImpl,now),
    comtrade(iso3,commodity,fetchImpl,now.getUTCFullYear()-1),
  ]);
  return [...(a.status==="fulfilled"?a.value:[]),
