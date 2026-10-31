@@ -1,6 +1,6 @@
 import {GLOBAL_MACRO_TOPIC_PATTERN} from "../../src/lib/global-macro-news-policy.ts";
 import {ECB_DAILY_FX_URL,parseEcbDailyFxReference} from "./ecb-fx-reference.mjs";
-import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,macroPreciousTopic} from './macro-fx-metals.mjs';
+import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,normalizeXausMetalQuotes,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
@@ -71,6 +71,21 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  if(prices)await Promise.all(['XAU','XAG'].map(async symbol=>{
   try{const data=await get('https://api.gold-api.com/price/'+symbol,{accept:'application/json'});const quote=normalizeMetalQuote(JSON.parse(data.text),symbol,quoteClock());if(quote)quotes.push(quote);priceChecks.push({instrument:symbol+'/USD',state:quote?'CURRENT_INDICATION':'STALE_OR_INVALID'});}catch{priceChecks.push({instrument:symbol+'/USD',state:'UNAVAILABLE'});}
  }));
+ // A single independent provider fetch is permitted only when either primary
+ // metal indication failed validation. Do not call this fallback when both
+ // XAU and XAG are healthy: free bundled ingress budget remains bounded.
+ if(prices&&quotes.length<2){
+  try{
+   const response=await get("https://xaus.com/api/v1/spot?compact=1",{accept:"application/json"});
+   const fallback=normalizeXausMetalQuotes(JSON.parse(response.text),quoteClock());
+   for(const quote of fallback){
+    if(quotes.some(existing=>existing.instrument===quote.instrument))continue;
+    quotes.push(quote);
+    const health=priceChecks.find(item=>item.instrument===quote.instrument);
+    if(health)health.state="CURRENT_INDICATION";
+   }
+  }catch{/* No synthetic or stale substitution; retain explicit unavailable health. */}
+ }
  // One free first-party reference read per six-hour window, not per quote,
  // render or every five-minute collector tick. Never classify it as live FX.
  let fxReference=state.fx_reference??null;

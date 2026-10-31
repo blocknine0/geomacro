@@ -75,6 +75,24 @@ export function normalizeMetalQuote(doc,symbol,now){
  if(!['XAU','XAG'].includes(symbol)||doc?.symbol!==symbol||doc.currency!=='USD'||typeof doc.price!=='number'||!Number.isFinite(doc.price)||doc.price<=0||!Number.isFinite(at)||at>now||now-at>PRICE_MAX_AGE_MS)return null;
  return {instrument:symbol+'/USD',value:doc.price,currency:'USD',unit:'troy_ounce',observed_at:new Date(at).toISOString(),received_at:new Date(now).toISOString(),quote_kind:'provider_spot_indication',provider_latency_verified:false,exchange_tick_verified:false};
 }
+/** Independent failover for a first-party attributed public spot indication.
+ * XAUS may serve cached prices: never turn cached/stale observations into live quotes.
+ * Only parse the documented USD-per-troy-ounce contract.
+ */
+export function normalizeXausMetalQuotes(doc,now){
+ const stamp=typeof doc?.data_state?.as_of==="string"&&/Z$/u.test(doc.data_state.as_of)
+  ?Date.parse(doc.data_state.as_of):NaN;
+ if(doc?.data_state?.status!=="fresh"||!Number.isFinite(stamp)||stamp>now||
+    now-stamp>PRICE_MAX_AGE_MS)return [];
+ const values=[["XAU",doc?.xau?.price],["XAG",doc?.silver_usd_oz]];
+ return values.filter(([,value])=>typeof value==="number"&&Number.isFinite(value)&&value>0)
+  .map(([symbol,value])=>({
+   instrument:symbol+"/USD",value,currency:"USD",unit:"troy_ounce",
+   observed_at:new Date(stamp).toISOString(),received_at:new Date(now).toISOString(),
+   quote_kind:"provider_spot_indication",provider_latency_verified:false,
+   exchange_tick_verified:false,
+  }));
+}
 export function measuredPriceReaction(eventAt,before,after){
  const event=Date.parse(eventAt),a=Date.parse(before?.observed_at),b=Date.parse(after?.observed_at);
  if(!Number.isFinite(event)||!Number.isFinite(a)||!Number.isFinite(b)||before.instrument!==after.instrument||before.quote_kind!==after.quote_kind||before.currency!==after.currency||before.unit!==after.unit||a>event||b<event||b<=a||event-a>PRICE_MAX_AGE_MS||b-event>PRICE_MAX_AGE_MS||!Number.isFinite(before.value)||before.value<=0||!Number.isFinite(after.value)||after.value<=0)return null;
