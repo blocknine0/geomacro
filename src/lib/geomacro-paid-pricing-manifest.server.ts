@@ -1,3 +1,4 @@
+import { GEOMACRO_CARD_TO_USDC_READINESS, GEOMACRO_CARD_TO_USDC_PRODUCTS } from "./card-to-usdc-readiness";
 import {GEOMACRO_LOW_BARRIER_VERSION,GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PACKS,GEOMACRO_AGENT_MICROPAYMENT,GEOMACRO_SUBSCRIPTION_CHECKOUT_STATUS,GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS} from "./low-barrier-pricing";
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
@@ -54,6 +55,8 @@ export function publicGeomacroPaidPricingManifest(){
     subscriptions:GEOMACRO_SUBSCRIPTIONS,
     one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
     agent_x402:GEOMACRO_AGENT_MICROPAYMENT,
+    card_to_usdc_settlement:GEOMACRO_CARD_TO_USDC_READINESS,
+    card_to_usdc_products:GEOMACRO_CARD_TO_USDC_PRODUCTS,
     subscription_checkout_status:GEOMACRO_SUBSCRIPTION_CHECKOUT_STATUS,
     credit_pack_checkout_status:GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS,
     currency:"USDC" as const,
