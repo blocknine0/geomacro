@@ -1,7 +1,7 @@
 import {describe,it,expect} from "vitest";
 import {createHash} from "node:crypto";
 import {gradeArchivedPhase2hEvidence} from "../pipelines/evidence-grader";
-import {compilePhase2hDailyCountryDigest,readDailyArchiveFromCanonicalD1} from "../../scripts/ops/compile-daily-grounded-digests";
+import {compilePhase2hDailyCountryDigest,readDailyArchiveFromCanonicalD1,readDailyPhase2hArchiveBacklog} from "../../scripts/ops/compile-daily-grounded-digests";
 const now=new Date("2026-11-01T00:00:00.000Z");
 const sha=(x:string)=>createHash("sha256").update(x).digest("hex");
 function makeRow({
@@ -92,6 +92,13 @@ describe("Phase2H daily archived original grading",()=>{
   const one=compilePhase2hDailyCountryDigest({now,rows:[makeRow()],fullScan:true});
   expect(one.country_grid_size).toBe(585);
   expect(one.counts.archived_rows_valid).toBe(1);
+  expect(one.category_qualification_census.macro.archived).toBe(1);
+  expect(one.category_qualification_census.macro.unqualified).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.ORIGINAL_PAGE_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.INDEPENDENT_SAME_EVENT_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.macro.failed_by_reason.ITEM_RIGHTS_NOT_VERIFIED).toBe(1);
+  expect(one.category_qualification_census.geopolitics.archived).toBe(0);
+  expect(one.category_qualification_census.rare_earth.archived).toBe(0);
   expect(one.counts.country_cells_with_archived_observations).toBe(1);
   const usa=one.cells.find(x=>x.country_iso3==="USA"&&x.domain_category==="macro")!;
   expect(usa.status).toBe("NO_PAYABLE_EVIDENCE");
@@ -146,5 +153,42 @@ describe("Canonical D1 archived raw extraction",()=>{
   expect(result.fullScan).toBe(true);
   expect(result.rows).toHaveLength(18);
   expect(reads).toBe(3);
+ });
+});
+
+describe("Real B2 backlog census independent of already archived digest input",()=>{
+ const env={
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc",
+  CLOUDFLARE_API_TOKEN:"secret-example-but-never-real",
+ };
+ it("counts pending raw without loading unarchived source bytes",async()=>{
+  let reads=0;
+  const v=await readDailyPhase2hArchiveBacklog({
+   env,now,fetchImpl:(async(_url:unknown,init:unknown)=>{
+    reads++;
+    const body=JSON.parse(String((init as {body:string}).body));
+    expect(body.sql).toContain("b2_object_sha256 IS NULL");
+    expect(body.sql).not.toContain("raw_json");
+    expect(body.params).toHaveLength(1);
+    return Response.json({success:true,result:[{success:true,results:[
+     {category:"geopolitics",pending:7},
+     {category:"macro",pending:3},
+    ]}]});
+   }) as typeof fetch,
+  });
+  expect(reads).toBe(1);
+  expect(v).toEqual({geopolitics:7,macro:3,rare_earth:0});
+ });
+ it("rejects invented categories, noninteger counts and failed D1 responses",async()=>{
+  for(const rows of [
+   [{category:"macro",pending:-1}],
+   [{category:"macro",pending:1},{category:"macro",pending:1}],
+   [{category:"critical_minerals",pending:4}],
+  ]){
+   await expect(readDailyPhase2hArchiveBacklog({env,now,fetchImpl:(async()=>
+    Response.json({success:true,result:[{success:true,results:rows}]})) as typeof fetch}))
+    .rejects.toThrow("DAILY_EVIDENCE_DIGEST_BACKLOG_CENSUS_INVALID");
+  }
  });
 });

@@ -78,6 +78,27 @@ export function compilePhase2hDailyCountryDigest({now,rows,fullScan}:DigestInput
     };
   }));
  const full=fullScan&&rows.length<=MAX_ROWS;
+ // Explain every no-charge disposition from the ACTUAL archived source
+ // rows, not invented 585-cell coverage. Counts only; do not log privately
+ // observed URLs, news titles, country/source IDs, or raw source payloads.
+ const emptyCategory=()=>({archived:0,quantified_candidates:0,grounded:0,
+  unqualified:0,failed_by_reason:{} as Record<string,number>});
+ const category_qualification_census:Record<string,ReturnType<typeof emptyCategory>>={
+  geopolitics:emptyCategory(),macro:emptyCategory(),rare_earth:emptyCategory(),
+ };
+ for(const grade of grades){
+  if(!grade.domain_category)continue;
+  const q=category_qualification_census[grade.domain_category];
+  if(!grade.archive_ack_verified)continue;
+  q.archived++;
+  if(grade.quantified_metrics.length)q.quantified_candidates++;
+  if(grade.grounding_status==="EVIDENCE_GROUNDED")q.grounded++;
+  else q.unqualified++;
+  for(const code of grade.failure_codes){
+   if(!/^[A-Z_]{3,75}$/u.test(code))throw Error("DAILY_DIGEST_REASON_INVALID");
+   q.failed_by_reason[code]=(q.failed_by_reason[code]??0)+1;
+  }
+ }
  const counts={
   archived_rows_read:rows.length,
   archived_rows_valid:grades.filter(x=>x.archive_ack_verified).length,
@@ -101,7 +122,7 @@ export function compilePhase2hDailyCountryDigest({now,rows,fullScan}:DigestInput
   // 5-part news drafts are not Store modules. Do not edit pricing catalog,
   // no automatically signed GRO, no real-money checkout or credit deductions.
   domain_names:["geopolitics","macro","rare_earth"],
-  counts,cells,paid_delivery_authorized:false,payment_attempted:false,
+  counts,category_qualification_census,cells,paid_delivery_authorized:false,payment_attempted:false,
  };
 }
 export async function readDailyArchiveFromCanonicalD1({
@@ -160,9 +181,49 @@ export async function readDailyArchiveFromCanonicalD1({
  }
  return {rows,fullScan:rows.length<=MAX_ROWS};
 }
+/** Read-only, three-row metadata census for late 6-hour B2 archival backlog.
+ * The daily digest never consumes pending D1 raw_json or claims it is B2
+ * backed. An archived-only query by itself would hide a retained backlog.
+ */
+export async function readDailyPhase2hArchiveBacklog({
+ env=process.env,now=new Date(),fetchImpl=fetch,
+}:{env?:NodeJS.ProcessEnv;now?:Date;fetchImpl?:typeof fetch}={}){
+ if(!Number.isFinite(now.getTime())||
+  !/^[a-f0-9]{32}$/u.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
+  !/^[a-f0-9-]{36}$/iu.test(env.D1_DATABASE_ID??"")||
+  (env.CLOUDFLARE_API_TOKEN??"").length<20)
+  fail("BACKLOG_CENSUS_PROTECTED_D1_REQUIRED");
+ const start=new Date(now.getTime()-72*3600_000).toISOString();
+ const response=await fetchImpl(
+  "https://api.cloudflare.com/client/v4/accounts/"+
+    env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query",
+  {method:"POST",redirect:"error",
+   headers:{"Authorization":"Bearer "+env.CLOUDFLARE_API_TOKEN,
+    "Content-Type":"application/json"},
+   body:JSON.stringify({sql:"SELECT category,COUNT(*) AS pending FROM phase2h_private_raw_news "+
+    "WHERE b2_object_sha256 IS NULL AND first_ingested_at >= ? GROUP BY category",
+    params:[start]}),
+   signal:AbortSignal.timeout(15000)});
+ const data=await response.json().catch(()=>null);
+ const result=data?.result?.[0];
+ if(!response.ok||data?.success!==true||result?.success===false||
+   !Array.isArray(result?.results)||result.results.length>3)
+  fail("BACKLOG_CENSUS_D1_UNAVAILABLE");
+ const counts:Record<string,number>={geopolitics:0,macro:0,rare_earth:0};
+ const seen=new Set<string>();
+ for(const row of result.results){
+  if(!Object.hasOwn(counts,row?.category)||seen.has(row.category)||
+     !Number.isSafeInteger(row.pending)||row.pending<0)
+   fail("BACKLOG_CENSUS_INVALID");
+  seen.add(row.category);counts[row.category]=row.pending;
+ }
+ return counts;
+}
 export async function runDailyEvidenceDigest({
  env=process.env,now=new Date(),read=readDailyArchiveFromCanonicalD1,
-}:{env?:NodeJS.ProcessEnv;now?:Date;read?:typeof readDailyArchiveFromCanonicalD1}={}){
+ readBacklog=readDailyPhase2hArchiveBacklog,
+}:{env?:NodeJS.ProcessEnv;now?:Date;read?:typeof readDailyArchiveFromCanonicalD1;
+readBacklog?:typeof readDailyPhase2hArchiveBacklog}={}){
  if(env.GITHUB_ACTIONS!=="true"||
    env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.GITHUB_REF!=="refs/heads/main"||
@@ -170,12 +231,16 @@ export async function runDailyEvidenceDigest({
    env.GEOMACRO_DAILY_DIGEST_QUOTA_ADMITTED!=="true")
   fail("TRUSTED_SCHEDULE_AND_D1_QUOTA_REQUIRED");
  const {rows,fullScan}=await read({env,now});
+ const pendingB2ByCategory=await readBacklog({env,now});
  const digest=compilePhase2hDailyCountryDigest({now,rows,fullScan});
  mkdirSync("artifacts/private-daily-intelligence",{recursive:true,mode:0o700});
  const output=resolve("artifacts/private-daily-intelligence/country-category-digest.json");
  writeFileSync(output,JSON.stringify(digest)+"\n",{mode:0o600});
  const receipt={schema:digest.schema,
   generated_at:digest.generated_at,counts:digest.counts,
+  category_qualification_census:digest.category_qualification_census,
+  pending_b2_archive_by_category:pendingB2ByCategory,
+  pending_b2_archive_total:Object.values(pendingB2ByCategory).reduce((n,x)=>n+x,0),
   complete:digest.canonical_d1_scan_complete,
   status:!fullScan?"INCOMPLETE_BOUNDED_D1_SCAN":
     digest.counts.evidence_grounded_count>0?
