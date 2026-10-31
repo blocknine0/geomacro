@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommercialHome } from "@/components/home/commercial-home";
-import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchHomeDerivedNews } from "@/lib/home-derived-news-client";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
 
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/")({
     // Public client hydration can independently refresh the same feed.
     try {
       const signals = await withPublicRuntimeTimeout(
-        fetchDirectDerivedNews(), 2_500, "Public Finds journal timed out.");
+        fetchHomeDerivedNews(), 2_500, "Public Finds journal timed out.");
       const now=Date.now();
       return {initialFindCards:signals.map(s=>findCardFromObservedRelease(s,now))
         .filter((card)=>card!==null).slice(0,100)};
