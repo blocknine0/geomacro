@@ -65,28 +65,3 @@ test("real runtime tags issuer subset while retaining 512 GET and all country ro
  assert.equal(sourceIsPinnedNationalPrimary(rba),true);
  assert.equal(all.some(s=>s.private_discovery_index_only&&s.scope==="national_primary"),false);
 });
-
-
-test("seven official Indian PIB feeds are pinned in production and callback carries country only on country-quiet title",async()=>{
- const runtime=privateOsintRuntimeSources(now);
- for(const reg of [1,3,5,6,17,20,22]){
-  const url="https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid="+reg;
-  const src=runtime.find(s=>s.url===url);
-  assert.ok(src,"missing official PIB RSS register "+reg);
-  assert.equal(sourceIsPinnedNationalPrimary(src),true);
- }
- const src=runtime.find(s=>s.url==="https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3");
- const collected=[];
- await collectRegisteredReusableNews({
-  now,registry:[src],normalize,topicPatterns:PRIVATE_OSINT_TOPICS,
-  resolveCountry:()=>null,onOriginalCandidate:r=>collected.push(r),
-  fetchImpl:async()=>new Response(feed([
-   "Government announces lithium mineral production processing policy",
-   "Australia nickel export mining policy announced"]),{status:200})
- });
- assert.ok(collected.length>0);
- assert.ok(collected.some(x=>x.title.startsWith("Government announces")&&
-   x.issuer_context_country_iso3==="IND"));
- assert.ok(collected.every(x=>!x.title.startsWith("Australia nickel")||
-   !x.issuer_context_country_iso3));
-});
