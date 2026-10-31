@@ -5,6 +5,7 @@ import { readQualifiedStructuralEvidence } from "./agent-query-qualified-evidenc
 import { isStructuralStoreProduct } from "./store-product-selection";
 import { assertStoreStructuralEvidence, storeSignedObjectLifecycle } from "./store-product-evidence.server";
 import {exactGeomacroUsdcRail} from "./usdc-native-rail-identities";
+import {assertHighAuthorityPaidIntelligenceScope} from "./high-authority-paid-intelligence";
 import {
   resolveVerifiedPublishedPlanPrice,
   type VerifiedCapabilityPriceProof,
@@ -86,6 +87,11 @@ export function resolveEligiblePublishedCapabilityPrice(
     change_attribution_verified: signed && plan.intent === "change_since",
   };
   const price = resolveVerifiedPublishedPlanPrice(plan, proof);
+  // Apply the official launch scope to ALL new Intelligence Query quotes,
+  // including correctly classified requests without an explicit Store SKU.
+  // Unrelated structural, GRI and already-settled replay paths stay intact.
+  if (price.capability === "intelligence_query")
+    assertHighAuthorityPaidIntelligenceScope(availability);
   return price;
 }
 

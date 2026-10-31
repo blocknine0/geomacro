@@ -13,6 +13,7 @@ import {assertGeomacroIntelligenceResponseContract} from "./geomacro-intelligenc
 import {assertPricedStructuredDelivery} from "./capability-structured-delivery.server";
 import {assertLockedCapabilityDataBoundary} from "./capability-priced-data-boundary.server";
 import {readQualifiedStructuralEvidence} from "./agent-query-qualified-evidence.server";
+import {assertPaidIntelligenceEventFieldCompleteness} from "./high-authority-paid-intelligence";
 
 /** Prepare and validate the actual product from admitted evidence. Shared by
  * no-charge setup checks and paid offers; no quote, ledger write or settlement. */
@@ -27,6 +28,8 @@ export async function assembleVerifiedCapabilityProduct(input:{
     priceUsdc:price.amount_usdc,
     ...(qualifiedStructural?{qualifiedStructural}:{}),
   });
+  if(price.capability==="intelligence_query")
+    assertPaidIntelligenceEventFieldCompleteness(assembled);
   if(assembled.query_plan_hash!==input.plan.query_plan_hash || assembled.execution_authorized!==false)
     throw Error("CAPABILITY_PREQUOTE_QUERY_MISMATCH");
   // Qualifying source rights and 402 pricing are not sufficient if source

@@ -21,6 +21,8 @@ on:
       - "scripts/lib/risk-indices-verified-parent-backstop.test.mjs"
       - "scripts/ops/observe-risk-indices-continuity.mjs"
       - "scripts/lib/risk-indices-continuity-watchdog.test.mjs"
+      - "scripts/ops/probe-paid-intelligence-hot-snapshots.mjs"
+      - "scripts/ops/probe-paid-intelligence-hot-snapshots.test.mjs"
   push:
     branches: [main]
     paths:
@@ -29,6 +31,8 @@ on:
       - "scripts/lib/risk-indices-verified-parent-backstop.test.mjs"
       - "scripts/ops/observe-risk-indices-continuity.mjs"
       - "scripts/lib/risk-indices-continuity-watchdog.test.mjs"
+      - "scripts/ops/probe-paid-intelligence-hot-snapshots.mjs"
+      - "scripts/ops/probe-paid-intelligence-hot-snapshots.test.mjs"
 
 permissions:
   contents: read
@@ -55,6 +59,7 @@ jobs:
           node --check scripts/ops/observe-risk-indices-continuity.mjs
           node --test scripts/lib/risk-indices-verified-parent-backstop.test.mjs
           node --test scripts/lib/risk-indices-continuity-watchdog.test.mjs
+          node --test scripts/ops/probe-paid-intelligence-hot-snapshots.test.mjs
 
   read-only-acceptance-on-main-update:
     needs: source-and-negative-tests
@@ -138,3 +143,8 @@ jobs:
           GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
           GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
         run: node scripts/ops/observe-risk-indices-continuity.mjs
+      - name: Attest current paid Intelligence, GRI and Risk Indices hot snapshots (no funds)
+        # Reuse this existing 30-minute backstop: no extra cron, signing,
+        # B2 GET/PUT, D1 write, payment, invented timestamps or rights waiver.
+        if: ${{ always() }}
+        run: node scripts/ops/probe-paid-intelligence-hot-snapshots.mjs

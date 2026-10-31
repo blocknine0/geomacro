@@ -136,7 +136,6 @@
     "first-qualified-country-digest.yml",
     "first-real-minerals-evidence-triage.yml",
     "five-minute-original-news-fastlane.yml",
-    "frontend-public-deployment-acceptance.yml",
     "fragment-b2-archive-canary.yml",
     "fragment-b2-resolver-backed-offload.yml",
     "fragment-b2-targeted-cleanup.yml",
@@ -144,6 +143,7 @@
     "free-three-domain-country-gap-ledger.yml",
     "free-tier-final-recovery.yml",
     "free-tier-recurring-footprint.yml",
+    "frontend-public-deployment-acceptance.yml",
     "full-source-production-alignment.yml",
     "gdacs-native-country.yml",
     "gdelt-escalation-calibration-check.yml",
@@ -162,6 +162,7 @@
     "global-production-coverage-gate.yml",
     "global-realtime-production-repair.yml",
     "global-realtime-source-proof.yml",
+    "global-risk-cadence.yml",
     "global-risk-gate-country-readiness.yml",
     "governed-source-ingestion.yml",
     "governed-source-persistence-audit.yml",
@@ -261,8 +262,8 @@
     "predge-signed-market-public-verification.yml",
     "predge-token-only-sealed-handoff.yml",
     "private-global-osint-15m.yml",
-    "private-osint-585-census-daily.yml",
     "private-independent-review-package.yml",
+    "private-osint-585-census-daily.yml",
     "private-osint-d1-quota-held-spool.yml",
     "private-revenue-ledger-readiness.yml",
     "private-source-directory-production-slo.yml",
@@ -386,6 +387,7 @@
     "five-minute-original-news-fastlane.yml",
     "global-country-raw-source-mesh.yml",
     "global-open-signal-monitor.yml",
+    "global-risk-cadence.yml",
     "governed-source-ingestion.yml",
     "gri-signed-ready-cadence-backstop.yml",
     "intelligence-current-scoring-all-domains.yml",
@@ -435,7 +437,8 @@
     "permanent-runtime-health.yml": "Permanent Runtime Health",
     "open-realtime-source-mesh.yml": "Geomacro Open Realtime Source Mesh",
     "predge-token-only-sealed-handoff.yml": "Predge Token-Only Encrypted Handoff (No Funds)",
-    "news-intelligence-hub-continuity.yml": "GeoMacro Central News Intelligence Hub"
+    "news-intelligence-hub-continuity.yml": "GeoMacro Central News Intelligence Hub",
+    "global-risk-cadence.yml": "GeoMacro Global Risk 30 Minute Verified Cadence (No Funds)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -466,6 +469,12 @@
       "node scripts/ops/verify-news-hub-live-bundle.mjs",
       "if: steps.budget.outputs.research == 'true'",
       "cancel-in-progress: false"
+    ],
+    "global-risk-cadence.yml": [
+      "cron: \"07,37 * * * *\"",
+      "scripts/ops/dispatch-gri-signed-ready-cadence.mjs",
+      "scripts/ops/probe-paid-intelligence-hot-snapshots.mjs",
+      "approved-publication-wakeup"
     ]
   },
   "predgeBlobSha1": {
