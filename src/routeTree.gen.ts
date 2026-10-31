@@ -73,6 +73,7 @@ import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './rou
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
 import { Route as ApiV1IntelligenceStructuredAnswerRouteImport } from './routes/api.v1.intelligence.structured-answer'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
+import { Route as ApiV1PaymentsPaypalRouteImport } from './routes/api.v1.payments.paypal'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
 import { Route as ApiX402CircleIntelligenceRouteImport } from './routes/api.x402.circle_.intelligence'
 import { Route as ApiX402NeverminedIntelligenceRouteImport } from './routes/api.x402.nevermined_.intelligence'
@@ -407,6 +408,11 @@ const ApiV1PaymentsNetworksRoute = ApiV1PaymentsNetworksRouteImport.update({
   path: '/api/v1/payments/networks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1PaymentsPaypalRoute = ApiV1PaymentsPaypalRouteImport.update({
+  id: '/api/v1/payments/paypal',
+  path: '/api/v1/payments/paypal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1PaymentsPreflightRoute = ApiV1PaymentsPreflightRouteImport.update({
   id: '/api/v1/payments/preflight',
   path: '/api/v1/payments/preflight',
@@ -495,6 +501,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
+  '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -565,6 +572,7 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
+  '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -636,6 +644,7 @@ export interface FileRoutesById {
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
+  '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
   '/api/x402/circle_/intelligence': typeof ApiX402CircleIntelligenceRoute
   '/api/x402/nevermined_/intelligence': typeof ApiX402NeverminedIntelligenceRoute
@@ -708,6 +717,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
+    | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
@@ -778,6 +788,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
+    | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle/intelligence'
     | '/api/x402/nevermined/intelligence'
@@ -848,6 +859,7 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
     | '/api/v1/payments/networks'
+    | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
     | '/api/x402/circle_/intelligence'
     | '/api/x402/nevermined_/intelligence'
@@ -919,6 +931,7 @@ export interface RootRouteChildren {
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
   ApiV1IntelligenceStructuredAnswerRoute: typeof ApiV1IntelligenceStructuredAnswerRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
+  ApiV1PaymentsPaypalRoute: typeof ApiV1PaymentsPaypalRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
   ApiX402CircleIntelligenceRoute: typeof ApiX402CircleIntelligenceRoute
   ApiX402NeverminedIntelligenceRoute: typeof ApiX402NeverminedIntelligenceRoute
@@ -1375,6 +1388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1PaymentsNetworksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/payments/paypal': {
+      id: '/api/v1/payments/paypal'
+      path: '/api/v1/payments/paypal'
+      fullPath: '/api/v1/payments/paypal'
+      preLoaderRoute: typeof ApiV1PaymentsPaypalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/payments/preflight': {
       id: '/api/v1/payments/preflight'
       path: '/api/v1/payments/preflight'
@@ -1474,6 +1494,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceStructuredAnswerRoute:
     ApiV1IntelligenceStructuredAnswerRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
+  ApiV1PaymentsPaypalRoute: ApiV1PaymentsPaypalRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
   ApiX402CircleIntelligenceRoute: ApiX402CircleIntelligenceRoute,
   ApiX402NeverminedIntelligenceRoute: ApiX402NeverminedIntelligenceRoute,
