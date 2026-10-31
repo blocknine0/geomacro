@@ -75,7 +75,7 @@ describe("independent production website failure diagnostics", () => {
       ["/global-risk", "src/components/gri/global-risk-domain-indices.tsx"],
       ["/risk-indices", "src/components/risk-indices/risk-indices-workspace.tsx"],
       ["/ask-geomacro", "src/routes/ask-geomacro.tsx"],
-      ["/data-api", "src/routes/data-api.tsx"],
+      ["/data-api", "src/routes/pricing.tsx"],
       ["/pricing", "src/routes/pricing.tsx"],
       ["/institutional", "src/routes/institutional.tsx"],
       ["/risk-gate", "src/routes/risk-gate.tsx"],

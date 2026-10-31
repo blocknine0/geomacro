@@ -31,16 +31,16 @@ describe("commercial website source-of-truth contract", () => {
     const shell = read("src/components/site-shell.tsx");
     expect(shell).toContain('label: "Intelligence"');
     expect(shell).toContain('label: "Risk Indices"');
-    expect(shell).toContain('label: "API & Agents"');
+    expect(shell).toContain('label: "Store & API"');
     expect(shell).toContain('label: "For teams"');
-    expect(shell).toContain('label: "Store"');
+    expect(shell).not.toContain('to: "/data-api", label:');
     expect(shell).not.toMatch(/Technical Proof|Testnet API|Arc \/ Onchain|Bridge & Swap|Prediction Markets/);
   });
 
   it("keeps commercial delivery bounded and production-gated", () => {
-    expect(read("src/routes/data-api.tsx")).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
+    expect(read("src/routes/pricing.tsx")).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(read("src/routes/pricing.tsx")).toContain("<CapabilityPriceSchedule />");
-    expect(read("src/routes/data-api.tsx")).toContain("<CapabilityPriceSchedule compact />");
+    expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(read("src/components/home/live-intelligence-showcase.tsx")).not.toContain("From 0.05 USDC");
     expect(read("src/components/agent-commerce-status.tsx")).not.toContain("USDC/call");
     expect(read("src/routes/risk-gate.tsx")).toContain("PRIVATE PILOT");

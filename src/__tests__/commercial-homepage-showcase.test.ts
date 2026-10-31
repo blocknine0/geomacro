@@ -38,7 +38,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     const guide = readFileSync("src/components/commercial-access-guide.tsx", "utf8");
     const shell = readFileSync("src/components/site-shell.tsx", "utf8");
     expect(shell).not.toContain("<CommercialAccessGuide />");
-    expect(shell).toContain('label: "Store"');
+    expect(shell).toContain('label: "Store & API"');
     expect(guide).toContain("Exact USDC price by capability");
     expect(guide).toContain("Coming Soon · enquiries open");
     expect(guide).toContain("Request monthly access");

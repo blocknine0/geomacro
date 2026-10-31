@@ -24,7 +24,7 @@ describe("canonical capability pricing parity on the public website",()=>{
     expect(pricing).toContain("<CategoryApiPricing />");
     expect(dataApi).not.toContain("CategoryApiPricing");
     expect(pricing).toContain("<CapabilityPriceSchedule />");
-    expect(dataApi).toContain("<CapabilityPriceSchedule compact />");
+    expect(dataApi).toContain('redirect({ to: "/pricing", replace: true })');
     for(const source of [pricing,dataApi]){
       expect(source).not.toContain("Launch price for the first 20,000");
       expect(source).not.toContain("USDC / successful delivery");

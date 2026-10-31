@@ -1,7 +1,7 @@
 import { LowBarrierPricing } from "@/components/low-barrier-pricing";
 import { StructuredProductSetup } from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Braces, CheckCircle2, Code2, Database, Globe2, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Braces, CheckCircle2, Code2, Database, Globe2, ShieldCheck } from "lucide-react";
 import { CapabilityPriceSchedule } from "@/components/capability-price-schedule";
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CategoryApiPricing } from "@/components/category-api-pricing";
@@ -139,7 +139,7 @@ function PricingPage() {
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               Compare capabilities and exact approved USDC variants.
-              All products deliver structured Geomacro JSON with evidence and limitations.
+              All products deliver structured Geomacro JSON. Evidence and limitations are included.
             </p>
           </div>
           <span className="font-mono text-[11px] text-muted-foreground">{GEOMACRO_CAPABILITY_PRICING_VERSION}</span>
