@@ -26,9 +26,13 @@ const LEGACY_PRIVATE_OSINT_TOPICS=Object.freeze({
 });
 
 // Preserve all reviewed native-language patterns while closing taxonomy gaps.
+// Context-specific multilingual mineral terminology. Generic "mines" and
+// "tambang" alone are not enough to infer a critical-minerals event.
+const MINERAL_LANGUAGE_EXPANSION=/(?:\b(?:níquel|niquel|nikel|bauksit|hilirisasi|pertambangan\s+(?:nikel|bauksit|litium)|tambang\s+(?:nikel|bauksit|litium)|terres\s+rares|terras\s+raras|tierras\s+raras|minerais?\s+critiques?|minerales?\s+críticos?|métaux\s+critiques?|cobalto|kobalt|bijih\s+nikel|baterai\s+litium|industri\s+hilirisasi\s+nikel)\b)/iu;
 export const PRIVATE_OSINT_TOPICS=Object.freeze(Object.fromEntries(
  Object.entries(LEGACY_PRIVATE_OSINT_TOPICS).map(([category,pattern])=>[
-  category,new RegExp('(?:'+pattern.source+')|(?:'+LAUNCH_NEWS_TOPIC_PATTERNS[category].source+')','iu')
+  category,new RegExp('(?:'+pattern.source+')|(?:'+LAUNCH_NEWS_TOPIC_PATTERNS[category].source+')'+
+    (category==='rare_earth'?'|(?:'+MINERAL_LANGUAGE_EXPANSION.source+')':''),'iu')
  ])
 ));
 
