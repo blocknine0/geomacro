@@ -25,6 +25,11 @@ test("critical-pacing hold with source approval does not become a full publisher
  assert.match(lane,/needs\.quota-admission\.result == 'success'/u);
  assert.match(lane,/github\.ref == 'refs\/heads\/main'/u);
  assert.match(lane,/github\.event_name == 'schedule'/u);
+ assert.match(lane,/github\.event_name == 'workflow_run'/u);
+ assert.match(lane,/github\.event\.workflow_run\.name == 'Deploy D1 Control Plane'/u);
+ assert.match(lane,/github\.event\.workflow_run\.conclusion == 'success'/u);
+ assert.match(lane,/github\.event\.workflow_run\.head_sha == github\.sha/u);
+ assert.match(lane,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);
  assert.match(lane,/environment: production/u);
  assert.match(lane,/PHASE2I_PROVIDER_SOURCE_INTAKE:/u);
  assert.match(lane,/PHASE2I_PROVIDER_RESEARCH:/u);
@@ -53,6 +58,7 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
  assert.match(sourceOnly,/includeLocalGapLane:true/u);
  assert.match(sourceOnly,/configured_country_category_routes!==585/u);
  assert.match(sourceOnly,/d1_readback_verified!==true/u);
+ assert.match(sourceOnly,/persistPrivateOsintHeartbeats\(\{summary:result\.summary,now\}\)/u);
  assert.doesNotMatch(sourceOnly,/persistPrivateOsintBatch|publishPrivateOsintWebsiteSignals|settleCoinbaseX402|raw\.article_body/u);
  assert.match(sourceOnly,/predge_modified:false,publication_attempted:false/u);
 });
