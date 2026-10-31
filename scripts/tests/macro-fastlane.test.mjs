@@ -68,15 +68,15 @@ test('Primary metals outage uses exactly one independent fallback and never inve
  const out=await collectMacroFastlane({now,state:{...freshState(),fx_checked_at:now},
   sourceIds:[],calendars:false,fetchImpl:async url=>{
    calls.push(url);
-   return new Response(url.includes('xaus.com')?JSON.stringify(fresh):'',{status:url.includes('xaus.com')?200:503});
+   return new Response(new URL(url).hostname==='xaus.com'?JSON.stringify(fresh):'',{status:new URL(url).hostname==='xaus.com'?200:503});
   }});
- assert.equal(calls.filter(x=>x.includes('xaus.com')).length,1);
+ assert.equal(calls.filter(x=>new URL(x).hostname==='xaus.com').length,1);
  assert.equal(out.state.quotes.length,2);
  assert.ok(out.state.price_checks.every(x=>x.state==='CURRENT_INDICATION'));
  assert.ok(validateMacroState(out.state,now));
  const stale=await collectMacroFastlane({now,state:{...freshState(),fx_checked_at:now},
   sourceIds:[],calendars:false,fetchImpl:async url=>new Response(
-   url.includes('xaus.com')?JSON.stringify({...fresh,data_state:{status:'stale',as_of:at}}):'',{status:url.includes('xaus.com')?200:503})});
+   new URL(url).hostname==='xaus.com'?JSON.stringify({...fresh,data_state:{status:'stale',as_of:at}}):'',{status:new URL(url).hostname==='xaus.com'?200:503})});
  assert.equal(stale.state.quotes.length,0);
  assert.ok(stale.state.price_checks.every(x=>x.state==='UNAVAILABLE'));
 });
