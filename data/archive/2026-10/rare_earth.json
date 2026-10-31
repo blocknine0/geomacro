@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-31T14:21:37.883Z",
+  "updated_at": "2026-10-31T15:20:35.567Z",
   "signals": [
     {
       "id": "rare_earth-4671f284",
@@ -52,6 +52,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T07:09:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7bbaa0ff",
+      "category": "rare_earth",
+      "title": "Geomacro finds Appian confirmed Talks With EBRD on Critical Minerals Funding - Discovery Alert",
+      "what_changed": "A monitored source feed reports: Appian confirmed Talks With EBRD on Critical Minerals Funding - Discovery Alert. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T22:26:54.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
