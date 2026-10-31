@@ -5,13 +5,13 @@
   "registered_sources": 453,
   "new_http_requests": 18,
   "statuses": {
-    "WORKING": 105,
-    "NO_NEW_EVENT": 15,
-    "SOURCE_UNAVAILABLE": 0,
+    "WORKING": 106,
+    "NO_NEW_EVENT": 17,
+    "SOURCE_UNAVAILABLE": 1,
     "UNSUPPORTED_FORMAT": 6,
     "RIGHTS_PENDING": 0,
     "QUOTA_HELD": 0,
-    "NOT_YET_VERIFIED": 459
+    "NOT_YET_VERIFIED": 455
   },
   "by_category": {
     "geopolitics": {
@@ -26,7 +26,7 @@
       "cells": 195,
       "registered_local_source_cells": 85,
       "no_local_source_cells": 110,
-      "live_fetched_local_source_cells": 41,
+      "live_fetched_local_source_cells": 43,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     },
@@ -34,7 +34,7 @@
       "cells": 195,
       "registered_local_source_cells": 80,
       "no_local_source_cells": 115,
-      "live_fetched_local_source_cells": 40,
+      "live_fetched_local_source_cells": 41,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     }
