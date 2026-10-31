@@ -196,7 +196,10 @@ export async function runSignedRpcReadiness(
     }));
     results.push(...checked);
   }
-  const verified=results.length===6&&results.every(x=>x.status==="PASS");
+  // Successful provider probes cannot override a failed independent
+  // production HTTPS egress baseline. Require BOTH proof lanes for acceptance.
+  const verified=egress_check==="EGRESS_PASS"&&results.length===6&&
+    results.every(x=>x.status==="PASS");
   // Do not return URLs, provider credentials, secret names, detailed RPC
   // responses, block numbers, JSON-RPC error strings or payment auth state.
   return Response.json({

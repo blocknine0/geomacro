@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  configuredPayPal, paypalPublicConnectionStatus,
+  configuredPayPal, paypalPublicConnectionStatus, paypalAccessToken,
   verifyPayPalWebhook, GEOMACRO_PAYPAL_FUNDS_CAPTURE_ENABLED,
 } from "./paypal-api.server";
 import { GEOMACRO_PAYPAL_PRODUCT_CATALOG, paypalCanCaptureFunds } from "./paypal-checkout-readiness";
@@ -38,6 +38,57 @@ describe("GeoMacro PayPal India cross-border readiness (NO FUNDS)", () => {
     expect(configuredPayPal()).toBeNull();
     process.env.GEOMACRO_PAYPAL_ENVIRONMENT = "something-else";
     expect(paypalPublicConnectionStatus().environment).toBe("sandbox");
+  });
+  it("PayPal OAuth uses Workerd-supported manual redirects without following them", async () => {
+    const config = { environment: "sandbox" as const,
+      baseUrl: "https://api-m.sandbox.paypal.com", clientId: "client-test",
+      clientSecret: "opaque-secret", webhookId: "WH-test" };
+    const calls: RequestInit[] = [];
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      expect(url).toBe("https://api-m.sandbox.paypal.com/v1/oauth2/token");
+      expect(init?.method).toBe("POST");
+      expect(init?.redirect).toBe("manual");
+      if (init?.redirect === "error") throw new TypeError("workerd does not support redirect:error");
+      calls.push(init!);
+      return Response.json({ access_token: "sandbox-access-token" });
+    }) as typeof fetch;
+    expect(await paypalAccessToken(config, fakeFetch)).toBe("sandbox-access-token");
+    expect(calls).toHaveLength(1);
+  });
+  it("PayPal OAuth and webhook verification reject 3xx without following an untrusted redirect", async () => {
+    const config = { environment: "sandbox" as const,
+      baseUrl: "https://api-m.sandbox.paypal.com", clientId: "client",
+      clientSecret: "opaque-secret", webhookId: "WH-1" };
+    let followed = 0;
+    const redirect = (async (_url: string, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual");
+      followed++;
+      return new Response(null, { status: 302,
+        headers: { Location: "https://attacker.example/collect" } });
+    }) as typeof fetch;
+    await expect(paypalAccessToken(config, redirect))
+      .rejects.toThrow("PAYPAL_PROVIDER_REDIRECT_REJECTED");
+    expect(followed).toBe(1);
+    const ts = "2026-10-31T10:00:00Z";
+    const headers = new Headers({
+      "paypal-transmission-time": ts, "paypal-transmission-id": "tx",
+      "paypal-cert-url": "https://api.sandbox.paypal.com/v1/notifications/certs/CERT",
+      "paypal-auth-algo": "SHA256withRSA", "paypal-transmission-sig": "sig",
+    });
+    let callCount = 0;
+    const redirectVerification = (async (_url: string, init?: RequestInit) => {
+      expect(init?.redirect).toBe("manual");
+      callCount++;
+      return callCount === 1 ?
+        Response.json({ access_token: "sandbox-token" }) :
+        new Response(null, {status:307,
+          headers:{Location:"https://attacker.example/redirect"}});
+    }) as typeof fetch;
+    await expect(verifyPayPalWebhook({
+      config,headers,rawBody:JSON.stringify({id:"evt",event_type:"PAYMENT.CAPTURE.COMPLETED"}),
+      fetcher:redirectVerification,now:Date.parse(ts)
+    })).rejects.toThrow("PAYPAL_PROVIDER_REDIRECT_REJECTED");
+    expect(callCount).toBe(2);
   });
   it("verifies PayPal event signatures server-side, never provisions credits", async () => {
     const config = { environment: "sandbox" as const,

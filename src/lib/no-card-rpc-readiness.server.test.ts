@@ -76,6 +76,25 @@ describe("signed private live six-RPC no-funds readiness",()=>{
     expect(result.ok).toBe(true);
     expect(calls).toHaveLength(25);
   });
+  it("never accepts six good providers if independent production HTTPS egress is broken",async()=>{
+    const fetcher=(async(u:unknown,init?:RequestInit)=>{
+      if(String(u)==="https://www.cloudflare.com/cdn-cgi/trace")
+        throw new TypeError("opaque production egress failure");
+      return rpcFetch(u,init);
+    }) as typeof fetch;
+    const response=await runSignedRpcReadiness(request(),env,fetcher,now);
+    const body=await response.json() as {
+      ok:boolean;egress_check:string;payment_performed:boolean;
+      checks:{status:string}[];
+    };
+    expect(response.status).toBe(503);
+    expect(body.ok).toBe(false);
+    expect(body.egress_check).toBe("EGRESS_RPC_FETCH_FAILED");
+    expect(body.checks).toHaveLength(6);
+    expect(body.checks.every(c=>c.status==="PASS")).toBe(true);
+    expect(body.payment_performed).toBe(false);
+    expect(JSON.stringify(body)).not.toContain("opaque production egress failure");
+  });
   it("does not follow a redirect to an untrusted RPC address",async()=>{
     const destinations:string[]=[];
     const fetcher=(async(u:unknown,init?:RequestInit)=>{
