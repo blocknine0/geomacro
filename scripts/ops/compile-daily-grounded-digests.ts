@@ -78,6 +78,27 @@ export function compilePhase2hDailyCountryDigest({now,rows,fullScan}:DigestInput
     };
   }));
  const full=fullScan&&rows.length<=MAX_ROWS;
+ // Explain every no-charge disposition from the ACTUAL archived source
+ // rows, not invented 585-cell coverage. Counts only; do not log privately
+ // observed URLs, news titles, country/source IDs, or raw source payloads.
+ const emptyCategory=()=>({archived:0,quantified_candidates:0,grounded:0,
+  unqualified:0,failed_by_reason:{} as Record<string,number>});
+ const category_qualification_census:Record<string,ReturnType<typeof emptyCategory>>={
+  geopolitics:emptyCategory(),macro:emptyCategory(),rare_earth:emptyCategory(),
+ };
+ for(const grade of grades){
+  if(!grade.domain_category)continue;
+  const q=category_qualification_census[grade.domain_category];
+  if(!grade.archive_ack_verified)continue;
+  q.archived++;
+  if(grade.quantified_metrics.length)q.quantified_candidates++;
+  if(grade.grounding_status==="EVIDENCE_GROUNDED")q.grounded++;
+  else q.unqualified++;
+  for(const code of grade.failure_codes){
+   if(!/^[A-Z_]{3,75}$/u.test(code))throw Error("DAILY_DIGEST_REASON_INVALID");
+   q.failed_by_reason[code]=(q.failed_by_reason[code]??0)+1;
+  }
+ }
  const counts={
   archived_rows_read:rows.length,
   archived_rows_valid:grades.filter(x=>x.archive_ack_verified).length,
@@ -101,7 +122,7 @@ export function compilePhase2hDailyCountryDigest({now,rows,fullScan}:DigestInput
   // 5-part news drafts are not Store modules. Do not edit pricing catalog,
   // no automatically signed GRO, no real-money checkout or credit deductions.
   domain_names:["geopolitics","macro","rare_earth"],
-  counts,cells,paid_delivery_authorized:false,payment_attempted:false,
+  counts,category_qualification_census,cells,paid_delivery_authorized:false,payment_attempted:false,
  };
 }
 export async function readDailyArchiveFromCanonicalD1({
@@ -176,6 +197,7 @@ export async function runDailyEvidenceDigest({
  writeFileSync(output,JSON.stringify(digest)+"\n",{mode:0o600});
  const receipt={schema:digest.schema,
   generated_at:digest.generated_at,counts:digest.counts,
+  category_qualification_census:digest.category_qualification_census,
   complete:digest.canonical_d1_scan_complete,
   status:!fullScan?"INCOMPLETE_BOUNDED_D1_SCAN":
     digest.counts.evidence_grounded_count>0?
