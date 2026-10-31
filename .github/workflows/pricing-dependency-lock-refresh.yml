@@ -1,0 +1,53 @@
+name: Pricing Dependency Lock Refresh (one-time)
+on:
+  push:
+    branches:
+      - pricing/low-barrier-2026-10-31
+    paths:
+      - package.json
+      - .github/workflows/pricing-dependency-lock-refresh.yml
+permissions:
+  contents: write
+concurrency:
+  group: pricing-lock-refresh
+  cancel-in-progress: false
+jobs:
+  regenerate:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/pricing/low-barrier-2026-10-31'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out exact branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: pricing/low-barrier-2026-10-31
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Setup canonical Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.2
+      - name: Resolve patched Seroval and regenerate correct integrity checksums
+        run: |
+          set -euo pipefail
+          bun install --lockfile-only --ignore-scripts
+          bun install --frozen-lockfile --ignore-scripts
+          bun audit
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const lock=JSON.parse(fs.readFileSync('bun.lock','utf8'));
+          const bad=Object.entries(lock.packages||{}).filter(([key,arr])=>
+            (key==='seroval'||key.endsWith('/seroval')) &&
+            !(typeof arr[0]==='string' && /^seroval@1\.(?:6\.(?:1[1-9]|[2-9][0-9])|[7-9]\.)/.test(arr[0]))
+          );
+          if(bad.length)throw Error('UNPATCHED_SEROVAL_LOCKED:'+bad.map(x=>x[0]).join(','));
+          NODE
+      - name: Commit regenerated lockfile only
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- bun.lock; then echo "Lock already correct"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- bun.lock
+          git commit -m "fix(deps): regenerate Bun lock with patched seroval 1.6.12"
+          git push origin HEAD:refs/heads/pricing/low-barrier-2026-10-31

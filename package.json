@@ -143,7 +143,8 @@
     "toml": "4.2.0",
     "launch-editor": "2.14.2",
     "zod": "4.6.6",
-    "undici": "6.29.1"
+    "undici": "6.29.1",
+    "seroval": "1.6.12"
   },
   "resolutions": {
     "@tanstack/start-server-core": "1.169.39",
@@ -154,6 +155,7 @@
     "shell-quote": "1.12.0",
     "toml": "4.2.0",
     "zod": "4.6.6",
-    "undici": "6.29.1"
+    "undici": "6.29.1",
+    "seroval": "1.6.12"
   }
 }

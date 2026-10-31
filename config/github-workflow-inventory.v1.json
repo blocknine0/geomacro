@@ -258,6 +258,7 @@
     "predge-shared-d1-news-live-acceptance.yml",
     "predge-signed-market-public-verification.yml",
     "predge-token-only-sealed-handoff.yml",
+    "pricing-dependency-lock-refresh.yml",
     "private-global-osint-15m.yml",
     "private-independent-review-package.yml",
     "private-osint-d1-quota-held-spool.yml",
