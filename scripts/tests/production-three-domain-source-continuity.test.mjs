@@ -64,7 +64,7 @@ test("degraded or forged OSINT heartbeat never bypasses stale original monitor",
  };
  const r=evaluateProductionSourceContinuity(doc,{now});
  assert.equal(r.all_three_source_checks_current,false);
- assert.ok(r.stale_or_missing_source_categories.includes("macro:SOURCE_MONITOR_STALE_OR_DEGRADED"));
+ assert.ok(r.stale_or_missing_source_categories.includes("macro:ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED"));
 });
 test("Reject contradictory freshness or forged rights flags",()=>{
  const doc=sample();
