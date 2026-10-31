@@ -40,12 +40,22 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
    if(previous.title!==raw.title){
     originals.delete(key);conflicted.add(key);quarantined++;return;
    }
+   // Two exact same original links/clocks may arrive from two independent
+   // feeds. Preserve the native original (existing contract) but DISABLE the
+   // issuer hint unless the same pinned source and hint agree.
+   if(previous.sourceUrl!==raw.source_url||
+      previous.issuerContextCountryIso3!==(raw.issuer_context_country_iso3??null)){
+    previous.sourceUrl=null;
+    previous.issuerContextCountryIso3=null;
+   }
    if(previous.categories.has(raw.category))repeated++;
    else{previous.categories.add(raw.category);crossCategory++;}
    return;
   }
   originals.set(key,{articleUrl:article.href,publishedAt:raw.published_at,
-   sourceId:source.hostname,title:raw.title,categories:new Set([raw.category])});
+   sourceId:source.hostname,sourceUrl:raw.source_url,
+   issuerContextCountryIso3:raw.issuer_context_country_iso3??null,
+   title:raw.title,categories:new Set([raw.category])});
  };
  const finish=()=>{
   const candidates=[];
@@ -53,7 +63,8 @@ export function createPhase2iSingleSweepOriginalIndex({pinnedCategories,topics}=
    for(const category of CATEGORIES)if(original.categories.has(category))
     candidates.push({category,articleUrl:original.articleUrl,
      publishedAt:original.publishedAt,title:original.title,
-     sourceId:original.sourceId,credit:null});
+     sourceId:original.sourceId,sourceUrl:original.sourceUrl,
+     issuerContextCountryIso3:original.issuerContextCountryIso3,credit:null});
   return Object.freeze({
    candidates,
    summary:Object.freeze({

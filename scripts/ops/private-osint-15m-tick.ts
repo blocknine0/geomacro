@@ -69,7 +69,8 @@ const result=await collectPrivateOsint15m({
       try{host=new URL(raw.source_url).hostname}catch{}
       collectedPrivateOriginals.push({
        category:raw.category,title:raw.title,articleUrl:raw.article_url,
-       publishedAt:raw.published_at,sourceId:host,credit:null,
+       publishedAt:raw.published_at,sourceId:host,sourceUrl:raw.source_url,
+       issuerContextCountryIso3:raw.issuer_context_country_iso3??null,credit:null,
       });
     }
   }
