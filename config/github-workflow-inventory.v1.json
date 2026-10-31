@@ -260,6 +260,7 @@
     "predge-signed-market-public-verification.yml",
     "predge-token-only-sealed-handoff.yml",
     "private-global-osint-15m.yml",
+    "private-osint-585-census-daily.yml",
     "private-independent-review-package.yml",
     "private-osint-d1-quota-held-spool.yml",
     "private-revenue-ledger-readiness.yml",
