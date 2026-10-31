@@ -21,6 +21,8 @@ const result={
   deployed_exact_main:false,
   authenticated_production_ssr_rpc_readback:false,
   all_six_rpc_checked:false,
+  finality_config_verified:false,
+  finality_checks:[],
   no_payment_sent:true,
   payment_activation_changed:false,
   status:"BLOCKED",
@@ -69,12 +71,32 @@ try{
   const actual=result.checks.map(c=>c.network+":"+c.slot);
   result.all_six_rpc_checked=slots.every(s=>actual.filter(a=>a===s).length===1);
   result.authenticated_production_ssr_rpc_readback=result.all_six_rpc_checked;
+  // The protected live SSR response must prove the same configured finality
+  // thresholds used by settlement verification. Never log the secret values.
+  const expectedFinality=[
+    {network:"base",required_confirmations:3},
+    {network:"polygon",required_confirmations:128},
+  ];
+  const readback=Array.isArray(body.finality_checks)?body.finality_checks:[];
+  result.finality_checks=expectedFinality.map((expected,i)=>{
+    const observed=readback[i]??{};
+    const match=observed.network===expected.network &&
+      observed.required_confirmations===expected.required_confirmations &&
+      observed.status==="MATCH";
+    return {...expected,status:match?"MATCH":"NOT_VERIFIED"};
+  });
+  result.finality_config_verified=body.finality_config_verified===true &&
+    readback.length===2 &&
+    result.finality_checks.every(x=>x.status==="MATCH");
+
   const expectedFamilies=["ALCHEMY","ANKR","DRPC","ALCHEMY","ANKR","DRPC"];
   result.expected_provider_families_verified=result.all_six_rpc_checked &&
     result.checks.every((c,i)=>c.provider_family===expectedFamilies[i]);
   if(body.ok===true && response.status===200 &&
     result.all_six_rpc_checked && result.deployed_exact_main &&
     result.expected_provider_families_verified &&
+    result.egress_check==="EGRESS_PASS" &&
+    result.finality_config_verified &&
     result.checks.every(c=>c.status==="PASS"))
     result.status="SIX_PRIVATE_RPC_PROVIDERS_VERIFIED_NO_FUNDS";
 }catch(e){
