@@ -885,7 +885,8 @@
     "approval": "Founder explicitly directed GeoMacro-branded public API names instead of displaying POST as a public-facing product label on the unified Store & API page. Actual HTTP methods and API paths stay unchanged.",
     "approved_source_commit": "a91aaba335f0c6ca94057238aa41afdb2da2dbe2",
     "approved_paths": [
-      "src/components/category-api-pricing.tsx"
+      "src/components/category-api-pricing.tsx",
+      "src/components/category-api-pricing.test.tsx"
     ],
     "official_api_catalog": "src/lib/geomacro-official-api-branding.ts",
     "rendered_labels": [

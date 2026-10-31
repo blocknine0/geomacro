@@ -444,7 +444,7 @@ describe("website lock governance", () => {
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
     const apiBranding = config.approved_geomacro_api_branding_20261031;
     expect(apiBranding?.approved_source_commit).toBe("a91aaba335f0c6ca94057238aa41afdb2da2dbe2");
-    expect(apiBranding?.approved_paths).toEqual(["src/components/category-api-pricing.tsx"]);
+    expect(apiBranding?.approved_paths).toEqual(["src/components/category-api-pricing.tsx", "src/components/category-api-pricing.test.tsx"]);
     expect(apiBranding?.exact_blob_lock).toBe(true);
     expect(apiBranding?.transport_methods_unchanged).toBe(true);
     expect(apiBranding?.payment_activation_unchanged).toBe(true);
