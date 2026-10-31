@@ -63,7 +63,7 @@ describe("High-authority first paid launch (no payment)",()=>{
 describe("prequote five-field completeness",()=>{
   const event={
     headline:"Verified official event",
-    source_authority:"Official primary issuer",
+    source_authority:"US Bureau of Labor Statistics — CPI-U unadjusted",
     event_timestamp:"2026-10-23T12:00:00Z",
     what_happened:"An independently verified event occurred.",
     why_it_matters:"This event has a verified economic relevance.",
