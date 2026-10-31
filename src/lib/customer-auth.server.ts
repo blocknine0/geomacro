@@ -2,7 +2,7 @@ import process from "node:process";
 import { createClient } from "@supabase/supabase-js";
 import { AUTHORITATIVE_RISK_PROJECT_REF } from "./risk-supabase.server";
 
-const URL = `https://${AUTHORITATIVE_RISK_PROJECT_REF}.supabase.co`;
+const AUTH_URL = `https://${AUTHORITATIVE_RISK_PROJECT_REF}.supabase.co`;
 export const CUSTOMER_COOKIE = "__Host-gm_customer";
 const AUTH_HEADER = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } as const;
 
@@ -12,8 +12,8 @@ export class CustomerError extends Error {
 function configuredAnon(){
  const url=(process.env.APP_SUPABASE_URL??process.env.SUPABASE_URL??"").trim();
  const key=(process.env.APP_SUPABASE_ANON_KEY??process.env.SUPABASE_ANON_KEY??"").trim();
- if(url!==URL||key.length<24)throw new CustomerError(503,"CUSTOMER_AUTH_NOT_CONFIGURED");
- return createClient(URL,key,{auth:{persistSession:false,autoRefreshToken:false}});
+ if(url!==AUTH_URL||key.length<24)throw new CustomerError(503,"CUSTOMER_AUTH_NOT_CONFIGURED");
+ return createClient(AUTH_URL,key,{auth:{persistSession:false,autoRefreshToken:false}});
 }
 export function customerAuthClient(){return configuredAnon();}
 export function customerHeaders(){return AUTH_HEADER;}
