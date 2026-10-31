@@ -1,62 +1,95 @@
 #!/usr/bin/env python3
-"""Read-only public frontend smoke check. Never treats published=true as commit parity."""
-import hashlib, json, os, re, sys, urllib.request
+"""Fail-closed public deployment acceptance. No credentials, writes or payments."""
+import hashlib
+import json
+import os
+import re
+import sys
+import urllib.request
 from urllib.parse import urljoin, urlparse
 
-SITES = ["https://geomacro.live/", "https://geomacro.lovable.app/"]
-HEADERS = {"User-Agent": "GeoMacro-production-frontend-acceptance/1.0", "Cache-Control": "no-cache"}
-failures = []
-observations = []
-for site in SITES:
-    try:
-        url = site + "?geomacro_probe=frontend"
-        req = urllib.request.Request(url, headers=HEADERS)
-        with urllib.request.urlopen(req, timeout=25) as resp:
-            body = resp.read(2000000)
-            final_url = resp.url
-            status = resp.status
-            mime = resp.headers.get("Content-Type", "")
-            cache = resp.headers.get("Cache-Control", "")
-        if status != 200 or "html" not in mime.lower():
-            failures.append(f"{site}: unexpected status/content type {status} {mime}")
-        html = body.decode("utf-8", "replace")
-        if not re.search(r"<html|<!doctype html", html, re.I):
-            failures.append(f"{site}: missing HTML document")
-        asset_links = re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']', html, re.I)
-        asset_checks = []
-        for path in asset_links[:4]:
-            asset_url = urljoin(final_url, path)
-            if urlparse(asset_url).netloc not in {urlparse(site).netloc, "geomacro.live", "geomacro.lovable.app"}:
-                continue
-            try:
-                with urllib.request.urlopen(urllib.request.Request(asset_url, headers=HEADERS), timeout=20) as asset:
-                    sample = asset.read(256)
-                    if asset.status != 200 or not sample:
-                        failures.append(f"{site}: asset invalid {asset_url}")
-                    asset_checks.append({"url": asset_url, "status": asset.status})
-            except Exception as exc:
-                failures.append(f"{site}: asset request failed {asset_url}: {exc}")
-        observations.append({"site": site, "status": status, "final_url": final_url,
-                             "html_sha256": hashlib.sha256(body).hexdigest(),
-                             "html_bytes": len(body), "cache_control": cache,
-                             "asset_count_in_html": len(asset_links), "sampled_assets": asset_checks})
-    except Exception as exc:
-        failures.append(f"{site}: {type(exc).__name__}: {exc}")
+EXPECTED = os.environ.get("GITHUB_SHA", "").strip().lower()
+SITES = ("https://geomacro.live", "https://geomacro.lovable.app")
+HEADERS = {"User-Agent": "GeoMacro-frontend-acceptance/2.0", "Cache-Control": "no-cache", "Accept": "application/json,text/html,*/*"}
+SHA = re.compile(r"^[0-9a-f]{40}$")
+failures, observations = [], []
 
-# Public HTML is frequently SSR or CDN-transformed and must not be equated with a git SHA.
-# An explicit readback of the deployed Git commit is necessary for exact parity.
-expected = os.environ.get("GITHUB_SHA", "")
-result = {"status": "FAIL" if failures else "SMOKE_PASS_COMMIT_PARITY_UNVERIFIED",
-          "expected_repository_sha": expected, "deploy_sha_verified": False,
-          "observations": observations, "failures": failures}
+def get(url, limit=2000000):
+    req = urllib.request.Request(url, headers=HEADERS)
+    with urllib.request.urlopen(req, timeout=25) as response:
+        body = response.read(limit + 1)
+        if len(body) > limit:
+            raise ValueError("response exceeds size limit")
+        return body, response.status, response.headers.get("Content-Type", ""), response.url
+
+if not SHA.fullmatch(EXPECTED):
+    failures.append("GITHUB_SHA is missing or not an exact 40-character commit SHA")
+
+for site in SITES:
+    record = {"site": site, "build_sha": None, "root_status": None, "pricing_status": None}
+    try:
+        raw, status, content_type, final_url = get(site + "/.well-known/geomacro-build.json?acceptance=1", 16384)
+        doc = json.loads(raw)
+        marker = str(doc.get("canonical_main_sha", "")).lower()
+        if (status != 200 or "json" not in content_type.lower() or
+            doc.get("schema_version") != "geomacro.deployment-build.v1" or
+            doc.get("canonical_repository") != "blocknine0/geomacro" or
+            not SHA.fullmatch(marker) or
+            doc.get("production_activation_performed") is not False):
+            failures.append(f"{site}: invalid canonical deployment identity document")
+        elif marker != EXPECTED:
+            failures.append(f"{site}: deployed SHA {marker} does not match exact main SHA {EXPECTED}")
+        record["build_sha"] = marker
+        if urlparse(final_url).hostname != urlparse(site).hostname:
+            failures.append(f"{site}: build marker redirected to another host")
+    except Exception as exc:
+        failures.append(f"{site}: build marker unavailable/invalid: {type(exc).__name__}: {exc}")
+
+    for path, field in (("/", "root_status"), ("/pricing", "pricing_status")):
+        try:
+            body, status, mime, final_url = get(site + path + "?acceptance=1")
+            record[field] = status
+            html = body.decode("utf-8", "replace")
+            if status != 200 or "html" not in mime.lower() or not re.search(r"<html|<!doctype html", html, re.I):
+                failures.append(f"{site}{path}: invalid HTML response status={status}")
+            if urlparse(final_url).hostname != urlparse(site).hostname:
+                failures.append(f"{site}{path}: unexpected cross-domain redirect")
+            if path == "/pricing":
+                # Check server-rendered public copy without assuming payment is live.
+                for text in ("Starter", "Pro Analyst", "Business Pilot"):
+                    if text not in html:
+                        failures.append(f"{site}/pricing: SSR missing {text}")
+            else:
+                assets = re.findall(r'(?:src|href)=["\']([^"\']+\.(?:js|css)(?:\?[^"\']*)?)["\']', html, re.I)
+                if not assets:
+                    failures.append(f"{site}: no linked JS/CSS assets found in HTML")
+                for path_ref in assets[:4]:
+                    asset_url = urljoin(final_url, path_ref)
+                    if urlparse(asset_url).hostname != urlparse(site).hostname:
+                        continue
+                    try:
+                        payload, asset_status, _, _ = get(asset_url, 3000000)
+                        if asset_status != 200 or not payload:
+                            failures.append(f"{site}: asset failed {asset_url}")
+                    except Exception as exc:
+                        failures.append(f"{site}: asset unreadable {asset_url}: {exc}")
+            record[field + "_sha256"] = hashlib.sha256(body).hexdigest()
+        except Exception as exc:
+            failures.append(f"{site}{path}: {type(exc).__name__}: {exc}")
+    observations.append(record)
+
+if len(observations) == 2 and observations[0]["build_sha"] != observations[1]["build_sha"]:
+    failures.append("custom domain and Lovable origin advertise different canonical SHA")
+
+result = {"status": "FAIL" if failures else "PASS", "expected_canonical_sha": EXPECTED,
+          "exact_sha_verified": not failures, "observations": observations, "failures": failures}
 print(json.dumps(result, indent=2))
-with open(os.environ.get("GITHUB_STEP_SUMMARY", "/tmp/frontend-acceptance-summary.txt"), "a") as out:
-    out.write("## GeoMacro frontend production smoke check\n\n")
-    out.write(f"**Status:** {result['status']}  \n**Repository SHA:** `{expected}`  \n")
-    out.write("**Exact deployed commit:** UNVERIFIED (no authoritative public build identity)\n\n")
-    for item in observations:
-        out.write(f"- {item['site']}: HTTP {item['status']}, HTML SHA256 `{item['html_sha256']}`, assets checked {len(item['sampled_assets'])}\n")
-    for failure in failures:
-        out.write(f"- FAIL: {failure}\n")
-if failures:
-    sys.exit(1)
+summary = os.environ.get("GITHUB_STEP_SUMMARY", "/tmp/geomacro-frontend-acceptance.md")
+with open(summary, "a", encoding="utf-8") as output:
+    output.write("## Production frontend exact-SHA acceptance\n\n")
+    output.write(f"**Result: {result['status']}** · Expected main: \`{EXPECTED}\`\n\n")
+    for entry in observations:
+        output.write(f"- {entry['site']}: marker \`{entry['build_sha']}\`; home {entry['root_status']}; pricing {entry['pricing_status']}\n")
+    for issue in failures:
+        output.write(f"- FAIL: {issue}\n")
+sys.exit(1 if failures else 0)
