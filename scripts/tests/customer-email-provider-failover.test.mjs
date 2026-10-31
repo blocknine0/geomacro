@@ -112,3 +112,18 @@ test("strictly bounded provider quota returns exhausted without claiming deliver
  assert.equal(result.code,"CUSTOMER_EMAIL_PROVIDER_QUOTAS_EXHAUSTED");
  sql.close();
 });
+
+
+test("simultaneous requests for one challenge acquire exactly one dispatch lock",async()=>{
+ const {db,sql}=fixture(),request=args(db);
+ let sends=0;
+ const fetchImpl=async()=>{sends++;return acceptedResend()};
+ const results=await Promise.all([
+  sendOtpWithProviderFailover({...request,fetchImpl}),
+  sendOtpWithProviderFailover({...request,fetchImpl}),
+ ]);
+ assert.equal(results.filter(x=>x.ok).length,1);
+ assert.equal(results.filter(x=>x.code==="CUSTOMER_EMAIL_ALREADY_SUBMITTED").length,1);
+ assert.equal(sends,1);
+ sql.close();
+});
