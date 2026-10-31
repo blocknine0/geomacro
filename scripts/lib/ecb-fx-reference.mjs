@@ -3,7 +3,7 @@
  */
 export const ECB_DAILY_FX_URL =
   "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml";
-const CURRENCIES = ["USD", "GBP", "JPY"] as const;
+const CURRENCIES = ["USD", "GBP", "JPY"];
 
 export function parseEcbDailyFxReference(xml, now = Date.now()) {
   if (typeof xml !== "string" || xml.length > 96_000 ||
