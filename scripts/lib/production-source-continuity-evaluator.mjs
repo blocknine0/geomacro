@@ -27,7 +27,7 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
  if(iso(response.checked_at,now.getTime())===null||
     now.getTime()-Date.parse(response.checked_at)>10*60*1000)
    throw Error("SOURCE_CONTINUITY_RESPONSE_CLOCK_STALE");
- const categories={},failures=[];
+ const categories={},failures=[],publisherPairWarnings=[];
  for(const category of CONTINUITY_CATEGORIES){
    const s=response.categories[category];
    if(!s || s.category!==category || typeof s.source_check_current!=="boolean" ||
