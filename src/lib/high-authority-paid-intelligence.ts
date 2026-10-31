@@ -127,7 +127,7 @@ export function assertPaidIntelligenceEventFieldCompleteness(prepared:unknown):v
         throw Error("PAID_EVENT_SOURCE_AUTHORITY_NOT_APPROVED");
       const stamp=fields.event_timestamp;
       if(typeof stamp!=="string" ||
-        !/^20\\d{2}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u.test(stamp) ||
+        !/^20\d{2}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u.test(stamp) ||
         !Number.isFinite(Date.parse(stamp)) || Date.parse(stamp)>Date.now()+60_000)
         throw Error("PAID_EVENT_ORIGINAL_TIMESTAMP_UNVERIFIED");
     }
