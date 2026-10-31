@@ -35,7 +35,7 @@ describe("homepage reader and buyer journeys", () => {
     for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing"]) {
       expect(nav).toContain(`href="${target}"`);
     }
-    const active = nav.match(/<a\b[^>]*href="\/data-api"[^>]*>/)?.[0] ?? "";
+    const active = nav.match(/<a\b[^>]*href="\/pricing"[^>]*>/)?.[0] ?? "";
     expect(active).toContain('aria-current="page"');
     expect(html).toContain('id="main-content"');
     expect(html).toContain('tabindex="-1"');
