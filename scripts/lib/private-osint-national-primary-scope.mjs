@@ -22,6 +22,8 @@ export function qualifyPrivateNationalPrimaryScope(source){
 }
 export function sourceIsPinnedNationalPrimary(source){
  return source?.scope==="national_primary"&&
+   source.private_discovery_index_only!==true&&
+   source.private_hub_overlay!==true&&
    PINNED.get(source.url)===source.publisher_country_iso3&&
    source.domestic_event_context==="PUBLISHER_DOMESTIC_SCOPE_UNVERIFIED_EVENT";
 }
