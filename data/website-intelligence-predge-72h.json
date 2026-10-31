@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-30T22:24:36.062Z",
+  "checked_at": "2026-10-31T00:35:00.237Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 376,
+  "item_count": 373,
   "counts": {
-    "geopolitics": 163,
-    "macro": 170,
-    "rare_earth": 43
+    "geopolitics": 160,
+    "macro": 169,
+    "rare_earth": 44
   },
-  "source_native_ids_sha256": "f0df64d6047395df0172f6e181da758fbd216151bf0424f1499fcc16a92a6118",
+  "source_native_ids_sha256": "c301b872438f8f0d6e9bfa4dc1b1f653c135588cb5bf917fdf567786943e28c2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -68,6 +68,25 @@
       "severity": null
     },
     {
+      "id": "macro-f97bc52f",
+      "category": "macro",
+      "title": "Geomacro finds Silver Is Falling Despite lowered Treasury Yields and a Persistent Supply Deficit - Investing.com",
+      "what_changed": "A monitored source feed reports: Silver Is Falling Despite lowered Treasury Yields and a Persistent Supply Deficit - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T20:41:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-e72a2f77",
       "category": "geopolitics",
       "title": "Geomacro finds United Kingdom issued a statement concerning This mandate will strengthen UNSMIL’s ability to advance a Libyan-led and Libyan-owned political process · United Kingdom",
@@ -83,6 +102,44 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5a10ec9c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk",
+      "what_changed": "A monitored source feed reports: Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:05:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6095f105",
+      "category": "rare_earth",
+      "title": "Geomacro finds Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune",
+      "what_changed": "A monitored source feed reports: Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:28:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -153,6 +210,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T15:36:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-09a447f8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk",
+      "what_changed": "A monitored source feed reports: Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T12:23:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -7033,139 +7109,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-84dc2e4d",
-      "category": "macro",
-      "title": "Geomacro finds Gold held above US$4,000 as traders look to US Fed rate decision - The Business Times",
-      "what_changed": "A monitored source feed reports: Gold held above US$4,000 as traders look to US Fed rate decision - The Business Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T00:32:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-545ad639",
-      "category": "rare_earth",
-      "title": "Geomacro finds Talga signed binding graphite deal with Dainen Materials - grafa.com",
-      "what_changed": "A monitored source feed reports: Talga signed binding graphite deal with Dainen Materials - grafa.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T00:15:43.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-05cf0670",
-      "category": "geopolitics",
-      "title": "Geomacro finds Experts urged 'global health emergency' as climate harms accelerate",
-      "what_changed": "A monitored source feed reports: Experts urged 'global health emergency' as climate harms accelerate. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T00:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rss.dw.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-e168f30f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
-      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
-      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
-      "geography": "Canada",
-      "development_type": "funding",
-      "topic": "critical-mineral inputs",
-      "published_at": "2026-10-28",
-      "date_precision": "day",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Natural Resources Canada"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8cc5d548",
-      "category": "macro",
-      "title": "Geomacro finds Rogers forecast Q4 revenue of $215M-$225M with 16% adjusted EBITDA increase",
-      "what_changed": "A monitored source feed reports: Rogers forecast Q4 revenue of $215M-$225M with 16% adjusted EBITDA increase. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T23:31:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1e1feb26",
-      "category": "geopolitics",
-      "title": "Geomacro finds Flávio Bolsonaro left Brazil for the U.S. After Election Defeat - The New York Times",
-      "what_changed": "A monitored source feed reports: Flávio Bolsonaro left Brazil for the U.S. After Election Defeat - The New York Times. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T22:54:13.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-da526350",
-      "category": "geopolitics",
-      "title": "Geomacro finds US Says It Will issued Visas To Brazil's Flavio Bolsonaro After Election Loss",
-      "what_changed": "A monitored source feed reports: US Says It Will issued Visas To Brazil's Flavio Bolsonaro After Election Loss. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-27T22:26:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.feedburner.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-30T22:24:36.062Z",
+  "updated_at": "2026-10-31T00:35:00.237Z",
   "signals": [
+    {
+      "id": "rare_earth-5a10ec9c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk",
+      "what_changed": "A monitored source feed reports: Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:05:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6095f105",
+      "category": "rare_earth",
+      "title": "Geomacro finds Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune",
+      "what_changed": "A monitored source feed reports: Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:28:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-83fda8bd",
       "category": "rare_earth",
@@ -33,6 +71,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T15:36:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-09a447f8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk",
+      "what_changed": "A monitored source feed reports: Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T12:23:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

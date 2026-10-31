@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-30T22:24:36.062Z",
+  "updated_at": "2026-10-31T00:35:00.237Z",
   "signals": [
+    {
+      "id": "macro-f97bc52f",
+      "category": "macro",
+      "title": "Geomacro finds Silver Is Falling Despite lowered Treasury Yields and a Persistent Supply Deficit - Investing.com",
+      "what_changed": "A monitored source feed reports: Silver Is Falling Despite lowered Treasury Yields and a Persistent Supply Deficit - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T20:41:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2f380064",
       "category": "macro",
