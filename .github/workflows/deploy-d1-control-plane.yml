@@ -1,4 +1,6 @@
 name: Deploy D1 Control Plane
+# P0 post-reset operational redeploy: production bootstrap remains fully gated.
+# Merge on main revalidates the current Worker revision and wakes existing OSINT workflow_run.
 
 on:
   workflow_dispatch:
