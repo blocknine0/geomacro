@@ -1,5 +1,6 @@
 import process from "node:process";
 import {createHmac,timingSafeEqual} from "node:crypto";
+import {configuredNoCardConfirmationDepth} from "./no-card-usdc-receipt.server";
 
 /**
  * Operator-signed, read-only, no-funds Base/Polygon RPC diagnostics.
@@ -198,6 +199,20 @@ export async function runSignedRpcReadiness(
   }
   // Successful provider probes cannot override a failed independent
   // production HTTPS egress baseline. Require BOTH proof lanes for acceptance.
+  // Read exactly the policy consumed by the settlement verifier in this SSR
+  // runtime. No on-chain payment, private endpoint, or secret value is returned.
+  const finality_checks=[
+    {network:"base",chain:"eip155:8453",required_confirmations:3},
+    {network:"polygon",chain:"eip155:137",required_confirmations:128},
+  ].map(({network,chain,required_confirmations})=>{
+    let status="INVALID";
+    try{
+      status=configuredNoCardConfirmationDepth(chain,env)===required_confirmations?
+        "MATCH":"MISMATCH";
+    }catch{status="INVALID";}
+    return {network,required_confirmations,status};
+  });
+  const finality_config_verified=finality_checks.every(x=>x.status==="MATCH");
   const verified=egress_check==="EGRESS_PASS"&&results.length===6&&
     results.every(x=>x.status==="PASS");
   // Do not return URLs, provider credentials, secret names, detailed RPC
@@ -205,7 +220,7 @@ export async function runSignedRpcReadiness(
   return Response.json({
     schema:"geomacro.no-funds-six-rpc-readiness.v1",
     ok:verified,checked_at:new Date(now).toISOString(),
-    egress_check,checks:results,
+    egress_check,checks:results,finality_checks,finality_config_verified,
     secrets_exposed:false,chargeable:false,payment_performed:false,
     settlement_verified:false,paid_delivery_verified:false,
     proof_scope:"production SSR chain RPC connectivity only; NOT payment or rights acceptance",
