@@ -91,15 +91,33 @@ function approvedRpcUrl(value:string) {
     throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
   return url.toString();
 }
+/**
+ * Effective settlement verification depth, shared with the owner-HMAC
+ * no-funds production diagnostic. Do not infer approval from secret presence.
+ */
+export function configuredNoCardConfirmationDepth(
+  network:string,env:Record<string,string|undefined>=process.env,
+) {
+  const suffix=network==="eip155:8453"?"BASE":
+    network==="eip155:137"?"POLYGON":null;
+  if(!suffix)throw Error("NO_CARD_RPC_UNSUPPORTED_NETWORK");
+  const raw=env["GEOMACRO_NO_CARD_CONFIRMATIONS_"+suffix]?.trim()??"";
+  if(!/^[1-9][0-9]{0,3}$/u.test(raw))
+    throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+  const confirmations=Number(raw);
+  if(!Number.isInteger(confirmations)||confirmations<1||confirmations>2048)
+    throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+  return confirmations;
+}
+
 function rpcConfig(network:string) {
   const suffix=network==="eip155:8453"?"BASE":
     network==="eip155:137"?"POLYGON":null;
   if(!suffix)throw Error("NO_CARD_RPC_UNSUPPORTED_NETWORK");
   const primary=process.env["GEOMACRO_NO_CARD_RPC_"+suffix]?.trim()??"";
-  const confirmations=Number(process.env["GEOMACRO_NO_CARD_CONFIRMATIONS_"+suffix]??"");
+  const confirmations=configuredNoCardConfirmationDepth(network);
   if(!primary)throw Error("NO_CARD_RPC_NOT_CONFIGURED");
-  if(!Number.isInteger(confirmations)||confirmations<1||confirmations>2048)
-    throw Error("NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+
   const alternateConfig=process.env["GEOMACRO_NO_CARD_RPC_"+suffix+"_ALTERNATES"]?.trim()??"";
   let alternates:unknown=[];
   if(alternateConfig){
