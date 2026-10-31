@@ -6,6 +6,9 @@
 import {buildPhase2hPrivateRawRecords} from "./phase2h-raw-original-records.mjs";
 import {postPhase2iCollisionIsolated} from "./phase2ib-fastlane-private-staging.mjs";
 import {phase2hHeadlineCountryCandidate} from "./phase2h-country-originals-195.mjs";
+import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
+import {qualifyPrivateNationalPrimaryScope,sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
+import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 const CATS=["geopolitics","macro","rare_earth"];
 const MAX=5;
 const counts=rows=>Object.fromEntries(CATS.map(category=>[
@@ -55,6 +58,23 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   throw Error("PHASE2I_OSINT_RAW_PLAN_INVALID");
  const dedup=withoutAmbiguousSameOriginal(candidates);
  const originals=buildPhase2hPrivateRawRecords(dedup.candidates,{now,derive});
+ // This is a private country selection hint, NEVER an immutable raw-record
+ // assertion or a source's event location. Neither D1 hash nor paid rights move.
+ const routing=new Map(dedup.candidates.map(c=>[
+  JSON.stringify([c.category,c.articleUrl,c.publishedAt]),c,
+ ]));
+ const issuerRouteFor=row=>{
+  const original=row.original;
+  const c=routing.get(JSON.stringify([row.category,original.original_url,
+   original.original_published_at]));
+  if(!c||typeof c.sourceUrl!=="string"||
+     !/^[A-Z]{3}$/u.test(c.issuerContextCountryIso3??"")||
+     privateOsintCountryMentions(original.original_title,COUNTRIES_195).length!==0)
+   return null;
+  const issuer=qualifyPrivateNationalPrimaryScope({
+   url:c.sourceUrl,publisher_country_iso3:c.issuerContextCountryIso3});
+  return sourceIsPinnedNationalPrimary(issuer)?c.issuerContextCountryIso3:null;
+ };
  const tick=Math.floor(now.getTime()/900_000);
  // Stable category budgets: at 5 rows the observed lanes receive 2/2/1;
  // at provider-approved 3 rows each category receives one. Do not use
@@ -66,7 +86,7 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   const cells=new Map();
   for(const row of eligible){
    const iso3=phase2hHeadlineCountryCandidate(row.original.original_title)
-     ??"UNATTRIBUTED";
+     ??issuerRouteFor(row)??"UNATTRIBUTED";
    if(!cells.has(iso3))cells.set(iso3,[]);
    cells.get(iso3).push(row);
   }
@@ -102,10 +122,14 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
  const available=originals.records.length;
  const attributed=selected.filter(r=>phase2hHeadlineCountryCandidate(
   r.original.original_title)!==null).length;
+ const issuerContextSelected=selected.filter(r=>
+  phase2hHeadlineCountryCandidate(r.original.original_title)===null&&
+  issuerRouteFor(r)!==null).length;
  return Object.freeze({records:selected,selected_count:selected.length,
   available_originals:available,deferred_count:available-selected.length,
   selected_by_category:counts(selected),available_by_category:counts(originals.records),
   country_attributed_candidate_count:attributed,
+  issuer_context_country_routing_count:issuerContextSelected,
   same_original_ambiguous_dropped:dedup.conflicting_original_identities,
   invalid_dropped:originals.discarded_invalid,
   paid_eligible:false,commercial_rights_verified:false,
