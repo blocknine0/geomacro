@@ -1,10 +1,22 @@
 import { useState } from "react";
 import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 import { LockedDualRailCheckout, type CheckoutSelection } from "@/components/dual-rail-checkout";
+import { GEOMACRO_CARD_TO_USDC_READINESS } from "@/lib/card-to-usdc-readiness";
 
 /** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
 export function LowBarrierPricing() {
-  const [selection, setSelection] = useState<CheckoutSelection | null>(null);
+  const initialPlan = GEOMACRO_SUBSCRIPTIONS[0];
+  const [selection, setSelection] = useState<CheckoutSelection>({
+    id: initialPlan.id,
+    name: initialPlan.name,
+    amountUsd: initialPlan.price_usd,
+    credits: initialPlan.credits_per_30_days,
+    kind: "monthly_plan",
+  });
+  const selectProduct = (product: CheckoutSelection) => {
+    setSelection(product);
+    document.getElementById("payment-checkout")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <section aria-label="Monthly plans and one-time credits" data-pricing-version={GEOMACRO_LOW_BARRIER_VERSION} className="space-y-9">
@@ -30,12 +42,12 @@ export function LowBarrierPricing() {
                 {plan.features.map(feature => <li key={feature}>{feature}</li>)}
               </ul>
               <button type="button"
-                onClick={() => setSelection({
+                onClick={() => selectProduct({
                   id:plan.id,name:plan.name,amountUsd:plan.price_usd,
                   credits:plan.credits_per_30_days,kind:"monthly_plan",
                 })}
                 className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
-                Preview payment options
+                {selection.id === plan.id ? "Selected · View payment methods" : "Select plan & payment method"}
               </button>
               <p className="mt-2 text-xs text-muted-foreground">Live checkout locked · no charge</p>
             </article>
@@ -60,26 +72,22 @@ export function LowBarrierPricing() {
                   credits:pack.credits,kind:"one_time_pack",
                 })}
                 className="mt-4 min-h-11 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
-                Preview payment options
+                {selection.id === pack.id ? "Selected · View payment methods" : "Select pack & payment method"}
               </button>
             </article>
           ))}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6" data-payment-rails="paypal-fiat-and-native-usdc">
-        <p className="gm-eyebrow">Two payment methods · prelaunch</p>
-        <h2 className="mt-2 text-xl font-semibold">PayPal / card or native USDC</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          PayPal handles eligible international fiat checkout and settles to GeoMacro's linked
-          Indian bank account. Crypto-native buyers can choose Base or Polygon native USDC
-          when verified wallet settlement is enabled. No card-to-crypto conversion is offered.
-        </p>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Both payment methods are visible for preview, but disabled for external customers
-          during integration testing. No merchant wallet instruction or payable QR is displayed.
-        </p>
-      </div>
+      <LockedDualRailCheckout selection={selection} />
+
+      <p className="rounded-xl border border-border p-4 text-xs leading-5 text-muted-foreground" data-checkout-readiness="merchant-approval-required">
+        Card checkout not yet verified live; credit pack checkout is not yet live.
+        Awaiting merchant approval. Legacy card-to-USDC onramp remains unavailable
+        ({GEOMACRO_CARD_TO_USDC_READINESS.checkout_status}); the supported planned fiat
+        rail is direct PayPal, with separate native USDC wallet checkout. No card-to-crypto
+        conversion is promised.
+      </p>
 
       <div className="rounded-2xl border border-border p-5 sm:p-6">
         <p className="gm-eyebrow">AI agents · USDC x402</p>
@@ -92,7 +100,6 @@ export function LowBarrierPricing() {
         </p>
       </div>
 
-      <LockedDualRailCheckout selection={selection} onClose={() => setSelection(null)} />
     </section>
   );
 }
