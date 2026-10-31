@@ -10,6 +10,8 @@ const PINNED=new Map([
  ["https://www.centralbank.go.ke/feed/","KEN"],
  ["https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada","CAN"],
  ["https://www.rbi.org.in/pressreleases_rss.xml","IND"],
+ ["https://www.cochilco.cl/web/noticias/feed/","CHL"],
+ ["https://www.industry.gov.au/news.xml","AUS"],
 ]);
 export const NATIONAL_PRIMARY_PINNED_COUNT=PINNED.size;
 export function qualifyPrivateNationalPrimaryScope(source){
