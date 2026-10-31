@@ -28,7 +28,7 @@ const journal=(offset:number)=>({
 function env({
  ctx=Object.fromEntries(domains.map(d=>[d,sample(d)])),
  journalFail=false,pulseFail=false,checkpointFail=false,
- news=journal(0),
+ heartbeats=[] as any[],news=journal(0),
 }={}){
  let pages=0;
  return {DB:{prepare:(sql:string)=>({bind:(...args:any[])=>({
@@ -41,6 +41,8 @@ function env({
          .map((s:any)=>({story_json:JSON.stringify(s)}))};
      }
      if(pulseFail)throw Error("pulse failed");
+     if(args[0]==="private_osint_source_15m_heartbeat")
+       return {results:heartbeats};
      return {results:[]};
    }
  })})},readPages:()=>pages};
@@ -66,6 +68,56 @@ describe("continuous three-category source observations backed by D1",()=>{
    expect(data.raw_upstream_delivered).toBe(false);
    expect(data.commercial_rights_verified).toBe(false);
    expect(data.upstream_new_event_guaranteed).toBe(false);
+ });
+ it("source-only positive feed check keeps zero-new-story heartbeat current, not open-data fresh",async()=>{
+   const old=new Date(NOW-8*3_600_000).toISOString();
+   const checked=new Date(NOW-5*60_000).toISOString();
+   const hb=domains.map(category=>({
+     scope:category,status:"OBSERVED",last_attempt_at:checked,last_success_at:checked,
+     metadata_json:JSON.stringify({
+       schema:"geomacro.private-osint-source-heartbeat.v1",
+       category,checked_at:checked,healthy:true,
+       healthy_distinct_feed_endpoints:2,native_dated_items_in_collector_batch:0,
+       new_events_verified:false,commercial_rights_verified:false,
+       signed_intelligence_available:false,chargeable:false
+     })
+   }));
+   const f=env({ctx:Object.fromEntries(domains.map(d=>[d,sample(d,old)])),
+     heartbeats:hb});
+   const body=await (await threeDomainEvidenceContinuity(f,NOW)).json();
+   expect(body.all_categories_source_check_current).toBe(true);
+   expect(body.all_categories_have_observation).toBe(false);
+   for(const d of domains){
+     const c=body.categories[d];
+     expect(c.source_check_current).toBe(true);
+     expect(c.latest_source_check_at).toBe(checked);
+     expect(c.service_state).toBe("CURRENT_SOURCE_CHECK_NO_QUALIFYING_DATA");
+     expect(c.private_osint_source_check.status).toBe("HEALTHY_FEED_OBSERVED");
+     expect(c.private_osint_source_check.zero_new_native_items_observed).toBe(true);
+     expect(c.open_data_reference_status).toBe("LAST_KNOWN_HISTORICAL_NOT_REALTIME");
+     expect(c.native_news_event_count_72h).toBe(0);
+     expect(c.chargeable).toBe(false);
+   }
+ });
+ it("a failed or forged private heartbeat never refreshes all three clocks",async()=>{
+   const checked=new Date(NOW-5*60_000).toISOString();
+   const hb=domains.map(category=>({
+     scope:category,status:category==="macro"?"DEGRADED":"OBSERVED",
+     last_attempt_at:checked,last_success_at:category==="macro"?null:checked,
+     metadata_json:JSON.stringify({
+       schema:"geomacro.private-osint-source-heartbeat.v1",
+       category,checked_at:checked,healthy:category!=="macro",
+       healthy_distinct_feed_endpoints:category==="macro"?0:2,
+       native_dated_items_in_collector_batch:0,new_events_verified:false,
+       commercial_rights_verified:false,signed_intelligence_available:false,
+       chargeable:false
+     })
+   }));
+   const f=env({ctx:{},heartbeats:hb});
+   const body=await (await threeDomainEvidenceContinuity(f,NOW)).json();
+   expect(body.categories.macro.source_check_current).toBe(false);
+   expect(body.categories.macro.private_osint_source_check.status).toBe("SOURCE_TRANSPORT_DEGRADED");
+   expect(body.all_categories_source_check_current).toBe(false);
  });
  it("keeps three different real publisher-clock news observations distinct from baseline",async()=>{
    const published=new Date(NOW-65*60_000).toISOString();
