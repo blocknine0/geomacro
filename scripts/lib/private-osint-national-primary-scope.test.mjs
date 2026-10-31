@@ -82,11 +82,11 @@ test("seven official Indian PIB feeds are pinned in production and callback carr
   resolveCountry:()=>null,onOriginalCandidate:r=>collected.push(r),
   fetchImpl:async()=>new Response(feed([
    "Government announces lithium mineral production processing policy",
-   "Australian nickel export mining policy announced"]),{status:200})
+   "Australia nickel export mining policy announced"]),{status:200})
  });
  assert.ok(collected.length>0);
  assert.ok(collected.some(x=>x.title.startsWith("Government announces")&&
    x.issuer_context_country_iso3==="IND"));
- assert.ok(collected.every(x=>!x.title.startsWith("Australian nickel")||
+ assert.ok(collected.every(x=>!x.title.startsWith("Australia nickel")||
    !x.issuer_context_country_iso3));
 });
