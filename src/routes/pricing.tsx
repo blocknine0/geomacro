@@ -57,6 +57,9 @@ function PricingPage() {
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
                 Explore plans <ArrowRight className="h-4 w-4" />
               </a>
+              <a href="#payment-checkout" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/50 bg-background/80 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5">
+                Payment methods <ShieldCheck className="h-4 w-4" />
+              </a>
               <a href="#api-products" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-background/70 px-5 py-3 text-sm font-medium transition hover:border-primary/50">
                 Explore API products <Code2 className="h-4 w-4" />
               </a>
@@ -105,6 +108,7 @@ function PricingPage() {
         <div className="flex min-w-max items-center gap-2 text-xs font-medium sm:gap-5">
           {[
             ["#plans", "Plans & credits"],
+            ["#payment-checkout", "Payment methods"],
             ["#api-products", "API products"],
             ["#api-endpoints", "Endpoints"],
             ["#prepare", "Try a request"],
@@ -122,8 +126,8 @@ function PricingPage() {
             Start small. Grow on your terms.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Compare prepaid 30-day plans and one-time credit packs, then preview PayPal/card
-            or native Base/Polygon USDC checkout. Production transactions remain locked.
+            Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
+            or native Base/Polygon USDC directly on this page. Production transactions remain locked.
             Credits and x402 per-delivery prices use separate billing methods.
           </p>
         </div>
@@ -176,7 +180,7 @@ function PricingPage() {
         </div>
         <ApiKeysNotice />
         <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
-          Paid API requests become available only after live payment, ledger and delivery service acceptance.
+          Paid API requests become available only when the live payment and delivery service confirms activation.
           Availability is checked for each request. Signed risk products are private pilots;
           customers retain control of every action. This page shows a locked checkout preview and never requests a payment.
         </p>
