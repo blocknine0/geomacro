@@ -36,7 +36,7 @@ Sources:
 - `GET /api/v1/payments/paypal`: public no-store, read-only configuration-status discovery. It emits only booleans, never client secrets.
 - `POST /api/v1/payments/paypal`: always HTTP 503 and no charge.
 - `GET /api/v1/pricing`: public PayPal readiness alongside other pricing and network catalogs.
-- `/pricing`: PayPal merchant-onboarding message without a functional purchase button.
+- `/pricing`: unchanged under the active website presentation lock. PayPal is discoverable through server pricing/status APIs only until a separate approved website release.
 
 **Never treat `credentials_present` as connection or KYC verification.** PayPal verification proves a message came from PayPal, not that captured funds are spendable, that an entitlement was granted, or that a merchant can legally accept a given customer.
 
