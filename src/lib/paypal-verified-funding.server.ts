@@ -172,7 +172,7 @@ export async function captureApprovedPayPalOrder(input:{
   if(captures.length!==1 || !CAPTURE_ID.test(String(record(captures[0]).id??"")))
     throw Error("PAYPAL_CAPTURE_DETAILS_INVALID");
   const result=await reconcileCompletedPayPalCapture(String(record(captures[0]).id),fetcher);
-  return {ok:true,funded:true,...result};
+  return {...result,funded:true};
 }
 
 /** Verified full refunds suspend the associated credits. Partial refund
@@ -222,14 +222,14 @@ export async function handlePayPalPaidWebhook(rawBody:string,headers:Headers,
     const refundId=resource.id;
     if(typeof refundId!=="string"||!CAPTURE_ID.test(refundId))
       throw Error("PAYPAL_REFUND_ID_INVALID");
-    return {ok:true,accepted:true,awaited_refund:true,
-      ...(await reconcileCompletedPayPalRefund(refundId,fetcher))};
+    return {...(await reconcileCompletedPayPalRefund(refundId,fetcher)),
+      accepted:true,awaited_refund:true};
   }
   if(verified.eventType!=="PAYMENT.CAPTURE.COMPLETED")
     return {ok:true,accepted:false,reason:"EVENT_NOT_FUNDABLE"};
   const captureId=resource.id;
   if(typeof captureId!=="string"||!CAPTURE_ID.test(captureId))
     throw Error("PAYPAL_CAPTURE_ID_INVALID");
-  return {ok:true,accepted:true,awaited_capture:true,
-    ...(await reconcileCompletedPayPalCapture(captureId,fetcher))};
+  return {...(await reconcileCompletedPayPalCapture(captureId,fetcher)),
+    accepted:true,awaited_capture:true};
 }
