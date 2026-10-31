@@ -52,7 +52,7 @@ test("registration is never funded; receipt+grant required; debit cannot overdra
   .run("debit-test-0001","customer-test-0001","debit",-1,"request-test-0001","intelligence_query");
  assert.throws(()=>db.prepare("INSERT INTO credit_ledger(event_id,user_id,event_type,delta_credits,request_id,capability) VALUES(?,?,?,?,?,?)")
   .run("debit-test-0002","customer-test-0001","debit",-1,"request-test-0001","intelligence_query"),/UNIQUE/);
- assert.throws(()=>db.prepare("DELETE FROM credit_ledger"),/CUSTOMER_LEDGER_APPEND_ONLY/);
+ assert.throws(()=>db.prepare("DELETE FROM credit_ledger").run(),/CUSTOMER_LEDGER_APPEND_ONLY/);
  db.close();
 });
 
@@ -67,7 +67,7 @@ test("API key issuance requires verified paid grant and forbids immediate replay
   .run("2026-01-01T00:00:00.000Z","key-customer-test-01");
  assert.throws(()=>db.prepare("UPDATE api_keys SET revoked_at=NULL WHERE key_id=?")
   .run("key-customer-test-01"),/CUSTOMER_KEY_IMMUTABLE_OR_REVOKED/);
- assert.throws(()=>db.prepare("DELETE FROM customer_payment_receipts"),/CUSTOMER_PAYMENT_RECEIPT_IMMUTABLE/);
+ assert.throws(()=>db.prepare("DELETE FROM customer_payment_receipts").run(),/CUSTOMER_PAYMENT_RECEIPT_IMMUTABLE/);
  db.close();
 });
 
