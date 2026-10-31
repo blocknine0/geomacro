@@ -442,6 +442,18 @@ describe("website lock governance", () => {
     expect(askApproval?.funds_authorized).toBe(false);
     expect(askApproval?.published_source_sha_unchanged).toBe(true);
     expect(askApproval?.pending_exact_sha_live_deployment_acceptance).toBe(true);
+    const unified = config.approved_unified_store_api_20261031;
+    expect(unified?.approved_source_commit).toBe("e7f60c60e33ef094abf91b9809f0e9956a61a7a1");
+    expect(unified?.approved_paths).toEqual([
+      "src/routes/pricing.tsx", "src/routes/data-api.tsx", "src/components/site-shell.tsx",
+    ]);
+    expect(unified?.canonical_route).toBe("/pricing");
+    expect(unified?.legacy_alias).toBe("/data-api");
+    expect(unified?.redirect_only).toBe(true);
+    expect(unified?.exact_blob_lock).toBe(true);
+    expect(unified?.predge_unchanged).toBe(true);
+    expect(unified?.global_risk_presentation_unchanged).toBe(true);
+    expect(unified?.payment_activation_unchanged).toBe(true);
     const pricingApproval = config.approved_pricing_presentation_change;
     expect(pricingApproval?.approved_pr).toBe(2240);
     expect(pricingApproval?.pricing_contract_version).toBe("geomacro.capability-usdc.v1");

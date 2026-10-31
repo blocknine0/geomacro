@@ -154,7 +154,7 @@ function PricingPage() {
           <p className="gm-eyebrow">Developer integration</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Choose Geopolitics, Macro / FX or Critical Minerals.
+            Geopolitics, Macro / FX and Critical Minerals share one catalog.
             The same governed pricing and exact-question contract applies to every API.
           </p>
         </div>
