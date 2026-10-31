@@ -27,8 +27,7 @@ const PRIMARY_NAV = [
   { to: "/intelligence", label: "Intelligence" },
   { to: "/risk-indices", label: "Risk Indices" },
   { to: "/ask-geomacro", label: "Ask Geomacro" },
-  { to: "/data-api", label: "API & Agents" },
-  { to: "/pricing", label: "Store" },
+  { to: "/pricing", label: "Store & API" },
 ] as const;
 
 const EXPLORE_NAV = [
@@ -299,13 +298,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                   <Link to="/intelligence" className="hover:text-foreground">Intelligence</Link>
                   <Link to="/risk-indices" className="hover:text-foreground">Risk Indices</Link>
                   <Link to="/ask-geomacro" className="hover:text-foreground">Ask Geomacro</Link>
-                  <Link to="/pricing" className="hover:text-foreground">Store</Link>
+                  <Link to="/pricing" className="hover:text-foreground">Store & API</Link>
                 </div>
               </div>
               <div>
                 <p className="font-medium text-foreground">Commercial</p>
                 <div className="mt-3 flex flex-col gap-2.5">
-                  <Link to="/data-api" className="hover:text-foreground">API & Agents</Link>
                   <Link to="/institutional" className="hover:text-foreground">Institutions</Link>
                   <Link to="/contact" className="hover:text-foreground">Contact</Link>
                 </div>
