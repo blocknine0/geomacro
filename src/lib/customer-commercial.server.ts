@@ -46,21 +46,30 @@ export async function readCustomerAccount(uid:string){
  const db=commercialDb();
  const id=await principal(uid);
  if(!id)return {principal_ready:false,credits:null,keys:[],checkout_enabled:false};
- const [funded,keys]=await Promise.all([
+ const [funded,keys,grants]=await Promise.all([
   db.from("commercial_credit_accounts")
    .select("tier,included_credits,credits_used,period_started_at,period_ends_at,status,contract_version")
    .eq("principal_type","api_client").eq("principal_id",id).maybeSingle(),
   db.from("commercial_api_credentials")
    .select("key_id,enabled,scopes,created_at,expires_at,revoked_at,last_used_at")
    .eq("principal_id",id).order("created_at",{ascending:false}).limit(25),
+  db.from("commercial_entitlement_grants")
+   .select("tier,contract_version,starts_at,ends_at,status")
+   .eq("principal_id",id).eq("source_type","payment_provider")
+   .eq("status","active").limit(10),
  ]);
- if(funded.error||keys.error)throw new CustomerError(503,"CUSTOMER_ACCOUNT_READ_UNAVAILABLE");
+ if(funded.error||keys.error||grants.error)
+  throw new CustomerError(503,"CUSTOMER_ACCOUNT_READ_UNAVAILABLE");
  const row=funded.data;
- const valid=Boolean(row&&row.status==="active"&&
-  new Date(row.period_started_at).getTime()<=Date.now()&&
-  new Date(row.period_ends_at).getTime()>Date.now());
+ const now=Date.now();
+ const verified=(grants.data??[]).some(g=>g.tier===row?.tier&&
+   g.contract_version===row?.contract_version&&
+   new Date(g.starts_at).getTime()<=now&&new Date(g.ends_at).getTime()>now);
+ const valid=Boolean(row&&verified&&row.status==="active"&&
+  new Date(row.period_started_at).getTime()<=now&&
+  new Date(row.period_ends_at).getTime()>now);
  const remaining=valid?Math.max(0,row!.included_credits-row!.credits_used):0;
- return {principal_ready:true,credits:row?{
+ return {principal_ready:true,credits:verified&&row?{
    tier:row.tier,allocated:row.included_credits,used:row.credits_used,
    remaining,period_ends_at:row.period_ends_at,status:valid?"active":"inactive",
   }:null,keys:keys.data??[],checkout_enabled:false};
