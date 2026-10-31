@@ -8,8 +8,8 @@ import {privateLocalPublisherCandidates,rotatingPrivateLocalPublisherSources}
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
-test("76 repeatedly failing sources are retired from private production ingestion, not published or deleted from source history",()=>{
- assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,76);
+test("78 repeatedly failing sources are retired from private production ingestion, not published or deleted from source history",()=>{
+ assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,78);
  const oldLocal=privateLocalPublisherCandidates();
  const retainedLocal=oldLocal.filter(s=>isRetiredPrivateOsintSource(s));
  assert.equal(retainedLocal.length,7);
