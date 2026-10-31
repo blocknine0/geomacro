@@ -87,6 +87,7 @@
     "country-flash-worker-image.yml",
     "credentialed-source-runtime.yml",
     "current-original-private-signing-intake.yml",
+    "customer-canonical-d1-schema-acceptance.yml",
     "d1-gro-index-backfill.yml",
     "d1-launch-72h-observatory.yml",
     "d1-shadow-backfill.yml",
