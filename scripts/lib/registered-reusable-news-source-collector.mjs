@@ -5,6 +5,9 @@
  * paid provider, publisher text persistence, user URL input or redistribution.
  */
 import {createHash} from "node:crypto";
+import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
+import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
 import {EXPANDED_OFFICIAL_SOURCES} from "../ops/probe-expanded-official-source-mesh.mjs";
 import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.mjs";
@@ -214,7 +217,7 @@ export async function collectRegisteredReusableNews({
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
-  let capacitySkipped=0;
+  let capacitySkipped=0,nationalPrimaryFallbacks=0;
   // A sequential 7s timeout for 24 pinned endpoints could exceed the target
   // window by itself. Bounded parallelism preserves source ordering, limits
   // simultaneous requests, and never forwards raw feed bodies to D1.
@@ -256,9 +259,15 @@ export async function collectRegisteredReusableNews({
            !topicPatterns[category].test(item.title))continue;
         // Source text remains ephemeral. Only finite machine fact tags are
         // produced; third-party noncommercial titles never enter D1.
-        const country=resolveCountry(item.title);
-        if(country!==null&&(!/^[A-Z]{3}$/u.test(country)))
+        const resolved=resolveCountry(item.title);
+        if(resolved!==null&&(!/^[A-Z]{3}$/u.test(resolved)))
           throw Error("REUSABLE_NEWS_COUNTRY_RESOLVER_INVALID");
+        // Exact first-party domestic issuer scope is a research attribution
+        // hint only; an explicit foreign/multi-country title never falls back.
+        const primary=sourceIsPinnedNationalPrimary(s);
+        const mentions=primary&&!resolved?privateOsintCountryMentions(item.title,COUNTRIES_195):[];
+        const sourceFallback=primary&&!resolved&&mentions.length===0;
+        const country=resolved??(sourceFallback?s.publisher_country_iso3:null);
         const normalized=normalize({category,text:item.title,
           published_at:at,license:"unknown",
           ...(country?{country_iso3:country}:{})});
@@ -276,6 +285,7 @@ export async function collectRegisteredReusableNews({
           seen.add(id);
           if(items.length<MAX_ITEMS_PER_RUN){
              items.push(safe);candidates++;domainCandidates[category]++;
+             if(sourceFallback)nationalPrimaryFallbacks++;
            }
           else capacitySkipped++;
         }
@@ -314,6 +324,7 @@ export async function collectRegisteredReusableNews({
       selected_source_endpoints:active.length,
       completed_source_endpoints:new Set(checks.map(c=>c.source_ref)).size,
       observed_news_items:items.length,
+      issuer_context_country_fallbacks_not_independently_verified:nationalPrimaryFallbacks,
       excluded_by_collector_capacity:capacitySkipped,
       all_matching_items_captured_within_scanned_feeds:capacitySkipped===0,
       source_states:checks.reduce((a,c)=>(a[c.state]=(a[c.state]??0)+1,a),{}),
