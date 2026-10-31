@@ -1,0 +1,131 @@
+{
+  "schema": "geomacro.private-osint-official-priority-additions.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "basis": "Official issuer RSS/Atom directories and user-supplied primary-feed candidates; every endpoint requires independent runtime HTTP, parser, publication-clock and relevance qualification.",
+  "policy": "Candidate registration never asserts feed health, publisher-country event attribution, commercial permission, D1 persistence or five-part paid eligibility.",
+  "sources": [
+    {
+      "id": "private_priority_aus_ga_news",
+      "url": "https://www.ga.gov.au/news-events/news/rss",
+      "continent": "oceania",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.ga.gov.au/news",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    },
+    {
+      "id": "private_priority_can_nrcan_news",
+      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "rare_earth",
+        "macro"
+      ],
+      "type": "atom",
+      "discovery_reference_url": "https://natural-resources.canada.ca/corporate/rss-feeds",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    },
+    {
+      "id": "private_priority_ind_rbi_press",
+      "url": "https://www.rbi.org.in/pressreleases_rss.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://systemhealth.rbi.org.in/Scripts/rss.aspx(1).html",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    },
+    {
+      "id": "private_priority_bis_research",
+      "url": "https://www.bis.org/doclist/bis_fsi_publs.rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.bis.org/rss",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    },
+    {
+      "id": "private_priority_gdacs_24h",
+      "url": "https://www.gdacs.org/xml/rss_24h.xml",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "geopolitics",
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.gdacs.org/feed_reference.aspx",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    },
+    {
+      "id": "private_priority_iea_news",
+      "url": "https://www.iea.org/news/rss",
+      "continent": "global",
+      "publisher_country_iso3": null,
+      "categories": [
+        "rare_earth",
+        "macro"
+      ],
+      "type": "rss",
+      "discovery_reference_url": "https://www.iea.org/news",
+      "source_kind": "OFFICIAL_PRIMARY_FEED_CANDIDATE",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "access_verified_in_production": false,
+      "publicly_deliverable": false,
+      "private_only": true
+    }
+  ]
+}
