@@ -1,5 +1,6 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
+import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
@@ -103,18 +104,21 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
  // A missed index query is discovery-only, not a missing registered publisher.
  // Retiring repeatedly failed sources restores the full 25/49 index budget.
- const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length);
+ const priority=activeBase.length>=300?
+  privateOsintOfficialPrioritySources().filter(source=>!urls.has(source.url)&&
+    !isRetiredPrivateOsintSource(source)&&!hubs.some(hub=>hub.url===source.url)):[];
+ const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length-priority.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
  const fresh=[];
- for(const source of [...hubs,...local,...countryIndex]){
+ for(const source of [...hubs,...priority,...local,...countryIndex]){
   if(urls.has(source.url))continue;
   urls.add(source.url);fresh.push(source);
  }
  if(activeBase.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
-      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length))
+      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length+priority.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...activeBase,...fresh]);
 }
