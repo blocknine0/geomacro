@@ -943,5 +943,24 @@
     "predge_unchanged": true,
     "exact_blob_lock": true,
     "live_acceptance_pending": true
+  },
+  "approved_locked_dual_rail_checkout_20261101": {
+    "approval": "Founder explicitly requests on 2026-11-01 that the GeoMacro website permanently prepare both Base/Polygon native USDC and direct PayPal/card checkout, with external payments locked during testing. Approval is scoped to non-payable website presentation only.",
+    "approved_source_commit": "93d382b1df98e3fd6586032577ba306133be3303",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "preview_only": true,
+    "production_funds_authorized": false,
+    "paypal_capture_authorized": false,
+    "usdc_transfer_authorized": false,
+    "credits_issued": 0,
+    "website_lock_remains_active": true,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
