@@ -23,8 +23,8 @@
       "private_only": true
     },
     {
-      "id": "private_mineral_aus_industry_news",
-      "url": "https://www.industry.gov.au/news.xml",
+      "id": "private_mineral_aus_industry_minister_media",
+      "url": "https://www.minister.industry.gov.au/feed/all-media/rss.xml",
       "continent": "oceania",
       "publisher_country_iso3": "AUS",
       "categories": [
@@ -33,7 +33,47 @@
       ],
       "type": "rss",
       "scope": "national_primary",
-      "discovery_reference_url": "https://www.industry.gov.au/contact-us/rss-feeds",
+      "discovery_reference_url": "https://www.minister.industry.gov.au/subscribe",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "verified_first_party_rss_link": true,
+      "feed_status_not_asserted": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "private_only": true
+    },
+    {
+      "id": "private_mineral_zaf_dmpr_media",
+      "url": "https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",
+      "continent": "africa",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth",
+        "macro"
+      ],
+      "type": "rss",
+      "scope": "national_primary",
+      "discovery_reference_url": "https://www.dmpr.gov.za/Media-Centre/News",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "verified_first_party_rss_link": true,
+      "feed_status_not_asserted": true,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "private_only": true
+    },
+    {
+      "id": "private_mineral_idn_antara_business",
+      "url": "https://en.antaranews.com/rss/business-investment.xml",
+      "continent": "asia",
+      "publisher_country_iso3": "IDN",
+      "categories": [
+        "rare_earth",
+        "macro"
+      ],
+      "type": "rss",
+      "scope": "publisher_newsroom",
+      "discovery_reference_url": "https://en.antaranews.com/rss",
       "activation_state": "RUNTIME_PROBE_REQUIRED",
       "publisher_native_dates_required": true,
       "verified_first_party_rss_link": true,
