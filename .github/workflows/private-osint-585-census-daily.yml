@@ -1,0 +1,83 @@
+name: Private OSINT 585-Cell Daily Read-Only Census
+
+# One source-health snapshot per day using existing collectors and the
+# existing no-funds 195x3 worklist tools. This is NOT a second news writer.
+on:
+  schedule:
+    - cron: "11 3 * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/private-osint-585-census-daily.yml"
+      - "scripts/ops/probe-private-osint-live-category-coverage.mjs"
+      - "scripts/ops/build-native-country-repair-worklist.mjs"
+      - "scripts/ops/build-revenue-source-demand-195x3.mjs"
+      - "scripts/tests/native-country-repair-worklist.test.mjs"
+      - "scripts/tests/revenue-source-demand-195x3.test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-private-osint-585-daily-readonly
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify 585-cell report has no fabricated country, event or storage truth
+        run: |
+          node --check scripts/ops/probe-private-osint-live-category-coverage.mjs
+          node --test scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/revenue-source-demand-195x3.test.mjs
+          node --check scripts/ops/build-native-country-repair-worklist.mjs
+          node --check scripts/ops/build-revenue-source-demand-195x3.mjs
+
+  census:
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Measure 585 cells from real feed responses, no D1 or B2
+        run: node scripts/ops/probe-private-osint-live-category-coverage.mjs
+      - name: Derive native country source worklist from same measured probe
+        run: |
+          node scripts/ops/build-native-country-repair-worklist.mjs \
+            /tmp/geomacro-private-osint-live-coverage.json \
+            /tmp/geomacro-private-osint-native-gap-worklist.json
+      - name: Derive demand-ranked source requirements without charging buyers
+        run: |
+          node scripts/ops/build-revenue-source-demand-195x3.mjs \
+            /tmp/geomacro-private-osint-native-gap-worklist.json \
+            /tmp/geomacro-revenue-source-demand-195x3.json
+      - name: Preserve exact one-run counts-only source census
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-private-osint-live-coverage-${{ github.run_id }}
+          path: |
+            /tmp/geomacro-private-osint-live-coverage.json
+            /tmp/geomacro-private-osint-native-gap-worklist.json
+            /tmp/geomacro-revenue-source-demand-195x3.json
+          if-no-files-found: warn
+          retention-days: 7
