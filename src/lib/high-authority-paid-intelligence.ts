@@ -121,6 +121,10 @@ export function assertPaidIntelligenceEventFieldCompleteness(prepared:unknown):v
         typeof fields[field]==="string" && (fields[field] as string).trim().length>0) ||
         Object.keys(fields).length!==HIGH_AUTHORITY_FIVE_EVENT_FIELDS.length)
         throw Error("PAID_EVENT_FIVE_FIELDS_INVALID");
+      if(typeof fields.source_authority!=="string" ||
+        !Object.values(HIGH_AUTHORITY_PAID_INTELLIGENCE_UNIVERSE)
+          .includes(fields.source_authority as typeof HIGH_AUTHORITY_PAID_INTELLIGENCE_UNIVERSE[keyof typeof HIGH_AUTHORITY_PAID_INTELLIGENCE_UNIVERSE]))
+        throw Error("PAID_EVENT_SOURCE_AUTHORITY_NOT_APPROVED");
       const stamp=fields.event_timestamp;
       if(typeof stamp!=="string" ||
         !/^20\\d{2}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u.test(stamp) ||
