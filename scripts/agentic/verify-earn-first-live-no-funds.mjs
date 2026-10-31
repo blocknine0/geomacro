@@ -5,6 +5,7 @@
  * Never includes PAYMENT-SIGNATURE, credentials, payer wallet or settlement.
  */
 import {verifyFirstSalePriceManifest} from "./first-sale-price-proof.mjs";
+import {setTimeout as boundedDelay} from "node:timers/promises";
 export const EARNING_PILOT_CASES = [
   { name: "geopolitics", topic: "conflict_geopolitics", country: "USA", store_digest: true },
   { name: "macro_fx", topic: "macro_risk", country: "USA", store_digest: true },
@@ -317,12 +318,34 @@ export async function acceptEarningPilotLive({
   return result;
 }
 
+/** The GitHub push can precede Lovable publish. Retry ONLY this honest
+ * exact-SHA mismatch, never source-rights, pricing, 422 or an absent quote.
+ * Every attempt still independently fetches the immutable public build.
+ */
+export async function awaitExactFirstSaleDeployment(probe,{
+  attempts=5,wait=()=>boundedDelay(40_000),
+}={}){
+ if(typeof probe!=="function"||typeof wait!=="function"||
+    !Number.isSafeInteger(attempts)||attempts<1||attempts>5)
+   throw Error("EARNING_PILOT_DEPLOY_RETRY_CONTRACT_INVALID");
+ for(let index=0;index<attempts;index++){
+  try{return await probe();}
+  catch(error){
+   if(!(error instanceof Error) ||
+      error.message!=="EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED"||
+      index===attempts-1)throw error;
+   await wait();
+  }
+ }
+ throw Error("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
+}
+
 if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
   try{
     if(process.argv.includes("--auto-country-probe") &&
        !process.argv.includes("--diagnostic-only"))
        throw Error("EARNING_PILOT_ROTATION_DIAGNOSTIC_ONLY");
-    const result=await acceptEarningPilotLive({
+    const run=()=>acceptEarningPilotLive({
       origin:process.env.GEOMACRO_BASE_URL||"https://geomacro.live",
       expectedSha:process.env.EXPECTED_CANONICAL_SHA,
       diagnosticOnly:process.argv.includes("--diagnostic-only"),
@@ -331,6 +354,8 @@ if(process.argv[1]?.endsWith("verify-earn-first-live-no-funds.mjs")){
         process.argv.includes("--alternate-country-probe")
           ? EARNING_PILOT_ALTERNATE_CASES : EARNING_PILOT_CASES,
     });
+    const result=process.argv.includes("--diagnostic-only")
+      ?await run():await awaitExactFirstSaleDeployment(run);
     console.log(JSON.stringify(result));
     // PR diagnostics are read-only observation, NOT earning acceptance.
     // Only the canonical main push demands an actually eligible quote-ready
