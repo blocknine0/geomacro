@@ -1,3 +1,4 @@
+import { GEOMACRO_CARD_TO_USDC_READINESS } from "@/lib/card-to-usdc-readiness";
 import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
 /** Commercial discovery only: no fake Stripe URLs or unchecked payment capture. */
@@ -34,6 +35,29 @@ export function LowBarrierPricing() {
             </article>
           ))}
         </div>
+      </div>
+      <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6" data-card-to-usdc-status={GEOMACRO_CARD_TO_USDC_READINESS.checkout_status}>
+        <p className="gm-eyebrow">Card to crypto · Buyer does not need existing USDC</p>
+        <h2 className="mt-2 text-xl font-semibold">Pay by card. Merchant receives USDC.</h2>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          GeoMacro is preparing an optional regulated hosted checkout for eligible buyers.
+          The payment provider would handle card payment, identity checks and crypto conversion,
+          while GeoMacro receives verified Base USDC settlement. Customer availability
+          depends on region and provider approval.
+        </p>
+        <ol className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+          <li className="rounded-lg border border-border/70 bg-background/70 p-3">1. Choose a plan or credit pack.</li>
+          <li className="rounded-lg border border-border/70 bg-background/70 p-3">2. Complete the provider-hosted card and KYC flow.</li>
+          <li className="rounded-lg border border-border/70 bg-background/70 p-3">3. Credits unlock only after verified crypto settlement.</li>
+        </ol>
+        <button type="button" disabled className="mt-5 min-h-11 rounded-lg border border-border bg-muted px-5 py-2 text-sm font-medium text-muted-foreground opacity-75">
+          Card to USDC · Awaiting merchant approval
+        </button>
+        <p className="mt-3 text-xs leading-5 text-muted-foreground">
+          No checkout or charge is available yet. Provider fees and any identity verification
+          must be disclosed before purchase. Monthly access may require manual renewal:
+          recurring card charges are not authorized.
+        </p>
       </div>
       <div className="rounded-2xl border border-border p-5 sm:p-6">
         <p className="gm-eyebrow">AI agents · Base USDC x402</p>

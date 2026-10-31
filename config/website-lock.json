@@ -925,5 +925,23 @@
     "predge_unchanged": true,
     "exact_blob_lock": true,
     "live_acceptance_pending": true
+  },
+  "approved_card_to_usdc_no_funds_readiness_20261031": {
+    "approval": "Founder requests customers to pay by card and merchant receive crypto, while having no business licence. Approve ONLY non-payable website readiness presentation; never authorize card processing, onramp, automatic USDC deposit, credit issuance or bypass of KYC.",
+    "approved_source_commit": "2bbaeeb2aba85459b60e96bc322659fd141c6f8c",
+    "approved_paths": [
+      "src/components/low-barrier-pricing.tsx"
+    ],
+    "checkout_enabled": false,
+    "merchant_kyc_kyb_complete": false,
+    "customer_kyc_bypass": false,
+    "provider_verified": false,
+    "card_to_base_usdc_settlement_verified": false,
+    "customer_funds_collected": false,
+    "credits_issued": 0,
+    "global_risk_presentation_unchanged": true,
+    "predge_unchanged": true,
+    "exact_blob_lock": true,
+    "live_acceptance_pending": true
   }
 }
