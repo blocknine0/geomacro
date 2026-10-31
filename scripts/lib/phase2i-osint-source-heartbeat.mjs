@@ -54,9 +54,28 @@ export function planPrivateOsintHeartbeats(summary,now=new Date()){
  }).sort((a,b)=>a.category.localeCompare(b.category));
 }
 
+async function resolveCanonicalD1Id(fetchImpl=fetch){
+ if(process.env.D1_DATABASE_ID)return;
+ const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??"").trim();
+ const token=String(process.env.CLOUDFLARE_API_TOKEN??"").trim();
+ if(!account||!token)throw Error("PRIVATE_OSINT_HEARTBEAT_D1_ACCESS_MISSING");
+ const r=await fetchImpl("https://api.cloudflare.com/client/v4/accounts/"+
+   encodeURIComponent(account)+"/d1/database?per_page=50",{
+   headers:{authorization:"Bearer "+token},redirect:"error",
+   signal:AbortSignal.timeout(12000)});
+ if(!r.ok)throw Error("PRIVATE_OSINT_HEARTBEAT_D1_DISCOVERY_UNAVAILABLE");
+ const doc=await r.json();
+ const match=doc?.result?.filter(x=>x?.name==="geomacro-control-plane"&&
+   /^[a-f0-9-]{20,}$/i.test(String(x.uuid??"")));
+ if(doc?.success!==true||match?.length!==1)
+   throw Error("PRIVATE_OSINT_HEARTBEAT_D1_NOT_CANONICAL");
+ process.env.D1_DATABASE_ID=match[0].uuid;
+}
 export async function persistPrivateOsintHeartbeats({summary,now=new Date(),
- createClient=createD1ControlPlaneStateClient}={}){
+ createClient=createD1ControlPlaneStateClient,fetchImpl=fetch}={}){
  const plan=planPrivateOsintHeartbeats(summary,now);
+ if(createClient===createD1ControlPlaneStateClient)
+   await resolveCanonicalD1Id(fetchImpl);
  const client=createClient({pipeline:OSINT_HEARTBEAT_PIPELINE});
  const previous=await client.loadRows();
  const updated=[];
