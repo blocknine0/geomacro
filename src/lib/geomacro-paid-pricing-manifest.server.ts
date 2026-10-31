@@ -7,7 +7,7 @@ import {GEOMACRO_USDC_NETWORKS} from "./geomacro-multichain-usdc.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroPricedStructuredOutput}
   from "./capability-structured-output-contract";
 import {GEOMACRO_STRUCTURED_LICENSE_DISCOVERY} from "./geomacro-structured-commercial-license";
-import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES}
+import {GEOMACRO_OFFICIAL_API_CATALOG,GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,GEOMACRO_OFFICIAL_API_DISPLAY_URLS,formatGeomacroApiDisplayPath}
   from "./geomacro-official-api-branding";
 
 /**
@@ -72,10 +72,23 @@ export function publicGeomacroPaidPricingManifest(){
       merchant_settlement_verified:false as const,
     })),
     // Human-facing names start with GEOMACRO, never the HTTP verb POST.
-    // Legacy official_api method/path strings remain stable for clients.
+    // Canonical display labels live in official_api; transport remains separately available.
     official_api_display_names:GEOMACRO_OFFICIAL_API_DISPLAY_NAMES,
     official_api_catalog:GEOMACRO_OFFICIAL_API_CATALOG,
+    official_api_display_urls:GEOMACRO_OFFICIAL_API_DISPLAY_URLS,
+    all_public_endpoint_labels_use_geomacro_domain:true as const,
     official_api:{
+      intelligence:formatGeomacroApiDisplayPath("/api/v1/intelligence/query"),
+      geopolitics:formatGeomacroApiDisplayPath("/api/v1/intelligence/geopolitics"),
+      macro_fx:formatGeomacroApiDisplayPath("/api/v1/intelligence/macro-fx"),
+      critical_minerals:formatGeomacroApiDisplayPath("/api/v1/intelligence/critical-minerals"),
+      agent:formatGeomacroApiDisplayPath("/api/v1/agent"),
+      x402_nonpayable_price_preflight:formatGeomacroApiDisplayPath("/api/v1/payments/preflight"),
+      settlement_network_discovery:formatGeomacroApiDisplayPath("/api/v1/payments/networks"),
+    },
+    // Compatibility: legacy machine clients can still read the exact HTTP verb
+    // and path without trying to send GEOMACRO as a request method.
+    official_api_transport_legacy:{
       intelligence:"POST /api/v1/intelligence/query",
       geopolitics:"POST /api/v1/intelligence/geopolitics",
       macro_fx:"POST /api/v1/intelligence/macro-fx",

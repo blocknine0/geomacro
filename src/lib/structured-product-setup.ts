@@ -1,3 +1,4 @@
+import { formatGeomacroApiDisplayPath } from "./geomacro-official-api-branding";
 import { publicGeomacroStructuredOutputCatalog } from "./capability-structured-output-contract";
 import {
   resolveGeomacroCapabilityPrice,
@@ -58,6 +59,7 @@ export function structuredProductSetup() {
     preparation_check: {
       method: "POST",
       path: STRUCTURED_PRODUCT_CHECK_PATH,
+      display_url:formatGeomacroApiDisplayPath("/api/v1/intelligence/availability") + "?view=setup",
       returns: "READINESS_SUMMARY_ONLY",
       customer_payload_returned: false,
       quote_issued: false,
@@ -66,6 +68,7 @@ export function structuredProductSetup() {
     purchase: {
       method: "POST",
       path: "/api/v1/intelligence/query",
+      display_url:formatGeomacroApiDisplayPath("/api/v1/intelligence/query"),
       exact_request_rechecked_before_quote: true,
     },
     data_flow: [
