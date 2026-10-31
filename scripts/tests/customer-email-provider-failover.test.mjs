@@ -54,7 +54,7 @@ test("HTTP 429 Resend rejection falls through to distinct Brevo account",async()
  assert.deepEqual([result.ok,result.provider],[true,"brevo"]);
  assert.deepEqual(urls,["https://api.resend.com/emails","https://api.brevo.com/v3/smtp/email"]);
  const rows=sql.prepare("SELECT provider,status FROM customer_email_dispatch_attempts ORDER BY rowid").all();
- assert.deepEqual(rows,[{provider:"resend",status:"rejected"},{provider:"brevo",status:"accepted"}]);
+ assert.deepEqual(rows.map(r=>[r.provider,r.status]),[["resend","rejected"],["brevo","accepted"]]);
  sql.close();
 });
 
