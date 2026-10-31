@@ -1,8 +1,7 @@
 import { GEOMACRO_CARD_TO_USDC_READINESS } from "@/lib/card-to-usdc-readiness";
-import { GEOMACRO_PAYPAL_READINESS } from "@/lib/paypal-checkout-readiness";
 import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
-/** Commercial discovery only: no unchecked payment capture. */
+/** Commercial discovery only: no fake Stripe URLs or unchecked payment capture. */
 export function LowBarrierPricing() {
   return (
     <section aria-label="Monthly plans and one-time credits" data-pricing-version={GEOMACRO_LOW_BARRIER_VERSION} className="space-y-9">
@@ -36,29 +35,6 @@ export function LowBarrierPricing() {
             </article>
           ))}
         </div>
-      </div>
-      <div className="rounded-2xl border border-border p-5 sm:p-6" data-paypal-readiness={GEOMACRO_PAYPAL_READINESS.status}>
-        <p className="gm-eyebrow">PayPal · international fiat payments</p>
-        <h2 className="mt-2 text-xl font-semibold">PayPal checkout is being configured</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          For eligible buyers outside India, GeoMacro is preparing PayPal checkout
-          against the published USD plan and credit-pack prices. PayPal merchant
-          verification, signed webhook reconciliation and secure credit
-          provisioning must be completed before an actual purchase is possible.
-        </p>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Indian PayPal merchants cannot receive domestic India-to-India PayPal
-          payments. PayPal India merchant settlements go to a linked bank account
-          in fiat; they do not deliver Base or Polygon USDC. Existing native USDC
-          agent payments remain a separate rail.
-        </p>
-        <button type="button" disabled className="mt-4 min-h-11 rounded-lg border border-border bg-muted px-5 py-2 text-sm font-medium text-muted-foreground opacity-75">
-          PayPal · Merchant approval pending
-        </button>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Subscription auto-renewal is not enabled. Merchant account eligibility
-          and recurring-payment support must be verified separately.
-        </p>
       </div>
       <div className="rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6" data-card-to-usdc-status={GEOMACRO_CARD_TO_USDC_READINESS.checkout_status}>
         <p className="gm-eyebrow">Card to crypto · Buyer does not need existing USDC</p>
