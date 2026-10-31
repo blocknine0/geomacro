@@ -762,7 +762,7 @@ test("Phase2H pending raw D1 reads stay bounded below provider response limits",
  assert.deepEqual(reads.at(-1),[25,275]);
  assert.equal(new Set(result.map(x=>x.record_id)).size,300);
 });
-test("Phase2H D1 provider failure downgrades page size once, then fails closed",async()=>{
+test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
@@ -776,7 +776,23 @@ test("Phase2H D1 provider failure downgrades page size once, then fails closed",
  const d1=createPhase2hCanonicalD1({env,fetchImpl});
  assert.deepEqual(await d1.readPending(),[]);
  assert.deepEqual(observed,[[25,0],[10,0]]);
- const failFetch=async()=>Response.json({success:false,result:[]});
+ const limitPattern=[];
+ const fiveFetch=async(_url,init)=>{
+  const [limit,offset]=JSON.parse(init.body).params;
+  limitPattern.push([limit,offset]);
+  if(limit>5)return Response.json({success:false,result:[],errors:[{code:9000}]});
+  const remaining=100-offset;
+  return Response.json({success:true,result:[{success:true,results:
+   remaining>0?Array.from({length:Math.min(5,remaining)},(_,n)=>({
+    raw_json:JSON.stringify({record_id:String(offset+n).padStart(64,"0"),category:"macro"})
+   })):[]}]});
+ };
+ const recovered=await createPhase2hCanonicalD1({env,fetchImpl:fiveFetch}).readPending();
+ assert.equal(recovered.length,100);
+ assert.deepEqual(limitPattern.slice(0,3),[[25,0],[10,0],[5,0]]);
+ assert.ok(limitPattern.length<=42);
+ assert.deepEqual(limitPattern.at(-1),[5,95]);
+  const failFetch=async()=>Response.json({success:false,result:[]});
  await assert.rejects(()=>createPhase2hCanonicalD1({env,fetchImpl:failFetch}).readPending(),
    /PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
 });

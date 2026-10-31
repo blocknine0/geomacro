@@ -9,7 +9,7 @@ const now=new Date("2026-10-31T12:00:00Z");
 const norm=x=>({schema:"geomacro.reusable-news-json.v1",category:x.category,
  country_iso3:x.country_iso3??null,delivery:{raw_article_included:false},
  usage_rights:{commercial_reuse_authorized:false}});
-test("two authentic publisher-owned RSS links join existing capped 15m rotation",()=>{
+test("Chile and South Africa official RSS join capped 15m rotation",()=>{
  const urls=privateMineralNationalRssSources();
  assert.equal(urls.length,2);
  const base=privateOsintRuntimeSources(now);
@@ -17,7 +17,7 @@ test("two authentic publisher-owned RSS links join existing capped 15m rotation"
  for(const source of urls){
   const loaded=base.find(s=>s.url===source.url);
   assert.ok(loaded,source.id);
-  assert.ok(sourceIsPinnedNationalPrimary(loaded));
+  assert.equal(sourceIsPinnedNationalPrimary(loaded),source.scope==="national_primary");
   assert.ok(loaded.categories.includes("rare_earth"));
  }
  assert.equal(new Set(base.map(s=>s.url)).size,base.length);
@@ -36,4 +36,28 @@ test("issuer-only Spanish copper release gains Chile provisional context; foreig
  assert.deepEqual(r.items.map(x=>x.country_iso3),["CHL",null]);
  assert.equal(r.summary.issuer_context_country_fallbacks_not_independently_verified,1);
  assert.equal(r.summary.paid_publication_authorized,false);
+});
+
+test("South African DMPR source is original domestic publisher, not foreign event country",async()=>{
+ const source=privateOsintRuntimeSources(now).find(s=>s.id==="private_mineral_zaf_dmpr_media");
+ assert.ok(source);
+ assert.equal(sourceIsPinnedNationalPrimary(source),true);
+ const titles=["Minister announces new copper mine rehabilitation measures",
+ "Copper mining development in Chile announced"];
+ const xml='<rss><channel>'+titles.map(title=>
+  '<item><title>'+title+'</title><pubDate>Sat, 31 Oct 2026 11:20:00 GMT</pubDate></item>').join("")+'</channel></rss>';
+ const r=await collectRegisteredReusableNews({now,registry:[source],normalize:norm,
+  resolveCountry:()=>null,topicPatterns:PRIVATE_OSINT_TOPICS,
+  fetchImpl:async()=>new Response(xml)});
+ assert.equal(r.items.length,2);
+ assert.deepEqual(r.items.map(x=>x.country_iso3),["ZAF",null]);
+ assert.equal(r.summary.issuer_context_country_fallbacks_not_independently_verified,1);
+ assert.equal(r.summary.paid_publication_authorized,false);
+});
+test("previously unavailable Australia industry RSS is excluded; keep existing Indonesia ANTARA local",()=>{
+ const urls=new Set(privateOsintRuntimeSources(now).map(s=>s.url));
+ assert.equal(urls.has("https://www.industry.gov.au/news.xml"),false);
+ assert.equal(urls.has("https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215"),true);
+ assert.equal(urls.has("https://www.minister.industry.gov.au/feed/all-media/rss.xml"),false);
+ assert.equal(urls.has("https://en.antaranews.com/rss/business-investment.xml"),false);
 });

@@ -52,7 +52,8 @@ test("workflow keeps bounded isolated archive gate, preserves quota receipt and 
  assert.match(workflow,/B2_REQUEST_BUDGET: "12"/u);
  assert.match(workflow,/phase2h-provider-admission\.log/u);
  const census=workflow.indexOf("run: node scripts/ops/phase2h-canonical-census-receipt.mjs");
- const b2=workflow.indexOf("run: node scripts/ops/phase2h-permanent-production-acceptance.mjs");
+ const b2=workflow.indexOf("node scripts/ops/phase2h-permanent-production-acceptance.mjs");
+ assert.ok(workflow.indexOf("rm -f artifacts/derived-news/phase2h-permanent-production-acceptance.json")<b2);
  assert.ok(census>0&&b2>census);
  assert.match(workflow,/phase2h-canonical-census-receipt\.json/u);
 });
