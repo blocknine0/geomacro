@@ -57,9 +57,33 @@ export async function probePaidIntelligenceHotSnapshots({
       return {product,...verifyPaidHotSnapshotProof(product,JSON.parse(raw),now)};
     }catch{return {product,ready:false,reason:"PUBLIC_SNAPSHOT_UNREADABLE"};}
   }));
+  // The canonical website performs additional hash, clock, issuer-schema and
+  // payload crosschecks. Its real deep health must agree before the watchdog
+  // may call the live paid product ready.
+  let productionDeepReady=false;
+  try {
+    const response=await fetchImpl("https://geomacro.live/api/health?deep=1",{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Accept:"application/json","Cache-Control":"no-cache"},
+      signal:AbortSignal.timeout(12000),
+    });
+    if(response.status===200&&!response.redirected){
+      const raw=await response.text();
+      if(raw.length<=400_000){
+        const h=JSON.parse(raw),p=h?.public_production;
+        productionDeepReady=h?.ok===true && p?.b2_runtime_configured===true &&
+          p?.intelligence_ready===true && p?.global_risk_ready===true &&
+          p?.risk_indices_ready===true && p?.risk_verification_status==="verified" &&
+          p?.hot_snapshot_serving &&
+          Object.keys(p.hot_snapshot_serving).length===3 &&
+          Object.values(p.hot_snapshot_serving).every(x=>x?.ok===true);
+      }
+    }
+  } catch { /* An unreadable production endpoint never counts as green. */ }
   return Object.freeze({
     schema:"geomacro.paid-intelligence-three-hot-health.v1",
-    ok:probes.length===3&&probes.every(p=>p.ready),
+    ok:productionDeepReady&&probes.length===3&&probes.every(p=>p.ready),
+    production_deep_health_verified:productionDeepReady,
     max_source_age_minutes:60,
     checked_at:new Date(now).toISOString(),
     products:probes,
