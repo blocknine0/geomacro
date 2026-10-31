@@ -159,3 +159,32 @@ test("pinned mixed-category feed cannot multiply unrelated headlines into every 
  assert.equal(phase2iSourceOnlyCategoryRelevant({...item,source_url:"https://bank.example.org/feed",
   title:"Official central-bank bulletin"},pinned,topics),true);
 });
+
+
+test("pinned Chile ministry issuer-only title receives provisional fair-D1 country routing",()=>{
+ const generic={category:"rare_earth",sourceId:"www.cochilco.cl",
+  articleUrl:"https://www.cochilco.cl/web/noticias/official-copper",
+  sourceUrl:"https://www.cochilco.cl/web/noticias/feed/",
+  issuerContextCountryIso3:"CHL",title:"Comisión informa nueva producción de cobre",
+  publishedAt:"2026-10-30T10:00:00.000Z",credit:null};
+ const plan=planPhase2iOsintCountryFairRaw([generic],{now,derive});
+ assert.equal(plan.selected_count,1);
+ assert.equal(plan.country_attributed_candidate_count,0);
+ assert.equal(plan.issuer_context_country_routing_count,1);
+ assert.equal(plan.records[0].original.original_title,generic.title);
+ assert.equal(plan.records[0].original.original_source_id,generic.sourceId);
+ assert.equal(plan.records[0].analysis.evidence_and_confidence.commercial_rights_verified,false);
+ assert.equal(plan.records[0].commercial_delivery_authorized,false);
+ const foreign=planPhase2iOsintCountryFairRaw(
+  [{...generic,title:"Australia reports nickel mining production"}],{now,derive});
+ assert.equal(foreign.issuer_context_country_routing_count,0);
+ const spoof=planPhase2iOsintCountryFairRaw(
+  [{...generic,sourceUrl:"https://fake.example.org/feed/"}],{now,derive});
+ assert.equal(spoof.issuer_context_country_routing_count,0);
+ const multi=planPhase2iOsintCountryFairRaw(
+  [{...generic,title:"Australia and Chile announce copper trade measures"}],{now,derive});
+ assert.equal(multi.issuer_context_country_routing_count,0);
+ const noMetadata=planPhase2iOsintCountryFairRaw(
+  [{...generic,issuerContextCountryIso3:null}],{now,derive});
+ assert.equal(noMetadata.issuer_context_country_routing_count,0);
+});
