@@ -17,6 +17,7 @@
 export const PRIVATE_OSINT_RETIRED_SOURCE_IDS=Object.freeze([
   "private_priority_aus_ga_news",
   "private_priority_iea_news",
+  "private_mineral_aus_industry_news",
   "private_expansion_au_industry_news",
   "private_expansion_australian_mining",
   "private_expansion_eiti_disclosures",
