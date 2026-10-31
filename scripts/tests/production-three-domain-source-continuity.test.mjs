@@ -91,6 +91,25 @@ test("One bounded GET returns current only on valid D1 schema",async()=>{
  assert.equal(r.health,"THREE_DOMAIN_SOURCE_CHECKS_CURRENT");
  assert.equal(r.all_three_paid_signed_categories_verified,false);
 });
+test("real Worker checked_at created after request start is not falsely stale",async()=>{
+ const result=await observeProductionSourceContinuity({fetchImpl:async()=>{
+   // The live Worker generates its clock AFTER the caller started fetch.
+   await new Promise(resolve=>setTimeout(resolve,25));
+   const checkedAt=new Date().toISOString();
+   const clockBefore=new Date(Date.now()-60_000).toISOString();
+   const d=sample();
+   d.checked_at=checkedAt;
+   for(const c of Object.keys(d.categories)){
+     d.categories[c].latest_source_check_at=clockBefore;
+     d.categories[c].original_publisher_pulse.last_checked_at=clockBefore;
+   }
+   return Response.json(d);
+ }});
+ assert.equal(result.health,"THREE_DOMAIN_SOURCE_CHECKS_CURRENT");
+ assert.equal(result.readback_verified,true);
+ assert.equal(result.all_three_source_checks_current,true);
+ assert.equal(result.paid_delivery_activated,false);
+});
 test("Reject oversized or non-JSON response without logging raw upstream content",async()=>{
  const r=await observeProductionSourceContinuity({now,fetchImpl:async()=>new Response("hello",{headers:{"content-type":"text/html"}})});
  assert.equal(r.health,"SOURCE_READBACK_UNAVAILABLE");
