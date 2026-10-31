@@ -1,4 +1,4 @@
-import { domainGuideAnswer } from "./ask-domain-guide";
+import { askDomains, domainGuideAnswer } from "./ask-domain-guide";
 import {
   answerQuestion as answerHybridQuestion,
   type HybridAskAnswer,
@@ -29,34 +29,38 @@ import {collectSharedOfficialNews} from "./ask-shared-derived-journal.server";
  */
 type OfficialNewsCategory = "geopolitics" | "macro" | "rare_earth";
 
+/**
+ * Broad natural-language news questions can read the three-category D1
+ * journal. Topic/country/asset-specific questions must continue to the
+ * original-discovery / governed / realtime path: a category-level story is
+ * never evidence for a narrowly scoped event.
+ */
 function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] {
-  const q = question.trim().toLowerCase();
-  const patterns: readonly { category: OfficialNewsCategory; test: RegExp }[] = [
-    { category: "geopolitics", test: /\b(geopolitic(?:s|al)?|diplomac(?:y|ies)|foreign policy)\b/i },
-    { category: "macro", test: /\b(macro(?:economics?|economic)?|fx|foreign exchange)\b/i },
-    { category: "rare_earth", test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
-  ];
-  const matches = patterns.filter(item => item.test.test(q));
-  const genericNews = /^(?:what (?:has )?changed today|what is new today|latest news|latest developments)\??$/i.test(q);
-  const looksLikeNews = /\b(latest|recent|current|new|updates?|developments?|releases?|news|changed|changing)\b/i.test(q);
-  if (!looksLikeNews || matches.length > 1 || (matches.length === 0 && !genericNews))
-    return [];
+  const q = question.trim().toLowerCase().replace(/[’']/g, "");
+  const current = /\b(?:latest|recent|current|today|news|updates?|developments?|changed|changing|new|last\s+(?:24|48|72)\s+hours?)\b/u.test(q);
+  if (!current) return [];
+
+  const categories = askDomains(q);
+  const generic = /^(?:what\s+(?:has\s+)?changed\s+today|what\s+is\s+new\s+today|latest\s+(?:global\s+)?news|latest\s+developments|what\s+is\s+happening\s+today)\??$/u.test(q);
   const rest = q
-    .replace(/\b(?:geopolitics?|geopolitical|diplomacy|foreign policy|macro\/fx|macroeconomics?|macroeconomic|macro|fx|foreign exchange|critical minerals?|rare[- ]earths?)\b/gi, " ")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(?:geopolitical|geopolitics?|diplomacy|diplomatic|foreign\s+policy|world\s+affairs|macro(?:economic|economics)?|fx|foreign\s+exchange|critical[- ]minerals?|rare[- ]earths?)\b/gu, " ")
+    .replace(/[^a-z0-9]+/gu, " ")
     .trim();
   const allowed = new Set([
-    "what", "whats", "s", "is", "are", "has", "the", "latest", "recent",
-    "current", "new", "news", "update", "updates", "development",
-    "developments", "release", "releases", "changed", "changing",
-    "show", "me", "give", "tell", "about", "in", "on", "for", "any",
-    "from", "today", "now", "please", "us", "there", "have", "been",
-    "globally", "global", "world",
+    "what", "whats", "is", "are", "has", "have", "been", "the", "a", "an",
+    "latest", "recent", "current", "new", "news", "update", "updates",
+    "development", "developments", "release", "releases", "changed",
+    "changing", "happening", "show", "me", "give", "tell", "about",
+    "in", "on", "for", "any", "from", "today", "now", "please",
+    "globally", "global", "world", "worldwide", "around", "across",
+    "all", "three", "categories", "domains", "areas", "sectors",
+    "summarize", "summary", "brief", "briefing", "overview",
+    "headlines", "events", "during", "past", "last", "hours", "hour",
+    "24", "48", "72", "this", "week", "and", "or",
   ]);
-  if (rest.split(/\s+/).some(token => token && !allowed.has(token))) return [];
-  return matches.length === 1
-    ? [matches[0].category]
-    : ["geopolitics", "macro", "rare_earth"];
+  if (!generic && rest.split(/\s+/u).some(token => token && !allowed.has(token)))
+    return [];
+  return categories.length ? categories : (generic ? ["geopolitics", "macro", "rare_earth"] : []);
 }
 
 /**
