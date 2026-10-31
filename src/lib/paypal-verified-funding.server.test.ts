@@ -79,6 +79,40 @@ describe("PayPal verified-settlement safety",()=>{
     .rejects.toThrow("PAYPAL_MERCHANT_OR_AMOUNT_MISMATCH");
   expect(mock.rpc).not.toHaveBeenCalled();
  });
+ it("full refunded captures suspend credits only after provider readback",async()=>{
+  mock.verified.mockResolvedValueOnce({verified:true,eventId:"WHREF1",
+    eventType:"PAYMENT.CAPTURE.REFUNDED"});
+  mock.maybeSingle.mockResolvedValueOnce({data:{
+    id:"receipt-1",paid_usd_cents:900,provider_capture_id:"CAPTURE123",
+  },error:null});
+  mock.rpc.mockResolvedValueOnce({data:{ok:true,idempotent_replay:false},error:null});
+  const refundFetcher=vi.fn(async()=>new Response(JSON.stringify({
+    id:"REFUND123",status:"COMPLETED",amount:{currency_code:"USD",value:"9.00"},
+    supplementary_data:{related_ids:{capture_id:"CAPTURE123"}},
+  }),{status:200})) as unknown as typeof fetch;
+  const answer=await handlePayPalPaidWebhook(JSON.stringify({
+    id:"WHREF1",event_type:"PAYMENT.CAPTURE.REFUNDED",resource:{id:"REFUND123"},
+  }),new Headers(),refundFetcher);
+  expect(answer).toMatchObject({refund_reconciled:true,credits_suspended:true});
+  expect(mock.rpc).toHaveBeenCalledWith("revoke_refunded_paypal_credits",{
+    p_capture_id:"CAPTURE123",p_refund_id:"REFUND123",
+  });
+ });
+ it("never auto-revokes a partial refund as a full refund",async()=>{
+  mock.verified.mockResolvedValueOnce({verified:true,eventId:"WHREF2",
+    eventType:"PAYMENT.CAPTURE.REFUNDED"});
+  mock.maybeSingle.mockResolvedValueOnce({data:{
+    id:"receipt-1",paid_usd_cents:900,provider_capture_id:"CAPTURE123",
+  },error:null});
+  const refundFetcher=vi.fn(async()=>new Response(JSON.stringify({
+    id:"REFUND123",status:"COMPLETED",amount:{currency_code:"USD",value:"3.00"},
+    supplementary_data:{related_ids:{capture_id:"CAPTURE123"}},
+  }),{status:200})) as unknown as typeof fetch;
+  await expect(handlePayPalPaidWebhook(JSON.stringify({
+    id:"WHREF2",event_type:"PAYMENT.CAPTURE.REFUNDED",resource:{id:"REFUND123"},
+  }),new Headers(),refundFetcher)).rejects.toThrow("PAYPAL_PARTIAL_REFUND_MANUAL_REVIEW_REQUIRED");
+  expect(mock.rpc).not.toHaveBeenCalled();
+ });
  it("ignores signed but non-capture events",async()=>{
   mock.verified.mockResolvedValueOnce({verified:true,eventId:"WH123",
     eventType:"CHECKOUT.ORDER.APPROVED"});
