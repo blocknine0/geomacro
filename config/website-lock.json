@@ -1006,5 +1006,18 @@
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true,
     "test_changes_scope": "Update exact storefront component presentation checks for absent catalog links; no price catalog logic changed."
+  },
+  "approved_ecb_official_fx_reference_20261101": {
+    "approval": "Founder explicitly requested a reliable FX and precious-metals source intake pipeline for live Macro Intelligence on 2026-11-01.",
+    "approved_source_commit": "70ff8d34af54a0f45acf771e44a022aab7b9fce6",
+    "approved_paths": ["src/components/intelligence/macro-fastlane-panel.tsx"],
+    "scope": "Display verified ECB daily FX reference using existing quota-gated Macro fastlane and canonical D1 control-state projection, explicitly separate from intraday live FX price feed. Preserve gold/silver source policy, payment locks, GRI, PREDGE and global-risk presentation.",
+    "fx_intraday_quote_claims": false,
+    "paid_source_added": false,
+    "production_funds_authorized": false,
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
