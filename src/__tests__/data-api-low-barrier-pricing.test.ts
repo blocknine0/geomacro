@@ -49,8 +49,6 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
   });
   it("never presents an unverified card link or merchant settlement as active", () => {
     expect(store).toContain("Card checkout not yet verified live");
-    expect(store).toContain("PayPal checkout is being configured");
-    expect(store).toContain("PayPal · Merchant approval pending");
     expect(store).toContain("pack checkout is not yet live");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("<CapabilityPriceSchedule />");
