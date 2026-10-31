@@ -1,0 +1,82 @@
+name: GeoMacro Global Risk 30 Minute Verified Cadence (No Funds)
+
+# New canonical global-risk-cadence name for the requested 30-minute wakeup.
+# This does NOT turn absent reviewer evidence into a new source timestamp.
+# The existing 15m signed-input backstop and 30m indices repair remain active.
+on:
+  schedule:
+    - cron: "07,37 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/global-risk-cadence.yml"
+      - "scripts/ops/dispatch-gri-signed-ready-cadence.mjs"
+      - "scripts/ops/probe-paid-intelligence-hot-snapshots.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/global-risk-cadence.yml"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-global-risk-verified-cadence
+  cancel-in-progress: false
+
+jobs:
+  genuine-signed-input-gate:
+    if: ${{ github.repository == 'blocknine0/geomacro' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Prove fail-closed official-current dispatch and public-health unit tests
+        run: |
+          set -euo pipefail
+          node --check scripts/ops/dispatch-gri-signed-ready-cadence.mjs
+          node --check scripts/ops/probe-paid-intelligence-hot-snapshots.mjs
+          node --test scripts/lib/gri-signed-ready-cadence-hint.test.mjs
+          node --test scripts/ops/probe-paid-intelligence-hot-snapshots.test.mjs
+
+  approved-publication-wakeup:
+    needs: genuine-signed-input-gate
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    permissions:
+      contents: read
+      actions: write
+    env:
+      EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
+      GITHUB_TOKEN: ${{ github.token }}
+      GRI_READY_REVIEWED_SHA256: ${{ vars.GRI_READY_REVIEWED_SHA256 }}
+      GRI_READY_CERTIFICATES_SHA256: ${{ vars.GRI_READY_CERTIFICATES_SHA256 }}
+      GRI_READY_APPROVED_AT: ${{ vars.GRI_READY_APPROVED_AT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require exact protected main and dispatch only genuine independently signed input
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPECTED_CANONICAL_MAIN_SHA" = "$(git rev-parse HEAD)"
+          node scripts/ops/dispatch-gri-signed-ready-cadence.mjs
+
+      - name: Read independently authenticated three-product D1/B2 hot health (no funds)
+        if: ${{ always() }}
+        run: node scripts/ops/probe-paid-intelligence-hot-snapshots.mjs
