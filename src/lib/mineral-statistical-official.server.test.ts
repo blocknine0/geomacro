@@ -2,11 +2,12 @@ import {describe,expect,it,vi} from "vitest";
 import {fetchOfficialMineralStatisticalObservations} from "./mineral-statistical-official.server";
 const catalog={results:[{reporterCodeIsoAlpha3:"CHL",reporterCode:152,isGroup:false}]};
 const mock=(row:Record<string,unknown>|null)=>(async(url:RequestInfo|URL)=>{
- const u=String(url);
- if(u.includes("sciencebase.gov"))return new Response("unavailable",{status:404});
- if(u.includes("Reporters.json"))return Response.json(catalog);
- if(u.includes("/preview/C/A/HS")){
-  const qs=new URL(u).searchParams;
+ const u=new URL(String(url));
+ if(u.hostname==="www.sciencebase.gov")return new Response("unavailable",{status:404});
+ if(u.hostname==="comtradeapi.un.org"&&u.pathname==="/files/v1/app/reference/Reporters.json")
+   return Response.json(catalog);
+ if(u.hostname==="comtradeapi.un.org"&&u.pathname==="/public/v1/preview/C/A/HS"){
+  const qs=u.searchParams;
   if(qs.get("flowCode")==="M")return Response.json({data:[]});
   if(!row)return Response.json({data:[]});
   return Response.json({data:[row]});
