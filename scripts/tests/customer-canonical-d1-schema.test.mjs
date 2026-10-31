@@ -41,7 +41,7 @@ test("canonical D1 schema is SQLite-compatible and idempotent",()=>{
 test("registration is never funded; receipt+grant required; debit cannot overdraw",()=>{
  const db=new DatabaseSync(":memory:");migrate(db);mkUser(db);
  assert.throws(()=>db.prepare("INSERT INTO credit_ledger(event_id,user_id,event_type,delta_credits,receipt_id) VALUES(?,?,?,?,?)")
-  .run("funding-test-0001","customer-test-0001","funding",1000,"unverified-receipt"),/FOREIGN KEY/);
+  .run("funding-test-0001","customer-test-0001","funding",1000,"unverified-receipt"),/VERIFIED_ACTIVE_PAYMENT_GRANT_REQUIRED|FOREIGN KEY/);
  assert.throws(()=>db.prepare("INSERT INTO api_keys(key_id,user_id,hmac_sha256,expires_at) VALUES(?,?,?,?)")
   .run("key-test-unfunded-01","customer-test-0001","b".repeat(64),new Date(Date.now()+3600000).toISOString()),/VERIFIED_PAYMENT_ENTITLEMENT_REQUIRED/);
  funding(db);
