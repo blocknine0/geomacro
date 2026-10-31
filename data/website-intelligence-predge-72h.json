@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-10-31T12:37:45.839Z",
+  "checked_at": "2026-10-31T14:21:37.883Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 313,
+  "item_count": 309,
   "counts": {
-    "geopolitics": 126,
+    "geopolitics": 123,
     "macro": 144,
-    "rare_earth": 43
+    "rare_earth": 42
   },
-  "source_native_ids_sha256": "4497ad1b10a21c58ebaaf4a51127b202ebbc8a98467179fe38bd23d3b24e56ef",
+  "source_native_ids_sha256": "8845a511b93d603eed5ee189fcb0edc196532600988387fd12642b35cc00fcfc",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -134,6 +134,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T07:09:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0fd3191a",
+      "category": "macro",
+      "title": "Geomacro finds NRB issued today’s foreign currency exchange rates - Khabarhub",
+      "what_changed": "A monitored source feed reports: NRB issued today’s foreign currency exchange rates - Khabarhub. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T01:16:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -5872,101 +5891,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T14:41:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-42e93b90",
-      "category": "macro",
-      "title": "Geomacro finds World Bank forecast 23% commodity-price rise as energy costs climb - Mugglehead Investment Magazine",
-      "what_changed": "A monitored source feed reports: World Bank forecast 23% commodity-price rise as energy costs climb - Mugglehead Investment Magazine. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T14:02:34.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-d910e82c",
-      "category": "rare_earth",
-      "title": "Geomacro finds PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Mining.com",
-      "what_changed": "A monitored source feed reports: PLS signed 20-year power deal with Fortescue unit for Pilgangoora lithium mine - Mining.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T13:59:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-010d26ab",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelenskyy urged Hegseth to approve 23 Patriot missiles as Ukraine faces shortage",
-      "what_changed": "A monitored source feed reports: Zelenskyy urged Hegseth to approve 23 Patriot missiles as Ukraine faces shortage. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T13:53:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1c451683",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Russia's war against Ukraine is costing more and achieving less · United Kingdom",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "United Kingdom issued a statement to the FSC concerning Russia's war against Ukraine is costing more and achieving less. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "geopolitical security",
-      "published_at": "2026-10-28T13:28:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-304b44bb",
-      "category": "geopolitics",
-      "title": "Geomacro finds Oman called for economic and security pact between Iran and Gulf countries - The National",
-      "what_changed": "A monitored source feed reports: Oman called for economic and security pact between Iran and Gulf countries - The National. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T13:25:21.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
