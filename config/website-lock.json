@@ -1006,5 +1006,21 @@
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true,
     "test_changes_scope": "Update exact storefront component presentation checks for absent catalog links; no price catalog logic changed."
+  },
+  "approved_public_intelligence_reliability_20261101": {
+    "approval": "Founder explicitly requested permanent repair of Home Finds auto-fetch, Risk Indices first-load, and footer links on 2026-11-01.",
+    "approved_source_commit": "7c6757ed10e8209147c7deec8c4e65541c4f3f52",
+    "approved_paths": [
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/components/site-shell.tsx",
+      "src/routes/index.tsx"
+    ],
+    "scope": "Home and free verified Find Cards public fallback, bounded signed news-severity Risk Indices auto-retry and responsive legal footer only. Verified D1 public derived fallback applies only to Home and no-pay public Finds API when archival current read is empty/unavailable. Original-source date/qualification is enforced and no fabricated static digests or scores are allowed.",
+    "predge_unchanged": true,
+    "global_risk_presentation_unchanged": true,
+    "pricing_and_payments_unchanged": true,
+    "production_funds_authorized": false,
+    "exact_blob_lock": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
