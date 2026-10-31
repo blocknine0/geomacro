@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AskGeomacroRouteImport } from './routes/ask-geomacro'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DataApiRouteImport } from './routes/data-api'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DocsRouteImport } from './routes/docs'
@@ -27,8 +29,6 @@ import { Route as IntelligenceRouteImport } from './routes/intelligence'
 import { Route as OnchainRouteImport } from './routes/onchain'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ReviewRouteImport } from './routes/review'
@@ -65,6 +65,9 @@ import { Route as ApiX402RiskRouteImport } from './routes/api.x402.risk'
 import { Route as ApiGoatPilotArtifactRouteImport } from './routes/api.goat.pilot.artifact'
 import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.order'
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
+import { Route as ApiV1CustomerAccountRouteImport } from './routes/api.v1.customer.account'
+import { Route as ApiV1CustomerAuthRouteImport } from './routes/api.v1.customer.auth'
+import { Route as ApiV1CustomerKeysRouteImport } from './routes/api.v1.customer.keys'
 import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
 import { Route as ApiV1IntelligenceGeopoliticsRouteImport } from './routes/api.v1.intelligence.geopolitics'
@@ -74,9 +77,6 @@ import { Route as ApiV1IntelligenceMacroFxRouteImport } from './routes/api.v1.in
 import { Route as ApiV1IntelligenceProductsAvailabilityRouteImport } from './routes/api.v1.intelligence.products-availability'
 import { Route as ApiV1IntelligenceQueryRouteImport } from './routes/api.v1.intelligence.query'
 import { Route as ApiV1IntelligenceStructuredAnswerRouteImport } from './routes/api.v1.intelligence.structured-answer'
-import { Route as ApiV1CustomerAccountRouteImport } from './routes/api.v1.customer.account'
-import { Route as ApiV1CustomerAuthRouteImport } from './routes/api.v1.customer.auth'
-import { Route as ApiV1CustomerKeysRouteImport } from './routes/api.v1.customer.keys'
 import { Route as ApiV1PaymentsNetworksRouteImport } from './routes/api.v1.payments.networks'
 import { Route as ApiV1PaymentsPaypalRouteImport } from './routes/api.v1.payments.paypal'
 import { Route as ApiV1PaymentsPreflightRouteImport } from './routes/api.v1.payments.preflight'
@@ -108,6 +108,11 @@ const AskGeomacroRoute = AskGeomacroRouteImport.update({
   path: '/ask-geomacro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BridgeRoute = BridgeRouteImport.update({
   id: '/bridge',
   path: '/bridge',
@@ -121,6 +126,11 @@ const BridgeSwapRoute = BridgeSwapRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DataApiRoute = DataApiRouteImport.update({
@@ -176,16 +186,6 @@ const PipelineRoute = PipelineRouteImport.update({
 const PortfolioRoute = PortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -369,6 +369,21 @@ const ApiGoatPilotStatusRoute = ApiGoatPilotStatusRouteImport.update({
   path: '/api/goat/pilot/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1CustomerAccountRoute = ApiV1CustomerAccountRouteImport.update({
+  id: '/api/v1/customer/account',
+  path: '/api/v1/customer/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CustomerAuthRoute = ApiV1CustomerAuthRouteImport.update({
+  id: '/api/v1/customer/auth',
+  path: '/api/v1/customer/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CustomerKeysRoute = ApiV1CustomerKeysRouteImport.update({
+  id: '/api/v1/customer/keys',
+  path: '/api/v1/customer/keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiV1IntelligenceAvailabilityRoute =
   ApiV1IntelligenceAvailabilityRouteImport.update({
     id: '/api/v1/intelligence/availability',
@@ -422,21 +437,6 @@ const ApiV1IntelligenceStructuredAnswerRoute =
     path: '/api/v1/intelligence/structured-answer',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiV1CustomerAccountRoute = ApiV1CustomerAccountRouteImport.update({
-  id: '/api/v1/customer/account',
-  path: '/api/v1/customer/account',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1CustomerAuthRoute = ApiV1CustomerAuthRouteImport.update({
-  id: '/api/v1/customer/auth',
-  path: '/api/v1/customer/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiV1CustomerKeysRoute = ApiV1CustomerKeysRouteImport.update({
-  id: '/api/v1/customer/keys',
-  path: '/api/v1/customer/keys',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiV1PaymentsNetworksRoute = ApiV1PaymentsNetworksRouteImport.update({
   id: '/api/v1/payments/networks',
   path: '/api/v1/payments/networks',
@@ -499,9 +499,11 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
+  '/auth': typeof AuthRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
@@ -513,8 +515,6 @@ export interface FileRoutesByFullPath {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
   '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
@@ -551,6 +551,9 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
+  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -560,9 +563,6 @@ export interface FileRoutesByFullPath {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
-  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
-  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -579,9 +579,11 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
+  '/auth': typeof AuthRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
@@ -593,8 +595,6 @@ export interface FileRoutesByTo {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
   '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
@@ -631,6 +631,9 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
+  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -640,9 +643,6 @@ export interface FileRoutesByTo {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
-  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
-  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -660,9 +660,11 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
+  '/auth': typeof AuthRoute
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
   '/docs': typeof DocsRoute
@@ -674,8 +676,6 @@ export interface FileRoutesById {
   '/onchain': typeof OnchainRoute
   '/pipeline': typeof PipelineRoute
   '/portfolio': typeof PortfolioRoute
-  '/auth': typeof AuthRoute
-  '/dashboard': typeof DashboardRoute
   '/pricing': typeof PricingRoute
   '/research': typeof ResearchRoute
   '/review': typeof ReviewRoute
@@ -712,6 +712,9 @@ export interface FileRoutesById {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
+  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
   '/api/v1/intelligence/geopolitics': typeof ApiV1IntelligenceGeopoliticsRoute
@@ -721,9 +724,6 @@ export interface FileRoutesById {
   '/api/v1/intelligence/products-availability': typeof ApiV1IntelligenceProductsAvailabilityRoute
   '/api/v1/intelligence/query': typeof ApiV1IntelligenceQueryRoute
   '/api/v1/intelligence/structured-answer': typeof ApiV1IntelligenceStructuredAnswerRoute
-  '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
-  '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
-  '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/payments/networks': typeof ApiV1PaymentsNetworksRoute
   '/api/v1/payments/paypal': typeof ApiV1PaymentsPaypalRoute
   '/api/v1/payments/preflight': typeof ApiV1PaymentsPreflightRoute
@@ -742,9 +742,11 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/ask-geomacro'
+    | '/auth'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/dashboard'
     | '/data-api'
     | '/demo'
     | '/docs'
@@ -756,8 +758,6 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
-    | '/auth'
-    | '/dashboard'
     | '/pricing'
     | '/research'
     | '/review'
@@ -794,6 +794,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/account'
+    | '/api/v1/customer/auth'
+    | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -803,9 +806,6 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
-    | '/api/v1/customer/account'
-    | '/api/v1/customer/auth'
-    | '/api/v1/customer/keys'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
@@ -822,9 +822,11 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/ask-geomacro'
+    | '/auth'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/dashboard'
     | '/data-api'
     | '/demo'
     | '/docs'
@@ -836,8 +838,6 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
-    | '/auth'
-    | '/dashboard'
     | '/pricing'
     | '/research'
     | '/review'
@@ -874,6 +874,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/account'
+    | '/api/v1/customer/auth'
+    | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -883,9 +886,6 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
-    | '/api/v1/customer/account'
-    | '/api/v1/customer/auth'
-    | '/api/v1/customer/keys'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
@@ -902,9 +902,11 @@ export interface FileRouteTypes {
     | '/about'
     | '/arena'
     | '/ask-geomacro'
+    | '/auth'
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/dashboard'
     | '/data-api'
     | '/demo'
     | '/docs'
@@ -916,8 +918,6 @@ export interface FileRouteTypes {
     | '/onchain'
     | '/pipeline'
     | '/portfolio'
-    | '/auth'
-    | '/dashboard'
     | '/pricing'
     | '/research'
     | '/review'
@@ -954,6 +954,9 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/account'
+    | '/api/v1/customer/auth'
+    | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
     | '/api/v1/intelligence/geopolitics'
@@ -963,9 +966,6 @@ export interface FileRouteTypes {
     | '/api/v1/intelligence/products-availability'
     | '/api/v1/intelligence/query'
     | '/api/v1/intelligence/structured-answer'
-    | '/api/v1/customer/account'
-    | '/api/v1/customer/auth'
-    | '/api/v1/customer/keys'
     | '/api/v1/payments/networks'
     | '/api/v1/payments/paypal'
     | '/api/v1/payments/preflight'
@@ -983,9 +983,11 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ArenaRoute: typeof ArenaRoute
   AskGeomacroRoute: typeof AskGeomacroRoute
+  AuthRoute: typeof AuthRoute
   BridgeRoute: typeof BridgeRoute
   BridgeSwapRoute: typeof BridgeSwapRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
   DataApiRoute: typeof DataApiRoute
   DemoRoute: typeof DemoRoute
   DocsRoute: typeof DocsRoute
@@ -997,8 +999,6 @@ export interface RootRouteChildren {
   OnchainRoute: typeof OnchainRoute
   PipelineRoute: typeof PipelineRoute
   PortfolioRoute: typeof PortfolioRoute
-  AuthRoute: typeof AuthRoute
-  DashboardRoute: typeof DashboardRoute
   PricingRoute: typeof PricingRoute
   ResearchRoute: typeof ResearchRoute
   ReviewRoute: typeof ReviewRoute
@@ -1035,6 +1035,9 @@ export interface RootRouteChildren {
   ApiGoatPilotArtifactRoute: typeof ApiGoatPilotArtifactRoute
   ApiGoatPilotOrderRoute: typeof ApiGoatPilotOrderRoute
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
+  ApiV1CustomerAccountRoute: typeof ApiV1CustomerAccountRoute
+  ApiV1CustomerAuthRoute: typeof ApiV1CustomerAuthRoute
+  ApiV1CustomerKeysRoute: typeof ApiV1CustomerKeysRoute
   ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
   ApiV1IntelligenceGeopoliticsRoute: typeof ApiV1IntelligenceGeopoliticsRoute
@@ -1044,9 +1047,6 @@ export interface RootRouteChildren {
   ApiV1IntelligenceProductsAvailabilityRoute: typeof ApiV1IntelligenceProductsAvailabilityRoute
   ApiV1IntelligenceQueryRoute: typeof ApiV1IntelligenceQueryRoute
   ApiV1IntelligenceStructuredAnswerRoute: typeof ApiV1IntelligenceStructuredAnswerRoute
-  ApiV1CustomerAccountRoute: typeof ApiV1CustomerAccountRoute
-  ApiV1CustomerAuthRoute: typeof ApiV1CustomerAuthRoute
-  ApiV1CustomerKeysRoute: typeof ApiV1CustomerKeysRoute
   ApiV1PaymentsNetworksRoute: typeof ApiV1PaymentsNetworksRoute
   ApiV1PaymentsPaypalRoute: typeof ApiV1PaymentsPaypalRoute
   ApiV1PaymentsPreflightRoute: typeof ApiV1PaymentsPreflightRoute
@@ -1089,6 +1089,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AskGeomacroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bridge': {
       id: '/bridge'
       path: '/bridge'
@@ -1108,6 +1115,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/data-api': {
@@ -1185,20 +1199,6 @@ declare module '@tanstack/react-router' {
       path: '/portfolio'
       fullPath: '/portfolio'
       preLoaderRoute: typeof PortfolioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -1453,6 +1453,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/customer/account': {
+      id: '/api/v1/customer/account'
+      path: '/api/v1/customer/account'
+      fullPath: '/api/v1/customer/account'
+      preLoaderRoute: typeof ApiV1CustomerAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/customer/auth': {
+      id: '/api/v1/customer/auth'
+      path: '/api/v1/customer/auth'
+      fullPath: '/api/v1/customer/auth'
+      preLoaderRoute: typeof ApiV1CustomerAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/customer/keys': {
+      id: '/api/v1/customer/keys'
+      path: '/api/v1/customer/keys'
+      fullPath: '/api/v1/customer/keys'
+      preLoaderRoute: typeof ApiV1CustomerKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/intelligence/availability': {
       id: '/api/v1/intelligence/availability'
       path: '/api/v1/intelligence/availability'
@@ -1514,27 +1535,6 @@ declare module '@tanstack/react-router' {
       path: '/api/v1/intelligence/structured-answer'
       fullPath: '/api/v1/intelligence/structured-answer'
       preLoaderRoute: typeof ApiV1IntelligenceStructuredAnswerRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/customer/account': {
-      id: '/api/v1/customer/account'
-      path: '/api/v1/customer/account'
-      fullPath: '/api/v1/customer/account'
-      preLoaderRoute: typeof ApiV1CustomerAccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/customer/auth': {
-      id: '/api/v1/customer/auth'
-      path: '/api/v1/customer/auth'
-      fullPath: '/api/v1/customer/auth'
-      preLoaderRoute: typeof ApiV1CustomerAuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/v1/customer/keys': {
-      id: '/api/v1/customer/keys'
-      path: '/api/v1/customer/keys'
-      fullPath: '/api/v1/customer/keys'
-      preLoaderRoute: typeof ApiV1CustomerKeysRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v1/payments/networks': {
@@ -1615,9 +1615,11 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ArenaRoute: ArenaRoute,
   AskGeomacroRoute: AskGeomacroRoute,
+  AuthRoute: AuthRoute,
   BridgeRoute: BridgeRoute,
   BridgeSwapRoute: BridgeSwapRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
   DataApiRoute: DataApiRoute,
   DemoRoute: DemoRoute,
   DocsRoute: DocsRoute,
@@ -1629,8 +1631,6 @@ const rootRouteChildren: RootRouteChildren = {
   OnchainRoute: OnchainRoute,
   PipelineRoute: PipelineRoute,
   PortfolioRoute: PortfolioRoute,
-  AuthRoute: AuthRoute,
-  DashboardRoute: DashboardRoute,
   PricingRoute: PricingRoute,
   ResearchRoute: ResearchRoute,
   ReviewRoute: ReviewRoute,
@@ -1667,6 +1667,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotArtifactRoute: ApiGoatPilotArtifactRoute,
   ApiGoatPilotOrderRoute: ApiGoatPilotOrderRoute,
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
+  ApiV1CustomerAccountRoute: ApiV1CustomerAccountRoute,
+  ApiV1CustomerAuthRoute: ApiV1CustomerAuthRoute,
+  ApiV1CustomerKeysRoute: ApiV1CustomerKeysRoute,
   ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:
     ApiV1IntelligenceCriticalMineralsRoute,
@@ -1679,9 +1682,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1IntelligenceQueryRoute: ApiV1IntelligenceQueryRoute,
   ApiV1IntelligenceStructuredAnswerRoute:
     ApiV1IntelligenceStructuredAnswerRoute,
-  ApiV1CustomerAccountRoute: ApiV1CustomerAccountRoute,
-  ApiV1CustomerAuthRoute: ApiV1CustomerAuthRoute,
-  ApiV1CustomerKeysRoute: ApiV1CustomerKeysRoute,
   ApiV1PaymentsNetworksRoute: ApiV1PaymentsNetworksRoute,
   ApiV1PaymentsPaypalRoute: ApiV1PaymentsPaypalRoute,
   ApiV1PaymentsPreflightRoute: ApiV1PaymentsPreflightRoute,
