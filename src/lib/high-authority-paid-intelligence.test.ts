@@ -1,4 +1,5 @@
 import {describe,expect,it} from "vitest";
+import {sanitizePublicPaidOutput,assertPublicPaidOutputBoundary} from "./public-paid-output-boundary";
 import {
   assertHighAuthorityPaidIntelligenceScope,
   extractQualifiedFiveFieldEvent,
@@ -86,5 +87,37 @@ describe("prequote five-field completeness",()=>{
     expect(()=>assertPaidIntelligenceEventFieldCompleteness({
       current_state:[{developments:[{qualified_five_field_event:{...event,event_timestamp:"2099-01-01T00:00:00Z"}}]}]
     })).toThrow("PAID_EVENT_ORIGINAL_TIMESTAMP_UNVERIFIED");
+  });
+});
+
+describe("only licensed qualified event authority survives the paid sanitizer",()=>{
+  it("keeps the exact approved label and removes upstream identity",()=>{
+    const payload={current_state:[{developments:[{
+      qualified_five_field_event:{
+        headline:"Official item",
+        source_authority:"US Geological Survey — Mineral Commodity Summaries 2026 (pinned CC0)",
+        event_timestamp:"2026-10-23T12:00:00Z",
+        what_happened:"An official event has been proven.",
+        why_it_matters:"A verified observation is relevant.",
+      },
+      source_id:"private_source_identity",
+      source_url:"https://publisher.invalid",
+    }]}]};
+    const sanitized=sanitizePublicPaidOutput(payload,{rejectEmbeddedLinks:true});
+    expect(sanitized.current_state[0].developments[0].qualified_five_field_event.source_authority)
+      .toBe(payload.current_state[0].developments[0].qualified_five_field_event.source_authority);
+    expect(sanitized.current_state[0].developments[0]).not.toHaveProperty("source_id");
+    expect(sanitized.current_state[0].developments[0]).not.toHaveProperty("source_url");
+    expect(()=>assertPublicPaidOutputBoundary(sanitized)).not.toThrow();
+  });
+  it("does not grant arbitrary source labels or source_authority elsewhere",()=>{
+    const raw={source_authority:"US Geological Survey — Mineral Commodity Summaries 2026 (pinned CC0)",
+      current_state:[{developments:[{qualified_five_field_event:{
+        source_authority:"Unapproved outlet",
+      }}]}]};
+    const sanitized=sanitizePublicPaidOutput(raw,{rejectEmbeddedLinks:true});
+    expect(sanitized).not.toHaveProperty("source_authority");
+    expect(sanitized.current_state[0].developments[0].qualified_five_field_event)
+      .not.toHaveProperty("source_authority");
   });
 });
