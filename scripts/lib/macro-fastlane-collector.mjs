@@ -1,4 +1,5 @@
 import {GLOBAL_MACRO_TOPIC_PATTERN} from "../../src/lib/global-macro-news-policy.ts";
+import {ECB_DAILY_FX_URL,parseEcbDailyFxReference} from "./ecb-fx-reference.mjs";
 import {MACRO_NEWS_SOURCES,planMacroSources,pinnedMacroArticle,boundedMacroGet,normalizeMetalQuote,macroPreciousTopic} from './macro-fx-metals.mjs';
 import {MACRO_CALENDARS,parseMacroCalendar} from './macro-release-calendar.mjs';
 import {verifiedPublisherPageDate} from './official-original-article-date.mjs';
@@ -70,6 +71,18 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  if(prices)await Promise.all(['XAU','XAG'].map(async symbol=>{
   try{const data=await get('https://api.gold-api.com/price/'+symbol,{accept:'application/json'});const quote=normalizeMetalQuote(JSON.parse(data.text),symbol,quoteClock());if(quote)quotes.push(quote);priceChecks.push({instrument:symbol+'/USD',state:quote?'CURRENT_INDICATION':'STALE_OR_INVALID'});}catch{priceChecks.push({instrument:symbol+'/USD',state:'UNAVAILABLE'});}
  }));
+ // One free first-party reference read per six-hour window, not per quote,
+ // render or every five-minute collector tick. Never classify it as live FX.
+ let fxReference=state.fx_reference??null;
+ let fxCheckedAt=Number.isFinite(state.fx_checked_at)?state.fx_checked_at:0;
+ if(prices && now-fxCheckedAt>=6*3600000){
+  fxCheckedAt=now;
+  try{
+   const result=await get(ECB_DAILY_FX_URL,{accept:"application/xml,text/xml"});
+   fxReference=parseEcbDailyFxReference(result.text,quoteClock());
+  }catch{/* Keep only a still-dated ECB reference; never fabricate quotes. */}
+ }
+ if(fxReference && now-Date.parse(fxReference.reference_date+"T00:00:00Z")>8*86400000) fxReference=null;
  let events=Array.isArray(state.events)?state.events:[];const calendarChecks=[];
  if(calendars&&(!Number.isFinite(state.calendar_checked_at)||now-state.calendar_checked_at>=6*3600000)){
   const merged=[];
@@ -83,7 +96,7 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
  const history=[...(state.quotes??[]),...quotes].filter(q=>Date.parse(q.observed_at)>=quoteNow-90*60000&&Date.parse(q.observed_at)<=quoteNow);
  const uniqueQuotes=[...new Map(history.map(q=>[q.instrument+'|'+q.observed_at,q])).values()].slice(-40);
  const sourceChecks=[...new Map([...(state.source_checks??[]),...checks].map(c=>[c.id,c])).values()];
- return {candidates,polledChecks:checks,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,
+ return {candidates,polledChecks:checks,state:{mineral_cursors:state.mineral_cursors??{},mineral_checks:state.mineral_checks??[],...(state.mineral_regions?.length?{mineral_regions:state.mineral_regions}:{}),schema:'geomacro.macro-fastlane-state.v1',checked_at:new Date(now).toISOString(),cursors,events,quotes:uniqueQuotes,fx_reference:fxReference,fx_checked_at:fxCheckedAt,
   calendar_checked_at:calendarChecks.length?now:state.calendar_checked_at??0,calendar_checks:calendarChecks.length?calendarChecks:state.calendar_checks??[],source_checks:sourceChecks,price_checks:priceChecks,
-  quota_lease_until:new Date(now+12*60000).toISOString()},receipt:{schema:'geomacro.macro-fastlane-run.v1',category:'macro',lanes:['forex','precious_metals'],source_checks:sourceChecks,price_checks:priceChecks,calendar_checks:calendarChecks,upstream_requests:requests,shared_originals:reusedCandidates.length,raw_content_persisted:false,real_time_price_latency_verified:false,github_cron_sla_verified:false}};
+  quota_lease_until:new Date(now+12*60000).toISOString()},receipt:{schema:'geomacro.macro-fastlane-run.v1',category:'macro',lanes:['forex','precious_metals'],source_checks:sourceChecks,price_checks:priceChecks,calendar_checks:calendarChecks,ecb_reference_available:fxReference!==null,upstream_requests:requests,shared_originals:reusedCandidates.length,raw_content_persisted:false,real_time_price_latency_verified:false,github_cron_sla_verified:false}};
 }

@@ -163,3 +163,34 @@ test('Maximum packing respects both the 50-row cap and the existing UTF-8 HTTP i
  assert.ok(batches.length>Math.ceil(rows.length/50));
  assert.equal(packDerivedNewsBatches([]).length,0);
 });
+
+test('ECB official daily reference is source-dated and never claimed as live FX',async()=>{
+ const {parseEcbDailyFxReference,ECB_DAILY_FX_URL}=await import('../lib/ecb-fx-reference.mjs');
+ const xml='<gesmes:Envelope><Cube><Cube time="2026-10-27"><Cube currency="USD" rate="1.10"/><Cube currency="GBP" rate="0.84"/><Cube currency="JPY" rate="170.50"/></Cube></Cube></gesmes:Envelope>';
+ const parsed=parseEcbDailyFxReference(xml,now);
+ assert.equal(parsed.reference_date,'2026-10-27');
+ assert.equal(parsed.intraday_live_verified,false);
+ assert.equal(parsed.transaction_price,false);
+ assert.deepEqual(parsed.rates.map(x=>x.currency),['USD','GBP','JPY']);
+ assert.throws(()=>parseEcbDailyFxReference(xml.replace('2026-10-27','2026-02-30'),now));
+ assert.throws(()=>parseEcbDailyFxReference(xml.replace('2026-10-27','2026-10-28'),now));
+ assert.throws(()=>parseEcbDailyFxReference(xml.replace('0.84','-3'),now));
+ assert.throws(()=>parseEcbDailyFxReference(xml.replace('1.10','0'),now));
+ assert.throws(()=>parseEcbDailyFxReference('<!DOCTYPE bad>'+xml,now));
+ const state=freshState();
+ const urls=[];
+ const result=await collectMacroFastlane({now,state,sourceIds:[],calendars:false,fetchImpl:async url=>{
+  urls.push(url);
+  if(url===ECB_DAILY_FX_URL)return new Response(xml);
+  return new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',currency:'USD',price:100,updatedAt:at}));
+ }});
+ assert.equal(urls.filter(url=>url===ECB_DAILY_FX_URL).length,1);
+ assert.ok(validateMacroState(result.state,now));
+ assert.equal(publicMacroProjection(result.state,now).forex_price_feed_status,'ECB_DAILY_REFERENCE_ONLY');
+ const sameDay=await collectMacroFastlane({now:now+5*60000,state:result.state,sourceIds:[],calendars:false,fetchImpl:async url=>{
+  if(url===ECB_DAILY_FX_URL)throw Error('duplicate ECB billable read');
+  return new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',currency:'USD',price:100,updatedAt:new Date(now+5*60000-60000).toISOString()}));
+ }});
+ assert.deepEqual(sameDay.state.fx_reference,parsed);
+ assert.equal(sameDay.receipt.ecb_reference_available,true);
+});

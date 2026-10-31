@@ -161,7 +161,8 @@ test("existing page layout stays but GeoMacro news severity replaces signed GRI 
  const view=readFileSync("src/components/risk-indices/risk-indices-workspace.tsx","utf8");
  assert.match(worker,/serveSelfCertifiedNewsSeverityGri/u);
  assert.match(worker,/\/v1\/public\/geomacro-certified-news-severity-gri/u);
- assert.match(hook,/const response=await readGeoMacroCertifiedNewsRisk\(\)/u);
+ assert.match(hook,/const data = await readGeoMacroCertifiedNewsRisk\(\)/u);
+ assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh \|\| attempt > 0\)/u);
  assert.match(view,/GeoMacro Certified GRI/u);
  assert.match(view,/GeoMacro self-certified/u);
  assert.doesNotMatch(view,/independent third-party certification or verification of every reported event is present/u);

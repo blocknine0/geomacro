@@ -19,6 +19,17 @@ export function validateMacroState(s,now=Date.now()){
  if(s.calendar_checks.some(c=>!['bls','fed','ecb'].includes(c.id)||!['OK','UNAVAILABLE'].includes(c.state)||!Number.isSafeInteger(c.events)||c.events<0||c.events>128))return false;
  if(s.price_checks.some(c=>!['XAU/USD','XAG/USD'].includes(c.instrument)||!['CURRENT_INDICATION','STALE_OR_INVALID','UNAVAILABLE'].includes(c.state)))return false;
  if(Object.values(s.cursors).some(c=>!c||!(c.etag===null||typeof c.etag==='string'&&c.etag.length<=200&&!/[\r\n]/.test(c.etag))||!Number.isFinite(c.retry_after)||c.retry_after>now+16*60000||!Number.isFinite(c.checked_at)||c.checked_at>now+60000))return false;
+ if(s.fx_checked_at!==undefined&&(!Number.isSafeInteger(s.fx_checked_at)||s.fx_checked_at<0||s.fx_checked_at>now+60000))return false;
+ const fx=s.fx_reference;
+ if(fx!==undefined&&fx!==null){
+  const day=Date.parse(String(fx.reference_date??"")+"T00:00:00Z");
+  if(fx.provider!=="ECB_DAILY_REFERENCE"||fx.base!=="EUR"||fx.intraday_live_verified!==false||fx.transaction_price!==false||
+     !/^\d{4}-\d{2}-\d{2}$/.test(fx.reference_date)||
+     !Number.isFinite(day)||day>now||now-day>8*86400000||
+     new Date(day).toISOString().slice(0,10)!==fx.reference_date||
+     !Array.isArray(fx.rates)||fx.rates.length!==3||
+     fx.rates.some((q,i)=>q.currency!==["USD","GBP","JPY"][i]||!Number.isFinite(q.per_eur)||q.per_eur<=0||q.per_eur>=1000000))return false;
+ }
  if(s.quotes.some(q=>!['XAU/USD','XAG/USD'].includes(q.instrument)||q.currency!=='USD'||q.unit!=='troy_ounce'||q.quote_kind!=='provider_spot_indication'||q.provider_latency_verified!==false||q.exchange_tick_verified!==false||!Number.isFinite(q.value)||q.value<=0||!Number.isFinite(Date.parse(q.observed_at))||Date.parse(q.observed_at)>now||!Number.isFinite(Date.parse(q.received_at))||Date.parse(q.received_at)>now+60000))return false;
  const lease=Date.parse(s.quota_lease_until);return Number.isFinite(lease)&&lease>=now&&lease<=now+13*60000;
 }
@@ -34,6 +45,7 @@ export async function storeMacroState(env,state,now=Date.now()){
   mineral_checks:(state.mineral_checks??[]).map(({id,state,candidates})=>({id,state,candidates})),
   mineral_regions:(state.mineral_regions??[]).map(({region,primary_healthy,recent_primary_release,fallback_attempted,fallback_healthy,publisher_region_is_event_country,global_substitute_healthy})=>({region,primary_healthy,recent_primary_release,fallback_attempted,fallback_healthy,publisher_region_is_event_country,global_substitute_healthy})),
   schema:state.schema,checked_at:state.checked_at,quota_lease_until:state.quota_lease_until,calendar_checked_at:state.calendar_checked_at,
+  fx_checked_at:state.fx_checked_at??0,fx_reference:state.fx_reference??null,
   events:state.events.map(({kind,at,source})=>({kind,at,source})),quotes:state.quotes.map(({instrument,value,currency,unit,observed_at,received_at,quote_kind,provider_latency_verified,exchange_tick_verified})=>({instrument,value,currency,unit,observed_at,received_at,quote_kind,provider_latency_verified,exchange_tick_verified})),
   cursors:Object.fromEntries(Object.entries(state.cursors).map(([id,c])=>[id,{etag:c.etag,retry_after:c.retry_after,checked_at:c.checked_at}])),
   source_checks:state.source_checks.map(({id,state,candidates})=>({id,state,candidates})),price_checks:state.price_checks.map(({instrument,state})=>({instrument,state})),calendar_checks:state.calendar_checks.map(({id,state,events})=>({id,state,events})),
@@ -59,7 +71,9 @@ export function publicMacroProjection(state,now=Date.now(),intakePolicy=null){
   critical_minerals:{category:"rare_earth",regional_groups:state?.mineral_regions??[],source_health:state?.mineral_checks??[],global_completeness_verified:false},
   source_health:state?.source_checks??[],calendar_health:state?.calendar_checks??[],price_health:state?.price_checks??[],
   scheduled_releases:(state?.events??[]).filter(e=>Date.parse(e.at)>=now-20*60000).slice(0,12),prices:latest,
-  forex_price_feed_status:'NOT_CONFIGURED',price_status:latest.length===2?'CURRENT_PROVIDER_INDICATIONS':'PRICE_EVIDENCE_INCOMPLETE',
+  forex_price_feed_status:state?.fx_reference?'ECB_DAILY_REFERENCE_ONLY':'NOT_CONFIGURED',
+  fx_reference:state?.fx_reference??null,
+  price_status:latest.length===2?'CURRENT_PROVIDER_INDICATIONS':'PRICE_EVIDENCE_INCOMPLETE',
   critical_poll_target_seconds:60,github_poll_target_seconds:300,release_window_minutes:22,
   guaranteed_latency:false,real_time_exchange_quotes_verified:false,raw_news_delivered:false};
 }
