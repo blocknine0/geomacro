@@ -362,3 +362,57 @@ describe("bounded Base/Polygon RPC alternatives for independent receipt verifica
 
 
 });
+
+
+/**
+ * Production-policy regression: no transaction is sent and no real RPC is
+ * contacted. These are synthetic chain receipts, not live finality evidence.
+ */
+describe("Base=3 and Polygon=128 settlement finality safety (no funds)",()=>{
+  const scenarios=[
+    {network:"eip155:8453",chainId:"0x2105",
+      asset:"0x833589fCD6eDb6E08f4C7C32D4f71b54bdA02913",
+      env:"GEOMACRO_NO_CARD_CONFIRMATIONS_BASE",minimum:3},
+    {network:"eip155:137",chainId:"0x89",
+      asset:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+      env:"GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON",minimum:128},
+  ] as const;
+  afterEach(()=>vi.unstubAllEnvs());
+  it.each(scenarios)("enforces exactly $minimum confirmations for $network",async s=>{
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE","https://base-test.example/rpc");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_BASE_ALTERNATES","");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON","https://polygon-test.example/rpc");
+    vi.stubEnv("GEOMACRO_NO_CARD_RPC_POLYGON_ALTERNATES","");
+    vi.stubEnv(s.env,String(s.minimum));
+    const quote={network:s.network,asset_contract:s.asset,recipient:RECIPIENT,
+      amount_atomic:"20000"} as PreparedCapabilityQuote;
+    const receipt={transactionHash:TX,status:"0x1",blockNumber:"0x64",blockHash:BLOCK,
+      logs:[{address:s.asset,topics:[TOPIC,topic(PAYER),topic(RECIPIENT)],data:"0x4e20"}]};
+    let head=100+s.minimum-2; // one confirmation short
+    const methods:string[]=[];
+    const fetcher=(async(_url:unknown,init?:RequestInit)=>{
+      expect(init?.redirect).toBe("manual");
+      const {method}=JSON.parse(String(init?.body)) as {method:string};
+      methods.push(method);
+      const value=method==="eth_chainId"?s.chainId:
+        method==="eth_getTransactionReceipt"?receipt:
+        method==="eth_getBlockByNumber"?{hash:BLOCK,number:"0x64"}:
+        method==="eth_blockNumber"?"0x"+head.toString(16):null;
+      return Response.json({jsonrpc:"2.0",id:1,result:value});
+    }) as typeof fetch;
+    await expect(confirmNoCardNativeUsdcChainSettlement({
+      quote,transaction:TX,payer:PAYER,fetcher,
+    })).rejects.toThrow("NO_CARD_CHAIN_CONFIRMATIONS_INSUFFICIENT");
+    expect(methods).toEqual([
+      "eth_chainId","eth_getTransactionReceipt","eth_getBlockByNumber","eth_blockNumber",
+    ]);
+    methods.length=0;
+    head++; // exactly required confirmations, no extra block
+    const proof=await confirmNoCardNativeUsdcChainSettlement({
+      quote,transaction:TX,payer:PAYER,fetcher,
+    });
+    expect(proof.confirmed).toBe(true);
+    expect(proof.network).toBe(s.network);
+    expect(methods).toHaveLength(4);
+  });
+});
