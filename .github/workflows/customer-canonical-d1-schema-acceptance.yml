@@ -1,0 +1,121 @@
+name: Canonical Customer D1 Schema Acceptance (No Funds)
+# Issue #3295. Additive schema only; NEVER a live customer auth/payment cutover.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "workers/control-plane/migrations/0090_customer_canonical_d1.sql"
+      - "workers/control-plane/migrations/0091_customer_canonical_integrity_triggers.sql"
+      - "scripts/tests/customer-canonical-d1-schema.test.mjs"
+      - ".github/workflows/customer-canonical-d1-schema-acceptance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "workers/control-plane/migrations/0090_customer_canonical_d1.sql"
+      - "workers/control-plane/migrations/0091_customer_canonical_integrity_triggers.sql"
+      - "scripts/tests/customer-canonical-d1-schema.test.mjs"
+      - ".github/workflows/customer-canonical-d1-schema-acceptance.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+
+jobs:
+  sqlite-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Check D1 schema invariants with isolated SQLite
+        run: node --test scripts/tests/customer-canonical-d1-schema.test.mjs
+
+  production-schema-acceptance:
+    # PRs NEVER receive production secrets and never write to D1.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: sqlite-offline
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_EXPECTED_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+      WRANGLER_VERSION: "4.136.3"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require existing pinned canonical D1, never create another database
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]]
+          [[ "$D1_EXPECTED_DATABASE_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json > /tmp/customer-d1-list.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const rows=JSON.parse(fs.readFileSync('/tmp/customer-d1-list.json','utf8'));
+          const matches=rows.filter(x=>x.name==='geomacro-control-plane');
+          if(matches.length!==1 || (matches[0].uuid??matches[0].id)!==process.env.D1_EXPECTED_DATABASE_ID)
+            throw Error('CUSTOMER_CANONICAL_D1_IDENTITY_MISMATCH');
+          const source=JSON.parse(fs.readFileSync('workers/control-plane/wrangler.example.jsonc','utf8'));
+          if(source.d1_databases?.length!==1 || source.d1_databases[0].binding!=='DB' ||
+             source.d1_databases[0].database_name!=='geomacro-control-plane')
+            throw Error('CUSTOMER_D1_BINDING_MISMATCH');
+          source.d1_databases[0].database_id=process.env.D1_EXPECTED_DATABASE_ID;
+          fs.writeFileSync('workers/control-plane/wrangler.customer-acceptance.jsonc',JSON.stringify(source));
+          NODE
+          rm -f /tmp/customer-d1-list.json
+          echo "PASS: exact existing geomacro-control-plane D1 identity"
+      - name: Apply committed additive D1 migrations; no Supabase or payment operations
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.customer-acceptance.jsonc
+      - name: Verify required production tables with actual SELECT counts
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          for table in users sessions credit_ledger api_keys customer_payment_receipts customer_entitlement_grants; do
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "SELECT COUNT(*) AS record_count FROM ${table};"
+          done
+          echo "PASS: canonical customer D1 schema exists and can be read"
+      - name: Verify remote D1 write/read/delete on no-funds probe table ONLY
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe="no-funds-customer-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          [[ "$probe" =~ ^no-funds-customer-[0-9]+-[0-9]+$ ]]
+          cleanup() {
+            npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "DELETE FROM customer_d1_integrity_probe WHERE probe_id='${probe}';" >/dev/null || true
+          }
+          trap cleanup EXIT
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "INSERT INTO customer_d1_integrity_probe(probe_id) VALUES('${probe}');"
+          result="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "SELECT CASE WHEN COUNT(*)=1 THEN 'CUSTOMER_D1_READ_WRITE_OK' ELSE 'CUSTOMER_D1_READ_WRITE_FAILED' END AS result FROM customer_d1_integrity_probe WHERE probe_id='${probe}';")"
+          [[ "$result" == *CUSTOMER_D1_READ_WRITE_OK* ]] || { echo "::error::CUSTOMER_D1_REMOTE_READBACK_FAILED"; exit 1; }
+          cleanup
+          clean="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "SELECT CASE WHEN COUNT(*)=0 THEN 'CUSTOMER_D1_PROBE_CLEAN' ELSE 'CUSTOMER_D1_PROBE_REMAINS' END AS result FROM customer_d1_integrity_probe WHERE probe_id='${probe}';")"
+          [[ "$clean" == *CUSTOMER_D1_PROBE_CLEAN* ]] || exit 1
+          trap - EXIT
+          echo "PASS: canonical customer D1 no-funds probe inserted, read back and cleaned"
+      - name: Explicitly distinguish schema acceptance from live customer cutover
+        run: |
+          echo "::notice::CUSTOMER_D1_SCHEMA_AND_PROBE_ONLY — auth/session runtime, entitlement parity, funded key API, and production checkout NOT ACCEPTED."
+          echo "Do not switch CUSTOMER_DB_MODE or merge payment PR #3264 on this receipt alone."
