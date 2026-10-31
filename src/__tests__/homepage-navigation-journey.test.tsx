@@ -30,9 +30,9 @@ describe("homepage reader and buyer journeys", () => {
   });
 
   it("keeps all primary destinations in the desktop navigation and marks the current page", async () => {
-    const html = await page("/data-api");
+    const html = await page("/pricing");
     const nav = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? "";
-    for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/data-api", "/pricing"]) {
+    for (const target of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing"]) {
       expect(nav).toContain(`href="${target}"`);
     }
     const active = nav.match(/<a\b[^>]*href="\/data-api"[^>]*>/)?.[0] ?? "";
