@@ -47,7 +47,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import {readFileSync,existsSync} from 'node:fs';
-          const path='results/javascript.sarif';
+          const path='../results/javascript.sarif';
           if(!existsSync(path)){console.log('CODEQL_SARIF_NOT_PRESENT');process.exit(0);}
           const doc=JSON.parse(readFileSync(path,'utf8'));
           for(const run of doc.runs??[])for(const finding of run.results??[]){
