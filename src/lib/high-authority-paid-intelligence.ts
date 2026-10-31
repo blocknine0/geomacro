@@ -98,3 +98,34 @@ export function extractQualifiedFiveFieldEvent(input: {
     event_timestamp:when,what_happened:what,why_it_matters:why,
   });
 }
+
+/**
+ * New Intelligence Query purchase acceptance: a scored, current event must
+ * carry a complete and already qualified five-field record. Structural
+ * baselines are NOT events and are unaffected. This is checked BEFORE any
+ * x402 quote or funds request; absent evidence never becomes plausible prose.
+ */
+export function assertPaidIntelligenceEventFieldCompleteness(prepared:unknown):void {
+  const record=(x:unknown):x is Record<string,unknown> =>
+    x!==null&&typeof x==="object"&&!Array.isArray(x);
+  if(!record(prepared) || !Array.isArray(prepared.current_state))
+    throw Error("PAID_EVENT_CURRENT_STATE_REQUIRED");
+  for(const value of prepared.current_state){
+    if(!record(value) || !Array.isArray(value.developments))
+      throw Error("PAID_EVENT_DEVELOPMENTS_INVALID");
+    for(const event of value.developments){
+      if(!record(event)||!record(event.qualified_five_field_event))
+        throw Error("PAID_EVENT_FIVE_FIELDS_REQUIRED");
+      const fields=event.qualified_five_field_event;
+      if(!HIGH_AUTHORITY_FIVE_EVENT_FIELDS.every(field=>
+        typeof fields[field]==="string" && (fields[field] as string).trim().length>0) ||
+        Object.keys(fields).length!==HIGH_AUTHORITY_FIVE_EVENT_FIELDS.length)
+        throw Error("PAID_EVENT_FIVE_FIELDS_INVALID");
+      const stamp=fields.event_timestamp;
+      if(typeof stamp!=="string" ||
+        !/^20\\d{2}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d(?:\\.\\d{1,3})?Z$/u.test(stamp) ||
+        !Number.isFinite(Date.parse(stamp)) || Date.parse(stamp)>Date.now()+60_000)
+        throw Error("PAID_EVENT_ORIGINAL_TIMESTAMP_UNVERIFIED");
+    }
+  }
+}
