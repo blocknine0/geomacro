@@ -9,8 +9,10 @@ import type {MineralStatisticalObservation} from "./mineral-statistical-baseline
 
 const RELEASE="https://www.usgs.gov/data/mineral-commodity-summaries-2026-data-release";
 const COMTRADE="https://comtradeapi.un.org/";
-const SCIENCEBASE="https://www.sciencebase.gov/catalog/item/69837e43b66b01367d7ec7c7?format=json";
-const FILE_NAME="MCS2026_Commodities_Data.csv";
+const USGS_DOWNLOADS=Object.freeze([
+ "https://www.sciencebase.gov/catalog/file/get/69837e43b66b01367d7ec7c7/MCS2026_Commodities_Data.csv",
+ "https://www.sciencebase.gov/catalog/file/get/696a75d5d4be0228872d3bf8/MCS2026_Commodities_Data.csv"
+]);
 const FILE_SHA="582a0aa231aea53d8a97dc8d1cd3dfa5f885cf3760353e3d029d7f0ae4fbaaf5";
 const REPORTERS="https://comtradeapi.un.org/files/v1/app/reference/Reporters.json";
 const COMMODITY=new Map([
@@ -86,15 +88,16 @@ function usgsScope(rows:Record<string,string>[],iso3:string,commodity:string){
  return matched.sort((a,b)=>b.reference_year-a.reference_year).slice(0,3);
 }
 async function usgs(iso3:string,commodity:string,fetchImpl:Fetcher){
- const meta=JSON.parse(new TextDecoder().decode(await bounded(SCIENCEBASE,fetchImpl,256*1024,"application/json")));
- const file=Array.isArray(meta?.files)?meta.files.find((x:Record<string,unknown>)=>x.name===FILE_NAME):null;
- const url=String(file?.url??file?.downloadUri??"");
- let u:URL;try{u=new URL(url)}catch{return [];}
- if(u.protocol!=="https:"||u.hostname!=="www.sciencebase.gov"||
-    !u.pathname.startsWith("/catalog/file/get/")||u.username||u.password)return [];
- const bytes=await bounded(u.toString(),fetchImpl,8*1024*1024,"text/csv");
- if(createHash("sha256").update(bytes).digest("hex")!==FILE_SHA)return [];
- return usgsScope(rowsCsv(bytes),iso3,commodity);
+ // Pinned fixed official endpoints, NEVER follow a URL obtained from provider
+ // metadata. This prevents origin/path injection as well as extra redirects.
+ for(const url of USGS_DOWNLOADS){
+  try{
+   const bytes=await bounded(url,fetchImpl,8*1024*1024,"text/csv");
+   if(createHash("sha256").update(bytes).digest("hex")!==FILE_SHA)continue;
+   return usgsScope(rowsCsv(bytes),iso3,commodity);
+  }catch{/* Try the second already-pinned ScienceBase item only. */}
+ }
+ return [];
 }
 function reporterCode(body:unknown,iso3:string){
  const records=(body as {results?:unknown})?.results;
