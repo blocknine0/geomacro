@@ -10,7 +10,7 @@ import { GEOMACRO_CAPABILITY_PRICING_VERSION } from "@/lib/capability-pricing-ca
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
-  "One Geomacro Store & API: $9/$29/$99 monthly credit plans, $5/$15/$30 credit packs, and evidence-gated Base USDC x402 from $0.02 to $0.05.";
+  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, locked PayPal/card and Base/Polygon USDC checkout previews, and evidence-gated x402.";
 const URL = "https://geomacro.live/pricing";
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
@@ -57,6 +57,9 @@ function PricingPage() {
               <a href="#plans" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90">
                 Explore plans <ArrowRight className="h-4 w-4" />
               </a>
+              <a href="#payment-checkout" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-primary/50 bg-background/80 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-primary/5">
+                Payment methods <ShieldCheck className="h-4 w-4" />
+              </a>
               <a href="#api-products" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-background/70 px-5 py-3 text-sm font-medium transition hover:border-primary/50">
                 Explore API products <Code2 className="h-4 w-4" />
               </a>
@@ -94,8 +97,8 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Pricing catalog only. Self-service checkout and production settlement
-              require separate verified activation.
+              Two payment methods are available to preview: PayPal/card (international fiat)
+              and native USDC (Base / Polygon). External payments remain locked.
             </p>
           </div>
         </div>
@@ -105,6 +108,7 @@ function PricingPage() {
         <div className="flex min-w-max items-center gap-2 text-xs font-medium sm:gap-5">
           {[
             ["#plans", "Plans & credits"],
+            ["#payment-checkout", "Payment methods"],
             ["#api-products", "API products"],
             ["#api-endpoints", "Endpoints"],
             ["#prepare", "Try a request"],
@@ -122,9 +126,9 @@ function PricingPage() {
             Start small. Grow on your terms.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Choose a monthly plan, top up credits when needed or use Base USDC x402
-            for eligible agent calls. Credits and exact API delivery prices are different
-            billing methods; never charged twice for the same request.
+            Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
+            or native Base/Polygon USDC directly on this page. Production transactions remain locked.
+            Credits and x402 per-delivery prices use separate billing methods.
           </p>
         </div>
         <LowBarrierPricing />
@@ -178,7 +182,7 @@ function PricingPage() {
         <p className="mt-4 max-w-3xl text-xs leading-6 text-muted-foreground">
           Paid API requests become available only when the live payment and delivery service confirms activation.
           Availability is checked for each request. Signed risk products are private pilots;
-          customers retain control of every action. This page does not request payment.
+          customers retain control of every action. This page shows a locked checkout preview and never requests a payment.
         </p>
         <div className="mt-8 grid gap-4 md:grid-cols-2">
           <Link to="/docs" className="group flex items-start justify-between gap-5 rounded-2xl border border-border p-6 transition hover:border-primary/40 hover:bg-primary/5">

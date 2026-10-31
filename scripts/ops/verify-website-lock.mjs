@@ -134,6 +134,8 @@ const approvedPricing = [
   config.approved_geomacro_api_branding_20261031,
   config.approved_sitewide_api_endpoint_domain_labels_20261031,
   config.approved_card_to_usdc_no_funds_readiness_20261031,
+  config.approved_locked_dual_rail_checkout_20261101,
+  config.approved_inline_dual_rail_pricing_20261101,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

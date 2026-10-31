@@ -48,8 +48,15 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
       .toBe("COMING_SOON");
   });
   it("never presents an unverified card link or merchant settlement as active", () => {
-    expect(store).toContain("Card checkout not yet verified live");
-    expect(store).toContain("pack checkout is not yet live");
+    const inline = readFileSync("src/components/dual-rail-checkout.tsx", "utf8");
+    expect(store).toContain("<LockedDualRailCheckout selection={selection} />");
+    expect(store).not.toContain("Card to crypto");
+    expect(store).not.toContain("Pay by card. Merchant receives USDC.");
+    expect(inline).toContain('id="payment-checkout"');
+    expect(inline).toContain("PayPal / card checkout · Locked");
+    expect(inline).toContain("Manual transfer / QR · Locked");
+    expect(inline).not.toContain("createOrder(");
+    expect(inline).not.toContain("sendTransaction(");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
     expect(page).toContain("<CapabilityPriceSchedule />");
     expect(page).not.toMatch(/checkout\.stripe\.com|buy\.stripe\.com|payment_authorized:\s*true/);

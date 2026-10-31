@@ -24,8 +24,10 @@ describe("hosted card to USDC customer checkout is safely non-payable until prov
     expect(GEOMACRO_CARD_TO_USDC_READINESS.automatic_subscription_card_renewal_enabled).toBe(false);
   });
   it("publishes accurate readiness in the unified Store and machine catalog",()=>{
-    expect(page).toContain("GEOMACRO_CARD_TO_USDC_READINESS.checkout_status");
-    expect(page).toContain("Awaiting merchant approval");
+    expect(page).toContain("<LockedDualRailCheckout selection={selection} />");
+    expect(page).not.toContain("GEOMACRO_CARD_TO_USDC_READINESS");
+    expect(page).not.toContain("Pay by card. Merchant receives USDC.");
+    expect(page).not.toContain("Card to crypto");
     expect(page).not.toContain("href=\"https://moonpay");
     const manifest=publicGeomacroPaidPricingManifest();
     expect(manifest.card_to_usdc_settlement.enabled).toBe(false);
