@@ -24,7 +24,7 @@ export function validateMacroState(s,now=Date.now()){
  if(fx!==undefined&&fx!==null){
   const day=Date.parse(String(fx.reference_date??"")+"T00:00:00Z");
   if(fx.provider!=="ECB_DAILY_REFERENCE"||fx.base!=="EUR"||fx.intraday_live_verified!==false||fx.transaction_price!==false||
-     !/^\\d{4}-\\d{2}-\\d{2}$/.test(fx.reference_date)||
+     !/^\d{4}-\d{2}-\d{2}$/.test(fx.reference_date)||
      !Number.isFinite(day)||day>now||now-day>8*86400000||
      new Date(day).toISOString().slice(0,10)!==fx.reference_date||
      !Array.isArray(fx.rates)||fx.rates.length!==3||
