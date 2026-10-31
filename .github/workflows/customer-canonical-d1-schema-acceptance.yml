@@ -47,7 +47,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      D1_EXPECTED_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
       WRANGLER_VERSION: "4.136.3"
       CI: "true"
     steps:
@@ -64,19 +63,20 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           [[ "$CLOUDFLARE_ACCOUNT_ID" =~ ^[0-9a-f]{32}$ ]]
-          [[ "$D1_EXPECTED_DATABASE_ID" =~ ^[0-9a-fA-F-]{36}$ ]]
           npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json > /tmp/customer-d1-list.json
           node - <<'NODE'
           const fs=require('node:fs');
           const rows=JSON.parse(fs.readFileSync('/tmp/customer-d1-list.json','utf8'));
           const matches=rows.filter(x=>x.name==='geomacro-control-plane');
-          if(matches.length!==1 || (matches[0].uuid??matches[0].id)!==process.env.D1_EXPECTED_DATABASE_ID)
-            throw Error('CUSTOMER_CANONICAL_D1_IDENTITY_MISMATCH');
+          if(matches.length!==1)throw Error('CUSTOMER_CANONICAL_D1_IDENTITY_MISMATCH');
+          const databaseId=String(matches[0].uuid??matches[0].id??'');
+          if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(databaseId))
+            throw Error('CUSTOMER_D1_DATABASE_UUID_INVALID');
           const source=JSON.parse(fs.readFileSync('workers/control-plane/wrangler.example.jsonc','utf8'));
           if(source.d1_databases?.length!==1 || source.d1_databases[0].binding!=='DB' ||
              source.d1_databases[0].database_name!=='geomacro-control-plane')
             throw Error('CUSTOMER_D1_BINDING_MISMATCH');
-          source.d1_databases[0].database_id=process.env.D1_EXPECTED_DATABASE_ID;
+          source.d1_databases[0].database_id=databaseId;
           fs.writeFileSync('workers/control-plane/wrangler.customer-acceptance.jsonc',JSON.stringify(source));
           NODE
           rm -f /tmp/customer-d1-list.json
