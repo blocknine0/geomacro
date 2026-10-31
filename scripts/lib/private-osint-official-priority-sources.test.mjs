@@ -29,7 +29,10 @@ test("all priority candidates join every 15-minute tick, excluding retired and d
   assert.ok(batch.length<=512);
   assert.equal(new Set(batch.map(s=>s.url)).size,batch.length);
   assert.ok(batch.every(s=>!retirement.has(s.id)));
-  for(const s of newSources)assert.equal(batch.filter(row=>row.url===s.url).length,1);
+  for(const s of newSources){
+   const count=batch.filter(row=>row.url===s.url).length;
+   assert.equal(count,retirement.has(s.id)?0:1);
+  }
   assert.equal(batch.filter(s=>s.private_country_local_candidate).length,24);
  }
 });
