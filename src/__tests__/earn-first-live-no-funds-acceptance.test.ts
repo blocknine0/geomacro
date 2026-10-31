@@ -8,7 +8,7 @@ const marker={schema_version:"geomacro.deployment-build.v1",
 const catalog={schema_version:"geomacro.earn-first-offers.v1",
   chargeable:false,payment_required_now:false,signed_current_risk_object:false,
   offers:[{category:"Macro/FX",topics:["macro_risk"]}]};
-const pricingCatalog={schema:"geomacro.public-capability-price-catalog.v1",
+const pricingCatalog={schema:"geomacro.public-capability-price-catalog.v2",
   pricing_version:"geomacro.capability-usdc.v2",
   pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE",
   payment_authorized:false,money_transferred:false,
