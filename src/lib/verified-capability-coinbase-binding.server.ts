@@ -38,12 +38,6 @@ export function resolveEligiblePublishedCapabilityPrice(
     throw Error("CAPABILITY_PRICE_ELIGIBILITY_UNVERIFIED_NO_CHARGE");
   }
 
-  // New, explicitly selected Intelligence Query offers are restricted to the
-  // first-launch official, pre-qualified dataset universe. Existing immutable
-  // settled replays never call this new-offer price eligibility function.
-  if (plan.product?.capability === "intelligence_query")
-    assertHighAuthorityPaidIntelligenceScope(availability);
-
   const structural = plan.delivery_tier === "structural_baseline";
   const signed = plan.required_modules.includes("signed_risk_object");
   if (!structural && !signed) {
@@ -93,6 +87,11 @@ export function resolveEligiblePublishedCapabilityPrice(
     change_attribution_verified: signed && plan.intent === "change_since",
   };
   const price = resolveVerifiedPublishedPlanPrice(plan, proof);
+  // Apply the official launch scope to ALL new Intelligence Query quotes,
+  // including correctly classified requests without an explicit Store SKU.
+  // Unrelated structural, GRI and already-settled replay paths stay intact.
+  if (price.capability === "intelligence_query")
+    assertHighAuthorityPaidIntelligenceScope(availability);
   return price;
 }
 
