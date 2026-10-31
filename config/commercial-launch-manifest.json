@@ -44,6 +44,20 @@
       "production_network": "production",
       "asset": "plan_or_x402_contract",
       "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK"
+    },
+    "paypal": {
+      "status": "merchant_approval_required",
+      "launch_cohort": false,
+      "production_enabled": false,
+      "merchant_country": "IN",
+      "payment_currency": "USD",
+      "buyer_scope": "international_only",
+      "settlement": "linked_indian_bank_fiat_not_usdc",
+      "credential_env_prefix": "GEOMACRO_PAYPAL_",
+      "checkout_api": "/api/v1/payments/paypal",
+      "subscription_renewal_enabled": false,
+      "credit_funding_ledger_verified": false,
+      "requires": "Verified Business account, webhook verification, idempotent payment/refund ledger and authorized credit delivery"
     }
   },
   "distribution": {
@@ -116,6 +130,8 @@
     "production_funds_authorized": false,
     "launch_pricing_version": "geomacro.low-barrier.v1",
     "subscription_checkout_enabled": false,
-    "credit_pack_checkout_enabled": false
+    "credit_pack_checkout_enabled": false,
+    "paypal_checkout_enabled": false,
+    "stripe_checkout_enabled": false
   }
 }
