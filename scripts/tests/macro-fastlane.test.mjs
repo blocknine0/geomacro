@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {MACRO_NEWS_SOURCES,planMacroSources,normalizeMetalQuote,measuredPriceReaction,macroPreciousTopic,macroEventContext} from '../lib/macro-fx-metals.mjs';
+import {MACRO_NEWS_SOURCES,planMacroSources,normalizeMetalQuote,normalizeXausMetalQuotes,measuredPriceReaction,macroPreciousTopic,macroEventContext} from '../lib/macro-fx-metals.mjs';
 import {parseMacroCalendar,zonedRelease,releaseWindowEvents} from '../lib/macro-release-calendar.mjs';
 import {collectMacroFastlane,parseMacroFeed} from '../lib/macro-fastlane-collector.mjs';
 import {MINERALS_MESH,collectCriticalMineralsFastlane,parseSectorFeed} from '../lib/critical-minerals-fastlane.mjs';
@@ -49,6 +49,36 @@ test('Quote age, unit, ordering and event bracketing gate numerical reaction; no
  const after={...before,value:4040,observed_at:new Date(now+60000).toISOString()};
  const reaction=measuredPriceReaction(new Date(now).toISOString(),before,after);assert.ok(Math.abs(reaction.change_pct-1)<1e-10);assert.equal(reaction.caused_by_event_verified,false);
  assert.equal(measuredPriceReaction(at,after,before),null);assert.equal(measuredPriceReaction(at,before,{...after,unit:'gram'}),null);
+});
+test('XAUS independent metal fallback accepts only native fresh source-dated USD spot evidence',()=>{
+ const source={xau:{price:4010,currency:'USD',unit:'oz'},silver_usd_oz:52.8,
+  data_state:{status:'fresh',as_of:at,source:'upstream',age_seconds:60}};
+ const good=normalizeXausMetalQuotes(source,now);
+ assert.deepEqual(good.map(x=>x.instrument),['XAU/USD','XAG/USD']);
+ assert.ok(good.every(q=>q.quote_kind==='provider_spot_indication'&&q.exchange_tick_verified===false));
+ for(const bad of [{...source,data_state:{...source.data_state,status:'stale'}},
+   {...source,data_state:{...source.data_state,as_of:'2026-10-26T12:00:00Z'}},
+   {...source,data_state:{...source.data_state,as_of:'2026-10-27T12:05:00Z'}}])
+  assert.deepEqual(normalizeXausMetalQuotes(bad,now),[]);
+});
+test('Primary metals outage uses exactly one independent fallback and never invents stale prices',async()=>{
+ const calls=[];
+ const fresh={xau:{price:4000,currency:'USD',unit:'oz'},silver_usd_oz:51.5,
+  data_state:{status:'fresh',as_of:at}};
+ const out=await collectMacroFastlane({now,state:{...freshState(),fx_checked_at:now},
+  sourceIds:[],calendars:false,fetchImpl:async url=>{
+   calls.push(url);
+   return new Response(url.includes('xaus.com')?JSON.stringify(fresh):'',{status:url.includes('xaus.com')?200:503});
+  }});
+ assert.equal(calls.filter(x=>x.includes('xaus.com')).length,1);
+ assert.equal(out.state.quotes.length,2);
+ assert.ok(out.state.price_checks.every(x=>x.state==='CURRENT_INDICATION'));
+ assert.ok(validateMacroState(out.state,now));
+ const stale=await collectMacroFastlane({now,state:{...freshState(),fx_checked_at:now},
+  sourceIds:[],calendars:false,fetchImpl:async url=>new Response(
+   url.includes('xaus.com')?JSON.stringify({...fresh,data_state:{status:'stale',as_of:at}}):'',{status:url.includes('xaus.com')?200:503})});
+ assert.equal(stale.state.quotes.length,0);
+ assert.ok(stale.state.price_checks.every(x=>x.state==='UNAVAILABLE'));
 });
 test('Release calendars honor original release times and DST, not collection clocks',()=>{
  assert.equal(zonedRelease(2026,10,28,14,0,'America/New_York'),'2026-10-28T18:00:00.000Z');
