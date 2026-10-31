@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_AGENT_MICROPAYMENT, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
+import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 import { LockedDualRailCheckout, type CheckoutSelection } from "@/components/dual-rail-checkout";
 
 /** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
@@ -24,8 +24,8 @@ export function LowBarrierPricing() {
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Start small. Scale when you need to.</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           Each purchase grants up to 30 days of prepaid access; manual renewal, not automatic PayPal billing.
-          An intelligence query costs 1 credit; additional structured products have published credit costs.
-          Every paid delivery must meet its evidence eligibility rules.
+          Credits support qualified intelligence access once checkout and API entitlements are enabled.
+          No self-service charges or credit allocation are activated during the prelaunch preview.
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {GEOMACRO_SUBSCRIPTIONS.map(plan => (
@@ -57,7 +57,7 @@ export function LowBarrierPricing() {
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">One-time credit packs</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Credit packs are separate from pay-per-delivery USDC x402. No automatic renewal.
+          One-time credit packs do not renew automatically.
           Packs activate only after a verified payment receipt and entitlement reconciliation.
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -79,17 +79,6 @@ export function LowBarrierPricing() {
       </div>
 
       <LockedDualRailCheckout selection={selection} />
-
-      <div className="rounded-2xl border border-border p-5 sm:p-6">
-        <p className="gm-eyebrow">AI agents · USDC x402</p>
-        <h2 className="mt-2 text-xl font-semibold">Pay only for eligible deliveries</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc}–{GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc}
-          {" "}USDC per verified eligible Base x402 delivery. Polygon support is separately
-          available in native USDC rail discovery; actual payment availability must pass
-          chain-specific production acceptance. Pricing does not authorize a charge.
-        </p>
-      </div>
 
     </section>
   );
