@@ -243,11 +243,48 @@ export async function resolveCommercialEntitlementForCapability(input: {
   );
 }
 
+/** Paid new-sale pools must originate from a verified settlement, NEVER an
+ * API request. Legacy/testnet pools retain their historical provisioning path.
+ * This read-only branch is intentionally shared by every commercial surface. */
 export async function ensureCommercialCreditAccount(input: {
   principal: CommercialPrincipal;
   tier: CommercialTierId;
 }) {
   const db = requireRiskSupabase();
+  if (input.tier === "starter_dev" || input.tier === "pro_analyst" ||
+      input.tier === "business_pilot") {
+    const { data, error } = await db.from("commercial_credit_accounts")
+      .select("id,tier,contract_version,included_credits,credits_used,period_started_at,period_ends_at,status")
+      .eq("principal_type", "api_client")
+      .eq("principal_id", input.principal.principal_id)
+      .maybeSingle();
+    if (error) throw new CommercialAccessError(
+      503, "COMMERCIAL_CREDIT_ACCOUNT_UNAVAILABLE",
+      "Commercial credit account could not be resolved.",
+    );
+    if (!data) throw new CommercialAccessError(
+      402, "PAYMENT_FUNDING_REQUIRED",
+      "A confirmed payment-funded credit allocation is required before commercial API usage.",
+    );
+    if (data.tier !== input.tier ||
+        data.contract_version !== GEOMACRO_CREDIT_CONTRACT_VERSION ||
+        data.status !== "active") throw new CommercialAccessError(
+      403, "COMMERCIAL_CREDIT_ACCOUNT_MISMATCH",
+      "The settled account does not match the active commercial entitlement.",
+    );
+    if (!data.period_ends_at || Date.parse(data.period_ends_at) <= Date.now())
+      throw new CommercialAccessError(
+        402, "CREDIT_PERIOD_EXPIRED",
+        "A verified paid renewal is required for a new credit period.",
+      );
+    return {
+      account_id: data.id, tier: data.tier,
+      included_credits: data.included_credits, credits_used: data.credits_used,
+      credits_remaining: data.included_credits - data.credits_used,
+      period_started_at: data.period_started_at, period_ends_at: data.period_ends_at,
+      status: data.status, contract_version: data.contract_version,
+    };
+  }
   const { data, error } = await db.rpc("ensure_commercial_credit_account", {
     p_principal_type: "api_client",
     p_principal_id: input.principal.principal_id,
@@ -303,6 +340,13 @@ export async function consumeCommercialCapability(input: {
 
   const result = (data ?? {}) as CommercialCreditResult;
   if (!result.ok) {
+    if (result.code === "CREDIT_ACCOUNT_NOT_FOUND" ||
+        result.code === "CREDIT_PERIOD_EXPIRED") {
+      throw new CommercialAccessError(
+        402, result.code,
+        "An active payment-funded credit period is required for this request.",
+      );
+    }
     if (result.code === "INSUFFICIENT_CREDITS") {
       throw new CommercialAccessError(
         402,
