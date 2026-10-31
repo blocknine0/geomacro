@@ -22,6 +22,13 @@ test("three current exact B2 readbacks are mandatory",()=>{
     ...body("global-risk"),current_b2_readback_verified:false,
     baseline_b2_readback_verified:true,
   },now).ready,false);
+  assert.equal(verifyPaidHotSnapshotProof("global-risk",{
+    ...body("global-risk"),
+    proof_schema:"geomacro.public-global-risk-current-proof.v1",
+    verification_mode:"independent-gri-proof-over-b2-baseline",
+    current_b2_readback_verified:false,current_b2_snapshot_promoted:false,
+    baseline_b2_readback_verified:true,baseline_exact_gzip_restore_verified:true,
+  },now).ready,true);
   assert.equal(verifyPaidHotSnapshotProof("intelligence",{
     ...body("intelligence"),source_as_of:new Date(now+300_000).toISOString(),
   },now).ready,false);
