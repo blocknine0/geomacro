@@ -1,5 +1,5 @@
 import {describe,it,expect,vi,afterEach,beforeEach} from "vitest";
-import {validateNoCardNativeUsdcReceipt,confirmNoCardNativeUsdcChainSettlement} from "./no-card-usdc-receipt.server";
+import {validateNoCardNativeUsdcReceipt,confirmNoCardNativeUsdcChainSettlement,configuredNoCardConfirmationDepth} from "./no-card-usdc-receipt.server";
 import type {PreparedCapabilityQuote} from "./capability-prepared-quote.server";
 
 const TX="0x"+"a".repeat(64);
@@ -414,5 +414,24 @@ describe("Base=3 and Polygon=128 settlement finality safety (no funds)",()=>{
     expect(proof.confirmed).toBe(true);
     expect(proof.network).toBe(s.network);
     expect(methods).toHaveLength(4);
+  });
+});
+
+describe("shared effective finality config parser (no funds)",()=>{
+  it("reads Base 3 and Polygon 128 from the same policy used by receipt validation",()=>{
+    const env={GEOMACRO_NO_CARD_CONFIRMATIONS_BASE:"3",
+      GEOMACRO_NO_CARD_CONFIRMATIONS_POLYGON:"128"};
+    expect(configuredNoCardConfirmationDepth("eip155:8453",env)).toBe(3);
+    expect(configuredNoCardConfirmationDepth("eip155:137",env)).toBe(128);
+  });
+  it("refuses unconfigured, zero, fractional, exponent, excessive and wrong-chain policies",()=>{
+    const malformed=[undefined,"","0","-1","0.5","1e2","2049","  "];
+    for(const value of malformed)
+      expect(()=>configuredNoCardConfirmationDepth("eip155:8453",
+        {GEOMACRO_NO_CARD_CONFIRMATIONS_BASE:value})).toThrow(
+          "NO_CARD_RPC_OR_FINALITY_NOT_APPROVED");
+    expect(()=>configuredNoCardConfirmationDepth("eip155:1",
+      {GEOMACRO_NO_CARD_CONFIRMATIONS_BASE:"3"})).toThrow(
+        "NO_CARD_RPC_UNSUPPORTED_NETWORK");
   });
 });
