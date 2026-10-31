@@ -92,7 +92,8 @@ describe("continuous three-category source observations backed by D1",()=>{
      const c=body.categories[d];
      expect(c.source_check_current).toBe(true);
      expect(c.latest_source_check_at).toBe(checked);
-     expect(c.service_state).toBe("CURRENT_SOURCE_CHECK_NO_QUALIFYING_DATA");
+     // Historical reference data remains visible, but its source date stays old.
+     expect(c.service_state).toBe("CURRENT_SOURCE_CHECK_WITH_DATA");
      expect(c.private_osint_source_check.status).toBe("HEALTHY_FEED_OBSERVED");
      expect(c.private_osint_source_check.zero_new_native_items_observed).toBe(true);
      expect(c.open_data_reference_status).toBe("LAST_KNOWN_HISTORICAL_NOT_REALTIME");
