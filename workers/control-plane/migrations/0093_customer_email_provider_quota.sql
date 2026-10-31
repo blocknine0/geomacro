@@ -13,3 +13,5 @@ CREATE INDEX IF NOT EXISTS idx_customer_email_provider_daily
  ON customer_email_dispatch_attempts(provider,submitted_at);
 CREATE INDEX IF NOT EXISTS idx_customer_email_dispatch_challenge
  ON customer_email_dispatch_attempts(challenge_id,status);
+
+CREATE TABLE IF NOT EXISTS customer_email_dispatch_challenges (challenge_id TEXT PRIMARY KEY, started_at TEXT NOT NULL);
