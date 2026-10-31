@@ -217,8 +217,12 @@ on:
 permissions:
   contents: read
 
+# Keep actual scheduled ingestion isolated from PR/push queue replacement.
+# GitHub retains only one pending run per concurrency group, even when
+# cancel-in-progress is false. D1-writing jobs still use the unchanged
+# geomacro-permanent-news-publication shared mutex and provider quota gate.
 concurrency:
-  group: geomacro-private-global-osint-15m
+  group: ${{ github.event_name == 'schedule' && 'geomacro-osint-permanent-scheduled-intake' || github.event_name == 'pull_request' && format('geomacro-osint-ci-pr-{0}', github.event.pull_request.number) || format('geomacro-osint-{0}', github.event_name) }}
   cancel-in-progress: false
 
 jobs:
