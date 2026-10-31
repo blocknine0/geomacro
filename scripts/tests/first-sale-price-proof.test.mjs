@@ -1,3 +1,4 @@
+import {awaitExactFirstSaleDeployment} from "../agentic/verify-earn-first-live-no-funds.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {verifyFirstSalePriceManifest} from "../agentic/first-sale-price-proof.mjs";
@@ -37,4 +38,29 @@ test("rejects legacy v1 manifest or changed v2 price without any quote",()=>{
    schema:"geomacro.public-capability-price-catalog.v1"}),/FIRST_SALE_PRICING_MANIFEST_INVALID/);
  assert.throws(()=>verifyFirstSalePriceManifest({...valid,
    pricing_version:"geomacro.capability-usdc.v1"}),/FIRST_SALE_PRICING_MANIFEST_INVALID/);
+});
+
+test("delayed canonical website SHA retries no-funds acceptance without treating stale deploy as success",async()=>{
+ let calls=0,waits=0;
+ const value=await awaitExactFirstSaleDeployment(async()=>{
+  calls++;
+  if(calls<3)throw Error("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
+  return {first_earning_ready:false,exact_main_published:true};
+ },{attempts:5,wait:async()=>{waits++;}});
+ assert.equal(calls,3);assert.equal(waits,2);
+ assert.equal(value.first_earning_ready,false);
+});
+test("pricing, source-rights and payment gates are never retried or bypassed",async()=>{
+ let calls=0;
+ await assert.rejects(awaitExactFirstSaleDeployment(async()=>{
+  calls++;throw Error("FIRST_SALE_PRICING_MANIFEST_INVALID");
+ },{wait:async()=>{throw Error("WAITER_MUST_NOT_RUN")}}),
+ /FIRST_SALE_PRICING_MANIFEST_INVALID/);
+ assert.equal(calls,1);
+ let retries=0;
+ await assert.rejects(awaitExactFirstSaleDeployment(async()=>{
+  retries++;throw Error("EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED");
+ },{attempts:2,wait:async()=>{}}),
+ /EARNING_PILOT_NOT_EXACT_MAIN_PUBLISHED/);
+ assert.equal(retries,2);
 });
