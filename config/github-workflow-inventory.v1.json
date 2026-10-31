@@ -136,6 +136,7 @@
     "first-qualified-country-digest.yml",
     "first-real-minerals-evidence-triage.yml",
     "five-minute-original-news-fastlane.yml",
+    "frontend-public-deployment-acceptance.yml",
     "fragment-b2-archive-canary.yml",
     "fragment-b2-resolver-backed-offload.yml",
     "fragment-b2-targeted-cleanup.yml",
