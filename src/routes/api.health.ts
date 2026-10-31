@@ -10,6 +10,7 @@ import { geomacroSupabaseRuntimeMode } from "../lib/supabase-runtime-mode.server
 import { qualifyPublicCurrentReadiness } from "../lib/public-production-current-readiness";
 import { probeLiveStructuredDeepHealth } from "../lib/live-structured-deep-health.server";
 import { probeFreeDerivedDeepHealth } from "../lib/free-derived-deep-health.server";
+import {verifiedBaselineHealth} from "../lib/verified-baseline-health";
 
 const SUPABASE_RECOVERY_PROJECT_REF = "ldpwajisioljyjtojvfx";
 const CONTROL_PLANE_PUBLIC_URL =
@@ -419,16 +420,33 @@ export const Route = createFileRoute("/api/health")({
         // Separate truth contract: do not make legacy signed-GRO/B2/D1 checks
         // pass by treating unsigned stateless source observations as signed.
         if (profile !== null) {
-          if ((profile !== "live-structured" && profile !== "free-derived") || !deep ||
+          if ((profile !== "live-structured" && profile !== "free-derived" && profile !== "verified-baseline") || !deep ||
               url.searchParams.getAll("profile").length !== 1 ||
               url.searchParams.getAll("deep").length !== 1 ||
               [...url.searchParams.keys()].some(key =>
                 key !== "deep" && key !== "profile")) {
             return Response.json({ok:false,error:"HEALTH_PROFILE_INVALID",
-              accepted_profiles:["live-structured","free-derived"],
+              accepted_profiles:["live-structured","free-derived","verified-baseline"],
               chargeable:false},
               {status:400,headers:{"Cache-Control":"no-store",
                 "X-Content-Type-Options":"nosniff"}});
+          }
+          // Actual B2/Edge-backed baseline readiness is its own service
+          // health profile. Never return this 200 in the signed paid
+          // /api/health?deep=1 contract and never elevate payment status.
+          if(profile==="verified-baseline"){
+            const verified=await getPublicProductionReadiness(true);
+            const products=["intelligence","global_risk","risk_indices"] as const;
+            const baseline=Object.fromEntries(products.map(key=>
+              [key,verified.last_verified_baseline_readable?.[key]===true]));
+            const live=Object.fromEntries(products.map(key=>
+              [key,verified.current_hot_product_ready?.[key]===true]));
+            const result=verifiedBaselineHealth({
+              last_verified_baseline_readable:baseline as Record<(typeof products)[number],boolean>,
+              current_hot_product_ready:live as Record<(typeof products)[number],boolean>,
+            });
+            return Response.json(result.body,{status:result.statusCode,
+              headers:{"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
           }
           // Free D1 news and signed hot products are independent products.
           // An authentic free readback cannot certify GRO, GRI or x402.

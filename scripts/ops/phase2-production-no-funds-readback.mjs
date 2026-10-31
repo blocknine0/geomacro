@@ -105,7 +105,11 @@ try{
         body?.payment_required_now===false &&
         body?.execution_authorized===false &&
         !body?.payment && !body?.accepts;
-      const contract=(r.http===422 && body?.error?.code==="ON_DEMAND_VERIFICATION_PENDING") ||
+      const contract=(r.http===200 &&
+        body?.response_kind==="NO_CHARGE_RESEARCH_EVIDENCE_STATUS" &&
+        body?.historical_baseline_verified_in_this_response===false &&
+        body?.on_demand?.verified_signed_current_event_count===0) ||
+        (r.http===422 && body?.error?.code==="ON_DEMAND_VERIFICATION_PENDING") ||
         (r.http===429 && body?.error?.code==="ON_DEMAND_PROVIDER_BUDGET_RATE_LIMITED");
       const isFed=x.id.startsWith("USA_FED_");
       const verifiedBoundDraft=body?.on_demand?.private_exact_query_bound_fed_drafts===1 &&
