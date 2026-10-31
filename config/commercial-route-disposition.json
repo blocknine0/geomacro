@@ -89,6 +89,18 @@
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
+    "/api/v1/customer/account": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/customer/auth": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/customer/keys": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/api/v1/finds": {
       "classification": "PRODUCTION",
       "status": "FREE_DERIVED_ONLY"
@@ -189,6 +201,10 @@
       "classification": "PRODUCTION",
       "status": "LIVE"
     },
+    "/auth": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/bridge": {
       "classification": "REMOVE",
       "status": "REMOVED"
@@ -200,6 +216,10 @@
     "/contact": {
       "classification": "PRODUCTION",
       "status": "LIVE"
+    },
+    "/dashboard": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
     },
     "/data-api": {
       "classification": "PRODUCTION",
