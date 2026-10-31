@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {verifyFirstSalePriceManifest} from "../agentic/first-sale-price-proof.mjs";
 const valid={
- schema:"geomacro.public-capability-price-catalog.v1",
+ schema:"geomacro.public-capability-price-catalog.v2",
  pricing_version:"geomacro.capability-usdc.v2",
  pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE",
  payment_authorized:false,money_transferred:false,
@@ -30,4 +30,11 @@ test("marketplace or client pricing cannot replace the authoritative founder sch
   {capabilities:[{...valid.capabilities[0],variants:[{...valid.capabilities[0].variants[0],amount_atomic:"50000"}]}]},
   {capabilities:[{...valid.capabilities[0],variants:[{...valid.capabilities[0].variants[0],structured_delivery:null}]}]}
  ]) assert.throws(()=>verifyFirstSalePriceManifest({...valid,...patch}),/FIRST_SALE_/);
+});
+
+test("rejects legacy v1 manifest or changed v2 price without any quote",()=>{
+ assert.throws(()=>verifyFirstSalePriceManifest({...valid,
+   schema:"geomacro.public-capability-price-catalog.v1"}),/FIRST_SALE_PRICING_MANIFEST_INVALID/);
+ assert.throws(()=>verifyFirstSalePriceManifest({...valid,
+   pricing_version:"geomacro.capability-usdc.v1"}),/FIRST_SALE_PRICING_MANIFEST_INVALID/);
 });
