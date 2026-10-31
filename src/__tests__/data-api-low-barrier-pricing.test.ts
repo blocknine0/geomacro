@@ -58,7 +58,10 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(inline).not.toContain("createOrder(");
     expect(inline).not.toContain("sendTransaction(");
     expect(page).toContain("Paid API requests become available only when the live payment and delivery service confirms activation.");
-    expect(page).toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain("<CapabilityPriceSchedule />");
+    expect(page).not.toContain('id="api-products"');
+    expect(page).not.toContain('id="product-catalog"');
+    expect(page).not.toContain("What every delivery includes.");
     expect(page).not.toMatch(/checkout\.stripe\.com|buy\.stripe\.com|payment_authorized:\s*true/);
   });
 });
