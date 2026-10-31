@@ -3,7 +3,7 @@ import {countryMentionFromTitle} from "./country-news-mentions-195.mjs";
 const languages=["fr","es","pt","de","ar","ru","zh","ja","ko","hi","bn","it","tr","vi","id","pl","nl","sv","no","da","fi","hu","ro","cs","el","bg","hr","fa","he","uk"];
 const normalize=s=>s.normalize("NFKC").toLocaleLowerCase("en").replace(/[^\p{L}\p{N}]+/gu," ").replace(/\s+/gu," ").trim();
 const cache=new WeakMap();
-export function privateOsintCountryMention(title,countries){
+export function privateOsintCountryMentions(title,countries){
  const base=countryMentionFromTitle(title,countries);
  let names=cache.get(countries);
  if(!names){
@@ -34,5 +34,10 @@ export function privateOsintCountryMention(title,countries){
  const matches=new Set(found.filter(n=>!found.some(m=>m.start<=n.start&&m.end>=n.end&&
   m.end-m.start>n.end-n.start)).map(n=>n.iso3));
  if(base)matches.add(base);
- return matches.size===1?[...matches][0]:null;
+ return [...matches].sort();
+}
+/** Single-country convenience API; never infer location from source alone. */
+export function privateOsintCountryMention(title,countries){
+ const matches=privateOsintCountryMentions(title,countries);
+ return matches.length===1?matches[0]:null;
 }
