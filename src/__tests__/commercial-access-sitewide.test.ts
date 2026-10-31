@@ -31,7 +31,7 @@ describe("commercial access is explained sitewide", () => {
     expect(schedule).toContain("GEOMACRO_PUBLIC_PRICING_GROUPS");
     expect(schedule).toContain("GEOMACRO_CAPABILITY_PRICING_VERSION");
     expect(schedule).toContain("without a second object charge");
-    expect(pricing).toContain("<CapabilityPriceSchedule />");
+    expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
     expect(pricing).not.toContain("Launch price for the first 20,000");
     expect(dataApi).not.toContain("Launch price for the first 20,000");
