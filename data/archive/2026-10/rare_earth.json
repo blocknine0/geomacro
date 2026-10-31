@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-31T12:36:17.687Z",
+  "updated_at": "2026-10-31T12:37:45.839Z",
   "signals": [
+    {
+      "id": "rare_earth-4671f284",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia",
+      "what_changed": "A monitored source feed reports: China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:38:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-744ba3de",
+      "category": "rare_earth",
+      "title": "Geomacro finds China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times",
+      "what_changed": "A monitored source feed reports: China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-2e6116a3",
       "category": "rare_earth",

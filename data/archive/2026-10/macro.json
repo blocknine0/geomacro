@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-10-31T12:36:17.687Z",
+  "updated_at": "2026-10-31T12:37:45.839Z",
   "signals": [
+    {
+      "id": "macro-17d0125c",
+      "category": "macro",
+      "title": "Geomacro finds China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia",
+      "what_changed": "A monitored source feed reports: China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:38:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-15ec37ff",
+      "category": "macro",
+      "title": "Geomacro finds China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times",
+      "what_changed": "A monitored source feed reports: China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a7ca2ca0",
       "category": "macro",

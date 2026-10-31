@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-10-31T12:36:17.687Z",
+  "checked_at": "2026-10-31T12:37:45.839Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-4671f284",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia",
+      "what_changed": "A monitored source feed reports: China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:38:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-744ba3de",
+      "category": "rare_earth",
+      "title": "Geomacro finds China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times",
+      "what_changed": "A monitored source feed reports: China reported sharp increases in gold, nickel and other strategic minerals; discovers huge zircon sand deposit in Xinjiang region: ministry - Global Times. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T10:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-2e6116a3",
       "category": "rare_earth",
@@ -4438,25 +4476,6 @@
       "severity": null
     },
     {
-      "id": "macro-f1a42584",
-      "category": "macro",
-      "title": "Geomacro finds Equinix forecast Q4 2026 total revenue growth of 12%-13% while raising full-year outlook",
-      "what_changed": "A monitored source feed reports: Equinix forecast Q4 2026 total revenue growth of 12%-13% while raising full-year outlook. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T02:11:13.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-a9e6bad8",
       "category": "geopolitics",
       "title": "Geomacro finds Chadchart rejected claims of flood-relief dispute - Bangkok Post",
@@ -4637,25 +4656,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-28T21:44:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-68c3ce7e",
-      "category": "geopolitics",
-      "title": "Geomacro finds India rejected laws affecting national sovereignty; votes at UN against US embargo on Cuba - ANI News",
-      "what_changed": "A monitored source feed reports: India rejected laws affecting national sovereignty; votes at UN against US embargo on Cuba - ANI News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-28T20:22:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
