@@ -66,7 +66,7 @@ export function LowBarrierPricing() {
               <h3 className="font-semibold">{pack.name} · {"$"}{pack.price_usd} USD</h3>
               <p className="mt-2 flex-1 text-sm">{pack.credits.toLocaleString("en-US")} credits, one time</p>
               <button type="button"
-                onClick={() => setSelection({
+                onClick={() => selectProduct({
                   id:pack.id,name:pack.name + " credit pack",amountUsd:pack.price_usd,
                   credits:pack.credits,kind:"one_time_pack",
                 })}
