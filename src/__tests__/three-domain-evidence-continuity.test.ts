@@ -86,7 +86,8 @@ describe("continuous three-category source observations backed by D1",()=>{
      heartbeats:hb});
    const body=await (await threeDomainEvidenceContinuity(f,NOW)).json();
    expect(body.all_categories_source_check_current).toBe(true);
-   expect(body.all_categories_have_observation).toBe(false);
+   // Historical open-data context remains present, but is not re-dated.
+   expect(body.all_categories_have_observation).toBe(true);
    for(const d of domains){
      const c=body.categories[d];
      expect(c.source_check_current).toBe(true);
