@@ -1,0 +1,27 @@
+name: Frontend Public Deployment Acceptance (Read Only)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'server/**'
+      - 'vite.config.ts'
+      - '.github/workflows/frontend-public-deployment-acceptance.yml'
+      - 'scripts/ops/check-frontend-public-deployment.py'
+  schedule:
+    - cron: '37 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-frontend-public-acceptance
+  cancel-in-progress: false
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect publicly served frontend and assets (no secrets, no payments)
+        run: python3 scripts/ops/check-frontend-public-deployment.py
