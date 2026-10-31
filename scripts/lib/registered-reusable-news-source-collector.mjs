@@ -26,7 +26,7 @@ const SOURCE_FETCH_CONCURRENCY=6;
 // discovery hints, not translation, an attributed country, or event proof.
 const TOPICS={
   geopolitics:/(?:\b(?:war|warfare|conflict|hostilities|invasion|sanctions?|trade disputes?|tariffs?|trade barriers?|export controls?|export bans?|ceasefire|airstrikes?|missiles?|drone strikes?|artillery|shelling|treaty|military|security|diploma\w*|peace|geopolitics?|refugees?|elections?|embargo|troop movements?|armed clashes?|border clashes?)\b|战争|停火|制裁|军事|袭击|حرب|وقف إطلاق النار|عقوبات|الهجوم|যুদ্ধ|নিষেধাজ্ঞা|युद्ध|प्रतिबंध|войн\w*|санкци\w*|перемири\w*|\bguerra\b|\balto el fuego\b)/iu,
-  macro:/(?:\b(?:inflation|deflation|monetary|central bank|interest rates?|policy rates?|rate cuts?|rate hikes?|fx|foreign exchange|GDP|currency|tariffs?|economic|financial stability|liquidity|bond yields?|fiscal|unemployment|trade|trade deficit|exchange rates?|consumer prices?|CPI|sovereign debt|gross domestic product)\b|通胀|通脹|利率|汇率|匯率|经济|經濟|التضخم|سعر الصرف|মুদ্রাস্ফীতি|বিনিময় হার|मुद्रास्फीति|महंगाई|инфляци\w*|\binflación\b|\binflação\b)/iu,
+  macro:/(?:\b(?:inflation|deflation|monetary|central bank|interest rates?|policy rates?|rate cuts?|rate hikes?|fx|foreign exchange|GDP|currency|tariffs?|economic|financial stability|liquidity|bond yields?|fiscal|unemployment|trade|trade deficit|exchange rates?|consumer prices?|employment cost index|wage costs?|CPI|sovereign debt|gross domestic product)\b|通胀|通脹|利率|汇率|匯率|经济|經濟|التضخم|سعر الصرف|মুদ্রাস্ফীতি|বিনিময় হার|मुद्रास्फीति|महंगाई|инфляци\w*|\binflación\b|\binflação\b)/iu,
   rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|uranium|mineral supply|refiner(?:y|ies)|mineral processing|permanent magnets?|neodymium|dysprosium)\b|稀土|关键矿产|關鍵礦產|锂|鋰|钴|鈷|التعدين|المعادن الحرجة|লিথিয়াম|বিরল মৃত্তিকা|लिथियम|दुर्लभ मृदा|литий|редкозем\w*|\bminerales críticos\b|\bminerais críticos\b)/iu,
 };
 
@@ -41,6 +41,18 @@ export const PRESIDENTIAL_ACTION_SOURCE_FEEDS=Object.freeze([
     categories:["geopolitics"],format:"rss",priority:true,officialDocument:true}),
   Object.freeze({id:"white_house_briefings_statements",url:"https://www.whitehouse.gov/briefings-statements/feed/",
     categories:["geopolitics","macro","rare_earth"],format:"rss",priority:false,officialDocument:false}),
+]);
+/** Curated independent US official publisher RSS. The EXISTING
+ * quota-governed 15-minute collector ingests these as nonpayable original
+ * metadata candidates only, NOT as a same-event or commercial-rights proof.
+ */
+export const CURATED_US_MACRO_PAIR_FEEDS=Object.freeze([
+ Object.freeze({id:"us_bls_eci_original_official",
+  url:"https://www.bls.gov/feed/eci.rss",
+  categories:["macro"],format:"rss",priority:true,officialDocument:false}),
+ Object.freeze({id:"us_fed_monetary_original_official",
+  url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
+  categories:["macro"],format:"rss",priority:true,officialDocument:false}),
 ]);
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const scalar=x=>typeof x==="string"?x:"";
@@ -92,6 +104,7 @@ export function registeredReusableNewsSources(){
     ...EXPANDED_OFFICIAL_SOURCES,
     ...PUBLIC_FEED_ROTATION.map(x=>({...x,categories:CATEGORY})),
     ...PRESIDENTIAL_ACTION_SOURCE_FEEDS,
+    ...CURATED_US_MACRO_PAIR_FEEDS,
   ];
   const map=new Map();
   for(const item of inputs){
