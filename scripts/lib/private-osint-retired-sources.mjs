@@ -4,17 +4,19 @@
  *
  * Four independent *read-only* 512-endpoint probes on 2026-10-30 at
  * 18:27, 20:36, 20:39 and 20:42 UTC were reconciled. Each of the 76
- * entries was denied, unavailable, malformed or otherwise unsupported in
+ * original entries was denied, unavailable, malformed or otherwise unsupported in
  * at least three probes; no healthy native-dated item was observed from
  * any of them in those checks. The presence of an item without a fresh
  * native clock is not a healthy original-source observation.
  *
  * Evidence: Actions 41106820853, 41124471216, 41124882797,
  * 41125059189 (artifact 'geomacro-private-osint-live-coverage-*').
- * These sources are not guaranteed irrecoverable upstream; retirement
+ * Additional 2026-10-31 PR #3268 live-probe evidence (run 41209335181)\n * classified private_priority_aus_ga_news UNAVAILABLE and\n * private_priority_iea_news DENIED; exclude both from future private polling.\n * These sources are not guaranteed irrecoverable upstream; retirement
  * means GeoMacro stops requesting them unless explicitly re-reviewed.
  */
 export const PRIVATE_OSINT_RETIRED_SOURCE_IDS=Object.freeze([
+  "private_priority_aus_ga_news",
+  "private_priority_iea_news",
   "private_expansion_au_industry_news",
   "private_expansion_australian_mining",
   "private_expansion_eiti_disclosures",
