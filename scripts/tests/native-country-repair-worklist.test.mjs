@@ -43,3 +43,17 @@ test("a previously healthy feed without a native news item cannot count as deliv
  assert.equal(r.observed_native_country_cells_this_tick,0);
  assert.equal(r.all_585_native_ingestion_verified,false);
 });
+
+test("observed native source item is not a verified stored D1 event-country cell",()=>{
+ const f=fixture();
+ f.country_category_source_coverage.cells[4].observed_private_items_this_tick=2;
+ const r=buildNativeCountryRepairWorklist(f);
+ assert.equal(r.observed_native_country_cells_this_tick,1);
+ assert.equal(r.all_585_native_ingestion_verified,false);
+ assert.equal(r.no_d1_reads_or_writes,true);
+ const item=r.priority_worklist.find(x=>x.country_iso3===f.country_category_source_coverage.cells[4].country_iso3
+   &&x.category===f.country_category_source_coverage.cells[4].category);
+ assert.equal(item.native_country_attributed_items_this_tick,2);
+ assert.equal(item.event_country_verified,false);
+ assert.equal(item.live_ingestion_585_verified,false);
+});

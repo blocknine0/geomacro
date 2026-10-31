@@ -8,7 +8,8 @@ import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
  phase2hQuestionMatchesArchived,phase2hQuestionDirectAnswer}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
- runPhase2hGovernedRawB2,phase2hAuthorizedArchiveWindow}
+ runPhase2hGovernedRawB2,phase2hAuthorizedArchiveWindow,
+ createPhase2hCanonicalD1}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
 import {runPhase2hPermanentAcceptance} from "../ops/phase2h-permanent-production-acceptance.mjs";
@@ -729,4 +730,53 @@ test("PERMANENT FOUNDER LOCK: every admitted raw original yields five-part priva
   assert.equal(JSON.stringify(r.analysis).includes(r.original.original_url),false);
   assert.equal(await validPrivateRawNews(r,now.getTime()),JSON.stringify(r));
  }
+});
+
+
+test("Phase2H pending raw D1 reads stay bounded below provider response limits",async()=>{
+ const reads=[];
+ const records=Array.from({length:300},(_,i)=>({
+   record_id:i.toString(16).padStart(64,"0"),category:"macro",
+   schema:"geomacro.phase2h.private-raw-observation.v1",
+   raw_sha256:"a".repeat(64),ingested_at:now.toISOString(),
+   commercial_rights_verified:false,commercial_delivery_authorized:false,
+ }));
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+   D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
+   CLOUDFLARE_API_TOKEN:"token".repeat(8)};
+ const fetchImpl=async(_url,init)=>{
+   const request=JSON.parse(init.body);
+   assert.equal(init.method,"POST");
+   assert.match(request.sql,/LIMIT \? OFFSET \?/u);
+   const [limit,offset]=request.params;
+   assert.ok(limit<=25);
+   reads.push([limit,offset]);
+   return Response.json({success:true,result:[{success:true,
+     results:records.slice(offset,offset+limit).map(r=>({raw_json:JSON.stringify(r)}))}]});
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ const result=await d1.readPending();
+ assert.equal(result.length,300);
+ assert.equal(reads.length,12);
+ assert.deepEqual(reads[0],[25,0]);
+ assert.deepEqual(reads.at(-1),[25,275]);
+ assert.equal(new Set(result.map(x=>x.record_id)).size,300);
+});
+test("Phase2H D1 provider failure downgrades page size once, then fails closed",async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+   D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
+   CLOUDFLARE_API_TOKEN:"token".repeat(8)};
+ const observed=[];
+ const fetchImpl=async(_url,init)=>{
+   const [limit,offset]=JSON.parse(init.body).params;
+   observed.push([limit,offset]);
+   if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
+   return Response.json({success:true,result:[{success:true,results:[]}]});
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ assert.deepEqual(await d1.readPending(),[]);
+ assert.deepEqual(observed,[[25,0],[10,0]]);
+ const failFetch=async()=>Response.json({success:false,result:[]});
+ await assert.rejects(()=>createPhase2hCanonicalD1({env,fetchImpl:failFetch}).readPending(),
+   /PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
 });

@@ -80,20 +80,56 @@ export function createPhase2hCanonicalD1({
   const doc=await response.json();
   if(!response.ok||doc.success!==true||!Array.isArray(doc.result)||
      doc.result.length!==1||doc.result[0]?.success===false||
-     !Array.isArray(doc.result[0]?.results))fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+     !Array.isArray(doc.result[0]?.results)){
+   // Only numeric HTTP/provider codes reach Actions logs. Never log SQL,
+   // private original JSON, request payload, access token or provider body.
+   const upstream=doc?.errors?.[0]?.code;
+   const safeCode=Number.isSafeInteger(upstream)&&upstream>=0&&upstream<=999999?
+     upstream:"REDACTED";
+   console.error("::warning::PHASE2H_RAW_D1_HTTP_"+response.status+"_CODE_"+safeCode);
+   fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+  }
   return doc.result[0];
  };
  return {
   async readPending(){
-   // Oldest unarchived first: no 72h cutoff. Newer arrivals are still
-   // validated and ingested separately; this drains the real backlog.
-   // Existing (b2_object_sha256,first_ingested_at,record_id) index bounds
-   // scans. Never fetch already archived raw_json again.
-   const r=await sql("SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT 300");
-   return r.results.map(x=>{
-    if(typeof x.raw_json!=="string"||x.raw_json.length>12000)fail("D1_ROW_INVALID");
-    return JSON.parse(x.raw_json);
-   });
+   // A single 300-row raw_json D1 API response can exceed Cloudflare provider
+   // response-size limits even when the preceding COUNT(*) census succeeds.
+   // Read at most 300 pending originals in bounded, index-ordered pages.
+   // OFFSET stays stable here: no metadata mutation occurs until ALL rows are
+   // read and independently verified by B2. Never double-read a raw body.
+   const rows=[];
+   let pageSize=25,attempts=0;
+   while(rows.length<300){
+    if(++attempts>42)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
+    let result;
+    try{
+     result=await sql(
+      "SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ? OFFSET ?",
+      [Math.min(pageSize,300-rows.length),rows.length]
+     );
+    }catch(error){
+     // At most one downgrade to 10 rows. The unchanged quota governor still
+     // controls the archive; this never overrides provider admission.
+     if(pageSize===25&&
+        error instanceof Error&&
+        error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
+      pageSize=10;
+      continue;
+     }
+     throw error;
+    }
+    const page=result.results;
+    if(page.length>pageSize)fail("D1_PAGE_SIZE_INVALID");
+    for(const item of page){
+     if(typeof item.raw_json!=="string"||item.raw_json.length>12000)
+      fail("D1_ROW_INVALID");
+     try{rows.push(JSON.parse(item.raw_json))}
+     catch{fail("D1_JSON_INVALID")}
+    }
+    if(page.length<pageSize)break;
+   }
+   return rows;
   },
   async markArchived(items,objectSha,now){
    const ids=items.map(x=>x.record_id);
