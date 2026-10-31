@@ -266,8 +266,21 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   console.log(JSON.stringify(r));
  }catch(error){
   const msg=String(error?.message??"");
-  console.error("::error::"+(/^PHASE2H_(?:PERMANENT|QUESTION_CHAIN|RAW_B2)_[A-Z0-9_]+$/u.test(msg)?
-    msg:"PHASE2H_PERMANENT_PRODUCTION_ACCEPTANCE_UNVERIFIED"));
+  const code=/^PHASE2H_(?:PERMANENT|QUESTION_CHAIN|RAW_B2)_[A-Z0-9_]+$/u.test(msg)?
+    msg:"PHASE2H_PERMANENT_PRODUCTION_ACCEPTANCE_UNVERIFIED";
+  // A checked-in offline specimen MUST NOT survive as a false live proof.
+  // Persist a redacted explicit negative receipt for the real failing run.
+  writeSummary({
+   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
+   status:"PRODUCTION_B2_ARCHIVE_NOT_VERIFIED",
+   verified_at:new Date().toISOString(),
+   production_main_sha:process.env.GITHUB_SHA??null,
+   reason:code,incremental_batch_proof_pass:false,
+   actual_b2_readback_verified:false,archived_batches_this_run:0,
+   entire_admitted_raw_backlog_verified:false,
+   commercial_rights_verified:false,payments:0,
+  });
+  console.error("::error::"+code);
   process.exitCode=3;
  }
 }
