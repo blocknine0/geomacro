@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {registeredReusableNewsSources,selectRegisteredNewsSources,
- collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS} from "./registered-reusable-news-source-collector.mjs";
+ collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS,CURATED_US_MACRO_PAIR_FEEDS} from "./registered-reusable-news-source-collector.mjs";
 
 const when=new Date("2026-10-25T00:00:00.000Z");
 const feed="<rss version=\"2.0\"><channel>"+
@@ -31,7 +31,7 @@ test("registry is bounded, HTTPS pinned, includes operator news and all three ca
  }
  assert.ok(registry.every(x=>x.url.startsWith("https://")));
  const selected=selectRegisteredNewsSources(when,registry,4);
- assert.ok(selected.length<=14);
+ assert.ok(selected.length<=16);
  assert.ok(selected.every(x=>registry.some(s=>s.id===x.id)));
 });
 test("native RSS item dates produce fixed-schema noncommercial-safe factual JSON",async()=>{
@@ -119,7 +119,7 @@ test("original US presidential publication lanes are pinned without evicting cou
    assert.ok(selected.some(s=>s.id==="white_house_presidential_actions"),"White House original actions: "+minute);
    assert.ok(selected.some(s=>s.id==="federal_register_executive_orders"),"Federal Register: "+minute);
    assert.equal(new Set(selected.map(s=>s.url)).size,selected.length);
-   assert.ok(selected.length<=26);
+   assert.ok(selected.length<=28);
  }
 });
 test("native-dated presidential actions are privately observed without requiring a war keyword",async()=>{
@@ -225,4 +225,36 @@ test("WTO/BIS/Australia original verticals produce separate native-clock non-pay
   &&x.delivery.raw_article_included===false
   &&x.source.original_published_at==="2026-10-29T11:55:00.000Z"));
  for(const entry of requested.values())assert.ok(!JSON.stringify(collected).includes(entry.title));
+});
+
+
+test("two real pinned US macro original feeders join the existing rotating D1 collector without granting commercial rights",async()=>{
+ const registry=registeredReusableNewsSources();
+ assert.equal(CURATED_US_MACRO_PAIR_FEEDS.length,2);
+ for(const x of CURATED_US_MACRO_PAIR_FEEDS){
+   assert.ok(registry.some(s=>s.id===x.id&&s.url===x.url&&
+      s.categories.includes("macro")&&s.priority===true));
+ }
+ for(const minute of [0,15,30,45]){
+   const selected=selectRegisteredNewsSources(new Date(Date.parse("2026-10-27T12:00:00Z")+minute*60000));
+   assert.equal(selected.filter(s=>CURATED_US_MACRO_PAIR_FEEDS.some(c=>c.url===s.url)).length,2);
+ }
+ const now=new Date("2026-10-30T09:00:00Z");
+ const byUrl=new Map([
+  [CURATED_US_MACRO_PAIR_FEEDS[0].url,
+   "Employment Cost Index update published by US BLS official agency"],
+  [CURATED_US_MACRO_PAIR_FEEDS[1].url,
+   "Federal Reserve monetary policy and inflation update announcement"],
+ ]);
+ const results=await collectRegisteredReusableNews({
+  now,registry:registry.filter(s=>byUrl.has(s.url)),normalize,
+  resolveCountry:()=>null,perCategory:8,
+  fetchImpl:async url=>response("<rss><channel><item><title>"+
+    byUrl.get(url)+"</title><pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate>"+
+    "</item></channel></rss>"),
+ });
+ assert.equal(results.items.length,2);
+ assert.ok(results.items.every(i=>i.usage_rights.commercial_reuse_authorized===false));
+ assert.equal(results.summary.source_rights_commercial_authorized,false);
+ assert.equal(results.summary.paid_publication_authorized,false);
 });
