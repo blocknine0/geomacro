@@ -67,7 +67,7 @@ export function evaluateProductionSourceContinuity(response,{now=new Date()}={})
      s.native_news_event_count_72h>0?"SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NEWS_UNSCORED":
        "SOURCE_AND_ORIGINAL_PUBLISHER_CURRENT_NO_VERIFIED_NEW_EVENT";
    if(!current)failures.push(category+":SOURCE_CHECK_STALE_OR_MISSING");
-   if(!monitorCurrent)failures.push(category+":SOURCE_MONITOR_STALE_OR_DEGRADED");
+   if(!monitorCurrent)failures.push(category+":ORIGINAL_PUBLISHER_PULSE_STALE_OR_DEGRADED");
    if(!publisherCurrent)publisherPairWarnings.push(category);
    categories[category]={
      status:state,source_check_age_minutes:age,
