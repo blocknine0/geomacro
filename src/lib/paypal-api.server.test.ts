@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  configuredPayPal, paypalAccessToken, paypalPublicConnectionStatus,
+  configuredPayPal, paypalPublicConnectionStatus,
   verifyPayPalWebhook, GEOMACRO_PAYPAL_FUNDS_CAPTURE_ENABLED,
 } from "./paypal-api.server";
 import { GEOMACRO_PAYPAL_PRODUCT_CATALOG, paypalCanCaptureFunds } from "./paypal-checkout-readiness";
