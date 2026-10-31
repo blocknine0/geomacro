@@ -33,7 +33,12 @@ const NOW = new Date("2026-10-24T13:00:00.000Z"), NATIVE = "2026-10-23T00:00:00.
 const publishedResponse = JSON.parse(readFileSync("schemas/adaptive-intelligence-response-v1.schema.json", "utf8"));
 const selectedModules = ["macro_monetary", "external_fx", "sovereign_fiscal", "critical_minerals"];
 function observation(country: string, module: string, index: number): StructuralObservation {
-  return { observation_id: `${country}-${module}-${index}`, source_id: "private_test_fixture_only", source_record_id: null,
+  // Offline fixtures use an explicitly allowed source *identity* for the
+  // new sales-scope contract; the mocked rights/data do not certify anything.
+  // Independent production issuer/rights checks have separate tests.
+  const source_id = module === "critical_minerals" ? "usgs_mcs_2026_cc0_582a0aa231ae"
+    : "world_bank_indicators";
+  return { observation_id: `${country}-${module}-${index}`, source_id, source_record_id: null,
     dimension: module, country_iso3: country, partner_country_iso3: null, observed_at: NATIVE, published_at: NATIVE,
     metric: "synthetic_derived_metric", value_numeric: index + 1, value_text: null, unit: "index",
     event_type: null, signal_type: null, source_url: "https://private.invalid/not-customer-data", parser_version: "test-only",
