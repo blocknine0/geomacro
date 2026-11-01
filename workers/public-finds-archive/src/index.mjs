@@ -51,7 +51,7 @@ export function checkDailyPublicOfficialCohort(daily,latest,now=Date.now()){
       typeof signal.title!=="string"||!signal.title.startsWith("Geomacro finds ")||
       !Array.isArray(signal.sources_credited)||signal.sources_credited.length>2||
       signal.sources_credited.some(c=>typeof c!=="string"||c.length>230||
-        /https?:\\/\\/|www\\.|[<>]/iu.test(c))||
+        c.includes("://")||c.includes("www.")||/[<>]/u.test(c))||
       !["exact","day"].includes(signal.date_precision))return false;
    const original=signal.date_precision==="day"
       ?String(signal.published_at)+"T00:00:00.000Z":String(signal.published_at);
