@@ -76,7 +76,15 @@ export function createPhase2hCanonicalD1({
  const sql=async(query,params=[])=>{
   const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
    headers:{"Authorization":"Bearer "+token,"Content-Type":"application/json"},
-   body:JSON.stringify({sql:query,params}),signal:AbortSignal.timeout(15000)});
+   // Cloudflare D1 REST /query expects params as string[], unlike Worker
+   // D1 .bind(). Keep placeholders and never interpolate source SQL.
+   // Numeric LIMIT/OFFSET bindings caused provider rejection (HTTP 400/7500);
+   // the empty-params category census was unaffected.
+   body:JSON.stringify({sql:query,params:params.map(value=>{
+    if(typeof value==="string")return value;
+    if(Number.isSafeInteger(value)&&value>=0)return String(value);
+    fail("CANONICAL_D1_REST_BINDING_INVALID");
+   })}),signal:AbortSignal.timeout(15000)});
   const doc=await response.json();
   if(!response.ok||doc.success!==true||!Array.isArray(doc.result)||
      doc.result.length!==1||doc.result[0]?.success===false||
