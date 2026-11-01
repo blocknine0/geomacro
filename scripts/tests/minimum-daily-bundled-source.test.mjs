@@ -12,19 +12,19 @@ const quota=(when,read,written)=>({
  remaining_rows_read:Math.max(0,5_000_000-read),
  remaining_rows_written:Math.max(0,100_000-written),
 });
-test("minimum Free D1 account plan reserves all three bounded 10-minute D1 producers without extra five-minute source writes",()=>{
+test("minimum Free D1 account plan reserves all three bounded 15-minute D1 producers without extra five-minute source writes",()=>{
  const at=new Date("2026-10-31T00:00:00.000Z"),snapshot=quota(at,0,0);
  const plan=planD1BundledWork(snapshot,{now:at});
  const budget=plan.source_intake_budget_to_utc_reset;
  assert.equal(plan.source_intake,true);
- assert.equal(plan.source_intake_interval_minutes,10);
- assert.equal(plan.source_intake_max_new_rows,3);
+ assert.equal(plan.source_intake_interval_minutes,15);
+ assert.equal(plan.source_intake_max_new_rows,5);
  assert.equal(plan.minimum_daily_bundled_source_admitted,true);
  assert.equal(plan.minimum_daily_bundled_source_policy.no_paid_capacity,true);
- assert.equal(budget.remaining_source_slots,144);
- assert.equal(budget.rows_read,1482400);
- assert.equal(budget.rows_written,40016);
- assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.maximum_original_records_per_slot,3);
+ assert.equal(budget.remaining_source_slots,96);
+ assert.equal(budget.rows_read,1021600);
+ assert.equal(budget.rows_written,36560);
+ assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.maximum_original_records_per_slot,5);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.producers_per_slot,3);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.expected_categories,3);
  assert.ok(budget.rows_read+PREDGE_D1_FREE_HEADROOM.rows_read+750000<
@@ -36,13 +36,13 @@ test("minimum Free D1 account plan reserves all three bounded 10-minute D1 produ
 });
 test("strict account-wide Free reserve leaves PREDGE and critical capacity untouched",()=>{
  const at=new Date("2026-10-31T23:45:00.000Z");
- const readBudget=119200,writeBudget=2528;
+ const readBudget=109600,writeBudget=2360;
  const exactRead=quota(at,5_000_000-(1_250_000+readBudget),0);
  const exactWrite=quota(at,0,100_000-(23_000+writeBudget));
  assert.equal(planSourceIntake(exactRead,at),null);
  assert.equal(planSourceIntake(exactWrite,at),null);
- assert.equal(planSourceIntake(quota(at,5_000_000-(1_250_000+readBudget+1),0),at)?.max_new_rows,3);
- assert.equal(planSourceIntake(quota(at,0,100_000-(23_000+writeBudget+1)),at)?.interval_minutes,10);
+ assert.equal(planSourceIntake(quota(at,5_000_000-(1_250_000+readBudget+1),0),at)?.max_new_rows,5);
+ assert.equal(planSourceIntake(quota(at,0,100_000-(23_000+writeBudget+1)),at)?.interval_minutes,15);
  assert.equal(D1_BUNDLE_LANES.critical.read_reserve,1_250_000);
  assert.equal(D1_BUNDLE_LANES.critical.write_reserve,23_000);
 });
@@ -63,7 +63,7 @@ test("daily budget recalculates only from true UTC time and never admits unknown
  assert.equal(planSourceIntake({},at),null);
  assert.equal(planD1BundledWork({...quota(at,1_000_000,1_000),day_utc:"2026-10-30"},{now:at}).source_intake,false);
  const admitted=planD1BundledWork(quota(at,1_000_000,1_000),{now:at});
- assert.equal(admitted.source_intake_budget_to_utc_reset.remaining_source_slots,72);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,791200);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,21008);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.remaining_source_slots,48);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,560800);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,19280);
 });
