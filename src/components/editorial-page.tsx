@@ -27,7 +27,15 @@ export function EditorialPage({
         {items.map((item, i) => (
           <section key={item.title} className="bg-background p-6 sm:p-8">
             <p className="font-mono text-xs text-primary">0{i + 1}</p>
-            <h2 className="mt-4 text-xl font-semibold">{item.title}</h2>
+            <h2 className="mt-4 text-xl font-semibold">
+              {item.href?.startsWith("/") ? (
+                <Link to={item.href as "/intelligence"} className="gm-heading-link group inline-flex items-center gap-2">
+                  {item.title}<ArrowUpRight aria-hidden="true" className="h-4 w-4 shrink-0 text-primary opacity-60 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                </Link>
+              ) : item.href ? (
+                <a href={item.href} className="gm-heading-link">{item.title}</a>
+              ) : item.title}
+            </h2>
             <p className="mt-3 max-w-xl text-sm leading-7 text-muted-foreground">{item.text}</p>
             {item.href ? (
               <a href={item.href} className="gm-text-link mt-5">
