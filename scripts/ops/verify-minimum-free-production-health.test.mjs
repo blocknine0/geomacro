@@ -112,6 +112,9 @@ test("real published older source is equivalent only for a trusted exact-head op
   {filename:"scripts/ops/verify-public-intelligence-browser-freshness.mjs",status:"modified"},
   // Exact source-only registered collector quota module is not used by website SSR.
   {filename:"scripts/lib/phase2h-registered-private-quota.mjs",status:"added"},
+   // Same-sweep source metadata handoff is used only by the protected
+   // GitHub Actions publisher, never by the deployed website bundle.
+   {filename:"scripts/lib/source-only-website-handoff.mjs",status:"added"},
   {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
   {filename:"src/__tests__/five-minute-original-news-fastlane.test.ts",status:"modified"},
   // Tests do not change published behavior; a server route module does.
@@ -132,7 +135,7 @@ test("real published older source is equivalent only for a trusted exact-head op
  assert.equal(publicResult.website_parity_mode,"VERIFIED_NO_WEBSITE_SOURCE_CHANGES");
  assert.equal(publicResult.paid_delivery_authorized,false);
  assert.equal(publicResult.legacy_signed_hot_products_verified,false);
- for(const filename of ["src/routes/intelligence.tsx","public/index.html","src/lib/free-derived-runtime.ts","src/lib/free-derived-deep-health.server.ts",
+ for(const filename of ["scripts/lib/source-only-website-handoff-extra.mjs","scripts/lib/private-osint-website-bridge.mjs","src/routes/intelligence.tsx","public/index.html","src/lib/free-derived-runtime.ts","src/lib/free-derived-deep-health.server.ts",
     "workers/control-plane/src/index.mjs","lib/risk.js",
     "scripts/lib/global-official-release-feeds.mjs","src/__tests__/runtime.ts",
     "src/__tests__/../../routes/intelligence.test.ts","package-lock.json",
