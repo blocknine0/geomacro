@@ -33,7 +33,7 @@ export async function customerBody(request:Request):Promise<Record<string,unknow
 }
 type WorkerResult={ok:boolean;code?:string;user?:{id:string;email:string};session_token?:string;max_age?:number;[key:string]:unknown};
 export async function callCustomerWorker(request:Request,action:string,payload:Record<string,unknown>={}):Promise<WorkerResult>{
- if(!/^(otp-start|otp-verify|session|account|key-create|key-revoke|logout)$/.test(action))throw new CustomerError(400,"CUSTOMER_ACTION_INVALID");
+ if(!/^(otp-start|otp-verify|session|account|key-create|key-revoke|logout|paid-authorize|paid-debit)$/.test(action))throw new CustomerError(400,"CUSTOMER_ACTION_INVALID");
  // Read protected configuration per request. There is deliberately no retired
  // Auth/PostgREST fallback, default URL, or generic control-plane token fallback.
  const raw=process.env.GEOMACRO_CUSTOMER_WORKER_URL??"",token=process.env.GEOMACRO_CUSTOMER_SSR_TOKEN??"";
