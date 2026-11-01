@@ -22,16 +22,16 @@ export function createD1Ledger(db,{leaseSeconds=120}={}) {
       const stale=new Date(Date.parse(a.created_at)-leaseSeconds*1000).toISOString();
       const owned=await db.prepare("UPDATE gm_rc_requests SET status='CLAIMED',claimed_at=? WHERE tenant_id=? AND request_id=? AND request_hash=? AND (status IN ('PENDING','FAILED_RETRYABLE') OR (status='CLAIMED' AND claimed_at<?)) RETURNING request_id")
         .bind(a.created_at,a.tenant_id,a.request_id,a.request_hash,stale).first();
-      return {state:owned?"CLAIMED":"IN_PROGRESS"};
+      return owned?{state:"CLAIMED",claim_token:a.created_at}:{state:"IN_PROGRESS"};
     },
     async complete(a) {
-      const updated=await db.prepare("UPDATE gm_rc_requests SET status='DELIVERED',response_json=?,verdict_id=?,delivered_at=? WHERE tenant_id=? AND request_id=? AND request_hash=? AND status='CLAIMED' RETURNING request_id")
-        .bind(JSON.stringify(a.response),a.verdict_id,a.delivered_at,a.tenant_id,a.request_id,a.request_hash).first();
+      const updated=await db.prepare("UPDATE gm_rc_requests SET status='DELIVERED',response_json=?,verdict_id=?,delivered_at=? WHERE tenant_id=? AND request_id=? AND request_hash=? AND status='CLAIMED' AND claimed_at=? RETURNING request_id")
+        .bind(JSON.stringify(a.response),a.verdict_id,a.delivered_at,a.tenant_id,a.request_id,a.request_hash,a.claim_token).first();
       return Boolean(updated);
     },
     async fail(a) {
-      await db.prepare("UPDATE gm_rc_requests SET status='FAILED_RETRYABLE' WHERE tenant_id=? AND request_id=? AND request_hash=? AND status='CLAIMED'")
-        .bind(a.tenant_id,a.request_id,a.request_hash).run();
+      await db.prepare("UPDATE gm_rc_requests SET status='FAILED_RETRYABLE' WHERE tenant_id=? AND request_id=? AND request_hash=? AND status='CLAIMED' AND claimed_at=?")
+        .bind(a.tenant_id,a.request_id,a.request_hash,a.claim_token).run();
     },
     // This is an audit state transition, NOT a money-moving operation.
     // External settlement recorder MUST independently verify actual onchain/PayPal finality.
