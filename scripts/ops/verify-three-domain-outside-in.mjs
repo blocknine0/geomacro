@@ -97,6 +97,8 @@ export function verifyThreeDomainLivePublication({
   result[category]={
    static_72h:domain.archive.length,public_d1_rows:domain.journal.length,
    matching_public_d1_ids:matching.length,website_rendered_matching_archive:rendered.length,
+   missing_website_derived_ids:domain.archive.filter(s=>!rendered.includes(s))
+    .map(s=>s.id).slice(0,10),
    official_derived:domain.official,unverified_osint:domain.osint,
    newest_original:domain.archive.map(x=>x.published_at).sort().at(-1)??null
   };
