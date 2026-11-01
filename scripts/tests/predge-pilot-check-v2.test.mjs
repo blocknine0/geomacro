@@ -97,7 +97,7 @@ test("signed format and canonical-byte consistency reject an unpinned signer",as
   forged.integrity.payload_hash);
  await assert.rejects(verifySignedPilotCheck(forged,{now:NOW}),/PREDGE_PILOT_INVALID_SIGNATURE/);
  const changed=structuredClone(forged);
- changed.risk_gate.news_context.items_by_category.rare_earth[0].headline="TAMPERED";
+ changed.risk_gate.news_context.items_by_category.macro[0].headline="TAMPERED";
  await assert.rejects(verifySignedPilotCheck(changed,{now:NOW}),/PREDGE_PILOT_HASH_MISMATCH/);
  await assert.rejects(verifySignedPilotCheck(forged,{now:NOW,
   registry:{"geomacro-risk-2026-03":{status:"retired",public_key_spki_b64:"malicious"}}}),
