@@ -6,13 +6,14 @@ import {handleCustomerRuntime,customerHmac,CUSTOMER_KEY_GATE} from '../../worker
 
 function fixture(){
  const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');
- for(const name of ['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql','0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql','0094_customer_login_runtime.sql'])
+ for(const name of ['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql','0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql','0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql'])
   sql.exec(readFileSync('workers/control-plane/migrations/'+name,'utf8'));
  const prepare=q=>({bind(...args){return {q,args,first:async()=>sql.prepare(q).get(...args)??null,
   all:async()=>({results:sql.prepare(q).all(...args)}),run:async()=>({meta:{changes:Number(sql.prepare(q).run(...args).changes)}})};}});
  const db={prepare,async batch(statements){sql.exec('BEGIN IMMEDIATE');try{const results=statements.map(s=>({meta:{changes:Number(sql.prepare(s.q).run(...s.args).changes)}}));sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
  const env={DB:db,GEOMACRO_CUSTOMER_SSR_TOKEN:'test-bridge-'.repeat(8),GEOMACRO_CUSTOMER_AUTH_PEPPER:'test-pepper-'.repeat(8),
-  GEOMACRO_CUSTOMER_ALLOWED_ORIGINS:'https://geomacro.live',EMAIL_PROVIDER_API_KEY:'fake-provider-only',EMAIL_FROM_ADDRESS:'auth@geomacro.live'};
+  GEOMACRO_CUSTOMER_ALLOWED_ORIGINS:'https://geomacro.live',EMAIL_PROVIDER_API_KEY:'fake-provider-only',EMAIL_FROM_ADDRESS:'auth@geomacro.live',
+  GEOMACRO_API_CREDENTIAL_PEPPER:'local-fixture-credential-pepper-that-is-long-and-not-production'};
  let clock=Date.now(),otp;let calls=0;
  const options={now:()=>clock,fetchImpl:async(_url,init)=>{calls++;otp=JSON.parse(init.body).text.match(/code is (\d{6})/)[1];return Response.json({id:'fake-accepted-id'});}};
  const post=async(action,body={},extra={})=>{
@@ -93,6 +94,52 @@ test('session-derived ownership, nonpayable account, disabled concurrent key min
  assert.equal((await f.post('logout',{session_token:a.session_token})).status,200);
  assert.equal((await f.post('account',{session_token:a.session_token})).status,401);
  assert.equal((await f.post('session',{session_token:b.session_token})).status,200);f.sql.close();
+});
+test('canonical release gate: funded D1 receipt, account view, one-time key, ownership and revoke',async()=>{
+ const f=fixture();
+ await f.start('a@example.com');const a=await f.verify('a@example.com');
+ await f.start('b@example.com');const b=await f.verify('b@example.com');
+ const locked=await f.post('key-create',{session_token:a.session_token});
+ assert.equal(locked.status,503);assert.equal(locked.code,CUSTOMER_KEY_GATE);
+ f.env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
+ const noFunds=await f.post('key-create',{session_token:a.session_token});
+ assert.equal(noFunds.status,403);assert.equal(noFunds.code,'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED');
+ const now=new Date(f.options.now()).toISOString(),start=new Date(f.options.now()-60000).toISOString();
+ const end=new Date(f.options.now()+86400000).toISOString();
+ // Synthetic provider evidence exists only in this isolated in-memory SQLite.
+ f.sql.prepare(`INSERT INTO customer_payment_receipts
+   (receipt_id,user_id,provider,environment,provider_event_id,sku,amount_minor_units,
+   currency,settled_at,verified_at,verification_sha256)
+   VALUES('test-receipt-a',?,'paypal','live','test-provider-event-a','starter_dev',900,'USD',?,?,?)`)
+   .run(a.user.id,now,now,'f'.repeat(64));
+ f.sql.prepare(`INSERT INTO customer_entitlement_grants
+   (grant_id,user_id,receipt_id,tier,contract_version,starts_at,expires_at,status)
+   VALUES('test-grant-a',?,'test-receipt-a','starter_dev','credits-v1.1.0',?,?,'active')`)
+   .run(a.user.id,start,end);
+ f.sql.prepare(`INSERT INTO credit_ledger(event_id,user_id,event_type,delta_credits,receipt_id)
+   VALUES('test-funding-event-a',?,'funding',1000,'test-receipt-a')`).run(a.user.id);
+ const funded=await f.post('account',{session_token:a.session_token});
+ assert.equal(funded.status,200);assert.equal(funded.credits.remaining,1000);
+ assert.equal(funded.credits.status,'active');assert.equal(funded.key_issuance_enabled,true);
+ const other=await f.post('account',{session_token:b.session_token});
+ assert.equal(other.credits,null);assert.equal(other.key_issuance_enabled,false);
+ const bad=await f.post('key-create',{session_token:a.session_token,user_id:b.user.id});
+ assert.equal(bad.status,400);assert.equal(bad.code,'CUSTOMER_KEY_CREATE_FIELDS_INVALID');
+ const issued=await f.post('key-create',{session_token:a.session_token});
+ assert.equal(issued.status,200);assert.match(issued.api_key,/^gmk_live_[0-9a-f]{64}$/);
+ assert.equal(issued.reveal_once,true);
+ const saved=f.sql.prepare('SELECT user_id,hmac_sha256 FROM api_keys WHERE key_id=?').get(issued.key_id);
+ assert.equal(saved.user_id,a.user.id);assert.notEqual(saved.hmac_sha256,issued.api_key);
+ const repeat=await f.post('key-create',{session_token:a.session_token});
+ assert.equal(repeat.status,403,'SQLite cooldown protects repeated requests');
+ assert.equal(f.sql.prepare('SELECT COUNT(*) AS n FROM api_keys').get().n,1);
+ const cross=await f.post('key-revoke',{session_token:b.session_token,key_id:issued.key_id});
+ assert.equal(cross.status,404);
+ const revoked=await f.post('key-revoke',{session_token:a.session_token,key_id:issued.key_id});
+ assert.equal(revoked.revoked,true);
+ const after=await f.post('account',{session_token:a.session_token});
+ assert.equal(after.keys[0].enabled,false);
+ f.sql.close();
 });
 test('existing D1 key triggers enforce unverified, zero funds, 60s cooldown and max three',async()=>{
  const f=fixture(),sql=f.sql,user='offline-funded-user-001',now=new Date().toISOString(),end=new Date(Date.now()+86400000).toISOString();
