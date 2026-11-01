@@ -6,7 +6,7 @@ export async function readCustomerAccount(request:Request){
  return callCustomerWorker(request,"account",{session_token:customerSessionToken(request)});
 }
 export async function issueCustomerKey(request:Request){
- // Worker intentionally returns CUSTOMER_D1_COMMERCIAL_AUTH_NOT_MIGRATED.
+ // Worker mints keys only after canonical paid-runtime acceptance and verified funded grant.
  return callCustomerWorker(request,"key-create",{session_token:customerSessionToken(request)});
 }
 export async function revokeCustomerKey(request:Request,keyId:string){
