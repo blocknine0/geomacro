@@ -9,8 +9,15 @@ on:
         required: true
   schedule:
     - cron: "11,41 * * * *"
+  # Independent publisher completion wakes signer if GitHub drops its cron.
+  # Signed recency and 48/day cap prevent two publishers per 30m slot.
+  workflow_run:
+    workflows: ["Three-Domain 30-Minute Original Publisher Pulse"]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: predge-signed-pilot-context-production
   cancel-in-progress: false
@@ -20,7 +27,13 @@ jobs:
     # Scheduled execution requires an explicit opt-in: GitHub variable YES or
     # a protected production secret with the exact recurring approval phrase.
     # Never gate on vars at job-if evaluation (environment scope not yet loaded).
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 5
@@ -46,7 +59,7 @@ jobs:
             fi
             echo "enabled=true" >> "$GITHUB_OUTPUT"
             echo "PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED"
-          elif test "$GITHUB_EVENT_NAME" = "schedule" &&
+          elif { test "$GITHUB_EVENT_NAME" = "schedule" || test "$GITHUB_EVENT_NAME" = "workflow_run"; } &&
             { test "$PREVIEW_ENABLED" = "YES" ||
               test "$RECURRING_APPROVAL" = "PREDGE_V2_RECURRING_NO_FUNDS_APPROVED"; }; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
@@ -63,8 +76,14 @@ jobs:
         if: steps.opt_in.outputs.enabled == 'true'
         with:
           node-version: "24"
-      - name: Derive owner-only control-plane token without printing it
+      - name: Verify prior signed-readback freshness and remaining daily quota
         if: steps.opt_in.outputs.enabled == 'true'
+        id: cadence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/check-predge-signed-refresh-cadence.mjs
+      - name: Derive owner-only control-plane token without printing it
+        if: steps.opt_in.outputs.enabled == 'true' && steps.cadence.outputs.should_run == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +94,7 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "CONTROL_PLANE_TOKEN=$TOKEN" >> "$GITHUB_ENV"
       - name: Generate, locally verify, publish and independently read back real signed envelope
-        if: steps.opt_in.outputs.enabled == 'true'
+        if: steps.opt_in.outputs.enabled == 'true' && steps.cadence.outputs.should_run == 'true'
         shell: bash
         run: |
           set -euo pipefail
