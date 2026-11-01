@@ -41,7 +41,16 @@ test('SQLite refresh changes only editorial content and preserves source and fir
   topic:'monetary policy',geography:'United States',development_type:'monetary policy',
   published_at:'2026-10-22T10:00:00.000Z',date_precision:'exact',observed_release_count:1,
   sources_credited:[],status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null};
- const env={DB:{prepare:sql=>({run:async()=>{captured.push({sql,args:[]});return {success:true};},bind:(...args)=>({sql,args,run:async()=>{captured.push({sql,args});return {success:true};}})}),
+ const env={DB:{prepare:sql=>({run:async()=>{captured.push({sql,args:[]});return {success:true};},bind:(...args)=>({
+    sql,args,run:async()=>{captured.push({sql,args});return {success:true};},
+    all:async()=>{
+      if(!sql.startsWith('SELECT id,category,published_at,date_precision,story_json '))
+        throw Error('UNEXPECTED_CANONICAL_READBACK_SQL');
+      return {results:[{id:revised.id,category:revised.category,
+        published_at:revised.published_at,date_precision:revised.date_precision,
+        story_json:JSON.stringify(revised)}]};
+    },
+  })}),
   batch:async stmts=>{captured.push(...stmts);return stmts.map(()=>({success:true}));}}};
  const revised={...base,title:'Geomacro finds Federal Reserve cut interest rates from 5.50% to 5.25%',
   what_changed:'Federal Reserve cut interest rates from 5.50% to 5.25%.'};

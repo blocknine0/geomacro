@@ -16,6 +16,8 @@ on:
       - "src/__tests__/public-derived-news-client.test.ts"
       - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
       - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
+      - "scripts/lib/derived-news-immutable-id-admission.mjs"
+      - "scripts/tests/derived-news-immutable-id-admission.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/ops/phase2h-verify-private-question-delivery.mjs"
@@ -61,6 +63,8 @@ on:
       - "src/__tests__/public-derived-news-client.test.ts"
       - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
       - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
+      - "scripts/lib/derived-news-immutable-id-admission.mjs"
+      - "scripts/tests/derived-news-immutable-id-admission.test.mjs"
       - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
@@ -162,6 +166,7 @@ jobs:
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
           node --test scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs
+          node --test scripts/tests/derived-news-immutable-id-admission.test.mjs
           node --test scripts/tests/phase2g-canonical-origin-contract.test.mjs
           node --test scripts/tests/phase2h-raw-news.test.mjs
           node --check scripts/ops/phase2h-verify-private-question-delivery.mjs

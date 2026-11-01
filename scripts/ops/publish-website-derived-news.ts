@@ -9,6 +9,7 @@ import { createHmac } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.mjs";
 import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
+import {partitionCanonicalDerivedCandidates} from "../lib/derived-news-immutable-id-admission.mjs";
 import {reconcileAcknowledgedDerivedNews} from "../lib/phase2g-per-id-d1-reconciliation.mjs";
 import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
@@ -115,10 +116,39 @@ for (const category of categories) {
     // eligible release is processed, with 40-row chunks under the control
     // plane's strict 64KiB authenticated request limit. No upstream bytes.
     // EMPTY batches remain required for truthful retention sweeps.
-    const {signals,chunks}=prepareDerivedNewsBatches(eligible);
-    // Archive candidates before any D1 writes so a daily-row quota failure
-    // cannot discard this run's newly verified Geomacro-derived findings.
-    archiveCandidateSignals.push(...signals);
+    const prepared=prepareDerivedNewsBatches(eligible);
+    let signals=prepared.signals;
+    let chunks=prepared.chunks;
+    // The D1 baseline is an independent, authenticated exact-origin read.
+    // An existing ID with a different native time/precision/category must
+    // NEVER be counted as a new accepted write: the Worker rejects changes
+    // to those immutable columns under ON CONFLICT(id).
+    let immutableConflictsDeferred=0,canonicalUnchanged=0;
+    if(workerPolicyReady){
+      if(signals.length>0&&beforePublicationRows===null)
+        beforePublicationRows=await fetchAllDerivedNews(fetch,Date.now(),
+          {fresh:true,canonicalOriginToken:TOKEN});
+      const partition=partitionCanonicalDerivedCandidates(
+        beforePublicationRows??[],signals);
+      signals=partition.admit;
+      chunks=prepareDerivedNewsBatches(signals).chunks;
+      immutableConflictsDeferred=partition.immutable_conflicts_deferred;
+      canonicalUnchanged=partition.canonical_unchanged;
+      // Keep the previously verified canonical ORIGINAL for archive identity
+      // conflicts, not the new contradictory candidate's publication date.
+      archiveCandidateSignals.push(...partition.archive);
+    }else {
+      // Archive-only path remains independent of D1 admission/quota.
+      archiveCandidateSignals.push(...signals);
+    }
+    console.log(JSON.stringify({
+      schema:"geomacro.derived-news-immutable-id-admission.v1",category,
+      immutable_clock_conflicts_deferred:immutableConflictsDeferred,
+      already_identical_canonical_rows:canonicalUnchanged,
+      candidate_rows_sent_to_d1:signals.length,
+      original_dates_rewritten:false,private_source_ids_logged:false,
+      paid_eligible:false,predge_modified:false,payments:0
+    }));
     if(!workerPolicyReady){
       console.log(JSON.stringify({
         schema:"geomacro.website-derived-news-ingest-metrics.v1",category,
@@ -133,11 +163,6 @@ for (const category of categories) {
         relevant:eligible.length,deduplicated:signals.length,
         archiveOnly:ARCHIVE_ONLY,policyReady:false});
     }else{
-      // A quiet source does not justify an extra expensive canonical scan.
-      // This baseline is before the FIRST write across all three categories.
-      if(signals.length>0&&beforePublicationRows===null)
-        beforePublicationRows=await fetchAllDerivedNews(fetch,Date.now(),
-          {fresh:true,canonicalOriginToken:TOKEN});
       let acknowledged=0;
       for(const chunk of chunks){
         if(chunk.length===0)continue;

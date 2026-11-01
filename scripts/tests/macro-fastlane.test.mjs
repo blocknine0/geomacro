@@ -21,7 +21,15 @@ class DB{
    return {journal_rows:db.news.size};
   }
   throw Error('UNEXPECTED_D1_FIRST_SQL');
- },async run(){db.operations.push('retention');return {success:true};},bind(...args){return {async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
+ },async run(){db.operations.push('retention');return {success:true};},bind(...args){return {async all(){
+  if(!sql.startsWith('SELECT id,category,published_at,date_precision,story_json '))
+    throw Error('UNEXPECTED_D1_ALL_SQL');
+  const ids=new Set(args);
+  return {results:[...db.news.values()].filter(item=>ids.has(item.id))
+    .map(item=>({id:item.id,category:item.category,
+      published_at:item.published_at,date_precision:item.date_precision,
+      story_json:JSON.stringify(item)}))};
+ },async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
  async batch(statements){for(const s of statements){this.news.set(s.args[0],JSON.parse(s.args[4]));this.operations.push('write_news');}return statements.map(()=>({success:true}));}
 }
 test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB',()=>{
