@@ -186,14 +186,30 @@ function b64Bytes(s){
   if(typeof atob==="function")return Uint8Array.from(atob(s),c=>c.charCodeAt(0));
   throw Error("PREDGE_PILOT_BASE64_NOT_AVAILABLE");
 }
+export function requireActivePilotTrust(registry,now=Date.now()){
+  // Production never treats the compile-time SPKI as a substitute for
+  // the current, owner-authorized lifecycle registry.
+  assert(Number.isFinite(now)&&now>=0,"TRUST_CLOCK");
+  let data;
+  try{data=typeof registry==="string"?JSON.parse(registry):registry}
+  catch{throw Error("PREDGE_PILOT_TRUST_REGISTRY");}
+  const entry=data?.[PINNED_KEY_ID];
+  assert(isObject(entry)&&entry.status==="active"&&
+    entry.public_key_spki_b64===PINNED_PUBLIC_SPKI,"TRUST_REGISTRY");
+  if(entry.not_before!==null&&entry.not_before!==undefined)
+    assert(Number.isFinite(timestamp(entry.not_before))&&
+      now>=timestamp(entry.not_before),"KEY_NOT_YET_ACTIVE");
+  if(entry.not_after!==null&&entry.not_after!==undefined)
+    assert(Number.isFinite(timestamp(entry.not_after))&&
+      now<timestamp(entry.not_after),"KEY_RETIRED");
+  return entry;
+}
 export async function verifySignedPilotCheck(obj,{now=Date.now(),registry=null}={}){
   validatePilotEnvelopeShape(obj,now,true);
   if(registry!==null){
-    let data;try{data=typeof registry==="string"?JSON.parse(registry):registry;}catch{throw Error("PREDGE_PILOT_TRUST_REGISTRY");}
-    const entry=data?.[PINNED_KEY_ID];
-    assert(entry?.status==="active"&&entry.public_key_spki_b64===PINNED_PUBLIC_SPKI,"TRUST_REGISTRY");
+    const entry=requireActivePilotTrust(registry,now);
     if(entry.not_before)assert(timestamp(obj.generated_at)>=timestamp(entry.not_before),"KEY_NOT_YET_ACTIVE");
-    if(entry.not_after)assert(timestamp(obj.generated_at)<=timestamp(entry.not_after),"KEY_RETIRED");
+    if(entry.not_after)assert(timestamp(obj.generated_at)<timestamp(entry.not_after),"KEY_RETIRED");
   }
   const bytes=toBytes(signablePilotCheck(obj));
   assert((await sha256(bytes))===obj.integrity.payload_hash,"HASH_MISMATCH");
