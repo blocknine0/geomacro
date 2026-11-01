@@ -1,54 +1,74 @@
 import process from "node:process";
-import { createClient } from "@supabase/supabase-js";
-import { AUTHORITATIVE_RISK_PROJECT_REF } from "./risk-supabase.server";
 
-const AUTH_URL = `https://${AUTHORITATIVE_RISK_PROJECT_REF}.supabase.co`;
 export const CUSTOMER_COOKIE = "__Host-gm_customer";
 const AUTH_HEADER = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } as const;
-
 export class CustomerError extends Error {
  constructor(public status:number,public code:string){super(code);}
 }
-function configuredAnon(){
- const url=(process.env.APP_SUPABASE_URL??process.env.SUPABASE_URL??"").trim();
- const key=(process.env.APP_SUPABASE_ANON_KEY??process.env.SUPABASE_ANON_KEY??"").trim();
- if(url!==AUTH_URL||key.length<24)throw new CustomerError(503,"CUSTOMER_AUTH_NOT_CONFIGURED");
- return createClient(AUTH_URL,key,{auth:{persistSession:false,autoRefreshToken:false}});
-}
-export function customerAuthClient(){return configuredAnon();}
 export function customerHeaders(){return AUTH_HEADER;}
 export function rejectCrossOrigin(request:Request){
  const origin=request.headers.get("origin");
- if(!origin||origin!==new URL(request.url).origin)
-  throw new CustomerError(403,"CUSTOMER_ORIGIN_REQUIRED");
+ if(!origin||origin!==new URL(request.url).origin)throw new CustomerError(403,"CUSTOMER_ORIGIN_REQUIRED");
 }
 export function customerSessionCookie(token:string,request:Request,maxAge:number){
- const secure=new URL(request.url).protocol==="https:";
- if(!secure && process.env.NODE_ENV==="production")
-  throw new CustomerError(503,"CUSTOMER_SECURE_TRANSPORT_REQUIRED");
- const name=secure?CUSTOMER_COOKIE:"gm_customer_dev";
+ if(new URL(request.url).protocol!=="https:")throw new CustomerError(503,"CUSTOMER_SECURE_TRANSPORT_REQUIRED");
  const age=Math.max(0,Math.min(Math.floor(maxAge),3600));
- return `${name}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${age}${secure?"; Secure":""}`;
+ return `${CUSTOMER_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;
 }
-export function clearCustomerCookie(request:Request){
- return customerSessionCookie("",request,0);
+export function clearCustomerCookie(request:Request){return customerSessionCookie("",request,0);}
+export function customerSessionToken(request:Request){
+ const matches=request.headers.get("cookie")?.split(";").map(s=>s.trim()).filter(s=>s.startsWith(CUSTOMER_COOKIE+"="))??[];
+ if(matches.length!==1)throw new CustomerError(401,"CUSTOMER_SESSION_REQUIRED");
+ const token=matches[0].slice(CUSTOMER_COOKIE.length+1);
+ if(!/^[a-f0-9]{64}$/.test(token))throw new CustomerError(401,"CUSTOMER_SESSION_INVALID");return token;
+}
+export async function customerBody(request:Request):Promise<Record<string,unknown>>{
+ if(!request.headers.get("content-type")?.toLowerCase().startsWith("application/json"))throw new CustomerError(415,"CUSTOMER_JSON_REQUIRED");
+ if(Number(request.headers.get("content-length")??0)>2048)throw new CustomerError(413,"CUSTOMER_BODY_TOO_LARGE");
+ const reader=request.body?.getReader();const chunks:Uint8Array[]=[];let size=0;
+ if(reader)while(true){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>2048){await reader.cancel();throw new CustomerError(413,"CUSTOMER_BODY_TOO_LARGE");}chunks.push(value);}
+ const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
+ let body:unknown;try{body=JSON.parse(new TextDecoder().decode(bytes));}catch{throw new CustomerError(400,"CUSTOMER_JSON_REQUIRED");}
+ if(!body||typeof body!=="object"||Array.isArray(body))throw new CustomerError(400,"CUSTOMER_JSON_REQUIRED");return body as Record<string,unknown>;
+}
+type WorkerResult={ok:boolean;code?:string;user?:{id:string;email:string};session_token?:string;max_age?:number;[key:string]:unknown};
+export async function callCustomerWorker(request:Request,action:string,payload:Record<string,unknown>={}):Promise<WorkerResult>{
+ if(!/^(otp-start|otp-verify|session|account|key-create|key-revoke|logout)$/.test(action))throw new CustomerError(400,"CUSTOMER_ACTION_INVALID");
+ // Read protected configuration per request. There is deliberately no retired
+ // Auth/PostgREST fallback, default URL, or generic control-plane token fallback.
+ const raw=process.env.GEOMACRO_CUSTOMER_WORKER_URL??"",token=process.env.GEOMACRO_CUSTOMER_SSR_TOKEN??"";
+ let base:URL;try{base=new URL(raw);}catch{throw new CustomerError(503,"CUSTOMER_D1_NOT_CONFIGURED");}
+ if(base.protocol!=="https:"||base.username||base.password||base.search||base.hash||base.pathname!=="/"||token.length<64)
+  throw new CustomerError(503,"CUSTOMER_D1_NOT_CONFIGURED");
+ if([process.env.CONTROL_PLANE_TOKEN,process.env.GEOMACRO_CONTROL_PLANE_TOKEN,process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN].some(x=>x&&x===token))
+  throw new CustomerError(503,"CUSTOMER_TOKEN_ISOLATION_REQUIRED");
+ const origin=new URL(request.url).origin;
+ if(!origin.startsWith("https://"))throw new CustomerError(503,"CUSTOMER_SECURE_TRANSPORT_REQUIRED");
+ const headers:Record<string,string>={Authorization:`Bearer ${token}`,Origin:origin,"Content-Type":"application/json",Accept:"application/json"};
+ if(action.startsWith("otp-")){
+  // Cloudflare sets this at the trusted edge. Never use X-Forwarded-For or
+  // browser JSON; absent trusted deployment metadata disables OTP rather than
+  // silently dropping IP abuse controls. Hosting must strip spoofed CF headers.
+  if(process.env.GEOMACRO_CUSTOMER_TRUSTED_EDGE!=="cloudflare")throw new CustomerError(503,"CUSTOMER_TRUSTED_IP_REQUIRED");
+  const ip=request.headers.get("cf-connecting-ip");
+  if(!ip||ip.length>64||!/^[0-9a-fA-F:.]+$/.test(ip))throw new CustomerError(503,"CUSTOMER_TRUSTED_IP_REQUIRED");
+  headers["X-Gm-Customer-IP"]=ip;
+ }
+ let response:Response;
+ try{response=await fetch(new URL(`/v1/internal/customer/${action}`,base),{
+  method:"POST",headers,body:JSON.stringify(payload),redirect:"error",signal:AbortSignal.timeout(28000),
+ });}catch{throw new CustomerError(503,"CUSTOMER_D1_UNAVAILABLE");}
+ let body:WorkerResult;try{body=await response.json() as WorkerResult;}catch{throw new CustomerError(503,"CUSTOMER_D1_RESPONSE_INVALID");}
+ if(!body||body.ok!==true||!response.ok){
+  const code=typeof body?.code==="string"&&/^CUSTOMER_[A-Z0-9_]{1,80}$/.test(body.code)?body.code:"CUSTOMER_D1_UNAVAILABLE";
+  throw new CustomerError([400,401,403,404,413,415,429,503].includes(response.status)?response.status:503,code);
+ }
+ return body;
 }
 export async function authenticatedCustomer(request:Request){
- const name=new URL(request.url).protocol==="https:"?CUSTOMER_COOKIE:"gm_customer_dev";
- const raw=request.headers.get("cookie")?.split(";").map(s=>s.trim()).find(s=>s.startsWith(name+"="));
- const token=raw?decodeURIComponent(raw.slice(name.length+1)):"";
- if(!token||token.length>4096)throw new CustomerError(401,"CUSTOMER_SESSION_REQUIRED");
- const auth=customerAuthClient();
- try{
-  const result=await auth.auth.getUser(token);
-  const user=result.data.user;
-  if(result.error||!user?.id||!user.email||!user.email_confirmed_at)
-   throw new CustomerError(401,"CUSTOMER_SESSION_INVALID");
-  return {id:user.id,email:user.email};
- }catch(error){
-  if(error instanceof CustomerError)throw error;
-  throw new CustomerError(503,"CUSTOMER_AUTH_UPSTREAM_UNAVAILABLE");
- }
+ const result=await callCustomerWorker(request,"session",{session_token:customerSessionToken(request)});
+ if(!result.user?.id||!result.user.email)throw new CustomerError(503,"CUSTOMER_D1_RESPONSE_INVALID");
+ return result.user;
 }
 export function customerFailure(error:unknown){
  const status=error instanceof CustomerError?error.status:503;
