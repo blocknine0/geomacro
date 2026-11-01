@@ -23,7 +23,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("never presents OSINT as verified official news or relabels older releases today",()=>{
     expect(card).toContain("Unverified OSINT is not presented as verified news");
     expect(card).toContain("Earlier verified release");
-    expect(card).toContain("Original");
+    expect(card).toContain("originalDate(item.originalAt,signal.date_precision)");
     expect(card).toContain("No headlines, source dates, outcomes or scores are invented");
     expect(card).not.toContain("event.severity");
     const reader=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
