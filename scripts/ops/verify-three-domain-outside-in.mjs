@@ -18,7 +18,8 @@ const escDecode=s=>s.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(pa
  .replace(/&(?:amp|quot|apos|lt|gt|#39);/gu,m=>
  ({"&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">","&#39;":"'"}[m]??m));
 export function verifyThreeDomainLivePublication({
- index,latest,coverage,daily,journal,htmlByCategory,now=Date.now(),requirePositive=true
+ index,latest,coverage,daily,journal,htmlByCategory,now=Date.now(),requirePositive=true,
+ classifyDisplay=null,isArchiveEligible=null
 }={}){
  if(!Number.isFinite(now)||!index||!latest||!coverage||!daily||!journal||!htmlByCategory)
   fail("MISSING_DOCUMENT");
@@ -74,6 +75,9 @@ export function verifyThreeDomainLivePublication({
  if(daily.signals.some(s=>s.status!=="official_release_observed_unscored"||
   !DOMAIN.includes(s.category)||!safeId(s.id)))
   fail("DAILY_OFFICIAL_ONLY_INVALID");
+ const firstIngest=new Map(
+  (Array.isArray(journal.first_ingest)?journal.first_ingest:[])
+    .filter(x=>safeId(x?.id)).map(x=>[x.id,stamp(x.first_seen_at)]));
  const result={};
  for(const category of DOMAIN){
   const domain=byCategory[category];
@@ -105,8 +109,24 @@ export function verifyThreeDomainLivePublication({
   const unrepresented=domain.journal.filter(s=>
    !archivedIds.has(s.id)&&stamp(s.published_at)>=now-RETENTION&&
    stamp(s.published_at)<=now);
+  const concreteEligible=typeof classifyDisplay==="function"&&
+   typeof isArchiveEligible==="function"
+    ?unrepresented.filter(s=>classifyDisplay(s)===null&&isArchiveEligible(s,now,{allowHistorical:false}))
+    :[];
+  const overdueConcrete=concreteEligible.filter(s=>{
+    const first=firstIngest.get(s.id);
+    return Number.isFinite(first)&&first<=clock;
+  });
+  const rejectionClasses=typeof classifyDisplay==="function"
+   ?Object.fromEntries([...new Set(unrepresented.map(s=>classifyDisplay(s)??"ELIGIBLE"))]
+      .map(reason=>[reason,unrepresented.filter(s=>(classifyDisplay(s)??"ELIGIBLE")===reason).length]))
+   :null;
   result[category]={
    public_d1_not_in_static:unrepresented.length,
+   public_d1_not_in_static_display_rejections:rejectionClasses,
+   public_d1_not_in_static_concrete:concreteEligible.length,
+   concrete_not_static_before_snapshot:overdueConcrete.length,
+   concrete_not_static_before_snapshot_ids:overdueConcrete.map(s=>s.id).slice(0,8),
    public_d1_not_in_static_by_status:Object.fromEntries(
     ["official_release_observed_unscored","official_feed_candidate_unscored",
      "osint_feed_observed_unverified"].map(status=>
@@ -169,8 +189,13 @@ async function run(){
   readText(SITE+"/intelligence?category=macro"),
   readText(SITE+"/intelligence?category=rare_earth")
  ]);
+ // The exact existing website display gate and static archive contract,
+ // not a weaker parallel heuristic, classifies journal-only observations.
+ const {intelligenceDisplayRejection}=await import("../../src/lib/intelligence-concrete-publication.ts");
+ const {isPermanentArchiveSignal}=await import("./publish-permanent-derived-news-archive.mjs");
  const proof=verifyThreeDomainLivePublication({
   index:docs[0],latest:docs[1],coverage:docs[2],daily:docs[3],journal,
+  classifyDisplay:intelligenceDisplayRejection,isArchiveEligible:isPermanentArchiveSignal,
   htmlByCategory:{geopolitics:geo,macro,rare_earth:minerals},
   requirePositive:process.env.GEOMACRO_REQUIRE_THREE_CATEGORY_POSITIVE!=="0"
  });
