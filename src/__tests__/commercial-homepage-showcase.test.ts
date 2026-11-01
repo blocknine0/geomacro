@@ -13,7 +13,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(card).toContain("item.whyItMatters");
     expect(card).toContain("dateTime={item.originalAt}");
     expect(card).toContain("signal.sources_credited.join");
-    expect(card).toContain("stories.map((story,index)");
+    expect(card).toContain("stories.slice(0,observations.length?2:4).map((story,index)");
+    expect(card).toContain("observations.map((story,index)");
     expect(card).toContain("isConcreteHomeFind");
     expect(card).not.toContain("<AccessOptions />");
     expect(card).not.toContain("useIntelligence(");
@@ -21,8 +22,11 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   });
 
   it("never presents OSINT as verified official news or relabels older releases today",()=>{
-    expect(card).toContain("Unverified OSINT is not presented as verified news");
-    expect(card).toContain("Earlier verified release");
+    expect(card).toContain("Latest source observations · Not independently verified");
+    expect(card).toContain("Official original releases · original dates preserved");
+    expect(card).toContain("Earlier official release");
+    expect(card).toContain("OSINT observations are unverified and never count as independently verified releases");
+    expect(card).toContain('signal.status==="osint_feed_observed_unverified"');
     expect(card).toContain("originalDate(item.originalAt,signal.date_precision)");
     expect(card).toContain("No headlines, source dates, outcomes or scores are invented");
     expect(card).not.toContain("event.severity");
