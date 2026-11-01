@@ -33,6 +33,8 @@ export async function assessSignedRefreshCadence({
  assert(["schedule","workflow_run","workflow_dispatch"].includes(eventName),"EVENT_NOT_ALLOWED");
  if(eventName==="workflow_dispatch")return {should_run:true,reason:"EXPLICIT_MANUAL_OWNER_CONFIRMATION"};
  const dayStart=Date.parse(new Date(now).toISOString().slice(0,10)+"T00:00:00.000Z");
+ // Include a short previous-day overlap for the 25-minute duplicate guard.
+ const searchStart=Math.min(dayStart,now-MIN_REFRESH_GAP_MS-10*60*1000);
  const endpoint="https://api.github.com/repos/"+REPO+"/actions/workflows/"+WORKFLOW+"/runs";
  const candidates=[];
  let reachedEarlierDay=false;
@@ -44,7 +46,7 @@ export async function assessSignedRefreshCadence({
      if(run.id===Number(runId))continue;
      const created=Date.parse(run.created_at||"");
      assert(Number.isFinite(created),"RUN_CLOCK_INVALID");
-     if(created<dayStart){reachedEarlierDay=true;continue;}
+     if(created<searchStart){reachedEarlierDay=true;continue;}
      if(run.head_branch!=="main"||!ACCEPTED_EVENTS.has(run.event))continue;
      if(run.status!=="completed"||run.conclusion!=="success")continue;
      candidates.push(run);
@@ -72,7 +74,7 @@ export async function assessSignedRefreshCadence({
    const t=Date.parse(run.updated_at||run.created_at);
    return Number.isFinite(t)?Math.max(max,t):max;
  },0);
- const signedToday=signed.length;
+ const signedToday=signed.filter(run=>Date.parse(run.created_at)>=dayStart).length;
  if(newest&&now-newest<MIN_REFRESH_GAP_MS)
    return {should_run:false,reason:"RECENT_SIGNED_READBACK_EXISTS",signedToday,
      lastVerifiedAt:new Date(newest).toISOString()};
