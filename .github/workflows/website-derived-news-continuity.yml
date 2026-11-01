@@ -33,6 +33,8 @@ on:
       - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
       - "scripts/ops/publish-permanent-derived-news-archive.mjs"
       - "scripts/ops/publish-permanent-derived-news-archive.test.mjs"
+      - "scripts/ops/verify-hourly-public-archive-cohort.mjs"
+      - "scripts/ops/verify-hourly-public-archive-cohort.test.mjs"
       - "scripts/lib/derived-news-b2-readwrite-backup.mjs"
       - "scripts/ops/archive-live-derived-news-to-b2.mjs"
       - "scripts/tests/derived-news-b2-readwrite-backup.test.mjs"
@@ -157,6 +159,10 @@ jobs:
           node --check scripts/lib/website-canonical-archive-catchup.mjs
           node --test scripts/lib/website-canonical-archive-catchup.test.mjs
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
+      - name: Verify hourly external archive acceptance contract
+        run: |
+          node --check scripts/ops/verify-hourly-public-archive-cohort.mjs
+          node --test scripts/ops/verify-hourly-public-archive-cohort.test.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -241,6 +247,11 @@ jobs:
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
   archive-only-when-d1-held:
+    # Same mutex as the full hourly and 15-minute source-to-static writers.
+    # No two branches may update the permanent archive simultaneously.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
     needs: quota-admission
     # Same hourly publisher; an existing successful production-archive deploy
     # can also wake archive-only collection while the protected D1 lane is HELD.
@@ -314,6 +325,13 @@ jobs:
           fi
           cd workers/public-finds-archive
           npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+
+      - name: Verify independently that hourly archive and homepage are publicly readable
+        if: steps.permanent-archive.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-hourly-public-archive-cohort.mjs
 
   refresh-derived-news:
     concurrency:
@@ -455,6 +473,12 @@ jobs:
           fi
           cd workers/public-finds-archive
           npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+      - name: Verify independently that hourly archive and homepage are publicly readable
+        if: steps.permanent-archive.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-hourly-public-archive-cohort.mjs
       - name: Catch up 72h archived Website IDs to the common D1 partner journal
         if: ${{ steps.permanent-archive.outcome == 'success' && success() }}
         env:
