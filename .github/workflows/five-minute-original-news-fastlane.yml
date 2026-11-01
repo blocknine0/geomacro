@@ -1,6 +1,6 @@
 name: Five-Minute Original News Fastlane
 
-# Best-effort 5-minute original-source intake for ONE pre-reviewed publisher
+# Best-effort 10-minute quota-admitted original-source intake for reviewed publishers
 # per category. NOT 195x3 live sources or a guaranteed 20-minute SLA.
 # All genuine articles stay source-private; only the original-dated Geomacro
 # derived cards enter the EXISTING 72-hour D1 journal. No Supabase, B2 or x402.
@@ -14,10 +14,10 @@ on:
     types: [completed]
     branches: [main]
   schedule:
-    # Change the schedule's clock offset to re-register the source-workflow
+    # Use 10-minute spaced ticks with a strict 3-original D1 writer cap.
     # actor after observed no scheduled runs since protected push acceptance.
     # GitHub may still delay/drop; companion existing-backstop watchdog detects it.
-    - cron: "2-57/5 * * * *"
+    - cron: "3-53/10 * * * *"
   push:
     branches: [main]
     paths:
