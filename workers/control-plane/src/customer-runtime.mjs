@@ -1,5 +1,5 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
-import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,CustomerPaidError} from './customer-paid-ledger.mjs';
+import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,CustomerPaidError} from './customer-paid-ledger.mjs';
 
 export const CUSTOMER_KEY_GATE='CUSTOMER_D1_COMMERCIAL_AUTH_NOT_MIGRATED';
 const HEADERS={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -125,18 +125,40 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
   if(action==='logout'){
    await db.prepare(`UPDATE sessions SET revoked_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL`).bind(at,user.session_id,user.id).run();return reply({ok:true});
   }
-  if(action==='key-create')fail(503,CUSTOMER_KEY_GATE);
+  if(action==='key-create'){
+   // Permanent funded-only cutover; paid runtime acceptance protects issuance and consumption.
+   if(env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=='ACCEPTED_CANONICAL_D1_PAID_RUNTIME')
+    fail(503,CUSTOMER_KEY_GATE);
+   if(Object.keys(body).some(k=>k!=='session_token'))
+    fail(400,'CUSTOMER_KEY_CREATE_FIELDS_INVALID');
+   try{
+    const minted=await mintCanonicalCustomerPaidKey(db,env,user.id,at);
+    return reply({ok:true,...minted});
+   }catch(error){
+    if(error instanceof CustomerPaidError)fail(error.status,error.code);
+    throw error;
+   }
+  }
   if(action==='key-revoke'){
    if(typeof body.key_id!=='string'||!/^[-_a-zA-Z0-9]{16,128}$/.test(body.key_id))fail(400,'INVALID_KEY_ID');
    const result=await db.prepare(`UPDATE api_keys SET revoked_at=? WHERE key_id=? AND user_id=? AND revoked_at IS NULL`).bind(at,body.key_id,user.id).run();
    if(result.meta?.changes!==1)fail(404,'CUSTOMER_KEY_NOT_FOUND');return reply({ok:true,revoked:true});
   }
-  const [balance,keys]=await Promise.all([
-   db.prepare(`SELECT COALESCE(SUM(delta_credits),0) AS balance FROM credit_ledger WHERE user_id=?`).bind(user.id).first(),
+  const [funded,keys]=await Promise.all([
+   readCanonicalCustomerPaidAccount(db,user.id,at),
    db.prepare(`SELECT key_id,scopes_json,created_at,expires_at,revoked_at,last_used_at FROM api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 25`).bind(user.id).all(),
   ]);
-  return reply({ok:true,user:{email:user.email},principal_ready:true,credits:null,
-   verified_balance:Math.max(0,Number(balance?.balance??0)),keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
-   checkout_enabled:false,key_issuance_enabled:false,key_issuance_code:CUSTOMER_KEY_GATE});
+  const paidAccepted=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
+  const credentialReady=String(env.GEOMACRO_API_CREDENTIAL_PEPPER??'').length>=32;
+  const canIssue=paidAccepted&&credentialReady&&funded.key_issuance_eligible;
+  // A verified grant can be displayed while activation is pending, but it
+  // cannot silently enable a dashboard key that the Worker would refuse.
+  const credits=funded.credits?{...funded.credits,
+   status:paidAccepted&&credentialReady?funded.credits.status:'pending_activation'}:null;
+  return reply({ok:true,user:{email:user.email},principal_ready:true,credits,
+   verified_balance:credits?.remaining??0,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
+   checkout_enabled:false,key_issuance_enabled:canIssue,
+   key_issuance_code:canIssue?null:!paidAccepted?CUSTOMER_KEY_GATE:
+    !credentialReady?'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED':'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED'});
  }catch(error){return reply({ok:false,code:error instanceof Failure?error.code:'CUSTOMER_D1_UNAVAILABLE'},error instanceof Failure?error.status:503);}
 }
