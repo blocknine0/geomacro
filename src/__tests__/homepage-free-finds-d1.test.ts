@@ -88,8 +88,8 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
   expect(route).not.toContain("fetchDailyOfficialFinds");
   expect(route).not.toContain("fetchDirectDerivedNews");
   expect(route).not.toContain("Route.useLoaderData()");
-  expect(home).toContain("<LiveIntelligenceShowcase />");
-  expect(home).toContain("What GeoMacro is finding now.");
+  expect(home).not.toContain("LiveIntelligenceShowcase");
+  expect(home).not.toContain("What GeoMacro is finding now.");
   expect(home).not.toContain("home-finds-title");
   expect(home).toContain('to="/intelligence"');
   expect(reader).toContain('v.status!=="official_release_observed_unscored"');
