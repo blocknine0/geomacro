@@ -17,6 +17,16 @@ const CONTEXT_FLAGS=Object.freeze({
   market_relevance_verified:false,chargeable:false,
   signed_product_verified:false,
 });
+const ITEM_KEYS=new Set(["schema","macro_context","sources_credited","attribution_required",
+  "attribution_notices","id","category","event_family","development_type","topic",
+  "original_published_at","date_precision","geography_mentioned","headline",
+  "observed_change","potential_relevance","confidence_state","topical_match_verified",
+  "qualifying_topic_release_verified","further_validation_required","event_detail_verified",
+  "country_subject_verified","independent_same_event_verified","commercial_derived_rights_verified",
+  "signed_product_verified","numeric_impact_established","raw_upstream_delivered",
+  "chargeable","payable"]);
+const CONFIDENCE=new Set(["OFFICIAL_RELEASE_OBSERVED_UNSCORED",
+  "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED","MONITORED_SOURCE_REPORT_UNVERIFIED"]);
 const HOURS_72=72*60*60*1000;
 const HOUR=60*60*1000;
 const encoder=new TextEncoder();
@@ -41,11 +51,17 @@ export function canonicalJson(value){
 export const toBytes=v=>encoder.encode(canonicalJson(v));
 function timestamp(s){return typeof s==="string"?Date.parse(s):NaN;}
 function validateItem(item,now,ids){
-  assert(isObject(item)&&typeof item.id==="string"&&item.id.length>0&&item.id.length<=256,"ITEM_ID");
+  assert(isObject(item)&&item.schema==="geomacro.derived-news-structural.v1"&&
+    typeof item.id==="string"&&item.id.length>0&&item.id.length<=256,"ITEM_ID");
+  assert(Object.keys(item).every(k=>ITEM_KEYS.has(k)),"ITEM_SCHEMA_EXTENSION_UNKNOWN");
   assert(!ids.has(item.id),"DUPLICATE_ID");ids.add(item.id);
   assert(CATEGORIES.includes(item.category),"ITEM_CATEGORY");
   const original=timestamp(item.original_published_at);
-  assert(Number.isFinite(original)&&original<=now+300_000&&original>now-HOURS_72,"ITEM_CLOCK");
+  assert(Number.isFinite(original)&&original<=now&&original>now-HOURS_72,"ITEM_CLOCK");
+  assert(CONFIDENCE.has(item.confidence_state)&&item.further_validation_required===true&&
+    item.event_detail_verified===false&&item.country_subject_verified===false&&
+    item.independent_same_event_verified===false&&item.numeric_impact_established===false,
+    "UNVERIFIED_RESEARCH_BOUNDARY");
   // The real source bridge intentionally omits both fields on uncredited
   // research items; preserve absence instead of inventing attribution.
   const credits=item.sources_credited??[],notices=item.attribution_notices??[];
