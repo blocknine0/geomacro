@@ -25,6 +25,7 @@ export function buildPhase2hRawB2Plan(rows,now=new Date()){
    typeof r.ingested_at!=="string"||!/^20\d\d-\d\d-\d\dT/u.test(r.ingested_at)||
    !Number.isFinite(Date.parse(r.ingested_at))||
    Date.parse(r.ingested_at)>now.getTime()+60_000||
+   now.getTime()-Date.parse(r.ingested_at)>=72*60*60_000||
    r.commercial_rights_verified!==false||
    r.commercial_delivery_authorized!==false)
    fail("SOURCE_CONTENT_INVALID");
@@ -100,7 +101,12 @@ export function createPhase2hCanonicalD1({
   return doc.result[0];
  };
  return {
-  async readPending(){
+  async readPending(now=new Date()){
+   // Only the 72h current D1 originals are eligible for private B2.
+   // Never let thousands of expired pending records starve fresh originals.
+   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+    fail("CANONICAL_D1_ARCHIVE_CLOCK_INVALID");
+   const cutoff=new Date(now.getTime()-72*60*60_000).toISOString();
    // A single 300-row raw_json D1 API response can exceed Cloudflare provider
    // response-size limits even when the preceding COUNT(*) census succeeds.
    // Read at most 300 pending originals in bounded, index-ordered pages.
@@ -113,8 +119,8 @@ export function createPhase2hCanonicalD1({
     let result;
     try{
      result=await sql(
-      "SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL ORDER BY first_ingested_at,record_id LIMIT ? OFFSET ?",
-      [Math.min(pageSize,maxRows-rows.length),rows.length]
+      "SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ? OFFSET ?",
+      [cutoff,Math.min(pageSize,maxRows-rows.length),rows.length]
      );
     }catch(error){
      // At most one downgrade to 10 rows. The unchanged quota governor still
@@ -214,7 +220,7 @@ export async function runPhase2hGovernedRawB2({
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
  const d1=d1Factory({env,fetchImpl});
- const initialRows=await d1.readPending();
+ const initialRows=await d1.readPending(now);
  if(!Array.isArray(initialRows)||initialRows.length>300)
    fail("PRIVATE_SOURCE_CONTRACT_INVALID");
  if(!initialRows.length)
