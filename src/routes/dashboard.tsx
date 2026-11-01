@@ -1,6 +1,7 @@
 import {createFileRoute,Link} from "@tanstack/react-router";
-import {useCallback,useEffect,useState} from "react";
+import {useCallback,useEffect,useRef,useState} from "react";
 import {KeyRound,ShieldCheck,Copy,LogOut,RefreshCw} from "lucide-react";
+import {customerDashboardAccess,revokeCustomerSession} from "../lib/customer-dashboard-session";
 export const Route=createFileRoute("/dashboard")({
  head:()=>({meta:[{title:"Customer dashboard | Geomacro"},
   {name:"robots",content:"noindex,nofollow"}]}),
@@ -17,15 +18,21 @@ function CustomerDashboard(){
  const [error,setError]=useState("");
  const [secret,setSecret]=useState("");
  const [signedOut,setSignedOut]=useState(false);
+ const loadGeneration=useRef(0);
  const load=useCallback(async()=>{
+  const generation=++loadGeneration.current;
   setLoading(true);setError("");
   try{
    const response=await fetch("/api/v1/customer/account",{credentials:"same-origin",cache:"no-store"});
    const result=await response.json() as Account;
    if(!response.ok||!result.ok)throw Error(result.code??"Account unavailable");
-   setAccount(result);
-  }catch(e){setError(e instanceof Error?e.message:"Unable to load account");setAccount(null);}
-  finally{setLoading(false);}
+   if(loadGeneration.current===generation){setAccount(result);setSignedOut(false);}
+  }catch(e){
+   if(loadGeneration.current===generation){
+    setError(e instanceof Error?e.message:"Unable to load account");
+    setAccount(null);
+   }
+  }finally{if(loadGeneration.current===generation)setLoading(false);}
  },[]);
  useEffect(()=>{void load();},[load]);
  async function createKey(){
@@ -53,28 +60,40 @@ function CustomerDashboard(){
   finally{setBusy(false);}
  }
  async function logout(){
-  setBusy(true);
-  try{await fetch("/api/v1/customer/auth",{method:"DELETE",credentials:"same-origin"});}
-  finally{setSignedOut(true);setAccount(null);setSecret("");setBusy(false);}
+  if(busy||!account?.ok||signedOut)return;
+  setBusy(true);setError("");
+  try{
+   await revokeCustomerSession();
+   // Invalidate all in-flight account reads before clearing private UI state.
+   loadGeneration.current++;
+   setLoading(false);setSignedOut(true);setAccount(null);setSecret("");
+  }catch(e){
+   // Never claim logout happened if the server did not confirm revocation.
+   setError("Sign out not confirmed: "+(e instanceof Error?e.message:"CUSTOMER_LOGOUT_NOT_CONFIRMED"));
+  }finally{setBusy(false);}
  }
- const funded=account?.credits?.status==="active"&&(account.credits?.remaining??0)>0;
+ const access=customerDashboardAccess(account?.ok===true,loading,signedOut);
+ const funded=access==="authenticated"&&account?.credits?.status==="active"&&(account.credits?.remaining??0)>0;
  return <main className="gm-container py-10 sm:py-14">
   <div className="mb-9 flex flex-wrap items-center justify-between gap-4">
    <div><p className="gm-eyebrow">Private customer portal</p>
     <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Your Geomacro dashboard</h1>
     <p className="mt-2 text-sm text-muted-foreground">Real balances and active API credentials only. No demo credits.</p></div>
    <div className="flex items-center gap-2">
-    <button type="button" onClick={()=>void load()} disabled={loading||busy}
-     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm"><RefreshCw className="h-4 w-4"/>Refresh</button>
-    <button type="button" onClick={()=>void logout()} disabled={busy}
-     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm"><LogOut className="h-4 w-4"/>Sign out</button>
+    {access==="authenticated"?<>
+     <button type="button" onClick={()=>void load()} disabled={loading||busy}
+      className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm"><RefreshCw className="h-4 w-4"/>Refresh</button>
+     <button type="button" onClick={()=>void logout()} disabled={busy}
+      className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm"><LogOut className="h-4 w-4"/>Sign out</button>
+    </>:access==="anonymous"?<Link to="/auth"
+     className="rounded-lg border border-border px-4 py-2 text-sm font-medium">Sign in</Link>:null}
    </div>
   </div>
   {loading&&<p role="status" className="text-muted-foreground">Checking your verified account and credit ledger…</p>}
   {error&&<div role="alert" className="rounded-xl border border-border p-5 text-sm text-destructive">{error}
    {(error.includes("SESSION")||signedOut)&&<p className="mt-3"><Link to="/auth" className="underline">Sign in to continue</Link></p>}</div>}
   {signedOut&&<p role="status"><Link to="/auth" className="text-primary underline">You are signed out. Sign in again</Link></p>}
-  {account&&<div className="space-y-8">
+  {access==="authenticated"&&account&&<div className="space-y-8">
    <p className="text-sm text-muted-foreground">Signed in as <strong className="text-foreground">{account.user?.email}</strong></p>
    <section className="rounded-xl border border-border p-6">
     <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/><h2 className="text-xl font-semibold">Verified credit balance</h2></div>
