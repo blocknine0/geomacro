@@ -256,8 +256,79 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/ops/recover-stalled-five-minute-news.mjs
 
+  # Backstop's D1 publisher previously stopped after D1 and silently
+  # abandoned the static publication; the site never consumed the recovered
+  # D1-only records. Now complete the SAME append-only writer and public proof.
+  publish-recovered-website-archive:
+    needs: [quota-admission, catch-up-derived-only]
+    if: >-
+      needs.catch-up-derived-only.result == 'success' &&
+      needs.catch-up-derived-only.outputs.recovered_batch == 'true' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: recovered-website-archive-candidates-${{ github.run_id }}
+          path: artifacts/derived-news
+      - name: Append canonical original-dated D1 candidates and deploy static archive
+        id: permanent-archive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::RECOVERY_ARCHIVE_CLOUDFLARE_TOKEN_MISSING"; exit 2; }
+          test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || { echo "::error::RECOVERY_ARCHIVE_CLOUDFLARE_ACCOUNT_MISSING"; exit 2; }
+          test -s artifacts/derived-news/permanent-archive-candidates.json || { echo "::error::RECOVERY_ARCHIVE_CANDIDATES_MISSING"; exit 2; }
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          archive_ref="refs/remotes/origin/geomacro-permanent-finds-archive"
+          git -c http.extraheader="$auth_header" fetch origin "refs/heads/geomacro-permanent-finds-archive:$archive_ref"
+          archive_dir="$RUNNER_TEMP/geomacro-permanent-finds-archive"
+          git worktree add --detach "$archive_dir" "$archive_ref"
+          node scripts/ops/publish-permanent-derived-news-archive.mjs \
+            "$archive_dir" "$GITHUB_WORKSPACE/workers/public-finds-archive/assets" \
+            artifacts/derived-news/permanent-archive-candidates.json
+          result_file="$RUNNER_TEMP/permanent-derived-news-archive-result.json"
+          test -s "$result_file" || exit 2
+          deploy_needed="$(jq -r '.deploy_needed == true' "$result_file")"
+          git -C "$archive_dir" add data
+          if ! git -C "$archive_dir" diff --cached --quiet; then
+            git -C "$archive_dir" config user.name "github-actions[bot]"
+            git -C "$archive_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git -C "$archive_dir" commit -m "Append recovered Geomacro Website Intelligence archive"
+            git -C "$archive_dir" -c http.extraheader="$auth_header" push origin HEAD:refs/heads/geomacro-permanent-finds-archive
+          fi
+          if [[ "$deploy_needed" == "true" ]]; then
+            cd workers/public-finds-archive
+            npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
+          fi
+      - name: Prove exact public index, latest, coverage and homepage cohesion
+        if: steps.permanent-archive.outcome == 'success'
+        run: node scripts/ops/verify-hourly-public-archive-cohort.mjs
+
   catch-up-derived-only:
     needs: quota-admission
+    outputs:
+      recovered_batch: ${{ steps.decide.outputs.should_run }}
     if: needs.quota-admission.outputs.research == 'true' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || (github.event.workflow_run.head_repository.full_name == github.repository && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion)))
     concurrency:
       group: geomacro-website-derived-news-continuity
@@ -329,6 +400,14 @@ jobs:
             exit 2
           }
           bun scripts/ops/publish-website-derived-news.ts
+      - name: Hand off only derived, source-neutral canonical catch-up candidates to static publisher
+        if: steps.decide.outputs.should_run == 'true' && success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: recovered-website-archive-candidates-${{ github.run_id }}
+          path: artifacts/derived-news/permanent-archive-candidates.json
+          if-no-files-found: error
+          retention-days: 1
       - name: Prepare source-free GRI country evidence tasks after genuine recovered publication
         if: steps.decide.outputs.should_run == 'true'
         run: node scripts/ops/build-material-gri-country-worklist.mjs
