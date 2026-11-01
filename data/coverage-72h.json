@@ -1,12 +1,12 @@
 {
   "schema": "geomacro.free-derived-archive-eligibility.v1",
-  "checked_at": "2026-10-31T22:20:38.692Z",
+  "checked_at": "2026-11-01T18:36:47.887Z",
   "retention_hours": 72,
   "eligibility_policy": "CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
-  "original_release_eligible_total": 10,
+  "original_release_eligible_total": 6,
   "original_release_by_category": {
-    "geopolitics": 7,
-    "macro": 3,
+    "geopolitics": 5,
+    "macro": 1,
     "rare_earth": 0
   },
   "pending_publisher_candidate_total": 0,
@@ -15,26 +15,26 @@
     "macro": 0,
     "rare_earth": 0
   },
-  "pending_osint_total": 244,
+  "pending_osint_total": 85,
   "pending_osint_by_category": {
-    "geopolitics": 97,
-    "macro": 109,
-    "rare_earth": 38
+    "geopolitics": 26,
+    "macro": 34,
+    "rare_earth": 25
   },
-  "unique_current_findings": 254,
-  "free_displayable_findings_total": 254,
+  "unique_current_findings": 91,
+  "free_displayable_findings_total": 91,
   "free_displayable_by_category": {
-    "geopolitics": 104,
-    "macro": 112,
-    "rare_earth": 38
+    "geopolitics": 31,
+    "macro": 35,
+    "rare_earth": 25
   },
-  "free_displayable_outside_latest_preview": 4,
+  "free_displayable_outside_latest_preview": 0,
   "free_displayable_status": "MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED",
-  "duplicate_or_template_excluded": 8,
-  "latest_preview_rows": 250,
-  "latest_preview_official_rows": 8,
-  "eligible_outside_latest_preview": 2,
-  "eligible_ids_sha256": "98e4920827151a133536adf39f2454267f7d05ca7cc15306cf8bf40e1b70db0c",
+  "duplicate_or_template_excluded": 4,
+  "latest_preview_rows": 91,
+  "latest_preview_official_rows": 6,
+  "eligible_outside_latest_preview": 0,
+  "eligible_ids_sha256": "5f3e432d31239d8c5d4bfa2abb337d4a80717916e802625304ba183f25572c02",
   "automatic_on_static_archive_refresh": true,
   "free_website_only": true,
   "unverified_promoted": false,

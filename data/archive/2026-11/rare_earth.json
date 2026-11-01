@@ -1,0 +1,27 @@
+{
+  "schema": "geomacro.permanent-derived-news-archive-month.v1",
+  "month": "2026-11",
+  "category": "rare_earth",
+  "updated_at": "2026-11-01T18:36:47.887Z",
+  "signals": [
+    {
+      "id": "rare_earth-be820d5d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rubio said G20 talks focused on energy security, critical minerals and supply chains - Saudi Gazette",
+      "what_changed": "A monitored source feed reports: Rubio said G20 talks focused on energy security, critical minerals and supply chains - Saudi Gazette. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T11:09:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
+}
