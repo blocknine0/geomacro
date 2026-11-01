@@ -33,6 +33,9 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
+      - name: Daily official Finds original-date, attribution and no-OSINT contracts
+        run: node --test scripts/tests/public-daily-official-finds.test.mjs
+
       - name: Founder-approved website navigation, headings and premium identity (offline)
         run: node --test scripts/tests/website-instant-navigation-identity.test.mjs
 
