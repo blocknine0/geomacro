@@ -131,7 +131,38 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     // D1 migration 0033 automatically bumps data_revision on any canonical
     // INSERT/UPDATE/DELETE (transactionally in the original 50-write batch).
     // Trigger fencing avoids a dangerous 51st statement in a full batch.
-    if(statements.length)await env.DB.batch(statements);
+    if(statements.length){
+      await env.DB.batch(statements);
+      // One bounded indexed read of the exact 1..50 IDs, not a full journal
+      // scan. SQLite's ON CONFLICT(id) ... WHERE is a silent no-op for a
+      // different source-native date, precision or category. A bare batch
+      // success cannot be a truthful persisted-record ACK without this check.
+      const expected=new Map(body.signals.map(story=>[story.id,story]));
+      const placeholders=body.signals.map(()=>"?").join(",");
+      const {results:observed=[]}=await env.DB.prepare(
+        "SELECT id,category,published_at,date_precision,story_json "+
+        "FROM website_derived_intelligence WHERE id IN ("+placeholders+")"
+      ).bind(...body.signals.map(story=>story.id)).all();
+      if(!Array.isArray(observed)||observed.length!==expected.size)
+        return json({ok:false,error:"DERIVED_NEWS_ACK_ID_NOT_PERSISTED",
+          accepted:0,chargeable:false},409);
+      const unique=new Set();
+      for(const row of observed){
+        const source=expected.get(row?.id);
+        if(!source||unique.has(row.id))
+          return json({ok:false,error:"DERIVED_NEWS_ACK_ID_CONFLICT",
+            accepted:0,chargeable:false},409);
+        unique.add(row.id);
+        if(row.category!==source.category||
+           row.published_at!==source.published_at||
+           row.date_precision!==source.date_precision)
+          return json({ok:false,error:"DERIVED_NEWS_ACK_IMMUTABLE_CLOCK_CONFLICT",
+            accepted:0,chargeable:false},409);
+        if(row.story_json!==JSON.stringify(source))
+          return json({ok:false,error:"DERIVED_NEWS_ACK_PAYLOAD_CONFLICT",
+            accepted:0,chargeable:false},409);
+      }
+    }
     // Avoid two full-journal retention/sort queries for every non-empty
     // publisher chunk. The existing authenticated empty batch is the bounded
     // once-per-run sweep; public reads still enforce the same 72h window.
