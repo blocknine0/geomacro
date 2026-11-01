@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Bot, BookOpen, Globe2, Landmark, Layers3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LiveIntelligenceShowcase } from "@/components/home/live-intelligence-showcase";
 
 const DOMAINS = [
   {
@@ -77,6 +78,25 @@ export function CommercialHome() {
               </div>
             </div>
           </aside>
+        </div>
+      </section>
+      <section className="gm-container py-10 sm:py-14" aria-labelledby="home-fresh-intelligence-title">
+        <div className="grid items-start gap-7 lg:grid-cols-2 lg:gap-12">
+          <div className="max-w-lg">
+            <p className="gm-eyebrow">Original-dated intelligence · Continuously refreshed</p>
+            <h2 id="home-fresh-intelligence-title" className="mt-3 text-3xl font-semibold tracking-tight">
+              What GeoMacro is finding now.
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-muted-foreground">
+              Short, country-relevant developments across Geopolitics, Macro / FX and Critical Minerals.
+              Official releases and unverified source observations are always identified separately.
+              Every date is the original publication date, not the time our pipeline discovered it.
+            </p>
+            <Link to="/intelligence" className="gm-text-link mt-5">
+              Explore all Intelligence <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+          <LiveIntelligenceShowcase />
         </div>
       </section>
       <section className="gm-container py-12 sm:py-16">
