@@ -1,14 +1,13 @@
 /**
  * Isolated, optional signed sample transport for PREDGE.
  * Does not call, modify or authorize the existing risk-gate decision path.
- * GET uses the existing research Bearer and the SAME atomic 500/day research
- * governor, so a second unrestricted quota is never introduced.
+ * GET uses the existing research Bearer, but shares the existing Risk Gate
+ * 100/day D1 quota ledger. Research polling budget stays independent.
  *
  * Signer operates outside the Worker. No production private key is deployed
  * to this Worker. PUT is owner-only and verifies the pinned signature BEFORE
  * replacing the single bounded D1 sample.
  */
-import {consumeCentralSecurityBudget} from "./central-security-budget.mjs";
 import {MAX_WIRE_BYTES,verifySignedPilotCheck} from "./predge-pilot-news-context-v2.mjs";
 const HEADERS={"Cache-Control":"private, no-store","Pragma":"no-cache",
   "Vary":"Authorization","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
@@ -24,10 +23,6 @@ function authenticate(req,secret){
   const header=req.headers.get("authorization")??"";
   return TOKEN.test(secret)&&/^Bearer [a-f0-9]{64}$/.test(header)&&
     constantEqual(header.slice(7),secret);
-}
-async function digest(s){
-  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 async function readBounded(request){
   const claimed=Number(request.headers.get("content-length")??0);
@@ -50,16 +45,7 @@ export async function predgePilotCheckV2(request,env,now=Date.now()){
   const token=env?.PREDGE_RESEARCH_NEWS_TOKEN;
   if(!TOKEN.test(String(token??"")))return error("RESEARCH_CREDENTIAL_UNAVAILABLE");
   if(!authenticate(request,token))return error("PILOT_CHECK_UNAUTHORIZED",401);
-  if(!env?.DB?.batch||!env?.DB?.prepare)return error("PILOT_CHECK_D1_UNAVAILABLE");
-  let budget;
-  try{
-    budget=await consumeCentralSecurityBudget(env.DB,{
-      route_class:"predge_research_news",client_key:await digest(token),
-    },{now});
-  }catch{return error("PILOT_CHECK_BUDGET_UNAVAILABLE");}
-  if(!budget.allowed)return Response.json({
-    ok:false,error:"PILOT_CHECK_DAILY_LIMIT",execution_authorized:false,chargeable:false,
-  },{status:429,headers:{...HEADERS,"Retry-After":String(Math.max(1,budget.retry_after_seconds))}});
+  if(!env?.DB?.prepare)return error("PILOT_CHECK_D1_UNAVAILABLE");
   let row;
   try{row=await env.DB.prepare(
     "SELECT envelope_json FROM predge_pilot_signed_news_context WHERE singleton=1 LIMIT 1"
@@ -72,6 +58,21 @@ export async function predgePilotCheckV2(request,env,now=Date.now()){
     payload=JSON.parse(row.envelope_json);
     await verifySignedPilotCheck(payload,{now,registry:env.RISK_GATE_VERIFY_KEYS_JSON});
   }catch{return error("SIGNED_PILOT_SAMPLE_NOT_VERIFIED");}
+  // Share the existing total Risk Gate pilot quota, not the separate 72h
+  // research-feed limit. This is one advisory check, never a commercial GRO.
+  const day=new Date(now).toISOString().slice(0,10);
+  let granted;
+  try{
+    granted=await env.DB.prepare(
+      "INSERT INTO risk_gate_d1_quota (client_id,usage_day,used) "+
+      "VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1 "+
+      "WHERE used < 100 RETURNING used"
+    ).bind("predge-risk-gate-v1",day).first();
+  }catch{return error("PILOT_CHECK_QUOTA_UNAVAILABLE");}
+  if(!granted)return Response.json({
+    ok:false,error:"PILOT_CHECK_DAILY_LIMIT",execution_authorized:false,chargeable:false
+  },{status:429,headers:{...HEADERS,
+    "Retry-After":String(Math.ceil((Date.parse(day+"T00:00:00.000Z")+86400000-now)/1000))}});
   // Transport exactly the signed bytes; do NOT append replay metadata or alter
   // response fields after Ed25519 signing.
   return new Response(row.envelope_json,{status:200,headers:{
