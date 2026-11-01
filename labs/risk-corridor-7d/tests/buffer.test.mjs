@@ -17,11 +17,13 @@ test("missed cron still cannot make expired rows visible",async()=>{
  const fetchImpl=async()=>new Response(JSON.stringify([
    {event_sha256:"expired",ingested_at:"2026-10-24T10:00:00Z"},
    {event_sha256:"valid",ingested_at:"2026-11-02T10:00:00Z"}]),{status:200});
- const buffer=createSevenDayBuffer({url:"https://new-risk-project.supabase.co",
+ const buffer=createSevenDayBuffer({url:"https://ymjuwuvbialsevfawvvq.supabase.co",
   serviceKey:"x".repeat(40),now:()=>new Date("2026-11-02T12:00:00Z"),fetchImpl});
  assert.deepEqual((await buffer.listRecentSignals("IND","geopolitics")).map(x=>x.event_sha256),["valid"]);
 });
-test("legacy GeoMacro Supabase project is explicitly forbidden",()=>{
+test("only dedicated Risk/Corridor Supabase project can be configured",()=>{
+ assert.throws(()=>createSevenDayBuffer({url:"https://unrelated-project.supabase.co",
+  serviceKey:"x".repeat(40)}));
  assert.throws(()=>createSevenDayBuffer({url:"https://ldpwajisioljyjtojvfx.supabase.co",
   serviceKey:"x".repeat(40)}));
 });

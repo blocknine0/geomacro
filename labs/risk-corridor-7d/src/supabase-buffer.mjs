@@ -3,6 +3,8 @@ import {DOMAINS} from "./contract.mjs";
 const TTL_MS=7*86400_000;
 const ISO3=/^[A-Z]{3}$/;
 const sha=/^[a-f0-9]{64}$/;
+export const DEDICATED_RISK_SUPABASE_REF="ymjuwuvbialsevfawvvq";
+export const DEDICATED_RISK_SUPABASE_URL="https://"+DEDICATED_RISK_SUPABASE_REF+".supabase.co";
 export function sevenDayCutoff(now=new Date()) {
   if (!Number.isFinite(now.getTime())) throw Error("BUFFER_CLOCK_INVALID");
   return new Date(now.getTime()-TTL_MS).toISOString();
@@ -22,7 +24,8 @@ export function requireDerivedSignal(row,now=new Date()) {
 }
 export function createSevenDayBuffer({url,serviceKey,fetchImpl=fetch,now=()=>new Date()}) {
   if (typeof url!=="string"||!/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(url)||
-      typeof serviceKey!=="string"||serviceKey.length<30 || url.includes("ldpwajisioljyjtojvfx")) throw Error("SUPABASE_BUFFER_NOT_CONFIGURED");
+      typeof serviceKey!=="string"||serviceKey.length<30 ||
+      url.replace(/\/$/,"")!==DEDICATED_RISK_SUPABASE_URL) throw Error("SUPABASE_BUFFER_NOT_CONFIGURED");
   const base=url.replace(/\/$/,"");
   async function query(table,method,queryString,body) {
     if (!["geomacro_risk_signal_7d","geomacro_corridor_candidate_7d","geomacro_risk_assessment_7d"].includes(table))

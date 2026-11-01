@@ -4,6 +4,12 @@
 
 **Branch:** feature/isolated-supabase-risk-corridor-7d
 
+**New dedicated Supabase project ref (owner-supplied, non-secret):** `ymjuwuvbialsevfawvvq`
+
+**Expected candidate Data API origin:** `https://ymjuwuvbialsevfawvvq.supabase.co` (endpoint and credentials NOT YET REMOTELY VERIFIED)
+
+**Important:** Candidate storage client rejects any other Supabase URL, including old GeoMacro. SQL migrations are prepared but NOT applied to this project.
+
 **Status:** isolated coding candidate. NOT PRODUCTION. NO LIVE FUNDS. NO EXISTING MAIN/PREDGE MODIFICATIONS.
 
 ## Architecture
