@@ -15,6 +15,7 @@ import {createHash} from "node:crypto";
 import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
 import {buildWebsitePilotSnapshot} from "../lib/website-predge-static-72h-snapshot.mjs";
 import {buildDailyOfficialFinds} from "../lib/public-daily-official-finds.mjs";
+import {isCriticalMineralsSubject} from "../lib/critical-minerals-subject-evidence.mjs";
 
 export const ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
 export const ARCHIVE_MONTH_SCHEMA="geomacro.permanent-derived-news-archive-month.v1";
@@ -193,7 +194,8 @@ function distinctHeadlineArchiveRows(signals){
   }
   const uniqueByHeadline=new Map();
   for(const signal of signals){
-    if(isTemplateObservation(signal))continue;
+    if(isTemplateObservation(signal)||
+       (signal.category==="rare_earth"&&!isCriticalMineralsSubject(signal)))continue;
     const key=normalizeHeadline(signal.title);
     if(!key)continue;
     const current=uniqueByHeadline.get(key);
