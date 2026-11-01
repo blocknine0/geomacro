@@ -42,7 +42,7 @@ test("three category exact public D1/native-date/static/SSR agreement succeeds",
 test("reject public D1 original date conflict or missing category proof",()=>{
  const x=fixture();x.journal.signals[2].published_at="2026-11-01T21:00:00.000Z";
  assert.throws(()=>verifyThreeDomainLivePublication(x),
-  /THREE_DOMAIN_LIVE_THREE_CATEGORY_PUBLIC_PARITY_rare_earth/);
+  /THREE_DOMAIN_LIVE_D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_rare_earth/);
  const y=fixture();delete y.htmlByCategory.macro;
  assert.throws(()=>verifyThreeDomainLivePublication(y),/THREE_DOMAIN_LIVE_WEBSITE_HTML_macro/);
 });
@@ -51,4 +51,18 @@ test("reject mismatched static cohort and 72h-expired proof",()=>{
  assert.throws(()=>verifyThreeDomainLivePublication(x),/THREE_DOMAIN_LIVE_STATIC_COHORT_CLOCK_MISMATCH/);
  const y=fixture();y.latest.signals[0].published_at="2026-10-25T00:00:00.000Z";
  assert.throws(()=>verifyThreeDomainLivePublication(y),/THREE_DOMAIN_LIVE_STATIC_NATIVE_OR_ID_INVALID/);
+});
+
+test("normalizes headline HTML entities and ignores only clock-expired static rows",()=>{
+ const entities=fixture();
+ entities.latest.signals[0].title="Geomacro finds UN announced &#x27;new agreement&#x27; this morning";
+ entities.htmlByCategory.geopolitics="<html><body>What changed in the world Geomacro finds UN announced 'new agreement' this morning</body></html>";
+ assert.equal(verifyThreeDomainLivePublication(entities).category.geopolitics.website_rendered_matching_archive,1);
+ const expired=fixture();
+ expired.latest.signals[0].published_at="2026-10-29T23:59:59.000Z";
+ expired.requirePositive=false;
+ const receipt=verifyThreeDomainLivePublication(expired);
+ assert.equal(receipt.category.geopolitics.live_72h_rows,0);
+ assert.equal(receipt.category.geopolitics.expired_since_snapshot,1);
+ assert.equal(receipt.category.macro.live_72h_rows,1);
 });
