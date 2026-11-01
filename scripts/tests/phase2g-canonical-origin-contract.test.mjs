@@ -1,0 +1,30 @@
+import {readFileSync} from "node:fs";
+import {test} from "node:test";
+import assert from "node:assert/strict";
+const get=path=>readFileSync(path,"utf8");
+test("publisher uses canonical origin for before+after independently of public R2",()=>{
+ const script=get("scripts/ops/publish-website-derived-news.ts");
+ const client=get("src/lib/public-derived-news-client.ts");
+ const control=get("workers/control-plane/src/index.mjs");
+ assert.match(script,/beforePublicationRows=await fetchAllDerivedNews\(fetch,Date\.now\(\),\s*\{fresh:true,canonicalOriginToken:TOKEN\}\)/u);
+ assert.match(script,/retained=await fetchAllDerivedNews\(fetch,now\.getTime\(\),\s*\{fresh:true,canonicalOriginToken:TOKEN\}\)/u);
+ assert.match(script,/reconcileAcknowledgedDerivedNews\(/u);
+ assert.match(script,/PHASE2G_D1_PER_ID_RECONCILIATION_UNVERIFIED_/u);
+ assert.match(client,/\/v1\/internal\/website-derived-news-bundle/u);
+ assert.match(client,/X-GeoMacro-Origin-Readback/u);
+ assert.match(client,/!==\s*"d1-canonical"/u);
+ assert.match(client,/if\(!canonical&&doc\.schema===/u);
+ assert.match(client,/if\(!canonical&&\(response\.status===401/u);
+ assert.match(control,/const direct=await readDerivedStoriesBundle\(env,Date\.now\(\),false\)/u);
+ assert.match(control,/headers\.set\('X-GeoMacro-Origin-Readback','d1-canonical'\)/u);
+});
+test("frozen privacy boundaries and quota discipline stay intact",()=>{
+ const script=get("scripts/ops/publish-website-derived-news.ts");
+ const client=get("src/lib/public-derived-news-client.ts");
+ assert.match(script,/privateOriginals/u);
+ assert.match(script,/GEOMACRO_COMMERCE_LEDGER_TOKEN/u);
+ assert.match(script,/rights_verified:false,paid_eligible:false,payments:0/u);
+ assert.match(client,/One authenticated GET/u);
+ assert.match(client,/fetchWithoutRedirectUsing\(fetchImpl,GEOMACRO_CANONICAL_D1_BUNDLE_URL/u);
+ assert.match(client,/!canonical&&doc\.schema===/);
+});

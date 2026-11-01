@@ -74,6 +74,10 @@ export const GEOMACRO_DERIVED_JOURNAL_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 export const GEOMACRO_DERIVED_BUNDLE_URL =
   "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle";
+/** Owner-only direct D1 origin. Never substitute a public R2/cache snapshot for
+ * per-ID publication acceptance, and never use this URL in browser callsites. */
+const GEOMACRO_CANONICAL_D1_BUNDLE_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/website-derived-news-bundle";
 export const GEOMACRO_PERMANENT_ARCHIVE_BASE_URL =
   "https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 export const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
@@ -303,19 +307,32 @@ async function fetchAllDerivedNewsLegacy(
  * are never retried or downgraded to three expensive scans.
  */
 export async function fetchAllDerivedNews(
-  fetchImpl:typeof fetch=fetch,now=Date.now(),options:{fresh?:boolean}={},
+  fetchImpl:typeof fetch=fetch,now=Date.now(),
+  options:{fresh?:boolean;canonicalOriginToken?:string}={},
 ):Promise<StatelessIntelligenceSignal[]> {
   if(!Number.isFinite(now))throw Error("DERIVED_NEWS_PAGE_CLOCK_INVALID");
-  const fresh=options.fresh!==false;
+  const canonical=options.canonicalOriginToken!==undefined;
+  if(canonical&&!/^[a-f0-9]{64}$/u.test(options.canonicalOriginToken??""))
+    throw Error("DERIVED_NEWS_CANONICAL_AUTH_INVALID");
+  const fresh=canonical||options.fresh!==false;
   // Ordinary website/Ask reads may use the Worker’s short 15s per-POP cache.
   // Exact publication/acceptance callers explicitly set fresh:true, which
   // bypasses that cache without turning every user read into a D1 query.
   const headers:Record<string,string>={Accept:"application/json"};
   if(fresh)headers["Cache-Control"]="no-cache";
+  if(canonical)headers.Authorization="Bearer "+options.canonicalOriginToken;
   const init:RequestInit={method:"GET",redirect:"error",headers};
   if(fresh)init.cache="no-store";
-  const response=await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_BUNDLE_URL,init,8_000);
-  if(response.status===401||response.status===404||response.status===405){
+  // One authenticated GET, never retry and multiply canonical D1 row reads.
+  // The public R2 route is intentionally not a source of write-acceptance truth.
+  const response=canonical
+    ?await fetchWithoutRedirectUsing(fetchImpl,GEOMACRO_CANONICAL_D1_BUNDLE_URL,{
+        ...init,signal:AbortSignal.timeout(8_000),
+      })
+    :await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_DERIVED_BUNDLE_URL,init,8_000);
+  if(canonical&&response.headers.get("X-GeoMacro-Origin-Readback")!=="d1-canonical")
+    throw Error("DERIVED_NEWS_CANONICAL_PROOF_HEADER_MISSING");
+  if(!canonical&&(response.status===401||response.status===404||response.status===405)){
     try{await response.body?.cancel()}catch{/* discard old Worker response */}
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   }
@@ -330,7 +347,7 @@ export async function fetchAllDerivedNews(
   // default protected handler (401) or return 404/405. Only these route-absence
   // statuses and the explicit old feed schema get a legacy fallback; 429/5xx
   // quota/storage failures are never downgraded to multiple expensive reads.
-  if(doc.schema==="geomacro.website-derived-news-feed.v1")
+  if(!canonical&&doc.schema==="geomacro.website-derived-news-feed.v1")
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   const checkedAt=Date.parse(String(doc.checked_at??""));
   if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)

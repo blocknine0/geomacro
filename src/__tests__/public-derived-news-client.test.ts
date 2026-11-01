@@ -235,3 +235,58 @@ describe("browser public journal fallback",()=>{
   });
 
 });
+
+describe("authenticated Phase 2G canonical D1 origin acceptance",()=>{
+ const TOKEN="a".repeat(64);
+ const now=Date.parse("2026-11-01T17:00:00.000Z");
+ const row={...signal,published_at:"2026-11-01T16:59:00.000Z"};
+ const bundle=(signals:unknown[]=[],checked_at=new Date(now).toISOString())=>({
+   ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+   checked_at,original_release_delay_minutes:0,retention_days:3,
+   retention_hours:72,delivery_scope:"free_website_only",complete:true,
+   item_cap:600,returned_rows:signals.length,
+   first_ingest:signals.map((v:any)=>({id:v.id,first_seen_at:new Date(now).toISOString()})),
+   signals,scored:false,chargeable:false,supabase_dependency:false,
+ });
+ it("reads only private canonical origin (not public R2) once with exact D1 marker",async()=>{
+   const spy=vi.fn(async (url:RequestInfo|URL,init?:RequestInit)=>{
+     expect(String(url)).toBe("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/website-derived-news-bundle");
+     expect(init?.method).toBe("GET");
+     expect(init?.redirect).toBe("manual");
+     expect(init?.cache).toBe("no-store");
+     expect((init?.headers as Record<string,string>).Authorization).toBe("Bearer "+TOKEN);
+     return Response.json(bundle([row]),{headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}});
+   });
+   expect(await fetchAllDerivedNews(spy as typeof fetch,now,{fresh:true,canonicalOriginToken:TOKEN}))
+     .toEqual([row]);
+   expect(spy).toHaveBeenCalledOnce();
+ });
+ it("refuses an unproven public cache, malformed auth and exact-D1 errors without fallback/retries",async()=>{
+   const publicLike=vi.fn(async()=>Response.json(bundle([row])));
+   await expect(fetchAllDerivedNews(publicLike as typeof fetch,now,{canonicalOriginToken:TOKEN}))
+     .rejects.toThrow("DERIVED_NEWS_CANONICAL_PROOF_HEADER_MISSING");
+   expect(publicLike).toHaveBeenCalledOnce();
+   const rejects=vi.fn(async()=>Response.json({ok:false},{status:401,
+      headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}}));
+   await expect(fetchAllDerivedNews(rejects as typeof fetch,now,{canonicalOriginToken:TOKEN}))
+     .rejects.toThrow("DERIVED_NEWS_BUNDLE_UNAVAILABLE");
+   expect(rejects).toHaveBeenCalledOnce();
+   await expect(fetchAllDerivedNews(rejects as typeof fetch,now,{canonicalOriginToken:"invalid"}))
+     .rejects.toThrow("DERIVED_NEWS_CANONICAL_AUTH_INVALID");
+   expect(rejects).toHaveBeenCalledOnce();
+ });
+ it("rejects stale canonical GET, duplicate IDs and opaque source fields",async()=>{
+   const reply=vi.fn(async()=>Response.json(bundle([row],"2026-10-31T16:59:00.000Z"),{
+      headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}}));
+   await expect(fetchAllDerivedNews(reply as typeof fetch,now,{canonicalOriginToken:TOKEN}))
+     .rejects.toThrow("DERIVED_NEWS_BUNDLE_STALE_READBACK");
+   const dup=vi.fn(async()=>Response.json(bundle([row,row]),{
+      headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}}));
+   await expect(fetchAllDerivedNews(dup as typeof fetch,now,{canonicalOriginToken:TOKEN}))
+     .rejects.toThrow("DERIVED_NEWS_BUNDLE_DUPLICATE_ID");
+   const unsafe=vi.fn(async()=>Response.json(bundle([{...row,source_url:"https://private.invalid"}]),{
+      headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}}));
+   expect(await fetchAllDerivedNews(unsafe as typeof fetch,now,{canonicalOriginToken:TOKEN}))
+     .toEqual([]);
+ });
+});
