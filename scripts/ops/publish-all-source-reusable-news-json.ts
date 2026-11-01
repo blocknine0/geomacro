@@ -7,7 +7,8 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {collectRegisteredReusableNews} from "../lib/registered-reusable-news-source-collector.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
-import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
+import {buildPhase2hPrivateRawRecords,postPhase2hCollisionIsolated} from "../lib/phase2h-raw-original-records.mjs";
+import {planRegisteredPrivateOriginals} from "../lib/phase2h-registered-private-quota.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
 import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
@@ -41,12 +42,28 @@ const collected=await collectRegisteredReusableNews({
 const phase2h=buildPhase2hPrivateRawRecords(phase2hOriginals,{
  now:new Date(),derive:deriveStatelessSignals,
 });
-const phase2hD1=await postPhase2hPrivateRawRecords({
- records:phase2h.records,controlPlaneRoot:endpoint,token,
+// Conserve the existing protected D1 budget. Revisit deferred originals only
+// when a future already-scheduled source poll observes them again. A conflicting
+// immutable original is quarantined; an unrelated original still gets its
+// authenticated per-ID readback before the fact-only D1 projector proceeds.
+const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{now:new Date()});
+const phase2hD1=await postPhase2hCollisionIsolated({
+ records:phase2hQuota.records,controlPlaneRoot:endpoint,token,
+ maxAttempts:phase2hQuota.max_collision_attempts,
 });
+if(phase2hD1.rejected_conflicts>0)
+ console.warn("::warning::PHASE2H_REGISTERED_SOURCE_IMMUTABLE_ORIGINAL_QUARANTINED");
 console.log(JSON.stringify({schema:"geomacro.phase2h.registered-source-originals.v1",
- by_category:phase2h.counts,stored:phase2hD1.stored,
- duplicate:phase2hD1.duplicate,excluded_invalid:phase2h.discarded_invalid,
+ by_category:phase2h.counts,admitted_by_category:phase2hQuota.selected_by_category,
+ observed_unique:phase2hQuota.observed_unique,
+ selected_count:phase2hQuota.selected_count,
+ deferred_reobserve:phase2hQuota.deferred_reobserve,
+ invalid_or_stale:phase2hQuota.invalid_or_stale,
+ max_per_slot:phase2hQuota.max_originals_per_slot,
+ stored:phase2hD1.stored,duplicate:phase2hD1.duplicate,
+ rejected_conflicts:phase2hD1.rejected_conflicts,
+ verified_originals:phase2hD1.verified_originals,
+ excluded_invalid:phase2h.discarded_invalid,
  canonical_d1_readback_verified:phase2hD1.readback_verified,
  b2_verified:false,rights_verified:false,payments:0}));
 const info=collected.summary;
