@@ -2,7 +2,7 @@ import {useEffect,useMemo,useState} from "react";
 import {Link} from "@tanstack/react-router";
 import {ArrowRight,Clock3,Radio,Globe2,TrendingUp,Gem,RefreshCw} from "lucide-react";
 import {fetchDirectDerivedNews} from "@/lib/public-derived-news-client";
-import {fetchDailyOfficialFinds,selectDailyOfficialFinds,type DailyOfficialFind} from "@/lib/home-daily-official-finds";
+import {fetchDailyOfficialFinds,selectDailyOfficialFinds,selectDailyUnverifiedObservations,type DailyOfficialFind} from "@/lib/home-daily-official-finds";
 import type {StatelessIntelligenceSignal} from "@/lib/stateless-intelligence-model";
 import type {FindCardV1} from "@/lib/find-card-v1";
 import {eligibleHomeFindCards,publicHomeFindCopy,selectHomepageFreeFind} from "@/lib/homepage-free-finds";
@@ -28,7 +28,9 @@ function DailyStory({item,featured=false}:{item:DailyOfficialFind;featured?:bool
    <div className="flex flex-wrap items-center gap-2">
     <look.Icon aria-hidden className={"h-3.5 w-3.5 "+look.color}/>
     <span className={"font-mono text-[10px] font-semibold uppercase tracking-wider "+look.color}>{look.name}</span>
-    <span className="text-[10px] text-muted-foreground">{item.isCurrent?"Last 24h":"Earlier verified release"}</span>
+    <span className="text-[10px] text-muted-foreground">{signal.status==="osint_feed_observed_unverified"
+     ?"Unverified OSINT · "+(item.isCurrent?"last 24h":"earlier original")
+     :item.isCurrent?"Last 24h · official release":"Earlier official release"}</span>
    </div>
    <h3 className={"mt-2 font-semibold tracking-tight text-foreground "+(featured?"text-lg sm:text-xl":"text-sm sm:text-base")}>
     <Link to="/intelligence" search={{category:signal.category}} className="gm-heading-link">
@@ -61,6 +63,7 @@ export function LiveIntelligenceShowcase({
  initialFindCards=[],initialDailyHighlights=[],
 }:{initialFindCards?:FindCardV1[];initialDailyHighlights?:StatelessIntelligenceSignal[]}){
  const [signals,setSignals]=useState<StatelessIntelligenceSignal[]>(initialDailyHighlights);
+ const [observedSignals,setObservedSignals]=useState<StatelessIntelligenceSignal[]>([]);
  const [checked,setChecked]=useState(initialDailyHighlights.length>0);
  const [unavailable,setUnavailable]=useState(false);
  const [observedNow,setObservedNow]=useState(()=>Date.now());
@@ -69,27 +72,16 @@ export function LiveIntelligenceShowcase({
  useEffect(()=>{
   let cancelled=false;
   const refresh=async()=>{
-   try{
-    // Primary static asset contains credited official releases across all
-    // three domains, independent of the OSINT-heavy capped latest.json.
-    const incoming=await fetchDailyOfficialFinds();
-    if(!cancelled){
-     setSignals(previous=>incoming.length?incoming:previous);
-     setUnavailable(false);setChecked(true);setObservedNow(Date.now());
-    }
-   }catch{
-    // Read-only, bounded fallback to the same existing static archive.
-    // No D1 hit, no payment or source disclosure on homepage navigation.
-    try{
-     const incoming=await fetchDirectDerivedNews();
-     if(!cancelled){
-      setSignals(previous=>incoming.length?incoming:previous);
-      setUnavailable(false);setChecked(true);setObservedNow(Date.now());
-     }
-    }catch{
-     if(!cancelled){setUnavailable(true);setChecked(true);setObservedNow(Date.now());}
-    }
-   }
+   // Both public paths are static-only (no D1 or source-provider reads).
+   // One missing asset must not erase a successfully loaded other lane.
+   const [official,recent]=await Promise.allSettled([
+     fetchDailyOfficialFinds(),fetchDirectDerivedNews()
+   ]);
+   if(cancelled)return;
+   if(official.status==="fulfilled")setSignals(official.value);
+   if(recent.status==="fulfilled")setObservedSignals(recent.value);
+   setUnavailable(official.status==="rejected"&&recent.status==="rejected");
+   setChecked(true);setObservedNow(Date.now());
   };
   void refresh();
   const interval=window.setInterval(()=>void refresh(),5*60_000);
@@ -98,13 +90,16 @@ export function LiveIntelligenceShowcase({
   return ()=>{cancelled=true;window.clearInterval(interval);window.removeEventListener("focus",onFocus);};
  },[cycle]);
  const stories=useMemo(()=>selectDailyOfficialFinds(signals,observedNow,4),[signals,observedNow]);
+ const observations=useMemo(()=>selectDailyUnverifiedObservations(observedSignals,observedNow,4),
+  [observedSignals,observedNow]);
  // Retain the previously approved no-credit Find Card path only for genuine
  // explicit, concrete events when the new official static asset is empty.
  const fallback=selectHomepageFreeFind(eligibleHomeFindCards(legacy,observedNow).filter(isConcreteHomeFind),observedNow);
  const first=fallback?.card;
  const firstCopy=first?publicHomeFindCopy(first):null;
- const latest=stories.length?stories.reduce((best,v)=>v.originalAt>best?v.originalAt:best,stories[0].originalAt):null;
- const fresh=stories.some(s=>s.isCurrent);
+ const currentStories=observations.length?observations:stories;
+ const latest=currentStories.length?currentStories.reduce((best,v)=>v.originalAt>best?v.originalAt:best,currentStories[0].originalAt):null;
+ const fresh=currentStories.some(s=>s.isCurrent);
  return (
   <div className="relative mx-auto w-full min-w-0 max-w-xl lg:mx-0 lg:max-w-none">
    <div aria-hidden className="pointer-events-none absolute -inset-4 rounded-[2rem] bg-primary/5 blur-3xl"/>
@@ -114,10 +109,11 @@ export function LiveIntelligenceShowcase({
       <Radio className="h-3.5 w-3.5" aria-hidden/> Geomacro Finds
      </p>
      <span className="rounded-full border border-border/65 bg-background/65 px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
-      {stories.length?(fresh?"Fresh original releases":"Latest verified originals"):"Official-source desk"}
+      {observations.length?"Recent OSINT · unverified":stories.length?
+      (fresh?"Recent official releases":"Earlier official releases"):"Intelligence desk"}
      </span>
     </div>
-    {stories.length>0?(
+    {observations.length>0||stories.length>0?(
       <section aria-label="Geomacro important original-dated news" className="mt-5 space-y-3">
        <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -125,9 +121,17 @@ export function LiveIntelligenceShowcase({
         </p>
         {latest&&<span className="text-[10px] text-muted-foreground">Latest original: {originalDate(latest,"exact")}</span>}
        </div>
-       {stories.map((story,index)=><DailyStory key={story.signal.id} item={story} featured={index===0}/>)}
+       {observations.length>0&&<>
+        <p className="text-xs font-semibold text-foreground">Latest source observations · Not independently verified</p>
+        {observations.map((story,index)=><DailyStory key={story.signal.id} item={story} featured={index===0}/>)}
+       </>}
+       {stories.length>0&&<>
+        <p className="pt-2 text-xs font-semibold text-foreground">Official original releases · original dates preserved</p>
+        {stories.slice(0,observations.length?2:4).map((story,index)=>
+         <DailyStory key={story.signal.id} item={story} featured={observations.length===0&&index===0}/>)}
+       </>}
        <p className="text-[10px] leading-4 text-muted-foreground">
-        Automatically updated as qualified publisher releases arrive. Unverified OSINT is not presented as verified news; quiet days retain the actual earlier publication dates.
+        Updated from public archive originals. OSINT observations are unverified and never count as independently verified releases; quiet days retain earlier original dates.
        </p>
        <Link to="/intelligence" className="gm-text-link text-xs">Read full Intelligence <ArrowRight className="h-3.5 w-3.5" aria-hidden/></Link>
       </section>
