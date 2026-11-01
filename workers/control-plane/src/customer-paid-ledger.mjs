@@ -62,7 +62,11 @@ function validCapability(c){
   return c;
 }
 function queryGrants(db,userId,now){
-  return db.prepare(`SELECT g.grant_id,g.tier,g.contract_version,g.expires_at,
+  return db.prepare(`SELECT g.grant_id,g.tier,g.contract_version,g.starts_at,g.expires_at,
+      (SELECT COALESCE(SUM(delta_credits),0) FROM credit_ledger
+       WHERE receipt_id=g.receipt_id AND event_type IN ('funding','reversal')) AS allocated,
+      (SELECT COALESCE(SUM(credit_cost),0) FROM customer_usage_receipts
+       WHERE grant_id=g.grant_id) AS used,
       (SELECT COALESCE(SUM(delta_credits),0) FROM credit_ledger
        WHERE receipt_id=g.receipt_id AND event_type IN ('funding','reversal'))
        - (SELECT COALESCE(SUM(credit_cost),0) FROM customer_usage_receipts
@@ -76,6 +80,26 @@ function queryGrants(db,userId,now){
     ORDER BY g.expires_at ASC,g.grant_id ASC LIMIT 25`).bind(
       userId,userId,CUSTOMER_CREDIT_CONTRACT,now,now,now).all();
 }
+/** Canonical read-only funded entitlement view. A registration or a raw
+ * ledger balance is never sufficient for issuance. Only live, verified,
+ * receipt-linked, non-reversed grants with usable credits appear here.
+ */
+export async function readCanonicalCustomerPaidAccount(db,userId,now=nowIso()){
+ const rows=(await queryGrants(db,userId,now)).results??[];
+ const grants=rows.filter(g=>Object.hasOwn(PERMITTED,g.tier));
+ const eligible=grants.some(g=>Number.isSafeInteger(g.remaining)&&g.remaining>0);
+ if(!grants.length)return {credits:null,key_issuance_eligible:false};
+ const sum=(field)=>grants.reduce((total,g)=>total+Math.max(0,Number(g[field])||0),0);
+ const remaining=grants.reduce((total,g)=>total+Math.max(0,Number(g.remaining)||0),0);
+ const lastExpiry=grants.reduce((last,g)=>g.expires_at>last?g.expires_at:last,'');
+ return {credits:{
+  status:eligible?'active':'depleted',
+  tier:grants.every(g=>g.tier===grants[0].tier)?grants[0].tier:'multiple',
+  allocated:sum('allocated'),used:sum('used'),remaining,
+  period_ends_at:lastExpiry,
+ },key_issuance_eligible:eligible};
+}
+
 async function scopedKey(db,env,raw,now){
   if(!tokenPattern.test(raw))fail(401,'CUSTOMER_PAID_API_KEY_DENIED');
   const digest=await customerPaidKeyDigest(env,raw);
