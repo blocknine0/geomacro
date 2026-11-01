@@ -64,7 +64,7 @@ export function LiveIntelligenceShowcase({
  const [checked,setChecked]=useState(initialDailyHighlights.length>0);
  const [unavailable,setUnavailable]=useState(false);
  const [observedNow,setObservedNow]=useState(()=>Date.now());
- const [legacy,setLegacy]=useState<FindCardV1[]>(initialFindCards);
+ const legacy=initialFindCards;
  const [cycle,setCycle]=useState(0);
  useEffect(()=>{
   let cancelled=false;
