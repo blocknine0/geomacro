@@ -281,3 +281,19 @@ test("only registered private publisher's named source-only helper is website-pa
  const publisher=readFileSync("scripts/ops/publish-all-source-reusable-news-json.ts","utf8");
  assert.match(publisher,/phase2h-registered-private-quota.mjs/);
 });
+
+test("exact canonical D1-to-static helper remains website-ops-only; arbitrary libraries do not",()=>{
+ const site="a".repeat(40),main="b".repeat(40);
+ const base={status:"ahead",base_commit:{sha:site},merge_base_commit:{sha:site},
+  ahead_by:1,behind_by:0,total_commits:1,commits:[{sha:main}]};
+ for(const filename of [
+  "scripts/lib/website-canonical-archive-catchup.mjs",
+  "scripts/lib/website-canonical-archive-catchup.test.mjs"
+ ]){
+  assert.equal(classifyPublishedSourceEquivalence({...base,
+   files:[{filename,status:"added"}]},site,main),true,filename);
+ }
+ assert.equal(classifyPublishedSourceEquivalence({...base,
+  files:[{filename:"scripts/lib/website-canonical-archive-catchup-extra.mjs",status:"added"}]},
+  site,main),false);
+});
