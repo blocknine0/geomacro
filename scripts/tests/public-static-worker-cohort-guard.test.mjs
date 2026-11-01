@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {checkPublicStaticCohort,serveGuardedPublicStaticAsset}
+import {checkPublicStaticCohort,checkDailyPublicOfficialCohort,serveGuardedPublicStaticAsset}
  from "../../workers/public-finds-archive/src/index.mjs";
 const now=Date.parse("2026-10-30T07:00:00.000Z");
 const date=new Date(now-60_000).toISOString();
@@ -15,11 +15,23 @@ const validCoverage=()=>({schema:"geomacro.free-derived-archive-eligibility.v1",
  signed_or_scored:false,unverified_promoted:false,
  paid_customer_eligible:false,live_payment_authorized:false,d1_reads:0,
  checked_at:date,eligible_ids_sha256:"a".repeat(64)});
-const env=(latest=validLatest(),coverage=validCoverage())=>({
+const validDaily=()=>({ok:true,schema:"geomacro.public-daily-official-finds.v1",
+ generated_at:date,selection_window_days:30,source_window:"archived_original_release",
+ official_only:true,independently_corrob_verified:false,
+ chargeable:false,scored:false,source_urls_returned:false,
+ mandatory_source_credits_preserved:true,signals:[{
+ id:"macro-1234abcd",category:"macro",status:"official_release_observed_unscored",
+ title:"Geomacro finds Federal Reserve issued FOMC inflation statement",
+ date_precision:"exact",published_at:"2026-10-29T12:00:00.000Z",
+ sources_credited:["Federal Reserve Board"],observed_release_count:1,
+ same_event_corrob_verified:false,severity:null,
+ }]});
+const env=(latest=validLatest(),coverage=validCoverage(),daily=validDaily())=>({
  ASSETS:{fetch:async request=>{
   const path=new URL(request.url).pathname;
   if(path==="/latest.json")return Response.json(latest);
   if(path==="/coverage-72h.json")return Response.json(coverage);
+  if(path==="/daily-highlights.json")return Response.json(daily);
   throw Error("UNEXPECTED_ASSET");
  }}
 });
@@ -57,4 +69,27 @@ test("ASSETS transport/malformed JSON fails closed without exposing internal byt
  const resp=await serveGuardedPublicStaticAsset(req("latest.json"),e,now);
  assert.equal(resp.status,503);
  assert.equal((await resp.json()).error,"PUBLIC_ARCHIVE_COHORT_UNVERIFIED");
+});
+
+test("daily official highlights are CORS-visible only with same static cohort and original clock",async()=>{
+ const d=validDaily();
+ assert.equal(checkDailyPublicOfficialCohort(d,validLatest(),now),true);
+ const r=await serveGuardedPublicStaticAsset(req("daily-highlights.json"),env(),now);
+ assert.equal(r.status,200);
+ assert.equal(r.headers.get("access-control-allow-origin"),"*");
+ assert.equal(r.headers.get("cache-control"),"no-store");
+ assert.deepEqual(await r.json(),d);
+});
+test("daily rejects OSINT promotion, credit URLs, synthetic fresh time and split generations",async()=>{
+ for(const d of [
+ {...validDaily(),signals:[{...validDaily().signals[0],status:"osint_feed_observed_unverified"}]},
+ {...validDaily(),signals:[{...validDaily().signals[0],sources_credited:["https://example.org/source"]}]},
+ {...validDaily(),signals:[{...validDaily().signals[0],published_at:"2026-10-31T12:00:00Z"}]},
+ {...validDaily(),generated_at:new Date(now-120_000).toISOString()},
+ ]){
+  assert.equal(checkDailyPublicOfficialCohort(d,validLatest(),now),false);
+  const response=await serveGuardedPublicStaticAsset(req("daily-highlights.json"),env(validLatest(),validCoverage(),d),now);
+  assert.equal(response.status,503);
+  assert.equal((await response.json()).paid_eligible,false);
+ }
 });
