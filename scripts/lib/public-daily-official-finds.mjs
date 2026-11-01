@@ -7,7 +7,7 @@ export const PUBLIC_DAILY_FINDS_SCHEMA="geomacro.public-daily-official-finds.v1"
 const DOMAINS=["geopolitics","macro","rare_earth"];
 const DAY=86_400_000;
 const MAX_AGE=30*DAY;
-const MAX_PER_CATEGORY=24;
+const MAX_PER_CATEGORY=12; // At most 36 verified <=5KB rows: bounded under the 200KB public contract.
 const MATERIAL=/\b(?:sanctions?|ceasefire|war|peace|conflict|security council|resolution|election|treaty|trade agreement|tariffs?|embargo|border|shipping|gdp|inflation|interest rate|federal reserve|central bank|fomc|employment|unemployment|forex|currency|exports?|imports?|critical minerals?|rare earths?|lithium|nickel|cobalt|copper|gallium|germanium|supply chain|refin(?:ing|ery)|production|investment|invested|awarded|funding|approved|issued|published|announced|introduced|revised)\b/iu;
 const BAD=/\b(?:publisher candidate|source.feed observation|unverified|an official publisher|feed contains a dated item)\b/iu;
 export function buildDailyOfficialFinds(rows,now=Date.now()){
