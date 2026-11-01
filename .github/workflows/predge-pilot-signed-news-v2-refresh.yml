@@ -17,7 +17,8 @@ concurrency:
 jobs:
   refresh:
     # Manual execution requires an explicit one-time owner authorization input.
-    # Scheduled execution remains disabled unless the opt-in variable is YES.
+    # Scheduled execution requires an explicit opt-in: GitHub variable YES or
+    # a protected production secret with the exact recurring approval phrase.
     # Never gate on vars at job-if evaluation (environment scope not yet loaded).
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
@@ -33,6 +34,7 @@ jobs:
         shell: bash
         env:
           PREVIEW_ENABLED: ${{ vars.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED }}
+          RECURRING_APPROVAL: ${{ secrets.GEOMACRO_PREDGE_RECURRING_REFRESH_APPROVAL }}
           MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
@@ -44,7 +46,9 @@ jobs:
             fi
             echo "enabled=true" >> "$GITHUB_OUTPUT"
             echo "PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED"
-          elif test "$GITHUB_EVENT_NAME" = "schedule" && test "$PREVIEW_ENABLED" = "YES"; then
+          elif test "$GITHUB_EVENT_NAME" = "schedule" &&
+            { test "$PREVIEW_ENABLED" = "YES" ||
+              test "$RECURRING_APPROVAL" = "PREDGE_V2_RECURRING_NO_FUNDS_APPROVED"; }; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
             echo "PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED"
           else
