@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T22:42:14.715Z",
+  "checked_at": "2026-11-01T22:54:08.718Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 132,
+  "item_count": 131,
   "counts": {
     "geopolitics": 43,
-    "macro": 55,
+    "macro": 54,
     "rare_earth": 34
   },
-  "source_native_ids_sha256": "393f40cc7267206c131148ef95dfb3af4d79ff2abdaaff20ae9b92492d65a924",
+  "source_native_ids_sha256": "f5b40d630b9d7de4f81be1f26e2312e79ffc473e1976b52e241da3b1f3bbee0e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2515,25 +2515,6 @@
         "Statistics Canada"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-01b96807",
-      "category": "macro",
-      "title": "Geomacro finds Agnico Eagle Mines reported Q3 2026 Gold Production in Line with Guidance (AEM) - GuruFocus",
-      "what_changed": "A monitored source feed reports: Agnico Eagle Mines reported Q3 2026 Gold Production in Line with Guidance (AEM) - GuruFocus. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T22:50:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }

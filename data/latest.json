@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T22:42:14.715Z",
+  "checked_at": "2026-11-01T22:54:08.718Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -2173,25 +2173,6 @@
         "Statistics Canada"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-01b96807",
-      "category": "macro",
-      "title": "Geomacro finds Agnico Eagle Mines reported Q3 2026 Gold Production in Line with Guidance (AEM) - GuruFocus",
-      "what_changed": "A monitored source feed reports: Agnico Eagle Mines reported Q3 2026 Gold Production in Line with Guidance (AEM) - GuruFocus. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T22:50:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
