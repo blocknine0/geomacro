@@ -1,0 +1,35 @@
+name: Predge Signed News Context v2 - isolated tests
+on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/predge-pilot-news-context-v2.mjs"
+      - "workers/control-plane/src/predge-pilot-check-v2.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/migrations/0088_predge_pilot_signed_news_context.sql"
+      - "scripts/ops/sign-predge-pilot-check-v2.mjs"
+      - "scripts/ops/publish-predge-pilot-check-v2.mjs"
+      - "scripts/ops/predge-paired-read-v2.mjs"
+      - "scripts/tests/predge-pilot-check-v2.test.mjs"
+      - ".github/workflows/predge-pilot-signed-news-v2-ci.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-funds-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Run isolated cryptography, auth, expiry, quota, and attribution regression
+        run: |
+          node --check workers/control-plane/src/predge-pilot-news-context-v2.mjs
+          node --check workers/control-plane/src/predge-pilot-check-v2.mjs
+          node --check scripts/ops/sign-predge-pilot-check-v2.mjs
+          node --check scripts/ops/publish-predge-pilot-check-v2.mjs
+          node --check scripts/ops/predge-paired-read-v2.mjs
+          node --test scripts/tests/predge-pilot-check-v2.test.mjs
