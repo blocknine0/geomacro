@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T21:09:33.909Z",
+  "checked_at": "2026-11-01T21:21:13.941Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 100,
+  "item_count": 98,
   "counts": {
-    "geopolitics": 33,
-    "macro": 38,
+    "geopolitics": 32,
+    "macro": 37,
     "rare_earth": 29
   },
-  "source_native_ids_sha256": "a82362f203afad8ed722832f6d30b82d17ff3946c0e423015f535b5472a01b99",
+  "source_native_ids_sha256": "d6d02fb3f8a34cf732ee825de17eff6dc668b92faa1114157172b62f1734c84b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1886,44 +1886,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-00403d55",
-      "category": "macro",
-      "title": "Geomacro finds FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com",
-      "what_changed": "A monitored source feed reports: FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:19:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-37ff993e",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States proposed Venezuela elections for 2027, opposition leader Machado says - Reuters",
-      "what_changed": "A monitored source feed reports: United States proposed Venezuela elections for 2027, opposition leader Machado says - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:10:51.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T21:09:33.909Z",
+  "checked_at": "2026-11-01T21:21:13.941Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -1772,44 +1772,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-00403d55",
-      "category": "macro",
-      "title": "Geomacro finds FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com",
-      "what_changed": "A monitored source feed reports: FedEx Freight forecast quarterly earnings above estimates on improving volumes, pricing By Reuters - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:19:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-37ff993e",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States proposed Venezuela elections for 2027, opposition leader Machado says - Reuters",
-      "what_changed": "A monitored source feed reports: United States proposed Venezuela elections for 2027, opposition leader Machado says - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:10:51.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

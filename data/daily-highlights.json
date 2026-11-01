@@ -1,0 +1,336 @@
+{
+  "ok": true,
+  "schema": "geomacro.public-daily-official-finds.v1",
+  "generated_at": "2026-11-01T21:21:13.941Z",
+  "selection_window_days": 30,
+  "source_window": "archived_original_release",
+  "official_only": true,
+  "independently_corrob_verified": false,
+  "chargeable": false,
+  "scored": false,
+  "source_urls_returned": false,
+  "mandatory_source_credits_preserved": true,
+  "signals": [
+    {
+      "id": "geopolitics-be28ba3f",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We urge those who did not support the US’ resolution to seek to find a solution on the basis of that draft. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T20:57:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-efbca968",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s decision to veto this draft resolution risks setting back progress on the political process for the Western Sahara · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Russia’s decision to veto this draft resolution risks setting back progress on the political process for the Western Sahara. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T20:56:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e72a2f77",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning This mandate will strengthen UNSMIL’s ability to advance a Libyan-led and Libyan-owned political process · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning This mandate will strengthen UNSMIL’s ability to advance a Libyan-led and Libyan-owned political process. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T19:26:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9196183d",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning We support Bosnia and Herzegovina's Euro-Atlantic ambitions, as reflected in the will of the majority of her citizens · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning We support Bosnia and Herzegovina's Euro-Atlantic ambitions, as reflected in the will of the majority of her citizens. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T15:56:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7ea1c49a",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "agreement",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-30T15:45:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2abe42c4",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published GDP estimates for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published GDP estimates for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-30",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-46923510",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning The UK is ready to work across the wider UN membership to ensure emerging technologies help deliver safer seas · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The UK is ready to work across the wider UN membership to ensure emerging technologies help deliver safer seas. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-29T15:28:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7a5762d3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s justifications for its war do not withstand scrutiny · United Kingdom",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Russia’s justifications for its war do not withstand scrutiny. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-29T13:21:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-504170ac",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for August 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-10-29",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-94193ad2",
+      "category": "geopolitics",
+      "title": "Geomacro finds General Assembly: adopted Resolution to Lift United States Embargo of Cuba · United States",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "General Assembly adopted Resolution to Lift United States Embargo of Cuba. Country or region mentioned: United States.",
+      "geography": "United States",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T18:15:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-18e81505",
+      "category": "macro",
+      "title": "Geomacro finds Federal Reserve issued FOMC statement",
+      "why_it_matters": "A monetary-policy release can influence financing conditions and FX expectations; no specific rate direction or market outcome is inferred from this signal.",
+      "what_changed": "Federal Reserve issued FOMC statement.",
+      "geography": null,
+      "development_type": "announcement",
+      "topic": "monetary policy",
+      "published_at": "2026-10-28T18:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Federal Reserve Board"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1c451683",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Russia's war against Ukraine is costing more and achieving less · United Kingdom",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "United Kingdom issued a statement to the FSC concerning Russia's war against Ukraine is costing more and achieving less. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "geopolitical security",
+      "published_at": "2026-10-28T13:28:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-91dd0a56",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN General Assembly on Wednesday: called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades · Cuba",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "UN General Assembly on Wednesday called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades. Country or region mentioned: Cuba.",
+      "geography": "Cuba",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-28T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e168f30f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Canada: invested to unlock lithium potential and improve connectivity and industry in northern Quebec · Canada",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Canada invested to unlock lithium potential and improve connectivity and industry in northern Quebec. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "funding",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-10-28",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Natural Resources Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ac9ded5e",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Peace cannot be sustainable while half the population is shut out of shaping it · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Peace cannot be sustainable while half the population is shut out of shaping it. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-10-27T20:32:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-50666bcd",
+      "category": "geopolitics",
+      "title": "Geomacro finds Holding: debated over Iran Sanctions, Security Council Contests Expiry Status, Continuing Nuclear Programme · Iran",
+      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
+      "what_changed": "Holding debated over Iran Sanctions, Security Council Contests Expiry Status, Continuing Nuclear Programme. Country or region mentioned: Iran.",
+      "geography": "Iran",
+      "development_type": "trade restriction",
+      "topic": "sanctions and trade restrictions",
+      "published_at": "2026-10-27T20:19:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7da3d13a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Energy Department: awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Energy Department awarded $16 Million for University Initiatives that Rebuild America’s Critical Minerals Workforce.",
+      "geography": null,
+      "development_type": "official update",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-10-26",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "U.S. Department of Energy"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
+}
