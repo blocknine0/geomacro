@@ -64,7 +64,11 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
  if(!Array.isArray(candidates)||!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof derive!=="function")throw Error("PHASE2H_RAW_COLLECTOR_INVALID");
  const map=new Map(),counts={geopolitics:0,macro:0,rare_earth:0};
- let excluded=0;
+ // An original's canonical ID binds category + original URL + native clock.
+ // Multiple source lanes may disagree on the metadata for the SAME ID.
+ // Quarantine the entire ambiguous ID without taking down unrelated originals.
+ const quarantinedIds=new Set();
+ let excluded=0,quarantinedCandidateRows=0;
  for(const c of candidates){
   if(!c||!CAT.has(c.category)||!safeText(c.title,260)||
      !safeText(c.sourceId,110)||!validUrl(c.articleUrl)||
@@ -126,15 +130,27 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
     commercial_rights_verified:false,commercial_delivery_authorized:false};
   const rawSha=sha(JSON.stringify(immutable));
   const row={...immutable,raw_sha256:rawSha,ingested_at:now.toISOString()};
+  if(quarantinedIds.has(observationId)){
+   quarantinedCandidateRows++;continue;
+  }
   if(map.has(observationId)){
-   if(map.get(observationId).raw_sha256!==rawSha)
-    throw Error("PHASE2H_SAME_ORIGINAL_ID_CHANGED_CONTENT");
+   if(map.get(observationId).raw_sha256!==rawSha){
+    // Never arbitrarily choose a publisher revision or silently promote the
+    // first conflicting record as authoritative. Neither candidate is stored.
+    map.delete(observationId);counts[c.category]--;
+    quarantinedIds.add(observationId);
+    quarantinedCandidateRows+=2;
+   }
    continue;
   }
   map.set(observationId,row);counts[c.category]++;
  }
  return Object.freeze({records:[...map.values()],counts,
-   discarded_invalid:excluded,exact_dedup_verified:true,commercial_rights_verified:false,
+   discarded_invalid:excluded,
+   identity_conflicts_quarantined:quarantinedIds.size,
+   quarantined_candidate_rows:quarantinedCandidateRows,
+   identity_conflict_policy:"FAIL_CLOSED_PER_ORIGINAL_NOT_PER_BATCH",
+   exact_dedup_verified:true,commercial_rights_verified:false,
    original_full_text_unavailable_not_fabricated:true});
 }
 export async function postPhase2hPrivateRawRecords({
