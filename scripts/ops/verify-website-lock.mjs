@@ -141,6 +141,7 @@ const approvedPricing = [
   config.approved_public_intelligence_reliability_20261101,
   config.approved_ecb_official_fx_reference_20261101,
   config.approved_customer_portal_20261101,
+  config.approved_customer_dashboard_logout_20261101,
   config.approved_navigation_theme_20261101,
   config.approved_home_navigation_20261101,
   config.approved_daily_official_finds_20261101,
