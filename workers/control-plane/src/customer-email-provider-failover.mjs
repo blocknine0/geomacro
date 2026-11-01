@@ -102,9 +102,10 @@ export async function sendOtpWithProviderFailover({
   try{
    const response=await fetchImpl(outbound.url,{method:"POST",
     headers:{"Content-Type":"application/json",...outbound.headers},
-    body:JSON.stringify(outbound.body),redirect:"error",
+    body:JSON.stringify(outbound.body),redirect:"manual",
     signal:AbortSignal.timeout(8000)});
-   outcome=await resultOf(p.name,response);
+   // Workerd-safe manual redirect: never forward OTP or credentials to redirected origins.
+   outcome=response.status>=300&&response.status<400?{kind:"rejected"}:await resultOf(p.name,response);
   }catch{outcome={kind:"unknown"};}
   // Store just public provider message identifier; never log or store OTP.
   const status=outcome.kind==="accepted"?"accepted":
