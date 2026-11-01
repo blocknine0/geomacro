@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CommercialHome } from "@/components/home/commercial-home";
-import { fetchHomeDerivedNews } from "@/lib/home-derived-news-client";
+import { fetchDirectDerivedNews } from "@/lib/public-derived-news-client";
 import { fetchDailyOfficialFinds } from "@/lib/home-daily-official-finds";
 import { findCardFromObservedRelease } from "@/lib/find-card-v1";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -26,12 +26,12 @@ export const Route = createFileRoute("/")({
       if(signals.length>0)
         return {initialFindCards:[],initialDailyHighlights:signals};
     } catch { /* The legacy no-credit path stays as a bounded fallback. */ }
-    // Bounded read-only SSR of the existing D1 derived journal. Absence or
-    // outage leaves the homepage usable and never invents an event/score.
+    // Bounded, static-only legacy Find Card fallback; no D1/Supabase reads.
+    // Absence or outage leaves the homepage usable and never invents news.
     // Public client hydration can independently refresh the same feed.
     try {
       const signals = await withPublicRuntimeTimeout(
-        fetchHomeDerivedNews(), 2_500, "Public Finds journal timed out.");
+        fetchDirectDerivedNews(), 2_500, "Public Finds archive timed out.");
       const now=Date.now();
       return {initialFindCards:signals.map(s=>findCardFromObservedRelease(s,now))
         .filter((card)=>card!==null).slice(0,100),initialDailyHighlights:[]};
