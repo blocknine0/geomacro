@@ -136,7 +136,8 @@ for (const category of categories) {
       // A quiet source does not justify an extra expensive canonical scan.
       // This baseline is before the FIRST write across all three categories.
       if(signals.length>0&&beforePublicationRows===null)
-        beforePublicationRows=await fetchAllDerivedNews(fetch,Date.now(),{fresh:true});
+        beforePublicationRows=await fetchAllDerivedNews(fetch,Date.now(),
+          {fresh:true,canonicalOriginToken:TOKEN});
       let acknowledged=0;
       for(const chunk of chunks){
         if(chunk.length===0)continue;
@@ -345,7 +346,8 @@ try {
   let retained:typeof signals=[];
   if(workerPolicyReady){
     try{
-      retained=await fetchAllDerivedNews(fetch,now.getTime(),{fresh:true});
+      retained=await fetchAllDerivedNews(fetch,now.getTime(),
+          {fresh:true,canonicalOriginToken:TOKEN});
       afterPublicationRows=retained;
     }
     catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
@@ -429,9 +431,14 @@ if(!ARCHIVE_ONLY&&acknowledgedSignals.length>0){
       original_timestamps_preserved:true,
       rights_verified:false,paid_eligible:false,payments:0
     }));
-  }catch{
+  }catch(error){
     success=false;
-    console.error("::error::PHASE2G_D1_PER_ID_RECONCILIATION_UNVERIFIED");
+    // Expose only bounded, hard-coded failure classes. Never emit D1 story
+    // JSON, source titles, private URLs, or any authorization material.
+    const message=error instanceof Error?error.message:"";
+    const diagnostic=/^(?:PHASE2G_D1_RECONCILIATION_[A-Z0-9_]+|DERIVED_NEWS_(?:BUNDLE|CANONICAL|PUBLIC_FETCH)_[A-Z0-9_]+)$/u.test(message)
+      ?message:"CANONICAL_D1_ORIGIN_READBACK_UNAVAILABLE";
+    console.error("::error::PHASE2G_D1_PER_ID_RECONCILIATION_UNVERIFIED_"+diagnostic);
   }
 }
 
