@@ -27,6 +27,9 @@ import type {StatelessIntelligenceResult} from "../../src/lib/stateless-public-i
 import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy} from "../lib/derived-news-readback-policy.mjs";
 import {safeDerivedNewsD1FailureClass} from "../lib/derived-news-d1-failure.mjs";
 import {phase2fCategorySourceReceipt} from "../lib/phase2f-category-source-receipt.mjs";
+import {reconcileCanonicalWebsiteArchiveCandidates} from "../lib/website-canonical-archive-catchup.mjs";
+import {isPermanentArchiveSignal} from "./publish-permanent-derived-news-archive.mjs";
+import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
 
 const ARCHIVE_ONLY = process.env.GEOMACRO_DERIVED_ARCHIVE_ONLY === "1";
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
@@ -58,6 +61,7 @@ const sourceHealthReceipts:Array<{category:string}>=[];
 // The existing post-publication retained-original read is reused for proof.
 let beforePublicationRows:StatelessIntelligenceSignal[]|null=null;
 let afterPublicationRows:StatelessIntelligenceSignal[]|null=null;
+let canonicalArchiveReadAttempted=false;
 const acknowledgedSignals:StatelessIntelligenceSignal[]=[];
 const sharedOfficialDocuments=createRunScopedAustralianResourcesFetch();
 function emitPhase2FCategoryFunnel(base:{category:string;discovered:number;relevant:number;
@@ -235,6 +239,35 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
   }
 }
+// The hourly publisher previously exported its archive candidates BEFORE
+// reading the existing canonical D1 journal. This silently omitted qualifying
+// cards written by the 15-minute source-only publisher whenever its own static
+// stage had not yet admitted them. The following reuses the single complete,
+// authenticated origin read already needed for private original-reference
+// reconciliation and catches up ALL eligible derived IDs across three domains.
+// Do not perform this read in quota-held archive-only mode.
+if(!ARCHIVE_ONLY&&workerPolicyReady){
+  canonicalArchiveReadAttempted=true;
+  try{
+    const retained=await fetchAllDerivedNews(fetch,Date.now(),{
+      fresh:true,canonicalOriginToken:TOKEN,
+    });
+    afterPublicationRows=retained;
+    const staged=reconcileCanonicalWebsiteArchiveCandidates({
+      sourceCandidates:archiveCandidateSignals,canonicalRows:retained,
+      now:Date.now(),isArchiveEligible:isPermanentArchiveSignal,
+      isConcrete:isConcretePublicIntelligence,
+    });
+    archiveCandidateSignals.splice(0,archiveCandidateSignals.length,...staged.candidates);
+    const {candidates:privateNotLogged,...safeReceipt}=staged;
+    console.log(JSON.stringify(safeReceipt));
+  }catch{
+    // Static source-derived candidates may still publish, but a publisher
+    // success cannot pretend canonical cross-publisher catch-up succeeded.
+    success=false;
+    console.error("::error::WEBSITE_CANONICAL_D1_STATIC_CATCHUP_UNVERIFIED");
+  }
+}
 // Export only validated, source-neutral Geomacro-derived cards for the permanent static archive.
 // This receipt deliberately excludes URLs, feed XML, source IDs, source headlines and private references.
 try {
@@ -400,12 +433,16 @@ try {
   // original-source audit. This is one bounded D1 read, not a publisher GET.
   let retained:typeof signals=[];
   if(workerPolicyReady){
-    try{
+    if(afterPublicationRows!==null)retained=afterPublicationRows;
+    else if(canonicalArchiveReadAttempted){
+      // A failed canonical read already failed the publisher; never double
+      // spend D1 rows merely to retry an optional original-reference review.
+      console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");
+    }else try{
       retained=await fetchAllDerivedNews(fetch,now.getTime(),
           {fresh:true,canonicalOriginToken:TOKEN});
       afterPublicationRows=retained;
-    }
-    catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
+    }catch{console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_UNAVAILABLE");}
   }else console.warn("::warning::RETAINED_ORIGINAL_REFERENCE_JOURNAL_SKIPPED_D1_UNAVAILABLE");
   const reconciled=new Map<string,StatelessSourceCandidate>();
   for(const category of categories){

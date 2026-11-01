@@ -8,6 +8,8 @@ on:
     paths:
       # Re-run recovery smoke for each changed canonical archive/catch-up contract.
       - "scripts/lib/website-news-canonical-reconciliation.mjs"
+      - "scripts/lib/website-canonical-archive-catchup.mjs"
+      - "scripts/lib/website-canonical-archive-catchup.test.mjs"
       - "scripts/ops/reconcile-website-news-to-d1.ts"
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
       - "scripts/tests/website-news-archive-admission.test.mjs"
@@ -62,6 +64,8 @@ on:
       - "scripts/tests/actor-action-news.test.mjs"
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
+      - "scripts/lib/website-canonical-archive-catchup.mjs"
+      - "scripts/lib/website-canonical-archive-catchup.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
       - "src/lib/public-derived-news-client.ts"
       - "src/__tests__/public-derived-news-client.test.ts"
@@ -148,7 +152,10 @@ jobs:
       - name: Verify shared Website archive and PREDGE journal recovery contracts
         run: |
           node --check scripts/lib/website-news-canonical-reconciliation.mjs
-          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs scripts/tests/website-news-archive-admission.test.mjs
+          node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
+          node --test scripts/lib/website-canonical-archive-catchup.test.mjs scripts/tests/website-news-archive-admission.test.mjs
+          node --check scripts/lib/website-canonical-archive-catchup.mjs
+          node --test scripts/lib/website-canonical-archive-catchup.test.mjs
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
