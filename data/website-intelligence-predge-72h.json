@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T18:36:47.887Z",
+  "checked_at": "2026-11-01T19:55:57.833Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 95,
+  "item_count": 85,
   "counts": {
-    "geopolitics": 31,
-    "macro": 39,
-    "rare_earth": 25
+    "geopolitics": 26,
+    "macro": 37,
+    "rare_earth": 22
   },
-  "source_native_ids_sha256": "f844077addd21c6665c67ccf5d603da91882810acf2ce635770bab8e5bcb9a55",
+  "source_native_ids_sha256": "06f38c6aa2e4b0f29bc6ccb139b7b6130d217de5855208dc3d9c8ef90d8db86a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-953d7eb9",
+      "category": "macro",
+      "title": "Geomacro finds European Central Bank held interest rates steady - The Portugal News",
+      "what_changed": "A monitored source feed reports: European Central Bank held interest rates steady - The Portugal News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T19:07:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-be820d5d",
       "category": "rare_earth",
@@ -1620,215 +1639,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: breakingdefense.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7914955e",
-      "category": "macro",
-      "title": "Geomacro finds European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ",
-      "what_changed": "A monitored source feed reports: European Central Bank kept Interest Rates Unchanged and Warns of Rising Inflation Risks - وكالة سبأ. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:50:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f350571c",
-      "category": "macro",
-      "title": "Geomacro finds PM Briceño said decision on future of Customs Comptroller expected within days",
-      "what_changed": "A monitored source feed reports: PM Briceño said decision on future of Customs Comptroller expected within days. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:35:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.breakingbelizenews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8a22680c",
-      "category": "macro",
-      "title": "Geomacro finds KRG denied oil smuggling allegations by Iraqi PM’s adviser - Rudaw",
-      "what_changed": "A monitored source feed reports: KRG denied oil smuggling allegations by Iraqi PM’s adviser - Rudaw. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:31:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-739d8e15",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said won’t ‘take sides’ in Brazil election, but calls it a ‘disgrace’ - Al Jazeera",
-      "what_changed": "A monitored source feed reports: Trump said won’t ‘take sides’ in Brazil election, but calls it a ‘disgrace’ - Al Jazeera. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:26:04.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5a111a06",
-      "category": "geopolitics",
-      "title": "Geomacro finds BYD Earnings Miss estimated as China's EV Price War Takes Its Toll",
-      "what_changed": "A monitored source feed reports: BYD Earnings Miss estimated as China's EV Price War Takes Its Toll. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: oilprice.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ffa51c4d",
-      "category": "geopolitics",
-      "title": "Geomacro finds BYD Earnings Miss estimated as China's EV Price War Takes Its Toll - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: BYD Earnings Miss estimated as China's EV Price War Takes Its Toll - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9c2cc354",
-      "category": "rare_earth",
-      "title": "Geomacro finds Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market",
-      "what_changed": "A monitored source feed reports: Glencore reported 3% Rise in Copper Output, Low-End 2026 Guidance Maintained - Shanghai Metals Market. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T19:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-41085b9e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Stakeholders called for stronger community-security collaboration to prevent extremism",
-      "what_changed": "A monitored source feed reports: Stakeholders called for stronger community-security collaboration to prevent extremism. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T18:50:06.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5d406fca",
-      "category": "geopolitics",
-      "title": "Geomacro finds Anyaoku condemned xenophobic attacks in South Africa",
-      "what_changed": "A monitored source feed reports: Anyaoku condemned xenophobic attacks in South Africa. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T18:44:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.vanguardngr.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-53a51a34",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto suspended Underground Operations of Oyu Tolgoi Copper Mine After Rockfall - marketscreener.com",
-      "what_changed": "A monitored source feed reports: Rio Tinto suspended Underground Operations of Oyu Tolgoi Copper Mine After Rockfall - marketscreener.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T18:44:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-42d32509",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto suspended Operations of Oyu Tolgoi Copper Mine After Rockfall, Bloomberg Reports - marketscreener.com",
-      "what_changed": "A monitored source feed reports: Rio Tinto suspended Operations of Oyu Tolgoi Copper Mine After Rockfall, Bloomberg Reports - marketscreener.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T18:43:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
