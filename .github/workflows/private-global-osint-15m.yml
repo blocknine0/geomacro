@@ -9,7 +9,7 @@ name: Global OSINT to Website Intelligence (15-Minute Discovery)
 on:
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Deploy D1 Control Plane"]
+    workflows: ["Deploy D1 Control Plane", "Website Derived News Continuity"]
     branches: [main]
     types: [completed]
   schedule:
@@ -472,7 +472,8 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' ||
        (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.name == 'Deploy D1 Control Plane' &&
+        (github.event.workflow_run.name == 'Deploy D1 Control Plane' ||
+         github.event.workflow_run.name == 'Website Derived News Continuity') &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main' &&
         github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
