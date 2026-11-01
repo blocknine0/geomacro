@@ -111,3 +111,24 @@ test('existing D1 key triggers enforce unverified, zero funds, 60s cooldown and 
  sql.prepare('UPDATE api_keys SET created_at=?').run(new Date(Date.now()-61000).toISOString());insert('offline-key-third-003','c');
  assert.throws(()=>insert('offline-key-fourth-04','d'),/MAX_THREE_ACTIVE_KEYS/);sql.close();
 });
+
+test('canonical Worker deployment pins exact production customer origins without publishing auth secrets',async()=>{
+ const config=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8'));
+ assert.equal(config.name,'geomacro-control-plane');
+ assert.equal(config.d1_databases.length,1);
+ assert.equal(config.d1_databases[0].binding,'DB');
+ assert.equal(config.vars.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS,
+  'https://geomacro.live,https://geomacro.lovable.app');
+ assert.ok(!Object.keys(config.vars).some(key=>/TOKEN|PEPPER|SECRET|PRIVATE_KEY/.test(key)));
+ assert.deepEqual(config.vars.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS.split(','),[
+  'https://geomacro.live','https://geomacro.lovable.app']);
+ const workflow=readFileSync('.github/workflows/deploy-d1-control-plane.yml','utf8');
+ assert.match(workflow,/readFileSync\('workers\/control-plane\/wrangler\.example\.jsonc'/);
+ assert.match(workflow,/config\.vars\s*=\s*\{\s*\.\.\.\(config\.vars/);
+ const f=fixture();f.env.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS=config.vars.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS;
+ const alias=await f.post('session',{session_token:'invalid'}, {origin:'https://geomacro.lovable.app'});
+ assert.equal(alias.status,401,'the exact published alias reaches session validation, not origin denial');
+ const attacker=await f.post('session',{session_token:'invalid'},{origin:'https://attacker.invalid'});
+ assert.equal(attacker.status,403,'arbitrary origin must fail closed');
+ f.sql.close();
+});
