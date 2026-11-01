@@ -12,6 +12,10 @@ const IMAGE = "https://geomacro.live/og-image-v2.png";
 
 export const Route = createFileRoute("/")({
   loader: async () => {
+    // In-app Home navigation is instantaneous. The public Finds widget
+    // already independently loads /api/v1/finds and the permitted static
+    // fallback on mount; block only direct SSR on its bounded source read.
+    if (typeof window !== "undefined") return { initialFindCards: [] };
     // Bounded read-only SSR of the existing D1 derived journal. Absence or
     // outage leaves the homepage usable and never invents an event/score.
     // Public client hydration can independently refresh the same feed.
