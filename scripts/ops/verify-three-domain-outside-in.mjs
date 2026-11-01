@@ -117,6 +117,13 @@ export function verifyThreeDomainLivePublication({
     const first=firstIngest.get(s.id);
     return Number.isFinite(first)&&first<=clock;
   });
+  const overdue90=overdueConcrete.filter(s=>
+    now-(firstIngest.get(s.id)??now)>=90*60_000);
+  // A valid, concrete source-neutral D1 finding that remains absent from
+  // static for over an hourly primary + recovery interval is an actual
+  // publication gap, even when all the already-archived rows render.
+  if(overdue90.length>0)
+   fail("CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_"+category);
   const rejectionClasses=typeof classifyDisplay==="function"
    ?Object.fromEntries([...new Set(unrepresented.map(s=>classifyDisplay(s)??"ELIGIBLE"))]
       .map(reason=>[reason,unrepresented.filter(s=>(classifyDisplay(s)??"ELIGIBLE")===reason).length]))
