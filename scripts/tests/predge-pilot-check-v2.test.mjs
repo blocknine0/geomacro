@@ -183,7 +183,14 @@ test("protected preview gate reads opt-in only after production environment is a
  const workflow=fs.readFileSync(".github/workflows/predge-pilot-signed-news-v2-refresh.yml","utf8");
  // A production-environment Actions variable is not visible to a job-level
  // if expression; this caused manually dispatched runs to be silently skipped.
- assert.match(workflow,/^    if: github\.repository == 'blocknine0\/geomacro' && github\.ref == 'refs\/heads\/main'$/m);
+ assert.match(workflow,/^    if: >-$/m);
+ assert.match(workflow,/github\.repository == 'blocknine0\/geomacro'/);
+ assert.match(workflow,/github\.ref == 'refs\/heads\/main'/);
+ assert.match(workflow,/workflow_run\.head_repository\.full_name == github\.repository/);
+ assert.match(workflow,/workflow_run\.conclusion == 'success'/);
+ assert.match(workflow,/Three-Domain 30-Minute Original Publisher Pulse/);
+ assert.match(workflow,/Verify prior signed-readback freshness and remaining daily quota/);
+ assert.match(workflow,/steps\.cadence\.outputs\.should_run == 'true'/);
  assert.doesNotMatch(workflow,/^    if:.*vars\.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED/m);
  assert.match(workflow,/    environment: production/);
  assert.match(workflow,/      - name: Confirm production preview opt-in before accessing secrets/);
@@ -245,6 +252,12 @@ test("protected signer manual approval and scheduled opt-in are independently fa
    const manualDeniedWithSecret=execute("workflow_dispatch","","","PREDGE_V2_RECURRING_NO_FUNDS_APPROVED");
    assert.equal(manualDeniedWithSecret.status,2);
    assert.match(manualDeniedWithSecret.output,/enabled=false/);
+   const upstream=execute("workflow_run","","","PREDGE_V2_RECURRING_NO_FUNDS_APPROVED");
+   assert.equal(upstream.status,0,upstream.stderr);
+   assert.match(upstream.output,/enabled=true/);
+   const upstreamOff=execute("workflow_run","","");
+   assert.equal(upstreamOff.status,0,upstreamOff.stderr);
+   assert.match(upstreamOff.output,/enabled=false/);
    const off=execute("schedule","","");
    assert.equal(off.status,0,off.stderr);
    assert.match(off.output,/enabled=false/);
