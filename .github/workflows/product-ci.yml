@@ -33,6 +33,9 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
+      - name: Founder-approved website navigation, headings and premium identity (offline)
+        run: node --test scripts/tests/website-instant-navigation-identity.test.mjs
+
       - name: Audit retained workflow triggers and dependencies without changes
         run: node --test scripts/tests/audit-github-workflow-graph.test.mjs
 
