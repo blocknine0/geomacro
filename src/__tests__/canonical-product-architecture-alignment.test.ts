@@ -50,7 +50,9 @@ describe("canonical product architecture alignment", () => {
   it("keeps the root website commercial-category first", () => {
     const root = read("src/routes/index.tsx");
     expect(root).toContain('import { CommercialHome } from "@/components/home/commercial-home"');
-    expect(root).toContain("<CommercialHome initialFindCards={initialFindCards} initialDailyHighlights={initialDailyHighlights} />");
+    expect(root).toContain("<CommercialHome />");
+    expect(root).not.toContain("fetchDailyOfficialFinds");
+    expect(root).not.toContain("Route.useLoaderData()");
     expect(root).not.toContain("HeroSection");
     expect(root).toContain("What changed. Why it matters.");
   });

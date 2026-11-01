@@ -80,26 +80,18 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
     {...feed([safe]),cards:Array(101).fill(safe)},
   ])expect(()=>parseHomepageFindsFeed(evil,NOW)).toThrow("HOME_FINDS_FEED_INVALID");
  });
- it("uses public official static daily cards, no D1 read on homepage, no paid/B2/Supabase",()=>{
-  const home=readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
+ it("keeps free news behind Intelligence and removes homepage server news work",()=>{
+  const home=readFileSync("src/components/home/commercial-home.tsx","utf8");
   const route=readFileSync("src/routes/index.tsx","utf8");
   const reader=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
-  expect(route).toContain("fetchDailyOfficialFinds()");
-  expect(route).toContain("fetchDirectDerivedNews()");
-  expect(route).not.toContain("fetchHomeDerivedNews()");
-  expect(route).toContain("initialDailyHighlights");
-  expect(route).toContain("withPublicRuntimeTimeout");
-  expect(home).toContain("selectDailyOfficialFinds");
-  expect(home).toContain("fetchDailyOfficialFinds");
-  expect(home).toContain("signal.sources_credited.join");
-  expect(home).toContain("isConcreteHomeFind");
+  expect(route).toContain("<CommercialHome />");
+  expect(route).not.toContain("fetchDailyOfficialFinds");
+  expect(route).not.toContain("fetchDirectDerivedNews");
+  expect(route).not.toContain("Route.useLoaderData()");
+  expect(home).not.toContain("LiveIntelligenceShowcase");
+  expect(home).not.toContain("home-finds-title");
+  expect(home).toContain('to="/intelligence"');
   expect(reader).toContain('v.status!=="official_release_observed_unscored"');
-  expect(reader).toContain("isConcretePublicIntelligence");
-  expect(reader).toContain("36*3_600_000");
-  for(const forbidden of ["useIntelligence(", "RiskBadge", "settleCoinbaseX402(",
-   "SUPABASE_SERVICE_ROLE_KEY","B2_APPLICATION_KEY"]){
-    expect(home).not.toContain(forbidden);
-  }
  });
 
 

@@ -82,15 +82,14 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("scoredNews(intel.data?.all ?? [])");
     expect(source).not.toContain("severity: 50");
   });
-  it("homepage separates all three original official domains without invented scores", () => {
-    const source=readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
-    const ranking=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
-    expect(source).toContain("selectDailyOfficialFinds");
-    expect(source).toContain("Browse by topic");
-    expect(source).toContain("Unverified OSINT is not presented as verified news");
-    expect(source).toContain("signal.sources_credited.join");
-    expect(source).not.toContain("RiskBadge");
-    expect(ranking).toContain('const DOMAINS=["geopolitics","macro","rare_earth"]');
-    expect(ranking).toContain("isConcretePublicIntelligence");
+  it("keeps all three domains discoverable without displaying old homepage finds",()=>{
+    const source=readFileSync("src/components/home/commercial-home.tsx","utf8");
+    const route=readFileSync("src/routes/index.tsx","utf8");
+    expect(source).toContain("Geopolitics");
+    expect(source).toContain("Macro / FX");
+    expect(source).toContain("Critical Minerals");
+    expect(source).not.toContain("LiveIntelligenceShowcase");
+    expect(source).not.toContain("Geomacro Finds");
+    expect(route).not.toContain("fetchDailyOfficialFinds");
   });
 });

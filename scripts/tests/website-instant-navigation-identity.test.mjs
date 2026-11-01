@@ -25,10 +25,12 @@ test("all primary and secondary page navigation uses SPA links", () => {
 test("internal destination headings are accessible client links", () => {
   assert.match(editorial, /<Link to=\{item\.href as "\/intelligence"\}/);
   assert.match(editorial, /gm-heading-link/);
-  for (const href of ["/ask-geomacro", "/pricing", "/intelligence"]) {
+  for (const href of ["/ask-geomacro", "/pricing"]) {
     assert.ok(home.includes(`to="${href}" className="gm-heading-link"`),
       `Missing home section destination heading for ${href}`);
   }
+  assert.match(home, /to="\/intelligence"/);
+  assert.doesNotMatch(home, /home-finds-title|LiveIntelligenceShowcase/);
 });
 test("client transitions do not block on 9s intelligence publisher request", () => {
   assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
@@ -56,11 +58,11 @@ test("the explicit approval locks only six exact blobs, never Global Risk or PRE
     "src/styles.css"].sort());
 });
 
-test("Home client route transitions remain instant while direct SSR is retained", () => {
-  assert.match(homeRoute, /if \(typeof window !== "undefined"\) return \{ initialFindCards: \[\], initialDailyHighlights: \[\] \}/);
-  assert.match(homeRoute, /fetchDailyOfficialFinds\(\)/);
-  assert.match(homeRoute, /fetchDirectDerivedNews\(\)/);
-  assert.match(home, /LiveIntelligenceShowcase initialFindCards/);
+test("Home remains instant after removal of the unnecessary data loader", () => {
+  assert.doesNotMatch(homeRoute, /\bloader\s*:/);
+  assert.doesNotMatch(homeRoute, /fetchDailyOfficialFinds|fetchDirectDerivedNews/);
+  assert.match(homeRoute, /<CommercialHome \/>/);
+  assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
   assert.equal(lock.approved_home_navigation_20261101.exact_blob_lock, true);
   assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });
