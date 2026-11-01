@@ -153,6 +153,9 @@ describe("permanent derived-only website archive",()=>{
   const latest=JSON.parse(readFileSync(join(p.assetsDir,"latest.json"),"utf8"));
   assert.equal(latest.signals.length,1);
   const coverage=JSON.parse(readFileSync(join(p.assetsDir,"coverage-72h.json"),"utf8"));
+  const daily=JSON.parse(readFileSync(join(p.assetsDir,"daily-highlights.json"),"utf8"));
+  assert.equal(daily.schema,"geomacro.public-daily-official-finds.v1");
+  assert.equal(daily.generated_at,latest.checked_at);
   assert.equal(coverage.original_release_eligible_total,1);
   assert.equal(coverage.latest_preview_rows,1);
   assert.equal(coverage.paid_customer_eligible,false);
@@ -228,6 +231,8 @@ describe("permanent derived-only website archive",()=>{
   const coverage=JSON.parse(readFileSync(join(p.archiveDir,"data/coverage-72h.json"),"utf8"));
   const index=JSON.parse(readFileSync(join(p.archiveDir,"data/index.json"),"utf8"));
   assert.deepEqual(latest.signals,[]);
+  const daily=JSON.parse(readFileSync(join(p.archiveDir,"data/daily-highlights.json"),"utf8"));
+  assert.equal(daily.generated_at,latest.checked_at);
   assert.equal(coverage.original_release_eligible_total,0);
   assert.equal(index.total_signals,1);
   assert.equal(index.updated_at,new Date(later).toISOString());
