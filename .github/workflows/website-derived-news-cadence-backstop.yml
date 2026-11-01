@@ -27,6 +27,9 @@ on:
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
       - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/lib/news-self-healing-policy.mjs"
+      - "scripts/lib/news-self-healing-policy.test.mjs"
+      - "scripts/ops/news-self-healing-watchdog.ts"
       - "scripts/ops/refresh-public-news-pages-under-quota.mjs"
       - "scripts/tests/refresh-public-news-pages-under-quota.test.mjs"
       - "scripts/ops/verify-public-d1-materialization-live.mjs"
@@ -55,6 +58,9 @@ on:
       - "scripts/ops/recover-stalled-five-minute-news.mjs"
       - "scripts/tests/five-minute-news-cadence-watch.test.mjs"
       - "scripts/lib/website-derived-news-failover.mjs"
+      - "scripts/lib/news-self-healing-policy.mjs"
+      - "scripts/lib/news-self-healing-policy.test.mjs"
+      - "scripts/ops/news-self-healing-watchdog.ts"
       - "scripts/ops/refresh-public-news-pages-under-quota.mjs"
       - "scripts/tests/refresh-public-news-pages-under-quota.test.mjs"
       - "scripts/ops/verify-public-d1-materialization-live.mjs"
@@ -168,10 +174,55 @@ jobs:
           node --check scripts/ops/check-website-derived-news-cadence.mjs
           node --check scripts/lib/five-minute-news-cadence-watch.mjs
           node --check scripts/ops/recover-stalled-five-minute-news.mjs
+          node --check scripts/lib/news-self-healing-policy.mjs
+          node --test scripts/lib/news-self-healing-policy.test.mjs
           node --check scripts/ops/verify-derived-news-public-readback.mjs
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/five-minute-news-cadence-watch.test.mjs
           node --test scripts/tests/website-derived-news-failover.test.mjs scripts/tests/automated-finds-run-health.test.mjs scripts/tests/derived-news-source-health.test.mjs scripts/tests/material-gri-news-review.test.mjs scripts/tests/material-gri-country-evidence-worklist.test.mjs
+
+  automatically-reconcile-public-pipeline:
+    # Reuse the existing :22/:52 watchdog and its quota-admission receipt;
+    # no additional cron or new D1 writer. Static deployment can recover
+    # without research headroom. D1 catch-up requires research=true.
+    needs: quota-admission
+    if: >-
+      always() &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      github.event_name != 'push' &&
+      (needs.quota-admission.result == 'success' ||
+       needs.quota-admission.result == 'failure') &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    concurrency:
+      group: geomacro-news-self-heal-controller
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Verify bounded self-heal decision and circuit breaker
+        run: |
+          bun --version
+          node --check scripts/lib/news-self-healing-policy.mjs
+          node --test scripts/lib/news-self-healing-policy.test.mjs
+      - name: Crosscheck live D1, static archive, daily highlights and website; dispatch only permitted repair
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GEOMACRO_RECOVERY_RESEARCH_ADMITTED: ${{ needs.quota-admission.outputs.research }}
+          GEOMACRO_RECOVERY_QUOTA_JOB_OK: ${{ needs.quota-admission.result == 'success' }}
+        run: bun scripts/ops/news-self-healing-watchdog.ts
 
   fastlane-actual-publisher-cadence-watch:
     needs: quota-admission
