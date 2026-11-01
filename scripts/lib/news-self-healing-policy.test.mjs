@@ -22,7 +22,7 @@ function sample(){
    generated_at:T,chargeable:false,official_only:true,signals:[]}
  };
  const journal={ok:true,schema:"geomacro.website-derived-news-bundle.v1",
-  complete:true,item_cap:600,signals:[...signals],returned_rows:3,
+  complete:true,item_cap:600,signals:signals.map(x=>({...x})),returned_rows:3,
   first_ingest:signals.map(x=>({id:x.id,first_seen_at:new Date(NOW-4*3600_000).toISOString()}))};
  return {archive,archiveAvailable:true,d1:journal,d1Available:true,
   researchAllowed:true,websiteOk:true,now:NOW,
