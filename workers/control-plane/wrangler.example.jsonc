@@ -5,7 +5,8 @@
   "workers_dev": true,
   "vars": {
     "GEOMACRO_P0B_SOURCE_FIRST_ENABLED": "1",
-    "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app"
+    "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app",
+    "EMAIL_FROM_ADDRESS": "auth@geomacro.live"
   },
   "triggers": {"crons": ["* * * * *"]},
   "cache": {
