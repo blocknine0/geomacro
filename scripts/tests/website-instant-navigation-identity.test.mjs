@@ -30,7 +30,9 @@ test("internal destination headings are accessible client links", () => {
       `Missing home section destination heading for ${href}`);
   }
   assert.match(home, /to="\/intelligence"/);
-  assert.doesNotMatch(home, /home-finds-title|LiveIntelligenceShowcase/);
+  assert.doesNotMatch(home, /home-finds-title/);
+  assert.match(home, /<LiveIntelligenceShowcase \/>/);
+  assert.match(home, /What GeoMacro is finding now/);
 });
 test("client transitions do not block on 9s intelligence publisher request", () => {
   assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
@@ -58,11 +60,13 @@ test("the explicit approval locks only six exact blobs, never Global Risk or PRE
     "src/styles.css"].sort());
 });
 
-test("Home remains instant after removal of the unnecessary data loader", () => {
+test("Home remains instant with client-only public-static highlights and no blocking route loader", () => {
   assert.doesNotMatch(homeRoute, /\bloader\s*:/);
   assert.doesNotMatch(homeRoute, /fetchDailyOfficialFinds|fetchDirectDerivedNews/);
   assert.match(homeRoute, /<CommercialHome \/>/);
-  assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
+  assert.match(home, /LiveIntelligenceShowcase/);
+  assert.equal(lock.approved_homepage_fresh_unverified_lane_20261102.exact_blob_lock, true);
+  assert.equal(lock.approved_homepage_fresh_unverified_lane_20261102.payment_authorized, false);
   assert.equal(lock.approved_home_navigation_20261101.exact_blob_lock, true);
   assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });
