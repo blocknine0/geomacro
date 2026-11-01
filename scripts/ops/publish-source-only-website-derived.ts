@@ -4,8 +4,8 @@
  * No network access to a publisher, no raw article bytes, no PREDGE mutation,
  * no signed/paid output. Requires a separate positive research quota grant.
  */
-import {readFileSync,unlinkSync} from "node:fs";
-import {resolve,sep} from "node:path";
+import {readFileSync,unlinkSync,mkdirSync,writeFileSync} from "node:fs";
+import {resolve,sep,dirname} from "node:path";
 import {createHmac,createHash} from "node:crypto";
 import {officialWebsiteCandidateFromOsint,isKnownOfficialWebsiteFeed,
  unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals}
@@ -15,6 +15,7 @@ import {actorActionNewsObservation} from "../../src/lib/release-news-observation
 import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
 import {dedupeIntelligenceStories} from "../../src/lib/intelligence-news-dedupe.ts";
 import {fetchAllDerivedNews} from "../../src/lib/public-derived-news-client.ts";
+import {isPermanentArchiveSignal} from "./publish-permanent-derived-news-archive.mjs";
 import {DERIVED_NEWS_TOPIC_POLICY_REVISION,requireDerivedNewsWorkerPolicy}
  from "../lib/derived-news-readback-policy.mjs";
 
@@ -37,7 +38,7 @@ if(root.length<32)fail("CANONICAL_D1_AUTH_REQUIRED");
 let document;
 try{
  const source=readFileSync(handoff,{encoding:"utf8"});
- if(source.length>320_000)fail("EPHEMERAL_HANDOFF_OVERSIZE");
+ if(source.length>1_500_000)fail("EPHEMERAL_HANDOFF_OVERSIZE");
  document=JSON.parse(source);
 }finally{
  try{unlinkSync(handoff)}catch{/* protected job cleanup is also unconditional */}
@@ -50,7 +51,7 @@ if(document?.schema!=="geomacro.source-only-ephemeral-website-handoff.v1"||
    document?.predge_unchanged!==true||
    !Number.isFinite(clock)||clock>Date.now()+60_000||
    Date.now()-clock>25*60_000||!Array.isArray(document.rows)||
-   document.rows.length>120)
+   document.rows.length>360)
  fail("EPHEMERAL_HANDOFF_CONTRACT_INVALID");
 const token=createHmac("sha256",root)
  .update("geomacro-control-plane-v1").digest("hex");
@@ -92,9 +93,17 @@ const available=dedupeIntelligenceStories([...officialSignals,...unverified])
    Date.parse(row.published_at)>Date.now()-72*3600_000)
  .sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 const lanes=CAT.map(c=>available.filter(s=>s.category===c));
+// A fixed newest-two lane would starve all deeper real source observations.
+ // Rotate twelve immutable, source-native items per category every protected
+ // fifteen-minute sweep. D1 dedupe additionally prevents double publication.
 const bounded=[];
-for(let depth=0;depth<2;depth++)
- for(const lane of lanes)if(lane[depth])bounded.push(lane[depth]);
+const quarter=Math.floor(Date.now()/900_000);
+const PER_CATEGORY_LIMIT=12;
+for(const lane of lanes){
+ const count=Math.min(PER_CATEGORY_LIMIT,lane.length);
+ const offset=lane.length?(quarter*PER_CATEGORY_LIMIT)%lane.length:0;
+ for(let n=0;n<count;n++)bounded.push(lane[(offset+n)%lane.length]);
+}
 for(const row of bounded)counts[row.category].concrete++;
 // This is one very small derived D1 batch, only after the provider's separate
 // critical + research headroom admission. Nothing may use the source-only
@@ -106,10 +115,36 @@ const published=await publishPrivateOsintWebsiteSignals({
 });
 if(published.journal_readback_verified!==true)
  fail("CANONICAL_D1_PUBLIC_READBACK_UNVERIFIED");
+
+// Critical missing link: Website Intelligence reads STATIC archive latest.json,
+// not the research D1 journal. Read the canonical D1 origin exactly once after
+// the publisher, with authenticated per-ID proof; source-neutral, readback-
+// checked derivatives alone may be offered to the existing append-only archive.
+// This also catches up real 72h D1 rows which earlier publishers forgot to
+// include in static candidate batches. No second publisher feed fetch.
+const canonical=await fetchAllDerivedNews(fetch,Date.now(),{
+ fresh:true,canonicalOriginToken:token,
+});
+if(!Array.isArray(canonical)||canonical.length>600)
+ fail("CANONICAL_D1_STATIC_CATCHUP_INVALID");
+const archiveSignals=canonical.filter(signal=>
+ isPermanentArchiveSignal(signal,Date.now(),{allowHistorical:false})&&
+ isConcretePublicIntelligence(signal));
+const archivePath=resolve("artifacts/derived-news/permanent-archive-candidates.json");
+mkdirSync(dirname(archivePath),{recursive:true});
+writeFileSync(archivePath,JSON.stringify({
+ schema:"geomacro.permanent-derived-news-candidates.v1",
+ checked_at:new Date().toISOString(),
+ source_sha:String(env.GITHUB_SHA??"").slice(0,40),
+ signals:archiveSignals,
+}),{encoding:"utf8",mode:0o600,flag:"w"});
 console.log(JSON.stringify({
  schema:"geomacro.automatic-source-website-freshness-receipt.v1",
  source_only_15m_same_sweep:true,additional_publisher_requests:0,
  bounded_website_candidates:bounded.length,
+ canonical_d1_archive_candidates:archiveSignals.length,
+ archive_candidate_path_public_only:true,
+ archival_deployment_required_to_confirm_visible_date:true,
  by_category:counts,
  new_visible_derived_news:published.new_derived_stories,
  deferred_existing_or_retention:published.deferred_unpublished,
