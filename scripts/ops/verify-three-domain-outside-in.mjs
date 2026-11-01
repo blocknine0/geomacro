@@ -171,9 +171,9 @@ export function verifyThreeDomainLivePublication({
   private_source_references_logged:false,paid_eligible:false,predge_modified:false,payments:0
  });
 }
-async function readText(url,limit=2_000_000){
+async function readText(url,limit=2_000_000,attempts=3){
  let last;
- for(let i=0;i<3;i++){
+ for(let i=0;i<attempts;i++){
   try{
    const r=await fetch(url,{method:"GET",redirect:"error",cache:"no-store",
     headers:{Accept:"application/json,text/html","Cache-Control":"no-cache"},
@@ -185,9 +185,11 @@ async function readText(url,limit=2_000_000){
    }
    last=Error("HTTP_"+r.status);
   }catch(e){last=e;}
-  if(i<2)await new Promise(resolve=>setTimeout(resolve,(i+1)*800));
+  if(i+1<attempts)await new Promise(resolve=>setTimeout(resolve,(i+1)*800));
  }
- throw Error("THREE_DOMAIN_LIVE_PUBLIC_READ_UNAVAILABLE_"+new URL(url).hostname);
+ const reason=/^HTTP_[0-9]{3}$/u.test(String(last?.message??""))
+   ?String(last.message):"NETWORK";
+ throw Error("THREE_DOMAIN_LIVE_PUBLIC_READ_UNAVAILABLE_"+new URL(url).hostname+"_"+reason);
 }
 async function run(){
  const paths=["/index.json","/latest.json","/coverage-72h.json","/daily-highlights.json"];
@@ -198,8 +200,24 @@ async function run(){
     docs[0].updated_at===docs[1].checked_at)break;
   if(i<2)await new Promise(resolve=>setTimeout(resolve,1200));
  }
- const [journal,geo,macro,minerals]=await Promise.all([
-  readText(JOURNAL,4_000_000).then(JSON.parse),
+ // Public D1 is a quota-governed read; never amplify a 429/503 into
+ // three expensive identical D1 requests. PRs report external unavailability
+ // as NOT VERIFIED; trusted main production health remains fail-closed.
+ let journal;
+ try{journal=JSON.parse(await readText(JOURNAL,4_000_000,1));}
+ catch{
+  if(process.env.GITHUB_EVENT_NAME!=="pull_request")
+   throw Error("THREE_DOMAIN_LIVE_PUBLIC_D1_READBACK_UNAVAILABLE");
+  console.warn("::warning::THREE_DOMAIN_LIVE_PUBLIC_D1_UNAVAILABLE_PR_DIAGNOSTIC");
+  console.log(JSON.stringify({schema:"geomacro.three-domain-outside-in-parity.v1",
+   verified:false,source_to_public_complete:false,
+   reason:"PUBLIC_D1_READBACK_UNAVAILABLE",static_snapshot_at:docs[1].checked_at,
+   static_latest_rows:docs[1].signals?.length??null,
+   canonical_private_d1_write_receipt_verified:false,
+   raw_source_bytes_logged:false,predge_modified:false,payments:0}));
+  return;
+ }
+ const [geo,macro,minerals]=await Promise.all([
   readText(SITE+"/intelligence?category=geopolitics"),
   readText(SITE+"/intelligence?category=macro"),
   readText(SITE+"/intelligence?category=rare_earth")
