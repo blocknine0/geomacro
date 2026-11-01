@@ -82,14 +82,14 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("scoredNews(intel.data?.all ?? [])");
     expect(source).not.toContain("severity: 50");
   });
-  it("keeps all three domains discoverable without displaying old homepage finds",()=>{
+  it("keeps all three domains discoverable with explicitly labeled new homepage news",()=>{
     const source=readFileSync("src/components/home/commercial-home.tsx","utf8");
     const route=readFileSync("src/routes/index.tsx","utf8");
     expect(source).toContain("Geopolitics");
     expect(source).toContain("Macro / FX");
     expect(source).toContain("Critical Minerals");
-    expect(source).not.toContain("LiveIntelligenceShowcase");
-    expect(source).not.toContain("Geomacro Finds");
+    expect(source).toContain("<LiveIntelligenceShowcase />");
+    expect(source).toContain("What GeoMacro is finding now.");
     expect(route).not.toContain("fetchDailyOfficialFinds");
   });
 });
