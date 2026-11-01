@@ -1026,7 +1026,9 @@
   "approved_ecb_official_fx_reference_20261101": {
     "approval": "Founder explicitly requested reliable FX and precious-metals source intake in Macro Intelligence on 2026-11-01.",
     "approved_source_commit": "b79abe5d65a2cde2b17ee84dd8339894155ba40f",
-    "approved_paths": ["src/components/intelligence/macro-fastlane-panel.tsx"],
+    "approved_paths": [
+      "src/components/intelligence/macro-fastlane-panel.tsx"
+    ],
     "scope": "Verified ECB daily FX reference through existing quota-gated Macro ingestion and D1 control state; source-date and non-live label required. Gold/silver, PREDGE, global-risk, payment unchanged.",
     "fx_intraday_quote_claims": false,
     "paid_source_added": false,
@@ -1125,5 +1127,19 @@
     "pricing_unchanged": true,
     "payment_authorized": false,
     "production_exact_sha_readback_required": true
+  },
+  "approved_homepage_fresh_unverified_lane_20261102": {
+    "approval": "Founder expressly requested fixing stale homepage daily highlights on 2 Nov 2026 and previously explicitly requested short original-dated major news that changes daily. This scoped update adds a separately labelled unverified OSINT lane; it never relabels observations as official or independently verified.",
+    "approved_paths": [
+      "src/components/home/live-intelligence-showcase.tsx"
+    ],
+    "approved_source_commit": "5a5bbbbdaa8ab9431c9ee802c5a8f8f20b01efa8",
+    "exact_blob_lock": true,
+    "locked_global_risk_unchanged": true,
+    "predge_unchanged": true,
+    "pricing_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "live_published_acceptance_pending": true
   }
 }
