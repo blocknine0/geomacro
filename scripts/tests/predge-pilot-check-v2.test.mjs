@@ -206,7 +206,8 @@ test("protected preview gate reads opt-in only after production environment is a
  const guarded=workflow.match(/if: steps\.opt_in\.outputs\.enabled == 'true'/g)??[];
  assert.equal(guarded.length,5); // checkout, node setup, cadence receipt, token derive, signing/publish
  assert.ok(workflow.indexOf("id: opt_in")<workflow.indexOf("uses: actions/checkout@"));
- assert.ok(workflow.includes('schedule:\n    - cron: "11,41 * * * *"'));
+ assert.ok(workflow.includes('cron: "14,44 * * * *"'));
+ assert.ok(workflow.includes('Predge Research Continuity and Pilot Renewal (No Funds)'));
 });
 test("protected signer manual approval and scheduled opt-in are independently fail-closed",async()=>{
  const fs=await import("node:fs");
