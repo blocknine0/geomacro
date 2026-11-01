@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T22:42:14.715Z",
+  "updated_at": "2026-11-01T23:28:46.922Z",
   "signals": [
     {
       "id": "geopolitics-eff61167",
@@ -210,6 +210,63 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a9b4766b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States denied Iran's claim that it destroyed US sea drone in Strait of Hormuz - Anadolu Ajansı",
+      "what_changed": "A monitored source feed reports: United States denied Iran's claim that it destroyed US sea drone in Strait of Hormuz - Anadolu Ajansı. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:52:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-081b678a",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said 3 Tankers Strike Mines and Catch Fire in Strait of Hormuz, and Other Mideast News - Military.com",
+      "what_changed": "A monitored source feed reports: Iran said 3 Tankers Strike Mines and Catch Fire in Strait of Hormuz, and Other Mideast News - Military.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:27:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9c00a15d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine called for emergency UN Security Council meeting over deadly Russian attacks on Dnipro, Chernihiv, Kremenchuk - The Kyiv Independent",
+      "what_changed": "A monitored source feed reports: Ukraine called for emergency UN Security Council meeting over deadly Russian attacks on Dnipro, Chernihiv, Kremenchuk - The Kyiv Independent. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:46:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },

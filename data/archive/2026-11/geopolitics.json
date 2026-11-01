@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T22:42:14.715Z",
+  "updated_at": "2026-11-01T23:28:46.922Z",
   "signals": [
+    {
+      "id": "geopolitics-54df3d64",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department urged sanctions for database analysis critical of its noncitizen voting claims",
+      "what_changed": "A monitored source feed reports: Justice Department urged sanctions for database analysis critical of its noncitizen voting claims. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "sanctions and trade restrictions",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T23:18:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.pbs.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-e12b2ecd",
       "category": "geopolitics",

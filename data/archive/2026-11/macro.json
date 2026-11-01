@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-01T22:42:14.715Z",
+  "updated_at": "2026-11-01T23:28:46.922Z",
   "signals": [
     {
       "id": "macro-431f0823",
@@ -246,6 +246,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c3217dcf",
+      "category": "macro",
+      "title": "Geomacro finds Okypy urged unions to call off 48-hour strike",
+      "what_changed": "A monitored source feed reports: Okypy urged unions to call off 48-hour strike. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T11:32:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
