@@ -1,0 +1,7 @@
+# Configuration fragment for a SEPARATE candidate Worker only.
+# NOT a deployable Worker configuration. Do not attach to production.
+# D1 was created by owner; remote schema application NOT yet verified.
+[[d1_databases]]
+binding = "RC_STAGING_D1"
+database_name = "geomacro-risk-corridor-staging"
+database_id = "9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9"
