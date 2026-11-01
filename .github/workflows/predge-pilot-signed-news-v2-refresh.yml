@@ -1,5 +1,5 @@
 name: Predge Signed Pilot News Context v2 - protected opt-in refresh
-# Disabled by default. Founder approval and partner validator acceptance required.
+# Protected recurring approval required. Founder and partner acceptance remain mandatory.
 on:
   workflow_dispatch:
     inputs:
@@ -8,11 +8,13 @@ on:
         type: string
         required: true
   schedule:
-    - cron: "11,41 * * * *"
-  # Independent publisher completion wakes signer if GitHub drops its cron.
-  # Signed recency and 48/day cap prevent two publishers per 30m slot.
+    # Shifted to re-register the GitHub scheduler actor after confirmed absent cron events.
+    # GitHub schedule remains best-effort; trusted source workflows wake the fallback.
+    - cron: "14,44 * * * *"
+  # Independent bounded source/pilot continuity jobs also wake the signer.
+  # Signed recency and 48/day cap prevent duplicate publication.
   workflow_run:
-    workflows: ["Three-Domain 30-Minute Original Publisher Pulse"]
+    workflows: ["Three-Domain 30-Minute Original Publisher Pulse", "Predge Research Continuity and Pilot Renewal (No Funds)"]
     types: [completed]
     branches: [main]
 permissions:
