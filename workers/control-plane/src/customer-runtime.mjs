@@ -1,7 +1,7 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
 import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,CustomerPaidError} from './customer-paid-ledger.mjs';
 
-export const CUSTOMER_KEY_GATE='CUSTOMER_D1_COMMERCIAL_AUTH_NOT_MIGRATED';
+export const CUSTOMER_KEY_GATE='CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED';
 const HEADERS={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
 class Failure extends Error { constructor(status,code){super(code);this.status=status;this.code=code;} }
 const fail=(status,code)=>{throw new Failure(status,code);};
