@@ -10,6 +10,9 @@
 
 **Important:** Candidate storage client rejects any other Supabase URL, including old GeoMacro. SQL migrations are prepared but NOT applied to this project.
 
+
+**Owner-provided NEW Cloudflare STAGING D1 (not yet connected):** `geomacro-risk-corridor-staging`, UUID `9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9`; future Worker binding `RC_STAGING_D1`. This identifier is not a credential; D1 schema application and runtime access remain pending.
+
 **Status:** isolated coding candidate. NOT PRODUCTION. NO LIVE FUNDS. NO EXISTING MAIN/PREDGE MODIFICATIONS.
 
 ## Architecture
