@@ -1,9 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Bot, BookOpen, Globe2, Landmark, Layers3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LiveIntelligenceShowcase } from "@/components/home/live-intelligence-showcase";
-import type { FindCardV1 } from "@/lib/find-card-v1";
-import type {StatelessIntelligenceSignal} from "@/lib/stateless-intelligence-model";
 
 const DOMAINS = [
   {
@@ -26,7 +23,7 @@ const DOMAINS = [
   },
 ] as const;
 
-export function CommercialHome({ initialFindCards = [],initialDailyHighlights=[] }: { initialFindCards?: FindCardV1[];initialDailyHighlights?:StatelessIntelligenceSignal[] }) {
+export function CommercialHome() {
   return (
     <>
       <section className="gm-hero border-b border-border">
@@ -134,15 +131,6 @@ export function CommercialHome({ initialFindCards = [],initialDailyHighlights=[]
             ))}
           </div>
         </div>
-      </section>
-      <section aria-labelledby="home-finds-title" className="gm-container grid gap-8 py-12 sm:py-16 lg:grid-cols-2 lg:items-center">
-        <div className="max-w-lg">
-          <p className="gm-eyebrow">From the intelligence desk</p>
-          <h2 id="home-finds-title" className="mt-3 text-3xl font-semibold tracking-tight"><Link to="/intelligence" className="gm-heading-link">Explore Geomacro Finds. <ArrowRight className="h-5 w-5 text-primary" aria-hidden /></Link></h2>
-          <p className="mt-4 text-base leading-7 text-muted-foreground">Daily highlights from original official releases: what changed, why it matters and the actual publication date. GeoMacro refreshes these as verified new findings arrive.</p>
-          <Link to="/intelligence" className="gm-text-link mt-5">Open intelligence <ArrowRight className="h-4 w-4" aria-hidden /></Link>
-        </div>
-        <LiveIntelligenceShowcase initialFindCards={initialFindCards} initialDailyHighlights={initialDailyHighlights} />
       </section>
       <section className="gm-container flex flex-wrap items-center justify-between gap-6 py-12">
         <div>
