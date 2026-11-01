@@ -1068,5 +1068,18 @@
     "paid_pricing_unchanged": true,
     "payment_authorized": false,
     "production_deployment_and_ui_acceptance_required": true
+  },
+  "approved_home_navigation_20261101": {
+    "approval": "Founder explicitly requested instant navigation from every website heading/page on 2026-11-01; second acceptance pass found Home SSR source wait.",
+    "purpose": "Keep direct-visit SSR original-dated free Finds; client Home navigation returns immediately and existing widget independently refreshes verified public Finds. No source, PREDGE, pricing or payment change.",
+    "approved_paths": [
+      "src/routes/index.tsx"
+    ],
+    "exact_blob_lock": true,
+    "approved_source_commit": "211bcf0e8279b9d80014c50ff64e19282e377967",
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "payment_authorized": false,
+    "production_deployment_and_ui_acceptance_required": true
   }
 }
