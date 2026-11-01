@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {parseDailyOfficialFinds,selectDailyOfficialFinds} from "./home-daily-official-finds";
+import {parseDailyOfficialFinds,selectDailyOfficialFinds,selectDailyUnverifiedObservations} from "./home-daily-official-finds";
 import type {StatelessIntelligenceSignal} from "./stateless-intelligence-model";
 const NOW=Date.parse("2026-11-01T17:00:00.000Z");
 const official=(category:StatelessIntelligenceSignal["category"],id:string,day:string):StatelessIntelligenceSignal=>({
@@ -37,5 +37,37 @@ describe("official daily highlights in the homepage",()=>{
    expect(selectDailyOfficialFinds([old],NOW).length).toBe(1);
    expect(selectDailyOfficialFinds([old,newRelease],NOW).length).toBe(2);
    expect(selectDailyOfficialFinds([official("macro","macro-abcdef12","2026-11-01")],NOW)).toEqual([]);
+ });
+});
+
+describe("explicitly unverified recent OSINT homepage lane",()=>{
+ const observation=(category:StatelessIntelligenceSignal["category"],id:string,title:string):StatelessIntelligenceSignal=>({
+  ...official(category,id,"2026-11-01T15:00:00.000Z"),
+  title:"Geomacro finds "+title,
+  what_changed:"A monitored source feed reports: "+title+". The report has not been independently verified.",
+  development_type:"unverified OSINT feed observation",
+  topic:category==="rare_earth"?"critical minerals":"foreign policy",
+  status:"osint_feed_observed_unverified",
+  sources_credited:["Monitored feed: example.org"]
+ });
+ it("shows native-dated explicit observations without promoting into official",()=>{
+  const rows=[
+   observation("geopolitics","geopolitics-23456789","UN announced new humanitarian agreement for refugees"),
+   observation("macro","macro-23456789","Federal Reserve announced an interest rate decision"),
+   observation("rare_earth","rare_earth-23456789","Canada approved new lithium mine funding")
+  ];
+  const a=selectDailyUnverifiedObservations(rows,NOW,4);
+  expect(a).toHaveLength(3);
+  expect(a.map(x=>x.signal.category).sort()).toEqual(["geopolitics","macro","rare_earth"]);
+  expect(a.every(x=>x.signal.status==="osint_feed_observed_unverified")).toBe(true);
+  expect(a.every(x=>x.originalAt==="2026-11-01T15:00:00.000Z")).toBe(true);
+  expect(selectDailyOfficialFinds(rows,NOW)).toEqual([]);
+ });
+ it("rejects energy-only minerals, future observations and unrecognized feed credit",()=>{
+  const a=observation("rare_earth","rare_earth-12345678","Russia announced oil refinery strike");
+  const b=observation("macro","macro-12345678","Federal Reserve announced interest-rate decision");
+  const c={...b,published_at:"2026-11-03T15:00:00.000Z"};
+  const d={...b,id:"macro-abcdefab",sources_credited:["https://example.org/private"]};
+  expect(selectDailyUnverifiedObservations([a,c,d],NOW)).toEqual([]);
  });
 });
