@@ -1,0 +1,28 @@
+name: Isolated Risk/Corridor 7d Unit Tests (no production)
+on:
+  push:
+    branches:
+      - feature/isolated-supabase-risk-corridor-7d
+    paths:
+      - 'labs/risk-corridor-7d/**'
+      - '.github/workflows/risk-corridor-7d-isolated-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-funds-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          set -euo pipefail
+          for f in labs/risk-corridor-7d/src/*.mjs; do node --check "$f"; done
+      - name: Offline tests - no secrets or deployment
+        run: node --test labs/risk-corridor-7d/tests/*.test.mjs

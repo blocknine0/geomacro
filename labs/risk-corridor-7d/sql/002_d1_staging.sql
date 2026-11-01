@@ -1,0 +1,58 @@
+-- Apply only to a NEW isolated STAGING D1 database. No production D1 migration.
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS gm_rc_tenants (
+  tenant_id TEXT PRIMARY KEY,
+  status TEXT NOT NULL CHECK(status IN ('ACTIVE','DISABLED')),
+  pricing_profile TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS gm_rc_api_keys (
+  token_sha256 TEXT PRIMARY KEY CHECK(length(token_sha256)=64),
+  tenant_id TEXT NOT NULL REFERENCES gm_rc_tenants(tenant_id),
+  scope TEXT NOT NULL CHECK(scope IN ('risk_gate')),
+  revoked_at TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS gm_rc_api_key_tenant ON gm_rc_api_keys(tenant_id);
+CREATE TABLE IF NOT EXISTS gm_rc_requests (
+  tenant_id TEXT NOT NULL REFERENCES gm_rc_tenants(tenant_id),
+  request_id TEXT NOT NULL,
+  request_hash TEXT NOT NULL CHECK(length(request_hash)=64),
+  tier TEXT NOT NULL CHECK(tier IN ('BASIC','STANDARD','COMPLEX')),
+  quote_json TEXT NOT NULL,
+  price_atomic TEXT,
+  created_at TEXT NOT NULL,
+  claimed_at TEXT,
+  delivered_at TEXT,
+  status TEXT NOT NULL CHECK(status IN ('PENDING','CLAIMED','FAILED_RETRYABLE','DELIVERED')),
+  response_json TEXT,
+  verdict_id TEXT UNIQUE,
+  PRIMARY KEY(tenant_id,request_id)
+);
+CREATE INDEX IF NOT EXISTS gm_rc_req_status ON gm_rc_requests(status,claimed_at);
+CREATE INDEX IF NOT EXISTS gm_rc_req_delivered ON gm_rc_requests(delivered_at,tenant_id);
+CREATE TABLE IF NOT EXISTS gm_rc_collections (
+  tenant_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  payment_ref TEXT NOT NULL,
+  amount_atomic TEXT NOT NULL,
+  collected_at TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status='COLLECTED'),
+  PRIMARY KEY(tenant_id,request_id,payment_ref),
+  FOREIGN KEY(tenant_id,request_id) REFERENCES gm_rc_requests(tenant_id,request_id)
+);
+-- Exactly one settled collection per delivered verdict. Never charge an idempotent replay.
+CREATE UNIQUE INDEX IF NOT EXISTS gm_rc_collection_once ON gm_rc_collections(tenant_id,request_id);
+CREATE TABLE IF NOT EXISTS gm_rc_refunds (
+  tenant_id TEXT NOT NULL,
+  request_id TEXT NOT NULL,
+  payment_ref TEXT NOT NULL,
+  refund_ref TEXT NOT NULL UNIQUE,
+  amount_atomic TEXT NOT NULL,
+  refunded_at TEXT NOT NULL,
+  PRIMARY KEY(tenant_id,request_id,payment_ref),
+  FOREIGN KEY(tenant_id,request_id,payment_ref)
+    REFERENCES gm_rc_collections(tenant_id,request_id,payment_ref)
+);
+CREATE INDEX IF NOT EXISTS gm_rc_collection_month ON gm_rc_collections(collected_at);
+-- No automatic deletion of financial audit state; only 7-day Supabase data expires.
