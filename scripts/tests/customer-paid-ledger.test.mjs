@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
 import {DatabaseSync} from 'node:sqlite';
+import {handleCustomerRuntime} from '../../workers/control-plane/src/customer-runtime.mjs';
 import {readFileSync} from 'node:fs';
 import {
  CUSTOMER_CREDIT_COSTS,CUSTOMER_CREDIT_CONTRACT,CUSTOMER_ENABLED_CAPABILITIES,
@@ -150,4 +151,28 @@ test('immutable grant-scoped receipts and no wrong-tier capability/mis-scoped ke
  const malformed=key.api_key.slice(0,-1)+'z';
  await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,malformed,'intelligence_query'),'CUSTOMER_PAID_API_KEY_DENIED');
  f.sql.close();
+});
+
+test('protected paid HTTP routes remain locked and reject forged caller fields',async()=>{
+ const env={DB:{batch:async()=>{throw Error('should not run a DB query');}},
+  GEOMACRO_CUSTOMER_SSR_TOKEN:'bridge-'+('x'.repeat(74)),
+  GEOMACRO_CUSTOMER_AUTH_PEPPER:'hmac-'+('z'.repeat(76)),
+  GEOMACRO_CUSTOMER_ALLOWED_ORIGINS:'https://geomacro.live'};
+ const call=async(action,body={},token=env.GEOMACRO_CUSTOMER_SSR_TOKEN)=>
+  handleCustomerRuntime(new Request('https://control.example/v1/internal/customer/'+action,{
+   method:'POST',headers:{authorization:'Bearer '+token,
+    origin:'https://geomacro.live','content-type':'application/json'},
+   body:JSON.stringify(body)}),env);
+ const locked=await call('paid-debit',{api_key:'gmk_live_'+('a'.repeat(64)),
+  capability:'intelligence_query',request_id:'frozen-req-0001'});
+ assert.equal(locked.status,503);
+ assert.equal((await locked.json()).code,'CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED');
+ const badToken=await call('paid-authorize',{},'attacker-token');
+ assert.equal(badToken.status,401);
+ env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
+ const badFields=await call('paid-debit',{api_key:'gmk_live_'+('a'.repeat(64)),
+  capability:'intelligence_query',request_id:'frozen-req-0001',
+  credit_cost:0,user_id:'other-account'});
+ assert.equal(badFields.status,400);
+ assert.equal((await badFields.json()).code,'CUSTOMER_PAID_BODY_INVALID');
 });
