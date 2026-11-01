@@ -203,6 +203,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
     });
   };
   const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const navigationPending = useRouterState({ select: (state) => state.status === "pending" });
   const exploreMobile = EXPLORE_NAV.map(({ to, label }) => ({ to, label }));
   const showProductionEvidence = PRODUCTION_EVIDENCE_ROUTES.has(pathname);
   const exploreActive = EXPLORE_NAV.some(({ to }) => pathname === to || pathname.startsWith(`${to}/`));
@@ -218,7 +219,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       </a>
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-50 border-b border-border/55 bg-background/78 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/68">
+        <header className="gm-premium-header sticky top-0 z-50 border-b border-border/55 bg-background/78 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/68">
           <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:h-[68px] sm:px-6">
             <div className="flex min-w-0 items-center gap-1.5">
               <Sheet>
@@ -272,6 +273,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               <LanguageMenu />
             </div>
           </div>
+          <div aria-hidden="true" className={"gm-route-progress" + (navigationPending ? " gm-route-progress-active" : "")} />
         </header>
 
         {showProductionEvidence ? <ProductionCoverageProof /> : null}
@@ -280,7 +282,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
 
 
 
-        <footer className="border-t border-border/60 bg-background/45 backdrop-blur-sm">
+        <footer className="gm-premium-footer border-t border-border/60 bg-background/45 backdrop-blur-sm">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 text-sm text-muted-foreground sm:px-6 lg:grid-cols-[1.15fr_2fr] lg:py-14">
             <div>
               <Wordmark height={32} />

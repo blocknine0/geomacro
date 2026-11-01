@@ -66,13 +66,13 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
             <div className="mt-6 space-y-4">
               <div className="rounded-xl border border-border bg-background/60 p-5">
                 <BookOpen className="h-5 w-5 text-primary" aria-hidden />
-                <h3 className="mt-3 text-lg font-semibold">For people</h3>
+                <h3 className="mt-3 text-lg font-semibold"><Link to="/ask-geomacro" className="gm-heading-link">For people <ArrowRight className="h-4 w-4 text-primary" aria-hidden /></Link></h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Read clear findings, explore country risks and ask questions in plain language.</p>
                 <Link to="/ask-geomacro" className="gm-text-link mt-3">Ask Geomacro <ArrowRight className="h-4 w-4" aria-hidden /></Link>
               </div>
               <div className="rounded-xl border border-border bg-background/60 p-5">
                 <Bot className="h-5 w-5 text-primary" aria-hidden />
-                <h3 className="mt-3 text-lg font-semibold">For applications &amp; agents</h3>
+                <h3 className="mt-3 text-lg font-semibold"><Link to="/pricing" className="gm-heading-link">For applications &amp; agents <ArrowRight className="h-4 w-4 text-primary" aria-hidden /></Link></h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">Country and corridor digests, profiles and answers delivered as structured JSON.</p>
                 <Link to="/data-api" className="gm-text-link mt-3">See products and prices <ArrowRight className="h-4 w-4" aria-hidden /></Link>
                 <p className="mt-2 text-xs text-muted-foreground">API keys and self-service checkout coming soon.</p>
@@ -137,7 +137,7 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
       <section aria-labelledby="home-finds-title" className="gm-container grid gap-8 py-12 sm:py-16 lg:grid-cols-2 lg:items-center">
         <div className="max-w-lg">
           <p className="gm-eyebrow">From the intelligence desk</p>
-          <h2 id="home-finds-title" className="mt-3 text-3xl font-semibold tracking-tight">Explore Geomacro Finds.</h2>
+          <h2 id="home-finds-title" className="mt-3 text-3xl font-semibold tracking-tight"><Link to="/intelligence" className="gm-heading-link">Explore Geomacro Finds. <ArrowRight className="h-5 w-5 text-primary" aria-hidden /></Link></h2>
           <p className="mt-4 text-base leading-7 text-muted-foreground">Short explanations of global developments, with publication dates and the context behind them. Availability varies by country, topic and publication window.</p>
           <Link to="/intelligence" className="gm-text-link mt-5">Open intelligence <ArrowRight className="h-4 w-4" aria-hidden /></Link>
         </div>
@@ -147,7 +147,7 @@ export function CommercialHome({ initialFindCards = [] }: { initialFindCards?: F
         <div>
           <p className="gm-eyebrow">For applications & agents</p>
           <h2 className="mt-3 text-2xl font-semibold">
-            The same intelligence. Structured for your workflow.
+            <Link to="/pricing" className="gm-heading-link">The same intelligence. Structured for your workflow. <ArrowRight className="h-5 w-5 text-primary" aria-hidden /></Link>
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
             Monthly plans from $9, one-time credit packs from $5, and Base USDC x402 at $0.02–$0.05 per eligible call. Checkout availability is verified separately.
