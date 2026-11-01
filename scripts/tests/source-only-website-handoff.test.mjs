@@ -17,7 +17,7 @@ test("fresh native original observations get bounded, newest-first source-privat
  assert.equal(SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY,120);
  assert.equal(h.rows.length,SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY+4);
  assert.deepEqual(Object.fromEntries(Object.entries(h.by_category).map(([k,v])=>[k,v.selected])),
-   {geopolitics:40,macro:3,rare_earth:1});
+   {geopolitics:120,macro:3,rare_earth:1});
  assert.equal(h.requires_full_research_admission,true);
  assert.equal(h.source_fetched_once,true);
 });
