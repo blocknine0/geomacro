@@ -82,14 +82,15 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("scoredNews(intel.data?.all ?? [])");
     expect(source).not.toContain("severity: 50");
   });
-  it("homepage uses three honest free original-release states without inventing scores", () => {
-    const source = readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
-    expect(source).toContain("selectHomepageFreeFind(visibleCards)");
-    expect(source).toContain("homeFindsPulse(visibleCards)");
+  it("homepage separates all three original official domains without invented scores", () => {
+    const source=readFileSync("src/components/home/live-intelligence-showcase.tsx","utf8");
+    const ranking=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
+    expect(source).toContain("selectDailyOfficialFinds");
     expect(source).toContain("Browse by topic");
-    expect(source).not.toContain("No eligible concrete news");
-    expect(source).toContain("relatedDomains.map(domain=>");
-    expect(source).toContain("isConcreteHomeFind");
+    expect(source).toContain("Unverified OSINT is not presented as verified news");
+    expect(source).toContain("signal.sources_credited.join");
     expect(source).not.toContain("RiskBadge");
+    expect(ranking).toContain('const DOMAINS=["geopolitics","macro","rare_earth"]');
+    expect(ranking).toContain("isConcretePublicIntelligence");
   });
 });
