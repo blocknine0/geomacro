@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T22:28:59.421Z",
+  "checked_at": "2026-11-01T22:39:08.297Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -315,25 +315,6 @@
       "severity": null
     },
     {
-      "id": "rare_earth-6c0787ef",
-      "category": "rare_earth",
-      "title": "Geomacro finds Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague",
-      "what_changed": "A monitored source feed reports: Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T12:23:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-be820d5d",
       "category": "rare_earth",
       "title": "Geomacro finds Rubio said G20 talks focused on energy security, critical minerals and supply chains - Saudi Gazette",
@@ -343,44 +324,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T11:09:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-eda9a268",
-      "category": "rare_earth",
-      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
-      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:13:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-6fed48be",
-      "category": "rare_earth",
-      "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
-      "what_changed": "A monitored source feed reports: Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T06:17:44.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -647,25 +590,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T01:16:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ce21fb0a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T22:46:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -999,25 +923,6 @@
       "severity": null
     },
     {
-      "id": "rare_earth-23f36be1",
-      "category": "rare_earth",
-      "title": "Geomacro finds Sylvania reported record quarterly PGM output, improved chrome production",
-      "what_changed": "A monitored source feed reports: Sylvania reported record quarterly PGM output, improved chrome production. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T14:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-950dc4b1",
       "category": "geopolitics",
       "title": "Geomacro finds Qatar called for stronger maritime security to promote global peace",
@@ -1265,44 +1170,6 @@
       "severity": null
     },
     {
-      "id": "rare_earth-72baa719",
-      "category": "rare_earth",
-      "title": "Geomacro finds Centerra lowered full-year AISC guidance for Mount Milligan",
-      "what_changed": "A monitored source feed reports: Centerra lowered full-year AISC guidance for Mount Milligan. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T08:17:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-7f658043",
-      "category": "rare_earth",
-      "title": "Geomacro finds Veramark Assurance launched Responsible Metals Value Chain Platform",
-      "what_changed": "A monitored source feed reports: Veramark Assurance launched Responsible Metals Value Chain Platform. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T08:04:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-eeb5bb9e",
       "category": "rare_earth",
       "title": "Geomacro finds Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada",
@@ -1506,25 +1373,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: clubofmozambique.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ba9a910c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Tanzania and Angola agreed to link ocean corridors by rail",
-      "what_changed": "A monitored source feed reports: Tanzania and Angola agreed to link ocean corridors by rail. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:03:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
