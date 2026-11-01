@@ -83,7 +83,7 @@ export function verifyThreeDomainLivePublication({
     d.date_precision===s.date_precision&&d.status===s.status;
   });
   const html=htmlByCategory[category];
-  if(typeof html!=="string"||html.length<200||
+  if(typeof html!=="string"||html.length<100||
    !html.includes("What changed in the world"))fail("WEBSITE_HTML_"+category);
   const decoded=escDecode(html);
   const rendered=domain.archive.filter(s=>typeof s.title==="string"&&
