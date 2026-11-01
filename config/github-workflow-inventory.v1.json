@@ -302,6 +302,7 @@
     "resync-control-plane-root-token.yml",
     "retained-supabase-continuity.yml",
     "reusable-news-json-export.yml",
+    "risk-corridor-7d-isolated-tests.yml",
     "risk-gate-core-resilience.yml",
     "risk-gate-production-proof.yml",
     "risk-gate-staging-load.yml",
