@@ -1049,5 +1049,24 @@
     "predge_unmodified": true,
     "payment_capture_authorized": false,
     "production_publish_acceptance_required": true
+  },
+  "approved_navigation_theme_20261101": {
+    "approval": "Founder explicitly requested clickable website page headings with immediate navigation and a premium GeoMacro identity in ChatGPT on 2026-11-01.",
+    "purpose": "Accessible linked editorial/home headings, route preloading, nonblocking client Intelligence transitions, premium CSS-only navy/amber/teal identity. Preserve Global Risk final lock, PREDGE, pricing and fail-closed payments.",
+    "approved_paths": [
+      "src/router.tsx",
+      "src/routes/intelligence.tsx",
+      "src/components/site-shell.tsx",
+      "src/components/editorial-page.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/styles.css"
+    ],
+    "exact_blob_lock": true,
+    "approved_source_commit": "8916afc2fd1116c0cb8b24249dbfc30e0cded946",
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "paid_pricing_unchanged": true,
+    "payment_authorized": false,
+    "production_deployment_and_ui_acceptance_required": true
   }
 }
