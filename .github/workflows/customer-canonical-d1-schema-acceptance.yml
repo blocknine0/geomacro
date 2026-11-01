@@ -9,6 +9,9 @@ on:
       - "workers/control-plane/migrations/0092_customer_resend_otp_sessions.sql"
       - "workers/control-plane/migrations/0093_customer_email_provider_quota.sql"
       - "workers/control-plane/migrations/0094_customer_login_runtime.sql"
+      - "workers/control-plane/migrations/0095_customer_grant_scoped_usage.sql"
+      - "workers/control-plane/src/customer-paid-ledger.mjs"
+      - "scripts/tests/customer-paid-ledger.test.mjs"
       - "workers/control-plane/src/customer-runtime.mjs"
       - "workers/control-plane/src/index.mjs"
       - "src/lib/customer-auth.server.ts"
@@ -29,6 +32,9 @@ on:
       - "workers/control-plane/migrations/0092_customer_resend_otp_sessions.sql"
       - "workers/control-plane/migrations/0093_customer_email_provider_quota.sql"
       - "workers/control-plane/migrations/0094_customer_login_runtime.sql"
+      - "workers/control-plane/migrations/0095_customer_grant_scoped_usage.sql"
+      - "workers/control-plane/src/customer-paid-ledger.mjs"
+      - "scripts/tests/customer-paid-ledger.test.mjs"
       - "workers/control-plane/src/customer-runtime.mjs"
       - "scripts/tests/customer-runtime.test.mjs"
       - "scripts/tests/customer-canonical-d1-schema.test.mjs"
@@ -53,7 +59,7 @@ jobs:
         with:
           node-version: "24"
       - name: Check D1 schema invariants with isolated SQLite
-        run: node --test scripts/tests/customer-canonical-d1-schema.test.mjs scripts/tests/customer-email-provider-failover.test.mjs scripts/tests/customer-runtime.test.mjs
+        run: node --test scripts/tests/customer-canonical-d1-schema.test.mjs scripts/tests/customer-email-provider-failover.test.mjs scripts/tests/customer-runtime.test.mjs scripts/tests/customer-paid-ledger.test.mjs
 
   production-schema-acceptance:
     # PRs NEVER receive production secrets and never write to D1.
@@ -110,7 +116,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for table in users sessions credit_ledger api_keys customer_payment_receipts customer_entitlement_grants customer_otp_challenges customer_otp_send_events customer_email_dispatch_attempts customer_login_challenges customer_login_verify_events; do
+          for table in users sessions credit_ledger api_keys customer_payment_receipts customer_entitlement_grants customer_otp_challenges customer_otp_send_events customer_email_dispatch_attempts customer_login_challenges customer_login_verify_events customer_usage_receipts; do
             npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "SELECT COUNT(*) AS record_count FROM ${table};"
           done
           echo "PASS: canonical customer D1 schema exists and can be read"
