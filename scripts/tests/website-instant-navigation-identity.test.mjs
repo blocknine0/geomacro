@@ -25,10 +25,12 @@ test("all primary and secondary page navigation uses SPA links", () => {
 test("internal destination headings are accessible client links", () => {
   assert.match(editorial, /<Link to=\{item\.href as "\/intelligence"\}/);
   assert.match(editorial, /gm-heading-link/);
-  for (const href of ["/ask-geomacro", "/pricing", "/intelligence"]) {
+  for (const href of ["/ask-geomacro", "/pricing"]) {
     assert.ok(home.includes(`to="${href}" className="gm-heading-link"`),
       `Missing home section destination heading for ${href}`);
   }
+  assert.match(home, /to="\/intelligence"/);
+  assert.doesNotMatch(home, /home-finds-title|LiveIntelligenceShowcase/);
 });
 test("client transitions do not block on 9s intelligence publisher request", () => {
   assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
