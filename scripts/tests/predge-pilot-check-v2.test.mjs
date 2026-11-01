@@ -11,9 +11,14 @@ const NOW=Date.parse("2026-11-01T10:00:00.000Z");
 const TOKEN="a".repeat(64),ADMIN="c".repeat(64);
 const cats=["geopolitics","macro","rare_earth"];
 function item(i,category=cats[i%3]){
- return {id:"news-"+String(i).padStart(4,"0"),category,
+ return {schema:"geomacro.derived-news-structural.v1",
+   id:"news-"+String(i).padStart(4,"0"),category,
    original_published_at:new Date(NOW-60*60*1000-i*1000).toISOString(),
    headline:"Genuine official research reference "+i,
+   confidence_state:"OFFICIAL_RELEASE_OBSERVED_UNSCORED",
+   further_validation_required:true,event_detail_verified:false,
+   country_subject_verified:false,independent_same_event_verified:false,
+   numeric_impact_established:false,
    sources_credited:[],attribution_notices:[],
    chargeable:false,payable:false,signed_product_verified:false,
    raw_upstream_delivered:false,commercial_derived_rights_verified:false};
@@ -76,7 +81,9 @@ test("rejects forged authority, duplicate news, mismatched credits, stale and fu
    [{...original,chargeable:true}],
    [{...original,original_published_at:new Date(NOW-73*3600_000).toISOString()}],
    [{...original,original_published_at:new Date(NOW+3600_000).toISOString()}],
-   [{...original,sources_credited:["Publisher"]}]])
+   [{...original,sources_credited:["Publisher"]}],
+   [{...original,execution_authorized:true}],
+   [{...original,confidence_state:"FAKE_VERIFIED"}]])
   assert.throws(()=>buildUnsignedPilotCheck(feed(rows),NOW),/PREDGE_PILOT_/);
 });
 test("caps wire bytes without misreporting delivered or truncated counts",()=>{
