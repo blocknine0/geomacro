@@ -77,6 +77,11 @@ test("rejects concrete journal ID stuck outside static beyond 90-minute recovery
  x.isArchiveEligible=()=>true;
  assert.throws(()=>verifyThreeDomainLivePublication(x),
   /THREE_DOMAIN_LIVE_CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_macro/);
+ x.strictBacklog=false;
+ const diagnostic=verifyThreeDomainLivePublication(x);
+ assert.equal(diagnostic.verified,false);
+ assert.equal(diagnostic.source_to_public_complete,false);
+ assert.equal(diagnostic.aged_eligible_unpublished,1);
  x.journal.first_ingest[0].first_seen_at="2026-11-01T23:45:00.000Z";
  assert.equal(verifyThreeDomainLivePublication(x).verified,true);
 });
