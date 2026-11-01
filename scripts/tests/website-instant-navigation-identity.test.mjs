@@ -11,6 +11,7 @@ const intelligence = read("src/routes/intelligence.tsx");
 const homeRoute = read("src/routes/index.tsx");
 const css = read("src/styles.css");
 const lock = JSON.parse(read("config/website-lock.json"));
+const lockVerifier = read("scripts/ops/verify-website-lock.mjs");
 
 test("all primary and secondary page navigation uses SPA links", () => {
   for (const route of ["/", "/intelligence", "/risk-indices", "/ask-geomacro", "/pricing",
@@ -31,8 +32,8 @@ test("internal destination headings are accessible client links", () => {
   }
   assert.match(home, /to="\/intelligence"/);
   assert.doesNotMatch(home, /home-finds-title/);
-  assert.match(home, /<LiveIntelligenceShowcase \/>/);
-  assert.match(home, /What GeoMacro is finding now/);
+  assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
+  assert.doesNotMatch(home, /What GeoMacro is finding now/);
 });
 test("client transitions do not block on 9s intelligence publisher request", () => {
   assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
@@ -64,9 +65,13 @@ test("Home remains instant with client-only public-static highlights and no bloc
   assert.doesNotMatch(homeRoute, /\bloader\s*:/);
   assert.doesNotMatch(homeRoute, /fetchDailyOfficialFinds|fetchDirectDerivedNews/);
   assert.match(homeRoute, /<CommercialHome \/>/);
-  assert.match(home, /LiveIntelligenceShowcase/);
+  assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
   assert.equal(lock.approved_homepage_fresh_unverified_lane_20261102.exact_blob_lock, true);
   assert.equal(lock.approved_homepage_fresh_unverified_lane_20261102.payment_authorized, false);
   assert.equal(lock.approved_home_navigation_20261101.exact_blob_lock, true);
+  assert.equal(lock.approved_permanent_home_finds_removal_20261102.exact_blob_lock, true);
+  assert.equal(lock.approved_permanent_home_finds_removal_20261102.permanent_unmounted_assertion, true);
+  assert.match(lockVerifier, /GEOMACRO_PERMANENT_HOMEPAGE_FINDS_REMOVAL_VIOLATION/);
+  assert.match(lockVerifier, /approved_permanent_home_finds_removal_20261102/);
   assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });

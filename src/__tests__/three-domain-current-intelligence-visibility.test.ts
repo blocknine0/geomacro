@@ -88,8 +88,8 @@ describe("#1827 website Intelligence freshness visibility without invented three
     expect(source).toContain("Geopolitics");
     expect(source).toContain("Macro / FX");
     expect(source).toContain("Critical Minerals");
-    expect(source).toContain("<LiveIntelligenceShowcase />");
-    expect(source).toContain("What GeoMacro is finding now.");
+    expect(source).not.toContain("LiveIntelligenceShowcase");
+    expect(source).not.toContain("What GeoMacro is finding now.");
     expect(route).not.toContain("fetchDailyOfficialFinds");
   });
 });

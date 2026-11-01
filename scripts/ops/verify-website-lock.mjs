@@ -120,6 +120,17 @@ function isProtectedWebsitePath(path) {
   return false;
 }
 
+// Permanent founder directive (2026-11-02): never remount the homepage
+// Finds/highlights panel by restoring an older *previously approved* blob.
+// Existing /intelligence, source ingestion and PREDGE remain unrestricted.
+const homeContent = readFileSync("src/components/home/commercial-home.tsx", "utf8");
+if (homeContent.includes("LiveIntelligenceShowcase") ||
+    homeContent.includes("home-fresh-intelligence-title") ||
+    homeContent.includes("What GeoMacro is finding now.")) {
+  console.error("::error::GEOMACRO_PERMANENT_HOMEPAGE_FINDS_REMOVAL_VIOLATION");
+  process.exit(1);
+}
+
 const changed = new Set([
   ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", baseline, "HEAD"])),
   ...lines(git(["diff", "--name-only", "--diff-filter=ACDMRTUXB", "HEAD"])),
@@ -147,6 +158,7 @@ const approvedPricing = [
   config.approved_daily_official_finds_20261101,
   config.approved_remove_home_finds_20261101,
   config.approved_homepage_fresh_unverified_lane_20261102,
+  config.approved_permanent_home_finds_removal_20261102,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a

@@ -21,8 +21,8 @@ describe("homepage reader and buyer journeys", () => {
     const html = await page();
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("Geomacro is a global intelligence platform.");
-    expect(html).toContain("Geomacro Finds");
-    expect(html).toContain("What GeoMacro is finding now.");
+    expect(html).not.toContain("Geomacro Finds");
+    expect(html).not.toContain("What GeoMacro is finding now.");
     expect(html).not.toContain("No highlights to show right now.");
     for (const target of ["/intelligence", "/ask-geomacro", "/data-api", "/pricing", "/risk-indices", "/institutional"]) {
       expect(html).toContain(`href="${target}"`);
