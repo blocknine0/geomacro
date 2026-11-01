@@ -1283,6 +1283,15 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 export default {
   async scheduled(controller,env,ctx){
     ctx.waitUntil(runMacroReleaseTick(env).then(receipt=>console.log(JSON.stringify({schema:"geomacro.macro-release-tick.v1",...receipt}))).catch(()=>console.error("MACRO_RELEASE_TICK_UNAVAILABLE")));
+    // Existing 1-minute Worker cron: one bounded daily deletion, no new
+    // schedule, secrets, source pulls or partner route changes.
+    const utc=new Date();
+    if(utc.getUTCHours()===0&&utc.getUTCMinutes()===13&&env?.DB?.prepare){
+      ctx.waitUntil(env.DB.prepare(
+        "DELETE FROM predge_pilot_signed_news_context WHERE singleton=1 AND expires_at<=?"
+      ).bind(utc.toISOString()).run().catch(()=>
+        console.error("PREDGE_PILOT_EXPIRED_SAMPLE_PURGE_UNAVAILABLE")));
+    }
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
