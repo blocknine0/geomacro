@@ -146,6 +146,7 @@ const approvedPricing = [
   config.approved_home_navigation_20261101,
   config.approved_daily_official_finds_20261101,
   config.approved_remove_home_finds_20261101,
+  config.approved_homepage_fresh_unverified_lane_20261102,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
