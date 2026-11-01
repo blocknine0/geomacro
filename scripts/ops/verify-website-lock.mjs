@@ -124,8 +124,9 @@ function isProtectedWebsitePath(path) {
 // Finds/highlights panel by restoring an older *previously approved* blob.
 // Existing /intelligence, source ingestion and PREDGE remain unrestricted.
 const homeContent = readFileSync("src/components/home/commercial-home.tsx", "utf8");
-if (/<LiveIntelligenceShowcase\\b|home-fresh-intelligence-title|What GeoMacro is finding now\\./u.test(homeContent) ||
-    /import\\s*\\{\\s*LiveIntelligenceShowcase\\s*\\}/u.test(homeContent)) {
+if (homeContent.includes("LiveIntelligenceShowcase") ||
+    homeContent.includes("home-fresh-intelligence-title") ||
+    homeContent.includes("What GeoMacro is finding now.")) {
   console.error("::error::GEOMACRO_PERMANENT_HOMEPAGE_FINDS_REMOVAL_VIOLATION");
   process.exit(1);
 }
