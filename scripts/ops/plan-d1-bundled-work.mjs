@@ -56,23 +56,23 @@ export function d1LanePacedCeiling(lane,now){
   });
 }
 const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
-// Minimum Free/bundled envelope for the EXISTING fifteen-minute private
-// source lane. A fixed five-original maximum gives the three news categories
-// a 2/2/1 fair share without opening a parallel expensive research pipeline.
+// Minimum Free/bundled envelope for the EXISTING paced private
+// source lane. A three-original maximum gives each observed category
+// a fair first opportunity per 10-minute admitted tick; overflow rotates.
 // This is a DAILY worst-case reserve, not an atomic Cloudflare reservation:
 // no source intake is allowed when actual provider headroom is insufficient.
-// Reserve up to three independent capped D1 producers per 15-minute slot:
-// the five-minute fastlane, private source-only writer and optionally
+// Reserve up to three independent capped D1 producers per 10-minute slot:
+// the legacy-named fastlane, private source-only writer and optionally
 // five-item AES-GCM replay when research headroom is separately admitted.
 // This avoids treating a GitHub concurrency mutex as a total daily
 // call-count guarantee. The five-minute fastlane uses the intake clock and
-// must honor the interval returned here, not run an extra D1 write every 5m.
+// must honor the 10-minute admission; no extra D1 writes between ticks.
 export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
- interval_minutes:15,max_new_rows:5,producers_per_slot:3,
+ interval_minutes:10,max_new_rows:3,producers_per_slot:3,
  rows_read_per_slot:3200,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
  rows_read_fixed:100000,rows_written_fixed:2000,
- expected_categories:3,maximum_original_records_per_slot:5,
+ expected_categories:3,maximum_original_records_per_slot:3,
  no_paid_capacity:true,protect_predge_reserve:true,
 });
 export function planSourceIntake(snapshot,now){
@@ -100,7 +100,7 @@ export function planSourceIntake(snapshot,now){
   producers_per_slot:c.producers_per_slot,
   rows_read,rows_written,remaining_source_slots:slots,
   remaining_five_minute_slots:Math.ceil(remainingMs/300000),
-  plan:"MINIMUM_FREE_15M_THREE_CATEGORY_BUNDLED_SOURCE",
+  plan:"MINIMUM_FREE_10M_THREE_CATEGORY_BUNDLED_SOURCE",
   estimated_account_budget_not_atomic:true,
  });
 }
