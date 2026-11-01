@@ -260,3 +260,18 @@ test("canonical D1 changing between initial and post-archive readback is NOT B2 
  }),/DERIVED_NEWS_B2_D1_SOURCE_CHANGED_DURING_ARCHIVE/u);
  assert.equal(calls,2);
 });
+
+test("manual dispatch outside scheduled B2 window never consumes recovery quota",async()=>{
+ const env={GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_ACTIONS:"true",GITHUB_RUN_ID:"12345",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",GITHUB_EVENT_NAME:"workflow_dispatch"};
+ const receipt=await runGovernedDerivedNewsBackup({
+  env,now:new Date("2026-11-01T19:02:00Z"),
+  governorFactory:()=>{throw Error("MUST_NOT_READ_QUOTA_OUTSIDE_SLOT");},
+  b2Factory:()=>{throw Error("MUST_NOT_CREATE_B2");},
+  fetchImpl:async()=>{throw Error("MUST_NOT_CONTACT_D1");}
+ });
+ assert.equal(receipt.status,"SKIPPED_SIX_HOUR_ARCHIVE_SLOT");
+ assert.equal(receipt.b2_put_verified,false);
+});
