@@ -56,8 +56,9 @@ export async function callCustomerWorker(request:Request,action:string,payload:R
  }
  let response:Response;
  try{response=await fetch(new URL(`/v1/internal/customer/${action}`,base),{
-  method:"POST",headers,body:JSON.stringify(payload),redirect:"error",signal:AbortSignal.timeout(28000),
+  method:"POST",headers,body:JSON.stringify(payload),redirect:"manual",signal:AbortSignal.timeout(28000),
  });}catch{throw new CustomerError(503,"CUSTOMER_D1_UNAVAILABLE");}
+ if(response.status>=300&&response.status<400)throw new CustomerError(503,"CUSTOMER_D1_REDIRECT_REJECTED");
  let body:WorkerResult;try{body=await response.json() as WorkerResult;}catch{throw new CustomerError(503,"CUSTOMER_D1_RESPONSE_INVALID");}
  if(!body||body.ok!==true||!response.ok){
   const code=typeof body?.code==="string"&&/^CUSTOMER_[A-Z0-9_]{1,80}$/.test(body.code)?body.code:"CUSTOMER_D1_UNAVAILABLE";
