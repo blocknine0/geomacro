@@ -20,8 +20,10 @@ export async function runGovernedDerivedNewsBackup({
     env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
     env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="derived_news_backup"||
     env.B2_REQUEST_BUDGET!=="12")fail("PROTECTED_QUOTA_GOVERNED_MAIN_REQUIRED");
- const force=env.GITHUB_EVENT_NAME==="workflow_dispatch";
- if(!force&&now.getUTCHours()%6!==0)
+ // Preserve recovery headroom: manual dispatch cannot force out-of-slot B2 calls.
+ // Existing hourly schedule retries autonomously at 00/06/12/18 UTC.
+ const force=false;
+ if(now.getUTCHours()%6!==0)
   return {schema:"geomacro.private-derived-news-b2-backup-receipt.v1",
    status:"SKIPPED_SIX_HOUR_ARCHIVE_SLOT",archived_rows:0,
    b2_put_verified:false,source_d1_readback_verified:false,

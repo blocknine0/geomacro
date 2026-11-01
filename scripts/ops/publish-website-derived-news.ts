@@ -11,7 +11,7 @@ import { summarizeDerivedSourceHealth } from "../lib/derived-news-source-health.
 import {prepareDerivedNewsBatches} from '../lib/derived-news-d1-batches.mjs';
 import {partitionCanonicalDerivedCandidates} from "../lib/derived-news-immutable-id-admission.mjs";
 import {reconcileAcknowledgedDerivedNews} from "../lib/phase2g-per-id-d1-reconciliation.mjs";
-import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
+import {buildPhase2hPrivateRawRecords,postPhase2hCollisionIsolated} from "../lib/phase2h-raw-original-records.mjs";
 import { buildMaterialGriNewsReviewQueue } from "../lib/material-gri-news-review.mjs";
 import { readStatelessWebsiteIntelligence } from "../../src/lib/stateless-public-intelligence.server";
 import {createRunScopedAustralianResourcesFetch} from "../../src/lib/stateless-run-shared-official-fetch";
@@ -277,13 +277,20 @@ try {
     const plan=buildPhase2hPrivateRawRecords(privateOriginals,{
       now:new Date(),derive:deriveStatelessSignals,
     });
-    const raw=await postPhase2hPrivateRawRecords({
+    const raw=await postPhase2hCollisionIsolated({
       records:plan.records,controlPlaneRoot:CONTROL_PLANE_ORIGIN,token:TOKEN,
       fetchImpl:noSupabase,
     });
+    // An exact immutable conflict is quarantined, never overwritten or
+    // counted as an accepted original; other categories continue normally.
+    if(raw.rejected_conflicts>0)
+      console.warn("::warning::PHASE2H_IMMUTABLE_ORIGINALS_QUARANTINED");
     console.log(JSON.stringify({schema:"geomacro.phase2h.website-original-d1-receipt.v1",
       collected:plan.records.length,excluded_not_retained:plan.discarded_invalid,
       categories:plan.counts,inserted:raw.stored,previously_seen:raw.duplicate,
+      rejected_conflicts:raw.rejected_conflicts,
+      rejected_conflicts_by_category:raw.rejected_conflicts_by_category,
+      verified_originals:raw.verified_originals,attempts:raw.attempts,
       canonical_d1_readback_verified:raw.readback_verified,
       b2_verified:false,rights_verified:false,payments:0}));
   }
