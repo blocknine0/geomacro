@@ -23,6 +23,7 @@ on:
       - "scripts/ops/phase2h-verify-private-question-delivery.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/phase2h-private-original-safe-diagnostics.test.mjs"
+      - "scripts/tests/phase2h-hourly-collision-continuity.test.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
       - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
@@ -171,6 +172,7 @@ jobs:
           node --test scripts/tests/phase2g-canonical-origin-contract.test.mjs
           node --test scripts/tests/phase2h-raw-news.test.mjs
           node --test scripts/tests/phase2h-private-original-safe-diagnostics.test.mjs
+          node --test scripts/tests/phase2h-hourly-collision-continuity.test.mjs
           node --check scripts/ops/phase2h-verify-private-question-delivery.mjs
 
   # Push-only quota counter evidence for this scoped recovery repair.
@@ -359,6 +361,7 @@ jobs:
         run: |
           node --test scripts/lib/bundled-original-source-quota.test.mjs
           node --test scripts/lib/all-news-original-evidence-audit.test.mjs
+          node --test scripts/tests/phase2h-hourly-collision-continuity.test.mjs
           node --test scripts/lib/automatic-news-qualification-coverage.test.mjs scripts/lib/derived-original-reference-pins.test.mjs
           node --test scripts/lib/facts-only-derived-news-regression.test.mjs
           node --test scripts/lib/geomacro-original-page-readback.test.mjs
