@@ -261,6 +261,7 @@
     "pre-mainnet-x402-zero-fund-acceptance.yml",
     "predge-pilot-signed-news-v2-ci.yml",
     "predge-pilot-signed-news-v2-refresh.yml",
+    "predge-pilot-v2-live-acceptance.yml",
     "predge-research-continuity.yml",
     "predge-shared-d1-news-live-acceptance.yml",
     "predge-signed-market-public-verification.yml",
