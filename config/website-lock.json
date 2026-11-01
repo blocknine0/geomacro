@@ -1129,17 +1129,19 @@
     "production_exact_sha_readback_required": true
   },
   "approved_homepage_fresh_unverified_lane_20261102": {
-    "approval": "Founder expressly requested fixing stale homepage daily highlights on 2 Nov 2026 and previously explicitly requested short original-dated major news that changes daily. This scoped update adds a separately labelled unverified OSINT lane; it never relabels observations as official or independently verified.",
+    "approval": "Founder explicitly instructed on 2026-11-02 to fix stale homepage highlights, requesting new original-dated material Geopolitics/Macro/Critical Minerals findings after October 30. This supersedes only the 2026-11-01 approved removal of the stale legacy Finds block: replace it with a separate, accurately labelled short latest-news OSINT/official release lane, keep all other site and Global Risk locks.",
     "approved_paths": [
-      "src/components/home/live-intelligence-showcase.tsx"
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/components/home/commercial-home.tsx"
     ],
-    "approved_source_commit": "5a5bbbbdaa8ab9431c9ee802c5a8f8f20b01efa8",
+    "approved_source_commit": "c84902d2df179c44ad7a27509ecdcfebbb821ee4",
     "exact_blob_lock": true,
     "locked_global_risk_unchanged": true,
     "predge_unchanged": true,
     "pricing_unchanged": true,
     "payment_authorized": false,
     "published_source_sha_unchanged": true,
-    "live_published_acceptance_pending": true
+    "live_published_acceptance_pending": true,
+    "scope": "ONLY current home presentation mounts and two-lane story renderer; no other routes, no paid entitlement, no PREDGE."
   }
 }
