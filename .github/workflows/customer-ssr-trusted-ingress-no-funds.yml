@@ -1,21 +1,34 @@
 name: Customer SSR Trusted Ingress Spoof Acceptance (No Funds)
-# One-click, read-only external proof. Never invokes OTP dispatch, payments, D1, or secrets.
+# Permanent, read-only external acceptance. Never invokes OTP dispatch, payments, D1, or secrets.
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - "src/lib/customer-auth.server.ts"
+      - "src/routes/api.v1.customer.auth.ts"
+      - "scripts/ops/verify-customer-ssr-ingress-no-funds.py"
+      - "scripts/tests/test_customer_ingress_no_funds.py"
+      - ".github/workflows/customer-ssr-trusted-ingress-no-funds.yml"
 permissions:
   contents: read
 concurrency:
-  group: geomacro-customer-ingress-spoof-proof
+  group: geomacro-customer-ingress-spoof-proof-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   external-ssr-ingress-proof:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    # On PR: production is currently serving base SHA, not the new PR head.
+    # On manual main: exact main SHA is required.
+    env:
+      GEOMACRO_EXPECTED_SHA: ${{ github.event.pull_request.base.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Verify exact public SHA, CF IP presence and spoof rejection (GET only)
+      - name: Prove diagnostic rejects spoof leakage and isolates each request stage
+        run: python3 -m unittest discover -s scripts/tests -p test_customer_ingress_no_funds.py
+      - name: Verify exact public SHA, CF IP presence, and spoof rejection (GET only)
         run: python3 scripts/ops/verify-customer-ssr-ingress-no-funds.py
       - name: Declare scope limited to ingress (not OTP or payments)
         run: |
