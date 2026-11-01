@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "rare_earth",
-  "updated_at": "2026-10-31T22:20:38.692Z",
+  "updated_at": "2026-11-01T21:09:33.909Z",
   "signals": [
     {
       "id": "rare_earth-9f348676",
@@ -100,6 +100,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-ce21fb0a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T22:46:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-7bbaa0ff",
       "category": "rare_earth",
       "title": "Geomacro finds Appian confirmed Talks With EBRD on Critical Minerals Funding - Discovery Alert",
@@ -138,6 +157,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-a3470588",
+      "category": "rare_earth",
+      "title": "Geomacro finds Abenojar raised €170M for Spanish tungsten project - The Northern Miner",
+      "what_changed": "A monitored source feed reports: Abenojar raised €170M for Spanish tungsten project - The Northern Miner. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T19:50:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-5a10ec9c",
       "category": "rare_earth",
       "title": "Geomacro finds Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk",
@@ -147,6 +185,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T18:05:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-ab685586",
+      "category": "rare_earth",
+      "title": "Geomacro finds Chile's Cochilco raised copper price forecasts for 2026, 2027 - TradingView",
+      "what_changed": "A monitored source feed reports: Chile's Cochilco raised copper price forecasts for 2026, 2027 - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:42:46.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -208,6 +265,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-23f36be1",
+      "category": "rare_earth",
+      "title": "Geomacro finds Sylvania reported record quarterly PGM output, improved chrome production",
+      "what_changed": "A monitored source feed reports: Sylvania reported record quarterly PGM output, improved chrome production. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T14:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -309,6 +385,63 @@
       "severity": null
     },
     {
+      "id": "rare_earth-bf500280",
+      "category": "rare_earth",
+      "title": "Geomacro finds Jupiter reported solid first-quarter performance despite challenging manganese market - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Jupiter reported solid first-quarter performance despite challenging manganese market - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-72baa719",
+      "category": "rare_earth",
+      "title": "Geomacro finds Centerra lowered full-year AISC guidance for Mount Milligan",
+      "what_changed": "A monitored source feed reports: Centerra lowered full-year AISC guidance for Mount Milligan. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T08:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7f658043",
+      "category": "rare_earth",
+      "title": "Geomacro finds Veramark Assurance launched Responsible Metals Value Chain Platform",
+      "what_changed": "A monitored source feed reports: Veramark Assurance launched Responsible Metals Value Chain Platform. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T08:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-eeb5bb9e",
       "category": "rare_earth",
       "title": "Geomacro finds Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada",
@@ -341,6 +474,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-ba9a910c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Tanzania and Angola agreed to link ocean corridors by rail",
+      "what_changed": "A monitored source feed reports: Tanzania and Angola agreed to link ocean corridors by rail. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T06:03:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

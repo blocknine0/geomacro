@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-01T19:55:57.833Z",
+  "updated_at": "2026-11-01T21:09:33.909Z",
   "signals": [
+    {
+      "id": "macro-a005e97b",
+      "category": "macro",
+      "title": "Geomacro finds Zelensky announced visit by Turkish energy companies to Ukraine",
+      "what_changed": "A monitored source feed reports: Zelensky announced visit by Turkish energy companies to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T20:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-953d7eb9",
       "category": "macro",
@@ -14,6 +33,63 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T19:07:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ebe6a2e2",
+      "category": "macro",
+      "title": "Geomacro finds Fire Point confirmed strike on Russia's Kstovo refinery",
+      "what_changed": "A monitored source feed reports: Fire Point confirmed strike on Russia's Kstovo refinery. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T13:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d3151319",
+      "category": "macro",
+      "title": "Geomacro finds Minister urged broader partnerships to implement EMV energy, mining projects",
+      "what_changed": "A monitored source feed reports: Minister urged broader partnerships to implement EMV energy, mining projects. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T13:25:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.ammonnews.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-552861b2",
+      "category": "macro",
+      "title": "Geomacro finds Iranian Military reported fire aboard Oil Tanker east of Strait of Hormuz - وكالة سبأ",
+      "what_changed": "A monitored source feed reports: Iranian Military reported fire aboard Oil Tanker east of Strait of Hormuz - وكالة سبأ. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T13:17:32.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

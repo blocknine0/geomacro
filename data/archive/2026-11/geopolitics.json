@@ -2,6 +2,45 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T19:55:57.833Z",
-  "signals": []
+  "updated_at": "2026-11-01T21:09:33.909Z",
+  "signals": [
+    {
+      "id": "geopolitics-05373168",
+      "category": "geopolitics",
+      "title": "Geomacro finds UAE said hoping for breakthrough yet ‘braced for the worst’ in Iran-US war - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: UAE said hoping for breakthrough yet ‘braced for the worst’ in Iran-US war - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T20:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-60a65d09",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump held call with Netanyahu over state of Iran war: report",
+      "what_changed": "A monitored source feed reports: Trump held call with Netanyahu over state of Iran war: report. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T20:35:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    }
+  ]
 }

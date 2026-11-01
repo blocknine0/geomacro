@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-10-31T22:20:38.692Z",
+  "updated_at": "2026-11-01T21:09:33.909Z",
   "signals": [
     {
       "id": "geopolitics-be28ba3f",
@@ -81,6 +81,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-41b6d1fd",
+      "category": "geopolitics",
+      "title": "Geomacro finds China said stealth attack drone makes first takeoff, landing on amphibious ship - Reuters",
+      "what_changed": "A monitored source feed reports: China said stealth attack drone makes first takeoff, landing on amphibious ship - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:49:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-7ea1c49a",
       "category": "geopolitics",
       "title": "Geomacro finds United Kingdom issued a statement concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia · United Kingdom",
@@ -96,6 +115,139 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f85c7198",
+      "category": "geopolitics",
+      "title": "Geomacro finds Undead Software projected Continue to Raise Security Risks",
+      "what_changed": "A monitored source feed reports: Undead Software projected Continue to Raise Security Risks. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T14:10:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.darkreading.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-950dc4b1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Qatar called for stronger maritime security to promote global peace",
+      "what_changed": "A monitored source feed reports: Qatar called for stronger maritime security to promote global peace. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T13:02:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.gulf-times.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b2c0ece0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said conflict with Iran to end soon, Tehran &#x27;wants to talk&#x27;",
+      "what_changed": "A monitored source feed reports: Trump said conflict with Iran to end soon, Tehran &#x27;wants to talk&#x27;. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T12:08:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.haaretz.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6126d598",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said Conflict With Iran to End Soon, Tehran 'Wants to Talk' - Haaretz",
+      "what_changed": "A monitored source feed reports: Trump said Conflict With Iran to End Soon, Tehran 'Wants to Talk' - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T12:08:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-02075654",
+      "category": "geopolitics",
+      "title": "Geomacro finds NAVA urged Kyrgyzstanis to strengthen wallet security after Binance attack",
+      "what_changed": "A monitored source feed reports: NAVA urged Kyrgyzstanis to strengthen wallet security after Binance attack. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:55:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a73b4ded",
+      "category": "geopolitics",
+      "title": "Geomacro finds UNHCR-IOM Joint Border Monitoring reported # 25 on Inflows From The Islamic Republic of Iran 1 Mar - 22 Oct 2026 - UNHCR - The UN Refugee Agency",
+      "what_changed": "A monitored source feed reports: UNHCR-IOM Joint Border Monitoring reported # 25 on Inflows From The Islamic Republic of Iran 1 Mar - 22 Oct 2026 - UNHCR - The UN Refugee Agency. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T08:19:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7b163556",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oleshky Residents left for Ukraine, Russia as Truce Holds for 87 Hours",
+      "what_changed": "A monitored source feed reports: Oleshky Residents left for Ukraine, Russia as Truce Holds for 87 Hours. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T07:57:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
