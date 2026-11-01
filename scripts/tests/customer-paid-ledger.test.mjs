@@ -7,7 +7,7 @@ import {readFileSync} from 'node:fs';
 import {
  CUSTOMER_CREDIT_COSTS,CUSTOMER_CREDIT_CONTRACT,CUSTOMER_ENABLED_CAPABILITIES,
  customerPaidKeyDigest,authorizeCanonicalCustomerPaid,
- consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey
+ consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount
 } from '../../workers/control-plane/src/customer-paid-ledger.mjs';
 const migrations=['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql',
  '0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql',
@@ -78,6 +78,23 @@ test('unverified, zero-funded, or wrong-person keys cannot be issued',async()=>{
  const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
  assert.match(key.api_key,/^gmk_live_[a-f0-9]{64}$/);
  assert.notEqual(key.api_key,f.sql.prepare('SELECT hmac_sha256 AS h FROM api_keys').get().h);
+ f.sql.close();
+});
+
+test('funded account summary is receipt-linked and never includes other customers',async()=>{
+ const f=fixture();f.user(alice,'alice@example.com');f.user(bob,'bob@example.com');
+ assert.deepEqual(await readCanonicalCustomerPaidAccount(f.db,alice),{credits:null,key_issuance_eligible:false});
+ f.fund(alice,{tier:'starter_dev',credits:1000});
+ const view=await readCanonicalCustomerPaidAccount(f.db,alice);
+ assert.equal(view.key_issuance_eligible,true);assert.equal(view.credits.remaining,1000);
+ assert.equal(view.credits.allocated,1000);assert.equal(view.credits.used,0);
+ assert.equal((await readCanonicalCustomerPaidAccount(f.db,bob)).credits,null);
+ const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
+ await consumeCanonicalCustomerPaid(f.db,f.env,{apiKey:key.api_key,capability:'intelligence_query',requestId:'account-view-debit-0001'});
+ const charged=await readCanonicalCustomerPaidAccount(f.db,alice);
+ assert.equal(charged.credits.remaining,999);assert.equal(charged.credits.used,1);
+ f.reversed(alice,'receipt-01');
+ assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits,null);
  f.sql.close();
 });
 
