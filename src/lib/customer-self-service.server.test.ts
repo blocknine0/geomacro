@@ -1,7 +1,8 @@
-import {describe,it,expect} from "vitest";
-import {readFileSync} from "node:fs";
+import {describe,it,expect,vi,afterEach} from "vitest";
 import {authenticatedCustomer,customerSessionCookie,clearCustomerCookie,
- rejectCrossOrigin,CustomerError} from "./customer-auth.server";
+ rejectCrossOrigin,CustomerError,callCustomerWorker} from "./customer-auth.server";
+
+afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 
 describe("customer session fail-closed gate",()=>{
  it("rejects anonymous session before touching the customer database",async()=>{
@@ -31,12 +32,31 @@ describe("customer session fail-closed gate",()=>{
 });
 
 describe("verified customer API-key ledger safeguards",()=>{
- it("only exposes service-role callable, owner-scoped and payment-funded RPCs",()=>{
-  const sql=readFileSync("supabase/migrations/9999999902_paid_customer_self_service.sql","utf8");
-  for(const s of ["p_auth_user_id uuid","principal_type='api_client'",
-   "source_type='payment_provider'","included_credits>credits_used",
-   "if v_count>=3","KEY_CREATION_COOLDOWN","revoke_paid_customer_api_key",
-   "to service_role"])expect(sql).toContain(s);
-  expect(sql).toContain("from public,anon,authenticated");
+ it("missing D1 configuration never falls back to retired customer auth",async()=>{
+  vi.stubEnv("GEOMACRO_CUSTOMER_WORKER_URL","");
+  vi.stubEnv("APP_SUPABASE_URL","https://retired.example.invalid");
+  vi.stubEnv("APP_SUPABASE_ANON_KEY","retired-key");
+  const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+  await expect(authenticatedCustomer(new Request("https://geomacro.live/api/v1/customer/account",{headers:{cookie:"__Host-gm_customer="+"a".repeat(64)}})))
+   .rejects.toMatchObject({code:"CUSTOMER_D1_NOT_CONFIGURED"});
+  expect(fetcher).not.toHaveBeenCalled();
+ });
+ it("Worker failure remains a failure with no second database attempt",async()=>{
+  vi.stubEnv("GEOMACRO_CUSTOMER_WORKER_URL","https://customer-worker.example.invalid");
+  vi.stubEnv("GEOMACRO_CUSTOMER_SSR_TOKEN","dedicated-test-token-".repeat(5));
+  const fetcher=vi.fn().mockResolvedValue(Response.json({ok:false,code:"CUSTOMER_D1_UNAVAILABLE"},{status:503}));vi.stubGlobal("fetch",fetcher);
+  await expect(callCustomerWorker(new Request("https://geomacro.live/api/v1/customer/account"),"account",{session_token:"a".repeat(64)}))
+   .rejects.toMatchObject({status:503,code:"CUSTOMER_D1_UNAVAILABLE"});
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(String(fetcher.mock.calls[0][0])).toBe("https://customer-worker.example.invalid/v1/internal/customer/account");
+ });
+ it("spoofable IP headers cannot activate OTP without trusted ingress configuration",async()=>{
+  vi.stubEnv("GEOMACRO_CUSTOMER_WORKER_URL","https://customer-worker.example.invalid");
+  vi.stubEnv("GEOMACRO_CUSTOMER_SSR_TOKEN","dedicated-test-token-".repeat(5));
+  vi.stubEnv("GEOMACRO_CUSTOMER_TRUSTED_EDGE","");
+  const fetcher=vi.fn();vi.stubGlobal("fetch",fetcher);
+  await expect(callCustomerWorker(new Request("https://geomacro.live/api/v1/customer/auth",{headers:{"cf-connecting-ip":"192.0.2.1"}}),"otp-start",{email:"a@example.com"}))
+   .rejects.toMatchObject({code:"CUSTOMER_TRUSTED_IP_REQUIRED"});
+  expect(fetcher).not.toHaveBeenCalled();
  });
 });

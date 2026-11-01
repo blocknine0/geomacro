@@ -1,3 +1,4 @@
+import {handleCustomerRuntime} from './customer-runtime.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
 import {serveSelfCertifiedNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
@@ -1295,6 +1296,8 @@ export default {
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    // Independent customer authentication boundary; no inherited operator auth.
+    if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
