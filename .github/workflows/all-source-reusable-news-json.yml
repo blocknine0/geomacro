@@ -22,6 +22,8 @@ on:
       - "scripts/lib/registered-reusable-news-source-collector.test.mjs"
       - "scripts/lib/registered-news-15m-cadence.test.mjs"
       - "scripts/ops/publish-all-source-reusable-news-json.ts"
+      - "scripts/lib/phase2h-registered-private-quota.mjs"
+      - "scripts/tests/phase2h-registered-private-quota.test.mjs"
       - "workers/control-plane/src/reusable-source-news.mjs"
       - "workers/control-plane/migrations/0026_reusable_source_news.sql"
       - "src/lib/news-product-factory.ts"
@@ -67,6 +69,7 @@ jobs:
           node --test scripts/lib/reusable-source-news-d1.test.mjs
           node --test scripts/tests/prepare-reusable-news-batches.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/phase2h-registered-private-quota.test.mjs
 
   collect-and-publish:
     needs: offline-contract
