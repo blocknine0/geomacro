@@ -5,7 +5,7 @@
 ## Surfaces
 
 - `GET /v1/pilot/check`: dedicated opt-in signed **sample** response; research Bearer (existing `PREDGE_RESEARCH_NEWS_TOKEN`) required; no query params. Returns 503 until a genuine, verifiable, non-expired signed sample is owner-published. GET shares the existing Risk Gate D1 client quota: **100/day configured**, 500/day ceiling remains a separate agreement/code change. It does not consume the separate 500/day research-feed polling quota.
-- `PUT /v1/internal/predge-pilot-news-context-publish`: owner-only `CONTROL_PLANE_TOKEN`, a verified **active-key** Ed25519 envelope under 1.5MB, atomic single-slot D1 update. Partner never receives the owner/admin token.
+- `PUT /v1/internal/predge-pilot-news-context-publish`: owner-only `CONTROL_PLANE_TOKEN`, a verified **active-key** Ed25519 envelope under 1.5MB, atomic single-slot D1 update. `DELETE` on this owner route removes expired samples only. Partner never receives the owner/admin token.
 - Existing `GET /v1/partner/predge/derived-structural-72h`, `POST /v1/partner/predge/risk-gate`, and website `POST /api/risk-gate` are untouched.
 
 **This is a read-only pilot sample**, not the eventual request-specific production Risk Gate POST. It always contains `risk_gate.decision=PAUSE` because source-only news cannot substitute for independently verified signed GRO. A consumer must not act on PAUSE, and must not treat the signed news-context wrapper as 150 separately signed products.
@@ -19,7 +19,7 @@
 - Signable framing: take whole parsed envelope and set **only** `integrity.payload_hash=null` and `integrity.signature=null`; recursively sort JSON object keys with JavaScript ordering; encode JSON without whitespace to UTF-8; SHA256 over bytes; Ed25519 signature over the **same** bytes, not digest text. Key identifier fixed at `geomacro-risk-2026-03`.
 - Worker verifies against the compile-time pinned SPKI AND its protected active-key trust registry. No private signing key is installed in Worker; unknown/retired key, invalid hash, signature, attribution, expired sample or changed news item is rejected.
 - Only *current real* authenticated D1 research feed items are accepted by signer. An empty or unqualified category remains empty; no invented content, scoring, market relevance or rights permissions.
-- Sample expires one hour after creation. Protected refresh is provisioned as 30-minute opt-in; failure leaves the last sample available only until its original expiry, then HTTP 503.
+- Sample expires one hour after creation. Protected refresh is provisioned as 30-minute opt-in; failure leaves the last sample available only until its original expiry, then HTTP 503. Existing every-minute Worker cron performs a single D1 expired-sample purge at 00:13 UTC daily, whether refresh is enabled or disabled; physical retention is therefore bounded to about 25 hours under successful cron execution. Failed cron runs require independent operational monitoring. Pilot sample access stops at the configured 17 Jan 2027 UTC cutoff.
 
 ## Production setup after merge and partner schema agreement
 
