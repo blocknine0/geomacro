@@ -188,12 +188,54 @@ test("protected preview gate reads opt-in only after production environment is a
  assert.match(workflow,/    environment: production/);
  assert.match(workflow,/      - name: Confirm production preview opt-in before accessing secrets/);
  assert.match(workflow,/          PREVIEW_ENABLED: \$\{\{ vars\.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED \}\}/);
- assert.match(workflow,/PREDGE_PREVIEW_OPT_IN_NOT_VISIBLE_AFTER_PRODUCTION_ENVIRONMENT_ATTACHMENT/);
+ assert.match(workflow,/PREDGE_MANUAL_SIGNING_APPROVAL_REQUIRED/);
+ assert.match(workflow,/PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED/);
+ assert.match(workflow,/PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED/);
  assert.match(workflow,/PREDGE_PREVIEW_DISABLED_NO_SIGNING_OR_PUBLICATION/);
+ assert.match(workflow,/MANUAL_CONFIRMATION: \\$\\{\\{ inputs\\.confirmation \\}\\}/);
+ assert.match(workflow,/required: true/);
  const guarded=workflow.match(/if: steps\.opt_in\.outputs\.enabled == 'true'/g)??[];
  assert.equal(guarded.length,4); // checkout, node setup, token derive, signing/publish
  assert.ok(workflow.indexOf("id: opt_in")<workflow.indexOf("uses: actions/checkout@"));
  assert.ok(workflow.includes('schedule:\n    - cron: "11,41 * * * *"'));
+});
+test("protected signer manual approval and scheduled opt-in are independently fail-closed",async()=>{
+ const fs=await import("node:fs");
+ const os=await import("node:os");
+ const path=await import("node:path");
+ const {spawnSync}=await import("node:child_process");
+ const yaml=fs.readFileSync(".github/workflows/predge-pilot-signed-news-v2-refresh.yml","utf8");
+ const section=yaml.match(/      - name: Confirm production preview opt-in before accessing secrets[\s\S]*?        run: \|\n([\s\S]*?)(?=\n      - uses: actions\/checkout@)/);
+ assert.ok(section,"opt-in runner gate must exist");
+ const shell=section[1].split("\n").map(l=>l.replace(/^          /,"")).join("\n");
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),"predge-gate-"));
+ try{
+   const execute=(event,preview,confirm)=>{
+     const output=path.join(dir,"gate-output.txt");
+     fs.writeFileSync(output,"");
+     const result=spawnSync("bash",["-c",shell],{
+       encoding:"utf8",
+       env:{...process.env,GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:event,
+         PREVIEW_ENABLED:preview,MANUAL_CONFIRMATION:confirm}
+     });
+     return {status:result.status,output:fs.readFileSync(output,"utf8"),
+       stdout:result.stdout,stderr:result.stderr};
+   };
+   const manual=execute("workflow_dispatch","","PREDGE_V2_SIGN_ONCE_NO_FUNDS");
+   assert.equal(manual.status,0,manual.stderr);
+   assert.match(manual.output,/enabled=true/);
+   assert.match(manual.stdout,/PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED/);
+   const denied=execute("workflow_dispatch","YES","");
+   assert.equal(denied.status,2);
+   assert.match(denied.output,/enabled=false/);
+   assert.match(denied.stdout,/PREDGE_MANUAL_SIGNING_APPROVAL_REQUIRED/);
+   const schedule=execute("schedule","YES","");
+   assert.equal(schedule.status,0,schedule.stderr);
+   assert.match(schedule.output,/enabled=true/);
+   const off=execute("schedule","","");
+   assert.equal(off.status,0,off.stderr);
+   assert.match(off.output,/enabled=false/);
+ }finally{fs.rmSync(dir,{force:true,recursive:true});}
 });
 test("routing keeps preexisting research and Risk Gate handlers unchanged",async()=>{
  const fs=await import("node:fs");
