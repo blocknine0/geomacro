@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-01T21:09:33.909Z",
+  "updated_at": "2026-11-01T21:24:42.431Z",
   "signals": [
     {
       "id": "macro-17d0125c",
@@ -176,6 +176,25 @@
       "severity": null
     },
     {
+      "id": "macro-c31ff1e0",
+      "category": "macro",
+      "title": "Geomacro finds Natural Gas Monthly reported - U.S. Energy Information Administration (EIA) (.gov)",
+      "what_changed": "A monitored source feed reports: Natural Gas Monthly reported - U.S. Energy Information Administration (EIA) (.gov). This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T07:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-4aca32f4",
       "category": "macro",
       "title": "Geomacro finds Pinnacle Bank reported Q3 results",
@@ -303,6 +322,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-098ba213",
+      "category": "macro",
+      "title": "Geomacro finds Kyrgyzstan announced plans to switch to paperless trade with other countries",
+      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to switch to paperless trade with other countries. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T05:33:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

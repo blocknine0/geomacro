@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T21:09:33.909Z",
+  "updated_at": "2026-11-01T21:24:42.431Z",
   "signals": [
     {
       "id": "geopolitics-be28ba3f",
@@ -252,6 +252,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-0eb602cf",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved potential sale of 500 Patriot missiles to Ukraine - France 24",
+      "what_changed": "A monitored source feed reports: United States approved potential sale of 500 Patriot missiles to Ukraine - France 24. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T07:28:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1579b93f",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN Refugee Agency said 9 Million Need Extra Winter Help",
+      "what_changed": "A monitored source feed reports: UN Refugee Agency said 9 Million Need Extra Winter Help. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T07:10:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-a29487c0",
       "category": "geopolitics",
       "title": "Geomacro finds Saudi Arabia said one injured, material damage after missiles intercepted",
@@ -398,6 +436,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: moxie.foxbusiness.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a54804ac",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN Security Council held seventh straw poll for next secretary general",
+      "what_changed": "A monitored source feed reports: UN Security Council held seventh straw poll for next secretary general. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T03:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9a161f9a",
+      "category": "geopolitics",
+      "title": "Geomacro finds ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T02:18:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
