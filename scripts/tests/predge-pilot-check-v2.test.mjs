@@ -192,7 +192,7 @@ test("protected preview gate reads opt-in only after production environment is a
  assert.match(workflow,/PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED/);
  assert.match(workflow,/PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED/);
  assert.match(workflow,/PREDGE_PREVIEW_DISABLED_NO_SIGNING_OR_PUBLICATION/);
- assert.match(workflow,/MANUAL_CONFIRMATION: \\$\\{\\{ inputs\\.confirmation \\}\\}/);
+ assert.match(workflow,/MANUAL_CONFIRMATION: \$\{\{ inputs\.confirmation \}\}/);
  assert.match(workflow,/required: true/);
  const guarded=workflow.match(/if: steps\.opt_in\.outputs\.enabled == 'true'/g)??[];
  assert.equal(guarded.length,4); // checkout, node setup, token derive, signing/publish
