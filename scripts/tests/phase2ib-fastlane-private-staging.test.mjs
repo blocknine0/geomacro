@@ -162,3 +162,45 @@ test("non-collision D1 outage is never swallowed by the isolation routine",async
   records:Array.from({length:6},(_,i)=>mk(i)),
  }),/PHASE2IB_FASTLANE_COLLISION_BATCH_CAP/);
 });
+
+test("ten-minute quota processes at most three native originals with fair category rotation",()=>{
+ const all=[
+  ...Array.from({length:6},(_,i)=>mk(100+i,"geopolitics")),
+  ...Array.from({length:6},(_,i)=>mk(200+i,"macro")),
+  ...Array.from({length:6},(_,i)=>mk(300+i,"rare_earth"))
+ ];
+ const first=planPhase2iFastlanePrivateStage(all,{
+  now,derive,maxRows:3,intervalMinutes:10
+ });
+ assert.deepEqual(first.selected_by_category,{
+  geopolitics:1,macro:1,rare_earth:1
+ });
+ assert.equal(first.selected_count,3);
+ assert.equal(first.deferred_count,15);
+ const next=planPhase2iFastlanePrivateStage(all,{
+  now:new Date(now.getTime()+10*60000),derive,
+  maxRows:3,intervalMinutes:10
+ });
+ assert.deepEqual(next.selected_by_category,{
+  geopolitics:1,macro:1,rare_earth:1
+ });
+ assert.ok(first.records.every(x=>!next.records.some(y=>y.record_id===x.record_id)));
+ assert.equal(new Set([...first.records,...next.records].map(x=>x.record_id)).size,6);
+});
+test("ten-minute candidate rotation does not falsely publish immutable conflicts",async()=>{
+ const originals=[mk(701,"geopolitics"),mk(702,"macro"),mk(703,"rare_earth"),
+  mk(704,"macro"),mk(705,"geopolitics")];
+ const post=async({records})=>{
+  if(records.some(x=>x.category==="macro"))
+   throw Error("PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION");
+  return {stored:records.length,duplicate:0,readback_verified:true,
+   per_original_readback_verified:true,verified_originals:records.length};
+ };
+ const first=await stagePhase2iFastlanePrivateOriginals({
+  candidates:originals,now,maxRows:3,intervalMinutes:10,
+  derive,env,post
+ });
+ assert.ok(first.selected_count<=3);
+ assert.equal(first.b2_verified,false);
+ assert.equal(first.d1_rejected_conflicts>=0,true);
+});
