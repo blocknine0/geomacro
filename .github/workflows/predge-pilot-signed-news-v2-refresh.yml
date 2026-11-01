@@ -1,0 +1,47 @@
+name: Predge Signed Pilot News Context v2 - protected opt-in refresh
+# Disabled by default. Founder approval and partner validator acceptance required.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "11,41 * * * *"
+permissions:
+  contents: read
+concurrency:
+  group: predge-signed-pilot-context-production
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && vars.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED == 'YES'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 5
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+      RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Derive owner-only control-plane token without printing it
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ROOT_LEDGER_TOKEN:-}" || { echo "::error::ROOT_SECRET_REQUIRED"; exit 2; }
+          test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}" || { echo "::error::PREDGE_RESEARCH_TOKEN_REQUIRED"; exit 2; }
+          test -n "${RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:-}" || { echo "::error::PINNED_SIGNING_KEY_REQUIRED"; exit 2; }
+          TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          echo "::add-mask::$TOKEN"
+          echo "CONTROL_PLANE_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+      - name: Generate, locally verify, publish and independently read back real signed envelope
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          FILE="$RUNNER_TEMP/predge-pilot-context-$(date -u +%s).json"
+          trap 'shred -u "$FILE" 2>/dev/null || rm -f "$FILE"' EXIT
+          node scripts/ops/sign-predge-pilot-check-v2.mjs "$FILE"
+          node scripts/ops/publish-predge-pilot-check-v2.mjs "$FILE"
