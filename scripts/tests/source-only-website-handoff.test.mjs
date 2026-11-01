@@ -123,3 +123,11 @@ test("official-derived selection is independently capped per category, never glo
  assert.match(publisher,/official\.filter\(row=>row\.category===category\)/);
  assert.match(publisher,/selectSourceWebsitePublicationCohort\(lanes,Date\.now\(\)\)/);
 });
+
+test("real static readback runs even when the archive contains zero new IDs",()=>{
+ const workflow=readFileSync(".github/workflows/private-global-osint-15m.yml","utf8");
+ assert.match(workflow,/if: steps\.static-finds\.outcome == 'success'/);
+ assert.match(workflow,/verified_even_on_no_new_ids:true/);
+ assert.match(workflow,/GEOMACRO_STATIC_DEPLOY_NEEDED/);
+ assert.match(workflow,/geomacro-permanent-finds-archive\/data\//);
+});
