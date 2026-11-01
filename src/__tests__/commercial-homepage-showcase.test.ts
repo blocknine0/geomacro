@@ -52,7 +52,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
     expect(home).toContain("text-[clamp(2.5rem,4.5vw,4rem)]");
     expect(home).not.toContain("LiveIntelligenceShowcase");
     expect(home).not.toContain("What GeoMacro is finding now.");
-    expect(home).toContain("Official releases and unverified source observations are always identified separately.");
+    expect(home).not.toContain("Official releases and unverified source observations are always identified separately.");
     expect(home).not.toContain("home-finds-title");
     expect(home).not.toContain("Explore Geomacro Finds.");
     expect(home).toContain("Follow the risks that affect your work.");
