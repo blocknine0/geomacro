@@ -439,24 +439,46 @@ export async function publishPermanentDerivedNewsArchive({
   const months=[...new Set(allSignals.map(monthFor).filter(Boolean))].sort().reverse();
   const totalSignals=allSignals.length;
   const dataLatest=join(dataDir,"latest.json");
-  const shouldUpdateSnapshots=added>0||seedCompleteThisRun||!existsSync(dataLatest);
+  const dataCoverage=join(dataDir,"coverage-72h.json");
+  // Recompute the rolling 72h membership on EVERY admitted archive sweep.
+  // New IDs are not required for an old item to expire or for a source-day
+  // eligibility clock to advance. Archived historical shards remain immutable.
+  const recent=allSignals.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false}));
+  const nextLatest={
+    ok:true,schema:PUBLIC_FEED_SCHEMA,checked_at:new Date(now).toISOString(),
+    original_release_delay_minutes:0,retention_days:3,retention_hours:72,
+    delivery_scope:"free_website_only",scored:false,chargeable:false,
+    supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
+  };
+  const nextCoverage=buildCurrentArchiveEligibility(recent,now,nextLatest.signals);
+  const previousLatest=readJsonIfPresent(dataLatest,"PERMANENT_ARCHIVE_LATEST_INVALID");
+  const previousCoverage=readJsonIfPresent(dataCoverage,"PERMANENT_ARCHIVE_COVERAGE_INVALID");
+  const withoutCheckClock=doc=>{
+    if(!doc)return null;
+    const {checked_at,...payload}=doc;
+    return JSON.stringify(payload);
+  };
+  const lastCheck=Date.parse(previousLatest?.checked_at??"");
+  // Static-cohort verifier rejects snapshots older than 6h. Refresh an
+  // otherwise unchanged snapshot at 5h, not every 15-minute source sweep.
+  // This updates the observation clock only; NEVER the original release dates.
+  const snapshotClockDue=!Number.isFinite(lastCheck)||lastCheck>now||
+    now-lastCheck>=5*60*60_000;
+  const snapshotMembershipChanged=
+    withoutCheckClock(previousLatest)!==withoutCheckClock(nextLatest)||
+    withoutCheckClock(previousCoverage)!==withoutCheckClock(nextCoverage);
+  const shouldUpdateSnapshots=added>0||seedCompleteThisRun||
+    snapshotClockDue||snapshotMembershipChanged;
   if(shouldUpdateSnapshots){
-    const recent=allSignals.filter(s=>isPermanentArchiveSignal(s,now,{allowHistorical:false}));
-    const latest={
-      ok:true,schema:PUBLIC_FEED_SCHEMA,checked_at:new Date(now).toISOString(),
-      original_release_delay_minutes:0,retention_days:3,retention_hours:72,
-      delivery_scope:"free_website_only",scored:false,chargeable:false,
-      supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
-    };
-    writeFileSync(dataLatest,JSON.stringify(latest,null,2)+"\n",{encoding:"utf8",mode:0o644});
-    const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
-    writeFileSync(join(dataDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
+    writeFileSync(dataLatest,JSON.stringify(nextLatest,null,2)+"\n",{encoding:"utf8",mode:0o644});
+    writeFileSync(dataCoverage,JSON.stringify(nextCoverage,null,2)+"\n",{encoding:"utf8",mode:0o644});
     writeFileSync(join(dataDir,"website-intelligence-predge-72h.json"),
       JSON.stringify(buildWebsitePilotSnapshot(recent,now),null,2)+"\n",
       {encoding:"utf8",mode:0o644});
   }
 
-  const indexChanged=added>0||seedCompleteThisRun||index.total_signals!==totalSignals;
+  const indexChanged=added>0||seedCompleteThisRun||
+    index.total_signals!==totalSignals||shouldUpdateSnapshots;
   if(indexChanged){
     index.schema=ARCHIVE_INDEX_SCHEMA;
     index.updated_at=new Date(now).toISOString();
