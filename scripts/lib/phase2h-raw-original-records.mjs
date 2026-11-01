@@ -225,3 +225,60 @@ export async function postPhase2hPrivateRawRecords({
   submitted_five_part_exact_count:exactFivePart,
   retained_immutable_five_part_count:retainedFivePart};
 }
+
+/**
+ * Hourly canonical D1 intake: isolate ONLY proven immutable ID collisions.
+ * All other D1, quota, network or per-original proof errors remain fatal.
+ * Bounded request count prevents mass conflicts exhausting the free plan.
+ */
+export async function postPhase2hCollisionIsolated({
+ records,controlPlaneRoot,token,fetchImpl=fetch,
+ post=postPhase2hPrivateRawRecords,maxAttempts=128
+}={}){
+ if(!Array.isArray(records)||records.length>600||
+    !Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>128||
+    new Set(records.map(r=>r?.record_id)).size!==records.length)
+  throw Error("PHASE2H_PRIVATE_COLLISION_ARGUMENTS_INVALID");
+ let stored=0,duplicate=0,rejected=0,attempts=0;
+ const rejectedByCategory={geopolitics:0,macro:0,rare_earth:0};
+ const send=async group=>{
+  if(++attempts>maxAttempts)
+   throw Error("PHASE2H_PRIVATE_COLLISION_ATTEMPT_LIMIT");
+  try{
+   const result=await post({records:group,controlPlaneRoot,token,fetchImpl});
+   if(result?.readback_verified!==true||
+      result?.per_original_readback_verified!==true||
+      result?.verified_originals!==group.length||
+      !Number.isSafeInteger(result.stored)||
+      !Number.isSafeInteger(result.duplicate)||
+      result.stored<0||result.duplicate<0||
+      result.stored+result.duplicate!==group.length)
+    throw Error("PHASE2H_PRIVATE_D1_READBACK_MISMATCH");
+   stored+=result.stored;duplicate+=result.duplicate;
+  }catch(error){
+   if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")throw error;
+   if(group.length===1){
+    const category=group[0]?.category;
+    if(!Object.hasOwn(rejectedByCategory,category))
+     throw Error("PHASE2H_PRIVATE_COLLISION_CATEGORY_INVALID");
+    rejected++;rejectedByCategory[category]++;return;
+   }
+   const middle=Math.floor(group.length/2);
+   await send(group.slice(0,middle));
+   await send(group.slice(middle));
+  }
+ };
+ for(let i=0;i<records.length;i+=20)
+  await send(records.slice(i,i+20));
+ if(stored+duplicate+rejected!==records.length)
+  throw Error("PHASE2H_PRIVATE_COLLISION_RECONCILIATION_FAILED");
+ return Object.freeze({
+  stored,duplicate,rejected_conflicts:rejected,
+  rejected_conflicts_by_category:rejectedByCategory,
+  verified_originals:stored+duplicate,
+  readback_verified:stored+duplicate>0,
+  per_original_readback_verified:stored+duplicate>0,
+  attempts,paid_eligible:false,commercial_rights_verified:false,
+  b2_verified:false,payments:0
+ });
+}
