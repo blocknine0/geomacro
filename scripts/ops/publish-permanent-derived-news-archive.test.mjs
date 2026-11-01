@@ -215,6 +215,38 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(isPermanentArchiveSignal(old,NOW,{allowHistorical:false}),false);
   assert.equal(isPermanentArchiveSignal(old,NOW,{allowHistorical:true}),true);
  });
+ it("prunes expired 72h public views even without a new archive ID",async()=>{
+  const p=temp();
+  const original=signal("1234abcd");
+  writeCandidates(p.candidatePath,[original]);
+  await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
+  const later=NOW+70*60*60_000;
+  const result=await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:later});
+  assert.equal(result.new_signals_added,0);
+  assert.equal(result.total_signals,1);
+  const latest=JSON.parse(readFileSync(join(p.archiveDir,"data/latest.json"),"utf8"));
+  const coverage=JSON.parse(readFileSync(join(p.archiveDir,"data/coverage-72h.json"),"utf8"));
+  const index=JSON.parse(readFileSync(join(p.archiveDir,"data/index.json"),"utf8"));
+  assert.deepEqual(latest.signals,[]);
+  assert.equal(coverage.original_release_eligible_total,0);
+  assert.equal(index.total_signals,1);
+  assert.equal(index.updated_at,new Date(later).toISOString());
+  assert.equal(JSON.parse(readFileSync(join(p.archiveDir,"data/archive/2026-10/macro.json"),"utf8")).signals.length,1);
+ });
+ it("refreshes a no-news observation by five hours without faking original timestamps",async()=>{
+  const p=temp();
+  writeCandidates(p.candidatePath,[signal("1234abcd")]);
+  await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW});
+  const path=join(p.archiveDir,"data/latest.json");
+  const first=JSON.parse(readFileSync(path,"utf8"));
+  await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW+60*60_000});
+  const unchanged=JSON.parse(readFileSync(path,"utf8"));
+  assert.equal(unchanged.checked_at,first.checked_at);
+  await publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW+6*60*60_000});
+  const refreshed=JSON.parse(readFileSync(path,"utf8"));
+  assert.equal(refreshed.checked_at,new Date(NOW+6*60*60_000).toISOString());
+  assert.equal(refreshed.signals[0].published_at,first.signals[0].published_at);
+ });
  it("fails closed instead of silently dropping a corrupt previously published shard",async()=>{
   const p=temp();
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
