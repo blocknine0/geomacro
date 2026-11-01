@@ -18,6 +18,7 @@ import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.
 import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
+import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
 import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-news-scores.ts';
@@ -1350,6 +1351,10 @@ export default {
           await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
             "source_neutral",false,eligiblePublicFreeD1CacheRequest(request));
       });
+    // Optional pilot sample; separate from the unchanged production partner Risk Gate.
+    if(url.pathname==="/v1/pilot/check")return predgePilotCheckV2(request,env);
+    if(url.pathname==="/v1/internal/predge-pilot-news-context-publish")
+      return publishPredgePilotCheckV2(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
