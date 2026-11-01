@@ -6,6 +6,9 @@ on:
       - "workers/control-plane/src/predge-pilot-check-v2.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/migrations/0088_predge_pilot_signed_news_context.sql"
+      - "scripts/ops/check-predge-signed-refresh-cadence.mjs"
+      - "scripts/tests/check-predge-signed-refresh-cadence.test.mjs"
+      - ".github/workflows/predge-pilot-signed-news-v2-refresh.yml"
       - "scripts/ops/sign-predge-pilot-check-v2.mjs"
       - "scripts/ops/publish-predge-pilot-check-v2.mjs"
       - "scripts/ops/predge-paired-read-v2.mjs"
@@ -32,4 +35,6 @@ jobs:
           node --check scripts/ops/sign-predge-pilot-check-v2.mjs
           node --check scripts/ops/publish-predge-pilot-check-v2.mjs
           node --check scripts/ops/predge-paired-read-v2.mjs
+          node --check scripts/ops/check-predge-signed-refresh-cadence.mjs
+          node --test scripts/tests/check-predge-signed-refresh-cadence.test.mjs
           node --test scripts/tests/predge-pilot-check-v2.test.mjs
