@@ -80,7 +80,7 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
     {...feed([safe]),cards:Array(101).fill(safe)},
   ])expect(()=>parseHomepageFindsFeed(evil,NOW)).toThrow("HOME_FINDS_FEED_INVALID");
  });
- it("keeps free news behind Intelligence and removes homepage server news work",()=>{
+ it("keeps homepage source-neutral public static news without server-side loader work",()=>{
   const home=readFileSync("src/components/home/commercial-home.tsx","utf8");
   const route=readFileSync("src/routes/index.tsx","utf8");
   const reader=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
@@ -88,7 +88,8 @@ describe("unscored three-domain homepage from existing public D1 journal",()=>{
   expect(route).not.toContain("fetchDailyOfficialFinds");
   expect(route).not.toContain("fetchDirectDerivedNews");
   expect(route).not.toContain("Route.useLoaderData()");
-  expect(home).not.toContain("LiveIntelligenceShowcase");
+  expect(home).toContain("<LiveIntelligenceShowcase />");
+  expect(home).toContain("What GeoMacro is finding now.");
   expect(home).not.toContain("home-finds-title");
   expect(home).toContain('to="/intelligence"');
   expect(reader).toContain('v.status!=="official_release_observed_unscored"');

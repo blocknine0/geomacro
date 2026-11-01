@@ -1026,7 +1026,9 @@
   "approved_ecb_official_fx_reference_20261101": {
     "approval": "Founder explicitly requested reliable FX and precious-metals source intake in Macro Intelligence on 2026-11-01.",
     "approved_source_commit": "b79abe5d65a2cde2b17ee84dd8339894155ba40f",
-    "approved_paths": ["src/components/intelligence/macro-fastlane-panel.tsx"],
+    "approved_paths": [
+      "src/components/intelligence/macro-fastlane-panel.tsx"
+    ],
     "scope": "Verified ECB daily FX reference through existing quota-gated Macro ingestion and D1 control state; source-date and non-live label required. Gold/silver, PREDGE, global-risk, payment unchanged.",
     "fx_intraday_quote_claims": false,
     "paid_source_added": false,
@@ -1125,5 +1127,21 @@
     "pricing_unchanged": true,
     "payment_authorized": false,
     "production_exact_sha_readback_required": true
+  },
+  "approved_homepage_fresh_unverified_lane_20261102": {
+    "approval": "Founder explicitly instructed on 2026-11-02 to fix stale homepage highlights, requesting new original-dated material Geopolitics/Macro/Critical Minerals findings after October 30. This supersedes only the 2026-11-01 approved removal of the stale legacy Finds block: replace it with a separate, accurately labelled short latest-news OSINT/official release lane, keep all other site and Global Risk locks.",
+    "approved_paths": [
+      "src/components/home/live-intelligence-showcase.tsx",
+      "src/components/home/commercial-home.tsx"
+    ],
+    "approved_source_commit": "c84902d2df179c44ad7a27509ecdcfebbb821ee4",
+    "exact_blob_lock": true,
+    "locked_global_risk_unchanged": true,
+    "predge_unchanged": true,
+    "pricing_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "live_published_acceptance_pending": true,
+    "scope": "ONLY current home presentation mounts and two-lane story renderer; no other routes, no paid entitlement, no PREDGE."
   }
 }
