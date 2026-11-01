@@ -35,6 +35,14 @@ export const Route = createFileRoute("/intelligence")({
   validateSearch: intelligenceCategorySearch,
   loader: async () => {
     const now = Date.now();
+    // Client-side route transitions must never wait up to nine seconds for
+    // independent publisher reads. StatelessLiveDesk already hydrates and
+    // independently fetches all three missing categories plus the public
+    // archive in the browser, with explicit unavailable states. Preserve
+    // original-source SSR for direct visits and search engines.
+    if (typeof window !== "undefined") {
+      return { rows: [], now, stateless: null, statelessFeeds: {}, journal: [] };
+    }
     // All THREE actual publisher categories must be present in the first
     // server-rendered HTML when their independent source readers succeed.
     // Previously only geopolitics was SSR-loaded, so no-JS clients and search
