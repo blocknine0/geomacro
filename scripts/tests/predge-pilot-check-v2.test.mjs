@@ -53,7 +53,7 @@ test("selects only 50 per category and reports exactly all omitted counts",()=>{
  assert.ok(JSON.stringify(envelope).length<MAX_WIRE_BYTES);
 });
 test("deterministic selection preserves mandatory research attribution",()=>{
- const credited={...item(5),sources_credited:["Official Statistics"],
+ const credited={...item(5),attribution_required:true,sources_credited:["Official Statistics"],
    attribution_notices:["Adapted from official release; attribution required"]};
  const f=feed([credited,item(6)]);
  const out=buildUnsignedPilotCheck(f,NOW);
@@ -62,6 +62,13 @@ test("deterministic selection preserves mandatory research attribution",()=>{
  assert.deepEqual(row.attribution_notices,credited.attribution_notices);
  assert.equal(out.risk_gate.news_context.signed_product_verified,false);
  assert.equal(out.risk_gate.news_context.market_relevance_verified,false);
+});
+test("live bridge omits credit fields when no source credit is due",()=>{
+ const row=item(9);delete row.sources_credited;delete row.attribution_notices;
+ const out=buildUnsignedPilotCheck(feed([row]),NOW);
+ const carried=out.risk_gate.news_context.items_by_category.geopolitics[0];
+ assert.equal(Object.hasOwn(carried,"sources_credited"),false);
+ assert.equal(Object.hasOwn(carried,"attribution_notices"),false);
 });
 test("rejects forged authority, duplicate news, mismatched credits, stale and future rows",()=>{
  const original=item(0);
