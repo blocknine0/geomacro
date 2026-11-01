@@ -142,6 +142,7 @@ const approvedPricing = [
   config.approved_ecb_official_fx_reference_20261101,
   config.approved_customer_portal_20261101,
   config.approved_navigation_theme_20261101,
+  config.approved_home_navigation_20261101,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
