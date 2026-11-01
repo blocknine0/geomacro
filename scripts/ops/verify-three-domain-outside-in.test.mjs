@@ -66,3 +66,17 @@ test("normalizes headline HTML entities and ignores only clock-expired static ro
  assert.equal(receipt.category.geopolitics.expired_since_snapshot,1);
  assert.equal(receipt.category.macro.live_72h_rows,1);
 });
+
+test("rejects concrete journal ID stuck outside static beyond 90-minute recovery",()=>{
+ const x=fixture();
+ const stuck={...signals[1],id:"macro-000000ff"};
+ x.journal.signals.push(stuck);
+ x.journal.returned_rows=4;
+ x.journal.first_ingest=[{id:stuck.id,first_seen_at:"2026-11-01T19:00:00.000Z"}];
+ x.classifyDisplay=()=>null;
+ x.isArchiveEligible=()=>true;
+ assert.throws(()=>verifyThreeDomainLivePublication(x),
+  /THREE_DOMAIN_LIVE_CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_macro/);
+ x.journal.first_ingest[0].first_seen_at="2026-11-01T23:45:00.000Z";
+ assert.equal(verifyThreeDomainLivePublication(x).verified,true);
+});
