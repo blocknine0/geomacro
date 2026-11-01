@@ -24,6 +24,6 @@ describe("website runtime and shell regressions", () => {
     expect(shell).not.toContain('<main id="main-content"');
     expect(home).toContain("function HomePage()");
     expect(home).toContain("<main>");
-    expect(home).toContain("<CommercialHome initialFindCards={initialFindCards} />");
+    expect(home).toContain("<CommercialHome initialFindCards={initialFindCards} initialDailyHighlights={initialDailyHighlights} />");
   });
 });

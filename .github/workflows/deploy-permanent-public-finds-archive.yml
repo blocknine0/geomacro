@@ -15,6 +15,7 @@ on:
       - "scripts/ops/verify-minimum-free-production-health.mjs"
       - "scripts/ops/verify-minimum-free-production-health.test.mjs"
       - "workers/public-finds-archive/**"
+      - "scripts/lib/public-daily-official-finds.mjs"
   # FREE static Worker refresh is independent of D1 research quota admission.
   # Only 8 best-effort bounded runs/day, no extra DB/B2/R2/paid calls.
   schedule:
@@ -29,6 +30,8 @@ on:
       - "scripts/tests/verify-public-static-archive-readback.test.mjs"
       - "scripts/tests/public-static-worker-cohort-guard.test.mjs"
       - "workers/public-finds-archive/src/index.mjs"
+      - "scripts/lib/public-daily-official-finds.mjs"
+      - "scripts/tests/public-daily-official-finds.test.mjs"
       - "workers/public-finds-archive/wrangler.jsonc"
 
 permissions:
@@ -56,6 +59,7 @@ jobs:
           node --test scripts/ops/decide-public-finds-static-freshness-deploy.test.mjs
           node --test scripts/tests/verify-public-static-archive-readback.test.mjs
           node --test scripts/tests/public-static-worker-cohort-guard.test.mjs
+          node --test scripts/tests/public-daily-official-finds.test.mjs
           node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
           node --test scripts/tests/website-predge-static-72h-snapshot.test.mjs
   deploy-public-static-archive:
@@ -97,6 +101,7 @@ jobs:
           import { join } from "node:path";
           import { isPermanentArchiveSignal, selectCurrentArchiveSignals, buildCurrentArchiveEligibility } from "./scripts/ops/publish-permanent-derived-news-archive.mjs";
           import {buildWebsitePilotSnapshot} from "./scripts/lib/website-predge-static-72h-snapshot.mjs";
+          import {buildDailyOfficialFinds} from "./scripts/lib/public-daily-official-finds.mjs";
           const dataDir=join(process.env.RUNNER_TEMP,"geomacro-public-archive","data");
           const assetsDir="workers/public-finds-archive/assets";
           const categories=["geopolitics","macro","rare_earth"];
@@ -138,6 +143,11 @@ jobs:
             scored:false,chargeable:false,supabase_dependency:false,signals:selectCurrentArchiveSignals(recent,250),
           };
           writeFileSync(join(assetsDir,"latest.json"),JSON.stringify(latest,null,2)+"\n",{mode:0o644});
+          // Independent attributed OFFICIAL shortlist from all 30-day immutable
+          // originals. Do not repurpose the 250-row OSINT-heavy preview or
+          // alter PREDGE/D1 receipts and publisher quota.
+          const daily=buildDailyOfficialFinds(rows,now);
+          writeFileSync(join(assetsDir,"daily-highlights.json"),JSON.stringify(daily,null,2)+"\n",{mode:0o644});
           const coverage=buildCurrentArchiveEligibility(recent,now,latest.signals);
           writeFileSync(join(assetsDir,"coverage-72h.json"),JSON.stringify(coverage,null,2)+"\n",{mode:0o644});
           const websitePilot=buildWebsitePilotSnapshot(recent,now);
@@ -150,7 +160,10 @@ jobs:
           console.log(JSON.stringify({schema:"geomacro.permanent-public-finds-static-bundle.v1",
             archive_signals:rows.length,archive_months:index.months.length,
             validated_current_archive_rows:recent.length,latest_signals:latest.signals.length,
-            latest_category_counts,full_original_eligible:coverage.original_release_eligible_total,
+            latest_category_counts,daily_official_find_count:daily.signals.length,
+            daily_official_categories:Object.fromEntries(categories.map(category=>[
+              category,daily.signals.filter(s=>s.category===category).length])),
+            full_original_eligible:coverage.original_release_eligible_total,
             eligible_outside_latest_preview:coverage.eligible_outside_latest_preview,
             all_free_displayable:coverage.free_displayable_findings_total,
             free_displayable_beyond_preview:coverage.free_displayable_outside_latest_preview,
@@ -194,6 +207,7 @@ jobs:
           const expectedLatest=JSON.parse(readFileSync("workers/public-finds-archive/assets/latest.json","utf8"));
           const expectedCoverage=JSON.parse(readFileSync("workers/public-finds-archive/assets/coverage-72h.json","utf8"));
           const expectedPilot=JSON.parse(readFileSync("workers/public-finds-archive/assets/website-intelligence-predge-72h.json","utf8"));
+          const expectedDaily=JSON.parse(readFileSync("workers/public-finds-archive/assets/daily-highlights.json","utf8"));
           async function get(path){
             let last;
             for(let attempt=0;attempt<5;attempt++){
@@ -224,4 +238,18 @@ jobs:
           const livePilot=await get("/website-intelligence-predge-72h.json");
           const pilotReceipt=verifyWebsitePilotStaticReadback(expectedPilot,livePilot,Date.now());
           console.log(JSON.stringify(pilotReceipt));
+          const daily=await get("/daily-highlights.json");
+          const withoutBuildClock=doc=>({...doc,generated_at:null});
+          if(daily.schema!=="geomacro.public-daily-official-finds.v1"||
+             daily.official_only!==true||daily.chargeable!==false||
+             daily.scored!==false||daily.mandatory_source_credits_preserved!==true||
+             !Number.isFinite(Date.parse(daily.generated_at))||
+             Date.parse(daily.generated_at)>Date.now()+60_000||
+             Date.now()-Date.parse(daily.generated_at)>6*60*60_000||
+             JSON.stringify(withoutBuildClock(daily))!==
+               JSON.stringify(withoutBuildClock(expectedDaily)))
+            throw Error("GEOMACRO_DAILY_OFFICIAL_FINDS_STATIC_READBACK_MISMATCH");
+          console.log(JSON.stringify({schema:daily.schema,readback:true,
+            originals:daily.signals.length,independently_corrob_verified:false,
+            attributed:true,d1_reads:0,predge_touched:false,payments:0}));
           NODE

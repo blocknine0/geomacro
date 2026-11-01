@@ -1081,5 +1081,20 @@
     "predge_unmodified": true,
     "payment_authorized": false,
     "production_deployment_and_ui_acceptance_required": true
+  },
+  "approved_daily_official_finds_20261101": {
+    "approval": "Founder explicitly requested on 2026-11-01 that homepage Geomacro Finds show a short daily updated shortlist of important real Geopolitics, Macro/FX and Critical Minerals developments, preserving the existing visual style.",
+    "purpose": "Replace empty credit-stripping Find Card homepage with an attribution-preserving and original-dated daily official highlights card, using existing static archive and cadence. No OSINT verification promotion, no new D1 quota, PREDGE, payment, pricing or frozen Global Risk modification.",
+    "approved_paths": [
+      "src/routes/index.tsx",
+      "src/components/home/commercial-home.tsx",
+      "src/components/home/live-intelligence-showcase.tsx"
+    ],
+    "exact_blob_lock": true,
+    "approved_source_commit": "6564e8089079d03a966a8a7ae1db298a3475af70",
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "payment_authorized": false,
+    "production_deployment_and_content_acceptance_required": true
   }
 }
