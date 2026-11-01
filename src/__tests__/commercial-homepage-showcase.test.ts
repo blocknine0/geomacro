@@ -50,8 +50,8 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("has a balanced responsive hero and correct risk-indices route", () => {
     expect(home).toContain("lg:grid-cols-2");
     expect(home).toContain("text-[clamp(2.5rem,4.5vw,4rem)]");
-    expect(home).toContain("<LiveIntelligenceShowcase />");
-    expect(home).toContain("What GeoMacro is finding now.");
+    expect(home).not.toContain("LiveIntelligenceShowcase");
+    expect(home).not.toContain("What GeoMacro is finding now.");
     expect(home).toContain("Official releases and unverified source observations are always identified separately.");
     expect(home).not.toContain("home-finds-title");
     expect(home).not.toContain("Explore Geomacro Finds.");
