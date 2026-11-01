@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T21:56:01.048Z",
+  "checked_at": "2026-11-01T22:28:59.421Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 123,
+  "item_count": 121,
   "counts": {
-    "geopolitics": 44,
-    "macro": 47,
-    "rare_earth": 32
+    "geopolitics": 42,
+    "macro": 46,
+    "rare_earth": 33
   },
-  "source_native_ids_sha256": "7c0cb0d7298e581672266cc08cf5420a5132afa7ee1785fb39be536114649bdf",
+  "source_native_ids_sha256": "7fe67ee73847fa117c93768f22937490696752ff803bbb479fb6f95589280ae6",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-8d7365e9",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027",
+      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-e43de71f",
       "category": "macro",
@@ -2300,63 +2319,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-29T22:50:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7d886f4d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Binance said $2.54 billion in assets frozen as it probes security incident",
-      "what_changed": "A monitored source feed reports: Binance said $2.54 billion in assets frozen as it probes security incident. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T22:26:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d2cac947",
-      "category": "macro",
-      "title": "Geomacro finds Corn held Steady on Thursday - Barchart.com",
-      "what_changed": "A monitored source feed reports: Corn held Steady on Thursday - Barchart.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T22:21:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-34bc8d05",
-      "category": "geopolitics",
-      "title": "Geomacro finds Kim Jong Un urged drone dominance as North Korea fires missiles, rockets - Reuters",
-      "what_changed": "A monitored source feed reports: Kim Jong Un urged drone dominance as North Korea fires missiles, rockets - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T22:00:49.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
