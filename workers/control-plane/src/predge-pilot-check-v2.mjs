@@ -8,7 +8,7 @@
  * to this Worker. PUT is owner-only and verifies the pinned signature BEFORE
  * replacing the single bounded D1 sample.
  */
-import {MAX_WIRE_BYTES,verifySignedPilotCheck} from "./predge-pilot-news-context-v2.mjs";
+import {MAX_WIRE_BYTES,verifySignedPilotCheck,requireActivePilotTrust} from "./predge-pilot-news-context-v2.mjs";
 const HEADERS={"Cache-Control":"private, no-store","Pragma":"no-cache",
   "Vary":"Authorization","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
 const TOKEN=/^[a-f0-9]{64}$/;
@@ -47,6 +47,8 @@ export async function predgePilotCheckV2(request,env,now=Date.now()){
   const token=env?.PREDGE_RESEARCH_NEWS_TOKEN;
   if(!TOKEN.test(String(token??"")))return error("RESEARCH_CREDENTIAL_UNAVAILABLE");
   if(!authenticate(request,token))return error("PILOT_CHECK_UNAUTHORIZED",401);
+  try{requireActivePilotTrust(env.RISK_GATE_VERIFY_KEYS_JSON,now);}
+  catch{return error("PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE");}
   if(!env?.DB?.prepare)return error("PILOT_CHECK_D1_UNAVAILABLE");
   let row;
   try{row=await env.DB.prepare(
@@ -101,6 +103,8 @@ export async function publishPredgePilotCheckV2(request,env,now=Date.now()){
     }catch{return error("PILOT_SAMPLE_PURGE_UNAVAILABLE");}
   }
   if(now>=PILOT_END)return error("PILOT_WINDOW_EXPIRED",403);
+  try{requireActivePilotTrust(env.RISK_GATE_VERIFY_KEYS_JSON,now);}
+  catch{return error("PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE");}
   if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
     return error("UNSUPPORTED_MEDIA_TYPE",415);
   let raw,payload;
