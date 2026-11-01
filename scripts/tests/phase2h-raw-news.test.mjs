@@ -137,12 +137,17 @@ test("immutable per-ID compressed B2 plan restores exact source-native and five 
  assert.throws(()=>verifyPhase2hRawB2Restore(Buffer.from("tamper"),plan),
    /PHASE2H_RAW_B2_COMPRESSED_SHA_MISMATCH/u);
 });
-test("six-hour incremental writer can archive old, never-archived D1 originals once",()=>{
- const older=data().records.map(x=>({...x,ingested_at:"2026-10-01T09:00:00.000Z"}));
+test("six-hour incremental writer can archive recent, never-archived D1 originals within 72h",()=>{
+ // Older than the immediate-ingest window but still eligible for the same
+ // 72-hour private question/retention contract. Never restore October 1 rows.
+ const older=data().records.map(x=>({...x,ingested_at:"2026-10-28T09:00:00.000Z"}));
  const plan=buildPhase2hRawB2Plan(older,now);
  assert.equal(plan.record_count,3);
  assert.deepEqual(plan.counts,{geopolitics:1,macro:1,rare_earth:1});
  assert.equal(verifyPhase2hRawB2Restore(plan.compressed,plan),true);
+ assert.throws(()=>buildPhase2hRawB2Plan([
+  {...older[0],ingested_at:"2026-10-01T09:00:00.000Z"}
+ ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
  assert.throws(()=>buildPhase2hRawB2Plan([
   {...older[0],ingested_at:"2026-10-31T06:10:00.000Z"}
  ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
