@@ -571,14 +571,22 @@ jobs:
             echo "::notice::SOURCE_WEBSITE_PUBLIC_ARCHIVE_ALREADY_EXACT"
           fi
       - name: Verify coherent public website archive cohort and all-category native dates
-        if: needs.quota-admission.outputs.critical == 'true' && needs.quota-admission.outputs.research == 'true' && steps.static-finds.outputs.deploy_needed == 'true'
+        # Verify every successful admitted sweep, even when no new archive IDs
+        # were appended. A silent static mismatch must never pass as NO-OP.
+        if: steps.static-finds.outcome == 'success'
+        env:
+          GEOMACRO_STATIC_DEPLOY_NEEDED: ${{ steps.static-finds.outputs.deploy_needed }}
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
           import {verifyConvergedPublicStaticArchiveReadback} from './scripts/lib/verify-public-static-archive-readback.mjs';
-          const asset='workers/public-finds-archive/assets/';
+          // No-deploy sweeps do not populate Workers assets/. Verify against
+          // the canonical immutable archive worktree, not stale workspace files.
+          const asset=process.env.GEOMACRO_STATIC_DEPLOY_NEEDED==='true'
+            ? 'workers/public-finds-archive/assets/'
+            : process.env.RUNNER_TEMP+'/geomacro-permanent-finds-archive/data/';
           const expectedIndex=JSON.parse(readFileSync(asset+'index.json','utf8'));
           const expectedLatest=JSON.parse(readFileSync(asset+'latest.json','utf8'));
           const expectedCoverage=JSON.parse(readFileSync(asset+'coverage-72h.json','utf8'));
@@ -602,6 +610,8 @@ jobs:
           console.log(JSON.stringify({
             schema:'geomacro.source-to-public-static-production-proof.v1',
             ...proof,latest_original_by_category:latest_by_category,
+            deploy_required:process.env.GEOMACRO_STATIC_DEPLOY_NEEDED==='true',
+            verified_even_on_no_new_ids:true,
             paid_eligible:false,no_new_source_fetch:true,predge_modified:false,
           }));
           NODE
