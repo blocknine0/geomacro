@@ -126,6 +126,11 @@ export function verifyThreeDomainLivePublication({
    public_d1_not_in_static_display_rejections:rejectionClasses,
    public_d1_not_in_static_concrete:concreteEligible.length,
    concrete_not_static_before_snapshot:overdueConcrete.length,
+   concrete_missing_older_than_30m:overdueConcrete.filter(s=>
+    now-(firstIngest.get(s.id)??now)>=30*60_000).length,
+   concrete_missing_first_ingest_age_minutes:Object.fromEntries(
+    overdueConcrete.slice(0,8).map(s=>[s.id,
+     Math.floor((now-(firstIngest.get(s.id)??now))/60_000)])),
    concrete_not_static_before_snapshot_ids:overdueConcrete.map(s=>s.id).slice(0,8),
    public_d1_not_in_static_by_status:Object.fromEntries(
     ["official_release_observed_unscored","official_feed_candidate_unscored",
