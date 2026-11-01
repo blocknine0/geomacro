@@ -764,9 +764,12 @@ test("Phase2H pending raw D1 reads stay bounded below provider response limits",
  const fetchImpl=async(_url,init)=>{
    const request=JSON.parse(init.body);
    assert.equal(init.method,"POST");
+   assert.match(request.sql,/first_ingested_at>\?/u);
    assert.match(request.sql,/LIMIT \? OFFSET \?/u);
    assert.ok(request.params.every(x=>typeof x==="string"));
-   const [limit,offset]=request.params.map(Number);
+   const [cutoff,lim,off]=request.params;
+   assert.ok(Number.isFinite(Date.parse(cutoff)));
+   const [limit,offset]=[Number(lim),Number(off)];
    assert.ok(limit<=25);
    reads.push([limit,offset]);
    return Response.json({success:true,result:[{success:true,
@@ -788,7 +791,8 @@ test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",as
  const fetchImpl=async(_url,init)=>{
    const payload=JSON.parse(init.body);
   assert.ok(payload.params.every(x=>typeof x==="string"));
-  const [limit,offset]=payload.params.map(Number);
+  assert.equal(payload.params.length,3);
+  const [limit,offset]=payload.params.slice(1).map(Number);
    observed.push([limit,offset]);
    if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
    return Response.json({success:true,result:[{success:true,results:[]}]});
@@ -800,7 +804,8 @@ test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",as
  const fiveFetch=async(_url,init)=>{
   const payload=JSON.parse(init.body);
   assert.ok(payload.params.every(x=>typeof x==="string"));
-  const [limit,offset]=payload.params.map(Number);
+  assert.equal(payload.params.length,3);
+  const [limit,offset]=payload.params.slice(1).map(Number);
   limitPattern.push([limit,offset]);
   if(limit>5)return Response.json({success:false,result:[],errors:[{code:9000}]});
   const remaining=100-offset;
@@ -826,8 +831,10 @@ test("Phase2H D1 REST sends typed STRING bindings on canonical pending-page read
  let seen=0;
  const fake=async(_url,init)=>{
   const payload=JSON.parse(init.body);
-  assert.deepEqual(payload.params,["25","0"]);
-  assert.match(payload.sql,/WHERE b2_object_sha256 IS NULL/);
+  assert.equal(payload.params.length,3);
+  assert.ok(Number.isFinite(Date.parse(payload.params[0])));
+  assert.deepEqual(payload.params.slice(1),["25","0"]);
+  assert.match(payload.sql,/WHERE b2_object_sha256 IS NULL AND first_ingested_at>\?/);
   assert.match(payload.sql,/LIMIT \? OFFSET \?/);
   assert.equal(init.redirect,"error");
   seen++;
@@ -836,4 +843,18 @@ test("Phase2H D1 REST sends typed STRING bindings on canonical pending-page read
  const result=await createPhase2hCanonicalD1({env,fetchImpl:fake}).readPending();
  assert.deepEqual(result,[]);
  assert.equal(seen,1);
+});
+
+test("Phase2H raw B2 plan excludes the expired immutable first-ingested window",()=>{
+ const planNow=new Date("2026-10-30T12:00:00Z");
+ const valid={
+  record_id:"a".repeat(64),category:"macro",raw_sha256:"b".repeat(64),
+  schema:"geomacro.phase2h.private-raw-observation.v1",
+  ingested_at:"2026-10-30T11:00:00.000Z",
+  commercial_rights_verified:false,commercial_delivery_authorized:false
+ };
+ assert.equal(buildPhase2hRawB2Plan([valid],planNow).record_count,1);
+ assert.throws(()=>buildPhase2hRawB2Plan([{
+  ...valid,ingested_at:"2026-10-27T11:59:59.999Z"
+ }],planNow),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/);
 });
