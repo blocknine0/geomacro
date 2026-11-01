@@ -93,7 +93,7 @@ function CustomerDashboard(){
   {error&&<div role="alert" className="rounded-xl border border-border p-5 text-sm text-destructive">{error}
    {(error.includes("SESSION")||signedOut)&&<p className="mt-3"><Link to="/auth" className="underline">Sign in to continue</Link></p>}</div>}
   {signedOut&&<p role="status"><Link to="/auth" className="text-primary underline">You are signed out. Sign in again</Link></p>}
-  {access==="authenticated"&&account&&<div className="space-y-8">}
+  {access==="authenticated"&&account&&<div className="space-y-8">
    <p className="text-sm text-muted-foreground">Signed in as <strong className="text-foreground">{account.user?.email}</strong></p>
    <section className="rounded-xl border border-border p-6">
     <div className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary"/><h2 className="text-xl font-semibold">Verified credit balance</h2></div>
