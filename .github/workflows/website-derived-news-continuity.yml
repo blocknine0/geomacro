@@ -12,6 +12,9 @@ on:
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
       - "scripts/tests/website-news-archive-admission.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "src/lib/public-derived-news-client.ts"
+      - "src/__tests__/public-derived-news-client.test.ts"
+      - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
       - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
@@ -54,6 +57,9 @@ on:
       - "scripts/lib/global-official-release-feeds.mjs"
       - ".github/workflows/website-derived-news-continuity.yml"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "src/lib/public-derived-news-client.ts"
+      - "src/__tests__/public-derived-news-client.test.ts"
+      - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
       - "scripts/lib/phase2g-per-id-d1-reconciliation.mjs"
       - "scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs"
       - "scripts/ops/publish-automated-intelligence-inputs.ts"
@@ -156,6 +162,7 @@ jobs:
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/derived-news-b2-readwrite-backup.test.mjs
           node --test scripts/tests/phase2g-per-id-d1-reconciliation.test.mjs
+          node --test scripts/tests/phase2g-canonical-origin-contract.test.mjs
           node --test scripts/tests/phase2h-raw-news.test.mjs
           node --check scripts/ops/phase2h-verify-private-question-delivery.mjs
 
