@@ -765,7 +765,8 @@ test("Phase2H pending raw D1 reads stay bounded below provider response limits",
    const request=JSON.parse(init.body);
    assert.equal(init.method,"POST");
    assert.match(request.sql,/LIMIT \? OFFSET \?/u);
-   const [limit,offset]=request.params;
+   assert.ok(request.params.every(x=>typeof x==="string"));
+   const [limit,offset]=request.params.map(Number);
    assert.ok(limit<=25);
    reads.push([limit,offset]);
    return Response.json({success:true,result:[{success:true,
@@ -785,7 +786,9 @@ test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",as
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
  const observed=[];
  const fetchImpl=async(_url,init)=>{
-   const [limit,offset]=JSON.parse(init.body).params;
+   const payload=JSON.parse(init.body);
+  assert.ok(payload.params.every(x=>typeof x==="string"));
+  const [limit,offset]=payload.params.map(Number);
    observed.push([limit,offset]);
    if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
    return Response.json({success:true,result:[{success:true,results:[]}]});
@@ -795,7 +798,9 @@ test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",as
  assert.deepEqual(observed,[[25,0],[10,0]]);
  const limitPattern=[];
  const fiveFetch=async(_url,init)=>{
-  const [limit,offset]=JSON.parse(init.body).params;
+  const payload=JSON.parse(init.body);
+  assert.ok(payload.params.every(x=>typeof x==="string"));
+  const [limit,offset]=payload.params.map(Number);
   limitPattern.push([limit,offset]);
   if(limit>5)return Response.json({success:false,result:[],errors:[{code:9000}]});
   const remaining=100-offset;
@@ -812,4 +817,23 @@ test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",as
   const failFetch=async()=>Response.json({success:false,result:[]});
  await assert.rejects(()=>createPhase2hCanonicalD1({env,fetchImpl:failFetch}).readPending(),
    /PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
+});
+
+test("Phase2H D1 REST sends typed STRING bindings on canonical pending-page reads",async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+   D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
+   CLOUDFLARE_API_TOKEN:"token".repeat(8)};
+ let seen=0;
+ const fake=async(_url,init)=>{
+  const payload=JSON.parse(init.body);
+  assert.deepEqual(payload.params,["25","0"]);
+  assert.match(payload.sql,/WHERE b2_object_sha256 IS NULL/);
+  assert.match(payload.sql,/LIMIT \? OFFSET \?/);
+  assert.equal(init.redirect,"error");
+  seen++;
+  return Response.json({success:true,result:[{success:true,results:[]}]});
+ };
+ const result=await createPhase2hCanonicalD1({env,fetchImpl:fake}).readPending();
+ assert.deepEqual(result,[]);
+ assert.equal(seen,1);
 });
