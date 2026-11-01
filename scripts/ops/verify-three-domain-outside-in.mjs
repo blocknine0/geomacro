@@ -19,7 +19,7 @@ const escDecode=s=>s.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(pa
  ({"&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">","&#39;":"'"}[m]??m));
 export function verifyThreeDomainLivePublication({
  index,latest,coverage,daily,journal,htmlByCategory,now=Date.now(),requirePositive=true,
- classifyDisplay=null,isArchiveEligible=null
+ classifyDisplay=null,isArchiveEligible=null,strictBacklog=true
 }={}){
  if(!Number.isFinite(now)||!index||!latest||!coverage||!daily||!journal||!htmlByCategory)
   fail("MISSING_DOCUMENT");
@@ -79,6 +79,7 @@ export function verifyThreeDomainLivePublication({
   (Array.isArray(journal.first_ingest)?journal.first_ingest:[])
     .filter(x=>safeId(x?.id)).map(x=>[x.id,stamp(x.first_seen_at)]));
  const result={};
+ let agedBacklog=0;
  for(const category of DOMAIN){
   const domain=byCategory[category];
   // D1 releases expired originals immediately; a static snapshot remains
@@ -122,7 +123,8 @@ export function verifyThreeDomainLivePublication({
   // A valid, concrete source-neutral D1 finding that remains absent from
   // static for over an hourly primary + recovery interval is an actual
   // publication gap, even when all the already-archived rows render.
-  if(overdue90.length>0)
+  agedBacklog+=overdue90.length;
+  if(overdue90.length>0&&strictBacklog)
    fail("CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_"+category);
   const rejectionClasses=typeof classifyDisplay==="function"
    ?Object.fromEntries([...new Set(unrepresented.map(s=>classifyDisplay(s)??"ELIGIBLE"))]
@@ -157,7 +159,8 @@ export function verifyThreeDomainLivePublication({
  }
  return Object.freeze({
   schema:"geomacro.three-domain-outside-in-parity.v1",
-  verified:true,original_dates_preserved:true,
+  verified:agedBacklog===0,source_to_public_complete:agedBacklog===0,
+  aged_eligible_unpublished:agedBacklog,original_dates_preserved:true,
   public_d1_to_static_id_parity:true,public_website_rendering_verified:true,
   canonical_private_d1_write_receipt_verified:false,
   static_snapshot_at:latest.checked_at,
@@ -209,8 +212,11 @@ async function run(){
   index:docs[0],latest:docs[1],coverage:docs[2],daily:docs[3],journal,
   classifyDisplay:intelligenceDisplayRejection,isArchiveEligible:isPermanentArchiveSignal,
   htmlByCategory:{geopolitics:geo,macro,rare_earth:minerals},
-  requirePositive:process.env.GEOMACRO_REQUIRE_THREE_CATEGORY_POSITIVE!=="0"
+  requirePositive:process.env.GEOMACRO_REQUIRE_THREE_CATEGORY_POSITIVE!=="0",
+  strictBacklog:process.env.GEOMACRO_ENFORCE_CANONICAL_BACKLOG!=="0"
  });
+ if(!proof.source_to_public_complete)
+  console.warn("::warning::THREE_DOMAIN_LIVE_BACKLOG_DIAGNOSTIC_ONLY");
  console.log(JSON.stringify(proof));
 }
 if(process.argv[1]&&import.meta.url==="file://"+process.argv[1])
