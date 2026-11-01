@@ -1096,5 +1096,20 @@
     "predge_unmodified": true,
     "payment_authorized": false,
     "production_deployment_and_content_acceptance_required": true
+  },
+  "approved_remove_home_finds_20261101": {
+    "approval": "On 2026-11-01 the founder explicitly instructed removal of the entire Geomacro Finds highlights section shown in their screenshot from the homepage, while retaining Intelligence and news collection.",
+    "purpose": "Remove the visually misleading old-dated daily Finds homepage region and both unused homepage news SSR fetches; preserve category navigation, Intelligence route, static archive, D1 original news and commercial locks.",
+    "approved_paths": [
+      "src/components/home/commercial-home.tsx",
+      "src/routes/index.tsx"
+    ],
+    "approved_source_commit": "b01b8cf827b2a1dffec6bd3c07a6804fb41dac91",
+    "exact_blob_lock": true,
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "pricing_unchanged": true,
+    "payment_authorized": false,
+    "production_exact_sha_readback_required": true
   }
 }
