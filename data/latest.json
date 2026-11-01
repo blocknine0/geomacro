@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T21:24:42.431Z",
+  "checked_at": "2026-11-01T21:45:12.435Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -1924,25 +1924,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5cd41009",
-      "category": "geopolitics",
-      "title": "Geomacro finds Steinmeier urged China to use its influence on Russia to end war against Ukraine",
-      "what_changed": "A monitored source feed reports: Steinmeier urged China to use its influence on Russia to end war against Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.ukrinform.net"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

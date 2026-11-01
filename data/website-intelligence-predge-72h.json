@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T21:24:42.431Z",
+  "checked_at": "2026-11-01T21:45:12.435Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 109,
+  "item_count": 108,
   "counts": {
-    "geopolitics": 36,
+    "geopolitics": 35,
     "macro": 43,
     "rare_earth": 30
   },
-  "source_native_ids_sha256": "b25ba0b363827fb106a18b97fd14ea0c217d2d64125702be6a1a612daf5ec652",
+  "source_native_ids_sha256": "19707655eb3988fc37b9738a62a2c93590e635067ed3bd6b78bcac7fb7cb6983",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2076,25 +2076,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5cd41009",
-      "category": "geopolitics",
-      "title": "Geomacro finds Steinmeier urged China to use its influence on Russia to end war against Ukraine",
-      "what_changed": "A monitored source feed reports: Steinmeier urged China to use its influence on Russia to end war against Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-29T21:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.ukrinform.net"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
