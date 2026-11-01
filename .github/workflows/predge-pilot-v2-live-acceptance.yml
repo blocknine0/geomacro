@@ -1,0 +1,68 @@
+name: Predge v2 production live acceptance - no funds
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/verify-predge-pilot-v2-live.mjs"
+      - "scripts/tests/verify-predge-pilot-v2-live.test.mjs"
+      - ".github/workflows/predge-pilot-v2-live-acceptance.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/ops/verify-predge-pilot-v2-live.mjs"
+      - "scripts/tests/verify-predge-pilot-v2-live.test.mjs"
+      - ".github/workflows/predge-pilot-v2-live-acceptance.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-regression:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Test bounded no-funds live-acceptance verifier
+        run: |
+          node --check scripts/ops/verify-predge-pilot-v2-live.mjs
+          node --test scripts/tests/verify-predge-pilot-v2-live.test.mjs
+  public-live:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify production route exists and denies unauthorized pilot/owner access
+        run: node scripts/ops/verify-predge-pilot-v2-live.mjs
+  signed-live-readback:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 5
+    env:
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require protected partner credential; verify actual full-response signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}" || {
+            echo "::error::Protected Predge research token is not configured"; exit 2;
+          }
+          node scripts/ops/verify-predge-pilot-v2-live.mjs
