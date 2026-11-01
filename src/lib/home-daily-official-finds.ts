@@ -133,3 +133,49 @@ export function selectDailyOfficialFinds(rows:readonly unknown[],now=Date.now(),
      whyItMatters:short(concreteGeomacroAnalysis(signal),225)};
  });
 }
+
+
+/**
+ * Separate, explicitly UNVERIFIED homepage lane backed exclusively by
+ * the already-public static 72-hour journal. The official-only archive
+ * contract stays untouched. No D1 query or source-provider fetch.
+ */
+export function selectDailyUnverifiedObservations(
+ rows:readonly unknown[],now=Date.now(),limit=4
+):DailyOfficialFind[]{
+ if(!Array.isArray(rows)||!Number.isFinite(now))return [];
+ const found:StatelessIntelligenceSignal[]=[],seen=new Set<string>();
+ for(const value of rows){
+  if(!value||typeof value!=="object"||Array.isArray(value))continue;
+  const v=value as StatelessIntelligenceSignal;
+  if(v.status!=="osint_feed_observed_unverified"||
+     !DOMAINS.includes(v.category)||typeof v.id!=="string"||seen.has(v.id)||
+     v.date_precision!=="exact"||
+     !isSafeDerivedNewsReadbackSignal(v)||!isConcretePublicIntelligence(v)||
+     v.severity!==null||v.same_event_corrob_verified!==false||
+     !Array.isArray(v.sources_credited)||v.sources_credited.length!==1||
+     !/^Monitored feed: [a-z0-9.-]+(?: \(aggregator; original publisher not verified\))?$/u
+       .test(v.sources_credited[0]))continue;
+  const ms=Date.parse(v.published_at);
+  if(!Number.isFinite(ms)||ms>now||now-ms>72*3_600_000)continue;
+  seen.add(v.id);found.push(v);
+ }
+ found.sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+ const chosen:StatelessIntelligenceSignal[]=[];
+ for(const category of DOMAINS){
+  const row=found.find(x=>x.category===category);
+  if(row)chosen.push(row);
+ }
+ for(const signal of found){
+  if(chosen.length>=Math.max(1,Math.min(limit,6)))break;
+  if(!chosen.some(v=>v.id===signal.id))chosen.push(signal);
+ }
+ chosen.sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+ return chosen.slice(0,Math.max(1,Math.min(limit,6))).map(signal=>({
+  signal,originalAt:signal.published_at,
+  isCurrent:Date.parse(signal.published_at)>=now-24*3_600_000,
+  headline:short(concreteIntelligenceHeadline(signal)??"",112),
+  whatChanged:short(intelligenceActorChange(signal),184),
+  whyItMatters:short(concreteGeomacroAnalysis(signal),225)
+ }));
+}
