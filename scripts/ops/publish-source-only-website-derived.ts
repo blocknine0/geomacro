@@ -37,7 +37,7 @@ if(root.length<32)fail("CANONICAL_D1_AUTH_REQUIRED");
 let document;
 try{
  const source=readFileSync(handoff,{encoding:"utf8"});
- if(source.length>110_000)fail("EPHEMERAL_HANDOFF_OVERSIZE");
+ if(source.length>320_000)fail("EPHEMERAL_HANDOFF_OVERSIZE");
  document=JSON.parse(source);
 }finally{
  try{unlinkSync(handoff)}catch{/* protected job cleanup is also unconditional */}
