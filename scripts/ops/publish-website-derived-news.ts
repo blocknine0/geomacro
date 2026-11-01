@@ -291,9 +291,22 @@ try {
   // An unavailable new deployment / quota is never equivalent to raw intake.
   // No source item, title, URL, secret, SQL or upstream body may be logged.
   success=false;
+  // Pure fixed error names from our own private intake verification may
+  // safely be surfaced for remediation. No exception text from fetch, D1,
+  // upstream article URLs or credentials is ever forwarded to logs.
+  const safe=new Set([
+    "PHASE2H_PRIVATE_INTAKE_AUTH_REQUIRED",
+    "PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE",
+    "PHASE2H_PRIVATE_D1_READBACK_MISMATCH",
+    "PHASE2H_PRIVATE_DUPLICATE_LOCAL_ID",
+    "PHASE2H_PRIVATE_PER_ORIGINAL_EVIDENCE_MISMATCH",
+    "PHASE2H_PRIVATE_FIVE_PART_VERSION_RECEIPT_MISMATCH",
+    "PHASE2H_PRIVATE_BATCH_EVIDENCE_INCOMPLETE",
+  ]);
   const reason=error instanceof Error&&
-    /^PHASE2H_PRIVATE_(?:RAW_[A-Z_]{3,90}|D1_[A-Z_]{3,90})$/u.test(error.message)
-      ?error.message:"PHASE2H_PRIVATE_RAW_UNKNOWN_REJECTION";
+    (safe.has(error.message)||
+      /^PHASE2H_PRIVATE_RAW_[A-Z_]{3,90}$/u.test(error.message))
+      ?error.message:"PHASE2H_PRIVATE_RAW_TRANSPORT_OR_UNKNOWN_FAILURE";
   console.error("::error::PHASE2H_WEBSITE_PRIVATE_RAW_INTAKE_NOT_VERIFIED_"+reason);
 }
 // Physical TTL/600-row cleanup is an explicit, authenticated empty batch.
