@@ -204,7 +204,7 @@ test("protected preview gate reads opt-in only after production environment is a
  assert.match(workflow,/MANUAL_CONFIRMATION: \$\{\{ inputs\.confirmation \}\}/);
  assert.match(workflow,/required: true/);
  const guarded=workflow.match(/if: steps\.opt_in\.outputs\.enabled == 'true'/g)??[];
- assert.equal(guarded.length,4); // checkout, node setup, token derive, signing/publish
+ assert.equal(guarded.length,5); // checkout, node setup, cadence receipt, token derive, signing/publish
  assert.ok(workflow.indexOf("id: opt_in")<workflow.indexOf("uses: actions/checkout@"));
  assert.ok(workflow.includes('schedule:\n    - cron: "11,41 * * * *"'));
 });
