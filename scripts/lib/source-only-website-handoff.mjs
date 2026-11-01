@@ -28,7 +28,8 @@ export function planSourceWebsiteHandoff(candidates,{now=new Date()}={}){
       article.hash||article.href.length>1800||!source.hostname.includes(".")||
       !article.hostname.includes(".")){unsafe++;continue}
    const published=Date.parse(r.publishedAt);
-   if(!Number.isFinite(published)||published>now.getTime()||
+   if(!Number.isFinite(published)||new Date(published).toISOString()!==r.publishedAt||
+      published>now.getTime()||
       now.getTime()-published>=AGE){expired++;continue}
    const key=article.href+"|"+r.publishedAt;
    const originals=lanes.get(r.category),bad=conflict.get(r.category);
