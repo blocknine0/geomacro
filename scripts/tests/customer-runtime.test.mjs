@@ -104,8 +104,8 @@ test('canonical release gate: funded D1 receipt, account view, one-time key, own
  f.env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
  const noFunds=await f.post('key-create',{session_token:a.session_token});
  assert.equal(noFunds.status,403);assert.equal(noFunds.code,'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED');
- const now=new Date().toISOString(),start=new Date(Date.now()-60000).toISOString();
- const end=new Date(Date.now()+86400000).toISOString();
+ const now=new Date(f.options.now()).toISOString(),start=new Date(f.options.now()-60000).toISOString();
+ const end=new Date(f.options.now()+86400000).toISOString();
  // Synthetic provider evidence exists only in this isolated in-memory SQLite.
  f.sql.prepare(`INSERT INTO customer_payment_receipts
    (receipt_id,user_id,provider,environment,provider_event_id,sku,amount_minor_units,
