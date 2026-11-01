@@ -1,4 +1,5 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
+import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,CustomerPaidError} from './customer-paid-ledger.mjs';
 
 export const CUSTOMER_KEY_GATE='CUSTOMER_D1_COMMERCIAL_AUTH_NOT_MIGRATED';
 const HEADERS={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -48,7 +49,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -59,6 +60,28 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
   const origins=String(env.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS??'').split(',').map(x=>x.trim()).filter(x=>/^https:\/\/[^/]+$/.test(x));
   if(!origins.includes(request.headers.get('origin')))fail(403,'CUSTOMER_ORIGIN_REQUIRED');
   const body=await boundedCustomerBody(request),at=iso(now()),db=env.DB;
+  if(action==='paid-authorize'||action==='paid-debit'){
+   // Deliberate acceptance lock: OFF by default, does not enable checkout,
+   // funding, key issuance, or any legacy paid API route.
+   if(env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=='ACCEPTED_CANONICAL_D1_PAID_RUNTIME')
+     fail(503,'CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED');
+   const fields=Object.keys(body);
+   const allowed=action==='paid-authorize'?['api_key','capability']:
+     ['api_key','capability','request_id'];
+   if(fields.some(k=>!allowed.includes(k))||
+      allowed.some(k=>typeof body[k]!=='string'))
+     fail(400,'CUSTOMER_PAID_BODY_INVALID');
+   try {
+     const result=action==='paid-authorize'
+       ?await authorizeCanonicalCustomerPaid(db,env,body.api_key,body.capability,at)
+       :await consumeCanonicalCustomerPaid(db,env,{
+          apiKey:body.api_key,capability:body.capability,requestId:body.request_id},at);
+     return reply(result);
+   } catch(error) {
+     if(error instanceof CustomerPaidError)fail(error.status,error.code);
+     throw error;
+   }
+  }
   if(action==='otp-start'||action==='otp-verify'){
    const email=emailOf(body),ip=request.headers.get('x-gm-customer-ip');
    // IP is asserted only by the strongly authenticated SSR bridge, never by browser JSON.
