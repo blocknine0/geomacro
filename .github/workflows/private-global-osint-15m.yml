@@ -590,6 +590,7 @@ jobs:
           const expectedIndex=JSON.parse(readFileSync(asset+'index.json','utf8'));
           const expectedLatest=JSON.parse(readFileSync(asset+'latest.json','utf8'));
           const expectedCoverage=JSON.parse(readFileSync(asset+'coverage-72h.json','utf8'));
+          const expectedDaily=JSON.parse(readFileSync(asset+'daily-highlights.json','utf8'));
           const base='https://geomacro-public-finds-archive.daspallab202391.workers.dev';
           const read=async path=>{
             const response=await fetch(base+path,{
@@ -602,6 +603,17 @@ jobs:
           const proof=await verifyConvergedPublicStaticArchiveReadback({
             read,expectedIndex,expectedLatest,expectedCoverage,
           });
+          // Homepage daily highlights must be readable from this same
+          // immutable archive generation, not an older static Worker release.
+          const liveDaily=await read('/daily-highlights.json');
+          const withoutGeneratedAt=doc=>{
+            const {generated_at,...payload}=doc;
+            return JSON.stringify(payload);
+          };
+          if(liveDaily?.schema!=='geomacro.public-daily-official-finds.v1'||
+             withoutGeneratedAt(liveDaily)!==withoutGeneratedAt(expectedDaily)||
+             !Array.isArray(liveDaily.signals)||liveDaily.signals.length>36)
+            throw Error('SOURCE_WEBSITE_DAILY_HIGHLIGHTS_EXACT_READBACK_FAILED');
           const domains=['geopolitics','macro','rare_earth'];
           const latest_by_category=Object.fromEntries(domains.map(c=>[c,
             expectedLatest.signals.filter(s=>s.category===c)
@@ -612,6 +624,7 @@ jobs:
             ...proof,latest_original_by_category:latest_by_category,
             deploy_required:process.env.GEOMACRO_STATIC_DEPLOY_NEEDED==='true',
             verified_even_on_no_new_ids:true,
+            homepage_daily_highlights_exact_readback:true,
             paid_eligible:false,no_new_source_fetch:true,predge_modified:false,
           }));
           NODE
