@@ -101,7 +101,17 @@ export function verifyThreeDomainLivePublication({
    fail("D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_"+category);
   if(rendered.length!==active.length)
    fail("WEBSITE_EXACT_RENDER_MISMATCH_"+category);
+  const archivedIds=new Set(domain.archive.map(x=>x.id));
+  const unrepresented=domain.journal.filter(s=>
+   !archivedIds.has(s.id)&&stamp(s.published_at)>=now-RETENTION&&
+   stamp(s.published_at)<=now);
   result[category]={
+   public_d1_not_in_static:unrepresented.length,
+   public_d1_not_in_static_by_status:Object.fromEntries(
+    ["official_release_observed_unscored","official_feed_candidate_unscored",
+     "osint_feed_observed_unverified"].map(status=>
+      [status,unrepresented.filter(s=>s.status===status).length])),
+   public_d1_not_in_static_sample_ids:unrepresented.map(s=>s.id).slice(0,8),
    static_snapshot_rows:domain.archive.length,
    expired_since_snapshot:domain.archive.length-active.length,
    live_72h_rows:active.length,public_d1_rows:domain.journal.length,
