@@ -127,3 +127,17 @@ test("simultaneous requests for one challenge acquire exactly one dispatch lock"
  assert.equal(sends,1);
  sql.close();
 });
+
+
+test("provider redirect is refused without forwarding OTP or trying backup",async()=>{
+ const {db,sql}=fixture(),urls=[];
+ const result=await sendOtpWithProviderFailover({...args(db),fetchImpl:async (url,init)=>{
+  urls.push(url);
+  assert.equal(init.redirect,"manual");
+  return new Response(null,{status:302,headers:{Location:"https://untrusted.example/collect"}});
+ }});
+ assert.equal(result.ok,false);
+ assert.equal(result.code,"CUSTOMER_EMAIL_PROVIDER_REJECTED");
+ assert.deepEqual(urls,["https://api.resend.com/emails"]);
+ sql.close();
+});
