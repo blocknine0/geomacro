@@ -1036,6 +1036,20 @@
     "exact_blob_lock": true,
     "pending_exact_sha_live_deployment_acceptance": true
   },
+  "approved_customer_dashboard_logout_20261101": {
+    "approval": "Founder explicitly requested on 2026-11-01 permanent correction of persistent Sign out UI after logout; old signed-out screenshot and hard refresh still showed the wrong control.",
+    "purpose": "Show authenticated-only dashboard controls; require an actual successful server logout receipt before rendering signed-out state and prevent in-flight stale account responses from restoring private dashboard data.",
+    "approved_source_commit": "5109ea791a904b418d0b8a2041e0d22b73898fc5",
+    "approved_paths": [
+      "src/routes/dashboard.tsx"
+    ],
+    "exact_blob_lock": true,
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "pricing_unchanged": true,
+    "payment_authorized": false,
+    "pending_exact_sha_live_deployment_acceptance": true
+  },
   "approved_customer_portal_20261101": {
     "approval": "Founder explicitly requested customer login/dashboard and personal API keys on 2026-11-01.",
     "approved_source_commit": "3a8e1ba460ca03e40c99052aeafaf3ef496beaaa",
