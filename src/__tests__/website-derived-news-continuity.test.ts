@@ -68,6 +68,13 @@ function db() {
           }
         },
         async all() {
+          if(sql.startsWith("SELECT id,category,published_at,date_precision,story_json ")){
+            const ids=new Set(args);
+            return {results:[...data.values()].filter(row=>ids.has(row.id))
+              .map(row=>({id:row.id,category:row.category,
+                published_at:row.published_at,date_precision:row.date_precision,
+                story_json:row.story_json}))};
+          }
           return {results:[...data.values()].sort((a,b)=>b.published_at.localeCompare(a.published_at))
             .slice(0,250).map(row=>({story_json:row.story_json,first_seen_at:row.first_seen_at}))};
         },
@@ -173,6 +180,22 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",signals:[]},NOW)).status).toBe(200);
     expect(counters.retentionSweepQueries).toBe(1);
     expect(counters.capCountPreflights).toBe(1); // no unnecessary JSON-ranked DELETE
+  });
+
+  it("returns HTTP 409 instead of a false ACK when canonical D1 holds an immutable original clock",async()=>{
+    const {data,env}=db();
+    const old=sample();
+    expect((await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",
+      signals:[old]},NOW)).status).toBe(200);
+    const altered={...old,published_at:"2026-10-12T19:05:00.000Z"};
+    const answer=await publishDerivedStories(env,{schema:"geomacro.website-derived-news-batch.v1",
+      signals:[altered]},NOW);
+    expect(answer.status).toBe(409);
+    expect(await answer.json()).toMatchObject({
+      ok:false,error:"DERIVED_NEWS_ACK_IMMUTABLE_CLOCK_CONFLICT",accepted:0,chargeable:false,
+    });
+    expect(JSON.parse(data.get(old.id).story_json).published_at).toBe(old.published_at);
+    expect(data.get(old.id).published_at).toBe(old.published_at);
   });
 
   it("classifies the known D1 failure classes without exposing exception text",()=>{
