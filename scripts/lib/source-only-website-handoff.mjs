@@ -48,8 +48,23 @@ export function planSourceWebsiteHandoff(candidates,{now=new Date()}={}){
    const rows=[...lanes.get(category).values()].sort((a,b)=>
      b.published_at.localeCompare(a.published_at)||
      a.article_url.localeCompare(b.article_url));
-   const allowed=rows.slice(0,SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY);
+   // A permanently newest-120 selection starves the 121st native article
+   // whenever a high-volume global source remains busy. Keep the 24 freshest
+   // original dates immediately discoverable, then rotate 96 deeper originals
+   // through the same 15-minute protected production slots. This is a finite
+   // in-memory sweep, not a durable queue or a promise of complete coverage.
+   const limit=SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY;
+   const newest=rows.slice(0,Math.min(24,limit));
+   const depth=rows.slice(newest.length);
+   const deepQuota=limit-newest.length;
+   const offset=depth.length?(Math.floor(now.getTime()/900_000)*deepQuota)%depth.length:0;
+   const rotating=[];
+   for(let i=0;i<Math.min(deepQuota,depth.length);i++)
+     rotating.push(depth[(offset+i)%depth.length]);
+   const allowed=[...newest,...rotating];
    byCategory[category]={observed:rows.length,selected:allowed.length,
+      deferred_to_fresh_reobservation:rows.length-allowed.length,
+      newest_native_candidates:Math.min(24,rows.length),
       conflict_quarantined:conflict.get(category).size};
    selected.push(...allowed);
  }

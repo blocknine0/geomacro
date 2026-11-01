@@ -74,3 +74,21 @@ test("120 per-domain handoff stays bounded, preserves every native clock and rej
  assert.equal(result.payments,0);
  assert.equal(result.predge_unchanged,true);
 });
+
+
+test("even under 400 newer same-category originals, older still-native 72h items rotate into publication",()=>{
+ const initial=Array.from({length:400},(_,i)=>({
+  ...row(i+4000,"geopolitics"),
+  publishedAt:new Date(now.getTime()-(i+1)*60_000).toISOString()
+ }));
+ const first=planSourceWebsiteHandoff(initial,{now});
+ const second=planSourceWebsiteHandoff(initial,{now:new Date(now.getTime()+900_000)});
+ assert.equal(first.by_category.geopolitics.selected,120);
+ assert.equal(first.by_category.geopolitics.newest_native_candidates,24);
+ assert.equal(first.by_category.geopolitics.deferred_to_fresh_reobservation,280);
+ assert.deepEqual(first.rows.slice(0,24).map(x=>x.article_url),
+  second.rows.slice(0,24).map(x=>x.article_url));
+ assert.ok(new Set([...first.rows,...second.rows].map(x=>x.article_url)).size>120);
+ assert.equal(first.rows.filter(x=>x.category==="geopolitics").length,120);
+ assert.ok(first.rows.every(x=>Date.parse(x.published_at)<=now.getTime()));
+});
