@@ -188,6 +188,8 @@ test("protected preview gate reads opt-in only after production environment is a
  assert.match(workflow,/    environment: production/);
  assert.match(workflow,/      - name: Confirm production preview opt-in before accessing secrets/);
  assert.match(workflow,/          PREVIEW_ENABLED: \$\{\{ vars\.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED \}\}/);
+ assert.ok(workflow.includes("GEOMACRO_PREDGE_RECURRING_REFRESH_APPROVAL"));
+ assert.ok(workflow.includes("PREDGE_V2_RECURRING_NO_FUNDS_APPROVED"));
  assert.match(workflow,/PREDGE_MANUAL_SIGNING_APPROVAL_REQUIRED/);
  assert.match(workflow,/PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED/);
  assert.match(workflow,/PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED/);
@@ -210,13 +212,14 @@ test("protected signer manual approval and scheduled opt-in are independently fa
  const shell=section[1].split("\n").map(l=>l.replace(/^          /,"")).join("\n");
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),"predge-gate-"));
  try{
-   const execute=(event,preview,confirm)=>{
+   const execute=(event,preview,confirm,recurring="")=>{
      const output=path.join(dir,"gate-output.txt");
      fs.writeFileSync(output,"");
      const result=spawnSync("bash",["-c",shell],{
        encoding:"utf8",
        env:{...process.env,GITHUB_OUTPUT:output,GITHUB_EVENT_NAME:event,
-         PREVIEW_ENABLED:preview,MANUAL_CONFIRMATION:confirm}
+         PREVIEW_ENABLED:preview,MANUAL_CONFIRMATION:confirm,
+         RECURRING_APPROVAL:recurring}
      });
      return {status:result.status,output:fs.readFileSync(output,"utf8"),
        stdout:result.stdout,stderr:result.stderr};
@@ -232,6 +235,16 @@ test("protected signer manual approval and scheduled opt-in are independently fa
    const schedule=execute("schedule","YES","");
    assert.equal(schedule.status,0,schedule.stderr);
    assert.match(schedule.output,/enabled=true/);
+   const scheduledSecret=execute("schedule","","","PREDGE_V2_RECURRING_NO_FUNDS_APPROVED");
+   assert.equal(scheduledSecret.status,0,scheduledSecret.stderr);
+   assert.match(scheduledSecret.output,/enabled=true/);
+   assert.match(scheduledSecret.stdout,/PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED/);
+   const badSecret=execute("schedule","","","WRONG_OR_MISSING_APPROVAL");
+   assert.equal(badSecret.status,0,badSecret.stderr);
+   assert.match(badSecret.output,/enabled=false/);
+   const manualDeniedWithSecret=execute("workflow_dispatch","","","PREDGE_V2_RECURRING_NO_FUNDS_APPROVED");
+   assert.equal(manualDeniedWithSecret.status,2);
+   assert.match(manualDeniedWithSecret.output,/enabled=false/);
    const off=execute("schedule","","");
    assert.equal(off.status,0,off.stderr);
    assert.match(off.output,/enabled=false/);
