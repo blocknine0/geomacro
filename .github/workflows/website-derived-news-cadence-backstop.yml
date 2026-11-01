@@ -39,6 +39,7 @@ on:
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/tests/automated-finds-run-health.test.mjs"
+      - "scripts/tests/news-backstop-static-publication.test.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/tests/derived-news-source-health.test.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
@@ -70,6 +71,7 @@ on:
       - "scripts/tests/website-derived-news-failover.test.mjs"
       - "scripts/lib/automated-finds-run-health.mjs"
       - "scripts/tests/automated-finds-run-health.test.mjs"
+      - "scripts/tests/news-backstop-static-publication.test.mjs"
       - "scripts/lib/derived-news-source-health.mjs"
       - "scripts/tests/derived-news-source-health.test.mjs"
       - "scripts/lib/material-gri-news-review.mjs"
@@ -176,6 +178,7 @@ jobs:
           node --check scripts/ops/recover-stalled-five-minute-news.mjs
           node --check scripts/lib/news-self-healing-policy.mjs
           node --test scripts/lib/news-self-healing-policy.test.mjs
+          node --test scripts/tests/news-backstop-static-publication.test.mjs
           node --check scripts/ops/verify-derived-news-public-readback.mjs
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/five-minute-news-cadence-watch.test.mjs
