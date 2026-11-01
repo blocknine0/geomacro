@@ -6,6 +6,24 @@ export class CustomerError extends Error {
  constructor(public status:number,public code:string){super(code);}
 }
 export function customerHeaders(){return AUTH_HEADER;}
+
+/**
+ * No-funds, no-customer-data ingress diagnostic. The response deliberately
+ * exposes neither the observed IP nor tokens. It DOES NOT establish trust:
+ * an independent HTTPS client must send CF-Connecting-IP=198.51.100.217 and
+ * observe that the platform overwrote it with a valid non-probe address.
+ * Only then may the separate trusted-edge deployment flag be considered.
+ */
+export function customerIngressHeaderProbe(request:Request){
+ const value=request.headers.get("cf-connecting-ip")??"";
+ return {
+  ok:true,
+  schema:"geomacro.customer-ingress-header-probe.v1",
+  cf_connecting_ip_present:/^[0-9a-fA-F:.]{3,64}$/.test(value),
+  injected_cf_connecting_ip_survived:value==="198.51.100.217",
+  no_email_or_payment_touched:true,
+ };
+}
 export function rejectCrossOrigin(request:Request){
  const origin=request.headers.get("origin");
  if(!origin||origin!==new URL(request.url).origin)throw new CustomerError(403,"CUSTOMER_ORIGIN_REQUIRED");

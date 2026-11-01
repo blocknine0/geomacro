@@ -1,0 +1,22 @@
+name: Customer SSR Trusted Ingress Spoof Acceptance (No Funds)
+# One-click, read-only external proof. Never invokes OTP dispatch, payments, D1, or secrets.
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-customer-ingress-spoof-proof
+  cancel-in-progress: false
+jobs:
+  external-ssr-ingress-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify exact public SHA, CF IP presence and spoof rejection (GET only)
+        run: python3 scripts/ops/verify-customer-ssr-ingress-no-funds.py
+      - name: Declare scope limited to ingress (not OTP or payments)
+        run: |
+          echo "::notice::CUSTOMER_SSR_INGRESS_ONLY; no real OTP, login, session, payment, key, or credit acceptance performed."

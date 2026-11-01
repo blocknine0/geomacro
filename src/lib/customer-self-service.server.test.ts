@@ -1,6 +1,6 @@
 import {describe,it,expect,vi,afterEach} from "vitest";
 import {authenticatedCustomer,customerSessionCookie,clearCustomerCookie,
- rejectCrossOrigin,CustomerError,callCustomerWorker} from "./customer-auth.server";
+ rejectCrossOrigin,CustomerError,callCustomerWorker,customerIngressHeaderProbe} from "./customer-auth.server";
 
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 
@@ -58,5 +58,28 @@ describe("verified customer API-key ledger safeguards",()=>{
   await expect(callCustomerWorker(new Request("https://geomacro.live/api/v1/customer/auth",{headers:{"cf-connecting-ip":"192.0.2.1"}}),"otp-start",{email:"a@example.com"}))
    .rejects.toMatchObject({code:"CUSTOMER_TRUSTED_IP_REQUIRED"});
   expect(fetcher).not.toHaveBeenCalled();
+ });
+});
+
+describe("customer IP ingress diagnostic (no funds, no PII)",()=>{
+ it("detects an attacker-supplied CF IP header without disclosing client IP",()=>{
+  const url="https://geomacro.live/api/v1/customer/auth?edge_probe=customer-ip-v1";
+  const forged=customerIngressHeaderProbe(new Request(url,{headers:{"CF-Connecting-IP":"198.51.100.217"}}));
+  expect(forged).toMatchObject({ok:true,
+   schema:"geomacro.customer-ingress-header-probe.v1",
+   cf_connecting_ip_present:true,injected_cf_connecting_ip_survived:true,
+   no_email_or_payment_touched:true});
+  const legitimate=customerIngressHeaderProbe(new Request(url,{headers:{"CF-Connecting-IP":"203.0.113.61"}}));
+  expect(legitimate.cf_connecting_ip_present).toBe(true);
+  expect(legitimate.injected_cf_connecting_ip_survived).toBe(false);
+  expect(JSON.stringify(legitimate)).not.toContain("203.0.113.61");
+  expect(JSON.stringify(forged)).not.toContain("198.51.100.217");
+ });
+ it("missing/malformed Cloudflare IP must never pass presence acceptance",()=>{
+  const url="https://geomacro.live/api/v1/customer/auth?edge_probe=customer-ip-v1";
+  for(const value of ["","fake-host","203.0.113.8,192.0.2.1","192.0.2.1;evil"]){
+   const headers=value?{"CF-Connecting-IP":value}:{};
+   expect(customerIngressHeaderProbe(new Request(url,{headers})).cf_connecting_ip_present).toBe(false);
+  }
  });
 });

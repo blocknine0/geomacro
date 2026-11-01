@@ -3,7 +3,13 @@ import {createFileRoute} from "@tanstack/react-router";
 export const Route=createFileRoute("/api/v1/customer/auth")({server:{handlers:{
  GET:async({request}:{request:Request})=>{
   const c=await import("../lib/customer-auth.server");
-  try{return Response.json({ok:true,user:await c.authenticatedCustomer(request)},{headers:c.customerHeaders()});}
+  try{
+   // Permanent read-only ingress acceptance: never calls email, D1, or customer APIs.
+   // No observed visitor IP is ever returned to callers.
+   if(new URL(request.url).searchParams.get("edge_probe")==="customer-ip-v1")
+    return Response.json(c.customerIngressHeaderProbe(request),{headers:c.customerHeaders()});
+   return Response.json({ok:true,user:await c.authenticatedCustomer(request)},{headers:c.customerHeaders()});
+  }
   catch(error){return c.customerFailure(error);}
  },
  POST:async({request}:{request:Request})=>{
