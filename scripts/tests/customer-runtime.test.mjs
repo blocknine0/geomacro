@@ -119,6 +119,10 @@ test('canonical Worker deployment pins exact production customer origins without
  assert.equal(config.d1_databases[0].binding,'DB');
  assert.equal(config.vars.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS,
   'https://geomacro.live,https://geomacro.lovable.app');
+ assert.equal(config.vars.EMAIL_FROM_ADDRESS,'auth@geomacro.live',
+  'canonical production sender must be pinned across the automated Worker deploy');
+ assert.match(config.vars.EMAIL_FROM_ADDRESS,/^[^@\s]+@geomacro\.live$/,
+  'sender must belong to the independently verified Resend domain');
  assert.ok(!Object.keys(config.vars).some(key=>/TOKEN|PEPPER|SECRET|PRIVATE_KEY/.test(key)));
  assert.deepEqual(config.vars.GEOMACRO_CUSTOMER_ALLOWED_ORIGINS.split(','),[
   'https://geomacro.live','https://geomacro.lovable.app']);
