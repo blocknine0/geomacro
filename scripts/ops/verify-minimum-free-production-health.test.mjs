@@ -110,6 +110,8 @@ test("real published older source is equivalent only for a trusted exact-head op
   {filename:".github/workflows/website-derived-news-continuity.yml",status:"modified"},
   {filename:"docs/ops/source-recovery.md",status:"added"},
   {filename:"scripts/ops/verify-public-intelligence-browser-freshness.mjs",status:"modified"},
+  // Exact source-only registered collector quota module is not used by website SSR.
+  {filename:"scripts/lib/phase2h-registered-private-quota.mjs",status:"added"},
   {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
   {filename:"src/__tests__/five-minute-original-news-fastlane.test.ts",status:"modified"},
   // Tests do not change published behavior; a server route module does.
@@ -263,4 +265,16 @@ test("malformed 200 JSON, redirects, forbidden 404 and oversized HTML never retr
   fetchImpl:async()=>new Response("x".repeat(1_500_001)),
   wait:async()=>{},
  }),/MINIMUM_PUBLIC_READBACK_TOO_LARGE/);
+});
+
+test("only registered private publisher's named source-only helper is website-parity safe",()=>{
+ const site="a".repeat(40),main="b".repeat(40);
+ const base={status:"ahead",base_commit:{sha:site},merge_base_commit:{sha:site},
+  ahead_by:1,behind_by:0,total_commits:1,commits:[{sha:main}]};
+ const allowed={filename:"scripts/lib/phase2h-registered-private-quota.mjs",status:"added"};
+ const bad={filename:"scripts/lib/phase2h-raw-original-records.mjs",status:"modified"};
+ assert.equal(classifyPublishedSourceEquivalence({...base,files:[allowed]},site,main),true);
+ assert.equal(classifyPublishedSourceEquivalence({...base,files:[bad]},site,main),false);
+ const publisher=readFileSync("scripts/ops/publish-all-source-reusable-news-json.ts","utf8");
+ assert.match(publisher,/phase2h-registered-private-quota.mjs/);
 });
