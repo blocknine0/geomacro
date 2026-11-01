@@ -77,7 +77,12 @@ export function verifyThreeDomainLivePublication({
  const result={};
  for(const category of DOMAIN){
   const domain=byCategory[category];
-  const matching=domain.archive.filter(s=>{
+  // D1 releases expired originals immediately; a static snapshot remains
+  // coherent for up to 6h. Compare ONLY original-dated rows still within
+  // the rolling 72h window at the outside-in observation time.
+  const active=domain.archive.filter(s=>
+   stamp(s.published_at)>=now-RETENTION&&stamp(s.published_at)<=now);
+  const matching=active.filter(s=>{
    const d=journalIds.get(s.id);
    return d&&d.category===s.category&&d.published_at===s.published_at&&
     d.date_precision===s.date_precision&&d.status===s.status;
@@ -85,22 +90,27 @@ export function verifyThreeDomainLivePublication({
   const html=htmlByCategory[category];
   if(typeof html!=="string"||html.length<100||
    !html.includes("What changed in the world"))fail("WEBSITE_HTML_"+category);
-  const decoded=escDecode(html);
-  const rendered=domain.archive.filter(s=>typeof s.title==="string"&&
-   decoded.includes(s.title));
-  if(requirePositive&&(domain.archive.length<1||matching.length<1||rendered.length<1))
-   fail("THREE_CATEGORY_PUBLIC_PARITY_"+category);
-  if(domain.archive.length>0&&rendered.length===0)
-   fail("WEBSITE_STORIES_NOT_RENDERED_"+category);
-  if(domain.archive.length>0&&matching.length===0)
-   fail("D1_PUBLIC_JOURNAL_NO_MATCH_"+category);
+  // Source-derived text may retain an HTML entity (e.g. &#x27;) that React
+  // renders as a character. Decode both sides, not only the HTML bytes.
+  const decoded=escDecode(escDecode(html));
+  const rendered=active.filter(s=>typeof s.title==="string"&&
+   decoded.includes(escDecode(escDecode(s.title))));
+  if(requirePositive&&active.length===0)
+   fail("THREE_CATEGORY_NO_CURRENT_ORIGINAL_"+category);
+  if(matching.length!==active.length)
+   fail("D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_"+category);
+  if(rendered.length!==active.length)
+   fail("WEBSITE_EXACT_RENDER_MISMATCH_"+category);
   result[category]={
-   static_72h:domain.archive.length,public_d1_rows:domain.journal.length,
+   static_snapshot_rows:domain.archive.length,
+   expired_since_snapshot:domain.archive.length-active.length,
+   live_72h_rows:active.length,public_d1_rows:domain.journal.length,
    matching_public_d1_ids:matching.length,website_rendered_matching_archive:rendered.length,
-   missing_website_derived_ids:domain.archive.filter(s=>!rendered.includes(s))
+   missing_website_derived_ids:active.filter(s=>!rendered.includes(s))
     .map(s=>s.id).slice(0,10),
-   official_derived:domain.official,unverified_osint:domain.osint,
-   newest_original:domain.archive.map(x=>x.published_at).sort().at(-1)??null
+   official_derived:active.filter(s=>s.status==="official_release_observed_unscored").length,
+   unverified_osint:active.filter(s=>s.status==="osint_feed_observed_unverified").length,
+   newest_original:active.map(x=>x.published_at).sort().at(-1)??null
   };
  }
  return Object.freeze({
