@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-01T21:24:42.431Z",
+  "updated_at": "2026-11-01T21:56:01.048Z",
   "signals": [
     {
       "id": "macro-e43de71f",
@@ -37,6 +37,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a94ac71d",
+      "category": "macro",
+      "title": "Geomacro finds Mark Carney said U.S., Canada teams will work on trade deal in ‘coming weeks’ - Politico",
+      "what_changed": "A monitored source feed reports: Mark Carney said U.S., Canada teams will work on trade deal in ‘coming weeks’ - Politico. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T20:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -113,6 +132,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.pbs.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a62e5d6b",
+      "category": "macro",
+      "title": "Geomacro finds Carney said Canada, U.S. working in coming weeks towards trade deal",
+      "what_changed": "A monitored source feed reports: Carney said Canada, U.S. working in coming weeks towards trade deal. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T17:14:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: globalnews.ca"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b69f1273",
+      "category": "macro",
+      "title": "Geomacro finds Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:04:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

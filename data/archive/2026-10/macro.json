@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-01T21:24:42.431Z",
+  "updated_at": "2026-11-01T21:56:01.048Z",
   "signals": [
     {
       "id": "macro-17d0125c",
@@ -379,6 +379,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.naftemporiki.gr"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-27dd11d1",
+      "category": "macro",
+      "title": "Geomacro finds Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網",
+      "what_changed": "A monitored source feed reports: Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:42:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

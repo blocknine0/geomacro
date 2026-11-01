@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T21:24:42.431Z",
+  "updated_at": "2026-11-01T21:56:01.048Z",
   "signals": [
+    {
+      "id": "geopolitics-e12b2ecd",
+      "category": "geopolitics",
+      "title": "Geomacro finds QRCS launched shelter project for refugees in Bangladesh",
+      "what_changed": "A monitored source feed reports: QRCS launched shelter project for refugees in Bangladesh. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T21:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.gulf-times.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-05373168",
       "category": "geopolitics",

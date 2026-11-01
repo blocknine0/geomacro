@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-01T21:45:12.435Z",
+  "checked_at": "2026-11-01T21:56:01.048Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 108,
+  "item_count": 123,
   "counts": {
-    "geopolitics": 35,
-    "macro": 43,
-    "rare_earth": 30
+    "geopolitics": 44,
+    "macro": 47,
+    "rare_earth": 32
   },
-  "source_native_ids_sha256": "19707655eb3988fc37b9738a62a2c93590e635067ed3bd6b78bcac7fb7cb6983",
+  "source_native_ids_sha256": "7c0cb0d7298e581672266cc08cf5420a5132afa7ee1785fb39be536114649bdf",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -43,6 +43,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e12b2ecd",
+      "category": "geopolitics",
+      "title": "Geomacro finds QRCS launched shelter project for refugees in Bangladesh",
+      "what_changed": "A monitored source feed reports: QRCS launched shelter project for refugees in Bangladesh. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T21:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.gulf-times.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -100,6 +119,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a94ac71d",
+      "category": "macro",
+      "title": "Geomacro finds Mark Carney said U.S., Canada teams will work on trade deal in ‘coming weeks’ - Politico",
+      "what_changed": "A monitored source feed reports: Mark Carney said U.S., Canada teams will work on trade deal in ‘coming weeks’ - Politico. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T20:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -182,6 +220,44 @@
       "severity": null
     },
     {
+      "id": "macro-a62e5d6b",
+      "category": "macro",
+      "title": "Geomacro finds Carney said Canada, U.S. working in coming weeks towards trade deal",
+      "what_changed": "A monitored source feed reports: Carney said Canada, U.S. working in coming weeks towards trade deal. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T17:14:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: globalnews.ca"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b69f1273",
+      "category": "macro",
+      "title": "Geomacro finds Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:04:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-ebe6a2e2",
       "category": "macro",
       "title": "Geomacro finds Fire Point confirmed strike on Russia's Kstovo refinery",
@@ -239,6 +315,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-6c0787ef",
+      "category": "rare_earth",
+      "title": "Geomacro finds Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague",
+      "what_changed": "A monitored source feed reports: Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T12:23:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-be820d5d",
       "category": "rare_earth",
       "title": "Geomacro finds Rubio said G20 talks focused on energy security, critical minerals and supply chains - Saudi Gazette",
@@ -277,6 +372,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-6fed48be",
+      "category": "rare_earth",
+      "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
+      "what_changed": "A monitored source feed reports: Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T06:17:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-9f348676",
       "category": "rare_earth",
       "title": "Geomacro finds Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı",
@@ -305,6 +419,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T16:34:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-eff61167",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved Patriot missiles sale to Ukraine",
+      "what_changed": "A monitored source feed reports: United States approved Patriot missiles sale to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T12:29:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rt-english.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0abb23f0",
+      "category": "geopolitics",
+      "title": "Geomacro finds IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw",
+      "what_changed": "A monitored source feed reports: IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T11:05:13.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -391,6 +543,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-bb081c6b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent",
+      "what_changed": "A monitored source feed reports: United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T08:58:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0ce42b89",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International",
+      "what_changed": "A monitored source feed reports: United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T07:51:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-a7ca2ca0",
       "category": "macro",
       "title": "Geomacro finds China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance",
@@ -423,6 +613,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3ec7d940",
+      "category": "geopolitics",
+      "title": "Geomacro finds Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine",
+      "what_changed": "A monitored source feed reports: Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T05:34:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e7592394",
+      "category": "geopolitics",
+      "title": "Geomacro finds EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in",
+      "what_changed": "A monitored source feed reports: EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T05:21:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a69efd72",
+      "category": "geopolitics",
+      "title": "Geomacro finds Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%",
+      "what_changed": "A monitored source feed reports: Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T04:56:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.feedburner.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-43f18eb3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’",
+      "what_changed": "A monitored source feed reports: Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T02:04:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1540,6 +1806,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T04:43:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-27dd11d1",
+      "category": "macro",
+      "title": "Geomacro finds Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網",
+      "what_changed": "A monitored source feed reports: Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T04:42:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

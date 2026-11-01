@@ -2,8 +2,160 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T21:24:42.431Z",
+  "updated_at": "2026-11-01T21:56:01.048Z",
   "signals": [
+    {
+      "id": "geopolitics-eff61167",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved Patriot missiles sale to Ukraine",
+      "what_changed": "A monitored source feed reports: United States approved Patriot missiles sale to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T12:29:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rt-english.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0abb23f0",
+      "category": "geopolitics",
+      "title": "Geomacro finds IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw",
+      "what_changed": "A monitored source feed reports: IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T11:05:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-bb081c6b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent",
+      "what_changed": "A monitored source feed reports: United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T08:58:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0ce42b89",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International",
+      "what_changed": "A monitored source feed reports: United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T07:51:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3ec7d940",
+      "category": "geopolitics",
+      "title": "Geomacro finds Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine",
+      "what_changed": "A monitored source feed reports: Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T05:34:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e7592394",
+      "category": "geopolitics",
+      "title": "Geomacro finds EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in",
+      "what_changed": "A monitored source feed reports: EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T05:21:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a69efd72",
+      "category": "geopolitics",
+      "title": "Geomacro finds Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%",
+      "what_changed": "A monitored source feed reports: Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T04:56:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.feedburner.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-43f18eb3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’",
+      "what_changed": "A monitored source feed reports: Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T02:04:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-be28ba3f",
       "category": "geopolitics",
