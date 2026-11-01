@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,sign as signBytes,verify as verifyBytes} from "node:crypto";
 import {
  buildUnsignedPilotCheck,canonicalJson,toBytes,signablePilotCheck,sha256,
- validatePilotEnvelopeShape,verifySignedPilotCheck,MAX_WIRE_BYTES
+ validatePilotEnvelopeShape,verifySignedPilotCheck,requireActivePilotTrust,MAX_WIRE_BYTES
 } from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2}
  from "../../workers/control-plane/src/predge-pilot-check-v2.mjs";
@@ -144,6 +144,39 @@ test("owner refuses forged signed envelope before any DB write",async()=>{
  const r=await publishPredgePilotCheckV2(put,env,NOW);
  assert.equal(r.status,422);
  assert.equal(writes,0);
+});
+test("production GET and owner PUT reject missing/retired registry before any D1 read/write",async()=>{
+ let reads=0;
+ const storage={prepare(){reads++;throw Error("D1 must not be touched");}};
+ const get=new Request("https://control.example/v1/pilot/check",{
+   headers:{authorization:"Bearer "+TOKEN}});
+ const put=()=>new Request("https://control.example/v1/internal/predge-pilot-news-context-publish",{
+   method:"PUT",headers:{"content-type":"application/json",authorization:"Bearer "+ADMIN},
+   body:JSON.stringify(fakeSigned())});
+ const base={DB:storage,PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,CONTROL_PLANE_TOKEN:ADMIN};
+ for(const registry of [undefined,"{}",JSON.stringify({
+  "geomacro-risk-2026-03":{status:"retired",public_key_spki_b64:
+  "MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k="}})]){
+   const env={...base,RISK_GATE_VERIFY_KEYS_JSON:registry};
+   const getResponse=await predgePilotCheckV2(get,env,NOW);
+   assert.equal(getResponse.status,503);
+   assert.equal((await getResponse.json()).error,"PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE");
+   const putResponse=await publishPredgePilotCheckV2(put(),env,NOW);
+   assert.equal(putResponse.status,503);
+   assert.equal((await putResponse.json()).error,"PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE");
+ }
+ assert.equal(reads,0);
+});
+test("pinned key is denied when key lifecycle ends before current verification clock",()=>{
+ const spki="MCowBQYDK2VwAyEAeMsePxig7TEUR3fykcx9wcBqomj9KBuJ/TXTX2QSN2k=";
+ const entry={status:"active",public_key_spki_b64:spki};
+ assert.equal(requireActivePilotTrust({"geomacro-risk-2026-03":entry},NOW).status,"active");
+ assert.throws(()=>requireActivePilotTrust({"geomacro-risk-2026-03":{
+  ...entry,not_after:new Date(NOW-1).toISOString()}},NOW),/PREDGE_PILOT_KEY_RETIRED/);
+ assert.throws(()=>requireActivePilotTrust({"geomacro-risk-2026-03":{
+  ...entry,not_before:new Date(NOW+1).toISOString()}},NOW),/PREDGE_PILOT_KEY_NOT_YET_ACTIVE/);
+ assert.throws(()=>requireActivePilotTrust({"geomacro-risk-2026-03":{
+  ...entry,not_after:"corrupt"}},NOW),/PREDGE_PILOT_KEY_RETIRED/);
 });
 test("routing keeps preexisting research and Risk Gate handlers unchanged",async()=>{
  const fs=await import("node:fs");
