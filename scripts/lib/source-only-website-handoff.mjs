@@ -1,8 +1,8 @@
-/** Private 15-minute 446-feed sweep -> ephemeral, bounded candidate handoff.
+/** Existing 15-minute source sweep -> ephemeral, bounded candidate handoff.
  * This never reads another feed, publishes original text, grants rights,
  * or asserts that a 195x3 routing cell contains genuine news.
  */
-export const SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY=40;
+export const SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY=120;
 const CAT=["geopolitics","macro","rare_earth"];
 const AGE=72*3600_000;
 const ISO=/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
