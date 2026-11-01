@@ -1143,5 +1143,22 @@
     "published_source_sha_unchanged": true,
     "live_published_acceptance_pending": true,
     "scope": "ONLY current home presentation mounts and two-lane story renderer; no other routes, no paid entitlement, no PREDGE."
+  },
+  "approved_permanent_home_finds_removal_20261102": {
+    "approval": "Founder expressly instructed on 2026-11-02 that the homepage 'What GeoMacro is finding now / Geomacro Finds' panel must be permanently invisible. This instruction supersedes the 2026-11-02 approval to show the panel, while preserving Website Intelligence itself.",
+    "approved_paths": [
+      "src/components/home/commercial-home.tsx"
+    ],
+    "approved_source_commit": "c8555cfbcbda20df8dcd4b2e13146b435c9c593a",
+    "exact_blob_lock": true,
+    "permanent_unmounted_assertion": true,
+    "scope": "Remove only the homepage mounted Finds/highlights panel and its import; do not alter intelligence data, archive, Workers, API or PREDGE.",
+    "preserve_website_intelligence": true,
+    "predge_unmodified": true,
+    "global_risk_final_lock_unmodified": true,
+    "pricing_unchanged": true,
+    "payment_authorized": false,
+    "published_source_sha_unchanged": true,
+    "production_publish_acceptance_pending": true
   }
 }
