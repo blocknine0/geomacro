@@ -5,33 +5,30 @@ const card = readFileSync("src/components/home/live-intelligence-showcase.tsx", 
 const home = readFileSync("src/components/home/commercial-home.tsx", "utf8");
 
 describe("Geomacro Finds commercial homepage presentation", () => {
-  it("shows exactly one public original-dated free Find with a truthful evidence clock",()=>{
-    expect(card).toContain("selectHomepageFreeFind(visibleCards)");
-    expect(card).toContain("findCardFromObservedRelease(s,now)");
-    expect(card).toContain("winner.originalAt");
-    expect(card).toContain("dateTime={winner.originalAt}");
-    expect(card).toContain("display?.headline");
-    expect(card).toContain("publicHomeFindCopy(card)");
-    expect(card).toContain("display?.what_changed");
-    expect(card).toContain("card.why_it_matters");
-    expect(card).not.toContain("categoryLeads(intelligence.data.all)");
-    expect(card).not.toContain("categoryHighlights");
-    expect(card).not.toContain("<AccessOptions />");
-    expect(card).not.toContain("Release observed · specific details pending");
-    expect(card).toContain("relatedDomains.map(domain=>");
+  it("shows material, original-dated official highlights with credits and short analysis",()=>{
+    expect(card).toContain("selectDailyOfficialFinds");
+    expect(card).toContain("fetchDailyOfficialFinds");
+    expect(card).toContain("item.headline");
+    expect(card).toContain("item.whatChanged");
+    expect(card).toContain("item.whyItMatters");
+    expect(card).toContain("dateTime={item.originalAt}");
+    expect(card).toContain("signal.sources_credited.join");
+    expect(card).toContain("stories.map((story,index)");
     expect(card).toContain("isConcreteHomeFind");
-  });
-
-  it("does not promote a free D1 release to paid GRO/score or fresh commercial review",()=>{
-    expect(card).toContain("homeFindsPulse(visibleCards)");
-    expect(card).toContain('fetch("/api/v1/finds"');
-    expect(card).toContain("Original release within 24h");
-    expect(card).toContain("Earlier original release · not current");
-    expect(card).not.toContain("independent same-event review not established");
-    expect(card).not.toContain("No eligible concrete news");
+    expect(card).not.toContain("<AccessOptions />");
     expect(card).not.toContain("useIntelligence(");
     expect(card).not.toContain("RiskBadge");
+  });
+
+  it("never presents OSINT as verified official news or relabels older releases today",()=>{
+    expect(card).toContain("Unverified OSINT is not presented as verified news");
+    expect(card).toContain("Earlier verified release");
+    expect(card).toContain("Original");
+    expect(card).toContain("No headlines, source dates, outcomes or scores are invented");
     expect(card).not.toContain("event.severity");
+    const reader=readFileSync("src/lib/home-daily-official-finds.ts","utf8");
+    expect(reader).toContain('v.status!=="official_release_observed_unscored"');
+    expect(reader).toContain("v.same_event_corrob_verified!==false");
   });
 
   it("keeps sales enquiries open without suggesting an active monthly checkout", () => {
@@ -49,7 +46,7 @@ describe("Geomacro Finds commercial homepage presentation", () => {
   it("has a balanced responsive hero and correct risk-indices route", () => {
     expect(home).toContain("lg:grid-cols-2");
     expect(home).toContain("text-[clamp(2.5rem,4.5vw,4rem)]");
-    expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} />");
+    expect(home).toContain("<LiveIntelligenceShowcase initialFindCards={initialFindCards} initialDailyHighlights={initialDailyHighlights} />");
     expect(home).toContain('to="/risk-indices"');
     expect(home).toContain("Follow the risks that affect your work.");
     expect(home).not.toContain("Not another raw-data feed.");
