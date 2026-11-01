@@ -2,6 +2,11 @@ name: Predge Signed Pilot News Context v2 - protected opt-in refresh
 # Disabled by default. Founder approval and partner validator acceptance required.
 on:
   workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "One-time owner approval (PREDGE_V2_SIGN_ONCE_NO_FUNDS)"
+        type: string
+        required: true
   schedule:
     - cron: "11,41 * * * *"
 permissions:
@@ -11,8 +16,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
-    # Environment-level variables are populated by the runner, not at job-if
-    # evaluation time. Gate the signing steps only after production attaches.
+    # Manual execution requires an explicit one-time owner authorization input.
+    # Scheduled execution remains disabled unless the opt-in variable is YES.
+    # Never gate on vars at job-if evaluation (environment scope not yet loaded).
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     environment: production
@@ -27,18 +33,22 @@ jobs:
         shell: bash
         env:
           PREVIEW_ENABLED: ${{ vars.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED }}
+          MANUAL_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           set -euo pipefail
-          if test "$PREVIEW_ENABLED" = "YES"; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-            echo "PREDGE_PROTECTED_PREVIEW_OPT_IN_CONFIRMED"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            if test "$GITHUB_EVENT_NAME" = "workflow_dispatch"; then
-              echo "::error::PREDGE_PREVIEW_OPT_IN_NOT_VISIBLE_AFTER_PRODUCTION_ENVIRONMENT_ATTACHMENT"
-              echo "::error::Set GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED as a repository or production-environment variable with exact value YES"
+          if test "$GITHUB_EVENT_NAME" = "workflow_dispatch"; then
+            if test "$MANUAL_CONFIRMATION" != "PREDGE_V2_SIGN_ONCE_NO_FUNDS"; then
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "::error::PREDGE_MANUAL_SIGNING_APPROVAL_REQUIRED"
               exit 2
             fi
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "PREDGE_ONE_TIME_OWNER_SIGNING_APPROVED"
+          elif test "$GITHUB_EVENT_NAME" = "schedule" && test "$PREVIEW_ENABLED" = "YES"; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "PREDGE_SCHEDULED_PREVIEW_OPT_IN_CONFIRMED"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "PREDGE_PREVIEW_DISABLED_NO_SIGNING_OR_PUBLICATION"
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
