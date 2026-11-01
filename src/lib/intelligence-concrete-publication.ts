@@ -1,5 +1,6 @@
 import type {StatelessIntelligenceSignal,StatelessCategory} from "./stateless-intelligence-model";
 import type {FindCardV1} from "./find-card-v1";
+import {isCriticalMineralsSubject} from "../../scripts/lib/critical-minerals-subject-evidence.mjs";
 import {intelligenceActorHeadline,intelligenceActorChange} from "./public-intelligence-actor-copy";
 
 /**
@@ -54,7 +55,7 @@ export function intelligenceRequiredSourceCredits(s:StatelessIntelligenceSignal)
 }
 export type IntelligenceDisplayRejection =
  "INVALID_STATE_OR_CREDIT"|"UNVERIFIED_ORIGINAL_SOURCE"|"UNKNOWN_ACTOR_OR_ACTION"|
- "GENERIC_OR_UNSAFE_COPY"|"INVALID_PUBLICATION_DATE"|null;
+ "GENERIC_OR_UNSAFE_COPY"|"INVALID_PUBLICATION_DATE"|"OUTSIDE_CRITICAL_MINERALS_SCOPE"|null;
 
 /** Mutually exclusive, stable reason for every public D1 story; no original
  * titles or URLs are returned to the caller or written to diagnostics. */
@@ -66,6 +67,8 @@ export function intelligenceDisplayRejection(s:StatelessIntelligenceSignal):Inte
       credit.length>230||/[<>]|https?:\/\//iu.test(credit))||
     s.severity!==null||s.same_event_corrob_verified!==false)
    return "INVALID_STATE_OR_CREDIT";
+ if(s.category==="rare_earth"&&!isCriticalMineralsSubject(s))
+   return "OUTSIDE_CRITICAL_MINERALS_SCOPE";
  // Feed hostname is not the actual government/IGO original publisher credit.
  // Do not downgrade a first-party feed to a fake source-reported no-credit card.
  if(s.status==="osint_feed_observed_unverified"&&
