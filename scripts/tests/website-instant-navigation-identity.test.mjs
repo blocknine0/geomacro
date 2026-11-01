@@ -56,11 +56,11 @@ test("the explicit approval locks only six exact blobs, never Global Risk or PRE
     "src/styles.css"].sort());
 });
 
-test("Home client route transitions remain instant while direct SSR is retained", () => {
-  assert.match(homeRoute, /if \(typeof window !== "undefined"\) return \{ initialFindCards: \[\], initialDailyHighlights: \[\] \}/);
-  assert.match(homeRoute, /fetchDailyOfficialFinds\(\)/);
-  assert.match(homeRoute, /fetchDirectDerivedNews\(\)/);
-  assert.match(home, /LiveIntelligenceShowcase initialFindCards/);
+test("Home remains instant after removal of the unnecessary data loader", () => {
+  assert.doesNotMatch(homeRoute, /\bloader\s*:/);
+  assert.doesNotMatch(homeRoute, /fetchDailyOfficialFinds|fetchDirectDerivedNews/);
+  assert.match(homeRoute, /<CommercialHome \/>/);
+  assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
   assert.equal(lock.approved_home_navigation_20261101.exact_blob_lock, true);
   assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });
