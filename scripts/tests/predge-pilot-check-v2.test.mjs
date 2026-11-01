@@ -178,6 +178,23 @@ test("pinned key is denied when key lifecycle ends before current verification c
  assert.throws(()=>requireActivePilotTrust({"geomacro-risk-2026-03":{
   ...entry,not_after:"corrupt"}},NOW),/PREDGE_PILOT_KEY_RETIRED/);
 });
+test("protected preview gate reads opt-in only after production environment is attached",async()=>{
+ const fs=await import("node:fs");
+ const workflow=fs.readFileSync(".github/workflows/predge-pilot-signed-news-v2-refresh.yml","utf8");
+ // A production-environment Actions variable is not visible to a job-level
+ // if expression; this caused manually dispatched runs to be silently skipped.
+ assert.match(workflow,/^    if: github\.repository == 'blocknine0\/geomacro' && github\.ref == 'refs\/heads\/main'$/m);
+ assert.doesNotMatch(workflow,/^    if:.*vars\.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED/m);
+ assert.match(workflow,/    environment: production/);
+ assert.match(workflow,/      - name: Confirm production preview opt-in before accessing secrets/);
+ assert.match(workflow,/          PREVIEW_ENABLED: \$\{\{ vars\.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED \}\}/);
+ assert.match(workflow,/PREDGE_PREVIEW_OPT_IN_NOT_VISIBLE_AFTER_PRODUCTION_ENVIRONMENT_ATTACHMENT/);
+ assert.match(workflow,/PREDGE_PREVIEW_DISABLED_NO_SIGNING_OR_PUBLICATION/);
+ const guarded=workflow.match(/if: steps\.opt_in\.outputs\.enabled == 'true'/g)??[];
+ assert.equal(guarded.length,4); // checkout, node setup, token derive, signing/publish
+ assert.ok(workflow.indexOf("id: opt_in")<workflow.indexOf("uses: actions/checkout@"));
+ assert.ok(workflow.includes('schedule:\n    - cron: "11,41 * * * *"'));
+});
 test("routing keeps preexisting research and Risk Gate handlers unchanged",async()=>{
  const fs=await import("node:fs");
  const source=fs.readFileSync("workers/control-plane/src/index.mjs","utf8");

@@ -11,7 +11,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   refresh:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && vars.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED == 'YES'
+    # Environment-level variables are populated by the runner, not at job-if
+    # evaluation time. Gate the signing steps only after production attaches.
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 5
@@ -20,13 +22,35 @@ jobs:
       PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
     steps:
+      - name: Confirm production preview opt-in before accessing secrets
+        id: opt_in
+        shell: bash
+        env:
+          PREVIEW_ENABLED: ${{ vars.GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED }}
+        run: |
+          set -euo pipefail
+          if test "$PREVIEW_ENABLED" = "YES"; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "PREDGE_PROTECTED_PREVIEW_OPT_IN_CONFIRMED"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            if test "$GITHUB_EVENT_NAME" = "workflow_dispatch"; then
+              echo "::error::PREDGE_PREVIEW_OPT_IN_NOT_VISIBLE_AFTER_PRODUCTION_ENVIRONMENT_ATTACHMENT"
+              echo "::error::Set GEOMACRO_PREDGE_SIGNED_PREVIEW_ENABLED as a repository or production-environment variable with exact value YES"
+              exit 2
+            fi
+            echo "PREDGE_PREVIEW_DISABLED_NO_SIGNING_OR_PUBLICATION"
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: steps.opt_in.outputs.enabled == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.opt_in.outputs.enabled == 'true'
         with:
           node-version: "24"
       - name: Derive owner-only control-plane token without printing it
+        if: steps.opt_in.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -37,6 +61,7 @@ jobs:
           echo "::add-mask::$TOKEN"
           echo "CONTROL_PLANE_TOKEN=$TOKEN" >> "$GITHUB_ENV"
       - name: Generate, locally verify, publish and independently read back real signed envelope
+        if: steps.opt_in.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
