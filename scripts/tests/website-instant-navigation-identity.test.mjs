@@ -8,6 +8,7 @@ const shell = read("src/components/site-shell.tsx");
 const home = read("src/components/home/commercial-home.tsx");
 const editorial = read("src/components/editorial-page.tsx");
 const intelligence = read("src/routes/intelligence.tsx");
+const homeRoute = read("src/routes/index.tsx");
 const css = read("src/styles.css");
 const lock = JSON.parse(read("config/website-lock.json"));
 
@@ -53,4 +54,12 @@ test("the explicit approval locks only six exact blobs, never Global Risk or PRE
     "src/router.tsx","src/routes/intelligence.tsx","src/components/site-shell.tsx",
     "src/components/editorial-page.tsx","src/components/home/commercial-home.tsx",
     "src/styles.css"].sort());
+});
+
+test("Home client route transitions remain instant while direct SSR is retained", () => {
+  assert.match(homeRoute, /if \(typeof window !== "undefined"\) return \{ initialFindCards: \[\] \}/);
+  assert.match(homeRoute, /fetchHomeDerivedNews\(\)/);
+  assert.match(home, /LiveIntelligenceShowcase initialFindCards/);
+  assert.equal(lock.approved_home_navigation_20261101.exact_blob_lock, true);
+  assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });
