@@ -46,10 +46,14 @@ function validateItem(item,now,ids){
   assert(CATEGORIES.includes(item.category),"ITEM_CATEGORY");
   const original=timestamp(item.original_published_at);
   assert(Number.isFinite(original)&&original<=now+300_000&&original>now-HOURS_72,"ITEM_CLOCK");
-  assert(Array.isArray(item.sources_credited)&&Array.isArray(item.attribution_notices),"ATTRIBUTION");
-  assert(item.sources_credited.length===item.attribution_notices.length,"ATTRIBUTION_COUNT");
-  assert(item.sources_credited.every(x=>typeof x==="string")&&
-    item.attribution_notices.every(x=>typeof x==="string"),"ATTRIBUTION_TEXT");
+  // The real source bridge intentionally omits both fields on uncredited
+  // research items; preserve absence instead of inventing attribution.
+  const credits=item.sources_credited??[],notices=item.attribution_notices??[];
+  assert(Array.isArray(credits)&&Array.isArray(notices),"ATTRIBUTION");
+  assert(credits.length===notices.length,"ATTRIBUTION_COUNT");
+  assert(credits.every(x=>typeof x==="string")&&
+    notices.every(x=>typeof x==="string"),"ATTRIBUTION_TEXT");
+  if(credits.length)assert(item.attribution_required===true,"ATTRIBUTION_REQUIRED");
   assert(item.chargeable===false&&item.raw_upstream_delivered===false&&
     item.signed_product_verified===false&&item.commercial_derived_rights_verified===false&&
     item.payable===false,"UNSAFE_ITEM_AUTHORITY");
