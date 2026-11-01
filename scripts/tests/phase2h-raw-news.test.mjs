@@ -98,10 +98,27 @@ test("date-only RSS without an explicit precision hint stays a calendar day",asy
  assert.equal(await validPrivateRawNews(plan.records[0],now.getTime()),
   JSON.stringify(plan.records[0]));
 });
-test("changed original bytes with same URL/date fails closed, not a phantom new story",()=>{
- assert.throws(()=>buildPhase2hPrivateRawRecords([
-  candidates[0],{...candidates[0],title:"A changed headline for same original date"}
- ],{now,derive}),/PHASE2H_SAME_ORIGINAL_ID_CHANGED_CONTENT/u);
+test("same URL/native clock with disputed original bytes is quarantined; unrelated news keeps flowing",async()=>{
+ const conflicted={...candidates[0],title:"A changed headline for same original date"};
+ const plan=buildPhase2hPrivateRawRecords([
+  candidates[0],candidates[1],conflicted,candidates[2],candidates[0],
+ ],{now,derive});
+ assert.equal(plan.identity_conflicts_quarantined,1);
+ assert.equal(plan.quarantined_candidate_rows,3);
+ assert.equal(plan.identity_conflict_policy,"FAIL_CLOSED_PER_ORIGINAL_NOT_PER_BATCH");
+ assert.equal(plan.records.length,2);
+ assert.ok(plan.records.every(x=>x.original.original_url!==candidates[0].articleUrl));
+ assert.equal(plan.counts[candidates[0].category]??0,
+  [candidates[1],candidates[2]].filter(x=>x.category===candidates[0].category).length);
+ for(const record of plan.records)
+  assert.equal(await validPrivateRawNews(record,now.getTime()),JSON.stringify(record));
+ assert.equal(plan.commercial_rights_verified,false);
+});
+test("repeated identical native original is deduplicated, not quarantined",()=>{
+ const plan=buildPhase2hPrivateRawRecords([candidates[0],candidates[0]],{now,derive});
+ assert.equal(plan.records.length,1);
+ assert.equal(plan.identity_conflicts_quarantined,0);
+ assert.equal(plan.quarantined_candidate_rows,0);
 });
 test("unavailable original page body stays null, raw publisher article is never invented",()=>{
  const x=buildPhase2hPrivateRawRecords([candidates[1]],{
