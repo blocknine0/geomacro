@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-01T22:28:59.421Z",
+  "updated_at": "2026-11-01T22:42:14.715Z",
   "signals": [
+    {
+      "id": "macro-431f0823",
+      "category": "macro",
+      "title": "Geomacro finds Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027",
+      "what_changed": "A monitored source feed reports: Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-e43de71f",
       "category": "macro",
@@ -227,6 +246,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a9715ea0",
+      "category": "macro",
+      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
+      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T07:13:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1ceda984",
+      "category": "macro",
+      "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
+      "what_changed": "A monitored source feed reports: Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T06:17:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-536b75c1",
+      "category": "macro",
+      "title": "Geomacro finds Shipping Strikes In Hormuz left Both Sides With Economic Pain",
+      "what_changed": "A monitored source feed reports: Shipping Strikes In Hormuz left Both Sides With Economic Pain. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T03:45:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f95d44fe",
+      "category": "macro",
+      "title": "Geomacro finds Taiwan said China Harassing Shipping With East Coast Patrol",
+      "what_changed": "A monitored source feed reports: Taiwan said China Harassing Shipping With East Coast Patrol. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T02:36:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

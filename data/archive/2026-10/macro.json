@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-01T21:56:01.048Z",
+  "updated_at": "2026-11-01T22:42:14.715Z",
   "signals": [
+    {
+      "id": "macro-44642ace",
+      "category": "macro",
+      "title": "Geomacro finds Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T23:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-95cd0f68",
+      "category": "macro",
+      "title": "Geomacro finds UKMTO warned about possible piracy after fishing vessel incident - Iran International",
+      "what_changed": "A monitored source feed reports: UKMTO warned about possible piracy after fishing vessel incident - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T19:38:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6eefaefe",
+      "category": "macro",
+      "title": "Geomacro finds Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ce668119",
+      "category": "macro",
+      "title": "Geomacro finds Juba City Council launched digital payment system to improve transparency",
+      "what_changed": "A monitored source feed reports: Juba City Council launched digital payment system to improve transparency. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T14:02:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-17d0125c",
       "category": "macro",

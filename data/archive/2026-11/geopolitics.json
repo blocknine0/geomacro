@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-01T22:28:59.421Z",
+  "updated_at": "2026-11-01T22:42:14.715Z",
   "signals": [
     {
       "id": "geopolitics-e12b2ecd",
@@ -56,6 +56,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-89cf1d03",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T18:47:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

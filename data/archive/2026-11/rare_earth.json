@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-01T22:28:59.421Z",
+  "updated_at": "2026-11-01T22:42:14.715Z",
   "signals": [
+    {
+      "id": "rare_earth-29809f3f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-8d7365e9",
       "category": "rare_earth",

@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T22:39:08.297Z",
+  "checked_at": "2026-11-01T22:42:14.715Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -11,10 +11,29 @@
   "supabase_dependency": false,
   "signals": [
     {
-      "id": "rare_earth-8d7365e9",
+      "id": "macro-431f0823",
+      "category": "macro",
+      "title": "Geomacro finds Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027",
+      "what_changed": "A monitored source feed reports: Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-29809f3f",
       "category": "rare_earth",
-      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027",
-      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027. This report has not been independently verified.",
+      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly",
+      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly. This report has not been independently verified.",
       "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
       "topic": "critical-mineral inputs",
       "geography": null,
@@ -23,7 +42,7 @@
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -163,12 +182,12 @@
       "severity": null
     },
     {
-      "id": "macro-c02a0b29",
-      "category": "macro",
+      "id": "geopolitics-89cf1d03",
+      "category": "geopolitics",
       "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English",
       "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T18:47:00.000Z",
@@ -334,6 +353,101 @@
       "severity": null
     },
     {
+      "id": "macro-a9715ea0",
+      "category": "macro",
+      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
+      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T07:13:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1ceda984",
+      "category": "macro",
+      "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
+      "what_changed": "A monitored source feed reports: Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T06:17:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-536b75c1",
+      "category": "macro",
+      "title": "Geomacro finds Shipping Strikes In Hormuz left Both Sides With Economic Pain",
+      "what_changed": "A monitored source feed reports: Shipping Strikes In Hormuz left Both Sides With Economic Pain. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T03:45:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f95d44fe",
+      "category": "macro",
+      "title": "Geomacro finds Taiwan said China Harassing Shipping With East Coast Patrol",
+      "what_changed": "A monitored source feed reports: Taiwan said China Harassing Shipping With East Coast Patrol. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T02:36:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-44642ace",
+      "category": "macro",
+      "title": "Geomacro finds Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T23:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-9f348676",
       "category": "rare_earth",
       "title": "Geomacro finds Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı",
@@ -343,6 +457,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T21:43:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-95cd0f68",
+      "category": "macro",
+      "title": "Geomacro finds UKMTO warned about possible piracy after fishing vessel incident - Iran International",
+      "what_changed": "A monitored source feed reports: UKMTO warned about possible piracy after fishing vessel incident - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T19:38:09.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -366,6 +499,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-6eefaefe",
+      "category": "macro",
+      "title": "Geomacro finds Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ce668119",
+      "category": "macro",
+      "title": "Geomacro finds Juba City Council launched digital payment system to improve transparency",
+      "what_changed": "A monitored source feed reports: Juba City Council launched digital payment system to improve transparency. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T14:02:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
