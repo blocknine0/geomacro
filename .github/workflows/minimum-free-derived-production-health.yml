@@ -18,6 +18,8 @@ on:
       - "scripts/ops/verify-website-real-browser.test.mjs"
       - "scripts/ops/derived-news-latency-audit.mjs"
       - "scripts/ops/derived-news-latency-audit.test.mjs"
+      - "scripts/ops/verify-three-domain-outside-in.mjs"
+      - "scripts/ops/verify-three-domain-outside-in.test.mjs"
       - "src/lib/free-derived-deep-health.server.ts"
       - "src/lib/free-derived-deep-health.server.test.ts"
       - "src/routes/api.health.ts"
@@ -44,6 +46,41 @@ jobs:
           node --check scripts/ops/verify-minimum-free-production-health.mjs
           node --check scripts/ops/verify-website-real-browser.mjs
           node --test scripts/ops/verify-minimum-free-production-health.test.mjs scripts/ops/derived-news-latency-audit.test.mjs scripts/ops/verify-website-real-browser.test.mjs
+          node --check scripts/ops/verify-three-domain-outside-in.mjs
+          node --test scripts/ops/verify-three-domain-outside-in.test.mjs
+
+  independent-three-domain-parity:
+    # Read-only acceptance of source-neutral D1 IDs -> static archive ->
+    # actual public website SSR; never a payable or partner acceptance.
+    # Reuse existing 2h website-health cadence, with no new cron or writers.
+    needs: offline-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Require matching public D1 IDs, native dates, static archive and three website categories
+        env:
+          # Ordinary schedules permit truthful empty categories. A requested
+          # one-time push/PR acceptance requires positive three-domain proof.
+          GEOMACRO_REQUIRE_THREE_CATEGORY_POSITIVE: ${{ github.event_name == 'schedule' && '0' || '1' }}
+          # On PR evaluate real production without blocking a corrective code
+          # merge. On trusted main and its existing schedules FAIL if any
+          # concrete canonical ID remains unpublished beyond 90 minutes.
+          GEOMACRO_ENFORCE_CANONICAL_BACKLOG: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+        run: bun scripts/ops/verify-three-domain-outside-in.mjs
 
   public-free-site:
     needs: offline-contract
