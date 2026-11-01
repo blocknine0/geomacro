@@ -47,6 +47,9 @@ on:
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/lib/source-only-website-handoff.mjs"
+      - "scripts/ops/publish-source-only-website-derived.ts"
+      - "scripts/tests/source-only-website-handoff.test.mjs"
       - "scripts/lib/phase2i-osint-source-heartbeat.mjs"
       - "scripts/tests/phase2i-osint-source-heartbeat.test.mjs"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
@@ -242,6 +245,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test scripts/tests/phase2i-source-only-governor.test.mjs
+          node --test scripts/tests/source-only-website-handoff.test.mjs
           node --test scripts/tests/phase2i-osint-source-heartbeat.test.mjs
           node --check scripts/lib/phase2i-single-sweep-original-index.mjs
           node --test scripts/tests/phase2i-single-sweep-original-index.test.mjs
@@ -482,10 +486,14 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      # Research-funded public projection is a separate job step; this stage
+      # still writes ONLY the original provider-admitted private D1 rows.
+      # The private handoff file is never uploaded as a GitHub artifact.
       - name: Stage at most provider-approved new original rows into existing private D1
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
           PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
@@ -495,6 +503,28 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Publish concrete current source-only findings to FREE public journal only with separate research headroom
+        if: needs.quota-admission.outputs.critical == 'true' && needs.quota-admission.outputs.research == 'true'
+        env:
+          GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
+          PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
+          PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
+          GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/publish-source-only-website-derived.ts
+      - name: Always discard private source candidates after same-run projection
+        if: always()
+        env:
+          GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f -- "$GEOMACRO_SOURCE_WEBSITE_HANDOFF"
+
 
   stage-private-sources-when-d1-held:
     name: Preserve actual native-dated source observations when canonical D1 is held
