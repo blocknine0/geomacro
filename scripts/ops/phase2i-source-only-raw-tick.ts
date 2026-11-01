@@ -9,6 +9,9 @@
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac} from "node:crypto";
+import {resolve,sep} from "node:path";
+import {writeFileSync} from "node:fs";
+import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
@@ -70,6 +73,27 @@ if(stage.selected_count>0&&stage.d1_readback_verified!==true)
 // and independently read them back; never create an article or renew clocks
 // when actual sources were denied/unavailable.
 const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now});
+// Research-funded public newsroom publisher consumes only this same sweep.
+ // Source-only staging is complete and independently D1 verified FIRST.
+ // Never expose raw original candidates as Actions artifacts, outputs or logs.
+ // With research pacing held, no handoff exists and no website write occurs.
+if(env.PHASE2I_PROVIDER_CRITICAL==="true"&&
+   env.PHASE2I_PROVIDER_RESEARCH==="true"){
+ const temp=resolve(String(env.RUNNER_TEMP??"/never"));
+ const target=resolve(String(env.GEOMACRO_SOURCE_WEBSITE_HANDOFF??"/missing"));
+ if(!target.startsWith(temp+sep))
+  throw Error("PHASE2I_SOURCE_WEBSITE_HANDOFF_PATH_INVALID");
+ const handoff=planSourceWebsiteHandoff(indexed.candidates,{now});
+ writeFileSync(target,JSON.stringify(handoff),{encoding:"utf8",mode:0o600,flag:"wx"});
+ console.log(JSON.stringify({
+  schema:"geomacro.source-only-website-handoff-counts.v1",
+  checked_at:handoff.checked_at,
+  observed_by_category:Object.fromEntries(Object.entries(handoff.by_category)
+    .map(([category,counts])=>[category,counts.selected])),
+  additional_source_gets:0,public_write_performed_by_source_only:false,
+  private_original_urls_logged:false,predge_modified:false,payments:0,
+ }));
+}
 const {schema,status,selected_count,available_originals,deferred_count,
  selected_by_category,d1_inserted,d1_unchanged,d1_rejected_conflicts,
  d1_readback_verified,b2_verified}=stage;
