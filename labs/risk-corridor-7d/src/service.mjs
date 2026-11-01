@@ -108,11 +108,11 @@ export async function executeGate(raw, adapters, now=new Date()) {
       const response={ok:true,verdict:signed,execution_authorized:false};
       const finished=await adapters.ledger.complete({
         tenant_id:tenant.id,request_id:input.request_id,request_hash:requestHash,
-        response,verdict_id:verdictId,amount_atomic:quote.price_atomic,delivered_at:now.toISOString()});
+        response,verdict_id:verdictId,claim_token:claim.claim_token,amount_atomic:quote.price_atomic,delivered_at:now.toISOString()});
       if (!finished) throw new GateError("DELIVERY_LEDGER_UNAVAILABLE",503);
       return response;
     } catch (e) {
-      if (adapters.ledger.fail) await adapters.ledger.fail({tenant_id:tenant.id,request_id:input.request_id,request_hash:requestHash}).catch(()=>{});
+      if (adapters.ledger.fail) await adapters.ledger.fail({tenant_id:tenant.id,request_id:input.request_id,request_hash:requestHash,claim_token:claim.claim_token}).catch(()=>{});
       throw e;
     }
   } catch(error) {
