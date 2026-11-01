@@ -76,3 +76,29 @@ export function planSourceWebsiteHandoff(candidates,{now=new Date()}={}){
    unsafe_dropped:unsafe,stale_or_future_dropped:expired,
    predge_unchanged:true,payments:0});
 }
+
+/** Fair, freshness-first selection for already-derived, source-neutral cards.
+ * Every category has an independent 12-card bound. Its four newest original
+ * releases are eligible on every sweep; deeper distinct 72h observations
+ * rotate without restarting at the head when busy feeds add new records.
+ * The caller must perform canonical D1 admission and independent readback.
+ */
+export function selectSourceWebsitePublicationCohort(lanes,now=Date.now()){
+ if(!Array.isArray(lanes)||lanes.length!==3||!Number.isFinite(now))
+  throw Error("SOURCE_WEBSITE_PUBLICATION_INPUT_INVALID");
+ const result=[],quarter=Math.floor(now/900_000);
+ for(let c=0;c<lanes.length;c++){
+  const lane=lanes[c];
+  if(!Array.isArray(lane)||lane.length>500||
+     lane.some(row=>!row||row.category!==CAT[c]||
+       typeof row.id!=="string"||typeof row.published_at!=="string"))
+   throw Error("SOURCE_WEBSITE_PUBLICATION_LANE_INVALID");
+  const newest=lane.slice(0,4);
+  const older=lane.slice(4);
+  const depthSlots=Math.min(12-newest.length,older.length);
+  result.push(...newest);
+  const offset=older.length?(quarter*8)%older.length:0;
+  for(let i=0;i<depthSlots;i++)result.push(older[(offset+i)%older.length]);
+ }
+ return result;
+}

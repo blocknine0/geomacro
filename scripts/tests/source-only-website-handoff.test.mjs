@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {planSourceWebsiteHandoff,SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY}
+import {planSourceWebsiteHandoff,selectSourceWebsitePublicationCohort,SOURCE_WEBSITE_HANDOFF_LIMIT_PER_CATEGORY}
  from "../lib/source-only-website-handoff.mjs";
 const now=new Date("2026-11-02T07:00:00.000Z");
 const row=(i,category="geopolitics",at="2026-11-02T06:00:00.000Z")=>({
@@ -91,4 +91,43 @@ test("even under 400 newer same-category originals, older still-native 72h items
  assert.ok(new Set([...first.rows,...second.rows].map(x=>x.article_url)).size>120);
  assert.equal(first.rows.filter(x=>x.category==="geopolitics").length,120);
  assert.ok(first.rows.every(x=>Date.parse(x.published_at)<=now.getTime()));
+});
+
+test("each domain publishes its newest four immediately while rotating eight older native IDs",()=>{
+ const categories=["geopolitics","macro","rare_earth"];
+ const lanes=categories.map((category,c)=>
+   Array.from({length:90},(_,i)=>({
+     id:category+"-"+(c*1000+i),category,
+     published_at:new Date(now.getTime()-(i+1)*60_000).toISOString()
+   })));
+ const first=selectSourceWebsitePublicationCohort(lanes,now.getTime());
+ const second=selectSourceWebsitePublicationCohort(lanes,now.getTime()+900_000);
+ for(const category of categories){
+   const original=lanes[categories.indexOf(category)];
+   const a=first.filter(x=>x.category===category);
+   const b=second.filter(x=>x.category===category);
+   assert.equal(a.length,12);
+   assert.equal(b.length,12);
+   assert.deepEqual(a.slice(0,4).map(x=>x.id),original.slice(0,4).map(x=>x.id));
+   assert.deepEqual(b.slice(0,4).map(x=>x.id),original.slice(0,4).map(x=>x.id));
+   assert.ok(new Set([...a,...b].map(x=>x.id)).size>12);
+ }
+ assert.equal(first.length,36);
+ assert.equal(new Set(first.map(x=>x.id)).size,36);
+ assert.throws(()=>selectSourceWebsitePublicationCohort([],now.getTime()),
+  /SOURCE_WEBSITE_PUBLICATION_INPUT_INVALID/);
+});
+test("official-derived selection is independently capped per category, never globally",()=>{
+ const publisher=readFileSync("scripts/ops/publish-source-only-website-derived.ts","utf8");
+ assert.match(publisher,/const officialSignals=CAT\.flatMap\(category=>/);
+ assert.match(publisher,/official\.filter\(row=>row\.category===category\)/);
+ assert.match(publisher,/selectSourceWebsitePublicationCohort\(lanes,Date\.now\(\)\)/);
+});
+
+test("real static readback runs even when the archive contains zero new IDs",()=>{
+ const workflow=readFileSync(".github/workflows/private-global-osint-15m.yml","utf8");
+ assert.match(workflow,/if: steps\.static-finds\.outcome == 'success'/);
+ assert.match(workflow,/verified_even_on_no_new_ids:true/);
+ assert.match(workflow,/GEOMACRO_STATIC_DEPLOY_NEEDED/);
+ assert.match(workflow,/geomacro-permanent-finds-archive\/data\//);
 });

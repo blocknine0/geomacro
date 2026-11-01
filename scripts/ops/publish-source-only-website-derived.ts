@@ -11,6 +11,7 @@ import {officialWebsiteCandidateFromOsint,isKnownOfficialWebsiteFeed,
  unverifiedWebsiteSignalFromOsint,publishPrivateOsintWebsiteSignals}
  from "../lib/private-osint-website-bridge.mjs";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
+import {selectSourceWebsitePublicationCohort} from "../lib/source-only-website-handoff.mjs";
 import {actorActionNewsObservation} from "../../src/lib/release-news-observation.ts";
 import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
 import {dedupeIntelligenceStories} from "../../src/lib/intelligence-news-dedupe.ts";
@@ -83,27 +84,27 @@ for(const row of document.rows){
   unverified.push(signal);counts[row.category].osint++;
  }
 }
-const officialSignals=deriveStatelessSignals(official,Date.now(),
- {websiteDelay:false,maxSignals:120})
- .filter(signal=>signal.status==="official_release_observed_unscored"&&
-   isConcretePublicIntelligence(signal));
+// deriveStatelessSignals caps the combined result at maxSignals. Calling it
+// once for all domains silently starved macro/minerals on geo-heavy sweeps.
+// Preserve an independent 120 native-dated upper bound for EACH category.
+const officialSignals=CAT.flatMap(category=>
+ deriveStatelessSignals(official.filter(row=>row.category===category),Date.now(),
+  {websiteDelay:false,maxSignals:120})
+   .filter(signal=>signal.status==="official_release_observed_unscored"&&
+     isConcretePublicIntelligence(signal)));
 const available=dedupeIntelligenceStories([...officialSignals,...unverified])
  .filter(row=>CAT.includes(row.category)&&
    Date.parse(row.published_at)<=Date.now()&&
    Date.parse(row.published_at)>Date.now()-72*3600_000)
  .sort((a,b)=>b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
 const lanes=CAT.map(c=>available.filter(s=>s.category===c));
-// A fixed newest-two lane would starve all deeper real source observations.
- // Rotate twelve immutable, source-native items per category every protected
- // fifteen-minute sweep. D1 dedupe additionally prevents double publication.
-const bounded=[];
-const quarter=Math.floor(Date.now()/900_000);
+// Maximize fresh delivery without starving older 72h source observations.
+// Keep four newest originals in each category, then rotate eight deeper IDs
+// per eligible 15-minute slot. Canonical D1 dedupe remains authoritative.
 const PER_CATEGORY_LIMIT=12;
-for(const lane of lanes){
- const count=Math.min(PER_CATEGORY_LIMIT,lane.length);
- const offset=lane.length?(quarter*PER_CATEGORY_LIMIT)%lane.length:0;
- for(let n=0;n<count;n++)bounded.push(lane[(offset+n)%lane.length]);
-}
+const bounded=selectSourceWebsitePublicationCohort(lanes,Date.now());
+if(bounded.length>CAT.length*PER_CATEGORY_LIMIT)
+ fail("PUBLICATION_QUOTA_BREACH");
 for(const row of bounded)counts[row.category].concrete++;
 // This is one very small derived D1 batch, only after the provider's separate
 // critical + research headroom admission. Nothing may use the source-only
