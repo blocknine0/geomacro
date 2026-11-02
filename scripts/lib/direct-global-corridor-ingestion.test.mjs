@@ -18,7 +18,7 @@ test("all 37 uploaded global / regional / chokepoint / mineral / crypto entries 
  assert.equal(CORRIDOR_ONLY_SOURCE_IDS.length,37);
  const sources=directGlobalCorridorRouteSources();
  assert.equal(sources.length,37);
- assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),38);
+ assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),39);
  assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
    x.website_intelligence_enabled===false&&x.commercial_eligible===false));
  assert.deepEqual(directGlobalCorridorNewsFeeds(),[]);
@@ -34,13 +34,15 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.schema,"geomacro.direct-corridor-source-intake.v2");
  assert.equal(result.source_count,37);
  assert.equal(result.source_checks.length,37);
- assert.equal(result.source_link_occurrences,38);
- assert.equal(result.unique_linked_sources,36);
+ assert.equal(result.source_link_occurrences,39);
+ assert.equal(result.unique_linked_sources,37);
  assert.equal(result.total_index_metadata_candidates,3);
  assert.deepEqual(result.candidate_corridors,["bab_el_mandeb"]);
- assert.equal(seen.length,11);
+ assert.equal(seen.length,12);
  assert.equal(result.source_checks.filter(s=>s.state==="NOT_A_NATIVE_FEED").length,6);
- assert.equal(result.source_checks.find(s=>s.id==="asean_customs_missing").state,"NO_SOURCE_LINK_PROVIDED");
+ assert.equal(result.source_checks.find(s=>s.id==="asean_customs").state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
+ assert.ok(seen.includes("https://asean.org/our-communities/economic-community/asean-customs/"));
+ assert.equal(result.missing_link_placeholders,0);
  assert.equal(result.channel,"CORRIDOR_ONLY");
  assert.equal(result.website_intelligence_writes,0);
  assert.equal(result.website_intelligence_enabled,false);
@@ -72,6 +74,7 @@ test("provider denial is visible but never retried or bypassed",async()=>{
   observeIndependent:async()=>({sources:[]})});
  assert.equal(result.source_checks.find(x=>x.id==="ukmto_incidents").state,"PROVIDER_UNAVAILABLE");
  assert.equal(result.source_checks.find(x=>x.id==="suez_navigation").state,"DENIED_NO_RETRY");
+ assert.equal(result.source_checks.find(x=>x.id==="asean_customs").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="coindesk_rss").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_API_AUTH_REQUIRED");
  assert.equal(result.website_intelligence_writes,0);
