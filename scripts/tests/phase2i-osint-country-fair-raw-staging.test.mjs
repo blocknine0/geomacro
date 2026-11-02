@@ -188,3 +188,38 @@ test("pinned Chile ministry issuer-only title receives provisional fair-D1 count
   [{...generic,issuerContextCountryIso3:null}],{now,derive});
  assert.equal(noMetadata.issuer_context_country_routing_count,0);
 });
+
+test("72h native-clock admission never wastes finite D1 quota on stale originals",()=>{
+ const india=PHASE2H_COUNTRIES_195.find(c=>c.iso3==="IND");
+ const fresh=cats.map((category,i)=>mk(india,category,300+i));
+ const expired=cats.map((category,i)=>({
+  ...mk(india,category,400+i),
+  publishedAt:"2026-10-23T10:00:00.000Z"
+ }));
+ const plan=planPhase2iOsintCountryFairRaw([...expired,...fresh],
+   {now,derive,maxRows:5});
+ assert.equal(plan.original_native_72h_expired,3);
+ assert.equal(plan.original_native_72h_eligible,3);
+ assert.equal(plan.available_originals,3);
+ assert.equal(plan.deferred_count,0);
+ assert.equal(plan.selected_count,3);
+ assert.deepEqual(plan.selected_by_category,
+   {geopolitics:1,macro:1,rare_earth:1});
+ assert.ok(plan.records.every(r=>
+   Date.parse(r.original.original_published_at)>=now.getTime()-72*3600_000));
+});
+test("native 72h cutoff is inclusive; unverified future-dated sources are excluded",()=>{
+ const india=PHASE2H_COUNTRIES_195.find(c=>c.iso3==="IND");
+ const boundary={...mk(india,"macro",525),
+   publishedAt:new Date(now.getTime()-72*3600_000).toISOString()};
+ const tooOld={...mk(india,"rare_earth",526),
+   publishedAt:new Date(now.getTime()-72*3600_000-1).toISOString()};
+ const future={...mk(india,"geopolitics",527),
+   publishedAt:new Date(now.getTime()+2*60_000).toISOString()};
+ const plan=planPhase2iOsintCountryFairRaw(
+   [boundary,tooOld,future],{now,derive,maxRows:3});
+ assert.equal(plan.selected_count,1);
+ assert.equal(plan.selected_by_category.macro,1);
+ assert.equal(plan.available_originals,1);
+ assert.ok(plan.invalid_dropped>=1);
+});
