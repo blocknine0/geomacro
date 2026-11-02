@@ -24,7 +24,7 @@ export async function publishGdeltRiskEventWideNet({
    throw Error("RG_GDELT_PRODUCTION_INPUT_INVALID");
  // Strictly bounded pinned ZIP: existing readArchive enforces GDELT host,
  // manifest clock, md5 and compressed/uncompressed byte limits.
- const {decoded,manifest,zipped}=await readArchive({now,kind:"events"});
+ const {decoded,manifest,zipped}=await readArchive({now,kind:"events",max404Fallbacks:4});
  if(typeof decoded!=="string"||!Buffer.isBuffer(zipped)||
    !manifest?.batch_at||manifest.expected_bytes!==zipped.length||
    createHash("md5").update(zipped).digest("hex")!==manifest.expected_md5)
