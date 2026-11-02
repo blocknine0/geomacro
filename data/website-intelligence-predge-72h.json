@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T12:01:16.289Z",
+  "checked_at": "2026-11-02T12:18:44.884Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 195,
+  "item_count": 193,
   "counts": {
-    "geopolitics": 86,
+    "geopolitics": 84,
     "macro": 78,
     "rare_earth": 31
   },
-  "source_native_ids_sha256": "052087b45c2d292da68c812540f64636b2a9d5de6ab20c64b45fba6a40712a89",
+  "source_native_ids_sha256": "be997f748e0de219788f9b655a4be211d32d61bed9b99536b8021d447021fb4d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3687,44 +3687,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T12:23:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b2c0ece0",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said conflict with Iran to end soon, Tehran &#x27;wants to talk&#x27;",
-      "what_changed": "A monitored source feed reports: Trump said conflict with Iran to end soon, Tehran &#x27;wants to talk&#x27;. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T12:08:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.haaretz.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6126d598",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Conflict With Iran to End Soon, Tehran 'Wants to Talk' - Haaretz",
-      "what_changed": "A monitored source feed reports: Trump said Conflict With Iran to End Soon, Tehran 'Wants to Talk' - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T12:08:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
