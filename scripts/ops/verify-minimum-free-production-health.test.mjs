@@ -127,6 +127,22 @@ test("real published older source is equivalent only for a trusted exact-head op
    merge_base_commit:{sha:site},ahead_by:3,behind_by:0,total_commits:3,
    commits:[{sha:"c".repeat(40)},{sha:"d".repeat(40)},{sha:main}],files};
  assert.equal(classifyPublishedSourceEquivalence(compare,site,main),true);
+ // These exact, reviewed publisher collectors run only in private GitHub
+ // source jobs. They cannot change the deployed site HTML/JS bundle.
+ const ingestionOnly=[
+  "config/private-osint-local-rss-candidates.v1.json",
+  "scripts/lib/phase2ib-fastlane-private-staging.mjs",
+  "scripts/lib/private-osint-15m-collector.mjs",
+  "scripts/lib/private-osint-country-rotation.mjs",
+  "scripts/lib/private-osint-global-hub-overlay.test.mjs",
+  "scripts/lib/private-osint-global-sources.test.mjs",
+  "scripts/lib/private-osint-local-publisher-rotation.mjs",
+  "scripts/lib/private-osint-local-publisher-rotation.test.mjs",
+  "scripts/lib/private-osint-official-priority-sources.test.mjs",
+  "scripts/lib/private-osint-retired-sources.test.mjs",
+ ];
+ assert.equal(classifyPublishedSourceEquivalence({...compare,files:[...files,
+  ...ingestionOnly.map(filename=>({filename,status:"modified"}))]},site,main),true);
  // A server-only module still changes the live API route and requires publish.
  assert.equal(classifyPublishedSourceEquivalence({...compare,files:[...files,
    {filename:"src/lib/free-derived-deep-health.server.ts",status:"modified"}]},site,main),false);
