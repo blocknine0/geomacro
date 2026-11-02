@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T10:48:44.635Z",
+  "checked_at": "2026-11-02T11:13:29.795Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -3155,44 +3155,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T11:20:56.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-02075654",
-      "category": "geopolitics",
-      "title": "Geomacro finds NAVA urged Kyrgyzstanis to strengthen wallet security after Binance attack",
-      "what_changed": "A monitored source feed reports: NAVA urged Kyrgyzstanis to strengthen wallet security after Binance attack. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T10:55:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: 24.kg"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-58531115",
-      "category": "rare_earth",
-      "title": "Geomacro finds EU extended $711 million MMG-Anglo nickel review - Mining.com.au",
-      "what_changed": "A monitored source feed reports: EU extended $711 million MMG-Anglo nickel review - Mining.com.au. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T10:50:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
