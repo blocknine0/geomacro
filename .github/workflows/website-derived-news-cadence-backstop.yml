@@ -179,6 +179,8 @@ jobs:
           node --check scripts/lib/news-self-healing-policy.mjs
           node --test scripts/lib/news-self-healing-policy.test.mjs
           node --test scripts/tests/news-backstop-static-publication.test.mjs
+          node --check scripts/ops/publish-permanent-derived-news-archive.mjs
+          node --test scripts/ops/publish-permanent-derived-news-archive.test.mjs
           node --check scripts/ops/verify-derived-news-public-readback.mjs
           node --test scripts/tests/derived-news-public-readback.test.mjs
           node --test scripts/tests/five-minute-news-cadence-watch.test.mjs
