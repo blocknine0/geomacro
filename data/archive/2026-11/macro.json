@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T08:55:32.096Z",
+  "updated_at": "2026-11-02T09:02:00.359Z",
   "signals": [
+    {
+      "id": "macro-40c5b65f",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised December Brent Oil Price Forecast to $105",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised December Brent Oil Price Forecast to $105. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c3388a85",
+      "category": "macro",
+      "title": "Geomacro finds Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3e5287c9",
+      "category": "macro",
+      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-872e385f",
       "category": "macro",
@@ -43,6 +100,158 @@
       "severity": null
     },
     {
+      "id": "macro-437a9db3",
+      "category": "macro",
+      "title": "Geomacro finds Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets",
+      "what_changed": "A monitored source feed reports: Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:18:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-67379542",
+      "category": "macro",
+      "title": "Geomacro finds Lim Guan Eng urged Penang govt to freeze tax hikes, scrutinise major projects",
+      "what_changed": "A monitored source feed reports: Lim Guan Eng urged Penang govt to freeze tax hikes, scrutinise major projects. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:05:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7502de60",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Hikes Oil-Price forecast on ‘Substantial’ Supply Risks - Bloomberg",
+      "what_changed": "A monitored source feed reports: Goldman Hikes Oil-Price forecast on ‘Substantial’ Supply Risks - Bloomberg. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0de3fd2d",
+      "category": "macro",
+      "title": "Geomacro finds BoJ said rate hikes are likely to ease inflation and support consumption - Newsquawk",
+      "what_changed": "A monitored source feed reports: BoJ said rate hikes are likely to ease inflation and support consumption - Newsquawk. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T05:24:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-799200cd",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T05:21:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-81bd96f9",
+      "category": "macro",
+      "title": "Geomacro finds ECG announced power outage in parts of Ashanti Region on November 3",
+      "what_changed": "A monitored source feed reports: ECG announced power outage in parts of Ashanti Region on November 3. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cbd45c73",
+      "category": "macro",
+      "title": "Geomacro finds VAST Ghana called for comprehensive excise tax reforms in 2027-2030 Budget Statement",
+      "what_changed": "A monitored source feed reports: VAST Ghana called for comprehensive excise tax reforms in 2027-2030 Budget Statement. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:39:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-180e009b",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised oil price forecasts, sees Brent upside at $140 a barrel - Zawya",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised oil price forecasts, sees Brent upside at $140 a barrel - Zawya. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-b4359940",
       "category": "macro",
       "title": "Geomacro finds Central Bank of Egypt raised key rates by 100 bps in first hike since March 2024 - TradingView",
@@ -52,6 +261,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T04:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b51a9b57",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised oil price forecasts, sees Brent upside at US$140 a barrel - NST Online",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised oil price forecasts, sees Brent upside at US$140 a barrel - NST Online. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:12:47.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
