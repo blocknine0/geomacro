@@ -6,6 +6,12 @@ on:
   schedule:
     - cron: "11 3 * * *"
   workflow_dispatch: {}
+  # Verify the repaired daily census once after the workflow changes on main.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/private-osint-585-census-daily.yml"
+      - "scripts/tests/private-osint-census-workflow-contract.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/private-osint-585-census-daily.yml"
@@ -20,6 +26,7 @@ on:
       - "scripts/lib/private-osint-mineral-first-party-sources.test.mjs"
       - "scripts/ops/build-mineral-national-portal-repair.mjs"
       - "scripts/tests/mineral-national-portal-repair.test.mjs"
+      - "scripts/tests/private-osint-census-workflow-contract.test.mjs"
 
 permissions:
   contents: read
@@ -46,13 +53,14 @@ jobs:
           node --check scripts/ops/build-native-country-repair-worklist.mjs
           node --check scripts/ops/build-revenue-source-demand-195x3.mjs
           node --check scripts/ops/build-mineral-national-portal-repair.mjs
+          node --test scripts/tests/private-osint-census-workflow-contract.test.mjs
 
   census:
     needs: offline-contract
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -77,7 +85,6 @@ jobs:
           node scripts/ops/build-revenue-source-demand-195x3.mjs \
             /tmp/geomacro-private-osint-native-gap-worklist.json \
             /tmp/geomacro-revenue-source-demand-195x3.json
-            /tmp/geomacro-mineral-national-portal-repair.json
       - name: Qualify 20 priority mining jurisdictions against measured native feed evidence
         run: |
           node scripts/ops/build-mineral-national-portal-repair.mjs \
@@ -93,5 +100,6 @@ jobs:
             /tmp/geomacro-private-osint-live-coverage.json
             /tmp/geomacro-private-osint-native-gap-worklist.json
             /tmp/geomacro-revenue-source-demand-195x3.json
+            /tmp/geomacro-mineral-national-portal-repair.json
           if-no-files-found: warn
           retention-days: 7
