@@ -30,6 +30,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1298,6 +1299,25 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
+    // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
+    // Successful generated snapshots are immutable per UTC day.
+    if(env?.DB?.prepare){
+      const minute=utc.getUTCHours()*60+utc.getUTCMinutes();
+      if(minute>=300&&minute<495||minute>=500&&minute<512)
+        ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
+          .then(r=>{if(!r.ok)console.error("UNIFIED_195X3_GENERATION_DEFERRED")})
+          .catch(()=>console.error("UNIFIED_195X3_GENERATION_DEFERRED")));
+      if(utc.getUTCMinutes()%15===10&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+        ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
+          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")})
+          .catch(()=>console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")));
+      if(utc.getUTCHours()===8&&utc.getUTCMinutes()===35&&
+         env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+        ctx.waitUntil(cleanupUnifiedRiskSupabase(env,{now:utc.getTime()})
+          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")})
+          .catch(()=>console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")));
+    }
     // D1-first daily 06 UTC, two of twelve corridors per 5-minute slot.
     // Slots repeat after 30 minutes to retry interrupted batches for free-tier CPU.
     if(utc.getUTCHours()===6&&utc.getUTCMinutes()%5===0&&env?.DB?.prepare)
@@ -1457,6 +1477,8 @@ export default {
     // Distinct risk-gate credential and D1 quota; never inherit root admin auth.
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
+    if(url.pathname==="/v1/risk-gate/unified/evaluate")
+      return unifiedRiskGateEvaluate(request,env);
     if(url.pathname==="/v1/risk-gate/tiered/evaluate")
       return controlledRiskGateEvaluate(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/risk-gate/tiered/daily")
