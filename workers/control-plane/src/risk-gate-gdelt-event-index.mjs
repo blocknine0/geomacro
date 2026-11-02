@@ -196,7 +196,7 @@ export async function readPrivateRiskGateGdeltContinuity(env,now=Date.now()){
 export async function readPrivateRiskGateGdeltBatchReceipt(env,query=new URLSearchParams()){
  const raw=query.get("batch_at");
  if(!raw||query.size!==1||
-   !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(raw)||
+   !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(raw)||
    !Number.isFinite(Date.parse(raw)))
   return respond({ok:false,error:"RG_GDELT_BATCH_ID_INVALID"},400);
  if(!env?.DB?.prepare)
