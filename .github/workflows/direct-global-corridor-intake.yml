@@ -18,6 +18,9 @@ on:
       - "scripts/lib/corridor-official-reference-adapters.test.mjs"
       - "scripts/lib/corridor-official-reference-d1.test.mjs"
       - "scripts/lib/direct-corridor-native-news.test.mjs"
+      - "scripts/lib/corridor-native-article-verification.mjs"
+      - "scripts/lib/corridor-native-article-verification.test.mjs"
+      - "scripts/ops/verify-private-corridor-article-evidence.mjs"
       - "scripts/ops/ingest-direct-global-corridors.mjs"
       - "scripts/ops/publish-private-corridor-native-news.mjs"
       - "scripts/ops/publish-private-corridor-official-references.mjs"
@@ -69,6 +72,8 @@ jobs:
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
           node --check scripts/lib/direct-corridor-native-news.mjs
+          node --check scripts/lib/corridor-native-article-verification.mjs
+          node --check scripts/ops/verify-private-corridor-article-evidence.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
           node --check scripts/lib/corridor-credential-context.mjs
           node --check workers/control-plane/src/corridor-official-reference.mjs
@@ -79,6 +84,7 @@ jobs:
           node --test scripts/lib/direct-global-corridor-sources.test.mjs
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
           node --test scripts/lib/direct-corridor-native-news.test.mjs
+          node --test scripts/lib/corridor-native-article-verification.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
           node --test scripts/lib/corridor-official-reference-adapters.test.mjs
           node --test scripts/lib/corridor-credential-context.test.mjs
@@ -119,6 +125,10 @@ jobs:
           }
           node scripts/ops/publish-private-corridor-native-news.mjs
           node scripts/ops/publish-private-corridor-official-references.mjs
+      - name: Independently screen D1-acknowledged native article evidence without extra D1 reads
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-private-corridor-article-evidence.mjs
       - name: Upload separate bounded corridor receipt
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
@@ -129,5 +139,6 @@ jobs:
             artifacts/direct-corridor-intake/d1-readback.json
             artifacts/direct-corridor-intake/official-references.json
             artifacts/direct-corridor-intake/official-d1-readback.json
+            artifacts/direct-corridor-intake/article-evidence-screen.json
           if-no-files-found: error
           retention-days: 3
