@@ -5,7 +5,7 @@
  * This archive does NOT constitute per-original D1 admission or customer rights.
  * No source article URLs/titles, plaintext or encryption root are logged.
  */
-import {createHash} from "node:crypto";
+import {createHash,createHmac} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {mkdtempSync,readFileSync,rmSync,mkdirSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -15,7 +15,7 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2iSourceB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 import {PHASE2I_BACKLOG_ARTIFACT,selectPrivatePhase2iBacklogArtifact,
- unsealPrivatePhase2iSourceBacklog} from "../lib/phase2i-encrypted-source-backlog.mjs";
+ unsealPrivatePhase2iSourceBacklog,sealPrivatePhase2iSourceBacklog} from "../lib/phase2i-encrypted-source-backlog.mjs";
 
 export const PHASE2I_B2_PREFIX="geomacro-evidence/v1/private/phase2i-source-queue/";
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
@@ -40,9 +40,16 @@ export function buildPhase2iCiphertextB2Object({
   counts[row.category]++;
   if(row.d1Acknowledged===true)d1Acknowledged++;
  }
- // This object contains exactly the original authenticated AEAD queue;
- // the derived five-part content is not fabricated and no source URL leaks.
- const bytes=Buffer.from(JSON.stringify(envelope)+"\n","utf8");
+ // Store only the current eligible native-dated subset. Otherwise a six-hour
+ // lag could re-archive originals expired since the Actions snapshot.
+ // Domain-separated deterministic nonce keeps an exact retry content-addressed
+ // while different authenticated source snapshots receive different nonces.
+ const nonce=createHmac("sha256",root)
+  .update("geomacro.phase2i-b2-reseal.v1\n")
+  .update(envelope.ciphertext).digest().subarray(0,12);
+ const current=sealPrivatePhase2iSourceBacklog({
+  candidates:restored.candidates,root,now:now.getTime(),nonce});
+ const bytes=Buffer.from(JSON.stringify(current)+"\n","utf8");
  if(bytes.length>6_500_000)fail("ENVELOPE_TOO_LARGE");
  const digest=sha(bytes);
  const date=now.toISOString().slice(0,10).replaceAll("-","/");
