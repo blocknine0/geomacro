@@ -16,8 +16,12 @@ const hash=async s=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-25
 const hex=/^[a-f0-9]{64}$/;
 const safeHost=s=>{try{const u=new URL(s);return u.protocol==="https:"?u.hostname.toLowerCase().replace(/^www\./,""):""}catch{return ""}};
 const reply=(body,status=200)=>Response.json(body,{status,headers:{"Cache-Control":"private, no-store","Vary":"Authorization","X-Content-Type-Options":"nosniff"}});
+// Optional Taiwan on-demand target; canonical scheduled 195 remains unchanged.
+const SUPPLEMENTARY_COUNTRY_TARGETS=Object.freeze({
+ TWN:Object.freeze({iso3:"TWN",iso2:"TW",name:"Taiwan",aliases:["Taiwan"]})
+});
 function registry(type,id){
- if(type==="COUNTRY")return phase2hCountry(id);
+ if(type==="COUNTRY")return phase2hCountry(id)??SUPPLEMENTARY_COUNTRY_TARGETS[id]??null;
  if(type==="CORRIDOR")return DAILY_RG_CORRIDORS.find(x=>x.id===id)??null;
  return null;
 }
@@ -82,7 +86,8 @@ async function d1Observed(env,target,cat,now){
   try{
    const v=JSON.parse(x.raw_json),o=v.original;
    if(v.record_id!==x.record_id||v.raw_sha256!==x.raw_sha256||
-     phase2hHeadlineCountryCandidate(o.original_title)!==target.id||
+     !(target.id==="TWN"?/\btaiwan\b/i.test(o.original_title):
+       phase2hHeadlineCountryCandidate(o.original_title)===target.id)||
      o.original_published_at!==x.original_published_at||!safeHost(o.original_url))continue;
    out.push({id:x.record_id,source_id:o.original_source_id,url:o.original_url,
     title_hash:await hash(o.original_title.normalize("NFKC").trim().toLowerCase()),
