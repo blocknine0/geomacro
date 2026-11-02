@@ -115,3 +115,30 @@ test("DOCTYPE, spoofed XML and disallowed publisher routes do not ingest items",
  await assert.rejects(()=>collectDirectCorridorNativeNews({sources:[
   {...sources[0],channel:"WEBSITE_INTELLIGENCE"}],now}),/CORRIDOR_NATIVE_NEWS_INPUT_INVALID/);
 });
+
+test("cross-feed same original article URL is deduplicated despite native clock differences",async()=>{
+ const sameHost=[sources[0],{...sources[0],id:"boe_speeches_official",
+   url:"https://www.bankofengland.co.uk/rss/speeches"}];
+ const original="https://www.bankofengland.co.uk/news/2026/november/rates";
+ const out=await collectDirectCorridorNativeNews({sources:sameHost,now,
+   fetchImpl:async url=>new Response(rss([item(
+      "Bank of England updates rate guidance",original,
+      url.includes("speeches")?"Mon, 02 Nov 2026 01:50:00 GMT":
+      "Mon, 02 Nov 2026 01:45:00 GMT")]))
+ });
+ assert.equal(out.candidate_count,1);
+ assert.equal(out.source_checks[1].duplicate_records,1);
+ assert.equal(out.news_candidates[0].source_id,"boe_news");
+ assert.equal(out.news_candidates[0].original_article_verified,false);
+ assert.equal(out.news_candidates[0].independent_corroboration_verified,false);
+});
+test("different original publishers or URLs are not merged just for a similar headline",async()=>{
+ const headline="Central banks update monetary policy outlook";
+ const a="https://www.bankofengland.co.uk/news/2026/november/rates";
+ const b="https://www.coindesk.com/business/central-bank-rates";
+ const out=await collectDirectCorridorNativeNews({sources,now,fetchImpl:async url=>
+  new Response(rss([item(headline,url.includes("bankofengland")?a:b)]))});
+ assert.equal(out.candidate_count,2);
+ assert.equal(new Set(out.news_candidates.map(x=>x.article_url)).size,2);
+ assert.ok(out.news_candidates.every(x=>x.original_article_verified===false));
+});
