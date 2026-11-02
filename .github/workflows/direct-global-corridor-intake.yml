@@ -13,6 +13,8 @@ on:
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
+      - "scripts/lib/corridor-credential-context.mjs"
+      - "scripts/lib/corridor-credential-context.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.test.mjs"
       - "scripts/lib/corridor-official-reference-d1.test.mjs"
       - "scripts/lib/direct-corridor-native-news.test.mjs"
@@ -32,6 +34,8 @@ on:
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
+      - "scripts/lib/corridor-credential-context.mjs"
+      - "scripts/lib/corridor-credential-context.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.test.mjs"
       - "scripts/lib/corridor-official-reference-d1.test.mjs"
       - "scripts/lib/direct-corridor-native-news.test.mjs"
@@ -66,6 +70,7 @@ jobs:
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
           node --check scripts/lib/direct-corridor-native-news.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
+          node --check scripts/lib/corridor-credential-context.mjs
           node --check workers/control-plane/src/corridor-official-reference.mjs
           node --check scripts/ops/publish-private-corridor-official-references.mjs
           node --check scripts/ops/ingest-direct-global-corridors.mjs
@@ -76,6 +81,7 @@ jobs:
           node --test scripts/lib/direct-corridor-native-news.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
           node --test scripts/lib/corridor-official-reference-adapters.test.mjs
+          node --test scripts/lib/corridor-credential-context.test.mjs
           node --test scripts/lib/corridor-official-reference-d1.test.mjs
   source-intake:
     needs: contracts
@@ -95,6 +101,10 @@ jobs:
         with:
           node-version: "24"
       - name: Collect independent corridor source evidence only
+        env:
+          GEOMACRO_FRED_API_KEY: ${{ secrets.GEOMACRO_FRED_API_KEY }}
+          GEOMACRO_RELIEFWEB_APPNAME: ${{ secrets.GEOMACRO_RELIEFWEB_APPNAME }}
+          GEOMACRO_CRYPTOCOMPARE_API_KEY: ${{ secrets.GEOMACRO_CRYPTOCOMPARE_API_KEY }}
         run: |
           set -euo pipefail
           node scripts/ops/ingest-direct-global-corridors.mjs
