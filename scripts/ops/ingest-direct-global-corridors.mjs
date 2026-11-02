@@ -22,7 +22,7 @@ export async function runDirectCorridorIntake({
     receipt.supabase_writes!==0||receipt.chargeable!==false)
    throw Error("DIRECT_CORRIDOR_OUTPUT_BOUNDARY_INVALID");
  // Fail closed if any candidate breaks publisher provenance, age or isolation.
- if(receipt.native_news_sources_polled!==9||
+ if(receipt.native_news_sources_polled!==10||
     !Number.isSafeInteger(receipt.news_candidate_count)||
     receipt.news_candidate_count<0||receipt.news_candidate_count>160||
     receipt.news_candidate_count!==receipt.news_candidates?.length||

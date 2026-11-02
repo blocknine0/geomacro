@@ -32,6 +32,19 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   event_verified:false,commercial_eligible:false
  }),
  Object.freeze({
+  // Independent first-party alternative while USGS minerals endpoint is denied.
+  // This is US DOE's own news, not a mirror of USGS or an incident verifier.
+  id:"doe_official_critical_materials_news",
+  original_registry_source_id:"usgs_mcs",
+  independent_alternative_for:"usgs_official_minerals_news",
+  url:"https://www.energy.gov/rss/energygov/2193718",
+  format:"rss",state:"POLL_DIRECT_FEED",
+  channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+  categories:Object.freeze(["rare_earth"]),
+  corridors:Object.freeze(["global"]),
+  event_verified:false,commercial_eligible:false
+ }),
+ Object.freeze({
   id:"rbi_official_press_releases",
   original_registry_source_id:"rbi_releases",
   url:"https://www.rbi.org.in/pressreleases_rss.xml",
@@ -44,7 +57,7 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
 ]);
 export function assertDirectCorridorSupplementalNativeFeeds(){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length!==3)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length!==4)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
  for(const s of DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS){
   const original=originals.get(s.original_registry_source_id);
@@ -56,9 +69,12 @@ export function assertDirectCorridorSupplementalNativeFeeds(){
   const u=new URL(s.url);
   if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash)
    throw Error("CORRIDOR_SUPPLEMENT_URL_INVALID");
-  // Three pinned original official publisher endpoints; no mirrors.
+  // Four pinned original official publisher endpoints; no mirrors.
   if((s.id==="wto_official_news"&&u.hostname!=="www.wto.org")||
      (s.id==="usgs_official_minerals_news"&&u.hostname!=="www.usgs.gov")||
+     (s.id==="doe_official_critical_materials_news"&&
+      (u.href!=="https://www.energy.gov/rss/energygov/2193718"||
+       s.independent_alternative_for!=="usgs_official_minerals_news"))||
      (s.id==="rbi_official_press_releases"&&u.hostname!=="www.rbi.org.in"))
    throw Error("CORRIDOR_SUPPLEMENT_PUBLISHER_INVALID");
   seen.add(s.id);

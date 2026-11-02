@@ -12,6 +12,7 @@ const PUBLISHERS=Object.freeze({
  cointelegraph_rss:["https://cointelegraph.com/rss",["geopolitics","macro"]],
  wto_official_news:["https://www.wto.org/library/rss/latest_news_e.xml",["geopolitics","macro"]],
  usgs_official_minerals_news:["https://www.usgs.gov/news/minerals/feed",["rare_earth"]],
+ doe_official_critical_materials_news:["https://www.energy.gov/rss/energygov/2193718",["rare_earth"]],
  rbi_official_press_releases:["https://www.rbi.org.in/pressreleases_rss.xml",["macro"]]
 });
 const ROUTES=new Set(["strait_of_hormuz","bab_el_mandeb","suez_canal","panama_canal",
