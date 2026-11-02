@@ -112,7 +112,7 @@ export async function publishCanonicalRiskGateSourcePacks({
    headers:{"Authorization":bearer},signal:AbortSignal.timeout(15000)
   });}catch{throw Error("RG_CANONICAL_D1_NETWORK_UNAVAILABLE")}
   if(res.status===200)break;
-  if(![404,503].includes(res.status)||attempt===4)
+  if(![404,405,503].includes(res.status)||attempt===4)
    throw Error("RG_CANONICAL_D1_POST_HTTP_"+res.status);
   await new Promise(done=>setTimeout(done,(attempt+1)*5000));
  }
