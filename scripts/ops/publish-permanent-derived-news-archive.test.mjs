@@ -261,4 +261,87 @@ describe("permanent derived-only website archive",()=>{
   await assert.rejects(()=>publishPermanentDerivedNewsArchive({...p,fetchImpl:failD1,now:NOW}),
     /PERMANENT_ARCHIVE_MONTH_INVALID/);
  });
+
+ it("quota-approved canonical D1 catch-up appends missing originals without rewriting publication time",async()=>{
+  const p=temp();
+  const indexPath=join(p.archiveDir,"data/index.json");
+  const index=JSON.parse(readFileSync(indexPath,"utf8"));
+  index.seed_complete=true;
+  writeFileSync(indexPath,JSON.stringify(index));
+  writeCandidates(p.candidatePath,[]);
+  const originals=[
+   signal("1234abcd","2026-10","geopolitics"),
+   signal("5678abcd","2026-10","rare_earth"),
+  ];
+  let canonicalReads=0;
+  const fetchImpl=async url=>{
+   if(!url.includes("/v1/public/website-derived-news-immediate"))
+     return new Response("",{status:404});
+   canonicalReads++;
+   return Response.json({
+    ok:true,schema:"geomacro.website-derived-news-feed.v1",
+    checked_at:new Date(NOW).toISOString(),
+    original_release_delay_minutes:0,retention_days:3,retention_hours:72,
+    delivery_scope:"free_website_only",signals:originals,
+    page_offset:0,page_size:250,has_more:false,next_offset:null
+   });
+  };
+  const first=await publishPermanentDerivedNewsArchive({
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+  });
+  assert.equal(canonicalReads,1);
+  assert.equal(first.canonical_d1_catchup_requested,true);
+  assert.equal(first.canonical_d1_catchup_completed,true);
+  assert.equal(first.canonical_d1_new_originals,2);
+  assert.equal(first.new_signals_added,2);
+  assert.equal(first.seed_completed_this_run,false);
+  assert.equal(first.total_signals,2);
+  const live=JSON.parse(readFileSync(join(p.archiveDir,"data/latest.json"),"utf8"));
+  assert.deepEqual(new Set(live.signals.map(x=>x.id)),
+   new Set(originals.map(x=>x.id)));
+  assert.deepEqual(new Set(live.signals.map(x=>x.published_at)),
+   new Set(originals.map(x=>x.published_at)));
+  const again=await publishPermanentDerivedNewsArchive({
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+  });
+  assert.equal(again.new_signals_added,0);
+  assert.equal(again.canonical_d1_new_originals,0);
+  assert.equal(again.total_signals,2);
+ });
+ it("with quota held, canonical D1 is not read and the static archive still publishes",async()=>{
+  const p=temp();
+  const indexPath=join(p.archiveDir,"data/index.json");
+  const index=JSON.parse(readFileSync(indexPath,"utf8"));
+  index.seed_complete=true;
+  writeFileSync(indexPath,JSON.stringify(index));
+  writeCandidates(p.candidatePath,[signal("1234abcd")]);
+  let d1Calls=0;
+  const fetchImpl=async url=>{
+   if(url.includes("/v1/public/website-derived-news-immediate"))d1Calls++;
+   return new Response("",{status:503});
+  };
+  const held=await publishPermanentDerivedNewsArchive({
+   ...p,fetchImpl,now:NOW,canonicalCatchup:false
+  });
+  assert.equal(d1Calls,0);
+  assert.equal(held.canonical_d1_catchup_requested,false);
+  assert.equal(held.new_signals_added,1);
+  assert.equal(held.total_signals,1);
+  const attempted=await publishPermanentDerivedNewsArchive({
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+  });
+  assert.equal(d1Calls,1);
+  assert.equal(attempted.canonical_d1_catchup_requested,true);
+  assert.equal(attempted.canonical_d1_catchup_completed,false);
+  assert.equal(attempted.new_signals_added,0);
+  assert.equal(attempted.total_signals,1);
+ });
+ it("backstop enables canonical D1 recovery only after a positive research quota grant",()=>{
+  const workflow=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
+  assert.match(workflow,/GEOMACRO_CANONICAL_D1_CATCHUP:.*needs\\.quota-admission\\.outputs\\.research == 'true'/u);
+  const publisher=readFileSync("scripts/ops/publish-permanent-derived-news-archive.mjs","utf8");
+  assert.match(publisher,/canonicalCatchup:process\\.env\\.GEOMACRO_CANONICAL_D1_CATCHUP==="true"/u);
+  assert.match(publisher,/canonical_d1_catchup_completed:canonicalCatchupCompleted/u);
+ });
+
 });
