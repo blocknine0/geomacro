@@ -74,7 +74,9 @@ test("current CCData uppercase article schema yields actual five-part candidate"
  let fetches=0;
  const out=await collectCredentialCorridorContext({
   now:minuteLate,forceCryptoNews:true,
-  keys:{GEOMACRO_CRYPTOCOMPARE_API_KEY:"z".repeat(40)},
+  keys:{GEOMACRO_CRYPTOCOMPARE_API_KEY:"z".repeat(40),
+   GEOMACRO_FRED_API_KEY:"a".repeat(32),
+   GEOMACRO_RELIEFWEB_APPNAME:"GeomacroCorridor_2026_a"},
   observeReliefWeb:async()=>{throw Error("OTHER_PROVIDER_QUOTA_MUST_BE_SKIPPED");},
   fetchImpl:async(url)=>{
    fetches++;assert.match(url,/cryptocompare\.com/u);
