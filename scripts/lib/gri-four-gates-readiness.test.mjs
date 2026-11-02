@@ -140,6 +140,22 @@ test("actual current signed GRI D1 and exact-parent indices independently pass",
   assert.equal(f.calls.length,2);
   assert.equal(JSON.stringify(result).includes("payload_json"),false);
 });
+test("synthetic parent-linked risk indices without signed category projections cannot pass",async()=>{
+  const p=signedParent(),incomplete=child(p);
+  const value=JSON.parse(incomplete.payload_json);
+  delete value.data.indices;
+  delete value.data.contractVersion;
+  incomplete.payload_json=JSON.stringify(value);
+  incomplete.payload_sha256=sha(incomplete.payload_json);
+  const f=mock({parent:p,indices:incomplete});
+  const verdict=await reportGriFourGates({
+    worklist:worklist(),env:{},now:NOW,fetchImpl:f.fetchImpl,
+  });
+  assert.equal(verdict.current_numerical_gri_v12_product_verified,true);
+  assert.equal(verdict.current_risk_indices_exact_parent_verified,false);
+  assert.equal(verdict.risk_indices_repair_eligible,true);
+  assert.equal(verdict.paid_delivery_authorized,false);
+});
 test("verified GRI parent with expired indices reports eligible repair, not completed",async()=>{
   const p=signedParent(),bad=child(p);bad.expires_at=new Date(NOW.getTime()-1000).toISOString();
   const f=mock({parent:p,indices:bad});
