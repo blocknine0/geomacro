@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T15:54:29.252Z",
+  "checked_at": "2026-11-02T15:56:47.445Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 220,
+  "item_count": 221,
   "counts": {
     "geopolitics": 98,
     "macro": 87,
-    "rare_earth": 35
+    "rare_earth": 36
   },
-  "source_native_ids_sha256": "6a9269c777b919293460af378b0cf84558921e10413c21a6b4c882d9f2b5b916",
+  "source_native_ids_sha256": "06520768e8226a72768797cdb1fb1d5b71a8746c3df52d1c7eb69088b3bd5bd4",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-fdf76bdb",
+      "category": "rare_earth",
+      "title": "Geomacro finds GIADEC and RUSAL agreed to build and jointly operate a bauxite-to-alumina refinery in Ghana",
+      "what_changed": "A monitored source feed reports: GIADEC and RUSAL agreed to build and jointly operate a bauxite-to-alumina refinery in Ghana. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T15:43:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-ec3ce4a5",
       "category": "macro",
@@ -119,6 +138,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4c94d29d",
+      "category": "macro",
+      "title": "Geomacro finds Platts launched India 1718 Steam Basmati rice price assessment Nov. 2 - S&P Global",
+      "what_changed": "A monitored source feed reports: Platts launched India 1718 Steam Basmati rice price assessment Nov. 2 - S&P Global. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:31:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4187,25 +4225,6 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8f9720d4",
-      "category": "macro",
-      "title": "Geomacro finds Poland approved first fast-track renewable energy zones",
-      "what_changed": "A monitored source feed reports: Poland approved first fast-track renewable energy zones. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T15:56:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: notesfrompoland.com"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
