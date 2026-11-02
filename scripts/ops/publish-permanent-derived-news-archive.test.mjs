@@ -281,15 +281,16 @@ describe("permanent derived-only website archive",()=>{
   ];
   let canonicalReads=0;
   const fetchImpl=async url=>{
-   if(!url.includes("/v1/public/website-derived-news-immediate"))
+   if(!url.includes("/v1/public/website-derived-news-bundle"))
      return new Response("",{status:404});
    canonicalReads++;
    return Response.json({
-    ok:true,schema:"geomacro.website-derived-news-feed.v1",
+    ok:true,schema:"geomacro.website-derived-news-bundle.v1",
     checked_at:new Date(NOW).toISOString(),
     original_release_delay_minutes:0,retention_days:3,retention_hours:72,
-    delivery_scope:"free_website_only",signals:originals,
-    page_offset:0,page_size:250,has_more:false,next_offset:null
+    delivery_scope:"free_website_only",complete:true,item_cap:600,
+    returned_rows:originals.length,signals:originals,
+    scored:false,chargeable:false,supabase_dependency:false
    });
   };
   const first=await publishPermanentDerivedNewsArchive({
@@ -325,7 +326,7 @@ describe("permanent derived-only website archive",()=>{
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
   let d1Calls=0;
   const fetchImpl=async url=>{
-   if(url.includes("/v1/public/website-derived-news-immediate"))d1Calls++;
+   if(url.includes("/v1/public/website-derived-news-bundle"))d1Calls++;
    return new Response("",{status:503});
   };
   const held=await publishPermanentDerivedNewsArchive({
@@ -343,6 +344,28 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(attempted.canonical_d1_catchup_completed,false);
   assert.equal(attempted.new_signals_added,0);
   assert.equal(attempted.total_signals,1);
+ });
+ it("incomplete or stale canonical bundle never declares catchup verified",async()=>{
+  const p=temp();
+  const indexPath=join(p.archiveDir,"data/index.json");
+  const idx=JSON.parse(readFileSync(indexPath,"utf8"));
+  idx.seed_complete=true;
+  writeFileSync(indexPath,JSON.stringify(idx));
+  writeCandidates(p.candidatePath,[signal("1234abcd")]);
+  const invalid=await publishPermanentDerivedNewsArchive({
+   ...p,now:NOW,canonicalCatchup:true,
+   fetchImpl:async()=>Response.json({
+    ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+    checked_at:new Date(NOW).toISOString(),complete:false,item_cap:600,
+    returned_rows:0,signals:[],retention_days:3,retention_hours:72,
+    original_release_delay_minutes:0,delivery_scope:"free_website_only",
+    scored:false,chargeable:false,supabase_dependency:false
+   })
+  });
+  assert.equal(invalid.canonical_d1_catchup_requested,true);
+  assert.equal(invalid.canonical_d1_catchup_completed,false);
+  assert.equal(invalid.new_signals_added,1);
+  assert.equal(invalid.total_signals,1);
  });
  it("backstop enables canonical D1 recovery only after a positive research quota grant",()=>{
   const workflow=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
