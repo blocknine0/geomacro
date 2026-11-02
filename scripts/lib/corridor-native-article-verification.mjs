@@ -3,7 +3,9 @@
  * Bounded on purpose: a native RSS permalink is NOT a verified event.
  * Strong route evidence requires an article-body route/action/IMO co-mention,
  * with the same specific vessel IMO, corridor and action from another issuer.
- * Even corroborated metadata is not signed evidence or commercial authorization.
+ * Earliest native publisher release is the operational reference event clock,
+ * NOT a verified physical occurrence time. Raw source material is used transiently
+ * to derive structured facts, never directly republished or stored.
  * Publisher article bodies are processed ephemerally, NEVER persisted/logged.
  */
 import {createHash} from "node:crypto";
@@ -147,11 +149,29 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
  let corroborated=0,articleBodies=0,routeEvidence=0,bodyRouteMentions=0;
  const items=gathered.map(({candidate,result})=>{
   if(result.state==="ARTICLE_BODY_READ")articleBodies++;
-  const pair=(result.observations||[]).filter(o=>{
-   const refs=matched.get(o.key)||[];
-   return refs.some(x=>x.source_id!==candidate.source_id&&
-     Math.abs(x.published-Date.parse(candidate.published_at))<=36*3600000);
+  // Match only the SAME route, action and vessel. Do not inherit an older
+  // timestamp from another event, unrelated source, or a different ship.
+  const candidateClock=Date.parse(candidate.published_at);
+  const reportGroups=(result.observations||[]).map(o=>{
+   const supporting=(matched.get(o.key)||[]).filter(x=>
+     Math.abs(x.published-candidateClock)<=36*3600000);
+   const issuers=new Set(supporting.map(x=>x.source_id));
+   return {route_id:o.route,action:o.action,
+    vessel_token_hash:o.vessel_token_hash,
+    independent_issuer_count:issuers.size,
+    independent_report_match:[...issuers].some(x=>x!==candidate.source_id),
+    earliest_publisher_publication_at:new Date(Math.min(candidateClock,
+      ...supporting.map(x=>x.published))).toISOString(),
+    reference_time_kind:"EARLIEST_OBSERVED_PUBLICATION_PROXY",
+    physical_occurrence_time_verified:false,
+    source_evidence_kind:"TRANSIENT_PUBLISHER_ARTICLE_BODY",
+    // These are *extracted observations*, not a signed event or risk grade.
+    impact_metric_verified:false};
   });
+  const pair=reportGroups.filter(x=>x.independent_report_match);
+  const referenceClock=pair.length
+   ?Math.min(...pair.map(x=>Date.parse(x.earliest_publisher_publication_at)))
+   :candidateClock;
   if((result.observations||[]).length)routeEvidence++;
   if((result.route_mentions||[]).length)bodyRouteMentions++;
   if(pair.length)corroborated++;
@@ -161,6 +181,19 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
      (result.route_mentions||[]).length?"ARTICLE_ROUTE_CONTEXT_ONLY":result.state,
    article_body_read:result.state==="ARTICLE_BODY_READ",
    route_context_ids:result.route_mentions||[],
+   // Operational reference timestamp is the earliest observed publication
+   // among the independently matched reports; otherwise this sole publisher.
+   event_reference_at:new Date(referenceClock).toISOString(),
+   event_reference_time_basis:pair.length
+    ?"EARLIEST_CORROBORATING_PUBLICATION"
+    :"EARLIEST_OBSERVED_PUBLICATION_PROXY_SINGLE_SOURCE",
+   physical_occurrence_time_verified:false,
+   // Structured extracted facts from raw transient bodies, no republished text.
+   structured_evidence:reportGroups,
+   extracted_context_class:pair.length?"CORROBORATED_PUBLISHER_REPORT":
+    (result.observations||[]).length?"SINGLE_PUBLISHER_ROUTE_REPORT":
+    (result.route_mentions||[]).length?"ROUTE_MENTION_ONLY":"NO_ROUTE_EVIDENCE",
+   raw_article_used_for_structuring:result.state==="ARTICLE_BODY_READ",
    independent_report_match:pair.length>0,
    event_verified:false,corridor_impact_verified:false,
    signed_gro_verified:false,commercial_rights_verified:false,
@@ -175,6 +208,7 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
   route_clause_observed:routeEvidence,
   independent_vessel_route_matches:corroborated,
   verified_corridor_events:0,verified_commercial_rights:0,
+  raw_articles_structured_ephemerally:true,
   source_article_bodies_saved:false,publisher_headlines_saved:false,
   website_intelligence_writes:0,d1_reads:0,d1_writes:0,b2_requests:0,
   signed_gro_generated:false,chargeable:false,items});
