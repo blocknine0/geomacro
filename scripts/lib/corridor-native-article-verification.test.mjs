@@ -113,3 +113,15 @@ test("runner requires correct input cohort receipt and never upgrades payability
  await assert.rejects(()=>verifyCorridorReceipt({receipt:{...receipt,commercial_rights_verified:true},
   now,fetchImpl:async()=>response()}),/CORRIDOR_VERIFICATION_RECEIPT_INVALID/);
 });
+
+test("route mention without IMO is automatically flagged as context, not incident",async()=>{
+ const html="<html><article><p>"+("Operational summary. ".repeat(15))+
+  "Navigation authorities referenced the Suez Canal in regional freight analysis, with no verified disruption."+
+  "</p></article></html>";
+ const r=await verifyNativeCorridorCandidates({candidates:[a],now,fetchImpl:async()=>response(html)});
+ assert.equal(r.body_route_mentions,1);
+ assert.equal(r.route_clause_observed,0);
+ assert.equal(r.items[0].state,"ARTICLE_ROUTE_CONTEXT_ONLY");
+ assert.deepEqual(r.items[0].route_context_ids,["suez_canal"]);
+ assert.equal(r.items[0].event_verified,false);
+});
