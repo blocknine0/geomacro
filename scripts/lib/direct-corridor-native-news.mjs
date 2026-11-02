@@ -3,6 +3,10 @@
  */
 import {createHash} from "node:crypto";
 const MAX_BYTES=224*1024,AGE_MS=72*3600000,MAX_CANDIDATES=160;
+// The USGS institutional feed covers general geology and aerial surveys too.
+ // Admit only mineral-resource or supply-related release headlines to the
+ // Critical Minerals discovery lane; an unrelated geology item is not news.
+const MINERAL_NATIVE_TOPIC=/(?:\\b(?:critical minerals?|mineral resources?|mineral deposits?|mineral production|minerals? supply|rare[- ]earths?|lithium|cobalt|nickel|graphite|gallium|germanium|tungsten|antimony|copper|manganese|uranium|gold|silver|mining|mine production|refining|smelting|neodymium|dysprosium)\\b)/iu;
 const ROUTES=[
  ["strait_of_hormuz",/\b(?:strait of hormuz|hormuz|gulf of oman)\b/iu],
  ["bab_el_mandeb",/\b(?:bab[- ](?:el|al)[- ]mandeb|southern red sea)\b/iu],
@@ -60,6 +64,7 @@ function feedItems(body){
 function extract(block,source,now){
  const headline=clean(tag(block,"title"));
  if(headline.length<8||headline.length>300)return null;
+ if(source.id==="usgs_official_minerals_news"&&!MINERAL_NATIVE_TOPIC.test(headline))return null;
  const published=validClock(tag(block,"pubDate")??tag(block,"published")??tag(block,"date"),now);
  if(!published)return null;
  let href=clean(tag(block,"link"));
