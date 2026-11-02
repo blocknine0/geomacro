@@ -25,7 +25,11 @@ export function riskGatePackFromPrivateSourceReceipts(receipt){
    id:r.id,kind:"CRYPTO_INDIVIDUAL",source_id:"cryptocompare_news",
    source_period:r.published_at
   })),
-  ...receipt.official_reference_observations.slice(0,6).map(r=>({
+  ...receipt.official_reference_observations.filter(r=>
+    // GDELT 15-minute export lengths/indices are transport batch metrics,
+    // not country or corridor event evidence for a Risk Gate preflight.
+    r.source_id!=="gdelt_v2_15m"&&
+    r.metric_id!=="cryptocompare_24h_news_sample_count").slice(0,6).map(r=>({
    id:r.id,kind:"OFFICIAL_REFERENCE",source_id:r.source_id,
    source_period:r.observation_period
   }))
