@@ -32,9 +32,9 @@ class MockD1{
  constructor(){this.rows=new Map()}
  prepare(query){return {bind:(...params)=>({query,params,
   all:async()=>{
-   if(query.includes("WHERE candidate_id IN")){
+   if(query.includes("WHERE article_url IN")){
     const cutoff=params.at(-1);return {results:[...this.rows.values()]
-     .filter(r=>params.slice(0,-1).includes(r.candidate_id)&&r.native_published_at>=cutoff)
+     .filter(r=>params.slice(0,-1).includes(r.article_url)&&r.native_published_at>=cutoff)
      .map(r=>({...r}))};
    }
    const cutoff=params[0],limit=params[1];
@@ -56,6 +56,7 @@ class MockD1{
    assert.match(stmt.query,/corridor_native_news_candidates\.article_url=excluded\.article_url/u);
    const a=stmt.params;
    const prev=this.rows.get(a[0]);
+   if(!prev&&[...this.rows.values()].some(r=>r.article_url===a[3]))continue;
    if(!prev)this.rows.set(a[0],{
     candidate_id:a[0],source_id:a[1],native_published_at:a[2],
     article_url:a[3],source_title_sha256:a[4],
@@ -285,4 +286,40 @@ test("private RBI reader validates numeric prid and rejects URL parameter smuggl
   "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=abc"
  ])assert.throws(()=>validateCorridorNativeNewsBatch(packet([notice(bad)]),fixed),
     /CORRIDOR_PRIVATE_ITEM_INVALID/u);
+});
+
+
+test("changed native date for one original URL is durably suppressed across polls",async()=>{
+ const db=new MockD1(),original=candidate();
+ const first=await putPrivateCorridorNativeNews({DB:db},packet([original]),fixed);
+ assert.equal(first.status,200);
+ const revisedTime="2026-11-02T01:50:00.000Z";
+ const revised={...original,published_at:revisedTime,
+   id:hash("boe_news\x1f"+url+"\x1f"+revisedTime)};
+ // The published native clock is the first observed article clock, not the
+ // clock reported by an edited RSS entry on a later poll.
+ const second=await putPrivateCorridorNativeNews({DB:db},packet([revised]),fixed);
+ assert.equal(second.status,200);
+ const proof=await second.json();
+ assert.equal(proof.verified,1);
+ assert.equal(proof.deduplicated_existing_original_urls,1);
+ assert.equal(db.rows.size,1);
+ assert.equal([...db.rows.values()][0].native_published_at,published);
+ assert.equal([...db.rows.values()][0].candidate_id,original.id);
+});
+test("two candidate IDs for the same original permalink in one packet fail closed",()=>{
+ const first=candidate();
+ const revisedTime="2026-11-02T01:50:00.000Z";
+ const second={...first,published_at:revisedTime,
+  id:hash("boe_news\x1f"+url+"\x1f"+revisedTime)};
+ assert.throws(()=>validateCorridorNativeNewsBatch(packet([first,second]),fixed),
+  /CORRIDOR_PRIVATE_ITEM_INVALID/);
+});
+test("D1 migration preserves one original permalink and adds unique constraint",()=>{
+ const sql=readFileSync(new URL("../../workers/control-plane/migrations/0100_corridor_exact_original_dedup.sql",import.meta.url),"utf8");
+ assert.match(sql,/DELETE FROM corridor_native_news_candidates/u);
+ assert.match(sql,/GROUP BY article_url/u);
+ assert.match(sql,/CREATE UNIQUE INDEX IF NOT EXISTS idx_corridor_native_news_exact_original/u);
+ const worker=readFileSync(new URL("../../workers/control-plane/src/corridor-native-news.mjs",import.meta.url),"utf8");
+ assert.match(worker,/ON CONFLICT\\(article_url\\) DO NOTHING/u);
 });
