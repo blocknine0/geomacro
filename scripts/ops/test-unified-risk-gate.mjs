@@ -140,38 +140,38 @@ test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
  assert.equal(r.error,"UNIFIED_RECOVERY_D1_UNAVAILABLE");
 });
 
-test("10-day cleanup has minimum 3-day retention, verified remote readback, and bounded D1 prune",async()=>{
- const start=Date.parse("2026-11-13T08:35:00Z"),nowIso=new Date(start).toISOString();
- let stage="init";let remoteDelete=0,remoteRead=0;const sqlCalls=[];
+test("hourly seven-day retention uses remote readback before any D1 prune",async()=>{
+ const now=Date.parse("2026-11-13T08:35:00Z"),sqlCalls=[];
+ let remoteDelete=0,remoteRead=0,remoteOldRows=[];
  const env={RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
   RISK_GATE_SUPABASE_URL:"https://rg-example.supabase.co",
   RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-private-not-a-production-key-32bytes",
-  DB:{prepare(query){return {
-   async first(){assert.match(query,/SELECT next_cleanup_at/);
-    return stage==="init"?null:{next_cleanup_at:new Date(start-1000).toISOString()}},
-   bind(...params){return {async run(){sqlCalls.push({query,params});return {success:true}}}}
-  }}}};
- const fetcher=async(url,opt)=>{
-  if(opt.method==="DELETE"){
-   remoteDelete++;
-   assert.match(url,/generated_at=lt/);
-   assert.match(url,/2026-11-10/);
-   return new Response(null,{status:204});
-  }
-  remoteRead++;return Response.json([]);
+  DB:{prepare(query){return {bind(...params){return {
+   async run(){sqlCalls.push({query,params});return {success:true}}
+  }}}}}
  };
- const initialized=await cleanupUnifiedRiskSupabase(env,{now:start,fetcher});
- assert.equal(initialized.initialized,true);
- assert.equal(remoteDelete,0);
- stage="due";
- const cleaned=await cleanupUnifiedRiskSupabase(env,{now:start,fetcher});
+ const fetcher=async(url,opt)=>{
+  assert.match(url,/generated_at=lt/);
+  assert.match(url,/2026-11-06/);
+  if(opt.method==="DELETE"){remoteDelete++;return new Response(null,{status:204})}
+  remoteRead++;return Response.json(remoteOldRows);
+ };
+ const cleaned=await cleanupUnifiedRiskSupabase(env,{now,fetcher});
  assert.equal(cleaned.ok,true);
  assert.equal(cleaned.verified,true);
- assert.equal(cleaned.interval_days,10);
- assert.equal(cleaned.minimum_retention_days,3);
+ assert.equal(cleaned.interval_hours,1);
+ assert.equal(cleaned.retention_days,7);
  assert.equal(remoteDelete,1);
  assert.equal(remoteRead,1);
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_generation_attempts")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM risk_observations")));
- assert.ok(sqlCalls.some(x=>x.query.startsWith("UPDATE risk_gate_daily_housekeeping")));
+ assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_snapshots")&&
+   x.query.includes("supabase_synced_at IS NOT NULL")));
+ assert.ok(sqlCalls.some(x=>x.query.startsWith("INSERT INTO risk_gate_daily_housekeeping")));
+ sqlCalls.length=0;
+ remoteOldRows=[{entity_id:"STALE"}];
+ const blocked=await cleanupUnifiedRiskSupabase(env,{now,fetcher});
+ assert.equal(blocked.ok,false);
+ assert.equal(blocked.error,"UNIFIED_CLEANUP_READBACK_FAILED");
+ assert.equal(sqlCalls.length,0);
 });
