@@ -4,8 +4,9 @@
  *
  * This writes month/category shards on the dedicated archive branch and copies
  * them to a separate Workers Static Assets project. Public reads then bypass
- * D1 completely. The current D1 journal is read only once to seed recoverable
- * pre-archive rows; subsequent runs never read it for the public website feed.
+ * D1 completely. The current D1 journal is read once for seeding and may
+ * be read in a three-page quota-approved recovery job. All website requests,
+ * quota-held source sweeps, and ordinary static refreshes require zero D1 reads.
  */
 import {
   cpSync, existsSync, mkdirSync, readFileSync, writeFileSync,
