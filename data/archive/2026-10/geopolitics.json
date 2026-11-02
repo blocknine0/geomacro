@@ -2,8 +2,141 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T00:50:45.436Z",
+  "updated_at": "2026-11-02T01:20:25.499Z",
   "signals": [
+    {
+      "id": "geopolitics-de39dd21",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos",
+      "what_changed": "A monitored source feed reports: Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T21:28:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c9befc7e",
+      "category": "geopolitics",
+      "title": "Geomacro finds UKMTO warned about possible piracy after fishing vessel incident - Iran International",
+      "what_changed": "A monitored source feed reports: UKMTO warned about possible piracy after fishing vessel incident - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T19:38:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3c8bda9e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Epicenter NYC launched Election Text and WhatsApp Chatbot",
+      "what_changed": "A monitored source feed reports: Epicenter NYC launched Election Text and WhatsApp Chatbot. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T18:20:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: haitiantimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-34942ac6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Rubio said Trump set no timeframe for Iran talks but military option remains open",
+      "what_changed": "A monitored source feed reports: Rubio said Trump set no timeframe for Iran talks but military option remains open. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T17:42:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-16b5dfcc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Senegal's Ambitious announced plans to Slash Electricity Costs and Boost Energy Security - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f769b494",
+      "category": "geopolitics",
+      "title": "Geomacro finds Thailand increased military presence near Myanmar border in Mae Sot district - Thai PBS World",
+      "what_changed": "A monitored source feed reports: Thailand increased military presence near Myanmar border in Mae Sot district - Thai PBS World. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T13:08:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-27db675e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia called for Restoring Peace and Stability - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Saudi Arabia called for Restoring Peace and Stability - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T12:57:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-eff61167",
       "category": "geopolitics",

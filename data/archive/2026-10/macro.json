@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-02T00:50:45.436Z",
+  "updated_at": "2026-11-02T01:20:25.499Z",
   "signals": [
     {
       "id": "macro-44642ace",
@@ -138,6 +138,44 @@
       "severity": null
     },
     {
+      "id": "macro-a59683d2",
+      "category": "macro",
+      "title": "Geomacro finds US Treasury said Iran's oil revenue, trade hit hard by pressure campaign - Iran International",
+      "what_changed": "A monitored source feed reports: US Treasury said Iran's oil revenue, trade hit hard by pressure campaign - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T05:38:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d179e77b",
+      "category": "macro",
+      "title": "Geomacro finds Russian Strike left Large Parts of Kyiv Without Water as Crews Race to Restore Services",
+      "what_changed": "A monitored source feed reports: Russian Strike left Large Parts of Kyiv Without Water as Crews Race to Restore Services. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T02:47:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-0fd3191a",
       "category": "macro",
       "title": "Geomacro finds NRB issued today’s foreign currency exchange rates - Khabarhub",
@@ -157,6 +195,25 @@
       "severity": null
     },
     {
+      "id": "macro-ddc03786",
+      "category": "macro",
+      "title": "Geomacro finds Corn Fades lowered on Friday - TradingView",
+      "what_changed": "A monitored source feed reports: Corn Fades lowered on Friday - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T21:25:22.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-f97bc52f",
       "category": "macro",
       "title": "Geomacro finds Silver Is Falling Despite lowered Treasury Yields and a Persistent Supply Deficit - Investing.com",
@@ -166,6 +223,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T20:41:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-33d630be",
+      "category": "macro",
+      "title": "Geomacro finds ExxonMobil and Chevron reported blowout profits as Trump touts benefits of high oil prices - NBC News",
+      "what_changed": "A monitored source feed reports: ExxonMobil and Chevron reported blowout profits as Trump touts benefits of high oil prices - NBC News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T19:06:03.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
