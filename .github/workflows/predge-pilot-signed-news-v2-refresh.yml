@@ -43,6 +43,10 @@ jobs:
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
       RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      # An empty setting retains existing 1-hour issuance. Three hours
+      # requires both protected production values after Predge acceptance.
+      PREDGE_PILOT_SIGNED_TTL_HOURS: ${{ vars.GEOMACRO_PREDGE_SIGNED_TTL_HOURS }}
+      PREDGE_PILOT_3H_PARTNER_ACK: ${{ vars.GEOMACRO_PREDGE_3H_PARTNER_ACK }}
     steps:
       - name: Confirm production preview opt-in before accessing secrets
         id: opt_in
