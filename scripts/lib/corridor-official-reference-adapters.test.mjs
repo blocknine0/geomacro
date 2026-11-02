@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import {collectCorridorOfficialReferences,OFFICIAL_CORRIDOR_ADAPTER_IDS}
  from "./corridor-official-reference-adapters.mjs";
 const NOW=new Date("2026-11-02T00:06:00.000Z");
-const gdelt="45000 http://data.gdeltproject.org/gdeltv2/20261102000000.export.CSV.zip\n"+
- "15000 http://data.gdeltproject.org/gdeltv2/20261102000000.gkg.CSV.zip\n"+
- "2100 http://data.gdeltproject.org/gdeltv2/20261102000000.mentions.CSV.zip\n";
+// Actual native GDELT manifest format: size, MD5, original archive URL.
+const gdelt="45000 1dcca66f57d75ee12fd23f91609eadee http://data.gdeltproject.org/gdeltv2/20261102000000.export.CSV.zip\n"+
+ "15000 f4dd2d7dd06f006917e80cafa4904530 http://data.gdeltproject.org/gdeltv2/20261102000000.gkg.csv.zip\n"+
+ "2100 4cc5c77801d28ab71ef0f82f238886ec http://data.gdeltproject.org/gdeltv2/20261102000000.mentions.CSV.zip\n";
 const world=JSON.stringify([{page:1,pages:1,per_page:50,total:2},[
  {country:{id:"US"},indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2025",value:2.1},
  {country:{id:"IN"},indicator:{id:"NY.GDP.MKTP.KD.ZG"},date:"2025",value:6.7}
@@ -80,4 +81,24 @@ test("reference ids deterministic and no raw publisher articles persisted",async
    force:true,fetchImpl,observePortwatch:observer});
  assert.deepEqual(run1.observations.map(x=>x.id),run2.observations.map(x=>x.id));
  assert.ok(!JSON.stringify(run1).includes("GDP grows"));
+});
+
+test("real GDELT original manifest format yields exactly three non-payable batch references",async()=>{
+ const result=await collectCorridorOfficialReferences({now:NOW,force:true,fetchImpl,
+   observePortwatch:observer});
+ const gd=result.observations.filter(x=>x.source_id==="gdelt_v2_15m");
+ assert.deepEqual(gd.map(x=>x.metric_id),
+   ["gdelt_export_batch_bytes","gdelt_gkg_batch_bytes","gdelt_mentions_batch_bytes"]);
+ assert.deepEqual(gd.map(x=>x.numeric_value),[45000,15000,2100]);
+ assert.ok(gd.every(x=>x.context_only&&x.independently_verified_event===false));
+});
+test("invalid/missing manifest checksum cannot fabricate a dated GDELT observation",async()=>{
+ const malformed="45000 http://data.gdeltproject.org/gdeltv2/20261102000000.export.CSV.zip\\n"+
+ "13000 NOT_A_MD5 http://data.gdeltproject.org/gdeltv2/20261102000000.gkg.csv.zip\\n";
+ const result=await collectCorridorOfficialReferences({now:NOW,force:true,
+   fetchImpl:async url=>sourceHost(url)==="data.gdeltproject.org"?
+     new Response(malformed):fetchImpl(url),observePortwatch:observer});
+ assert.equal(result.observations.filter(x=>x.source_id==="gdelt_v2_15m").length,0);
+ assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
+  "NO_CURRENT_REFERENCE_OBSERVATION");
 });
