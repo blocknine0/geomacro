@@ -17,13 +17,43 @@ export async function runDirectCorridorIntake({
     receipt.d1_writes!==0||receipt.b2_writes!==0||
     receipt.supabase_writes!==0||receipt.chargeable!==false)
    throw Error("DIRECT_CORRIDOR_OUTPUT_BOUNDARY_INVALID");
+ // Fail closed if any candidate breaks publisher provenance, age or isolation.
+ if(receipt.native_news_sources_polled!==6||
+    !Number.isSafeInteger(receipt.news_candidate_count)||
+    receipt.news_candidate_count<0||receipt.news_candidate_count>160||
+    receipt.news_candidate_count!==receipt.news_candidates?.length||
+    receipt.news_candidate_retention_hours!==72||
+    receipt.news_candidates.some(item=>
+      typeof item.id!=="string"||!/^[a-f0-9]{64}$/u.test(item.id)||
+      !/^https:\/\//u.test(item.article_url)||
+      !/^https:\/\//u.test(item.original_publisher_url)||
+      !Number.isFinite(Date.parse(item.published_at))||
+      new Date(receipt.checked_at).getTime()-Date.parse(item.published_at)>72*3600000||
+      item.commercial_rights_verified!==false||
+      item.customer_delivery_enabled!==false||
+      item.source_time_is_not_event_time!==true||
+      item.original_article_verified!==false))
+   throw Error("CORRIDOR_NATIVE_NEWS_PROVENANCE_INVALID");
  const dir="artifacts/direct-corridor-intake";
  mkdirSync(dir,{recursive:true,mode:0o700});
  writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
+ writeFileSync(dir+"/news-candidates.json",JSON.stringify({
+   schema:"geomacro.corridor-native-news-candidates.v1",
+   channel:"CORRIDOR_ONLY",checked_at:receipt.checked_at,
+   source_count:receipt.source_count,
+   native_news_sources_polled:receipt.native_news_sources_polled,
+   candidate_count:receipt.news_candidate_count,
+   news_candidates:receipt.news_candidates,
+   website_intelligence_enabled:false,website_intelligence_writes:0,
+   raw_publisher_content_saved:false,commercial_rights_verified:false,
+   customer_delivery_enabled:false,signed_gro_generated:false
+ },null,2)+"\n",{mode:0o600});
  const summary={
    schema:receipt.schema,channel:receipt.channel,checked_at:receipt.checked_at,
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,
-   unique_linked_sources:receipt.unique_linked_sources,candidate_corridor_count:receipt.candidate_corridors.length,
+   unique_linked_sources:receipt.unique_linked_sources,
+   native_news_sources_polled:receipt.native_news_sources_polled,
+   news_candidate_count:receipt.news_candidate_count,candidate_corridor_count:receipt.candidate_corridors.length,
    portal_or_metadata_sources_observed:receipt.source_checks.filter(x=>
      x.metadata_candidates>0||["PORTAL_TRANSPORT_OBSERVED_NO_EVENT",
        "RECENT_INDEX_CONTEXT_OBSERVED","OFFICIAL_PERIODIC_REPORT_INDEX_OBSERVED"].includes(x.state)).length,

@@ -1,9 +1,9 @@
 name: Direct Global Corridor Intake (Isolated)
-# Strict corridor-only upstream polling. Never feeds Website Intelligence.
+# Strict corridor-only native news and upstream polling. Never feeds Website Intelligence.
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "11 */2 * * *"
+    - cron: "11 * * * *"
   push:
     branches: [main]
     paths:
@@ -11,7 +11,12 @@ on:
       - "scripts/lib/direct-global-corridor-sources.mjs"
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/lib/direct-corridor-native-news.mjs"
+      - "scripts/lib/direct-corridor-native-news.test.mjs"
       - "scripts/ops/ingest-direct-global-corridors.mjs"
+      - "scripts/ops/publish-private-corridor-native-news.mjs"
+      - "workers/control-plane/src/corridor-native-news.mjs"
+      - "workers/control-plane/migrations/0096_corridor_native_news_candidates.sql"
   pull_request:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
@@ -19,8 +24,13 @@ on:
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/lib/direct-corridor-native-news.mjs"
+      - "scripts/lib/direct-corridor-native-news.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.test.mjs"
       - "scripts/ops/ingest-direct-global-corridors.mjs"
+      - "scripts/ops/publish-private-corridor-native-news.mjs"
+      - "workers/control-plane/src/corridor-native-news.mjs"
+      - "workers/control-plane/migrations/0096_corridor_native_news_candidates.sql"
 permissions:
   contents: read
 concurrency:
@@ -42,9 +52,14 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
+          node --check scripts/lib/direct-corridor-native-news.mjs
           node --check scripts/ops/ingest-direct-global-corridors.mjs
+          node --check scripts/ops/publish-private-corridor-native-news.mjs
+          node --check workers/control-plane/src/corridor-native-news.mjs
           node --test scripts/lib/direct-global-corridor-sources.test.mjs
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
+          node --test scripts/lib/direct-corridor-native-news.test.mjs
+          node --test scripts/lib/corridor-native-d1.test.mjs
   source-intake:
     needs: contracts
     if: >-
@@ -65,10 +80,23 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/ingest-direct-global-corridors.mjs
+      - name: Publish original-link corridor metadata to private D1 with exact readback
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || {
+            echo "::error::CORRIDOR_PRIVATE_D1_ROOT_CREDENTIAL_MISSING"
+            exit 2
+          }
+          node scripts/ops/publish-private-corridor-native-news.mjs
       - name: Upload separate bounded corridor receipt
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-direct-corridor-source-intake
-          path: artifacts/direct-corridor-intake/receipt.json
+          path: |
+            artifacts/direct-corridor-intake/receipt.json
+            artifacts/direct-corridor-intake/news-candidates.json
+            artifacts/direct-corridor-intake/d1-readback.json
           if-no-files-found: error
           retention-days: 3

@@ -8,6 +8,7 @@ import {directGlobalCorridorRouteSources,assertDirectCorridorWebsiteSeparation}
 import {observeUkmtoOfficialIndex} from "./ukmto-official-corridor-index.mjs";
 import {observeIndependentMaritimeOfficialContext}
  from "./independent-maritime-official-context.mjs";
+import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
 
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
@@ -38,48 +39,6 @@ async function probePinnedPortal(spec,fetchImpl){
  }catch{return {state:"BODY_UNREADABLE"};}
  finally{try{await reader.cancel()}catch{}reader.releaseLock();}
  return {state:length>0?"PORTAL_TRANSPORT_OBSERVED_NO_EVENT":"EMPTY_PAGE"};
-}
-// RSS reader is isolated from the Website Intelligence feed collector.
-// Only counts native dated metadata; raw headlines, article URLs and XML
-// never appear in the receipt or in canonical customer databases.
-async function probeNativeCorridorRss(spec,fetchImpl,now){
- let res;
- try{
-   res=await fetchImpl(spec.url,{method:"GET",redirect:"error",
-     headers:{accept:"application/rss+xml,application/atom+xml,application/xml,text/xml;q=0.9"},
-     signal:AbortSignal.timeout(8000)});
- }catch{return {state:"FEED_NETWORK_UNAVAILABLE",metadata_candidates:0};}
- if([401,403,429].includes(res.status))return {state:"DENIED_NO_RETRY",metadata_candidates:0};
- if(res.status!==200)return {state:"FEED_HTTP_UNAVAILABLE",metadata_candidates:0};
- if(Number(res.headers?.get?.("content-length")??0)>MAX_BYTES||!res.body)
-   return {state:"FEED_BODY_UNAVAILABLE",metadata_candidates:0};
- const chunks=[];let n=0;const stream=res.body.getReader();
- try{
-   for(;;){const {done,value}=await stream.read();if(done)break;
-     n+=value.byteLength;if(n>MAX_BYTES)return {state:"FEED_BODY_OVERSIZED",metadata_candidates:0};
-     chunks.push(value);
-   }
- }catch{return {state:"FEED_READ_FAILED",metadata_candidates:0};}
- finally{try{await stream.cancel()}catch{}stream.releaseLock();}
- let xml;
- try{const bytes=new Uint8Array(n);let offset=0;
-   for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
-   xml=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
- }catch{return {state:"FEED_ENCODING_INVALID",metadata_candidates:0};}
- if(/<!DOCTYPE|<!ENTITY/iu.test(xml)||
-    !/^\s*(?:<\?xml[^>]*>\s*)?<(?:rss|feed|rdf:RDF)\b/iu.test(xml))
-   return {state:"NOT_A_NATIVE_FEED",metadata_candidates:0};
- const entries=[...xml.matchAll(/<(?:[a-z][\w.-]*:)?(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:[a-z][\w.-]*:)?(?:item|entry)>/giu)].slice(0,40);
- let dated=0;
- for(const item of entries){
-   const raw=item[1].match(/<(?:pubDate|published)\b[^>]*>([^<]{8,100})<\/(?:pubDate|published)>/iu)?.[1]?.trim();
-   if(!raw||/^\d{4}-\d{2}-\d{2}$/u.test(raw))continue;
-   const ms=Date.parse(raw);
-   if(Number.isFinite(ms)&&ms<=now.getTime()+5*60_000&&
-      now.getTime()-ms<=72*3600_000)dated++;
- }
- return {state:dated>0?"NATIVE_FEED_METADATA_OBSERVED":"NO_RECENT_NATIVE_ITEM_DATE",
-   metadata_candidates:dated};
 }
 export async function collectDirectCorridorSourceIntake({
  now=new Date(),fetchImpl=fetch,observeUkmto=observeUkmtoOfficialIndex,
@@ -117,11 +76,11 @@ export async function collectDirectCorridorSourceIntake({
  }
  // Every explicitly listed native RSS is checked on the dedicated corridor
  // lane only; it never reaches reusable website news or private OSINT.
- for(const spec of corridor.filter(s=>s.format==="rss"&&
-      ["POLL_DIRECT_FEED","EXISTING_DIRECT_FEED"].includes(s.state))){
-   const result=await probeNativeCorridorRss(spec,fetchImpl,now);
-   add(spec,result.state,{metadata_candidates:result.metadata_candidates});
- }
+ const nativeSources=corridor.filter(s=>s.format==="rss"&&
+      ["POLL_DIRECT_FEED","EXISTING_DIRECT_FEED"].includes(s.state));
+ const native=await collectDirectCorridorNativeNews({sources:nativeSources,fetchImpl,now});
+ for(const check of native.source_checks)
+   add(byId.get(check.id),check.state,{metadata_candidates:check.metadata_candidates});
  // All other supplied destinations remain registered and visible, but are
  // never misrepresented as machine-readable event feeds. These must receive
  // provider-specific parser/credential acceptance before canonical cutover.
@@ -149,6 +108,11 @@ export async function collectDirectCorridorSourceIntake({
    source_checks:states,
    candidate_corridors:[...new Set(states.flatMap(s=>s.candidate_corridor_ids))].sort(),
    total_index_metadata_candidates:states.reduce((n,s)=>n+s.metadata_candidates,0),
+   native_news_sources_polled:native.feed_count,
+   news_candidate_count:native.candidate_count,
+   news_candidates:native.news_candidates,
+   native_news_event_verification:false,
+   news_candidate_retention_hours:72,
    website_intelligence_writes:0,website_intelligence_enabled:false,
    source_news_collector_calls:0,
    native_event_evidence_written_to_canonical_db:false,
