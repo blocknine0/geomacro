@@ -11,6 +11,8 @@ import {observeIndependentMaritimeOfficialContext}
 import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
 import {collectCorridorOfficialReferences} from "./corridor-official-reference-adapters.mjs";
 import {collectCredentialCorridorContext} from "./corridor-credential-context.mjs";
+import {DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS,assertDirectCorridorSupplementalNativeFeeds}
+ from "./direct-corridor-official-news-feeds.mjs";
 import {riskGateSuppliedSourceCensus} from "./risk-gate-supplied-source-rules.mjs";
 
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
@@ -52,6 +54,7 @@ export async function collectDirectCorridorSourceIntake({
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function")throw Error("DIRECT_CORRIDOR_INTAKE_INVALID");
  assertDirectCorridorWebsiteSeparation();
+ assertDirectCorridorSupplementalNativeFeeds();
  const corridor=directGlobalCorridorRouteSources();
  const states=[];
  const add=(spec,state,extra={})=>states.push({id:spec.id,
@@ -81,11 +84,20 @@ export async function collectDirectCorridorSourceIntake({
  }
  // Every explicitly listed native RSS is checked on the dedicated corridor
  // lane only; it never reaches reusable website news or private OSINT.
- const nativeSources=corridor.filter(s=>s.format==="rss"&&
+ const registryNativeSources=corridor.filter(s=>s.format==="rss"&&
       ["POLL_DIRECT_FEED","EXISTING_DIRECT_FEED"].includes(s.state));
+ const nativeSources=[...registryNativeSources,...DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS];
+ const supplementalNativeChecks=[];
  const native=await collectDirectCorridorNativeNews({sources:nativeSources,fetchImpl,now});
- for(const check of native.source_checks)
-   add(byId.get(check.id),check.state,{metadata_candidates:check.metadata_candidates});
+ for(const check of native.source_checks){
+   const original=byId.get(check.id);
+   if(original)add(original,check.state,{metadata_candidates:check.metadata_candidates});
+   else if(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.some(s=>s.id===check.id))
+     supplementalNativeChecks.push(check);
+   else throw Error("CORRIDOR_NATIVE_SOURCE_UNREGISTERED");
+ }
+ if(supplementalNativeChecks.length!==DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length)
+   throw Error("CORRIDOR_SUPPLEMENTAL_FEED_PARITY_INVALID");
  // Independent official batch/series adapters, not headline news.
  // IMF PortWatch is an existing supplementary named-route family outside
  // the 37 source URLs; no extra registration or website routing implied.
@@ -164,6 +176,8 @@ export async function collectDirectCorridorSourceIntake({
    candidate_corridors:[...new Set(states.flatMap(s=>s.candidate_corridor_ids))].sort(),
    total_index_metadata_candidates:states.reduce((n,s)=>n+s.metadata_candidates,0),
    native_news_sources_polled:native.feed_count,
+   original_directory_rss_polled:registryNativeSources.length,
+   supplemental_native_feed_checks:supplementalNativeChecks,
    news_candidate_count:native.candidate_count,
    news_candidates:native.news_candidates,
    native_news_event_verification:false,
