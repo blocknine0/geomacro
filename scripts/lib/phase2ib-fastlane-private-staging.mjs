@@ -76,6 +76,7 @@ export async function postPhase2iCollisionIsolated({
  if(!Array.isArray(records)||records.length>5)
   throw Error("PHASE2IB_FASTLANE_COLLISION_BATCH_CAP");
  let stored=0,duplicate=0,rejected=0,requests=0;
+ const verifiedRecordIds=[];
  const rejectedByCategory=count([]);
  const emit=async group=>{
   requests++;
@@ -89,6 +90,7 @@ export async function postPhase2iCollisionIsolated({
       reply.stored+reply.duplicate!==group.length)
      throw Error("PHASE2IB_FASTLANE_RAW_D1_RECEIPT_INVALID");
    stored+=reply.stored;duplicate+=reply.duplicate;
+   verifiedRecordIds.push(...group.map(row=>row.record_id));
   }catch(error){
    if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")
     throw error;
@@ -108,7 +110,7 @@ export async function postPhase2iCollisionIsolated({
   d1_successful_readback_records:stored+duplicate,
   per_original_authenticated_d1_verified:stored+duplicate>0,
   readback_verified:stored+duplicate>0,
-  attempts:requests});
+  attempts:requests,verifiedRecordIds});
 }
 
 export async function stagePhase2iFastlanePrivateOriginals({
