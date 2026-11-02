@@ -75,6 +75,35 @@ test("HTTP 403 is not bypassed or marked as operational ingestion",async()=>{
  assert.equal(out.candidate_count,0);
  assert.ok(out.source_checks.every(x=>x.state==="DENIED_NO_RETRY"));
 });
+test("transient CoinDesk transport 503 recovers with one bounded retry",async()=>{
+ let calls=0;
+ const feed=rss([item("Bitcoin ETF market liquidity and policy",
+  "https://www.coindesk.com/markets/2026/11/02/etf-liquidity")]);
+ const out=await collectDirectCorridorNativeNews({
+  sources:sources.slice(1),now,
+  fetchImpl:async()=>{calls++;
+   if(calls===1)return new Response("",{status:503});
+   return new Response(feed,{status:200});
+  }
+ });
+ assert.equal(calls,2);
+ assert.equal(out.candidate_count,1);
+ assert.equal(out.source_checks[0].state,"NATIVE_NEWS_CANDIDATES_INGESTED");
+ assert.equal(out.news_candidates[0].commercial_rights_verified,false);
+});
+test("403 and 429 never retry or produce invented news",async()=>{
+ for(const status of [403,429]){
+  let calls=0;
+  const out=await collectDirectCorridorNativeNews({
+   sources:sources.slice(1),now,
+   fetchImpl:async()=>{calls++;return new Response("",{status});}
+  });
+  assert.equal(calls,1);
+  assert.equal(out.candidate_count,0);
+  assert.equal(out.source_checks[0].state,"DENIED_NO_RETRY");
+ }
+});
+
 test("DOCTYPE, spoofed XML and disallowed publisher routes do not ingest items",async()=>{
  const doc='<!DOCTYPE rss [<!ENTITY x "bad">]><rss><channel>'+
    item("Suez canal closure","https://www.bankofengland.co.uk/news/b")+

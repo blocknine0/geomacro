@@ -94,13 +94,15 @@ function extract(block,source,now){
    original_article_verified:false,independent_corroboration_verified:false,
    article_content_acquired:false,commercial_rights_verified:false,customer_delivery_enabled:false};
 }
-async function load(spec,fetchImpl){
+async function loadOnce(spec,fetchImpl){
  let response;
  try{response=await fetchImpl(spec.url,{method:"GET",redirect:"error",
    signal:AbortSignal.timeout(8000),
    headers:{accept:"application/rss+xml,application/atom+xml,application/xml,text/xml;q=0.9"}})}
  catch{return {state:"FEED_NETWORK_UNAVAILABLE",body:null}}
  if([401,403,429].includes(response.status))return {state:"DENIED_NO_RETRY",body:null};
+ if([500,502,503,504].includes(response.status))
+   return {state:"FEED_TRANSIENT_HTTP_UNAVAILABLE",body:null};
  if(response.status!==200||(response.url&&response.url!==spec.url))
    return {state:"FEED_HTTP_UNAVAILABLE",body:null};
  if(Number(response.headers?.get?.("content-length")??0)>MAX_BYTES||!response.body)
@@ -119,6 +121,17 @@ async function load(spec,fetchImpl){
    for(const part of chunks){bytes.set(part,offset);offset+=part.byteLength}
    return {state:"FEED_OBSERVED",body:new TextDecoder("utf-8",{fatal:true}).decode(bytes)};
  }catch{return {state:"FEED_ENCODING_INVALID",body:null}}
+}
+// One bounded retry for transient connectivity or upstream 5xx only.
+// Never bypass 401/403/429, publisher-host checks or access controls.
+async function load(spec,fetchImpl){
+ let first=await loadOnce(spec,fetchImpl);
+ if(!["FEED_NETWORK_UNAVAILABLE","FEED_TRANSIENT_HTTP_UNAVAILABLE"].includes(first.state))
+  return first;
+ await new Promise(resolve=>setTimeout(resolve,350));
+ const second=await loadOnce(spec,fetchImpl);
+ return second.state==="FEED_TRANSIENT_HTTP_UNAVAILABLE"?
+  {state:"FEED_HTTP_UNAVAILABLE",body:null}:second;
 }
 export async function collectDirectCorridorNativeNews({sources,fetchImpl=fetch,
  now=new Date(),concurrency=3}={}){
