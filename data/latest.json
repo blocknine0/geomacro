@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T00:41:24.597Z",
+  "checked_at": "2026-11-02T00:50:45.436Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -400,6 +400,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T13:17:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cb3f3c08",
+      "category": "macro",
+      "title": "Geomacro finds Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague",
+      "what_changed": "A monitored source feed reports: Turkey urged Peace Deal as Ukraine's Refinery Strikes Revive Fuel Price Worries - Around Prague. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T12:23:23.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -936,6 +955,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6c4e357a",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine",
+      "what_changed": "A monitored source feed reports: U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T23:08:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

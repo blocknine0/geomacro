@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T00:41:24.597Z",
+  "updated_at": "2026-11-02T00:50:45.436Z",
   "signals": [
     {
       "id": "geopolitics-eff61167",
@@ -151,6 +151,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6c4e357a",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine",
+      "what_changed": "A monitored source feed reports: U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T23:08:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
