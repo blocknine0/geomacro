@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T02:10:08.756Z",
+  "checked_at": "2026-11-02T02:34:38.633Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 161,
+  "item_count": 159,
   "counts": {
-    "geopolitics": 59,
+    "geopolitics": 57,
     "macro": 69,
     "rare_earth": 33
   },
-  "source_native_ids_sha256": "9ae3929602a8bc03f6677ae111a7a9b8e7df8826e0e1ed623d558f06b592d20d",
+  "source_native_ids_sha256": "338d5959e5bfaa0c14073d55557f8878f0a2133fdccec25398052027ef5c3420",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3045,44 +3045,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thenationalnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9a161f9a",
-      "category": "geopolitics",
-      "title": "Geomacro finds ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T02:18:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c2bb5ebc",
-      "category": "geopolitics",
-      "title": "Geomacro finds ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: ANZ raised Oil Price Forecast as Market Tightens on Iran War - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T02:18:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
