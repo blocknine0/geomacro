@@ -62,7 +62,7 @@ test("provider 403 is recorded; no retry, no reference evidence fabricated",asyn
  const result=await collectCredentialCorridorContext({now,force:true,keys,
   fetchImpl:async()=>{attempts++;return new Response("",{status:403})},
   observeReliefWeb:async()=>({status:"ACCESS_DENIED_OR_QUOTA"})});
- assert.equal(attempts,1);
+ assert.equal(attempts,2); // FRED and CCData each denied once; no provider retried
  assert.equal(result.observation_count,0);
  assert.equal(result.source_checks.find(x=>x.id==="fred_api").state,"PROVIDER_ACCESS_DENIED");
  assert.equal(result.source_checks.find(x=>x.id==="reliefweb_v2").state,"PROVIDER_ACCESS_DENIED");
