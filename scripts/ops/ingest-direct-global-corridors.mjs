@@ -86,6 +86,10 @@ export async function runDirectCorridorIntake({
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,
    unique_linked_sources:receipt.unique_linked_sources,
    native_news_sources_polled:receipt.native_news_sources_polled,
+   supplemental_native_feed_checks:receipt.supplemental_native_feed_checks?.map(x=>({
+     source_id:x.id,state:x.state,metadata_candidates:x.metadata_candidates,
+     candidate_corridor_records:x.candidate_corridor_records
+   }))??[],
    news_candidate_count:receipt.news_candidate_count,
    official_reference_observations:receipt.official_reference_observation_count,
    private_structured_research_records:structured.structured_record_count,
