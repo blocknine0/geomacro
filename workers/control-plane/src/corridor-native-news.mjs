@@ -80,7 +80,7 @@ export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
  // Recompute the immutable article identity before trusting a submitted ID.
  // The source-title hash is evidence-free metadata, not authority to publish.
  for(const row of records){
-   const canonical=row[1]+"\\x1f"+row[3]+"\\x1f"+row[2];
+   const canonical=row[1]+"\x1f"+row[3]+"\x1f"+row[2];
    const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(canonical));
    const exact=[...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");
    if(exact!==row[0])return reply({ok:false,error:"CORRIDOR_NATIVE_ID_MISMATCH",chargeable:false},422);
