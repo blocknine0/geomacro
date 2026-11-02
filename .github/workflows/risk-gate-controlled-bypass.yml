@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'workers/control-plane/src/risk-gate-controlled-bypass.mjs'
+      - 'workers/control-plane/src/daily-risk-gate-generator.mjs'
+      - 'workers/control-plane/migrations/0107_risk_gate_daily_snapshots.sql'
+      - 'supabase/risk-gate-daily/001_daily_three_tiers.sql'
+      - 'scripts/ops/test-daily-risk-gate-generator.mjs'
       - 'workers/control-plane/src/index.mjs'
       - 'workers/control-plane/migrations/0106_risk_gate_tiered_controlled_bypass.sql'
       - 'scripts/ops/test-risk-gate-controlled-bypass.mjs'
@@ -28,6 +32,7 @@ jobs:
       - name: Parse and import new Worker module
         run: |
           node --check workers/control-plane/src/risk-gate-controlled-bypass.mjs
+          node --check workers/control-plane/src/daily-risk-gate-generator.mjs
           node --check workers/control-plane/src/index.mjs
       - name: Run deterministic boundary tests
-        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs
+        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs scripts/ops/test-daily-risk-gate-generator.mjs
