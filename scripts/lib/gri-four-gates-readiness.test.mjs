@@ -52,13 +52,31 @@ function signedParent(){
     full_b2_readback_verified:true,exact_gzip_restore_verified:true,payload_json};
 }
 function child(parent){
+  // Use the exact deployed risk-indices v1.1 verified-category projection.
+  // A minimal synthetic JSON with merely an upstream parent hash must NEVER
+  // pass the verified Risk Gate / signed GRI lineage contract.
   const payload={schema:"geomacro.public-risk-indices-live.v1",
+    source_project:"ldpwajisioljyjtojvfx",
     generated_at:parent.generated_at,
     parent_global_risk_b2_sha256:parent.b2_sha256,
     parent_global_risk_payload_sha256:parent.payload_sha256,
-    data:{parentMethodologyVersion:"gri-v1.2.0",snapshotAsOf:sourceAt}};
+    data:{contractVersion:"risk-indices-v1.1.0",
+      verificationStatus:"verified",proofScope:"verified-category-projection",
+      parentMethodologyVersion:"gri-v1.2.0",snapshotAsOf:sourceAt,
+      proofHash:h,snapshotId:"genuine-current-parent-001",
+      indices:[
+        ["geopolitics","geopolitics"],
+        ["macro","macro"],
+        ["critical_minerals","rare_earth"],
+      ].map(([key,sourceCategory])=>({
+        key,sourceCategory,status:"available",readingStatus:"current",
+        readingAsOf:sourceAt,readingSnapshotId:"genuine-current-parent-001",
+        score:55,rawScore:55,
+        series:{"7D":{buckets:[{},{}]},"30D":{buckets:[{},{}]}}
+      }))}};
   const payload_json=JSON.stringify(payload);
   return {ok:true,product:"risk-indices",schema:payload.schema,
+    generated_at:payload.generated_at,
     proof_schema:"geomacro.public-risk-indices-live-proof.v1",
     verification_mode:"direct-b2-readback",
     b2_object_key:"geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
@@ -122,6 +140,22 @@ test("actual current signed GRI D1 and exact-parent indices independently pass",
   assert.equal(result.unresolved_gates.length,2);
   assert.equal(f.calls.length,2);
   assert.equal(JSON.stringify(result).includes("payload_json"),false);
+});
+test("synthetic parent-linked risk indices without signed category projections cannot pass",async()=>{
+  const p=signedParent(),incomplete=child(p);
+  const value=JSON.parse(incomplete.payload_json);
+  delete value.data.indices;
+  delete value.data.contractVersion;
+  incomplete.payload_json=JSON.stringify(value);
+  incomplete.payload_sha256=sha(incomplete.payload_json);
+  const f=mock({parent:p,indices:incomplete});
+  const verdict=await reportGriFourGates({
+    worklist:worklist(),env:{},now:NOW,fetchImpl:f.fetchImpl,
+  });
+  assert.equal(verdict.current_numerical_gri_v12_product_verified,true);
+  assert.equal(verdict.current_risk_indices_exact_parent_verified,false);
+  assert.equal(verdict.risk_indices_repair_eligible,true);
+  assert.equal(verdict.paid_delivery_authorized,false);
 });
 test("verified GRI parent with expired indices reports eligible repair, not completed",async()=>{
   const p=signedParent(),bad=child(p);bad.expires_at=new Date(NOW.getTime()-1000).toISOString();
