@@ -4,7 +4,7 @@ import {PHASE2H_COUNTRIES_195} from "../../scripts/lib/phase2h-country-originals
 import {DAILY_RG_CORRIDORS} from "../../workers/control-plane/src/daily-risk-gate-generator.mjs";
 import {CATEGORIES,validatedSignedCategoryScores} from "../../workers/control-plane/src/unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "../../workers/control-plane/src/unified-risk-engine.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,selectUnifiedRecoveryTarget,CANONICAL_UNIFIED_TARGETS} from "../../workers/control-plane/src/unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,selectUnifiedRecoveryTarget,CANONICAL_UNIFIED_TARGETS,cleanupUnifiedRiskSupabase} from "../../workers/control-plane/src/unified-risk-gate.mjs";
 
 test("canonical 195 x 3 plus 12 corridor registry",()=>{
  assert.equal(PHASE2H_COUNTRIES_195.length,195);
@@ -138,4 +138,40 @@ test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
  const r=await scheduledUnifiedRisk({},Date.parse("2026-11-03T09:30:00Z"));
  assert.equal(r.ok,false);
  assert.equal(r.error,"UNIFIED_RECOVERY_D1_UNAVAILABLE");
+});
+
+test("10-day cleanup has minimum 3-day retention, verified remote readback, and bounded D1 prune",async()=>{
+ const start=Date.parse("2026-11-13T08:35:00Z"),nowIso=new Date(start).toISOString();
+ let stage="init";let remoteDelete=0,remoteRead=0;const sqlCalls=[];
+ const env={RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
+  RISK_GATE_SUPABASE_URL:"https://rg-example.supabase.co",
+  RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-private-not-a-production-key-32bytes",
+  DB:{prepare(query){return {
+   async first(){assert.match(query,/SELECT next_cleanup_at/);
+    return stage==="init"?null:{next_cleanup_at:new Date(start-1000).toISOString()}},
+   bind(...params){return {async run(){sqlCalls.push({query,params});return {success:true}}}}
+  }}}};
+ const fetcher=async(url,opt)=>{
+  if(opt.method==="DELETE"){
+   remoteDelete++;
+   assert.match(url,/generated_at=lt/);
+   assert.match(url,/2026-11-10/);
+   return new Response(null,{status:204});
+  }
+  remoteRead++;return Response.json([]);
+ };
+ const initialized=await cleanupUnifiedRiskSupabase(env,{now:start,fetcher});
+ assert.equal(initialized.initialized,true);
+ assert.equal(remoteDelete,0);
+ stage="due";
+ const cleaned=await cleanupUnifiedRiskSupabase(env,{now:start,fetcher});
+ assert.equal(cleaned.ok,true);
+ assert.equal(cleaned.verified,true);
+ assert.equal(cleaned.interval_days,10);
+ assert.equal(cleaned.minimum_retention_days,3);
+ assert.equal(remoteDelete,1);
+ assert.equal(remoteRead,1);
+ assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_generation_attempts")));
+ assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM risk_observations")));
+ assert.ok(sqlCalls.some(x=>x.query.startsWith("UPDATE risk_gate_daily_housekeeping")));
 });
