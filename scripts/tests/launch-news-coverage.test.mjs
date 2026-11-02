@@ -113,7 +113,7 @@ test('official Fed speeches poll every admitted fastlane slot inside the origina
 
 test('all 195 countries receive explicit macro search coverage within the unchanged eight-slot local-lane cycle',()=>{
  const at=Date.parse('2026-10-28T07:00:00Z'),seen=new Set();
- for(let slot=0;slot<32;slot++){
+ for(let slot=0;slot<8;slot++){
   const sources=rotatingPrivateCountryDiscoverySources(new Date(at+slot*15*60000),COUNTRIES_195,25);
   assert.ok(sources.length<=25);
   for(const source of sources){
@@ -135,7 +135,7 @@ test('all 195 countries receive explicit macro search coverage within the unchan
 
 test('195-country mineral lifecycle discovery preserves attribution, macro coverage and bounded rotation',()=>{
  const at=Date.parse('2026-10-28T07:00:00Z'),seen=new Set();
- for(let slot=0;slot<8;slot++){
+ for(let slot=0;slot<32;slot++){
   const sources=privateOsintRuntimeSources(new Date(at+slot*15*60000),undefined,undefined,{includeLocalGapLane:true});
   assert.ok(sources.length<=512);
   const countries=sources.filter(s=>s.id.startsWith('private_country_index_'));
