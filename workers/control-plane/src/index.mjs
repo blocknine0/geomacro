@@ -15,7 +15,7 @@ import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredO
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
 import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack,materializeCanonicalRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
 import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit,purgePrivateStrategicRiskGate} from "./corridor-risk-gate-jit.mjs";
-import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity,purgePrivateRiskGateGdelt} from "./risk-gate-gdelt-event-index.mjs";
+import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity,readPrivateRiskGateGdeltBatchReceipt,purgePrivateRiskGateGdelt} from "./risk-gate-gdelt-event-index.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1718,6 +1718,11 @@ export default {
         if(request.method==="GET")
           return readPrivateRiskGateGdeltContinuity(env);
         return json({ok:false,error:"RG_GDELT_CONTINUITY_METHOD_INVALID"},405);
+      }
+      if(url.pathname==="/v1/internal/risk-gate/gdelt-batch-receipt"){
+        if(request.method==="GET")
+          return readPrivateRiskGateGdeltBatchReceipt(env,url.searchParams);
+        return json({ok:false,error:"RG_GDELT_BATCH_RECEIPT_METHOD_INVALID"},405);
       }
       if(url.pathname==="/v1/internal/risk-gate/gdelt-event-index"){
         if(request.method==="PUT"&&!url.search)
