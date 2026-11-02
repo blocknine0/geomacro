@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:00:41.869Z",
+  "checked_at": "2026-11-02T20:03:59.452Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 239,
+  "item_count": 241,
   "counts": {
     "geopolitics": 111,
-    "macro": 92,
+    "macro": 94,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "90a3bb81f6ae01bbd0886b6419acfa2ddb9f5b99168c52b5f247c52fb132358f",
+  "source_native_ids_sha256": "d7c62a878c2e099f18c43ebd2b0a3233aa4182f1b6688ef295147890d22eec34",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1189,6 +1189,25 @@
       "severity": null
     },
     {
+      "id": "macro-c7ce42fb",
+      "category": "macro",
+      "title": "Geomacro finds IDF said It Seized Just 4 Weapons in Major 10-Day Raid in West Bank's Hebron - Haaretz",
+      "what_changed": "A monitored source feed reports: IDF said It Seized Just 4 Weapons in Major 10-Day Raid in West Bank's Hebron - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:47:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-3f7ace5f",
       "category": "rare_earth",
       "title": "Geomacro finds Medallion reported high-grade drill results at Kundip Mining Centre",
@@ -1217,6 +1236,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T10:42:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-114f10ab",
+      "category": "macro",
+      "title": "Geomacro finds Egypt signed $1 billion World Bank deal as war compounds economic pressures - The National",
+      "what_changed": "A monitored source feed reports: Egypt signed $1 billion World Bank deal as war compounds economic pressures - The National. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:40:56.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
