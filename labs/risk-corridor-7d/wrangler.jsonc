@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "geomacro-rc-staging",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "RC_STAGING_D1",
+      "database_name": "geomacro-risk-corridor-staging",
+      "database_id": "9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9"
+    }
+  ]
+}
