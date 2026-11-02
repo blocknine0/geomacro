@@ -270,8 +270,14 @@ describe("permanent derived-only website archive",()=>{
   writeFileSync(indexPath,JSON.stringify(index));
   writeCandidates(p.candidatePath,[]);
   const originals=[
-   signal("1234abcd","2026-10","geopolitics"),
-   signal("5678abcd","2026-10","rare_earth"),
+   {...signal("1234abcd","2026-10","geopolitics"),
+    title:"Geomacro finds foreign ministry announced a border security measure",
+    topic:"border security",development_type:"foreign policy",
+    what_changed:"The foreign ministry announced a border security measure in a dated official release."},
+   {...signal("5678abcd","2026-10","rare_earth"),
+    title:"Geomacro finds mineral authority approved a lithium processing facility",
+    topic:"critical minerals",development_type:"mineral processing",
+    what_changed:"The mineral authority announced a lithium processing facility in a dated official release."},
   ];
   let canonicalReads=0;
   const fetchImpl=async url=>{
