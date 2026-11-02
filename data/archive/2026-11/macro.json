@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T09:45:28.745Z",
+  "updated_at": "2026-11-02T10:06:11.907Z",
   "signals": [
+    {
+      "id": "macro-2ed1c37e",
+      "category": "macro",
+      "title": "Geomacro finds Kyrgyzstan's Tax Service introduced automated checks of importers' tax reports",
+      "what_changed": "A monitored source feed reports: Kyrgyzstan's Tax Service introduced automated checks of importers' tax reports. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:46:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-3fb85f31",
       "category": "macro",

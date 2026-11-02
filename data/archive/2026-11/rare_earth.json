@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-02T09:45:28.745Z",
+  "updated_at": "2026-11-02T10:06:11.907Z",
   "signals": [
+    {
+      "id": "rare_earth-c85f1285",
+      "category": "rare_earth",
+      "title": "Geomacro finds Metals.io issued tokens backed by 25 tonnes of physical copper stored in Germany - CoinDesk",
+      "what_changed": "A monitored source feed reports: Metals.io issued tokens backed by 25 tonnes of physical copper stored in Germany - CoinDesk. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:33:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-4df49bc7",
       "category": "rare_earth",
