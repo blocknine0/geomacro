@@ -32,7 +32,7 @@ export function createSevenDayBuffer({url,serviceKey,fetchImpl=fetch,now=()=>new
       throw Error("BUFFER_TABLE_INVALID");
     const endpoint=base+"/rest/v1/"+table+(queryString?"?"+queryString:"");
     const response=await fetchImpl(endpoint,{
-      method,headers:{"apikey":serviceKey,"Authorization":"Bearer "+serviceKey,
+      method,headers:{"apikey":serviceKey,...(serviceKey.startsWith("sb_secret_") ? {} : {"Authorization":"Bearer "+serviceKey}),
         "Content-Type":"application/json","Prefer":"resolution=merge-duplicates,return=minimal"},
       body:body?JSON.stringify(body):undefined,redirect:"error",
       signal:AbortSignal.timeout(12000)
