@@ -1312,7 +1312,8 @@ export default {
         ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
           .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")})
           .catch(()=>console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")));
-      if(utc.getUTCHours()===8&&utc.getUTCMinutes()===35&&
+      // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
+      if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(cleanupUnifiedRiskSupabase(env,{now:utc.getTime()})
           .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")})
