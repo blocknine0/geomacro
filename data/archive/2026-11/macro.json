@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T12:01:16.289Z",
+  "updated_at": "2026-11-02T12:22:28.278Z",
   "signals": [
+    {
+      "id": "macro-f7d975cc",
+      "category": "macro",
+      "title": "Geomacro finds Egypt raised Over $650m In IPO Of State-Owned Bank",
+      "what_changed": "A monitored source feed reports: Egypt raised Over $650m In IPO Of State-Owned Bank. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:16:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelstv.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-749764f0",
+      "category": "macro",
+      "title": "Geomacro finds Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo",
+      "what_changed": "A monitored source feed reports: Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-e8fbb6b5",
       "category": "macro",

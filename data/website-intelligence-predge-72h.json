@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T12:18:44.884Z",
+  "checked_at": "2026-11-02T12:22:28.278Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 193,
+  "item_count": 198,
   "counts": {
-    "geopolitics": 84,
-    "macro": 78,
-    "rare_earth": 31
+    "geopolitics": 86,
+    "macro": 80,
+    "rare_earth": 32
   },
-  "source_native_ids_sha256": "be997f748e0de219788f9b655a4be211d32d61bed9b99536b8021d447021fb4d",
+  "source_native_ids_sha256": "78538253ec81e471acf7958c284e974535d94723465c7253fc57eb7ea9868288",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,82 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-f7d975cc",
+      "category": "macro",
+      "title": "Geomacro finds Egypt raised Over $650m In IPO Of State-Owned Bank",
+      "what_changed": "A monitored source feed reports: Egypt raised Over $650m In IPO Of State-Owned Bank. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:16:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelstv.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-93047c49",
+      "category": "geopolitics",
+      "title": "Geomacro finds GPCL introduced security features on gazettes to curb fake publications",
+      "what_changed": "A monitored source feed reports: GPCL introduced security features on gazettes to curb fake publications. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:13:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-749764f0",
+      "category": "macro",
+      "title": "Geomacro finds Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo",
+      "what_changed": "A monitored source feed reports: Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-a7bb177f",
+      "category": "rare_earth",
+      "title": "Geomacro finds American Lithium increased Macusani Uranium Measured and Indicated Resource - GlobeNewswire",
+      "what_changed": "A monitored source feed reports: American Lithium increased Macusani Uranium Measured and Indicated Resource - GlobeNewswire. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b5837320",
       "category": "geopolitics",
@@ -43,6 +119,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-89a48432",
+      "category": "geopolitics",
+      "title": "Geomacro finds China urged dialogue, political settlement to Middle East conflict - China Daily",
+      "what_changed": "A monitored source feed reports: China urged dialogue, political settlement to Middle East conflict - China Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:54:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

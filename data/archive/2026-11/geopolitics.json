@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T12:01:16.289Z",
+  "updated_at": "2026-11-02T12:22:28.278Z",
   "signals": [
+    {
+      "id": "geopolitics-93047c49",
+      "category": "geopolitics",
+      "title": "Geomacro finds GPCL introduced security features on gazettes to curb fake publications",
+      "what_changed": "A monitored source feed reports: GPCL introduced security features on gazettes to curb fake publications. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:13:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b5837320",
       "category": "geopolitics",
@@ -18,6 +37,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-89a48432",
+      "category": "geopolitics",
+      "title": "Geomacro finds China urged dialogue, political settlement to Middle East conflict - China Daily",
+      "what_changed": "A monitored source feed reports: China urged dialogue, political settlement to Middle East conflict - China Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:54:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
