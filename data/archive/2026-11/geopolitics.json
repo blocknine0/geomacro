@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T11:40:01.315Z",
+  "updated_at": "2026-11-02T11:45:56.618Z",
   "signals": [
     {
       "id": "geopolitics-40b7b2c2",
@@ -56,6 +56,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b69a7903",
+      "category": "geopolitics",
+      "title": "Geomacro finds Al Jaber said global energy security needs overhaul as 1bn oil barrels drained from inventory",
+      "what_changed": "A monitored source feed reports: Al Jaber said global energy security needs overhaul as 1bn oil barrels drained from inventory. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:33:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T11:40:01.315Z",
+  "checked_at": "2026-11-02T11:45:56.618Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 192,
+  "item_count": 194,
   "counts": {
-    "geopolitics": 83,
-    "macro": 78,
+    "geopolitics": 84,
+    "macro": 79,
     "rare_earth": 31
   },
-  "source_native_ids_sha256": "1f6717342916e6bbc16c599fee6655310c4c4c31b9cbb88bdd0d7d1e5e548a72",
+  "source_native_ids_sha256": "ae51b0da4165fc0a9b0b01f82bb91d215b3822a3c2de202414d61716cddae10b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -214,6 +214,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b69a7903",
+      "category": "geopolitics",
+      "title": "Geomacro finds Al Jaber said global energy security needs overhaul as 1bn oil barrels drained from inventory",
+      "what_changed": "A monitored source feed reports: Al Jaber said global energy security needs overhaul as 1bn oil barrels drained from inventory. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:33:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1772,6 +1791,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: globalnews.ca"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1c3a7356",
+      "category": "macro",
+      "title": "Geomacro finds Russia said drone hit 'industrial enterprise' near Moscow, Kyiv claims hit major refinery - The Hindu",
+      "what_changed": "A monitored source feed reports: Russia said drone hit 'industrial enterprise' near Moscow, Kyiv claims hit major refinery - The Hindu. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:27:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
