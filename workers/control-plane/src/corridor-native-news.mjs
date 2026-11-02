@@ -9,7 +9,9 @@ const PUBLISHERS=Object.freeze({
  federal_reserve:["https://www.federalreserve.gov/feeds/press_all.xml",["macro"]],
  bank_of_canada:["https://www.bankofcanada.ca/content_type/press-releases/feed/",["macro"]],
  coindesk_rss:["https://www.coindesk.com/arc/outboundfeeds/rss/",["geopolitics","macro"]],
- cointelegraph_rss:["https://cointelegraph.com/rss",["geopolitics","macro"]]
+ cointelegraph_rss:["https://cointelegraph.com/rss",["geopolitics","macro"]],
+ wto_official_news:["https://www.wto.org/library/rss/latest_news_e.xml",["geopolitics","macro"]],
+ usgs_official_minerals_news:["https://www.usgs.gov/news/minerals/feed",["rare_earth"]]
 });
 const ROUTES=new Set(["strait_of_hormuz","bab_el_mandeb","suez_canal","panama_canal",
  "strait_of_malacca","singapore_strait","south_china_sea","taiwan_strait","red_sea",
