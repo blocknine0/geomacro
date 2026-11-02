@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,sign as signBytes,verify as verifyBytes} from "node:crypto";
 import {
  buildUnsignedPilotCheck,canonicalJson,toBytes,signablePilotCheck,sha256,
- validatePilotEnvelopeShape,verifySignedPilotCheck,requireActivePilotTrust,MAX_WIRE_BYTES
+ validatePilotEnvelopeShape,verifySignedPilotCheck,requireActivePilotTrust,MAX_WIRE_BYTES,
+ PILOT_DEFAULT_SIGNED_TTL_MS,PILOT_MAX_SIGNED_TTL_MS
 } from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2}
  from "../../workers/control-plane/src/predge-pilot-check-v2.mjs";
@@ -109,6 +110,36 @@ test("signed format and canonical-byte consistency reject an unpinned signer",as
  await assert.rejects(verifySignedPilotCheck(forged,{now:NOW,
   registry:{"geomacro-risk-2026-03":{status:"retired",public_key_spki_b64:"malicious"}}}),
   /PREDGE_PILOT_TRUST_REGISTRY/);
+});
+test("signed preview can extend to three hours while default remains one hour",()=>{
+ const old=buildUnsignedPilotCheck(feed([item(0)]),NOW);
+ assert.equal(PILOT_DEFAULT_SIGNED_TTL_MS,60*60*1000);
+ assert.equal(PILOT_MAX_SIGNED_TTL_MS,3*60*60*1000);
+ assert.equal(Date.parse(old.expires_at)-Date.parse(old.generated_at),60*60*1000);
+ const extended=buildUnsignedPilotCheck(feed([item(0)]),NOW,PILOT_MAX_SIGNED_TTL_MS);
+ assert.equal(Date.parse(extended.expires_at)-Date.parse(extended.generated_at),3*60*60*1000);
+ assert.equal(extended.risk_gate.news_context.retention_hours,72);
+ assert.equal(validatePilotEnvelopeShape(extended,NOW+2*60*60*1000,false),true);
+ assert.throws(()=>validatePilotEnvelopeShape(extended,NOW+3*60*60*1000,false),
+   /PREDGE_PILOT_ENVELOPE_EXPIRED/);
+ assert.throws(()=>validatePilotEnvelopeShape(old,NOW+60*60*1000,false),
+   /PREDGE_PILOT_ENVELOPE_EXPIRED/);
+ assert.throws(()=>buildUnsignedPilotCheck(feed([item(0)]),NOW,4*60*60*1000),
+   /PREDGE_PILOT_TTL_NOT_ALLOWED/);
+ const forged=structuredClone(extended);
+ forged.expires_at=new Date(NOW+4*60*60*1000).toISOString();
+ assert.throws(()=>validatePilotEnvelopeShape(forged,NOW,false),
+   /PREDGE_PILOT_ENVELOPE_EXPIRED/);
+});
+test("signed 3h issuance requires protected explicit partner acknowledgement",async()=>{
+ const fs=await import("node:fs");
+ const signer=fs.readFileSync("scripts/ops/sign-predge-pilot-check-v2.mjs","utf8");
+ const workflow=fs.readFileSync(".github/workflows/predge-pilot-signed-news-v2-refresh.yml","utf8");
+ assert.match(signer,/SIGNED_3H_TTL_PARTNER_ACK_REQUIRED/);
+ assert.match(signer,/PREDGE_PILOT_3H_PARTNER_ACK/);
+ assert.match(signer,/SIGNED_TTL_NOT_ALLOWED/);
+ assert.match(workflow,/GEOMACRO_PREDGE_SIGNED_TTL_HOURS/);
+ assert.match(workflow,/GEOMACRO_PREDGE_3H_PARTNER_ACK/);
 });
 test("expired and fake CONTINUE envelopes always reject",()=>{
  const body=buildUnsignedPilotCheck(feed([item(0)]),NOW);
