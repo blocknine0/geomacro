@@ -1,14 +1,17 @@
-// Permanent shared-account B2 operation reservation (D1 atomic UPSERT).
-// Counts attempts before B2 network I/O, not just successful responses.
-// Deliberately conservative: ambiguous retries are *not* refunded.
+// Shared-account B2 operation reservation (D1 atomic UPSERT).
+// Backblaze B2 Class A/B/C API requests are published as free (2026-11-02).
+// This is a GeoMacro SAFETY/throughput ceiling, NOT a provider storage/egress
+// guarantee: B2 storage is free only to 10 GB and egress is free only to 3x
+// average monthly stored bytes. The bucket owner MUST keep storage/egress
+// spend caps configured to prevent charges on growing archives.
+// Ambiguous requests are counted and never refunded. Each network attempt
+// still requires the existing same-D1 atomic reservation.
 export const B2_DAILY_LIMITS = Object.freeze({
-  total: 100, GET: 45, PUT: 55, HEAD: 10, NATIVE_AUTH: 10,
+  total: 720, GET: 340, PUT: 380, HEAD: 40, NATIVE_AUTH: 40,
 });
-// Reserve at least 35/45 shared GET tickets for trusted producers and
-// verified recovery. All THREE currently deployed public B2 cold-read Workers
-// must count against the SAME 10-ticket ceiling. This is based on total GET
-// reservations, so producer use can only make the public allocation smaller;
-// it can never let a public Worker exhaust producer headroom.
+// Preserve the existing TEN shared public cold-read tickets per UTC day.
+// The expanded private producer/restore capacity cannot be drained by public
+// visitors or public Workers, so no unbounded customer-induced B2 egress.
 export const B2_PUBLIC_EDGE_GLOBAL_GET_CEILING = 10;
 // The provider account may still have a much smaller, independently enforced
 // cap. These are conservative *shared-ledger* admission ceilings, NOT claimed
@@ -85,7 +88,7 @@ export async function reserveB2AccountQuota(db, body, {now = new Date()} = {}) {
   const increments = KINDS.map(k => Number(k === kind));
   // This is evaluated within the SAME atomic quota UPSERT, not as a racy
   // SELECT or user-provided priority. Recovery workers never inherit this
-  // low-priority app ceiling; the account's 45-GET hard safety cap persists.
+  // low-priority app ceiling; the expanded GET hard cap remains atomic.
   const getCeiling = kind !== "GET" ? null
     : workflowId === "app_private_structural_serving"
       ? B2_APP_STRUCTURAL_SHARED_GET_CEILING
