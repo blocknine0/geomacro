@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T17:31:27.529Z",
+  "checked_at": "2026-11-02T18:13:03.021Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -3820,63 +3820,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T18:27:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5a10ec9c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk",
-      "what_changed": "A monitored source feed reports: Cochilco said Chile’s copper output will fall 8.4% to 4.9mln tonnes in 2026 before rising 3% to 5.08mln tonnes in 2027 - Newsquawk. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T18:05:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9c00a15d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine called for emergency UN Security Council meeting over deadly Russian attacks on Dnipro, Chernihiv, Kremenchuk - The Kyiv Independent",
-      "what_changed": "A monitored source feed reports: Ukraine called for emergency UN Security Council meeting over deadly Russian attacks on Dnipro, Chernihiv, Kremenchuk - The Kyiv Independent. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:46:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ab685586",
-      "category": "rare_earth",
-      "title": "Geomacro finds Chile's Cochilco raised copper price forecasts for 2026, 2027 - TradingView",
-      "what_changed": "A monitored source feed reports: Chile's Cochilco raised copper price forecasts for 2026, 2027 - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:42:46.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
