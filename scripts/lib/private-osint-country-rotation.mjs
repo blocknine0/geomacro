@@ -98,7 +98,8 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  // native local feeds. A 512-source run is the immutable network request cap.
  const normalIndex=includeLocalGapLane?
   COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK;
- if(activeBase.length+1>512)
+ if(activeBase.length+1>512||
+    (!includeLocalGapLane&&activeBase.length+normalIndex>512))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
