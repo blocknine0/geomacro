@@ -1568,6 +1568,21 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Owner-admin-only daily census; no article metadata or customer IDs.
+      if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
+        const day_utc=new Date().toISOString().slice(0,10);
+        const rows=(await env.DB.prepare("SELECT entity_type,COUNT(DISTINCT entity_id) AS entities,SUM(CASE WHEN supabase_synced_at IS NOT NULL THEN 1 ELSE 0 END) AS synced FROM unified_risk_snapshots WHERE day_utc=? GROUP BY entity_type").bind(day_utc).all())?.results??[];
+        const countries=rows.find(x=>x.entity_type==="COUNTRY");
+        const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
+        const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
+        const country_synced=Number(countries?.synced??0),corridor_synced=Number(corridors?.synced??0);
+        const complete=country_count===195&&corridor_count===12&&
+          country_synced===195&&corridor_synced===12;
+        return json({schema:"geomacro.unified-risk-census.v1",ok:true,day_utc,
+          country_count,corridor_count,country_synced,corridor_synced,
+          expected:{country:195,corridor:12,total:207},
+          complete,commercial_activation:false});
+      }
       // Owner-admin-only, exact three-target production acceptance.
       // Not a customer route, no credits/payments or original article bodies.
       // Idempotent one-snapshot-per-target/day prevents repeated provider pulls.
