@@ -4,7 +4,7 @@ import {PHASE2H_COUNTRIES_195} from "../../scripts/lib/phase2h-country-originals
 import {DAILY_RG_CORRIDORS} from "../../workers/control-plane/src/daily-risk-gate-generator.mjs";
 import {CATEGORIES,validatedSignedCategoryScores} from "../../workers/control-plane/src/unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "../../workers/control-plane/src/unified-risk-engine.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate} from "../../workers/control-plane/src/unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot} from "../../workers/control-plane/src/unified-risk-gate.mjs";
 
 test("canonical 195 x 3 plus 12 corridor registry",()=>{
  assert.equal(PHASE2H_COUNTRIES_195.length,195);
@@ -98,9 +98,8 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
  assert.deepEqual(categories,CATEGORIES);
  assert.equal(store.size,1);
  assert.match(data.audit_proof.signature,/^hmac_sha256:[a-f0-9]{64}$/);
- const again=await scheduledUnifiedRisk(env,now,{fetcher});
- assert.equal(again.ok,true);
- assert.equal(again.generated,false);
+ const again=await generateUnifiedSnapshot(env,{type:"COUNTRY",id:"TWN"},{now,fetcher});
+ assert.equal(again.existing,true);
  assert.equal(store.size,1);
 });
 test("lenient override requires explicit client acknowledgment",async()=>{
