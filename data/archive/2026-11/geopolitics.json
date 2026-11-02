@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T02:10:08.756Z",
+  "updated_at": "2026-11-02T02:43:59.214Z",
   "signals": [
+    {
+      "id": "geopolitics-6d4914a9",
+      "category": "geopolitics",
+      "title": "Geomacro finds France launched attempted murder investigation following bomb attack incidents",
+      "what_changed": "A monitored source feed reports: France launched attempted murder investigation following bomb attack incidents. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T02:37:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: jowhar.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-70fb581f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine denied considering diplomatic break with South Korea - upi",
+      "what_changed": "A monitored source feed reports: Ukraine denied considering diplomatic break with South Korea - upi. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T02:06:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-b016b3b2",
       "category": "geopolitics",
