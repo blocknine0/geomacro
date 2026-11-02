@@ -6,6 +6,12 @@ on:
   schedule:
     - cron: "11 3 * * *"
   workflow_dispatch: {}
+  # Verify the repaired daily census once after the workflow changes on main.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/private-osint-585-census-daily.yml"
+      - "scripts/tests/private-osint-census-workflow-contract.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/private-osint-585-census-daily.yml"
@@ -54,7 +60,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
