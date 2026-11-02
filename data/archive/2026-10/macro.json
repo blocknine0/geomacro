@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-02T09:22:43.771Z",
+  "updated_at": "2026-11-02T09:38:05.583Z",
   "signals": [
     {
       "id": "macro-44642ace",
@@ -109,6 +109,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T10:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8ec83947",
+      "category": "macro",
+      "title": "Geomacro finds Yemen said Iranian support for Houthis threatens shipping in Hormuz and Red Sea - Iran International",
+      "what_changed": "A monitored source feed reports: Yemen said Iranian support for Houthis threatens shipping in Hormuz and Red Sea - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T09:44:12.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

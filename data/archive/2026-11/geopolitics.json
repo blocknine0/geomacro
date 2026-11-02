@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T09:22:43.771Z",
+  "updated_at": "2026-11-02T09:38:05.583Z",
   "signals": [
+    {
+      "id": "geopolitics-178cf0b2",
+      "category": "geopolitics",
+      "title": "Geomacro finds No announced plans to destroy countries as colonial powers collapse, top Russian security official",
+      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers collapse, top Russian security official. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:22:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-3da957b9",
       "category": "geopolitics",
@@ -43,6 +62,82 @@
       "severity": null
     },
     {
+      "id": "geopolitics-87119e80",
+      "category": "geopolitics",
+      "title": "Geomacro finds Odisha CM announced special package for families affected by Cyclone Arnab",
+      "what_changed": "A monitored source feed reports: Odisha CM announced special package for families affected by Cyclone Arnab. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:33:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-531da2c6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Acting PM said Vanikoro airport, border patrol base to start in 2027",
+      "what_changed": "A monitored source feed reports: Acting PM said Vanikoro airport, border patrol base to start in 2027. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:27:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.solomontimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e5228d94",
+      "category": "geopolitics",
+      "title": "Geomacro finds Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets",
+      "what_changed": "A monitored source feed reports: Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:18:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f5499e5f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Nelson Koech raised alarm over rogue agencies recruiting Kenyans to fight in Russia-Ukraine War - People Daily",
+      "what_changed": "A monitored source feed reports: Nelson Koech raised alarm over rogue agencies recruiting Kenyans to fight in Russia-Ukraine War - People Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:02:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-f31e8307",
       "category": "geopolitics",
       "title": "Geomacro finds Pro-Kurdish DEM Party urged faster peace process following Ocalan prison transfer - Rudaw",
@@ -52,6 +147,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T05:26:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-815d1985",
+      "category": "geopolitics",
+      "title": "Geomacro finds Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:56:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

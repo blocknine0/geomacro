@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T09:33:19.208Z",
+  "checked_at": "2026-11-02T09:38:05.583Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,63 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-a94bd61c",
+      "category": "macro",
+      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:27:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-178cf0b2",
+      "category": "geopolitics",
+      "title": "Geomacro finds No announced plans to destroy countries as colonial powers collapse, top Russian security official",
+      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers collapse, top Russian security official. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:22:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-083da050",
+      "category": "macro",
+      "title": "Geomacro finds Wells Fargo raised Abbvie stock price target to $340 on pipeline - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Wells Fargo raised Abbvie stock price target to $340 on pipeline - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-58d48e3c",
       "category": "macro",
@@ -144,25 +201,6 @@
       "severity": null
     },
     {
-      "id": "macro-3e5287c9",
-      "category": "macro",
-      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
-      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T08:35:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-4df49bc7",
       "category": "rare_earth",
       "title": "Geomacro finds Phoenix Copper increased Empire Mine Reserves by 31.5% to 13.27 Million Tonnes - Yahoo Finance UK",
@@ -239,6 +277,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-87119e80",
+      "category": "geopolitics",
+      "title": "Geomacro finds Odisha CM announced special package for families affected by Cyclone Arnab",
+      "what_changed": "A monitored source feed reports: Odisha CM announced special package for families affected by Cyclone Arnab. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:33:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-531da2c6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Acting PM said Vanikoro airport, border patrol base to start in 2027",
+      "what_changed": "A monitored source feed reports: Acting PM said Vanikoro airport, border patrol base to start in 2027. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:27:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.solomontimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-3f3b6523",
       "category": "macro",
       "title": "Geomacro finds Central Bank of Azerbaijan announced Exchange Rates: Euro Eases, Ruble Gains - Anews.az",
@@ -258,12 +334,12 @@
       "severity": null
     },
     {
-      "id": "macro-437a9db3",
-      "category": "macro",
+      "id": "geopolitics-e5228d94",
+      "category": "geopolitics",
       "title": "Geomacro finds Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets",
       "what_changed": "A monitored source feed reports: Dr Sultan Al Jaber urged energy security overhaul as nearly billion barrels drawn from oil markets. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T06:18:24.000Z",
@@ -305,6 +381,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T06:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f5499e5f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Nelson Koech raised alarm over rogue agencies recruiting Kenyans to fight in Russia-Ukraine War - People Daily",
+      "what_changed": "A monitored source feed reports: Nelson Koech raised alarm over rogue agencies recruiting Kenyans to fight in Russia-Ukraine War - People Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:02:27.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -372,7 +467,7 @@
       "severity": null
     },
     {
-      "id": "geopolitics-886db3e8",
+      "id": "geopolitics-815d1985",
       "category": "geopolitics",
       "title": "Geomacro finds Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post",
       "what_changed": "A monitored source feed reports: Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post. This report has not been independently verified.",
@@ -1597,6 +1692,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T10:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8ec83947",
+      "category": "macro",
+      "title": "Geomacro finds Yemen said Iranian support for Houthis threatens shipping in Hormuz and Red Sea - Iran International",
+      "what_changed": "A monitored source feed reports: Yemen said Iranian support for Houthis threatens shipping in Hormuz and Red Sea - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T09:44:12.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
