@@ -265,8 +265,9 @@ jobs:
   publish-recovered-website-archive:
     needs: [quota-admission, catch-up-derived-only]
     if: >-
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.research == 'true' &&
       needs.catch-up-derived-only.result == 'success' &&
-      needs.catch-up-derived-only.outputs.recovered_batch == 'true' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
@@ -287,9 +288,22 @@ jobs:
         with:
           node-version: "24"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        if: needs.catch-up-derived-only.outputs.recovered_batch == 'true'
         with:
           name: recovered-website-archive-candidates-${{ github.run_id }}
           path: artifacts/derived-news
+      - name: Prepare empty source cohort for canonical-only reconciliation
+        if: needs.catch-up-derived-only.outputs.recovered_batch != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/derived-news
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from "node:fs";
+          writeFileSync("artifacts/derived-news/permanent-archive-candidates.json",
+            JSON.stringify({schema:"geomacro.permanent-derived-news-candidates.v1",
+              source_sha:process.env.GITHUB_SHA,signals:[]})+"\n",{mode:0o600});
+          NODE
       - name: Append canonical original-dated D1 candidates and deploy static archive
         id: permanent-archive
         env:
