@@ -59,6 +59,21 @@ test("Risk Gate packs use exact existing 3 variants but never create payable dec
  for(const variant of RG_VARIANTS)assert.ok(block.includes(variant+':"0.'),"founder price variant missing");
  assert.match(prices,/if\(capability==="risk_gate_bundle"\)return "COMING_SOON";/u);
 });
+test("GDELT export batch indices are never used as Risk Gate event evidence",()=>{
+ const result=riskGatePackFromPrivateSourceReceipts({
+  ...receipt(),news_candidates:[],crypto_news_candidates:[],
+  official_reference_observations:[
+   {id:"d".repeat(64),source_id:"gdelt_v2_15m",
+    metric_id:"gdelt_export_batch_bytes",observation_period:TIME},
+   {id:"e".repeat(64),source_id:"fred_api",
+    metric_id:"treasury_10y_yield",observation_period:"2026-11-01"}
+  ]
+ });
+ assert.equal(result.source_refs.length,1);
+ assert.equal(result.source_refs[0].source_id,"fred_api");
+ assert.equal(result.verified_event_count,0);
+ assert.equal(result.chargeable,false);
+});
 test("empty sources create safe zero-evidence preflight packs, no zero-data sale",()=>{
  const pack=riskGatePackFromPrivateSourceReceipts({...receipt(),
   news_candidates:[],crypto_news_candidates:[],official_reference_observations:[]});
