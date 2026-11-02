@@ -36,13 +36,20 @@ export async function publishPrivateCorridorNews({
    const packet={schema:SCHEMA,channel:"CORRIDOR_ONLY",
      checked_at:now.toISOString(),items:chunk,
      website_intelligence_enabled:false,commercial_rights_verified:false};
+   // The Worker deploy and this workflow run independently on main pushes.
+   // Only retry transient rollout 404/503; never 401/403/422 or bad receipts.
    let response;
-   try{response=await fetchImpl(endpoint+"/v1/internal/corridor-native-news",{
-     method:"PUT",redirect:"error",cache:"no-store",
-     headers:{"Authorization":"Bearer "+bearer,"Content-Type":"application/json"},
-     body:JSON.stringify(packet),signal:AbortSignal.timeout(15000)
-   });requests++}catch{throw Error("CORRIDOR_PRIVATE_D1_NETWORK_UNAVAILABLE")}
-   if(response.status!==200)throw Error("CORRIDOR_PRIVATE_D1_PUT_HTTP_"+response.status);
+   for(let attempt=0;attempt<6;attempt++){
+     try{response=await fetchImpl(endpoint+"/v1/internal/corridor-native-news",{
+       method:"PUT",redirect:"error",cache:"no-store",
+       headers:{"Authorization":"Bearer "+bearer,"Content-Type":"application/json"},
+       body:JSON.stringify(packet),signal:AbortSignal.timeout(15000)
+     });requests++}catch{throw Error("CORRIDOR_PRIVATE_D1_NETWORK_UNAVAILABLE")}
+     if(response.status===200)break;
+     if(![404,503].includes(response.status)||attempt===5)
+       throw Error("CORRIDOR_PRIVATE_D1_PUT_HTTP_"+response.status);
+     await new Promise(resolve=>setTimeout(resolve,5000*(attempt+1)));
+   }
    let body;try{body=await response.json()}catch{
      throw Error("CORRIDOR_PRIVATE_D1_ACK_INVALID")}
    if(body.ok!==true||body.channel!=="CORRIDOR_ONLY"||
