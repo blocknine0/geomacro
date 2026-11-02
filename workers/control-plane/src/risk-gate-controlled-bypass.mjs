@@ -16,7 +16,9 @@ const ROUTES=Object.freeze({
  "red-sea":"red_sea","bab-el-mandeb":"bab_el_mandeb",
  "hormuz":"strait_of_hormuz","suez":"suez_canal",
  "panama":"panama_canal","malacca":"strait_of_malacca",
- "taiwan-strait":"taiwan_strait","singapore-strait":"singapore_strait"
+ "taiwan-strait":"taiwan_strait","singapore-strait":"singapore_strait",
+ "south-china-sea":"south_china_sea","gulf-of-aden":"gulf_of_aden_somali_basin",
+ "gulf-of-guinea":"gulf_of_guinea","black-sea-grain":"black_sea_grain_kerch"
 });
 const OFFICIAL_SOURCE_HOSTS=Object.freeze({
  federal_reserve:"federalreserve.gov",boe_news:"bankofengland.co.uk",
