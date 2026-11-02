@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:43:18.072Z",
+  "checked_at": "2026-11-02T20:45:00.806Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 246,
+  "item_count": 247,
   "counts": {
     "geopolitics": 114,
-    "macro": 97,
+    "macro": 98,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "0e2f89ae1b3d4ce42fe7d37bf599fa99971edc0f4b96e6ab95928e46ad2710ae",
+  "source_native_ids_sha256": "934596362ce6fd0b0530015ae356fde60376943e2f5715806bc7eb8dbac67d59",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-d3ac63da",
+      "category": "macro",
+      "title": "Geomacro finds Trump said he won&#x2019;t strike Iran after U.S. midterms",
+      "what_changed": "A monitored source feed reports: Trump said he won&#x2019;t strike Iran after U.S. midterms. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:37:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a94e150c",
       "category": "macro",
