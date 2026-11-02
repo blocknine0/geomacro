@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {RG_VARIANTS,RG_PRICE_CATALOG,buildRiskGateSourcePack,validateRiskGateSourceRefs}
  from "../../lib/risk-gate-source-pack.mjs";
-import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack}
+import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,materializeCanonicalRiskGateSourcePack}
  from "../../workers/control-plane/src/corridor-risk-gate-source-pack.mjs";
-import {riskGatePackFromPrivateSourceReceipts,publishRiskGateSourcePacks}
+import {riskGatePackFromPrivateSourceReceipts,publishRiskGateSourcePacks,publishCanonicalRiskGateSourcePacks}
  from "../ops/publish-private-risk-gate-source-packs.mjs";
 const clock="2026-11-02T12:06:00.000Z",now=Date.parse(clock);
 const nativeAt="2026-11-02T11:40:00.000Z",cryptoAt="2026-11-02T11:55:00.000Z";
@@ -20,14 +20,18 @@ class D1{
  prepare(query){return {bind:(...args)=>({
   all:async()=>{
    if(query.includes("FROM corridor_native_news_candidates"))
-    return {results:this.good?[{reference_id:"a".repeat(64),
-     source_id:"cointelegraph_rss",source_period:nativeAt}]:[]};
+    return {results:this.good?[query.includes("SELECT candidate_id")?
+      {candidate_id:"a".repeat(64),source_id:"cointelegraph_rss",
+       native_published_at:nativeAt}:
+      {reference_id:"a".repeat(64),source_id:"cointelegraph_rss",source_period:nativeAt}]:[]};
    if(query.includes("FROM corridor_crypto_individual_research"))
-    return {results:[{reference_id:"b".repeat(64),
-     source_id:"cryptocompare_news",source_period:cryptoAt}]};
+    return {results:[query.includes("SELECT article_id")?
+      {article_id:"b".repeat(64),published_at:cryptoAt}:
+      {reference_id:"b".repeat(64),source_id:"cryptocompare_news",source_period:cryptoAt}]};
    if(query.includes("FROM corridor_official_reference_context"))
-    return {results:[{reference_id:"c".repeat(64),
-     source_id:"fred_api",source_period:"2026-11-01"}]};
+    return {results:[query.includes("SELECT reference_id,source_id,observation_period")?
+      {reference_id:"c".repeat(64),source_id:"fred_api",observation_period:"2026-11-01"}:
+      {reference_id:"c".repeat(64),source_id:"fred_api",source_period:"2026-11-01"}]};
    if(query.includes("FROM corridor_risk_gate_source_packs"))
     return {results:this.snapshot?[this.snapshot]:[]};
    throw Error("unexpected SELECT");
@@ -124,6 +128,35 @@ test("production publisher verifies authenticated D1 write AND private GET",asyn
  assert.equal(result.d1_get_readback,true);
  assert.equal(result.source_references_crosschecked,3);
  assert.equal(result.paid_quote_enabled,false);
+});
+test("canonical D1 source-local Risk Gate materialization verifies all three original table schemas",async()=>{
+ const db=new D1();
+ const result=await materializeCanonicalRiskGateSourcePack({DB:db},now);
+ assert.equal(result.status,200);
+ const body=await result.json();
+ assert.equal(body.selection,"CANONICAL_D1_SOURCE_LOCAL");
+ assert.equal(body.reference_rows_crosschecked,3);
+ assert.deepEqual(body.source_classes,{native_rss:1,crypto_individual:1,
+  official_reference:1});
+ assert.equal(body.independent_events_verified,0);
+ assert.equal(body.chargeable,false);
+ assert.equal(body.new_sales_enabled,false);
+});
+test("production publisher uses D1-local canonical POST and separately verifies GET",async()=>{
+ const db=new D1(),root="A".repeat(64);
+ const result=await publishCanonicalRiskGateSourcePacks({
+  rootToken:root,fetchImpl:async(url,options)=>{
+   assert.match(options.headers.Authorization,/^Bearer [a-f0-9]{64}$/u);
+   if(options.method==="POST")
+    return materializeCanonicalRiskGateSourcePack({DB:db},now);
+   return readPrivateRiskGateSourcePack({DB:db},new URLSearchParams("limit=3"),now);
+  }
+ });
+ assert.equal(result.selection,"CANONICAL_D1_SOURCE_LOCAL");
+ assert.equal(result.priced_variants_prepared,3);
+ assert.equal(result.source_references_crosschecked,3);
+ assert.equal(result.canonical_d1_get_readback,true);
+ assert.equal(result.credits_debited,0);
 });
 test("live route is internal-admin-only; no PREDGE, x402 or Risk Gate engine rewrites",()=>{
  const worker=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
