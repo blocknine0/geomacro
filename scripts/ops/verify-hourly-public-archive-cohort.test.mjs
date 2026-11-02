@@ -34,6 +34,43 @@ test("one no-deploy hourly pass proves exact static and daily homepage cohort",a
  assert.deepEqual(proof.observed_archive_category_counts,
   {geopolitics:0,macro:0,rare_earth:0});
 });
+test("a newer coherent no-op daily clock passes only with identical immutable content",async()=>{
+ const {index,latest,coverage,daily}=fixture();
+ const newer=new Date(NOW-10_000).toISOString();
+ const docs={"/index.json":index,
+  "/latest.json":{...latest,checked_at:newer},
+  "/coverage-72h.json":{...coverage,checked_at:newer},
+  "/daily-highlights.json":{...daily,generated_at:newer}};
+ const proof=await verifyHourlyPublicArchiveCohort({
+  expectedIndex:index,expectedLatest:latest,expectedCoverage:coverage,expectedDaily:daily,
+  read:async path=>docs[path],now:()=>NOW,sleep:async()=>{}
+ });
+ assert.equal(proof.daily_noop_clock_shift_verified,true);
+ assert.equal(proof.homepage_daily_highlights_exact,true);
+ assert.equal(proof.d1_reads,0);
+ assert.equal(proof.payments,0);
+});
+test("a future, divergent or unrelated daily clock never masquerades as a no-op",async()=>{
+ const {index,latest,coverage,daily}=fixture();
+ const newer=new Date(NOW-10_000).toISOString();
+ const base={"/index.json":index,
+  "/latest.json":{...latest,checked_at:newer},
+  "/coverage-72h.json":{...coverage,checked_at:newer},
+  "/daily-highlights.json":{...daily,generated_at:newer}};
+ const mutations=[
+  {"/daily-highlights.json":{...daily,generated_at:newer,signals:[{id:"forged"}]}},
+  {"/daily-highlights.json":{...daily,generated_at:new Date(NOW+90_000).toISOString()}},
+  {"/latest.json":{...latest,checked_at:latest.checked_at}},
+  {"/coverage-72h.json":{...coverage,checked_at:new Date(NOW-80_000).toISOString()}},
+ ];
+ for(const mutation of mutations){
+  const docs={...base,...mutation};
+  await assert.rejects(()=>verifyHourlyPublicArchiveCohort({
+   expectedIndex:index,expectedLatest:latest,expectedCoverage:coverage,expectedDaily:daily,
+   read:async path=>docs[path],now:()=>NOW,sleep:async()=>{}
+  }));
+ }
+});
 test("do not return green for stale daily homepage snapshot",async()=>{
  const {index,latest,coverage,daily}=fixture();
  const docs={"/index.json":index,"/latest.json":latest,"/coverage-72h.json":coverage,

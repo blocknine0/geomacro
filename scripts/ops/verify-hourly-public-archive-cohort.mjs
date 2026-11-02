@@ -8,7 +8,7 @@
 import {readFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {verifyConvergedPublicStaticArchiveReadback} from "../lib/verify-public-static-archive-readback.mjs";
+import {verifyConvergedPublicStaticArchiveReadback,verifyPublicStaticArchiveReadback} from "../lib/verify-public-static-archive-readback.mjs";
 const BASE="https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 const PREFIX="GEOMACRO_HOURLY_STATIC_";
 const fail=message=>{throw Error(PREFIX+message)};
@@ -38,14 +38,40 @@ export async function verifyHourlyPublicArchiveCohort({
    try{
      const liveDaily=await read("/daily-highlights.json");
      if(liveDaily?.schema!==expectedDaily.schema||
-        liveDaily?.generated_at!==expectedDaily.generated_at||
         noClock(liveDaily)!==noClock(expectedDaily))
        fail("DAILY_COHORT_MISMATCH");
+     // The public archive uses the same immutable content across harmless
+     // no-op refreshes; core static verification intentionally accepts only
+     // an observation-clock change. Do not force an hourly failure solely
+     // because a later refresh emitted the same daily content at a new time.
+     // Verify all FOUR currently served documents as one coherent cohort
+     // before allowing an exact daily clock shift (never accept new content).
+     const dailyClockShift=liveDaily.generated_at!==expectedDaily.generated_at;
+     if(dailyClockShift){
+       const liveAt=Date.parse(liveDaily.generated_at??"");
+       const expectedAt=Date.parse(expectedDaily.generated_at);
+       const current=now();
+       if(!Number.isFinite(liveAt)||!Number.isFinite(expectedAt)||
+          liveAt<expectedAt||liveAt>current+60_000||
+          current-liveAt>6*60*60_000)
+         fail("DAILY_COHORT_MISMATCH");
+       const [index,latest,coverage]=await Promise.all([
+         read("/index.json"),read("/latest.json"),read("/coverage-72h.json")
+       ]);
+       verifyPublicStaticArchiveReadback({
+         expectedIndex,expectedLatest,expectedCoverage,
+         liveIndex:index,liveLatest:latest,liveCoverage:coverage,now:current
+       });
+       if(latest.checked_at!==liveDaily.generated_at||
+          Math.abs(Date.parse(coverage.checked_at)-liveAt)>30_000)
+         fail("DAILY_COHORT_MISMATCH");
+     }
      return Object.freeze({
        ...core,
        schema:"geomacro.hourly-source-to-public-archive-acceptance.v1",
        source_to_public_archive_exact:true,
        homepage_daily_highlights_exact:true,
+       daily_noop_clock_shift_verified:dailyClockShift,
        no_deploy_sweep_independently_verified:true,
        public_static_cohort_valid:true,
        observed_archive_category_counts:Object.fromEntries(
