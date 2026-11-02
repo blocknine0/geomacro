@@ -39,6 +39,8 @@ function parseTarget(x){
 function basePolicy(x){
  if(x?.client_policy!==undefined&&!["STRICT","LENIENT"].includes(x.client_policy))return null;
  if(x?.override_acknowledged!==undefined&&x.override_acknowledged!==true)return null;
+ if(x?.client_policy==="LENIENT"&&x.override_acknowledged!==true)return null;
+ if(x?.client_policy!=="LENIENT"&&x?.override_acknowledged!==undefined)return null;
  if(x?.approved_thresholds!==undefined){
   const a=x.approved_thresholds;
   if(!a||typeof a!=="object"||Array.isArray(a)||
@@ -275,11 +277,30 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   const x=await generateUnifiedSnapshot(env,target,opts);
   // Daily record is integrity-signed observation; no unsigned client threshold
   // can transform it into a paid verified hard verdict.
+  // Immutable daily snapshot is integrity-signed; customer-specific policy
+  // must be evaluated against a freshly verified Ed25519 GRO, not RSS counts.
+  // Client-specific result is never misrepresented as part of the daily HMAC.
+  const now=opts.now??Date.now();
+  const gro=payload.approved_thresholds?
+   await signedGro(env,target,now):null;
+  const trustedScores=validatedSignedCategoryScores(gro);
+  const independentScore=calculateUnifiedRisk(Object.fromEntries(
+   CATEGORIES.map(k=>[k,trustedScores[k]??null])));
+  const customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
+   groVerified:!!gro,confidence:gro?.confidence??null,
+   policy:payload.approved_thresholds
+  }):x.snapshot.tiers;
+  const lenient=payload.client_policy==="LENIENT"&&payload.override_acknowledged===true;
+  const clientPolicyDecision=lenient?
+   customTiers.policy.lenient_mode_outcome:customTiers.core.gate_decision;
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
    client_policy:payload.client_policy??"STRICT",
-   requested_lenient_override:payload.client_policy==="LENIENT",
+   tiers:customTiers,client_policy_decision:clientPolicyDecision,
+   policy_evaluation_proof_scope:"NOT_INCLUDED_IN_DAILY_SNAPSHOT_HMAC",
+   policy_evaluation_has_verified_gro:!!gro,
+   requested_lenient_override:lenient,
    override_acknowledged:payload.override_acknowledged===true,
-   client_override_applied:false};
+   client_override_applied:lenient,execution_authorized:false};
   return reply({ok:true,...body});
  }catch{return reply({ok:false,error:"UNIFIED_PRODUCTION_EVIDENCE_OR_STORAGE_UNAVAILABLE",chargeable:false},503)}
 }
