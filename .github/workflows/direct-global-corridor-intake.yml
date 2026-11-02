@@ -14,6 +14,8 @@ on:
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
+      - "scripts/lib/corridor-derived-structured-research.mjs"
+      - "scripts/lib/corridor-derived-structured-research.test.mjs"
       - "scripts/lib/corridor-credential-context.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.test.mjs"
       - "scripts/lib/corridor-official-reference-d1.test.mjs"
@@ -35,6 +37,8 @@ on:
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
+      - "scripts/lib/corridor-derived-structured-research.mjs"
+      - "scripts/lib/corridor-derived-structured-research.test.mjs"
       - "scripts/lib/corridor-credential-context.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.test.mjs"
       - "scripts/lib/corridor-official-reference-d1.test.mjs"
@@ -71,6 +75,7 @@ jobs:
           node --check scripts/lib/direct-corridor-native-news.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
           node --check scripts/lib/corridor-credential-context.mjs
+          node --check scripts/lib/corridor-derived-structured-research.mjs
           node --check workers/control-plane/src/corridor-official-reference.mjs
           node --check scripts/ops/publish-private-corridor-official-references.mjs
           node --check scripts/ops/ingest-direct-global-corridors.mjs
@@ -82,6 +87,7 @@ jobs:
           node --test scripts/lib/corridor-native-d1.test.mjs
           node --test scripts/lib/corridor-official-reference-adapters.test.mjs
           node --test scripts/lib/corridor-credential-context.test.mjs
+          node --test scripts/lib/corridor-derived-structured-research.test.mjs
           node --test scripts/lib/corridor-official-reference-d1.test.mjs
   source-intake:
     needs: contracts
@@ -129,5 +135,6 @@ jobs:
             artifacts/direct-corridor-intake/d1-readback.json
             artifacts/direct-corridor-intake/official-references.json
             artifacts/direct-corridor-intake/official-d1-readback.json
+            artifacts/direct-corridor-intake/structured-research.json
           if-no-files-found: error
           retention-days: 3
