@@ -346,7 +346,7 @@ describe("permanent derived-only website archive",()=>{
   const workflow=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
   assert.ok(workflow.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.result == 'success' && needs.quota-admission.outputs.research == 'true' }}"));
   const publisher=readFileSync("scripts/ops/publish-permanent-derived-news-archive.mjs","utf8");
-  assert.match(publisher,/canonicalCatchup:process\\.env\\.GEOMACRO_CANONICAL_D1_CATCHUP==="true"/u);
+  assert.ok(publisher.includes('canonicalCatchup:process.env.GEOMACRO_CANONICAL_D1_CATCHUP==="true"'));
   assert.match(publisher,/canonical_d1_catchup_completed:canonicalCatchupCompleted/u);
  });
 
