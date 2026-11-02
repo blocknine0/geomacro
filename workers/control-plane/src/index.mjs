@@ -11,6 +11,7 @@ import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-sou
 import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredCorridorNativeNews} from './corridor-native-news.mjs';
 import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredOfficialCorridorReferences} from './corridor-official-reference.mjs';
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
+import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1311,6 +1312,11 @@ export default {
         if(!r.ok)console.error("CRYPTO_NEWS_D1_TTL_DEFERRED");
       }).catch(()=>console.error("CRYPTO_NEWS_D1_TTL_DEFERRED")));
 
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgePrivateRiskGateSourcePack(env).then(r=>{
+        if(!r.ok)console.error("RG_SOURCE_PACK_TTL_DEFERRED");
+      }).catch(()=>console.error("RG_SOURCE_PACK_TTL_DEFERRED")));
+
     if(utc.getUTCHours()===0&&utc.getUTCMinutes()===13&&env?.DB?.prepare){
       ctx.waitUntil(env.DB.prepare(
         "DELETE FROM predge_pilot_signed_news_context WHERE singleton=1 AND expires_at<=?"
@@ -1533,6 +1539,16 @@ export default {
           return readPrivateCryptoNewsResearch(env,url.searchParams);
         return json({ok:false,error:"CRYPTO_NEWS_PRIVATE_METHOD_INVALID",
           chargeable:false},405);
+      }
+      // Non-commercial pricing-variant Risk Gate evidence only. This endpoint
+      // remains BEHIND existing internal admin authentication. Never used as
+      // paid Risk Gate or for partner PREDGE inference.
+      if(url.pathname==="/v1/internal/corridor-risk-gate-source-pack"){
+        if(request.method==="PUT"&&!url.search)
+          return putPrivateRiskGateSourcePack(env,await readJson(request,32*1024));
+        if(request.method==="GET")
+          return readPrivateRiskGateSourcePack(env,url.searchParams);
+        return json({ok:false,error:"RG_SOURCE_PACK_METHOD_INVALID",chargeable:false},405);
       }
       if(url.pathname==="/v1/internal/corridor-official-reference"){
         if(request.method==="PUT"&&!url.search)
