@@ -304,6 +304,7 @@
     "retained-supabase-continuity.yml",
     "reusable-news-json-export.yml",
     "risk-gate-core-resilience.yml",
+    "risk-gate-controlled-bypass.yml",
     "risk-gate-production-proof.yml",
     "risk-gate-staging-load.yml",
     "risk-indices-realtime-direct-postgres.yml",
