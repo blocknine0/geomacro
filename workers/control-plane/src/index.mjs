@@ -15,6 +15,7 @@ import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredO
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
 import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack,materializeCanonicalRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
 import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit,purgePrivateStrategicRiskGate} from "./corridor-risk-gate-jit.mjs";
+import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,purgePrivateRiskGateGdelt} from "./risk-gate-gdelt-event-index.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1330,6 +1331,10 @@ export default {
       }).catch(()=>console.error("CRYPTO_NEWS_D1_TTL_DEFERRED")));
 
     if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgePrivateRiskGateGdelt(env).then(r=>{
+        if(!r.ok)console.error("RG_GDELT_TTL_DEFERRED");
+      }).catch(()=>console.error("RG_GDELT_TTL_DEFERRED")));
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
       ctx.waitUntil(purgePrivateStrategicRiskGate(env).then(r=>{
         if(!r.ok)console.error("RG_STRATEGIC_TTL_DEFERRED");
       }).catch(()=>console.error("RG_STRATEGIC_TTL_DEFERRED")));
@@ -1570,6 +1575,15 @@ export default {
       // paid Risk Gate or for partner PREDGE inference.
       // D1-native corridor-first strategic polling + authenticated, no-credit
       // JIT evidence preflight. Not a customer charge or GRO signature.
+      // Separate GDELT event-index signal intake (auth-protected);
+      // CAMEO/index data never becomes a verified event or paid Risk Gate.
+      if(url.pathname==="/v1/internal/risk-gate/gdelt-event-index"){
+        if(request.method==="PUT"&&!url.search)
+          return putPrivateRiskGateGdelt(env,await readJson(request,32*1024));
+        if(request.method==="GET")
+          return readPrivateRiskGateGdelt(env,url.searchParams);
+        return json({ok:false,error:"RG_GDELT_PRIVATE_METHOD_INVALID",chargeable:false},405);
+      }
       if(url.pathname==="/v1/internal/risk-gate/corridor-first-tick"){
         if(request.method==="POST"&&!url.search)
           return tickPrivateStrategicRiskGate(env);
