@@ -28,6 +28,7 @@ import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.
 import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
+import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1439,6 +1440,8 @@ export default {
     // Distinct risk-gate credential and D1 quota; never inherit root admin auth.
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
+    if(url.pathname==="/v1/risk-gate/tiered/evaluate")
+      return controlledRiskGateEvaluate(request,env);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       // Reuse the SAME source-neutral page-0 cache as immediate JSON. An HTML
       // cache miss must not force a second 250+ row D1 read when JSON is hot.
