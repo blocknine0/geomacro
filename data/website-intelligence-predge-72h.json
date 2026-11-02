@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T09:05:03.978Z",
+  "checked_at": "2026-11-02T09:20:47.522Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 148,
+  "item_count": 149,
   "counts": {
     "geopolitics": 53,
     "macro": 66,
-    "rare_earth": 29
+    "rare_earth": 30
   },
-  "source_native_ids_sha256": "896eed5a02075a5fa0e994dca894b744528a4c3399dd28f0b96ddaa97d2ec4aa",
+  "source_native_ids_sha256": "e5dbae3fc31d2b64f91a2dd51a832495363ce6908677f91cb81e2130a71b3086",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -81,6 +81,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4df49bc7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Phoenix Copper increased Empire Mine Reserves by 31.5% to 13.27 Million Tonnes - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Phoenix Copper increased Empire Mine Reserves by 31.5% to 13.27 Million Tonnes - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:14:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

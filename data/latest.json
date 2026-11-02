@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T09:05:03.978Z",
+  "checked_at": "2026-11-02T09:20:47.522Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -62,6 +62,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4df49bc7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Phoenix Copper increased Empire Mine Reserves by 31.5% to 13.27 Million Tonnes - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Phoenix Copper increased Empire Mine Reserves by 31.5% to 13.27 Million Tonnes - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:14:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
