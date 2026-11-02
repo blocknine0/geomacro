@@ -8,13 +8,18 @@ on:
       - 'workers/control-plane/migrations/0107_risk_gate_daily_snapshots.sql'
       - 'supabase/risk-gate-daily/001_daily_three_tiers.sql'
       - 'scripts/ops/test-daily-risk-gate-generator.mjs'
+      - 'scripts/ops/test-unified-risk-gate.mjs'
       - 'workers/control-plane/src/index.mjs'
+      - 'workers/control-plane/src/unified-risk-*.mjs'
+      - 'workers/control-plane/migrations/0108_unified_risk_categories.sql'
+      - 'scripts/ops/test-unified-risk-gate.mjs'
       - 'workers/control-plane/migrations/0106_risk_gate_tiered_controlled_bypass.sql'
       - 'scripts/ops/test-risk-gate-controlled-bypass.mjs'
       - '.github/workflows/risk-gate-controlled-bypass.yml'
   push:
     branches:
       - 'feature/risk-gate-tiered-controlled-bypass-20261102'
+      - 'feature/unified-risk-195x3-corridors-20261103'
   workflow_dispatch:
 
 permissions:
@@ -36,5 +41,7 @@ jobs:
           node --check workers/control-plane/src/risk-gate-controlled-bypass.mjs
           node --check workers/control-plane/src/daily-risk-gate-generator.mjs
           node --check workers/control-plane/src/index.mjs
+          node --check workers/control-plane/src/unified-risk-gate.mjs
+          node --check workers/control-plane/src/unified-risk-engine.mjs
       - name: Run deterministic boundary tests
-        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs scripts/ops/test-daily-risk-gate-generator.mjs
+        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs scripts/ops/test-daily-risk-gate-generator.mjs scripts/ops/test-unified-risk-gate.mjs
