@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T21:06:51.147Z",
+  "checked_at": "2026-11-02T21:44:58.544Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 245,
+  "item_count": 244,
   "counts": {
     "geopolitics": 112,
-    "macro": 98,
+    "macro": 97,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "fa2155e0c520c0267594763802f5a52e130ce8c8a508ad5e4ada4c705cea1f45",
+  "source_native_ids_sha256": "a4986dda6d3f5aa5e4ee859db76bd1051c454cb73bf96df9795b9fea07cc42d8",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4656,25 +4656,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T22:26:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ddc03786",
-      "category": "macro",
-      "title": "Geomacro finds Corn Fades lowered on Friday - TradingView",
-      "what_changed": "A monitored source feed reports: Corn Fades lowered on Friday - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T21:25:22.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
