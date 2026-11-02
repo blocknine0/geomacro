@@ -84,12 +84,38 @@ export async function predgePilotCheckV2(request,env,now=Date.now()){
   }});
 }
 export async function publishPredgePilotCheckV2(request,env,now=Date.now()){
-  if(!["PUT","DELETE"].includes(request.method))return error("METHOD_NOT_ALLOWED",405);
+  if(!["GET","PUT","DELETE"].includes(request.method))return error("METHOD_NOT_ALLOWED",405);
   if(new URL(request.url).search)return error("QUERY_NOT_SUPPORTED",400);
   if(!TOKEN.test(String(env?.CONTROL_PLANE_TOKEN??"")))
     return error("OWNER_CREDENTIAL_UNAVAILABLE");
   if(!authenticate(request,env.CONTROL_PLANE_TOKEN))return error("OWNER_UNAUTHORIZED",401);
   if(!env?.DB?.prepare)return error("PILOT_CHECK_D1_UNAVAILABLE");
+  // Independent owner-only signed readback. Unlike the partner GET route,
+  // this does not reserve a customer Risk Gate check or its 100/day quota.
+  // It uses the exact same stored bytes and active-key validation.
+  if(request.method==="GET"){
+    if(now>=PILOT_END)return error("PILOT_WINDOW_EXPIRED",403);
+    try{requireActivePilotTrust(env.RISK_GATE_VERIFY_KEYS_JSON,now);}
+    catch{return error("PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE");}
+    let row;
+    try{
+      row=await env.DB.prepare(
+        "SELECT envelope_json FROM predge_pilot_signed_news_context WHERE singleton=1 LIMIT 1"
+      ).first();
+    }catch{return error("PILOT_CHECK_D1_UNAVAILABLE");}
+    if(!row||typeof row.envelope_json!=="string")
+      return error("SIGNED_PILOT_SAMPLE_NOT_PUBLISHED");
+    try{
+      if(new TextEncoder().encode(row.envelope_json).byteLength>MAX_WIRE_BYTES)
+        return error("SIGNED_PILOT_SAMPLE_OVERSIZE");
+      await verifySignedPilotCheck(JSON.parse(row.envelope_json),{
+        now,registry:env.RISK_GATE_VERIFY_KEYS_JSON
+      });
+    }catch{return error("SIGNED_PILOT_SAMPLE_NOT_VERIFIED");}
+    return new Response(row.envelope_json,{status:200,headers:{
+      ...HEADERS,"Content-Type":"application/json; charset=utf-8"
+    }});
+  }
   if(request.method==="DELETE"){
     // Daily protected janitor: expired research-derived content is removed
     // from the singleton D1 slot even when refresh has stopped.

@@ -13,6 +13,7 @@ on:
       - "scripts/ops/publish-predge-pilot-check-v2.mjs"
       - "scripts/ops/predge-paired-read-v2.mjs"
       - "scripts/tests/predge-pilot-check-v2.test.mjs"
+      - "scripts/tests/predge-owner-readback-quota.test.mjs"
       - ".github/workflows/predge-pilot-signed-news-v2-ci.yml"
   workflow_dispatch:
 permissions:
@@ -38,3 +39,4 @@ jobs:
           node --check scripts/ops/check-predge-signed-refresh-cadence.mjs
           node --test scripts/tests/check-predge-signed-refresh-cadence.test.mjs
           node --test scripts/tests/predge-pilot-check-v2.test.mjs
+          node --test scripts/tests/predge-owner-readback-quota.test.mjs
