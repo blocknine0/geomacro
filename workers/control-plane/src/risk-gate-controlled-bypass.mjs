@@ -54,7 +54,7 @@ export function parseControlledGateRequest(r,now=Date.now()){
   if(r.product_tier!=="POLICY"||!rec(o)||o.acknowledged!==true||
    !["PASS","HOLD"].includes(o.action)||
    Object.keys(o).sort().join("|")!=="acknowledged|action")return null;
- }else if(r.product_tier==="POLICY")return null;
+ }
  if(r.risk_policy!==undefined){
   const p=r.risk_policy;
   if(!rec(p)||typeof p.policy_id!=="string"||typeof p.policy_version!=="string"||
@@ -141,7 +141,8 @@ async function freshGRO(db,env,subject,now){
 export function determineControlledGate({request,observed,verified_decision=null,gro=null}){
  const verified=!!gro&&["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(verified_decision);
  const gate=verified?(verified_decision==="CONTINUE"?"GATE_PASS":
-  verified_decision==="PAUSE"?"GATE_BLOCKED":"GATE_ADVISORY"):"GATE_ADVISORY";
+  verified_decision==="PAUSE"?"GATE_BLOCKED":"GATE_ADVISORY"):
+  request.product_tier==="CORE"||request.product_tier==="POLICY"&&request.policy_mode==="STRICT"?"GATE_INSUFFICIENT_EVIDENCE":"GATE_ADVISORY";
  const override=request.policy_mode==="LENIENT";
  const official=observed.authoritative_first_party_publications>0;
  // An authenticated official observation waives the second-*publication*
@@ -226,7 +227,22 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
     if(!stale?.claimed_at||Date.parse(stale.claimed_at)>now-90000)return fail("RG_TIERED_REQUEST_IN_PROGRESS",409);
    }
   }
-  const observations=dedupeObservedPublications(await observationsForSubject(env.DB,parsed.subject,now));
+  // Reuse today's HMAC-verified canonical D1 core where available.
+  // Customer-specific policy is evaluated separately, never pre-signed by daily generator.
+  let observations;
+  if(parsed.subject.type==="corridor"){
+   const {readDailyRiskObservation}=await import("./daily-risk-gate-generator.mjs");
+   const daily=await readDailyRiskObservation(env,parsed.subject.id,now);
+   if(daily){
+    const o=daily.observation;
+    observations={items:o.source_records,source_count:o.sources_observed,
+     domains_observed:o.domains_observed,inferred_origin_groups:o.inferred_origin_groups,
+     independent_origins_verified:o.independent_origins_verified,
+     authoritative_first_party_publications:o.authoritative_first_party_publications};
+   }
+  }
+  if(!observations)observations=dedupeObservedPublications(
+   await observationsForSubject(env.DB,parsed.subject,now));
   const gro=await freshGRO(env.DB,env,parsed.subject,now);
   const verified_decision=await canonicalDecision(gro,parsed,now);
   const result=determineControlledGate({request:parsed,observed:observations,verified_decision,gro:verified_decision?gro:null});
