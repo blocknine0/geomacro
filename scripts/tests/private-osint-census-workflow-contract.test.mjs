@@ -7,7 +7,7 @@ test("daily 585 OSINT census derives demand and mineral source worklists as sepa
  const minerals=workflow.indexOf("node scripts/ops/build-mineral-national-portal-repair.mjs");
  assert.ok(demand>0&&minerals>demand);
  const demandStep=workflow.slice(demand,workflow.indexOf("\n      - name:",demand));
- assert.match(demandStep,/\/tmp\/geomacro-private-osint-native-gap-worklist\.json \\\n\s+\/tmp\/geomacro-revenue-source-demand-195x3\.json\n/u);
+ assert.ok(demandStep.includes("/tmp/geomacro-private-osint-native-gap-worklist.json \\\n            /tmp/geomacro-revenue-source-demand-195x3.json"));
  assert.ok(!demandStep.includes("/tmp/geomacro-mineral-national-portal-repair.json"));
  const mineralStep=workflow.slice(minerals,workflow.indexOf("\n      - name:",minerals));
  assert.match(mineralStep,/\/tmp\/geomacro-mineral-national-portal-repair\.json/u);
