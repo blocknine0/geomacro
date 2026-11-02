@@ -137,3 +137,13 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...activeBase,...fresh]).map(qualifyPrivateNationalPrimaryScope);
 }
+
+/** Real configuration-based nominal discovery round, not a hard freshness SLA. */
+export function nominalPrivateCountryIndexCycleMinutes(registry){
+ if(!Array.isArray(registry))
+  throw Error("PRIVATE_OSINT_COUNTRY_DISCOVERY_CYCLE_INVALID");
+ const indices=registry.filter(source=>
+   source?.private_discovery_index_only===true&&
+   /^[A-Z]{3}$/u.test(source.discovery_country_iso3??"")).length;
+ return indices>0?15*Math.ceil(195/indices):null;
+}
