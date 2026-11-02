@@ -82,7 +82,6 @@ async function validate(packet,now){
    r.analysis_kind!=="PRIVATE_SOURCE_GROUNDED_RESEARCH"||
    !Object.hasOwn(SOURCE_URL,r.source_id)||r.source_url!==SOURCE_URL[r.source_id]||
    r.source_id!==c.source_id||r.source_reference_id!==p.source_reference_id||
-   r.source_reference_id!==r.source_reference_id||
    c.source_url!==r.source_url||c.metric_id!==r.metric_id||
    c.observation_period!==r.observation_period||
    c.numeric_value!==r.metric_value||
