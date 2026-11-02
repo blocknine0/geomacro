@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T06:49:09.929Z",
+  "checked_at": "2026-11-02T07:35:54.579Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 133,
+  "item_count": 129,
   "counts": {
-    "geopolitics": 50,
-    "macro": 53,
+    "geopolitics": 48,
+    "macro": 51,
     "rare_earth": 30
   },
-  "source_native_ids_sha256": "c9126fefd9cea51f10f9b14501610eb425fe9450fc7e16c6c4976396e0bbcec4",
+  "source_native_ids_sha256": "a7939719721c32913ab50e07e79ec40aa8dccadbd4180a941b4b5e53edd65979",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2475,82 +2475,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0eb602cf",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States approved potential sale of 500 Patriot missiles to Ukraine - France 24",
-      "what_changed": "A monitored source feed reports: United States approved potential sale of 500 Patriot missiles to Ukraine - France 24. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T07:28:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1579b93f",
-      "category": "geopolitics",
-      "title": "Geomacro finds UN Refugee Agency said 9 Million Need Extra Winter Help",
-      "what_changed": "A monitored source feed reports: UN Refugee Agency said 9 Million Need Extra Winter Help. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T07:10:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c31ff1e0",
-      "category": "macro",
-      "title": "Geomacro finds Natural Gas Monthly reported - U.S. Energy Information Administration (EIA) (.gov)",
-      "what_changed": "A monitored source feed reports: Natural Gas Monthly reported - U.S. Energy Information Administration (EIA) (.gov). This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T07:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4aca32f4",
-      "category": "macro",
-      "title": "Geomacro finds Pinnacle Bank reported Q3 results",
-      "what_changed": "A monitored source feed reports: Pinnacle Bank reported Q3 results. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:53:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: seekingalpha.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
