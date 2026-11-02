@@ -47,6 +47,8 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.website_intelligence_writes,0);
  assert.equal(result.website_intelligence_enabled,false);
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
+ assert.equal(result.news_candidate_count,0);
+ assert.equal(result.native_news_sources_polled,6);
  assert.equal(result.d1_writes,0);
  assert.equal(result.b2_writes,0);
  assert.equal(result.chargeable,false);
@@ -56,13 +58,18 @@ test("all entries are included in independent receipts without website or paid w
 });
 test("native RSS is parsed only inside the corridor receipt",async()=>{
  const rss='<rss><channel><item><title>Monetary policy information</title>'+
-    '<pubDate>Mon, 02 Nov 2026 00:00:00 GMT</pubDate></item></channel></rss>';
+    '<pubDate>Mon, 02 Nov 2026 00:00:00 GMT</pubDate>'+
+    '<link>https://www.bankofengland.co.uk/news/monetary-policy</link>'+
+    '</item></channel></rss>';
  const result=await collectDirectCorridorSourceIntake({now:DATE,...customObservers,
    fetchImpl:async url=>String(url).includes("rss")||String(url).includes("feed")?
      new Response(rss,{headers:{"Content-Type":"application/rss+xml"}}):
      new Response("<html><body>Portal</body></html>",{
        headers:{"Content-Type":"text/html"}})});
- assert.ok(result.source_checks.some(x=>x.state==="NATIVE_FEED_METADATA_OBSERVED"));
+ assert.ok(result.source_checks.some(x=>x.state==="NATIVE_NEWS_CANDIDATES_INGESTED"));
+ assert.equal(result.news_candidate_count,1);
+ assert.ok(result.news_candidates.every(x=>x.customer_delivery_enabled===false&&
+   x.source_time_is_not_event_time===true));
  assert.equal(result.source_checks.find(x=>x.id==="boe_news").metadata_candidates,1);
  assert.equal(result.website_intelligence_writes,0);
  assert.ok(!JSON.stringify(result).includes("Monetary policy information"));
