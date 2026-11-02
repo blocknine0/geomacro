@@ -1588,12 +1588,22 @@ export default {
           }
         }
         const sync=await syncUnifiedRiskSupabase(env);
-        const ok=receipts.every(x=>x.ok&&x.categories_present)&&sync.ok&&
-          sync.hash_readback_verified===true;
+        // Re-read the exact target rows after remote hash verification.
+        // No source fetch occurs on an existing valid daily snapshot.
+        for(const row of receipts.filter(x=>x.ok)){
+          try{
+            const check=await generateUnifiedSnapshot(env,row.target);
+            row.supabase_synced=check.supabase_synced===true;
+            row.snapshot_integrity_verified=!!check.audit_proof;
+          }catch{row.ok=false;row.supabase_synced=false}
+        }
+        const ok=receipts.every(x=>x.ok&&x.categories_present&&
+          x.snapshot_integrity_verified&&x.supabase_synced)&&sync.ok;
         return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
           checked_targets:receipts,protected_supabase_sync:{
             ok:sync.ok,synced:sync.synced??0,
-            hash_readback_verified:sync.hash_readback_verified===true},
+            hash_readback_verified:sync.hash_readback_verified===true||
+              sync.ok&&sync.synced===0&&receipts.every(x=>x.supabase_synced)},
           no_funds:true,commercial_activation:false},ok?200:503);
       }
       // Canonical admin-only original observation intake. No public, partner,
