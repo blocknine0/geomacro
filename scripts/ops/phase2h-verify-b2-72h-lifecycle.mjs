@@ -50,7 +50,7 @@ export function assertPhase2hB2ManualRetention(rules){
   no_bucket_mutation:true,other_b2_prefixes_untouched:true,
  });
 }
-export async function verifyPhase2hB2Lifecycle({
+async function readPrivateB2LifecycleRules({
  env=process.env,fetchImpl=fetch,
  governor=createB2D1AccountGovernor({env,fetchImpl}),
 }={}){
@@ -103,7 +103,41 @@ export async function verifyPhase2hB2Lifecycle({
  if(!Array.isArray(buckets))fail("BUCKET_LIST_UNVERIFIED");
  const selected=buckets.filter(b=>b.bucketName==="geomacro-private-archive");
  if(selected.length!==1)fail("EXACT_BUCKET_NOT_VERIFIED");
- return assertPhase2hB2ManualRetention(selected[0].lifecycleRules);
+ return selected[0].lifecycleRules;
+}
+/** Separate strict 72h ciphertext-only queue prefix; never alter raw B2 rules. */
+export const PHASE2I_SOURCE_QUEUE_B2_PREFIX=
+ "geomacro-evidence/v1/private/phase2i-source-queue/";
+export function assertPhase2iSourceB2Lifecycle(rules){
+ if(!Array.isArray(rules))fail("SOURCE_QUEUE_LIFECYCLE_MISSING");
+ // Require one exact-prefix rule. Two unrelated rules do not prove a valid
+ // hide/delete sequence; a broader auto-expiry could destroy the queue early.
+ const exact=rules.filter(x=>x?.fileNamePrefix===PHASE2I_SOURCE_QUEUE_B2_PREFIX);
+ if(!exact.some(x=>x.daysFromUploadingToHiding===1&&
+     x.daysFromHidingToDeleting===1))
+  fail("SOURCE_QUEUE_72H_EXPIRY_UNVERIFIED");
+ if(rules.some(r=>r?.fileNamePrefix!==PHASE2I_SOURCE_QUEUE_B2_PREFIX&&
+    typeof r?.fileNamePrefix==="string"&&
+    PHASE2I_SOURCE_QUEUE_B2_PREFIX.startsWith(r.fileNamePrefix)&&
+    (r.daysFromUploadingToHiding!=null||
+     r.daysFromHidingToDeleting!=null)))
+  fail("SOURCE_QUEUE_BROAD_LIFECYCLE_CONFLICT");
+ if(exact.some(x=>x.daysFromUploadingToHiding!==1||
+    x.daysFromHidingToDeleting!==1))
+  fail("SOURCE_QUEUE_EXACT_LIFECYCLE_CONFLICT");
+ return Object.freeze({
+  schema:"geomacro.phase2i.source-queue-b2-72h-lifecycle.v1",
+  phase2i_source_queue_prefix_verified:true,
+  private_72h_delete_lifecycle_verified:true,
+  native_hide_days:1,native_delete_after_hide_days:1,
+  no_bucket_mutation:true,other_prefixes_unchanged:true
+ });
+}
+export async function verifyPhase2hB2Lifecycle(args={}){
+ return assertPhase2hB2ManualRetention(await readPrivateB2LifecycleRules(args));
+}
+export async function verifyPhase2iSourceB2Lifecycle(args={}){
+ return assertPhase2iSourceB2Lifecycle(await readPrivateB2LifecycleRules(args));
 }
 if(process.argv[1]?.endsWith("/phase2h-verify-b2-72h-lifecycle.mjs")){
  try{console.log(JSON.stringify(await verifyPhase2hB2Lifecycle()))}
