@@ -127,7 +127,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
    Math.min(8,Math.max(0,availableForLocalAndIndex-1)):0;
  const slots=availableForLocalAndIndex-retrySpare;
  const local=includeLocalGapLane?
-   budgetedPrivateLocalPublisherSources(now,Math.max(0,slots-1)):[];
+   budgetedPrivateLocalPublisherSources(now,Math.min(96,Math.max(0,slots-1))):[];
  const indexPerTick=Math.min(normalIndex,slots-local.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
