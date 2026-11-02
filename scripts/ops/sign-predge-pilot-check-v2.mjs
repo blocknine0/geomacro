@@ -32,7 +32,13 @@ async function main(){
   if(Buffer.byteLength(content,"utf8")>4_000_000)throw Error("FEED_OVERSIZE");
   const feed=JSON.parse(content);
   const now=Date.now();
-  const envelope=buildUnsignedPilotCheck(feed,now);
+  const ttlHours=String(process.env.PREDGE_PILOT_SIGNED_TTL_HOURS??"").trim()||"1";
+  if(!["1","3"].includes(ttlHours))throw Error("SIGNED_TTL_NOT_ALLOWED");
+  // A changed partner maximum validity is a contract change, not a fallback.
+  // Keep issuing 1-hour samples unless the protected partner ACK is explicit.
+  if(ttlHours==="3"&&process.env.PREDGE_PILOT_3H_PARTNER_ACK!=="YES")
+    throw Error("SIGNED_3H_TTL_PARTNER_ACK_REQUIRED");
+  const envelope=buildUnsignedPilotCheck(feed,now,Number(ttlHours)*60*60*1000);
   const bytes=toBytes(signablePilotCheck(envelope));
   envelope.integrity.payload_hash=await sha256(bytes);
   envelope.integrity.signature=signBytes(null,Buffer.from(bytes),key).toString("base64");
@@ -46,7 +52,8 @@ async function main(){
     news_context_schema:envelope.risk_gate.news_context.schema,
     payload_hash:envelope.integrity.payload_hash,
     delivered_counts:envelope.risk_gate.news_context.delivered_counts,
-    expires_at:envelope.expires_at,execution_authorized:false,
+    expires_at:envelope.expires_at,signed_ttl_hours:Number(ttlHours),
+    execution_authorized:false,
     output_file_written:true,private_content_logged:false}));
 }
 main().catch(e=>{console.error("PREDGE_PILOT_SIGN_FAILURE_"+String(e.message).replace(/[^A-Z0-9_]/gi,"_").slice(0,100));
