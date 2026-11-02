@@ -115,6 +115,9 @@ test("real published older source is equivalent only for a trusted exact-head op
    // Same-sweep source metadata handoff is used only by the protected
    // GitHub Actions publisher, never by the deployed website bundle.
    {filename:"scripts/lib/source-only-website-handoff.mjs",status:"added"},
+  // Protected source-only queue/admission code does not execute on SSR/site.
+  {filename:"scripts/lib/phase2i-encrypted-source-backlog.mjs",status:"added"},
+  {filename:"scripts/lib/phase2i-osint-country-fair-raw-staging.mjs",status:"modified"},
   {filename:"scripts/tests/public-intelligence-browser-freshness.test.mjs",status:"modified"},
   {filename:"src/__tests__/five-minute-original-news-fastlane.test.ts",status:"modified"},
   // Tests do not change published behavior; a server route module does.
