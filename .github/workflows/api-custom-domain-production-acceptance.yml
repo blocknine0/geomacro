@@ -1,0 +1,62 @@
+name: GeoMacro API Custom Domain Independent Production Acceptance (No Funds)
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/api-custom-domain-production-acceptance.yml"
+      - ".github/workflows/deploy-d1-control-plane.yml"
+      - "scripts/ops/prepare-cloudflare-custom-domain-runtime.mjs"
+      - "workers/control-plane/wrangler.example.jsonc"
+  schedule:
+    - cron: "20 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-api-domain-independent-acceptance
+  cancel-in-progress: false
+
+jobs:
+  verify-actual-api-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - name: Require real owner API domain TLS, auth, no-store and private body
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#ROOT_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::API_DOMAIN_CONTROL_PLANE_TOKEN_UNAVAILABLE"; exit 2;
+          }
+          CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          echo "::add-mask::$CONTROL_PLANE_TOKEN"
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          trap 'rm -f "$headers" "$body"' EXIT
+          status="$(curl --fail-with-body -sS --max-time 16 --connect-timeout 8 \
+            -D "$headers" -o "$body" -w '%{http_code}' \
+            -H "Authorization: Bearer $CONTROL_PLANE_TOKEN" \
+            -H 'Accept: application/json' \
+            'https://api.geomacro.live/v1/internal/risk-gate/unified-census' || true)"
+          if test "$status" != 200 ||
+            ! grep -Eiq '^cache-control:[[:space:]]*no-store([[:space:]]|$)' "$headers" ||
+            ! jq -e '.ok == true and .schema == "geomacro.unified-risk-census.v1" and
+               .expected.country == 195 and .expected.corridor == 12 and
+               .commercial_activation == false and
+               (.complete == false or .supabase_live_readback_verified == true)'
+              "$body" >/dev/null 2>&1; then
+            echo "::error::API_CUSTOM_DOMAIN_LIVE_TLS_AUTH_BODY_UNVERIFIED"
+            exit 3
+          fi
+          unauthorized="$(curl -sS --max-time 12 -o /dev/null -w '%{http_code}' \
+            -X POST -H 'Content-Type: application/json' \
+            -d '{"target_type":"COUNTRY","target_id":"TWN","client_policy":"STRICT"}' \
+            'https://api.geomacro.live/v1/risk-gate/unified/evaluate' || true)"
+          test "$unauthorized" = 401 || {
+            echo "::error::API_CUSTOM_DOMAIN_UNAUTHORIZED_EVALUATION_NOT_DENIED"; exit 4;
+          }
+          echo "PASS: actual Cloudflare API hostname TLS, owner auth, no-store JSON and anonymous denial. No 207/207 claim unless separate complete gate."

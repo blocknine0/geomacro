@@ -11,6 +11,7 @@
     "all-data-corridor-matrix.yml",
     "all-news-original-evidence-audit.yml",
     "all-source-reusable-news-json.yml",
+    "api-custom-domain-production-acceptance.yml",
     "apply-multi-source-registry-production.yml",
     "apply-production-migrations.yml",
     "apply-risk-gate-production-migrations.yml",
