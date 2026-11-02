@@ -9,7 +9,7 @@ import {collectCredentialCorridorContext}
 import {validateCryptoNewsResearchPacket,putPrivateCryptoNewsResearch,
  readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch}
  from "../../workers/control-plane/src/corridor-crypto-individual-research.mjs";
-import {publishPrivateCryptoIndividualNews}
+import {publishPrivateCryptoIndividualNews,assertCryptoIndividualSourceParity}
  from "../ops/publish-private-crypto-individual-research.mjs";
 import {readFileSync} from "node:fs";
 const NOW=new Date("2026-11-02T06:06:00.000Z");
@@ -117,6 +117,20 @@ test("configured CryptoCompare respects native source cadence without hourly tri
  assert.equal(out.crypto_news_extraction,null);
 });
 
+test("nonempty upstream CryptoCompare samples must produce individual article records",()=>{
+ const original={channel:"CORRIDOR_ONLY",
+  crypto_news_extraction:{recent_unique_ids:50,eligible_article_candidates:50}};
+ const full={...pack(),items:Array.from({length:50},()=>pack().items[0])};
+ assert.equal(assertCryptoIndividualSourceParity(original,full),true);
+ assert.throws(()=>assertCryptoIndividualSourceParity({
+  ...original,crypto_news_extraction:{recent_unique_ids:50,eligible_article_candidates:0}
+ },{...pack(),items:[]}),/CRYPTO_INDIVIDUAL_UPSTREAM_NONEMPTY_BUT_NO_VALID_ITEMS/u);
+ assert.throws(()=>assertCryptoIndividualSourceParity(original,{...pack(),items:[]}),
+  /CRYPTO_INDIVIDUAL_SOURCE_PARITY_MISMATCH/u);
+ assert.equal(assertCryptoIndividualSourceParity({
+  channel:"CORRIDOR_ONLY",crypto_news_extraction:null
+ },{...pack(),items:[]}),true);
+});
 test("five-part output is conservative and never claims a verified event",()=>{
  const record=cryptoIndividualRecord(base());
  assert.deepEqual(Object.keys(record.structured),["what_happened","why_it_matters",
