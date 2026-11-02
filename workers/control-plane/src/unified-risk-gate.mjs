@@ -249,7 +249,7 @@ export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}
  * This never fetches private articles, spends money or invents a risk score.
  */
 export async function verifyUnifiedRiskDailyRemoteCensus(env,day,{fetcher=fetch}={}){
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(day??"")))
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(day??"")))
    return {ok:false,error:"UNIFIED_CENSUS_DAY_INVALID"};
  const cfg=supabaseCfg(env);
  if(!cfg)return {ok:false,error:"UNIFIED_CENSUS_SUPABASE_NOT_CONFIGURED"};
