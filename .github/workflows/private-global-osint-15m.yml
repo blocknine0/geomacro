@@ -47,6 +47,8 @@ on:
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/phase2i-source-queue-extra-drain.ts"
+      - "scripts/tests/phase2i-idle-source-drain-contract.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
       - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
@@ -165,6 +167,8 @@ on:
       - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/phase2i-source-queue-extra-drain.ts"
+      - "scripts/tests/phase2i-idle-source-drain-contract.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
       - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
@@ -258,6 +262,7 @@ jobs:
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
           node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
           node --test scripts/tests/phase2i-encrypted-source-backlog.test.mjs
+          node --test scripts/tests/phase2i-idle-source-drain-contract.test.mjs
           node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
@@ -783,14 +788,36 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - name: Recover bounded authenticated ciphertext after normal fresh D1 write succeeds
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Recover bounded held ciphertext; prove whether original replay slot is unused
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_OSINT_SPOOL_RECOVERY_ADMISSION: "CRITICAL_TRUE"
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/private-osint-replay-held.mjs
+          receipt="$(mktemp)"
+          trap 'rm -f "$receipt"' EXIT
+          node scripts/ops/private-osint-replay-held.mjs | tee "$receipt"
+          if jq -e 'select(.schema=="geomacro.private-osint-spool-replay.v1" and .state=="NO_FRESH_ENCRYPTED_BACKLOG" and .d1_write_attempted==false)' "$receipt" >/dev/null; then
+            echo "PHASE2I_HELD_SPOOL_EMPTY_VERIFIED=1" >> "$GITHUB_ENV"
+          fi
+      - name: Admit next pending originals within the already reserved replay writer
+        if: env.PHASE2I_HELD_SPOOL_EMPTY_VERIFIED == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
+          PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
+          PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/phase2i-source-queue-extra-drain.ts
 
   collect-unverified-private:
     # The optional unbounded unverified research D1 producer is never
