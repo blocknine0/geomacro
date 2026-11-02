@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T14:33:28.856Z",
+  "updated_at": "2026-11-02T14:46:38.589Z",
   "signals": [
+    {
+      "id": "geopolitics-97df202b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Poland launched operation along Russian border in response to reports of planned sabotage",
+      "what_changed": "A monitored source feed reports: Poland launched operation along Russian border in response to reports of planned sabotage. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:34:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-0344059b",
       "category": "geopolitics",
@@ -1078,6 +1097,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T13:17:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4a0c2c45",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pope appealed for dialogue and concrete initiatives for peace in Ukraine",
+      "what_changed": "A monitored source feed reports: Pope appealed for dialogue and concrete initiatives for peace in Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T11:33:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b2e5155d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Moscow reported Drone Attack On Nizhny Novgorod As Russian Strikes Cut Power In Ukraine - Radio Free Europe/Radio Liberty",
+      "what_changed": "A monitored source feed reports: Moscow reported Drone Attack On Nizhny Novgorod As Russian Strikes Cut Power In Ukraine - Radio Free Europe/Radio Liberty. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T11:20:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
