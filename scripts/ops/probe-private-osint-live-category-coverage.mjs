@@ -13,7 +13,7 @@ import {
  privateOsintCorridorSourceCoverage,
 } from "../lib/private-osint-global-sources.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
-import {privateOsintRuntimeSources,COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES} from "../lib/private-osint-country-rotation.mjs";
+import {privateOsintRuntimeSources,nominalPrivateCountryIndexCycleMinutes} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
@@ -73,7 +73,7 @@ try{
   observed_native_dated_items:items.length,
   rotating_country_index_queries_this_tick:sources.filter(s=>s.private_discovery_index_only===true).length,
   rotating_country_index_nominal_full_cycle_minutes:
-    sources.some(s=>s.private_country_local_candidate===true)?120:COUNTRY_DISCOVERY_NOMINAL_CYCLE_MINUTES,
+    nominalPrivateCountryIndexCycleMinutes(sources),
   country_local_publisher_feeds_selected_this_tick:sources.filter(s=>s.private_country_local_candidate===true).length,
   country_local_publisher_countries_selected_this_tick:
     new Set(sources.filter(s=>s.private_country_local_candidate===true).map(s=>s.publisher_country_iso3)).size,
