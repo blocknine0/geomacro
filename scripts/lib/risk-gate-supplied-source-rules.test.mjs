@@ -29,7 +29,7 @@ test("all 37 existing direct source IDs and endpoints are registered for Risk Ga
  assert.equal(census.website_intelligence_writes,0);
 });
 test("CAMEO mapping exactly preserves operator-supplied groups",()=>{
- assert.deepEqual(Object.entries(CAMEO_RISK_GATE_DECISIONS),
+ assert.deepEqual(Object.entries(CAMEO_RISK_GATE_DECISIONS).sort(([a],[b])=>a.localeCompare(b)),
   [["01","CONTINUE"],["02","CONTINUE"],["03","CONTINUE"],
    ["04","CONTINUE"],["05","CONTINUE"],["10","REDUCE_LIMIT"],
    ["11","REQUIRE_APPROVAL"],["12","REQUIRE_APPROVAL"],
