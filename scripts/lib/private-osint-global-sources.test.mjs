@@ -678,3 +678,19 @@ test("Ukraine president official native RSS joins continuous 15m private source 
  assert.equal(denied.items.length,0);
  assert.equal(denied.summary.working_source_endpoints,0);
 });
+
+test("Indonesia private ANTARA source prefers independently monitored alternate publisher RSS",()=>{
+ const doc=JSON.parse(readFileSync(new URL("../../config/private-osint-local-rss-candidates.v1.json",import.meta.url),"utf8"));
+ const source=doc.sources.find(x=>x.id==="private_local_candidate_id_antara");
+ assert.ok(source);
+ assert.equal(source.url,"https://www.antaranews.com/en/rss/news");
+ assert.equal(source.publisher_country_iso3,"IDN");
+ assert.deepEqual(source.categories,["geopolitics","macro","rare_earth"]);
+ assert.equal(source.transport_verified_at_registration,false);
+ assert.equal(source.access_verified_in_production,false);
+ assert.equal(source.commercial_eligible,false);
+ const base=privateOsintGlobalSources().find(x=>x.id===source.id);
+ assert.ok(base);
+ assert.equal(base.url,source.url);
+ assert.equal(base.publisher_country_iso3,"IDN");
+});
