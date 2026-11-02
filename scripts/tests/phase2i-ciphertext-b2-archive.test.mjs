@@ -1,6 +1,6 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {sealPrivatePhase2iSourceBacklog} from "../lib/phase2i-encrypted-source-backlog.mjs";
+import {sealPrivatePhase2iSourceBacklog,unsealPrivatePhase2iSourceBacklog} from "../lib/phase2i-encrypted-source-backlog.mjs";
 import {buildPhase2iCiphertextB2Object,verifyPhase2iCiphertextB2Readback,
  PHASE2I_B2_PREFIX,readPhase2iProtectedArtifact} from "../ops/phase2i-archive-ciphertext-queue-b2.mjs";
 import {assertPhase2iSourceB2Lifecycle,PHASE2I_SOURCE_QUEUE_B2_PREFIX}
@@ -36,6 +36,31 @@ test("whole 72-hour first-party source queue is encrypted, bounded and B2 hash v
  assert.throws(()=>verifyPhase2iCiphertextB2Readback(corrupted,plan,ROOT,NOW),
   /PHASE2I_B2_FULL_BODY_SHA_MISMATCH/);
  assert.throws(()=>verifyPhase2iCiphertextB2Readback(plan.bytes,plan,"wrong-key",NOW));
+});
+test("archive filters already-expired originals, preserves native clocks and is retry-idempotent",()=>{
+ const old={...candidate(20,"macro"),
+  publishedAt:new Date(NOW.getTime()-73*3600_000).toISOString()};
+ const recent=candidate(21,"rare_earth");
+ const historical=sealPrivatePhase2iSourceBacklog({
+  candidates:[old,recent],root:ROOT,now:NOW.getTime()-5*3600_000
+ });
+ const p=buildPhase2iCiphertextB2Object({
+  envelope:historical,root:ROOT,now:NOW,sourceRunId:41430000001
+ });
+ const again=buildPhase2iCiphertextB2Object({
+  envelope:historical,root:ROOT,now:NOW,sourceRunId:41430000001
+ });
+ assert.equal(p.candidate_count,1);
+ assert.equal(p.expired_since_snapshot,1);
+ assert.equal(p.category_counts.macro,0);
+ assert.equal(p.category_counts.rare_earth,1);
+ assert.equal(p.key,again.key);
+ assert.equal(p.sha256,again.sha256);
+ const sealed=JSON.parse(p.bytes.toString("utf8"));
+ const revived=unsealPrivatePhase2iSourceBacklog(sealed,ROOT,NOW.getTime());
+ assert.equal(revived.candidates.length,1);
+ assert.equal(revived.candidates[0].publishedAt,recent.publishedAt);
+ assert.equal(verifyPhase2iCiphertextB2Readback(p.bytes,p,ROOT,NOW),true);
 });
 test("reject expired, empty and untrusted source snapshots without any B2 PUT",()=>{
  assert.throws(()=>buildPhase2iCiphertextB2Object({
