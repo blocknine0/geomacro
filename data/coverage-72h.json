@@ -1,6 +1,6 @@
 {
   "schema": "geomacro.free-derived-archive-eligibility.v1",
-  "checked_at": "2026-11-02T00:50:45.436Z",
+  "checked_at": "2026-11-02T01:18:34.919Z",
   "retention_hours": 72,
   "eligibility_policy": "CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
   "original_release_eligible_total": 5,
@@ -17,15 +17,15 @@
   },
   "pending_osint_total": 119,
   "pending_osint_by_category": {
-    "geopolitics": 46,
-    "macro": 50,
+    "geopolitics": 45,
+    "macro": 51,
     "rare_earth": 23
   },
   "unique_current_findings": 124,
   "free_displayable_findings_total": 124,
   "free_displayable_by_category": {
-    "geopolitics": 51,
-    "macro": 50,
+    "geopolitics": 50,
+    "macro": 51,
     "rare_earth": 23
   },
   "free_displayable_outside_latest_preview": 0,

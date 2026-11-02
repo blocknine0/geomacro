@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T00:50:45.436Z",
+  "checked_at": "2026-11-02T01:18:34.919Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 142,
   "counts": {
-    "geopolitics": 52,
-    "macro": 57,
+    "geopolitics": 51,
+    "macro": 58,
     "rare_earth": 33
   },
-  "source_native_ids_sha256": "6c3ddc4521938016d956b23cf406c43befd062c84338567bd9c3264c08cc697b",
+  "source_native_ids_sha256": "edd9522cfd2d141c64f5a8764aa43176c35cbfadbc42287c4ae6cd4884c96cea",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-778dfe8b",
+      "category": "macro",
+      "title": "Geomacro finds NRB published foreign currency exchange rates for Monday - Nepalnews.com",
+      "what_changed": "A monitored source feed reports: NRB published foreign currency exchange rates for Monday - Nepalnews.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T00:44:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-96b17758",
       "category": "macro",
@@ -2703,25 +2722,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.malaymail.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a7aed3a3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today",
-      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz - Free Malaysia Today. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T01:11:24.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
