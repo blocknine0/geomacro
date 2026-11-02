@@ -40,7 +40,8 @@ test("whole 72-hour first-party source queue is encrypted, bounded and B2 hash v
 test("archive filters already-expired originals, preserves native clocks and is retry-idempotent",()=>{
  const old={...candidate(20,"macro"),
   publishedAt:new Date(NOW.getTime()-73*3600_000).toISOString()};
- const recent=candidate(21,"rare_earth");
+ const recent={...candidate(21,"rare_earth"),
+  publishedAt:new Date(NOW.getTime()-7*3600_000).toISOString()};
  const historical=sealPrivatePhase2iSourceBacklog({
   candidates:[old,recent],root:ROOT,now:NOW.getTime()-5*3600_000
  });
