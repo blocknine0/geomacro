@@ -4,7 +4,7 @@
 import {TRACKED_CORRIDORS,buildStrategicCorridorReadiness,
  chooseRiskGateProcessingTier,RG_CORRIDOR_FIRST_VERSION}
  from "../../../lib/risk-gate-corridor-first.mjs";
-import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
+import {phase2hCountry,phase2hHeadlineCountryCandidate}
  from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 const AGE=72*3600000,HEX=/^[a-f0-9]{64}$/u;
 const respond=(value,status=200)=>Response.json(value,{status,headers:{
@@ -81,22 +81,29 @@ export async function readPrivateRiskGateJit(env,query,now=Date.now()){
   if(typeof subject_id!=="string"||!phase2hCountry(subject_id))
    return respond({ok:false,error:"RG_JIT_CANONICAL_ISO3_INVALID",chargeable:false},400);
   const tier=chooseRiskGateProcessingTier({country_iso3:subject_id});
-  // Just-in-time selective D1 read. The existing canonical 195-country
-  // headline resolver must confirm the requested country; a SQL LIKE match
-  // is NEVER sufficient to attribute any original report to a country.
-  const hints=phase2hCountrySqlHints(subject_id).slice(0,8);
-  if(!hints.length)
-   return respond({ok:false,error:"RG_JIT_COUNTRY_HINTS_UNAVAILABLE",chargeable:false},422);
+  // JIT, index-backed selective discovery: existing canonical
+  // (category, original_published_at DESC) index allows 64 latest rows
+  // per category. This avoids a full JSON-column LIKE scan on a large D1
+  // table and bounds both rows read and headline-attribution CPU.
+  const cutoff=new Date(now-AGE).toISOString();
+  const cats=["geopolitics","macro","rare_earth"];
   try{
-   const lower="lower(json_extract(raw_json,'$.original.original_title'))";
-   const sql="SELECT record_id,category,original_published_at,raw_sha256,raw_json "+
-    "FROM phase2h_private_raw_news WHERE original_published_at>=? "+
-    "AND ("+hints.map(()=>lower+" LIKE ? ESCAPE '!'").join(" OR ")+") "+
-    "ORDER BY original_published_at DESC LIMIT 36";
-   const rows=(await env.DB.prepare(sql).bind(new Date(now-AGE).toISOString(),
-    ...hints.map(s=>"%"+s+"%")).all())?.results??[];
+   const rows=[];
+   for(const category of cats){
+    const data=(await env.DB.prepare("SELECT record_id,category,original_published_at,"+
+      "raw_sha256,raw_json FROM phase2h_private_raw_news "+
+      "WHERE category=? AND original_published_at>=? AND original_published_at<=? "+
+      "ORDER BY original_published_at DESC LIMIT 64")
+      .bind(category,cutoff,new Date(now).toISOString()).all())?.results??[];
+    if(!Array.isArray(data)||data.length>64)
+      throw Error("RG_JIT_CATEGORY_BOUND_INVALID");
+    rows.push(...data);
+   }
+   rows.sort((a,b)=>String(b.original_published_at).localeCompare(String(a.original_published_at)));
+   const seen=new Set();
    const evidence=[];
    for(const r of rows){
+    if(seen.has(r.record_id))continue;
     if(!HEX.test(r.record_id)||!HEX.test(r.raw_sha256)||
      !["geopolitics","macro","rare_earth"].includes(r.category)||
      typeof r.original_published_at!=="string"||
@@ -108,6 +115,7 @@ export async function readPrivateRiskGateJit(env,query,now=Date.now()){
        original.original_published_at!==r.original_published_at||
        phase2hHeadlineCountryCandidate(original.original_title)!==subject_id)
      continue;
+    seen.add(r.record_id);
     evidence.push({record_id:r.record_id,category:r.category,
      original_published_at:r.original_published_at,raw_sha256:r.raw_sha256,
      original_article_verified:false,commercial_rights_verified:false});
@@ -116,6 +124,8 @@ export async function readPrivateRiskGateJit(env,query,now=Date.now()){
    return respond({ok:true,schema:"geomacro.risk-gate-jit-preflight.v1",
     subject:{type:"country",id:subject_id},processing_tier:tier.tier,
     discovery_evidence_count:evidence.length,evidence_references:evidence,
+    search_scope:"BOUNDED_72H_LATEST_64_PER_CATEGORY",
+    sampled_record_limit:192,
     verification_status:evidence.length?
       "ORIGINAL_HEADLINE_COUNTRY_CANDIDATES_UNVERIFIED":
       "COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED",
