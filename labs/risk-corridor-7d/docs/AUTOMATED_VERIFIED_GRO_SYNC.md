@@ -20,7 +20,7 @@ Run the isolated D1 migration `sql/005_d1_sync_runs_console_safe.sql` **only on 
 
 In the `geomacro-rc-staging` Worker **only**, add the following as **Secret** bindings in Cloudflare dashboard or authenticated Wrangler secret CLI. Never paste actual keys into this issue, chat, GitHub, files, or screenshots:
 
-- `RC_SUPABASE_SERVICE_KEY`: private key belonging ONLY to new Supabase `ymjuwuvbialsevfawvvq`, for service-only PostgREST insert. `RC_SUPABASE_URL` is already pinned in config to `https://ymjuwuvbialsevfawvvq.supabase.co`.
+- `RC_SUPABASE_SERVICE_KEY`: use a NEW secret API key (`sb_secret_...`) belonging ONLY to new Supabase `ymjuwuvbialsevfawvvq`, for service-only PostgREST insert. Find it under this project's Settings > API Keys (create a dedicated one for this Worker where supported). `RC_SUPABASE_URL` is already pinned in config to `https://ymjuwuvbialsevfawvvq.supabase.co`. Supabase new secret keys are opaque, NOT JWTs: the client sends them in `apikey` header only, never in `Authorization: Bearer`.
 - `RC_B2_READ_KEY_ID`: newly generated **read-only** B2 application key ID. Restrict key to `geomacro-private-archive` and at most `geomacro-evidence/v1/live/country-gro/` prefix. Do not reuse B2 write/admin keys.
 - `RC_B2_READ_APPLICATION_KEY`: the matching newly generated **read-only** B2 application key SECRET. Store only in the protected staging Worker Secrets, never in source.
 - No GeoMacro main `GEOMACRO_COMMERCE_LEDGER_TOKEN`, no production D1 write credential, no PREDGE tokens.
