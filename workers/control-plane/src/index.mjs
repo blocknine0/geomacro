@@ -29,6 +29,7 @@ import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.m
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
+import {runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1297,6 +1298,20 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // D1-first daily 06:00 UTC materialization, with bounded 10-minute retries.
+    // This reuses the existing every-minute Worker cron, never adds triggers.
+    if(utc.getUTCHours()===6&&utc.getUTCMinutes()%10===0&&env?.DB?.prepare)
+      ctx.waitUntil(runDailyRiskGates(env,{now:utc.getTime()})
+        .then(r=>{if(!r.ok)console.error("RG_DAILY_GENERATION_INCOMPLETE");})
+        .catch(()=>console.error("RG_DAILY_GENERATION_UNAVAILABLE")));
+    if(utc.getUTCMinutes()%15===9&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+      ctx.waitUntil(syncDailyRiskToSupabase(env,{now:utc.getTime()})
+        .then(r=>{if(!r.ok)console.error("RG_DAILY_SUPABASE_SYNC_DEFERRED");})
+        .catch(()=>console.error("RG_DAILY_SUPABASE_SYNC_DEFERRED")));
+    if(utc.getUTCHours()===6&&utc.getUTCMinutes()===12&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+      ctx.waitUntil(cleanupDailyRiskSupabase(env,{now:utc.getTime()})
+        .then(r=>{if(!r.ok)console.error("RG_TEN_DAY_CLEANUP_DEFERRED");})
+        .catch(()=>console.error("RG_TEN_DAY_CLEANUP_DEFERRED")));
     // Isolated private Supabase; no network without explicit owner acceptance.
     if(utc.getUTCMinutes()%15===11&&env?.GEOMACRO_SUPABASE_7D_ACCEPTANCE==='ACCEPTED_NEW_PRIVATE_SUPABASE_7D')
       ctx.waitUntil(syncCorridorSevenDay(env).then(r=>{if(!r.ok)console.error('CORRIDOR_7D_SYNC_DEFERRED')}).catch(()=>console.error('CORRIDOR_7D_SYNC_DEFERRED')));
@@ -1442,6 +1457,8 @@ export default {
       return predgeRiskGateD1(request,env);
     if(url.pathname==="/v1/risk-gate/tiered/evaluate")
       return controlledRiskGateEvaluate(request,env);
+    if(request.method==="GET"&&url.pathname==="/v1/risk-gate/tiered/daily")
+      return getDailyRiskGate(env,url,request);
     if (request.method === "GET" && url.pathname === "/v1/public/website-derived-news-html" && !url.search) {
       // Reuse the SAME source-neutral page-0 cache as immediate JSON. An HTML
       // cache miss must not force a second 250+ row D1 read when JSON is hot.
