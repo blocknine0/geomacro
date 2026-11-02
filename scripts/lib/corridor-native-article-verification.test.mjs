@@ -142,6 +142,17 @@ test("earliest same-event publisher timestamp becomes structured operational eve
   assert.equal(row.physical_occurrence_time_verified,false);
   assert.equal(row.raw_article_used_for_structuring,true);
   assert.equal(row.structured_evidence.length,1);
+  const intelligence=row.structured_intelligence_candidate;
+  assert.equal(intelligence.schema,"geomacro.structured-source-candidate.v1");
+  assert.deepEqual(Object.keys(intelligence).filter(k=>k!=="schema").sort(),
+    ["what_happened","why_it_matters","market_relevance","what_to_watch","evidence_confidence"].sort());
+  assert.equal(intelligence.what_happened.reference_event_time,"2026-11-02T01:05:00.000Z");
+  assert.equal(intelligence.what_happened.actual_occurrence_time_verified,false);
+  assert.equal(intelligence.what_happened.extracted_route_action_vessel_reports[0].reported_action,"attack");
+  assert.equal(intelligence.why_it_matters.impact_on_transit_verified,false);
+  assert.equal(intelligence.market_relevance.market_effect_assessment,"NOT_ESTABLISHED");
+  assert.equal(intelligence.evidence_confidence.independent_registered_source_count,2);
+  assert.equal(intelligence.evidence_confidence.rights_for_commercial_delivery_verified,false);
   assert.equal(row.structured_evidence[0].route_id,"strait_of_hormuz");
   assert.equal(row.structured_evidence[0].action,"attack");
   assert.equal(row.structured_evidence[0].independent_issuer_count,2);
@@ -185,6 +196,9 @@ test("raw article body can inform source-structured route context without invent
  assert.equal(r.items[0].raw_article_used_for_structuring,true);
  assert.deepEqual(r.items[0].route_context_ids,["suez_canal"]);
  assert.equal(r.items[0].structured_evidence.length,0);
+ assert.equal(r.items[0].structured_intelligence_candidate.why_it_matters.corridor_context_present,true);
+ assert.equal(r.items[0].structured_intelligence_candidate.what_happened.incident_verified,false);
+ assert.equal(r.items[0].structured_intelligence_candidate.market_relevance.price_or_flow_impact_verified,false);
  assert.equal(r.verified_corridor_events,0);
  assert.ok(!JSON.stringify(r).includes("freight context"));
 });
