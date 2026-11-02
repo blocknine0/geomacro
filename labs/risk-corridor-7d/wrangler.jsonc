@@ -2,10 +2,12 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "geomacro-rc-staging",
   "main": "src/worker.mjs",
-  "compatibility_date": "2026-11-01",
+  "compatibility_date": "2026-11-02",
   "workers_dev": true,
   "triggers": {
-    "crons": ["*/15 * * * *"]
+    "crons": [
+      "*/15 * * * *"
+    ]
   },
   "vars": {
     "RC_SYNC_ENABLED": "0",
@@ -17,5 +19,12 @@
       "database_name": "geomacro-risk-corridor-staging",
       "database_id": "9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9"
     }
-  ]
+  ],
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true
+    }
+  }
 }
