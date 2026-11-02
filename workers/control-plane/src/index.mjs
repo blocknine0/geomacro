@@ -1306,18 +1306,15 @@ export default {
       const minute=utc.getUTCHours()*60+utc.getUTCMinutes();
       if(minute>=300&&minute<495||minute>=500&&minute<1050)
         ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
-          .then(r=>{if(!r.ok)console.error("UNIFIED_195X3_GENERATION_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_195X3_GENERATION_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_195X3_GENERATION_DEFERRED:"+r.error)}));
       if(utc.getUTCMinutes()%15===10&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
-          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_SYNC_DEFERRED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(cleanupUnifiedRiskSupabase(env,{now:utc.getTime()})
-          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_CLEANUP_DEFERRED:"+r.error)}));
     }
     // D1-first daily 06 UTC, two of twelve corridors per 5-minute slot.
     // Slots repeat after 30 minutes to retry interrupted batches for free-tier CPU.
