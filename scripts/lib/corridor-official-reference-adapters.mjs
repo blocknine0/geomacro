@@ -60,8 +60,11 @@ async function getBounded(url,fetchImpl,accept){
  }catch{return {state:"INVALID_UTF8",body:null}}
 }
 function parseGdelt(body,now){
+ // Actual GDELT lastupdate.txt consists of: byte-size MD5 original URL.
+ // Archive names are export.CSV.zip, mentions.CSV.zip, gkg.csv.zip.
+ // MD5 is a transport listing field; it never certifies a real-world event.
  const matches=body.trim().split(/\r?\n/gu).slice(0,6).map(line=>
-  /^(\d{3,12})\s+(https?:\/\/data\.gdeltproject\.org\/gdeltv2\/(\d{14})\.(export|gkg|mentions)\.CSV\.zip)$/iu.exec(line.trim())).filter(Boolean);
+  /^(\d{3,12})\s+([a-f0-9]{32})\s+https?:\/\/data\.gdeltproject\.org\/gdeltv2\/(\d{14})\.(export\.CSV|mentions\.CSV|gkg\.csv)\.zip$/u.exec(line.trim())).filter(Boolean);
  const records=[];
  for(const m of matches){
   const stamp=m[3],published=new Date(Date.UTC(Number(stamp.slice(0,4)),
@@ -71,7 +74,8 @@ function parseGdelt(body,now){
      published.getTime()>now.getTime()+300000||now.getTime()-published.getTime()>72*3600000)
     continue;
   const bytes=Number(m[1]);if(!Number.isSafeInteger(bytes)||bytes<100)continue;
-  records.push(candidate("gdelt_v2_15m","gdelt_"+m[4].toLowerCase()+"_batch_bytes",
+  const kind=m[4].split(".")[0];
+  records.push(candidate("gdelt_v2_15m","gdelt_"+kind+"_batch_bytes",
    published.toISOString(),bytes,now));
  }
  return records;
