@@ -24,8 +24,10 @@ async function main(){
  const receipt=await put.json();
  if(receipt.ok!==true||receipt.received_hash!==obj.integrity.payload_hash)
   throw Error("OWNER_PUBLISH_RECEIPT_INVALID");
- // One readback; consumes one research-budget request. No raw item logging.
- const get=await fetch(BASE+"/v1/pilot/check",{headers:{"authorization":"Bearer "+research},
+ // Owner-only independent readback uses the protected admin token.
+ // It does not debit the shared Predge 100/day customer Risk Gate quota.
+ const get=await fetch(BASE+"/v1/internal/predge-pilot-news-context-publish",{
+   headers:{"authorization":"Bearer "+token},
    redirect:"error",signal:AbortSignal.timeout(20000)});
  if(get.status!==200)throw Error("PILOT_READBACK_FAILED_"+get.status);
  const actual=await get.json();
@@ -33,6 +35,7 @@ async function main(){
  if(actual.integrity.payload_hash!==obj.integrity.payload_hash)
   throw Error("PILOT_READBACK_HASH_MISMATCH");
  console.log(JSON.stringify({ok:true,readback_verified:true,
+   partner_check_quota_consumed:false,readback_scope:"OWNER_ONLY",
    payload_hash:actual.integrity.payload_hash,
    generated_at:actual.generated_at,expires_at:actual.expires_at,
    execution_authorized:false,source_content_logged:false}));
