@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T18:56:28.976Z",
+  "checked_at": "2026-11-02T18:57:51.578Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 233,
+  "item_count": 232,
   "counts": {
-    "geopolitics": 110,
+    "geopolitics": 109,
     "macro": 86,
     "rare_earth": 37
   },
-  "source_native_ids_sha256": "100407da05a385a43ee5b1935eec337659cba31bc997db7f7fc6e6b1c069420d",
+  "source_native_ids_sha256": "21d94ea23336a0beb8179a7f110d8908669c258c153ed38f81666f22217de827",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4428,25 +4428,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T19:06:03.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a2906ffb",
-      "category": "geopolitics",
-      "title": "Geomacro finds UN Security Council held seventh straw poll for next secretary general - The National",
-      "what_changed": "A monitored source feed reports: UN Security Council held seventh straw poll for next secretary general - The National. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T18:57:13.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
