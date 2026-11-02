@@ -4,6 +4,13 @@
   "main": "src/worker.mjs",
   "compatibility_date": "2026-11-01",
   "workers_dev": true,
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "vars": {
+    "RC_SYNC_ENABLED": "0",
+    "RC_SUPABASE_URL": "https://ymjuwuvbialsevfawvvq.supabase.co"
+  },
   "d1_databases": [
     {
       "binding": "RC_STAGING_D1",

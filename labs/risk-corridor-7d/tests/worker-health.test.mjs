@@ -15,8 +15,9 @@ test("isolated Wrangler config pins exact owner-provisioned staging D1 without c
     database_name:"geomacro-risk-corridor-staging",
     database_id:"9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9"
   });
-  assert.equal(config.triggers,undefined);
-  assert.equal(config.vars,undefined);
+  assert.deepEqual(config.triggers.crons,["*/15 * * * *"]);
+  assert.equal(config.vars.RC_SYNC_ENABLED,"0");
+  assert.equal(config.vars.RC_SUPABASE_URL,"https://ymjuwuvbialsevfawvvq.supabase.co");
   assert.equal(config.routes,undefined);
 });
 

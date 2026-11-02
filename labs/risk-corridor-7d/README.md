@@ -13,7 +13,9 @@
 
 **Owner-provided NEW Cloudflare STAGING D1:** `geomacro-risk-corridor-staging`, UUID `9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9`; bound as `RC_STAGING_D1` to owner-created `geomacro-rc-staging` Worker, evidenced by screenshot. Owner-supplied D1 readback shows five tables. The source-controlled `wrangler.jsonc` preserves that binding for future **isolated** deployments; deployed Worker code and runtime readback have not yet been accepted.
 
-**Status:** isolated coding candidate. NOT PRODUCTION. NO LIVE FUNDS. NO EXISTING MAIN/PREDGE MODIFICATIONS.
+**Status:** isolated, no-funds source-sync coding candidate. The Worker config contains a 15-minute cron with `RC_SYNC_ENABLED=0` by default; actual B2/Supabase credentials, new sync-run D1 migration, staging deployment and authenticated data readback are NOT YET configured or verified. Do not infer the dashboard Hello World Worker runs the new code. NOT PRODUCTION, NO LIVE FUNDS, NO MAIN/PREDGE MODIFICATIONS.
+
+**Automated sync runbook:** [docs/AUTOMATED_VERIFIED_GRO_SYNC.md](docs/AUTOMATED_VERIFIED_GRO_SYNC.md). It describes separate protected B2 read-only credentials and Supabase staging secret needed before enabling the Worker.
 
 ## Architecture
 
@@ -36,7 +38,13 @@
 | src/geomacro-bridge.ts | Existing GeoMacro GRO signature verifier and Risk Gate engine adapter |
 | src/d1-ledger.mjs | D1 multi-tenant key auth, claim/replay, proof-gated receipts and summary |
 | src/http.mjs | Staging-only HTTP POST candidate, not registered in GeoMacro production |
-| src/worker.mjs | Fail-closed staging Worker entrypoint with read-only D1 health probe; no source sync or payment |
+| src/worker.mjs | Staging Worker with read-only D1 health and disabled-by-default 15-minute signed-GRO sync |
+| src/b2-readonly.mjs | Dedicated scoped read-only B2 S3 v4 signed GRO fetch, bounded/strict |
+| src/verified-gro.mjs | Pinned Ed25519 verification, commercial policy gates, signed GRO-driver category projection |
+| src/sync-verified.mjs | 195-country bounded 20/slot sweep, D1 idempotency, classified skips/failures |
+| src/countries-195.mjs | Snapshot of canonical GeoMacro 195-country ISO3 registry |
+| sql/005_d1_sync_runs_console_safe.sql | NEW staging D1-only atomic slot/state table + index |
+| docs/AUTOMATED_VERIFIED_GRO_SYNC.md | Secure one-time staging setup and acceptance instructions |
 | wrangler.jsonc | Exact staging Worker name, script entrypoint and dedicated D1 binding; no scheduled triggers |
 | src/supabase-buffer.mjs | Optional service-only 7-day derived signals and read-side TTL |
 | sql/001_supabase_7d.sql | NEW Supabase tables, RLS/service-only, expiry indexes and purge function |
