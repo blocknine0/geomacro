@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T11:38:12.193Z",
+  "checked_at": "2026-11-02T11:40:01.315Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 188,
+  "item_count": 192,
   "counts": {
-    "geopolitics": 81,
-    "macro": 77,
-    "rare_earth": 30
+    "geopolitics": 83,
+    "macro": 78,
+    "rare_earth": 31
   },
-  "source_native_ids_sha256": "1118e20b6fb4872241be8b7a3ce6036fbe0b8461962f21d2683f776c8c1e1f44",
+  "source_native_ids_sha256": "1f6717342916e6bbc16c599fee6655310c4c4c31b9cbb88bdd0d7d1e5e548a72",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-40b7b2c2",
+      "category": "geopolitics",
+      "title": "Geomacro finds N. Bahr El Ghazal approved $80,000 health budget for elections",
+      "what_changed": "A monitored source feed reports: N. Bahr El Ghazal approved $80,000 health budget for elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:21:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-e8fbb6b5",
       "category": "macro",
@@ -68,6 +87,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-85b3f443",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut lithium price outlook on weaker demand (LIT:NYSEARCA) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Citi cut lithium price outlook on weaker demand (LIT:NYSEARCA) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:06:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-c2983338",
       "category": "rare_earth",
       "title": "Geomacro finds Citi cut lithium price outlook on weaker demand (LIT:NYSEARCA) - Seeking Alpha",
@@ -77,6 +115,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T11:06:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-54d6bae6",
+      "category": "macro",
+      "title": "Geomacro finds UBS raised BrightSpring Health stock price target to $92 on growth outlook - Investing.com UK",
+      "what_changed": "A monitored source feed reports: UBS raised BrightSpring Health stock price target to $92 on growth outlook - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:06:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -3079,6 +3136,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T19:06:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a2906ffb",
+      "category": "geopolitics",
+      "title": "Geomacro finds UN Security Council held seventh straw poll for next secretary general - The National",
+      "what_changed": "A monitored source feed reports: UN Security Council held seventh straw poll for next secretary general - The National. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:57:13.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T11:18:12.156Z",
+  "updated_at": "2026-11-02T11:40:01.315Z",
   "signals": [
+    {
+      "id": "geopolitics-40b7b2c2",
+      "category": "geopolitics",
+      "title": "Geomacro finds N. Bahr El Ghazal approved $80,000 health budget for elections",
+      "what_changed": "A monitored source feed reports: N. Bahr El Ghazal approved $80,000 health budget for elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:21:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-fdc500b9",
       "category": "geopolitics",
