@@ -1,4 +1,5 @@
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from './corridor-seven-day-cache.mjs';
 import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
 import {serveSelfCertifiedNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
@@ -1293,6 +1294,11 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Isolated private Supabase; no network without explicit owner acceptance.
+    if(utc.getUTCMinutes()%15===11&&env?.GEOMACRO_SUPABASE_7D_ACCEPTANCE==='ACCEPTED_NEW_PRIVATE_SUPABASE_7D')
+      ctx.waitUntil(syncCorridorSevenDay(env).then(r=>{if(!r.ok)console.error('CORRIDOR_7D_SYNC_DEFERRED')}).catch(()=>console.error('CORRIDOR_7D_SYNC_DEFERRED')));
+    if(utc.getUTCMinutes()===13&&env?.GEOMACRO_SUPABASE_7D_ACCEPTANCE==='ACCEPTED_NEW_PRIVATE_SUPABASE_7D')
+      ctx.waitUntil(pruneCorridorSevenDay(env).then(r=>{if(!r.ok)console.error('CORRIDOR_7D_TTL_DEFERRED')}).catch(()=>console.error('CORRIDOR_7D_TTL_DEFERRED')));
     if(utc.getUTCMinutes()%15===7&&env?.DB?.prepare)
       ctx.waitUntil(corridorWatchTick(env).then(r=>{if(!r.ok)console.error('CORRIDOR_WATCH_UNAVAILABLE')}).catch(()=>console.error('CORRIDOR_WATCH_UNAVAILABLE')));
     // Six-hour fallback TTL for corridor-only private original-link metadata.
@@ -1524,6 +1530,8 @@ export default {
         return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));
       if(request.method==='GET'&&url.pathname==='/v1/internal/corridor-pipeline-health'&&!url.search)
         return corridorWatchRead(env);
+      if(request.method==='GET'&&url.pathname==='/v1/internal/corridor-7d-cache-status'&&!url.search)
+        return corridorSevenDayStatus(env);
       if(request.method==='GET'&&url.pathname==='/v1/internal/news-product-factory')
         return readNewsProductFactory(env,url.searchParams);
       // Separate, authenticated native-link corridor ledger; intentionally no
