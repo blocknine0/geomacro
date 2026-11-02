@@ -22,7 +22,7 @@ describe('private current-source recovery: free quota and official MCS fallback'
      commercial_eligible:false,guaranteed_future_b2_reservations:false});
  });
  it('admits the last one GET + one PUT for a single bundled B2 write and full readback',async()=>{
-   const near=status({total:78,GET:24,PUT:54});
+   const near=status({total:718,GET:339,PUT:379});
    const x=await checkPrivateScoringB2Headroom({
      governor:{status:async()=>near},now:today});
    expect(x).toMatchObject({
@@ -33,13 +33,13 @@ describe('private current-source recovery: free quota and official MCS fallback'
      b2_requests:0,payments:0,
    });
    expect((await checkPrivateScoringB2Headroom({
-     governor:{status:async()=>status({total:99,GET:45,PUT:54})},
+     governor:{status:async()=>status({total:719,GET:340,PUT:379})},
      now:today,
    })).admitted).toBe(false);
  });
  it('quota exhaustion holds before classifier and cannot be passed off as readiness',async()=>{
    const x=await checkPrivateScoringB2Headroom({
-     governor:{status:async()=>status({total:99,GET:45,PUT:54})},now:today});
+     governor:{status:async()=>status({total:719,GET:340,PUT:379})},now:today});
    expect(x.admitted).toBe(false);
    expect(x.reason).toBe('QUOTA_HELD_NO_CLASSIFIER_CLAIM');
    await expect(checkPrivateScoringB2Headroom({
