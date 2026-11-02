@@ -343,6 +343,48 @@ export async function readRecoverableD1Seed(fetchImpl=fetch,now=Date.now()){
   throw Error("PERMANENT_ARCHIVE_D1_SEED_INCOMPLETE");
 }
 
+/** Reconcile exactly the same complete 600-row journal cohort used by
+ * outside-in three-category parity. The public 250-row paginated/possibly
+ * materialized preview is NOT necessarily identical to the canonical bundle.
+ * A quota-admitted recovery uses one bounded GET, never extra publisher GETs.
+ */
+export async function readRecoverableD1CanonicalBundle(fetchImpl=fetch,now=Date.now()){
+  const response=await fetchImpl(
+    "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle",{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Accept:"application/json","Cache-Control":"no-cache"},
+      signal:AbortSignal.timeout(12_000),
+    });
+  if(!response.ok||response.redirected||
+     Number(response.headers.get("content-length")??0)>4_000_000)
+    throw Error("PERMANENT_ARCHIVE_CANONICAL_BUNDLE_UNAVAILABLE");
+  const body=await response.text();
+  if(Buffer.byteLength(body)>4_000_000)
+    throw Error("PERMANENT_ARCHIVE_CANONICAL_BUNDLE_TOO_LARGE");
+  const doc=parseObject(body,"PERMANENT_ARCHIVE_CANONICAL_BUNDLE_INVALID");
+  const checked=Date.parse(String(doc.checked_at??""));
+  if(doc.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
+     doc.complete!==true||doc.item_cap!==600||
+     doc.original_release_delay_minutes!==0||
+     doc.retention_days!==3||doc.retention_hours!==72||
+     doc.delivery_scope!=="free_website_only"||
+     doc.scored!==false||doc.chargeable!==false||
+     doc.supabase_dependency!==false||
+     !Array.isArray(doc.signals)||doc.signals.length>600||
+     doc.returned_rows!==doc.signals.length||
+     !Number.isFinite(checked)||checked>now+5_000||now-checked>30_000)
+    throw Error("PERMANENT_ARCHIVE_CANONICAL_BUNDLE_CONTRACT_INVALID");
+  const accepted=[];
+  for(const signal of doc.signals)
+    if(isPermanentArchiveSignal(signal,now,{allowHistorical:false})&&
+       !isTemplateObservation(signal))accepted.push(signal);
+  // IDs must be unique within a complete canonical bundle. Never silently
+  // collapse inconsistent authoritative records or rewrite published IDs.
+  if(new Set(accepted.map(x=>x.id)).size!==accepted.length)
+    throw Error("PERMANENT_ARCHIVE_CANONICAL_BUNDLE_DUPLICATE_ID");
+  return sortSignals(accepted);
+}
+
 function readCandidates(path,now){
   if(!existsSync(path))return [];
   const doc=parseObject(readFileSync(path,"utf8"),"PERMANENT_ARCHIVE_CANDIDATE_DOCUMENT_INVALID");
@@ -435,12 +477,13 @@ export async function publishPermanentDerivedNewsArchive({
     }
     canonicalCatchupSkippedCadence=Number.isFinite(lastSuccessfulRead)&&
       now-lastSuccessfulRead<55*60_000;
-    // Reuse the immutable, 600-row, three-page canonical reader, but only
-    // after affirmative account-wide quota admission. Timeout/quota/invalid
+    // Read the same complete canonical 600-row bundle checked by live parity.
+    // This is ONE bounded journal GET after account-wide quota admission,
+    // instead of reconciling a separately cached three-page preview. Timeout/quota/invalid
     // D1 does not block static source-derived publication or claim success.
     if(!canonicalCatchupSkippedCadence){
       try{
-        seedRows=await readRecoverableD1Seed(fetchImpl,now);
+        seedRows=await readRecoverableD1CanonicalBundle(fetchImpl,now);
         canonicalCatchupCompleted=true;
         writeFileSync(checkpointPath,JSON.stringify({
           schema:"geomacro.canonical-archive-catchup-checkpoint.v1",
@@ -579,7 +622,7 @@ export async function publishPermanentDerivedNewsArchive({
     canonical_d1_catchup_requested:canonicalCatchup,
     canonical_d1_catchup_completed:canonicalCatchupCompleted,
     canonical_d1_catchup_skipped_recent_success:canonicalCatchupSkippedCadence,
-    canonical_d1_catchup_bounded_pages:3,
+    canonical_d1_catchup_bounded_pages:1,
     canonical_d1_new_originals:canonicalCatchupCompleted?
       seedRows.filter(row=>!existingBeforeCatchup.has(row.id)).length:null,
     seed_complete:index.seed_complete,
