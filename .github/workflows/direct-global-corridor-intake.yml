@@ -149,6 +149,7 @@ jobs:
           node scripts/ops/publish-private-corridor-official-references.mjs
           node scripts/ops/publish-private-corridor-research.mjs
       - name: Upload separate bounded corridor receipt
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-direct-corridor-source-intake
