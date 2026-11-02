@@ -7,9 +7,9 @@ export async function runDirectCorridorIntake({
  observe=collectDirectCorridorSourceIntake
 }={}){
  const receipt=await observe();
- if(receipt.source_count!==37||receipt.source_link_occurrences!==38||
-    receipt.unique_linked_sources!==36||receipt.source_checks?.length!==37||
-    receipt.source_checks.reduce((sum,s)=>sum+s.reference_count,0)!==38)
+ if(receipt.source_count!==37||receipt.source_link_occurrences!==39||
+    receipt.unique_linked_sources!==37||receipt.source_checks?.length!==37||
+    receipt.source_checks.reduce((sum,s)=>sum+s.reference_count,0)!==39)
    throw Error("DIRECT_CORRIDOR_UPLOADED_LINK_PARITY_FAILURE");
  if(receipt.channel!=="CORRIDOR_ONLY"||
     receipt.website_intelligence_writes!==0||
