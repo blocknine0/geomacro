@@ -12,9 +12,9 @@ export const OFFICIAL_CORRIDOR_ADAPTER_IDS=Object.freeze([
 const MAX_BYTES=192*1024;
 const API=Object.freeze({
  gdelt_v2_15m:"https://data.gdeltproject.org/gdeltv2/lastupdate.txt",
- world_bank_wdi:"https://api.worldbank.org/v2/country/us;cn;in;de;gb/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=2023:2026&per_page=50",
+ world_bank_wdi:"https://api.worldbank.org/v2/country/us;cn;in;de;gb/indicator/NY.GDP.MKTP.KD.ZG?format=json&date=__DATE_RANGE__&per_page=50",
  ecb_data:"https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?format=csvdata&lastNObservations=2",
- eurostat_data:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?geo=EA20&coicop=CP00&sinceTimePeriod=2026-01&lang=EN"
+ eurostat_data:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?geo=EA20&coicop=CP00&sinceTimePeriod=__START_PERIOD__&lang=EN"
 });
 const isDue=(id,now)=>id==="gdelt_v2_15m"||
  (id==="imf_portwatch"?[0,12].includes(now.getUTCHours())&&now.getUTCMinutes()<30:
@@ -83,7 +83,9 @@ function parseWorldBank(body,now){
  const valid=new Set(["US","CN","IN","DE","GB"]);
  return data[1].flatMap(row=>{
   if(!valid.has(row?.country?.id)||row?.indicator?.id!=="NY.GDP.MKTP.KD.ZG"||
-    !/^20(?:2[3-6])$/u.test(row.date??"")||
+    !/^20\d{2}$/u.test(row.date??"")||
+    Number(row.date)>now.getUTCFullYear()||
+    Number(row.date)<now.getUTCFullYear()-3||
     typeof row.value!=="number"||!Number.isFinite(row.value)||
     Math.abs(row.value)>200)return [];
   return [candidate("world_bank_wdi","wdi_gdp_growth_"+row.country.id.toLowerCase(),
@@ -179,7 +181,11 @@ export async function collectCorridorOfficialReferences({now=new Date(),fetchImp
    }catch{checks.push({id,state:"OFFICIAL_REFERENCE_UNAVAILABLE",observations:0})}
    continue;
   }
-  const source=await getBounded(API[id],fetchImpl,id==="ecb_data"?"text/csv":"application/json,text/plain");
+  const pinnedUrl=API[id].replace("__DATE_RANGE__",
+    String(now.getUTCFullYear()-3)+":"+String(now.getUTCFullYear()))
+    .replace("__START_PERIOD__",String(now.getUTCFullYear()-1)+"-01");
+  const source=await getBounded(pinnedUrl,fetchImpl,
+    id==="ecb_data"?"text/csv":"application/json,text/plain");
   if(source.body===null){checks.push({id,state:source.state,observations:0});continue}
   try{
    const records=PARSERS[id](source.body,now);
