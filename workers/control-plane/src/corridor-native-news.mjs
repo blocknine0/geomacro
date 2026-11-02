@@ -77,6 +77,14 @@ const SQL_INSERT="INSERT OR IGNORE INTO corridor_native_news_candidates "+
 export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
  let records;try{records=validateCorridorNativeNewsBatch(batch,now)}
  catch{return reply({ok:false,error:"CORRIDOR_PRIVATE_ITEM_INVALID",chargeable:false},422)}
+ // Recompute the immutable article identity before trusting a submitted ID.
+ // The source-title hash is evidence-free metadata, not authority to publish.
+ for(const row of records){
+   const canonical=row[1]+"\\x1f"+row[3]+"\\x1f"+row[2];
+   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(canonical));
+   const exact=[...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,"0")).join("");
+   if(exact!==row[0])return reply({ok:false,error:"CORRIDOR_NATIVE_ID_MISMATCH",chargeable:false},422);
+ }
  if(!env?.DB?.prepare||!env?.DB?.batch)
    return reply({ok:false,error:"CORRIDOR_PRIVATE_D1_UNAVAILABLE",chargeable:false},503);
  const checked=new Date(now).toISOString(),cutoff=new Date(now-AGE).toISOString();
@@ -88,11 +96,16 @@ export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
   let found=0;
   if(records.length){
    const placeholders=records.map(()=>"?").join(",");
-   const rows=await env.DB.prepare("SELECT candidate_id FROM corridor_native_news_candidates "+
-    "WHERE candidate_id IN ("+placeholders+") AND native_published_at >= ?")
+   const rows=await env.DB.prepare("SELECT candidate_id,source_id,native_published_at,article_url,source_title_sha256 "+
+    "FROM corridor_native_news_candidates WHERE candidate_id IN ("+
+    placeholders+") AND native_published_at >= ?")
      .bind(...records.map(x=>x[0]),cutoff).all();
-   const ids=new Set((rows?.results??[]).map(x=>x.candidate_id));
-   found=records.filter(x=>ids.has(x[0])).length;
+   const existing=new Map((rows?.results??[]).map(x=>[x.candidate_id,x]));
+   found=records.filter(x=>{
+     const r=existing.get(x[0]);
+     return r&&r.source_id===x[1]&&r.native_published_at===x[2]&&
+       r.article_url===x[3]&&r.source_title_sha256===x[4];
+   }).length;
   }
   if(found!==records.length)
     return reply({ok:false,error:"CORRIDOR_NATIVE_D1_READBACK_MISMATCH",
