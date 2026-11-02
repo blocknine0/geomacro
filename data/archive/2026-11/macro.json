@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T13:02:41.273Z",
+  "updated_at": "2026-11-02T13:34:21.117Z",
   "signals": [
     {
       "id": "macro-f205331b",
@@ -742,6 +742,25 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-fa28cf1e",
+      "category": "macro",
+      "title": "Geomacro finds EU: launched safeguard investigation on certain new hybrid vehicles · European Union",
+      "why_it_matters": "An original trade-policy notice may affect cross-border market access and supply chains. Enforceability, tariff magnitude, country impact and FX direction are not established by the announcement alone.",
+      "what_changed": "EU launched safeguard investigation on certain new hybrid vehicles. Country or region mentioned: European Union.",
+      "geography": "European Union",
+      "development_type": "official update",
+      "topic": "international trade measures and disputes",
+      "published_at": "2026-11-02T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "WTO news"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
