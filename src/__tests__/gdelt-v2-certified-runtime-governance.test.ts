@@ -27,10 +27,15 @@ describe("GDELT V2 certified runtime governance", () => {
     expect(script).toContain("EXPECTED_COLUMN_COUNT = 61");
   });
 
-  it("validates the same certification boundary in the manual production workflow", () => {
-    expect(workflow).toContain("live_source_certification_records");
-    expect(workflow).toContain("COMMERCIAL_OK|true|true|CERTIFIED|COMMERCIAL_OK|PASS|PASS|FRESH|PASS|PASS|TESTED|PASS|READY");
-    expect(workflow).toContain("source_certification_required");
-    expect(workflow).toContain("risk_gate_signal_activation");
+  it("uses only B2 + D1 and never executes the retired Supabase-only GDELT writer", () => {
+    expect(workflow).toContain("publish-risk-gate-gdelt-wide-net.mjs");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
+    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).toContain("GDELT ZIP, B2 full readback then D1 PUT+GET");
+    expect(workflow).not.toContain("scripts/ingest-gdelt-v2-events-live.mjs");
+    expect(workflow).not.toContain("SUPABASE_DB_URL");
+    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(workflow).not.toContain("SUPABASE_URL");
   });
 });

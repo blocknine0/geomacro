@@ -4,6 +4,7 @@
  * Producer never stores full event rows, publisher text, or makes risk scores.
  */
 import {createHash,createHmac} from "node:crypto";
+import {createB2Client} from "./b2-s3-client.mjs";
 import {writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {readGdeltStaticArchive} from "../lib/gdelt-gkg-bulk-discovery.mjs";
@@ -13,10 +14,12 @@ const ENDPOINT="https://geomacro-control-plane.daspallab202391.workers.dev";
 const sha=x=>createHash("sha256").update(x).digest("hex");
 export async function publishGdeltRiskEventWideNet({
  rootToken,fetchImpl=fetch,now=new Date(),
- readArchive=readGdeltStaticArchive,endpoint=ENDPOINT
+ readArchive=readGdeltStaticArchive,b2Client,endpoint=ENDPOINT
 }={}){
  if(typeof rootToken!=="string"||rootToken.trim().length<32||
    typeof fetchImpl!=="function"||typeof readArchive!=="function"||
+   !b2Client||typeof b2Client.put!=="function"||
+   typeof b2Client.get!=="function"||
    !(now instanceof Date)||!Number.isFinite(now.getTime())||endpoint!==ENDPOINT)
    throw Error("RG_GDELT_PRODUCTION_INPUT_INVALID");
  // Strictly bounded pinned ZIP: existing readArchive enforces GDELT host,
@@ -50,6 +53,36 @@ export async function publishGdeltRiskEventWideNet({
   commercial_rights_verified:false,customer_debit_enabled:false,predge_writes:0,
   archive_sha256,items
  };
+ // B2 stores ONLY derived bounded, private structured evidence index:
+ // original event URLs and raw GDELT ZIP bytes are not stored.
+ // This uses two quota-governed B2 requests: PUT then exact GET readback.
+ const b2Snapshot={
+  schema:"geomacro.gdelt-event-b2-d1-archive.v1",
+  provider:"gdelt_v2_15m",batch_at:manifest.batch_at,
+  observed_at:now.toISOString(),
+  gdelt_zip_archive_sha256:archive_sha256,
+  rows_scanned:source.rows_scanned,cameo_shortlisted:source.cameo_shortlisted,
+  source_event_verification:"INDEX_ONLY",
+  commercial_rights_verified:false,customer_delivery_authorized:false,
+  independent_event_verified:false,source_publication_time_verified:false,
+  items:items.map(({id,gdelt_event_id,cameo_code,cameo_root,
+   gdelt_index_at,action_geo_fips,corridor_hints,source_url_sha256})=>({
+   id,gdelt_event_id,cameo_code,cameo_root,
+   gdelt_index_at,action_geo_fips,corridor_hints,source_url_sha256
+  }))
+ };
+ const b2Bytes=Buffer.from(JSON.stringify(b2Snapshot),"utf8");
+ if(b2Bytes.length>32000)throw Error("RG_GDELT_B2_SNAPSHOT_TOO_LARGE");
+ const b2Hash=sha(b2Bytes);
+ const b2Key="geomacro-evidence/v1/private/gdelt-event-wide-net/"+
+  manifest.batch_at.replace(/\D/gu,"").slice(0,12)+"/"+b2Hash+".json";
+ await b2Client.put(b2Key,b2Bytes);
+ const b2Got=Buffer.from(await b2Client.get(b2Key));
+ if(sha(b2Got)!==b2Hash||!b2Got.equals(b2Bytes))
+  throw Error("RG_GDELT_B2_EXACT_READBACK_FAILED");
+ packet.b2_archive_key=b2Key;
+ packet.b2_manifest_sha256=b2Hash;
+ packet.b2_exact_readback_verified=true;
  const bearer="Bearer "+createHmac("sha256",rootToken.trim())
   .update("geomacro-control-plane-v1").digest("hex");
  let response;
@@ -68,6 +101,8 @@ export async function publishGdeltRiskEventWideNet({
  if(ack.ok!==true||ack.schema!=="geomacro.risk-gate-gdelt-d1-acceptance.v1"||
   ack.shortlisted!==items.length||ack.exact_d1_readback!==items.length||
   ack.source_zip_integrity_proof!==archive_sha256||
+  ack.b2_archive_key!==b2Key||ack.b2_manifest_sha256!==b2Hash||
+  ack.b2_exact_readback_verified!==true||
   ack.verified_event_count!==0||ack.signed_gro_generated!==false||
   ack.chargeable!==false||ack.customer_credits_debited!==0||
   ack.risk_gate_paid_delivery_enabled!==false||ack.retention_hours!==72||
@@ -88,6 +123,8 @@ export async function publishGdeltRiskEventWideNet({
   schema:"geomacro.risk-gate-gdelt-wide-net-production-acceptance.v1",
   checked_at:now.toISOString(),batch_at:manifest.batch_at,
   zipped_archive_sha256:archive_sha256,
+  b2_archive_key:b2Key,b2_manifest_sha256:b2Hash,
+  b2_exact_readback:true,
   rows_scanned:source.rows_scanned,cameo_shortlisted:source.cameo_shortlisted,
   geolocated_strategic_route_candidates:source.route_hint_count,
   d1_shortlist_records_verified:ack.exact_d1_readback,
@@ -103,8 +140,22 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
    process.env.GITHUB_REF!=="refs/heads/main"||
    !/^\d{1,20}$/u.test(process.env.GITHUB_RUN_ID??""))
    throw Error("RG_GDELT_MAIN_ONLY");
+  if(process.env.GITHUB_ACTIONS!=="true"||
+    process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
+    process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="gdelt_v2_event_sync"||
+    process.env.B2_REQUEST_BUDGET!=="4"||
+    !process.env.B2_KEY_ID||!process.env.B2_APPLICATION_KEY||
+    !process.env.CLOUDFLARE_API_TOKEN||
+    !process.env.CLOUDFLARE_ACCOUNT_ID||!process.env.D1_DATABASE_ID)
+   throw Error("RG_GDELT_B2_D1_GOVERNANCE_REQUIRED");
+  const b2=createB2Client({
+   endpointUrl:"https://s3.us-east-005.backblazeb2.com",
+   accessKey:process.env.B2_KEY_ID,
+   secretKey:process.env.B2_APPLICATION_KEY,
+   bucket:"geomacro-private-archive"
+  });
   const receipt=await publishGdeltRiskEventWideNet({
-   rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN
+   rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN,b2Client:b2
   });
   writeFileSync("artifacts/direct-corridor-intake/risk-gate-gdelt-wide-net.json",
    JSON.stringify(receipt,null,2)+"\n",{mode:0o600});

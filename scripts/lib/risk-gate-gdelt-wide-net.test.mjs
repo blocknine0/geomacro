@@ -39,6 +39,9 @@ function packet(){
  });
  return {schema:GDELT_RISK_EVENT_SCHEMA,checked_at:NOW.toISOString(),
   batch_at:BATCH,items,archive_sha256,provider:"gdelt_v2_15m",
+  b2_archive_key:"geomacro-evidence/v1/private/gdelt-event-wide-net/202611021500/"+
+   "b".repeat(64)+".json",b2_manifest_sha256:"b".repeat(64),
+  b2_exact_readback_verified:true,
   source_event_verification:"INDEX_ONLY",commercial_rights_verified:false,
   customer_debit_enabled:false,predge_writes:0};
 }
@@ -65,7 +68,8 @@ class DB{
     event_ref_id:p[0],gdelt_event_id:p[1],cameo_code:p[2],
     cameo_root:p[3],gdelt_index_at:p[4],batch_at:p[5],
     action_geo_fips:p[6],corridor_hints_json:p[7],
-    source_url_sha256:p[8],archive_sha256:p[9]
+    source_url_sha256:p[8],archive_sha256:p[9],
+    b2_archive_key:p[12],b2_manifest_sha256:p[13]
    });
   }
  }
@@ -109,10 +113,12 @@ test("bounded real ZIP producer validates MD5, D1 exact put and private get",asy
  const compressed=Buffer.from("pinned zip bytes");
  const manifest={batch_at:BATCH,expected_bytes:compressed.length,
   expected_md5:createHash("md5").update(compressed).digest("hex")};
- const db=new DB();
+ const db=new DB(),b2Stored=new Map();
  const got=await publishGdeltRiskEventWideNet({
   rootToken:"a".repeat(64),now:NOW,
   readArchive:async()=>({decoded:text(),manifest,zipped:compressed}),
+  b2Client:{put:async(k,v)=>{b2Stored.set(k,Buffer.from(v));},
+   get:async k=>b2Stored.get(k)},
   fetchImpl:async(url,options)=>{
    assert.match(options.headers.Authorization,/^Bearer [a-f0-9]{64}$/u);
    if(options.method==="PUT")
@@ -125,9 +131,12 @@ test("bounded real ZIP producer validates MD5, D1 exact put and private get",asy
  assert.equal(got.verified_events,0);
  assert.equal(got.paid_gate_enabled,false);
  assert.equal(got.readback_valid,true);
+ assert.equal(got.b2_exact_readback,true);
+ assert.equal(b2Stored.size,1);
+ assert.equal(got.b2_archive_key.startsWith("geomacro-evidence/v1/private/"),true);
 });
 test("GDELT event shortlist can never call PREDGE, paid API or replace GRO signer",()=>{
- const workflow=readFileSync(new URL("../../.github/workflows/direct-global-corridor-intake.yml",import.meta.url),"utf8");
+ const workflow=readFileSync(new URL("../../.github/workflows/gdelt-v2-event-sync.yml",import.meta.url),"utf8");
  assert.ok(workflow.includes("publish-risk-gate-gdelt-wide-net.mjs"));
  const worker=readFileSync(new URL("../../workers/control-plane/src/index.mjs",import.meta.url),"utf8");
  assert.ok(worker.indexOf("const auth = authorized(request, env)")<
