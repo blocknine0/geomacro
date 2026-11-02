@@ -8,7 +8,11 @@
     "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app",
     "EMAIL_FROM_ADDRESS": "auth@geomacro.live"
   },
-  "triggers": {"crons": ["* * * * *"]},
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
   "cache": {
     "enabled": true
   },
@@ -18,6 +22,12 @@
       "database_name": "geomacro-control-plane",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID",
       "migrations_dir": "migrations"
+    }
+  ],
+  "routes": [
+    {
+      "pattern": "api.geomacro.live",
+      "custom_domain": true
     }
   ]
 }
