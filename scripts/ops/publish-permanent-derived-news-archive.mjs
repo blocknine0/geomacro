@@ -128,7 +128,8 @@ function normalizeHeadline(title){
     .replace(/[^\p{L}\p{N}]+/gu," ")
     .trim().replace(/\s+/gu," ");
 }
-function isTemplateObservation(signal){
+/** Single authoritative template exclusion shared with live backlog verification. */
+export function isTemplateObservation(signal){
   const candidateText=[signal.title,signal.topic,signal.development_type,
     signal.what_changed].filter(value=>typeof value==="string").join(" ");
   const title=typeof signal.title==="string"?signal.title:"";
