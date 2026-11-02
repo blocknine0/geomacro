@@ -125,3 +125,66 @@ test("route mention without IMO is automatically flagged as context, not inciden
  assert.deepEqual(r.items[0].route_context_ids,["suez_canal"]);
  assert.equal(r.items[0].event_verified,false);
 });
+
+
+test("earliest same-event publisher timestamp becomes structured operational event reference, not physical occurrence",async()=>{
+ const early=candidate("coindesk_rss","https://www.coindesk.com/business/ship-early",
+   "2026-11-02T01:05:00.000Z");
+ const late=candidate("cointelegraph_rss","https://cointelegraph.com/news/ship-late",
+   "2026-11-02T01:45:00.000Z");
+ const r=await verifyNativeCorridorCandidates({candidates:[late,early],now,
+  fetchImpl:async()=>response()});
+ assert.equal(r.independent_vessel_route_matches,2);
+ assert.equal(r.items.length,2);
+ for(const row of r.items){
+  assert.equal(row.event_reference_at,"2026-11-02T01:05:00.000Z");
+  assert.equal(row.event_reference_time_basis,"EARLIEST_CORROBORATING_PUBLICATION");
+  assert.equal(row.physical_occurrence_time_verified,false);
+  assert.equal(row.raw_article_used_for_structuring,true);
+  assert.equal(row.structured_evidence.length,1);
+  assert.equal(row.structured_evidence[0].route_id,"strait_of_hormuz");
+  assert.equal(row.structured_evidence[0].action,"attack");
+  assert.equal(row.structured_evidence[0].independent_issuer_count,2);
+  assert.equal(row.structured_evidence[0].physical_occurrence_time_verified,false);
+  assert.match(row.structured_evidence[0].vessel_token_hash,/^[a-f0-9]{64}$/);
+ }
+ assert.equal(r.verified_corridor_events,0);
+ assert.ok(!JSON.stringify(r).includes("IMO 1234567"));
+ assert.ok(!JSON.stringify(r).includes("vessel IMO"));
+ assert.ok(!JSON.stringify(r).includes("ship-early"));
+ assert.equal(r.source_article_bodies_saved,false);
+ assert.equal(r.raw_articles_structured_ephemerally,true);
+});
+test("unrelated earlier publisher report never overrides an incident's observed reference time",async()=>{
+ const sameLate=candidate("coindesk_rss","https://www.coindesk.com/business/ship-late",
+  "2026-11-02T01:30:00.000Z");
+ const sameOther=candidate("cointelegraph_rss","https://cointelegraph.com/news/ship-other",
+  "2026-11-02T01:45:00.000Z");
+ const unrelatedEarly=candidate("boe_news","https://www.bankofengland.co.uk/news/earlier",
+  "2026-11-02T00:30:00.000Z");
+ const r=await verifyNativeCorridorCandidates({candidates:[sameLate,sameOther,unrelatedEarly],now,
+  fetchImpl:async url=>url===unrelatedEarly.article_url?
+   response("<html><article><p>"+("Policy context only. ".repeat(14))+"</p></article></html>"):
+   response()});
+ const relevant=r.items.filter(x=>x.independent_report_match);
+ assert.equal(relevant.length,2);
+ assert.ok(relevant.every(x=>x.event_reference_at==="2026-11-02T01:30:00.000Z"));
+ const other=r.items.find(x=>x.source_id==="boe_news");
+ assert.equal(other.event_reference_at,"2026-11-02T00:30:00.000Z");
+ assert.equal(other.extracted_context_class,"NO_ROUTE_EVIDENCE");
+});
+test("raw article body can inform source-structured route context without inventing an incident",async()=>{
+ const context="<html><main><p>"+("Market logistics and freight context. ".repeat(12))+
+  "The Suez Canal is mentioned as a regional shipping corridor, with no incident verified."+
+  "</p></main></html>";
+ const r=await verifyNativeCorridorCandidates({candidates:[a],now,
+  fetchImpl:async()=>response(context)});
+ assert.equal(r.items[0].extracted_context_class,"ROUTE_MENTION_ONLY");
+ assert.equal(r.items[0].event_reference_at,pub);
+ assert.equal(r.items[0].physical_occurrence_time_verified,false);
+ assert.equal(r.items[0].raw_article_used_for_structuring,true);
+ assert.deepEqual(r.items[0].route_context_ids,["suez_canal"]);
+ assert.equal(r.items[0].structured_evidence.length,0);
+ assert.equal(r.verified_corridor_events,0);
+ assert.ok(!JSON.stringify(r).includes("freight context"));
+});
