@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T13:34:21.117Z",
+  "checked_at": "2026-11-02T14:06:53.401Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 206,
+  "item_count": 205,
   "counts": {
     "geopolitics": 87,
     "macro": 82,
-    "rare_earth": 37
+    "rare_earth": 36
   },
-  "source_native_ids_sha256": "af7dbaf5f108e1fd8814bce5b301aa8f3b3994879ab54e19c20c7db5ed1e7db5",
+  "source_native_ids_sha256": "356739d33e0fa145c707b3f3f753b0470c29f5b38e44c96eca5d387d7060dc8f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3919,25 +3919,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.darkreading.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-23f36be1",
-      "category": "rare_earth",
-      "title": "Geomacro finds Sylvania reported record quarterly PGM output, improved chrome production",
-      "what_changed": "A monitored source feed reports: Sylvania reported record quarterly PGM output, improved chrome production. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T14:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
