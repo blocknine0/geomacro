@@ -1,0 +1,52 @@
+name: Unified Risk 195x3 Daily Production Census (No Funds)
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-unified-risk-production-census
+  cancel-in-progress: false
+
+jobs:
+  verify-195x3-and-corridors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      WORKER_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+    steps:
+      - name: Verify owner-only daily D1 and Supabase 207-snapshot receipts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#ROOT_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::CONTROL_PLANE_ROOT_LEDGER_SECRET_UNAVAILABLE"; exit 2;
+          }
+          CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          echo "::add-mask::$CONTROL_PLANE_TOKEN"
+          tmp="$(mktemp)"
+          trap 'rm -f "$tmp"' EXIT
+          for attempt in 1 2 3; do
+            code="$(curl -sS --max-time 15 -o "$tmp" -w '%{http_code}' \
+              -H "Authorization: Bearer $CONTROL_PLANE_TOKEN" \
+              "$WORKER_URL/v1/internal/risk-gate/unified-census" || true)"
+            if test "$code" = 200 && jq -e '
+              .ok == true and .schema == "geomacro.unified-risk-census.v1" and
+              .complete == true and .country_count == 195 and
+              .corridor_count == 12 and .country_synced == 195 and
+              .corridor_synced == 12 and .commercial_activation == false
+            ' "$tmp" >/dev/null 2>&1; then
+              echo "PASS: 195 country/day and 12 corridor/day signed observations D1+Supabase sync census."
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "::error::UNIFIED_207_SNAPSHOT_DAILY_CENSUS_INCOMPLETE"
+          # Show only aggregate counts, no original sources or protected key.
+          jq -c '{day_utc,country_count,corridor_count,country_synced,corridor_synced,complete}' "$tmp" 2>/dev/null || true
+          exit 3
