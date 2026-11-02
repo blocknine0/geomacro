@@ -539,13 +539,36 @@ export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRID
   }
   return true;
 }
+// Chokepoint, freight, maritime-safety and supply-chain observations are
+// an isolated CORRIDOR channel. They never enter Website Intelligence.
+export const CORRIDOR_ONLY_SOURCE_IDS=Object.freeze([
+  "recaap_isc","ukmto_incidents","ukmto_advisories","suez_navigation",
+  "panama_canal","freightos_fbx","nyfed_gscpi","imb_piracy",
+]);
+export function directGlobalCorridorRouteSources(){
+  assertDirectGlobalCorridorRegistry();
+  const ids=new Set(CORRIDOR_ONLY_SOURCE_IDS);
+  const entries=DIRECT_GLOBAL_CORRIDOR_SOURCES.filter(x=>ids.has(x.id));
+  if(entries.length!==ids.size)throw Error("DIRECT_CORRIDOR_SOURCE_MISSING");
+  return Object.freeze(entries.map(s=>Object.freeze({...s,channel:"CORRIDOR_ONLY",
+    website_intelligence_enabled:false,risk_gate_verified:false,
+    commercial_eligible:false})));
+}
+export function assertDirectCorridorWebsiteSeparation(){
+  const corridorIds=new Set(CORRIDOR_ONLY_SOURCE_IDS);
+  const corridorUrls=new Set(directGlobalCorridorRouteSources().map(s=>s.url));
+  if(directGlobalCorridorNewsFeeds().some(s=>corridorIds.has(s.id.replace(/^direct_/u,""))||corridorUrls.has(s.url)))
+    throw Error("CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
+  return true;
+}
 // This is DIRECT publication input, not a private OSINT source list.
 // Do not add inaccessible portal pages, paywalled APIs, dataset PDFs or
 // aggregator raw bodies to this news publisher.
 export function directGlobalCorridorNewsFeeds(){
   assertDirectGlobalCorridorRegistry();
+  const denied=new Set(CORRIDOR_ONLY_SOURCE_IDS);
   return Object.freeze(DIRECT_GLOBAL_CORRIDOR_SOURCES
-    .filter(s=>s.state==="POLL_DIRECT_FEED")
+    .filter(s=>s.state==="POLL_DIRECT_FEED"&&!denied.has(s.id))
     .map(s=>Object.freeze({id:"direct_"+s.id,url:s.url,format:"rss",
       categories:[...s.categories],priority:false,officialDocument:false,
       source_kind:"NATIVE_FEED",commercial_eligible:false})));
