@@ -67,13 +67,13 @@ async function probeNativeCorridorRss(spec,fetchImpl,now){
    xml=new TextDecoder("utf-8",{fatal:true}).decode(bytes);
  }catch{return {state:"FEED_ENCODING_INVALID",metadata_candidates:0};}
  if(/<!DOCTYPE|<!ENTITY/iu.test(xml)||
-    !/^\\s*(?:<\\?xml[^>]*>\\s*)?<(?:rss|feed|rdf:RDF)\\b/iu.test(xml))
+    !/^\s*(?:<\?xml[^>]*>\s*)?<(?:rss|feed|rdf:RDF)\b/iu.test(xml))
    return {state:"NOT_A_NATIVE_FEED",metadata_candidates:0};
- const entries=[...xml.matchAll(/<(?:[a-z][\\w.-]*:)?(?:item|entry)\\b[^>]*>([\\s\\S]*?)<\\/(?:[a-z][\\w.-]*:)?(?:item|entry)>/giu)].slice(0,40);
+ const entries=[...xml.matchAll(/<(?:[a-z][\w.-]*:)?(?:item|entry)\b[^>]*>([\s\S]*?)<\/(?:[a-z][\w.-]*:)?(?:item|entry)>/giu)].slice(0,40);
  let dated=0;
  for(const item of entries){
-   const raw=item[1].match(/<(?:pubDate|published)\\b[^>]*>([^<]{8,100})<\\/(?:pubDate|published)>/iu)?.[1]?.trim();
-   if(!raw||/^\\d{4}-\\d{2}-\\d{2}$/u.test(raw))continue;
+   const raw=item[1].match(/<(?:pubDate|published)\b[^>]*>([^<]{8,100})<\/(?:pubDate|published)>/iu)?.[1]?.trim();
+   if(!raw||/^\d{4}-\d{2}-\d{2}$/u.test(raw))continue;
    const ms=Date.parse(raw);
    if(Number.isFinite(ms)&&ms<=now.getTime()+5*60_000&&
       now.getTime()-ms<=72*3600_000)dated++;
