@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T16:41:40.552Z",
+  "checked_at": "2026-11-02T17:03:26.271Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-3d373de2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary-General Strongly: condemned Escalating Drone Attacks in Sudan · Sudan",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Secretary-General Strongly condemned Escalating Drone Attacks in Sudan. Country or region mentioned: Sudan.",
+      "geography": "Sudan",
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-02T16:56:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-fdf76bdb",
       "category": "rare_earth",
@@ -3763,25 +3782,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T17:19:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7827d313",
-      "category": "macro",
-      "title": "Geomacro finds Gold Peach Realty Publishes Market reported for 12 North Georgia Counties - FinancialContent",
-      "what_changed": "A monitored source feed reports: Gold Peach Realty Publishes Market reported for 12 North Georgia Counties - FinancialContent. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:02:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

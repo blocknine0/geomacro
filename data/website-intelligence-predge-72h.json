@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T16:41:40.552Z",
+  "checked_at": "2026-11-02T17:03:26.271Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 222,
   "counts": {
-    "geopolitics": 97,
-    "macro": 86,
+    "geopolitics": 98,
+    "macro": 85,
     "rare_earth": 39
   },
-  "source_native_ids_sha256": "ac0832ac8fc455a79ec04ef841fbffad8abeac2c6e639b2a6fb4259542dff5fa",
+  "source_native_ids_sha256": "f9061a796f2e23f08a6b3af2adb742d90ec07637d7d9b8fbd1c1100e113938d8",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-3d373de2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary-General Strongly: condemned Escalating Drone Attacks in Sudan · Sudan",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Secretary-General Strongly condemned Escalating Drone Attacks in Sudan. Country or region mentioned: Sudan.",
+      "geography": "Sudan",
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-02T16:56:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-fdf76bdb",
       "category": "rare_earth",
@@ -4219,25 +4238,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T17:19:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7827d313",
-      "category": "macro",
-      "title": "Geomacro finds Gold Peach Realty Publishes Market reported for 12 North Georgia Counties - FinancialContent",
-      "what_changed": "A monitored source feed reports: Gold Peach Realty Publishes Market reported for 12 North Georgia Counties - FinancialContent. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:02:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

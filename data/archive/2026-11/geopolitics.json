@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T16:41:40.552Z",
+  "updated_at": "2026-11-02T17:03:26.271Z",
   "signals": [
+    {
+      "id": "geopolitics-3d373de2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary-General Strongly: condemned Escalating Drone Attacks in Sudan · Sudan",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Secretary-General Strongly condemned Escalating Drone Attacks in Sudan. Country or region mentioned: Sudan.",
+      "geography": "Sudan",
+      "development_type": "official update",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-02T16:56:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-2e374f0e",
       "category": "geopolitics",
