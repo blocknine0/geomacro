@@ -1,3 +1,4 @@
+import {corridorEnterprisePricingDiscovery} from "./enterprise-corridor-pricing";
 import { GEOMACRO_CARD_TO_USDC_READINESS, GEOMACRO_CARD_TO_USDC_PRODUCTS } from "./card-to-usdc-readiness";
 import { GEOMACRO_PAYPAL_READINESS, GEOMACRO_PAYPAL_PRODUCT_CATALOG } from "./paypal-checkout-readiness";
 import {GEOMACRO_LOW_BARRIER_VERSION,GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PACKS,GEOMACRO_AGENT_MICROPAYMENT,GEOMACRO_SUBSCRIPTION_CHECKOUT_STATUS,GEOMACRO_CREDIT_PACK_CHECKOUT_STATUS} from "./low-barrier-pricing";
@@ -54,6 +55,7 @@ export function publicGeomacroPaidPricingManifest(){
     pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE" as const,
     launch_pricing_version:GEOMACRO_LOW_BARRIER_VERSION,
     subscriptions:GEOMACRO_SUBSCRIPTIONS,
+    corridor_enterprise_discovery:corridorEnterprisePricingDiscovery(),
     one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
     agent_x402:GEOMACRO_AGENT_MICROPAYMENT,
     card_to_usdc_settlement:GEOMACRO_CARD_TO_USDC_READINESS,
