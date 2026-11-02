@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T19:54:38.824Z",
+  "checked_at": "2026-11-02T20:00:41.869Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 238,
+  "item_count": 239,
   "counts": {
-    "geopolitics": 110,
+    "geopolitics": 111,
     "macro": 92,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "eabfa2aaec515d18169e5214ba04a0060b3cf561564037abb8b7023e267029c8",
+  "source_native_ids_sha256": "90a3bb81f6ae01bbd0886b6419acfa2ddb9f5b99168c52b5f247c52fb132358f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-37a9dd40",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine proposed new IMO rules for freedom of navigation as attack zone expands in Black Sea - TradeWinds News",
+      "what_changed": "A monitored source feed reports: Ukraine proposed new IMO rules for freedom of navigation as attack zone expands in Black Sea - TradeWinds News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:20:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-939fcf5e",
       "category": "geopolitics",
