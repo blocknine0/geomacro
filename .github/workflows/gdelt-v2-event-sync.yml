@@ -1,19 +1,38 @@
-name: GDELT V2 Event Governed Sync
+name: GDELT V2 Event B2 + D1 Governed Sync
 
+# The retired Supabase-only path is NOT executed.
+# 15m: pin and verify GDELT Event ZIP -> bounded private B2 archive
+# -> B2 full GET/hash -> private canonical D1 event index + readback.
 on:
   workflow_dispatch: {}
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/gdelt-v2-event-sync.yml"
+      - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
+      - "lib/risk-gate-gdelt-event-wide-net.mjs"
+      - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
+      - "workers/control-plane/migrations/0104_risk_gate_gdelt_b2_d1_manifest.sql"
+      - "src/__tests__/gdelt-v2-certified-runtime-governance.test.ts"
   pull_request:
     branches: [main]
     paths:
-      - "scripts/ingest-gdelt-v2-events-live.mjs"
       - ".github/workflows/gdelt-v2-event-sync.yml"
+      - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
+      - "lib/risk-gate-gdelt-event-wide-net.mjs"
+      - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
+      - "workers/control-plane/migrations/0104_risk_gate_gdelt_b2_d1_manifest.sql"
       - "src/__tests__/gdelt-v2-certified-runtime-governance.test.ts"
 
 permissions:
   contents: read
 
 concurrency:
-  group: geomacro-intelligence-orchestrator
+  group: geomacro-gdelt-v2-b2-d1-production
   cancel-in-progress: false
 
 jobs:
@@ -26,107 +45,89 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Guard certified source, mapping and commercial boundaries
-        shell: bash
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Validate B2+D1 and no funds contracts
         run: |
           set -euo pipefail
-          file=scripts/ingest-gdelt-v2-events-live.mjs
-          grep -q 'EXPECTED_COLUMN_COUNT = 61' "$file"
-          grep -q 'OFFICIAL_GDELT_FIPS_LOOKUP_TO_CANONICAL_COUNTRY_REGISTRY' "$file"
-          grep -q 'CONFLICT_ROOT_CODES' "$file"
-          grep -q 'enabled_for_commercial_signals === true' "$file"
-          grep -q 'certification.certification_state === "CERTIFIED"' "$file"
-          grep -q 'certification.endpoint_status === "PASS"' "$file"
-          grep -q 'GDELT_WRITE_GOVERNANCE_CERTIFICATION_INVALID' "$file"
-          grep -q 'risk_gate_signal_activation: false' "$file"
-          echo 'PASS: GDELT write path requires current certified commercial governance and still cannot bypass the Risk Gate evidence boundary.'
+          node --check scripts/ops/publish-risk-gate-gdelt-wide-net.mjs
+          node --check lib/risk-gate-gdelt-event-wide-net.mjs
+          node --check workers/control-plane/src/risk-gate-gdelt-event-index.mjs
+          node --test scripts/lib/risk-gate-gdelt-wide-net.test.mjs
+      - name: No Supabase client, DB URL or credentials
+        run: |
+          set -euo pipefail
+          ! grep -qi 'SUPABASE_' .github/workflows/gdelt-v2-event-sync.yml
+          ! grep -q 'ingest-gdelt-v2-events-live.mjs' .github/workflows/gdelt-v2-event-sync.yml
+          grep -q 'B2_ACCOUNT_QUOTA_REQUIRED: "1"' .github/workflows/gdelt-v2-event-sync.yml
 
   sync:
-    # Supabase-only legacy execution retired. Replaced by reviewed official
-    # source read-only or B2/D1-native signed publication; no DB credential restore.
-    if: ${{ false }}
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push')
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 16
     environment: production
     env:
-      EXPECTED_SUPABASE_PROJECT_REF: ldpwajisioljyjtojvfx
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-      SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      GRI_DB_MODE: direct_postgres
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: gdelt_v2_event_sync
+      B2_REQUEST_BUDGET: "4"
     steps:
-      - name: Checkout canonical source
+      - name: Checkout exact main without credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          bun-version: 1.4.2
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: Verify unzip and authoritative database target
+          node-version: "24"
+      - name: Resolve existing canonical D1 UUID for B2 quota governor
         shell: bash
         run: |
           set -euo pipefail
-          command -v unzip >/dev/null
-          test -n "${SUPABASE_PROJECT_ID:-}" || { echo "::error::SUPABASE_PROJECT_ID is missing"; exit 1; }
-          test -n "${SUPABASE_DB_URL:-}" || { echo "::error::SUPABASE_DB_URL is missing"; exit 1; }
-          test "$SUPABASE_PROJECT_ID" = "$EXPECTED_SUPABASE_PROJECT_REF" || { echo "::error::Wrong production project id"; exit 1; }
-          node <<'NODE'
-          const ref = process.env.EXPECTED_SUPABASE_PROJECT_REF;
-          const db = new URL(process.env.SUPABASE_DB_URL);
-          const direct = db.hostname === `db.${ref}.supabase.co` && db.username === 'postgres';
-          const pooler = db.hostname.endsWith('.pooler.supabase.com') && db.username === `postgres.${ref}`;
-          if (!['postgres:', 'postgresql:'].includes(db.protocol) || (!direct && !pooler) || !db.password || db.pathname !== '/postgres') {
-            throw new Error('SUPABASE_DB_URL is not the authoritative production database');
-          }
+          node --input-type=module <<'NODE'
+          import {appendFileSync} from "node:fs";
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          if(!/^[0-9a-f]{32}$/iu.test(account??"")||(token??"").length<20)
+            throw Error("GDELT_B2_D1_ACCOUNT_CONFIGURATION_REQUIRED");
+          const response=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
+            account+"/d1/database?per_page=100",{
+            headers:{authorization:"Bearer "+token,accept:"application/json"},
+            redirect:"error",signal:AbortSignal.timeout(15000)
+          });
+          if(!response.ok)throw Error("GDELT_CANONICAL_D1_DISCOVERY_FAILED");
+          const payload=await response.json();
+          const match=(payload.result??[]).filter(x=>x?.name==="geomacro-control-plane");
+          if(payload.success!==true||match.length!==1||
+            !/^[0-9a-f-]{36}$/iu.test(match[0]?.uuid??""))
+            throw Error("GDELT_CANONICAL_D1_NOT_UNIQUE");
+          appendFileSync(process.env.GITHUB_ENV,
+            "D1_DATABASE_ID="+match[0].uuid+String.fromCharCode(10));
           NODE
-      - name: Verify exact certified GDELT V2 production governance
+      - name: Verify GDELT ZIP, B2 full readback then D1 PUT+GET
         shell: bash
         run: |
           set -euo pipefail
-          state="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -Atqc "select concat_ws('|',s.commercial_usage_status,s.enabled_for_ingestion::text,s.enabled_for_commercial_signals::text,c.certification_state,c.rights_status,c.endpoint_status,c.schema_status,c.freshness_status,c.provenance_status,c.independence_status,c.adapter_status,c.runtime_status,c.fallback_status) from public.live_external_sources s join public.live_source_certification_records c using(source_id) where s.source_id='gdelt_v2_events'")"
-          expected='COMMERCIAL_OK|true|true|CERTIFIED|COMMERCIAL_OK|PASS|PASS|FRESH|PASS|PASS|TESTED|PASS|READY'
-          test "$state" = "$expected" || { echo "::error::GDELT certified production state is not eligible: $state"; exit 1; }
-          echo 'PASS: GDELT source is explicitly certified and commercially eligible.'
-      - name: Dry-run latest GDELT Event batch before write
-        shell: bash
-        run: |
-          set -euo pipefail
-          bun scripts/ingest-gdelt-v2-events-live.mjs 2>&1 | tee gdelt-v2-event-dry-run.log
-          grep -q 'PASS: GDELT V2 EVENT DRY RUN CLEAN; DATABASE UNCHANGED' gdelt-v2-event-dry-run.log
-          grep -q '"risk_gate_signal_activation": false' gdelt-v2-event-dry-run.log
-      - name: Persist normalized observations and release manifest
-        shell: bash
-        run: |
-          set -euo pipefail
-          bun scripts/ingest-gdelt-v2-events-live.mjs --write 2>&1 | tee gdelt-v2-event-write.log
-          grep -q 'PASS: GDELT V2 EVENT GOVERNED OBSERVATIONS + RELEASE MANIFEST WRITTEN' gdelt-v2-event-write.log
-      - name: Verify latest governed production release
-        shell: bash
-        run: |
-          set -euo pipefail
-          manifest="$(psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -Atqc "select verified_rows || '|' || unmapped_rows || '|' || rejected_rows || '|' || write_completed::text from public.live_source_release_manifests where source_id='gdelt_v2_events' order by retrieved_at desc limit 1")"
-          test -n "$manifest" || { echo "::error::No GDELT release manifest found"; exit 1; }
-          verified="${manifest%%|*}"
-          rest="${manifest#*|}"
-          unmapped="${rest%%|*}"
-          rest="${rest#*|}"
-          rejected="${rest%%|*}"
-          written="${rest##*|}"
-          test "$written" = 'true' || { echo "::error::Latest GDELT manifest is not write-complete"; exit 1; }
-          printf '{"manifest_verified_rows":%s,"manifest_unmapped_rows":%s,"manifest_rejected_rows":%s,"write_completed":true,"source_certification_required":true,"risk_gate_signal_activation":false}\n' "$verified" "$unmapped" "$rejected" | tee gdelt-v2-event-production-evidence.json
-          echo 'PASS: certified GDELT release verified; direct Risk Gate activation remains prohibited.'
-      - name: Upload governed production evidence
+          umask 077
+          mkdir -p artifacts/direct-corridor-intake
+          node scripts/ops/publish-risk-gate-gdelt-wide-net.mjs
+      - name: Upload private-safe receipt only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: gdelt-v2-event-governed-sync
-          path: |
-            gdelt-v2-event-dry-run.log
-            gdelt-v2-event-write.log
-            gdelt-v2-event-production-evidence.json
+          name: gdelt-v2-b2-d1-verified-receipt
+          path: artifacts/direct-corridor-intake/risk-gate-gdelt-wide-net.json
           if-no-files-found: warn
-          retention-days: 30
+          retention-days: 3
