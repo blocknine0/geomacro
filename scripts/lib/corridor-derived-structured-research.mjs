@@ -43,7 +43,7 @@ const DEFINITIONS=Object.freeze({
   watch:"Require independent source and actual event details before assessing impacts."
  },
  ecb_usd_eur_spot:{
-  unit:"EUR per USD (check source series direction)",
+  unit:"USD per EUR",
   meaning:"A single ECB exchange-rate reference observation provides an FX level, not an explanation for why it moved.",
   market:"Exchange-rate exposure can affect cross-border trade and settlement; impact direction is not inferred from one point.",
   watch:"Compare successive independently dated rate observations and the official monetary-policy releases."
@@ -139,7 +139,7 @@ function structuralAnalysis(row,checkedAt){
   source_observed_at:row.observed_at,analysis_at:checkedAt,
   metric_id:row.metric_id,metric_value:referenceValue,unit:definition.unit,
   candidate_corridor_ids:row.corridor_ids.slice(),
-  what_happened:"The source reported "+row.metric_id+" = "+String(referenceValue)+
+  what_happened:"GeoMacro observed from source metadata: "+row.metric_id+" = "+String(referenceValue)+
     " ("+definition.unit+") for "+row.observation_period+
     ". This is a reported observation, not an independently established event.",
   why_it_matters:definition.meaning,
