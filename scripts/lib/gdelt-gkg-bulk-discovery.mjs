@@ -32,6 +32,8 @@ function utcFromStamp(value){
 }
 export function parseGdeltGkgLastupdate(raw,{now=new Date(),maxBytes=MAX_INDEX_BYTES,kind="gkg",before=null}={}){
   if(!["gkg","events"].includes(kind))throw Error("GKG_MANIFEST_KIND_INVALID");
+  if(!Number.isInteger(max404Fallbacks)||max404Fallbacks<1||max404Fallbacks>4)
+    throw Error("GKG_ARCHIVE_FALLBACK_BOUND_INVALID");
   if(!Number.isSafeInteger(maxBytes)||maxBytes<1||maxBytes>MAX_MASTERFILE_TAIL_BYTES||
      typeof raw!=="string"||Buffer.byteLength(raw)>maxBytes||
      !Number.isFinite(now.getTime()))throw Error("GKG_MANIFEST_INVALID");
@@ -274,7 +276,7 @@ export async function reviewGkgFirstPartyPublicationDates(content,{
 
 // One manifest, one bounded index tail and at most two DISTINCT pinned ZIPs.
 // A 404 is an advertised-object publication race, never an access-denial retry.
-export async function readGdeltStaticArchive({fetchImpl=fetch,now=new Date(),kind="gkg"}={}){
+export async function readGdeltStaticArchive({fetchImpl=fetch,now=new Date(),kind="gkg",max404Fallbacks=1}={}){
   if(!["gkg","events"].includes(kind))throw Error("GKG_MANIFEST_KIND_INVALID");
   const request=(url,timeout,headers={})=>fetchImpl(url,{redirect:"error",
     headers:{accept:"*/*","user-agent":"Geomacro-GDELT-Static/1.0",...headers},
@@ -307,9 +309,14 @@ export async function readGdeltStaticArchive({fetchImpl=fetch,now=new Date(),kin
     manifest=await earlier();manifest_route="MASTERFILE_TAIL";
   }
   let archive=await request(manifest.fetch_url,25000);
-  if(archive?.status===404){
+  // A newly listed GDELT Event ZIP may return 404 at the origin while a
+  // completed older batch is available. Retry ONLY older signed-index
+  // manifest entries, never a guessed URL, under the same 2-hour window.
+  // GKG's default remains one fallback for backward compatibility.
+  for(let miss=0;archive?.status===404&&miss<max404Fallbacks;miss++){
     await archive.body?.cancel();
-    manifest=await earlier(manifest.batch_at);manifest_route="MASTERFILE_EARLIER_AFTER_404";
+    manifest=await earlier(manifest.batch_at);
+    manifest_route="MASTERFILE_EARLIER_AFTER_404";
     archive=await request(manifest.fetch_url,25000);
   }
   if(!archive?.ok){await archive?.body?.cancel();throw Error("GKG_ARCHIVE_HTTP_"+(archive?.status??"UNKNOWN"));}

@@ -247,6 +247,29 @@ describe("bounded static archive publication-race recovery",()=>{
       expect(fetcher.mock.calls.filter(c=>c[0].includes(missingStamp))).toHaveLength(1);
     });
   }
+  it("events: recovers two consecutive origin 404 responses only via older pinned manifests",async()=>{
+    const older="20261012115500",recent="20261012120000";
+    const bytes=zip(raw,stamp+".export.CSV");
+    const first=entry("events",recent,bytes),mid=entry("events",older,bytes);
+    const good=entry("events",stamp,bytes),tail=good+mid+first;
+    const fetcher=vi.fn(async(url:string)=>{
+      if(url.endsWith("lastupdate.txt"))return new Response(first);
+      if(url.endsWith("masterfilelist.txt"))
+        return new Response(tail,{status:206,headers:{
+          "content-range":"bytes 0-"+(Buffer.byteLength(tail)-1)+"/"+Buffer.byteLength(tail)
+        }});
+      return url.includes(recent)||url.includes(older)?
+        new Response("not replicated",{status:404}):new Response(bytes);
+    });
+    const result=await readGdeltStaticArchive({
+      fetchImpl:fetcher,now,kind:"events",max404Fallbacks:4
+    });
+    expect(result.manifest.batch_at).toBe(date);
+    expect(result.manifest_route).toBe("MASTERFILE_EARLIER_AFTER_404");
+    expect(fetcher).toHaveBeenCalledTimes(5);
+    expect(fetcher.mock.calls.filter(c=>c[0].includes(recent))).toHaveLength(1);
+    expect(fetcher.mock.calls.filter(c=>c[0].includes(older))).toHaveLength(1);
+  });
   it("never falls back on denial or checksum failure",async()=>{
     for(const status of [401,403,429,500]){
       const fake=vi.fn(async(url:string)=>url.endsWith("lastupdate.txt")?new Response(manifest()):new Response("held",{status}));

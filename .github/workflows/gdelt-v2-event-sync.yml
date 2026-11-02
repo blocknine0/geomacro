@@ -12,6 +12,8 @@ on:
     paths:
       - ".github/workflows/gdelt-v2-event-sync.yml"
       - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/gdelt-gkg-bulk-discovery.mjs"
+      - "src/__tests__/gdelt-gkg-bulk-discovery.test.ts"
       - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
       - "lib/risk-gate-gdelt-event-wide-net.mjs"
       - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
@@ -22,6 +24,8 @@ on:
     paths:
       - ".github/workflows/gdelt-v2-event-sync.yml"
       - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/gdelt-gkg-bulk-discovery.mjs"
+      - "src/__tests__/gdelt-gkg-bulk-discovery.test.ts"
       - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
       - "lib/risk-gate-gdelt-event-wide-net.mjs"
       - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
