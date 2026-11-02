@@ -188,6 +188,10 @@ export async function cleanupDailyRiskSupabase(env,{now=Date.now(),fetcher=fetch
   const check=await remote(cfg,"/rest/v1/geomacro_daily_tiered_risk_gates?select=corridor_id&generated_at=lt."+encodeURIComponent(cutoff)+"&limit=1",{},fetcher);
   const leftover=await check.json();
   if(!Array.isArray(leftover)||leftover.length)return {ok:false,error:"RG_SUPABASE_CLEANUP_READBACK_FAILED"};
+  // D1 hot snapshots are not the customer billing audit. Prune only already-
+  // replicated old rows after remote deletion/readback; unsynced data is preserved.
+  await env.DB.prepare("DELETE FROM daily_tiered_risk_gates WHERE generated_at<? AND supabase_synced_at IS NOT NULL")
+   .bind(cutoff).run();
   // Aligned to last successful cleanup; retries do not skip a failed cleanup.
   await env.DB.prepare("UPDATE risk_gate_daily_housekeeping SET next_cleanup_at=?,last_cleanup_at=? WHERE job_id='supabase_ten_day' AND next_cleanup_at<=?")
    .bind(iso(now+TEN),iso(now),iso(now)).run();
@@ -242,7 +246,7 @@ export async function runDailyRiskGates(env,opts={}){
   catch{results.push({ok:false,corridor_id:c.id,error:"RG_CORRIDOR_GENERATION_FAILED"})}
  }
  const sync=await syncDailyRiskToSupabase(env,{...opts,now});
- return {ok:results.every(x=>x.ok),schema:DAILY_RG_SCHEMA,day_utc:iso(now).slice(0,10),
+ return {ok:results.every(x=>x.ok)&&sync.ok,canonical_d1_ok:results.every(x=>x.ok),schema:DAILY_RG_SCHEMA,day_utc:iso(now).slice(0,10),
   corridor_count:results.length,results,supabase_sync:sync,charged_calls:0};
 }
 async function verifyStoredDaily(row,env){
