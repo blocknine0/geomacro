@@ -164,6 +164,8 @@ export function verifyThreeDomainLivePublication({
   result[category]={
    public_d1_not_in_static:unrepresented.length,
    intentionally_rejected_archive_templates:templatesExcluded,
+   represented_in_full_shards_not_latest_preview:domain.journal.filter(x=>
+     !previewIds.has(x.id)&&archivedIds.has(x.id)).length,
    public_d1_not_in_static_display_rejections:rejectionClasses,
    public_d1_not_in_static_concrete:concreteEligible.length,
    concrete_not_static_before_snapshot:overdueConcrete.length,
