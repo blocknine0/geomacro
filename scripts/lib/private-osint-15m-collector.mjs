@@ -39,6 +39,11 @@ function roundRobinAttributedCountries(items){
 }
 
 const FEED_REDIRECT_STATUSES=new Set([301,302,303,307,308]);
+const TRANSIENT_HTTP_STATUSES=new Set([408,500,502,503,504]);
+export const privateOsintRetryAllowance=(sourceCount)=>(
+ Number.isSafeInteger(sourceCount)&&sourceCount>0&&sourceCount<=PRIVATE_OSINT_MAX_SOURCES?
+   Math.min(8,PRIVATE_OSINT_MAX_SOURCES-sourceCount):0
+);
 const normalizedPublicFeedHost=host=>{
  const lower=host.toLowerCase();
  return lower.startsWith("www.")?lower.slice(4):lower;
@@ -106,10 +111,34 @@ export async function collectPrivateOsint15m({
   // A large news-index catalogue must not block unrelated original publishers.
   const responses=Array(registry.length),running=new Set(),hosts=new Map();
   const pending=registry.map((source,index)=>({source,index,host:new URL(source.url).hostname}));
-  const privateFetch=(url,options)=>fetchPrivateFeedSafely(url,
-    new URL(url).hostname==="news.google.com"?
-      {...options,signal:AbortSignal.any([options.signal,AbortSignal.timeout(3500)])}:options,
-    fetchImpl);
+  // A finite spare-request pool permits ONE recovery for genuinely transient
+  // original-feed failures without exceeding the existing 512-source GET
+  // budget. Never retry 401/403/404/429, index scrapes or malformed bodies.
+  // Per-run memory budget is shared across 8 workers, never per publisher.
+  let retryAllowance=privateOsintRetryAllowance(registry.length);
+  let attemptedSourceRetries=0,transientRecovered=0;
+  const privateFetch=async(url,options)=>{
+    const isDiscovery=new URL(url).hostname==="news.google.com";
+    const firstOptions=isDiscovery?
+      {...options,signal:AbortSignal.any([options.signal,AbortSignal.timeout(3500)])}:options;
+    let response=null,transportError=null;
+    try{response=await fetchPrivateFeedSafely(url,firstOptions,fetchImpl)}
+    catch(error){transportError=error;}
+    const retryable=!isDiscovery&&retryAllowance>0&&(
+      transportError!==null||TRANSIENT_HTTP_STATUSES.has(response?.status));
+    if(!retryable){
+      if(transportError)throw transportError;
+      return response;
+    }
+    retryAllowance--;attemptedSourceRetries++;
+    try{await response?.body?.cancel()}catch{}
+    // Give the second transport its OWN finite clock after the first timeout.
+    // No host/URL/publisher switching or retries of rate limits/denials.
+    const secondOptions={...options,signal:AbortSignal.timeout(7000)};
+    const recovered=await fetchPrivateFeedSafely(url,secondOptions,fetchImpl);
+    if(recovered.status===200)transientRecovered++;
+    return recovered;
+  };
   try{
     while(pending.length||running.size){
       while(running.size<concurrency){
@@ -198,6 +227,11 @@ export async function collectPrivateOsint15m({
       rotating_country_index_is_not_original_publisher:true,
       rotating_country_index_does_not_supply_event_country:true,
       source_checks:checks.size,source_states:count,
+      original_feed_transient_retries:attemptedSourceRetries,
+      transient_retry_recovered_http_200:transientRecovered,
+      retry_budget_initial:privateOsintRetryAllowance(registry.length),
+      denied_and_rate_limited_endpoints_never_retried:true,
+      extra_upstream_requests_capped_to_registry_budget:true,
       index_items_deduplicated_across_queries:true,
       working_source_endpoints:registry.filter(s=>s.categories.some(category=>
         [...checks.values()].some(c=>c.source_ref===sourceRef(s,category)&&
