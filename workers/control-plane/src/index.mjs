@@ -1296,6 +1296,13 @@ export default {
     const utc=new Date();
     if(utc.getUTCMinutes()%15===7&&env?.DB?.prepare)
       ctx.waitUntil(corridorWatchTick(env).then(r=>{if(!r.ok)console.error('CORRIDOR_WATCH_UNAVAILABLE')}).catch(()=>console.error('CORRIDOR_WATCH_UNAVAILABLE')));
+    // Independent 15-minute Worker-native strategic Risk Gate context cache.
+    // D1 only, 5 pre-registered corridors, no external provider quota,
+    // paid delivery, new cron trigger or customer debit.
+    if(utc.getUTCMinutes()%15===8&&env?.DB?.prepare&&env?.DB?.batch)
+      ctx.waitUntil(tickPrivateStrategicRiskGate(env,utc.getTime()).then(r=>{
+        if(r.status!==200)console.error("RG_STRATEGIC_15M_TICK_UNAVAILABLE");
+      }).catch(()=>console.error("RG_STRATEGIC_15M_TICK_UNAVAILABLE")));
     // Six-hour fallback TTL for corridor-only private original-link metadata.
     // Ingest also prunes every hour; no extra cron, public route or quota loop.
     if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
