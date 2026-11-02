@@ -13,6 +13,10 @@ test("quota-admitted :22/:52 D1 recovery must also publish actual static archive
  assert.match(d1,/retention-days: 1/);
  assert.match(stage,/needs\.catch-up-derived-only\.result == 'success'/);
  assert.match(stage,/needs\.catch-up-derived-only\.outputs\.recovered_batch == 'true'/);
+ assert.match(stage,/needs\.quota-admission\.outputs\.research == 'true'/);
+ assert.match(stage,/Prepare empty source cohort for canonical-only reconciliation/);
+ assert.match(stage,/needs\.catch-up-derived-only\.outputs\.recovered_batch != 'true'/);
+ assert.match(stage,/GEOMACRO_CANONICAL_D1_CATCHUP:/);
  assert.match(stage,/group: geomacro-permanent-news-publication/);
  assert.match(stage,/actions\/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333/);
  assert.match(stage,/scripts\/ops\/publish-permanent-derived-news-archive\.mjs/);

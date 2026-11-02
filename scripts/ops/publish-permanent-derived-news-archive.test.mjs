@@ -311,7 +311,9 @@ describe("permanent derived-only website archive",()=>{
    ...p,fetchImpl,now:NOW,canonicalCatchup:true
   });
   assert.equal(again.new_signals_added,0);
-  assert.equal(again.canonical_d1_new_originals,0);
+  assert.equal(again.canonical_d1_new_originals,null);
+  assert.equal(again.canonical_d1_catchup_skipped_recent_success,true);
+  assert.equal(canonicalReads,1);
   assert.equal(again.total_signals,2);
  });
  it("with quota held, canonical D1 is not read and the static archive still publishes",async()=>{
