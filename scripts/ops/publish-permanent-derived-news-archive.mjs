@@ -468,7 +468,7 @@ export async function publishPermanentDerivedNewsArchive({
     try{
       const checkpoint=readJsonIfPresent(checkpointPath,
         "PERMANENT_ARCHIVE_CATCHUP_CHECKPOINT_INVALID");
-      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v1"){
+      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v2"){
         const at=Date.parse(checkpoint.last_success_at);
         if(Number.isFinite(at)&&at<=now)lastSuccessfulRead=at;
       }
@@ -486,7 +486,7 @@ export async function publishPermanentDerivedNewsArchive({
         seedRows=await readRecoverableD1CanonicalBundle(fetchImpl,now);
         canonicalCatchupCompleted=true;
         writeFileSync(checkpointPath,JSON.stringify({
-          schema:"geomacro.canonical-archive-catchup-checkpoint.v1",
+          schema:"geomacro.canonical-archive-catchup-checkpoint.v2",
           last_success_at:new Date(now).toISOString()
         })+"\n",{encoding:"utf8",mode:0o644});
       }catch{
