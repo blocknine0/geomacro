@@ -128,7 +128,7 @@ function allowedRow(row,checkedAt){
 }
 function structuralAnalysis(row,checkedAt,proof){
  const {source,originalUrl,definition}=allowedRow(row,checkedAt);
- const referenceValue=Number(row.numeric_value.toPrecision(8));
+ const referenceValue=row.numeric_value;
  const impact=row.source_id==="imf_portwatch"&&row.corridor_ids.length>0?
   "Route: "+row.corridor_ids.join(", ")+". "+definition.market:definition.market;
  return Object.freeze({
