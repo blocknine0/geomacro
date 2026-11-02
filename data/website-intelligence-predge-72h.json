@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T19:42:35.283Z",
+  "checked_at": "2026-11-02T19:48:48.040Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 232,
+  "item_count": 233,
   "counts": {
-    "geopolitics": 109,
+    "geopolitics": 110,
     "macro": 86,
     "rare_earth": 37
   },
-  "source_native_ids_sha256": "42d22be5dd10ad725af3d81f84afe72b5522651bd0d0d57daa0a77c13a63b313",
+  "source_native_ids_sha256": "a8aead6f5fd5933e4c0457f899019fa3ee72a138a40ad651d7618e30ad3eb6d3",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-939fcf5e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Israel denied pressing Trump for Iran strikes amid diplomatic push - Iran International",
+      "what_changed": "A monitored source feed reports: Israel denied pressing Trump for Iran strikes amid diplomatic push - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:39:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-e587f36f",
       "category": "geopolitics",
