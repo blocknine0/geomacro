@@ -4,8 +4,9 @@
  *
  * This writes month/category shards on the dedicated archive branch and copies
  * them to a separate Workers Static Assets project. Public reads then bypass
- * D1 completely. The current D1 journal is read only once to seed recoverable
- * pre-archive rows; subsequent runs never read it for the public website feed.
+ * D1 completely. The current D1 journal is read once for seeding and may
+ * be read in a three-page quota-approved recovery job. All website requests,
+ * quota-held source sweeps, and ordinary static refreshes require zero D1 reads.
  */
 import {
   cpSync, existsSync, mkdirSync, readFileSync, writeFileSync,
@@ -361,8 +362,10 @@ function readCandidates(path,now){
 
 export async function publishPermanentDerivedNewsArchive({
   archiveDir,assetsDir,candidatePath,
-  fetchImpl=fetch,now=Date.now(),
+  fetchImpl=fetch,now=Date.now(),canonicalCatchup=false,
 }={}){
+  if(typeof canonicalCatchup!=="boolean")
+    throw Error("PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID");
   if(!archiveDir||!assetsDir||!candidatePath||!Number.isFinite(now))
     throw Error("PERMANENT_ARCHIVE_CONFIGURATION_INVALID");
   const dataDir=join(resolve(archiveDir),"data");
@@ -396,9 +399,14 @@ export async function publishPermanentDerivedNewsArchive({
 
   let seedCompleteThisRun=false;
   let seedRows=[];
+  let canonicalCatchupCompleted=false;
+  // This path is explicitly opt-in from the production quota-admitted
+  // recovery job. The normal archive publisher and the D1-held fallback
+  // still require ZERO D1 reads. Never re-read D1 per website request.
   if(!index.seed_complete){
     try{
       seedRows=await readRecoverableD1Seed(fetchImpl,now);
+      canonicalCatchupCompleted=true;
       index.seed_complete=true;
       seedCompleteThisRun=true;
     }catch{
@@ -406,7 +414,19 @@ export async function publishPermanentDerivedNewsArchive({
       // candidates and it cannot delete or replace any earlier archive entry.
       console.warn("PERMANENT_ARCHIVE_D1_SEED_DEFERRED");
     }
+  }else if(canonicalCatchup){
+    // After one-time seeding, D1 may acquire genuinely new canonical
+    // source originals which have not yet entered the static archive.
+    // Reuse the exact existing 600-row, three-page bounded seed reader.
+    // D1 timeouts/quota/contract mismatch cannot erase or block static news.
+    try{
+      seedRows=await readRecoverableD1Seed(fetchImpl,now);
+      canonicalCatchupCompleted=true;
+    }catch{
+      console.warn("PERMANENT_ARCHIVE_CANONICAL_D1_CATCHUP_DEFERRED");
+    }
   }
+  const existingBeforeCatchup=new Set(existingById.keys());
   const candidates=readCandidates(candidatePath,now);
   const allIncoming=[...seedRows,...candidates];
   let added=0;
@@ -531,6 +551,11 @@ export async function publishPermanentDerivedNewsArchive({
   const result={
     schema:"geomacro.permanent-derived-news-archive-publish.v1",
     deploy_needed:deployNeeded,
+    canonical_d1_catchup_requested:canonicalCatchup,
+    canonical_d1_catchup_completed:canonicalCatchupCompleted,
+    canonical_d1_catchup_bounded_pages:3,
+    canonical_d1_new_originals:canonicalCatchupCompleted?
+      seedRows.filter(row=>!existingBeforeCatchup.has(row.id)).length:null,
     seed_complete:index.seed_complete,
     seed_completed_this_run:seedCompleteThisRun,
     new_signals_added:added,
@@ -553,7 +578,9 @@ export async function publishPermanentDerivedNewsArchive({
 
 if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])).href){
   const [archiveDir,assetsDir,candidatePath]=process.argv.slice(2);
-  publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath}).catch(error=>{
+  publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
+    canonicalCatchup:process.env.GEOMACRO_CANONICAL_D1_CATCHUP==="true"
+  }).catch(error=>{
     const code=error instanceof Error&&/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/.test(error.message)
       ?error.message:"PERMANENT_ARCHIVE_UPDATE_FAILED";
     console.error(code);
