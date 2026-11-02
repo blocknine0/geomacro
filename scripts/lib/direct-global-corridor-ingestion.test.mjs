@@ -47,7 +47,9 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.total_index_metadata_candidates,3);
  assert.deepEqual(result.candidate_corridors,["bab_el_mandeb"]);
  assert.equal(seen.length,14);
- assert.equal(result.source_checks.filter(s=>s.state==="NOT_A_NATIVE_FEED").length,8);
+ assert.equal(result.source_checks.filter(s=>s.state==="NOT_A_NATIVE_FEED").length,6);
+ assert.equal(result.supplemental_native_feed_checks.length,2);
+ assert.ok(result.supplemental_native_feed_checks.every(s=>s.state==="NOT_A_NATIVE_FEED"));
  assert.equal(result.source_checks.find(s=>s.id==="asean_customs").state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
  assert.ok(seen.includes("https://asean.org/our-communities/economic-community/asean-customs/"));
  assert.equal(result.missing_link_placeholders,0);
