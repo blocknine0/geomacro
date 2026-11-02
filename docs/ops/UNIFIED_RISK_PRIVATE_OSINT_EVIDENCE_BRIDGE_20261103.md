@@ -1,0 +1,23 @@
+# Unified Risk Gate — private OSINT evidence bridge (2026-11-03)
+
+## Scope and source contract
+
+**Existing sources are reused; no new crawler, provider, timer, payment, public access or partner mutation.** The 195-country × 3-category unified daily Risk Gate and 12 corridor targets remain unchanged. The existing canonical `phase2h_private_raw_news` / `corridor_native_news_candidates` lanes stay first. Only for a **country/category missing usable canonical originals**, the Worker reads the already maintained private 25h research ring (`private_osint_news_25h`). If there are no actual eligible private items, it retains existing bounded Google RSS fallback. Country-level OSINT cannot be projected onto a corridor without reliable corridor attribution; the 12 corridors retain their existing native + RSS source readers.
+
+`private_osint_news_25h` holds only country-attributed publisher-feed research metadata, not independently verified incidents, not licensed source articles and not scored GRO. The bridge deliberately selects only `item_id,native_feed_published_at,verification_status`, matches **exact ISO3 + domain + original feed-native 24h clock**, accepts exclusively `NATIVE_FEED_OBSERVED_ORIGINAL_PAGE_UNVERIFIED`, deduplicates IDs in memory, and returns a count **<=20**. The IDs never leave bridge memory. The D1 composite `idx_private_osint_unified_country_category_clock` (migration 0110) limits read amplification to at most 21 row readbacks per missing country/category (not a full ring scan).
+
+## Safe snapshot contract
+
+The HMAC-signed daily snapshot records only `categories[CAT].source_count`, `source_lane=D1_PRIVATE_OSINT_RESEARCH_ONLY`, `private_osint_research_only=true`, status `OBSERVED_UNVERIFIED`, and **null** category risk score unless separately verified signed GRO is already available. D1 `risk_observations.evidence_payload` records only `private_osint_research_observation_count`, `private_osint_original_page_verified=false` and an **empty sources array**. No OSINT original article URL, text, title, item ID, source ID or publisher host is stored in the risk observation/snapshot, website, Supabase daily receipt or PREDGE. The existing observation HMAC proves the snapshot has not changed, **not** that a source event is true.
+
+No cross-lane source count inflation: when canonical originals exist, they take precedence; private research is used only when the canonical lane is empty. An OSINT native-feed match alone never qualifies for independent corroboration, verified numerical score, a hard PASS/BLOCK decision, commercial entitlement or payment. Failure to read the private D1 table is NOT silently rewritten as zero OSINT; the bounded generator fails visibly and the existing missed-slot recovery mechanism can retry. D1/7-day Supabase hash receipt and 18:30 UTC 207/207 acceptance rules stay intact.
+
+## Live verification (do not conflate with CI)
+
+1. `scripts/ops/test-unified-risk-gate.mjs` and `scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs` must pass in PR and protected deploy gates. The latter checks migration 0110 in real SQLite, bounded indexed queries, category isolation, stale/future rejection, dedup, HMAC and absence of private item identity in derived payload.
+2. Merge after green Product CI/CodeQL. The existing protected D1 deployment must apply migration 0110 **remotely**, read schema, deploy, and pass genuine three-target D1/Supabase receipt acceptance. Check the actual GitHub Actions log before claiming deployment.
+3. Positive **live OSINT bridge evidence** additionally requires a contemporary country/category with 1–20 **genuine stored** private OSINT research rows, and a newly generated daily snapshot reporting `D1_PRIVATE_OSINT_RESEARCH_ONLY` with `OBSERVED_UNVERIFIED`, a null category score when no independent GRO exists, and a matching D1–Supabase hash receipt. An empty current ring, a source absent for a country, or a pre-existing immutable daily snapshot does **not** prove positive live bridge use.
+4. Strict 18:30 UTC census continues to require exactly 195 country + 12 corridor canonical identities and all 207 matching Supabase SHA-256 receipts. Coverage is not synonymous with three verified risk category scores.
+5. Monitor daily Cloudflare D1 row-read quota and private OSINT publication health. With 195 × 3 worst-case missing canonical lanes at <=21 projected rows each, the added daily reads are bounded. If Cloudflare daily quota is exhausted, report the failure and do not replace an OSINT count with a fabricated zero.
+
+**No changes** to website Intelligence, PREDGE adapters, auth, customer API keys, PayPal/USDC, paid products or existing signed GRO policy.
