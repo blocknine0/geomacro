@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T09:02:00.359Z",
+  "checked_at": "2026-11-02T09:05:03.978Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 146,
+  "item_count": 148,
   "counts": {
-    "geopolitics": 51,
+    "geopolitics": 53,
     "macro": 66,
     "rare_earth": 29
   },
-  "source_native_ids_sha256": "afb774a90c0b83470e54fca0507d4d29e59b7cc1d4a2f4ba829edf2ac34cc586",
+  "source_native_ids_sha256": "896eed5a02075a5fa0e994dca894b744528a4c3399dd28f0b96ddaa97d2ec4aa",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -81,6 +81,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3da957b9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia rejected Oleshky truce extension after using ceasefire to mass troops",
+      "what_changed": "A monitored source feed reports: Russia rejected Oleshky truce extension after using ceasefire to mass troops. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ce96d4da",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia rejected Oleshky truce extension after using ceasefire to mass troops - The New Voice of Ukraine",
+      "what_changed": "A monitored source feed reports: Russia rejected Oleshky truce extension after using ceasefire to mass troops - The New Voice of Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
