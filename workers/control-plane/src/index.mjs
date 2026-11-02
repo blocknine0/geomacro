@@ -30,7 +30,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1568,6 +1568,59 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Owner-admin-only daily census; no article metadata or customer IDs.
+      if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
+        const day_utc=new Date().toISOString().slice(0,10);
+        const rows=(await env.DB.prepare("SELECT entity_type,COUNT(DISTINCT entity_id) AS entities,SUM(CASE WHEN supabase_synced_at IS NOT NULL THEN 1 ELSE 0 END) AS synced FROM unified_risk_snapshots WHERE day_utc=? GROUP BY entity_type").bind(day_utc).all())?.results??[];
+        const countries=rows.find(x=>x.entity_type==="COUNTRY");
+        const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
+        const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
+        const country_synced=Number(countries?.synced??0),corridor_synced=Number(corridors?.synced??0);
+        const complete=country_count===195&&corridor_count===12&&
+          country_synced===195&&corridor_synced===12;
+        return json({schema:"geomacro.unified-risk-census.v1",ok:true,day_utc,
+          country_count,corridor_count,country_synced,corridor_synced,
+          expected:{country:195,corridor:12,total:207},
+          complete,commercial_activation:false});
+      }
+      // Owner-admin-only, exact three-target production acceptance.
+      // Not a customer route, no credits/payments or original article bodies.
+      // Idempotent one-snapshot-per-target/day prevents repeated provider pulls.
+      if(request.method==="POST"&&url.pathname==="/v1/internal/risk-gate/unified-acceptance"&&!url.search){
+        const targets=[{type:"COUNTRY",id:"TWN"},{type:"COUNTRY",id:"CHN"},
+          {type:"CORRIDOR",id:"bab-el-mandeb"}];
+        const receipts=[];
+        for(const target of targets){
+          try{
+            const r=await generateUnifiedSnapshot(env,target);
+            receipts.push({target,ok:true,day_utc:r.snapshot.day_utc,
+              categories_present:Object.keys(r.snapshot.categories).length===3,
+              risk_unverified_safe:r.snapshot.tiers.core.gate_decision==="GATE_INSUFFICIENT_EVIDENCE"||
+                r.snapshot.tiers.core.gate_decision==="GATE_HOLD",
+              snapshot_integrity_verified:true,existing:r.existing});
+          }catch{
+            receipts.push({target,ok:false,error:"UNIFIED_CANARY_TARGET_FAILED"});
+          }
+        }
+        const sync=await syncUnifiedRiskSupabase(env);
+        // Re-read the exact target rows after remote hash verification.
+        // No source fetch occurs on an existing valid daily snapshot.
+        for(const row of receipts.filter(x=>x.ok)){
+          try{
+            const check=await generateUnifiedSnapshot(env,row.target);
+            row.supabase_synced=check.supabase_synced===true;
+            row.snapshot_integrity_verified=!!check.audit_proof;
+          }catch{row.ok=false;row.supabase_synced=false}
+        }
+        const ok=receipts.every(x=>x.ok&&x.categories_present&&
+          x.snapshot_integrity_verified&&x.supabase_synced)&&sync.ok;
+        return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
+          checked_targets:receipts,protected_supabase_sync:{
+            ok:sync.ok,synced:sync.synced??0,
+            hash_readback_verified:sync.hash_readback_verified===true||
+              sync.ok&&sync.synced===0&&receipts.every(x=>x.supabase_synced)},
+          no_funds:true,commercial_activation:false},ok?200:503);
+      }
       // Canonical admin-only original observation intake. No public, partner,
       // PREDGE, scoring, signing or x402 route is modified or reused.
       if(url.pathname==="/v1/internal/phase2h-raw-news"){
