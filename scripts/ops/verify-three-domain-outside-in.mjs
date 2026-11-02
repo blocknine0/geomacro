@@ -19,7 +19,8 @@ const escDecode=s=>s.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(pa
  ({"&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">","&#39;":"'"}[m]??m));
 export function verifyThreeDomainLivePublication({
  index,latest,coverage,daily,journal,htmlByCategory,now=Date.now(),requirePositive=true,
- classifyDisplay=null,isArchiveEligible=null,isTemplateObservation=null,strictBacklog=true
+ classifyDisplay=null,isArchiveEligible=null,isTemplateObservation=null,strictBacklog=true,
+ archiveOriginalIds=null
 }={}){
  if(!Number.isFinite(now)||!index||!latest||!coverage||!daily||!journal||!htmlByCategory)
   fail("MISSING_DOCUMENT");
@@ -106,7 +107,13 @@ export function verifyThreeDomainLivePublication({
    fail("D1_PUBLIC_JOURNAL_EXACT_ID_MISMATCH_"+category);
   if(rendered.length!==active.length)
    fail("WEBSITE_EXACT_RENDER_MISMATCH_"+category);
-  const archivedIds=new Set(domain.archive.map(x=>x.id));
+  // The 250-row public "latest" is a intentionally deduplicated/ranked
+  // presentation, not the immutable archive. A canonical article already
+  // retained in a month/category static shard is NOT unpublished just
+  // because its display card is omitted from the preview.
+  const previewIds=new Set(domain.archive.map(x=>x.id));
+  const archivedIds=archiveOriginalIds instanceof Set?
+    archiveOriginalIds:previewIds;
   const unrepresented=domain.journal.filter(s=>
    !archivedIds.has(s.id)&&stamp(s.published_at)>=now-RETENTION&&
    stamp(s.published_at)<=now);
@@ -141,6 +148,8 @@ export function verifyThreeDomainLivePublication({
     public_archive_rows:domain.archive.length,
     unrepresented_d1_rows:unrepresented.length,
     intentional_templates_excluded:templatesExcluded,
+   represented_in_full_shards_not_latest_preview:domain.journal.filter(x=>
+     !previewIds.has(x.id)&&archivedIds.has(x.id)).length,
     eligible_unrepresented:concreteEligible.length,
     eligible_older_than_90m:overdue90.length,
     total_original_event_ids_logged:0,
@@ -214,6 +223,39 @@ async function readText(url,limit=2_000_000,attempts=3){
    ?String(last.message):"NETWORK";
  throw Error("THREE_DOMAIN_LIVE_PUBLIC_READ_UNAVAILABLE_"+new URL(url).hostname+"_"+reason);
 }
+/** Download only public, immutable month shards overlapping the rolling
+ * 72-hour original window. No D1/B2/publisher calls, and no preview-based
+ * false positives. Existing index.months provides exact announced partitions.
+ */
+export async function readCurrentArchiveOriginalIds(index,now=Date.now(),read=readText){
+ if(!Number.isFinite(now)||!Array.isArray(index?.months)||
+    index.months.length>600)fail("ARCHIVE_INDEX_MONTHS_INVALID");
+ const start=new Date(now-RETENTION).toISOString().slice(0,7);
+ const end=new Date(now).toISOString().slice(0,7);
+ const months=index.months.filter(m=>/^\\d{4}-(?:0[1-9]|1[0-2])$/u.test(m)&&
+   m>=start&&m<=end);
+ if(!months.length)fail("ARCHIVE_CURRENT_SHARDS_NOT_INDEXED");
+ const ids=new Set();
+ for(const month of months){
+  for(const category of DOMAIN){
+   const doc=JSON.parse(await read(BASE+"/archive/"+month+"/"+category+".json",
+     20*1024*1024));
+   if(doc?.schema!=="geomacro.permanent-derived-news-archive-month.v1"||
+      doc.month!==month||doc.category!==category||
+      !Array.isArray(doc.signals)||doc.signals.length>100_000)
+     fail("ARCHIVE_MONTH_SHARD_INVALID");
+   for(const row of doc.signals){
+    if(row?.category!==category||!safeId(row?.id)||
+       typeof row.published_at!=="string"||
+       !row.published_at.startsWith(month)||ids.has(row.id))
+      fail("ARCHIVE_MONTH_SHARD_ID_INVALID");
+    ids.add(row.id);
+   }
+  }
+ }
+ return ids;
+}
+
 async function run(){
  const paths=["/index.json","/latest.json","/coverage-72h.json","/daily-highlights.json"];
  let docs;
@@ -249,8 +291,10 @@ async function run(){
  // not a weaker parallel heuristic, classifies journal-only observations.
  const {intelligenceDisplayRejection}=await import("../../src/lib/intelligence-concrete-publication.ts");
  const {isPermanentArchiveSignal,isTemplateObservation}=await import("./publish-permanent-derived-news-archive.mjs");
+ const archiveOriginalIds=await readCurrentArchiveOriginalIds(docs[0]);
  const proof=verifyThreeDomainLivePublication({
   index:docs[0],latest:docs[1],coverage:docs[2],daily:docs[3],journal,
+  archiveOriginalIds,
   classifyDisplay:intelligenceDisplayRejection,isArchiveEligible:isPermanentArchiveSignal,
   isTemplateObservation,
   htmlByCategory:{geopolitics:geo,macro,rare_earth:minerals},
