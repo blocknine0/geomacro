@@ -400,6 +400,7 @@ export async function publishPermanentDerivedNewsArchive({
   let seedCompleteThisRun=false;
   let seedRows=[];
   let canonicalCatchupCompleted=false;
+  let canonicalCatchupSkippedCadence=false;
   // This path is explicitly opt-in from the production quota-admitted
   // recovery job. The normal archive publisher and the D1-held fallback
   // still require ZERO D1 reads. Never re-read D1 per website request.
@@ -415,15 +416,38 @@ export async function publishPermanentDerivedNewsArchive({
       console.warn("PERMANENT_ARCHIVE_D1_SEED_DEFERRED");
     }
   }else if(canonicalCatchup){
-    // After one-time seeding, D1 may acquire genuinely new canonical
-    // source originals which have not yet entered the static archive.
-    // Reuse the exact existing 600-row, three-page bounded seed reader.
-    // D1 timeouts/quota/contract mismatch cannot erase or block static news.
+    // The existing recovery cadence can be woken by several upstream
+    // workflow_run events. Persist only a safe clock checkpoint in the
+    // archive branch so D1 is read no more than once in any 55-minute window.
+    // An invalid checkpoint never suppresses the recovery attempt.
+    const checkpointPath=join(dataDir,"canonical-catchup-checkpoint.json");
+    let lastSuccessfulRead=NaN;
     try{
-      seedRows=await readRecoverableD1Seed(fetchImpl,now);
-      canonicalCatchupCompleted=true;
+      const checkpoint=readJsonIfPresent(checkpointPath,
+        "PERMANENT_ARCHIVE_CATCHUP_CHECKPOINT_INVALID");
+      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v1"){
+        const at=Date.parse(checkpoint.last_success_at);
+        if(Number.isFinite(at)&&at<=now)lastSuccessfulRead=at;
+      }
     }catch{
-      console.warn("PERMANENT_ARCHIVE_CANONICAL_D1_CATCHUP_DEFERRED");
+      console.warn("PERMANENT_ARCHIVE_CATCHUP_CHECKPOINT_INVALID_RETRY");
+    }
+    canonicalCatchupSkippedCadence=Number.isFinite(lastSuccessfulRead)&&
+      now-lastSuccessfulRead<55*60_000;
+    // Reuse the immutable, 600-row, three-page canonical reader, but only
+    // after affirmative account-wide quota admission. Timeout/quota/invalid
+    // D1 does not block static source-derived publication or claim success.
+    if(!canonicalCatchupSkippedCadence){
+      try{
+        seedRows=await readRecoverableD1Seed(fetchImpl,now);
+        canonicalCatchupCompleted=true;
+        writeFileSync(checkpointPath,JSON.stringify({
+          schema:"geomacro.canonical-archive-catchup-checkpoint.v1",
+          last_success_at:new Date(now).toISOString()
+        })+"\n",{encoding:"utf8",mode:0o644});
+      }catch{
+        console.warn("PERMANENT_ARCHIVE_CANONICAL_D1_CATCHUP_DEFERRED");
+      }
     }
   }
   const existingBeforeCatchup=new Set(existingById.keys());
@@ -553,6 +577,7 @@ export async function publishPermanentDerivedNewsArchive({
     deploy_needed:deployNeeded,
     canonical_d1_catchup_requested:canonicalCatchup,
     canonical_d1_catchup_completed:canonicalCatchupCompleted,
+    canonical_d1_catchup_skipped_recent_success:canonicalCatchupSkippedCadence,
     canonical_d1_catchup_bounded_pages:3,
     canonical_d1_new_originals:canonicalCatchupCompleted?
       seedRows.filter(row=>!existingBeforeCatchup.has(row.id)).length:null,
