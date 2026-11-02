@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T11:45:56.618Z",
+  "updated_at": "2026-11-02T12:01:16.289Z",
   "signals": [
+    {
+      "id": "geopolitics-b5837320",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said stepping up diplomatic efforts to normalize situation around Iran crucial",
+      "what_changed": "A monitored source feed reports: Russia said stepping up diplomatic efforts to normalize situation around Iran crucial. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:59:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-40b7b2c2",
       "category": "geopolitics",
@@ -493,6 +512,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d09d956d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects",
+      "what_changed": "A monitored source feed reports: Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T02:53:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.breakingbelizenews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

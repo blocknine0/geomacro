@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T11:53:32.950Z",
+  "checked_at": "2026-11-02T12:01:16.289Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 193,
+  "item_count": 195,
   "counts": {
-    "geopolitics": 84,
+    "geopolitics": 86,
     "macro": 78,
     "rare_earth": 31
   },
-  "source_native_ids_sha256": "7944e686c9fc716e6eefbfb47970b9dc7eeae65a2520e44dd8ad8b93a1c0a088",
+  "source_native_ids_sha256": "052087b45c2d292da68c812540f64636b2a9d5de6ab20c64b45fba6a40712a89",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-b5837320",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said stepping up diplomatic efforts to normalize situation around Iran crucial",
+      "what_changed": "A monitored source feed reports: Russia said stepping up diplomatic efforts to normalize situation around Iran crucial. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:59:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-40b7b2c2",
       "category": "geopolitics",
@@ -1259,6 +1278,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d09d956d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects",
+      "what_changed": "A monitored source feed reports: Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T02:53:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.breakingbelizenews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
