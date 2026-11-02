@@ -265,3 +265,24 @@ test("on-conflict guard refuses nonidentical identity rather than rewriting the 
  assert.equal(db.rows.get(original.id).article_url,
    "https://www.bankofengland.co.uk/news/old-other-url");
 });
+
+test("private RBI reader validates numeric prid and rejects URL parameter smuggling",()=>{
+ const original="https://www.rbi.org.in/pressreleases_rss.xml";
+ const urlA="https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=55555";
+ const urlB="https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=55556";
+ function notice(url){
+  return {...candidate(),id:hash("rbi_official_press_releases\x1f"+url+"\x1f"+published),
+   source_id:"rbi_official_press_releases",original_publisher_url:original,
+   article_url:url,categories:["macro"],source_region_refs:["apac"]};
+ }
+ const both=validateCorridorNativeNewsBatch(packet([notice(urlA),notice(urlB)]),fixed);
+ assert.equal(both.length,2);
+ assert.notEqual(both[0][0],both[1][0]);
+ for(const bad of [
+  urlA+"&session=bad",
+  "https://evil.example/Scripts/BS_PressReleaseDisplay.aspx?prid=55555",
+  "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=55555&prid=55556",
+  "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=abc"
+ ])assert.throws(()=>validateCorridorNativeNewsBatch(packet([notice(bad)]),fixed),
+    /CORRIDOR_PRIVATE_ITEM_INVALID/u);
+});
