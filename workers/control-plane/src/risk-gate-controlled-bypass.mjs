@@ -221,7 +221,10 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
   if(prior){
    if(prior.request_hash!==request_hash)return fail("RG_TIERED_IDEMPOTENCY_CONFLICT",409);
    if(prior.state==="DONE"&&prior.response_json)return reply({...JSON.parse(prior.response_json),idempotent_replay:true});
-   return fail("RG_TIERED_REQUEST_IN_PROGRESS",409);
+   if(prior.state==="CLAIMED"){
+    const stale=await env.DB.prepare("SELECT claimed_at FROM risk_gate_tiered_requests WHERE client_id=? AND request_id=?").bind("tiered-private-v1",parsed.request_id).first();
+    if(!stale?.claimed_at||Date.parse(stale.claimed_at)>now-90000)return fail("RG_TIERED_REQUEST_IN_PROGRESS",409);
+   }
   }
   const observations=dedupeObservedPublications(await observationsForSubject(env.DB,parsed.subject,now));
   const gro=await freshGRO(env.DB,env,parsed.subject,now);
@@ -235,12 +238,16 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
   const ts=new Date(now).toISOString();
   await env.DB.prepare("INSERT OR IGNORE INTO risk_gate_tiered_requests (client_id,request_id,request_hash,state,created_at) VALUES (?,?,?,'PENDING',?)")
    .bind("tiered-private-v1",parsed.request_id,request_hash,ts).run();
-  const claim=await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='CLAIMED' WHERE client_id=? AND request_id=? AND request_hash=? AND state='PENDING' RETURNING request_id")
-   .bind("tiered-private-v1",parsed.request_id,request_hash).first();
+  const claim=await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='CLAIMED',claimed_at=? WHERE client_id=? AND request_id=? AND request_hash=? AND (state='PENDING' OR (state='CLAIMED' AND claimed_at<?)) RETURNING request_id")
+   .bind(ts,"tiered-private-v1",parsed.request_id,request_hash,new Date(now-90000).toISOString()).first();
   if(!claim)return fail("RG_TIERED_REQUEST_IN_PROGRESS",409);
   const budget=await env.DB.prepare("INSERT INTO risk_gate_d1_quota (client_id,usage_day,used) VALUES (?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1 WHERE used<? RETURNING used")
    .bind("tiered-private-v1",ts.slice(0,10),DAY_LIMIT).first();
-  if(!budget)return fail("RG_TIERED_DAILY_LIMIT",429);
+  if(!budget){
+   await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='PENDING',claimed_at=NULL WHERE client_id=? AND request_id=? AND state='CLAIMED' AND claimed_at=?")
+    .bind("tiered-private-v1",parsed.request_id,ts).run();
+   return fail("RG_TIERED_DAILY_LIMIT",429);
+  }
   const done=await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='DONE',response_json=?,finished_at=? WHERE client_id=? AND request_id=? AND request_hash=? AND state='CLAIMED' RETURNING request_id")
    .bind(compact(body),ts,"tiered-private-v1",parsed.request_id,request_hash).first();
   if(!done)return fail("RG_TIERED_AUDIT_UNAVAILABLE");
