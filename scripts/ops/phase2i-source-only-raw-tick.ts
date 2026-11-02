@@ -9,8 +9,8 @@
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac} from "node:crypto";
-import {resolve,sep} from "node:path";
-import {writeFileSync,readFileSync} from "node:fs";
+import {resolve,sep,dirname} from "node:path";
+import {writeFileSync,readFileSync,mkdirSync} from "node:fs";
 import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
@@ -96,6 +96,7 @@ const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now}
 // If artifact upload fails, previous snapshots remain accessible by name.
 const sealed=sealPrivatePhase2iSourceBacklog({
  candidates:queue.candidates,root,now:Date.now()});
+mkdirSync(dirname(cipherPath),{recursive:true,mode:0o700});
 writeFileSync(cipherPath,JSON.stringify(sealed)+"\n",{
  encoding:"utf8",mode:0o600,flag:"wx"});
 console.log(JSON.stringify({
