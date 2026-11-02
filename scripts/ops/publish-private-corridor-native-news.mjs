@@ -29,7 +29,7 @@ export async function publishPrivateCorridorNews({
    "geomacro-control-plane-v1").digest("hex");
  const records=receipt.news_candidates;
  const chunks=[];
- for(let i=0;i<records.length;i+=40)chunks.push(records.slice(i,i+40));
+ for(let i=0;i<records.length;i+=10)chunks.push(records.slice(i,i+10));
  if(!chunks.length)chunks.push([]);
  let verified=0,requests=0;
  for(const chunk of chunks){
@@ -46,8 +46,22 @@ export async function publishPrivateCorridorNews({
        body:JSON.stringify(packet),signal:AbortSignal.timeout(15000)
      });requests++}catch{throw Error("CORRIDOR_PRIVATE_D1_NETWORK_UNAVAILABLE")}
      if(response.status===200)break;
-     if(![404,503].includes(response.status)||attempt===5)
-       throw Error("CORRIDOR_PRIVATE_D1_PUT_HTTP_"+response.status);
+     if(![404,503].includes(response.status)||attempt===5){
+       // Never log body text, D1 SQL, credentials or upstream provider data.
+       // Only expose an internal, explicitly whitelisted status reason.
+       let diagnostic="UNCLASSIFIED";
+       if(response.status===503){
+         try{
+           const reply=await response.json();
+           if(["CORRIDOR_PRIVATE_D1_UNAVAILABLE",
+             "CORRIDOR_PRIVATE_D1_WRITE_UNAVAILABLE",
+             "CORRIDOR_NATIVE_D1_READBACK_MISMATCH"].includes(reply?.error))
+             diagnostic=reply.error;
+         }catch{}
+       }
+       throw Error("CORRIDOR_PRIVATE_D1_PUT_HTTP_"+response.status+
+         (response.status===503?"_"+diagnostic:""));
+     }
      await new Promise(resolve=>setTimeout(resolve,5000*(attempt+1)));
    }
    let body;try{body=await response.json()}catch{
