@@ -17,6 +17,11 @@ on:
       - "scripts/lib/risk-gate-supplied-source-rules.mjs"
       - "lib/risk-gate-source-pack.mjs"
       - "lib/risk-gate-corridor-first.mjs"
+      - "lib/risk-gate-gdelt-event-wide-net.mjs"
+      - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
+      - "workers/control-plane/migrations/0103_risk_gate_gdelt_event_index.sql"
+      - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
       - "workers/control-plane/src/corridor-risk-gate-jit.mjs"
       - "workers/control-plane/migrations/0102_corridor_risk_gate_strategic_continuity.sql"
       - "scripts/ops/publish-risk-gate-corridor-continuity.mjs"
@@ -67,6 +72,11 @@ on:
       - "scripts/lib/risk-gate-supplied-source-rules.mjs"
       - "lib/risk-gate-source-pack.mjs"
       - "lib/risk-gate-corridor-first.mjs"
+      - "lib/risk-gate-gdelt-event-wide-net.mjs"
+      - "workers/control-plane/src/risk-gate-gdelt-event-index.mjs"
+      - "workers/control-plane/migrations/0103_risk_gate_gdelt_event_index.sql"
+      - "scripts/ops/publish-risk-gate-gdelt-wide-net.mjs"
+      - "scripts/lib/risk-gate-gdelt-wide-net.test.mjs"
       - "workers/control-plane/src/corridor-risk-gate-jit.mjs"
       - "workers/control-plane/migrations/0102_corridor_risk_gate_strategic_continuity.sql"
       - "scripts/ops/publish-risk-gate-corridor-continuity.mjs"
@@ -132,6 +142,9 @@ jobs:
           node --check scripts/lib/risk-gate-supplied-source-rules.mjs
           node --check lib/risk-gate-source-pack.mjs
           node --check lib/risk-gate-corridor-first.mjs
+          node --check lib/risk-gate-gdelt-event-wide-net.mjs
+          node --check workers/control-plane/src/risk-gate-gdelt-event-index.mjs
+          node --check scripts/ops/publish-risk-gate-gdelt-wide-net.mjs
           node --check workers/control-plane/src/corridor-risk-gate-jit.mjs
           node --check scripts/ops/publish-risk-gate-corridor-continuity.mjs
           node --check workers/control-plane/src/corridor-risk-gate-source-pack.mjs
@@ -157,6 +170,7 @@ jobs:
           node --test scripts/lib/risk-gate-supplied-source-rules.test.mjs
           node --test scripts/lib/risk-gate-source-pack.test.mjs
           node --test scripts/lib/risk-gate-corridor-first.test.mjs
+          node --test scripts/lib/risk-gate-gdelt-wide-net.test.mjs
           node --test scripts/lib/direct-corridor-native-news.test.mjs
           node --test scripts/lib/direct-corridor-official-news-feeds.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
@@ -241,6 +255,20 @@ jobs:
             exit 2
           }
           node scripts/ops/publish-risk-gate-corridor-continuity.mjs
+      # GDELT actual Event CSV (61 columns): separate source-specific stage.
+      # Original manifest->MD5->ZIP checksum must pass before any D1 write.
+      # No paid/event-verified GRO or customer debit on source-only data.
+      - name: Poll pinned GDELT CAMEO Event export for bounded five-corridor shortlist
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || {
+            echo "::error::RG_GDELT_ROOT_CREDENTIAL_REQUIRED"
+            exit 2
+          }
+          node scripts/ops/publish-risk-gate-gdelt-wide-net.mjs
       - name: Upload separate bounded corridor receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -259,5 +287,6 @@ jobs:
             artifacts/direct-corridor-intake/risk-gate-source-pack.json
             artifacts/direct-corridor-intake/risk-gate-source-d1-readback.json
             artifacts/direct-corridor-intake/risk-gate-corridor-continuity.json
+            artifacts/direct-corridor-intake/risk-gate-gdelt-wide-net.json
           if-no-files-found: error
           retention-days: 3
