@@ -129,11 +129,12 @@ function parseNews(data,now){
 }
 export async function collectCredentialCorridorContext({
  now=new Date(),fetchImpl=fetch,keys=process.env,
- observeReliefWeb=observeApprovedReliefWeb,force=false
+ observeReliefWeb=observeApprovedReliefWeb,force=false,forceCryptoNews=false
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
   typeof fetchImpl!=="function"||!keys||typeof keys!=="object"||
-  typeof observeReliefWeb!=="function")throw Error("CORRIDOR_CREDENTIAL_INPUT_INVALID");
+  typeof observeReliefWeb!=="function"||typeof forceCryptoNews!=="boolean")
+   throw Error("CORRIDOR_CREDENTIAL_INPUT_INVALID");
  const checks=[],observations=[],cryptoNewsCandidates=[];
  let cryptoNewsDiagnostics=null;
  const add=(id,state,items=[])=>{
@@ -185,7 +186,7 @@ export async function collectCredentialCorridorContext({
  }
  const ccKey=keys.GEOMACRO_CRYPTOCOMPARE_API_KEY;
  if(!keyOk(ccKey))add("cryptocompare_news","PROVIDER_API_AUTH_REQUIRED");
- else if(!force&&(minute>=15))
+ else if(!force&&!forceCryptoNews&&(minute>=15))
   add("cryptocompare_news","NOT_DUE_SOURCE_NATIVE_CADENCE");
  else{
   const res=await boundedJson(cryptoNewsUrl,{headers:{
