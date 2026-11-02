@@ -170,7 +170,13 @@ export async function putPrivateCorridorResearch(env,packet,now=Date.now()){
     "(research_id,source_reference_id,source_id,claim_sha256,proof_sha256,"+
     "analysis_sha256,structured_json,created_at,last_verified_at) "+
     "VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(research_id) DO UPDATE SET "+
-    "last_verified_at=excluded.last_verified_at"
+    "proof_sha256=excluded.proof_sha256,"+
+    "analysis_sha256=excluded.analysis_sha256,"+
+    "structured_json=excluded.structured_json,"+
+    "last_verified_at=excluded.last_verified_at "+
+    "WHERE corridor_private_derived_research.source_reference_id=excluded.source_reference_id "+
+    "AND corridor_private_derived_research.source_id=excluded.source_id "+
+    "AND corridor_private_derived_research.claim_sha256=excluded.claim_sha256"
    ).bind(...r,clock,clock)));
   await purgeExpiredPrivateCorridorResearch(env,now);
   let verified=0;
