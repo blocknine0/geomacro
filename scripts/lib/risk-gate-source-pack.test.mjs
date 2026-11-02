@@ -54,9 +54,9 @@ test("Risk Gate packs use exact existing 3 variants but never create payable dec
  assert.equal(pack.price_variants.every(x=>x.what_happened.length>40&&
   x.evidence_and_confidence.source_independent_events_verified===0),true);
  const prices=readFileSync(new URL("../../src/lib/capability-pricing-catalog.ts",import.meta.url),"utf8");
- const block=/risk_gate_bundle:\s*{([^}]+)}/u.exec(prices)?.[1];
+ const block=prices.split("risk_gate_bundle:{")[1]?.split("}")[0];
  assert.ok(block);
- for(const variant of RG_VARIANTS)assert.match(block,new RegExp(variant+":\\\\s*[\u0022']0\\\\.[0-9]+"));
+ for(const variant of RG_VARIANTS)assert.ok(block.includes(variant+':"0.'),"founder price variant missing");
  assert.match(prices,/if\(capability==="risk_gate_bundle"\)return "COMING_SOON";/u);
 });
 test("empty sources create safe zero-evidence preflight packs, no zero-data sale",()=>{
