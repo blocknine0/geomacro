@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T19:42:35.283Z",
+  "updated_at": "2026-11-02T20:27:22.058Z",
   "signals": [
     {
       "id": "geopolitics-de39dd21",
@@ -33,6 +33,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T19:38:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c94ddf4f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov)",
+      "what_changed": "A monitored source feed reports: Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T18:21:28.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

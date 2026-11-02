@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:25:40.421Z",
+  "checked_at": "2026-11-02T20:27:22.058Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 244,
+  "item_count": 245,
   "counts": {
-    "geopolitics": 113,
+    "geopolitics": 114,
     "macro": 96,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "b810bcb7d42d730a17f3406d397031caa5b3358ac63f295729d25bc1deda7f5d",
+  "source_native_ids_sha256": "bb51004ae6bd4aa865ac06d3d9e4a339cbfdf87ca73154884b4b2272324048ca",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3972,6 +3972,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T19:38:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c94ddf4f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov)",
+      "what_changed": "A monitored source feed reports: Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T18:21:28.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
