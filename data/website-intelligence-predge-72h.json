@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T09:20:47.522Z",
+  "checked_at": "2026-11-02T09:22:43.771Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 149,
+  "item_count": 155,
   "counts": {
     "geopolitics": 53,
-    "macro": 66,
+    "macro": 72,
     "rare_earth": 30
   },
-  "source_native_ids_sha256": "e5dbae3fc31d2b64f91a2dd51a832495363ce6908677f91cb81e2130a71b3086",
+  "source_native_ids_sha256": "cdac6ec9e814a3170766a4895fa0fe6c9a63f446456a596753201bc6345271ab",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-58d48e3c",
+      "category": "macro",
+      "title": "Geomacro finds Fitch cut France's outlook as growth weakens, borrowing costs rise",
+      "what_changed": "A monitored source feed reports: Fitch cut France's outlook as growth weakens, borrowing costs rise. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:17:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ed22d81a",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised BrightSpring Health stock price target on strong growth outlook - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised BrightSpring Health stock price target on strong growth outlook - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:14:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0140bd88",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised December Brent Oil Price Forecast to $105 - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised December Brent Oil Price Forecast to $105 - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-40c5b65f",
       "category": "macro",
@@ -43,6 +100,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c4a2af91",
+      "category": "macro",
+      "title": "Geomacro finds Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com South Africa",
+      "what_changed": "A monitored source feed reports: Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com South Africa. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:58:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2f5497a0",
+      "category": "macro",
+      "title": "Geomacro finds Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com Nigeria",
+      "what_changed": "A monitored source feed reports: Metlen and Shell signed five-year LNG supply deal By Investing.com - Investing.com Nigeria. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:57:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -2167,6 +2262,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T18:52:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2206c7e8",
+      "category": "macro",
+      "title": "Geomacro finds Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:31:25.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

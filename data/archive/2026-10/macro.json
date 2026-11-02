@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-02T07:39:46.884Z",
+  "updated_at": "2026-11-02T09:22:43.771Z",
   "signals": [
     {
       "id": "macro-44642ace",
@@ -261,6 +261,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T19:06:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2206c7e8",
+      "category": "macro",
+      "title": "Geomacro finds Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "inflation and prices",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T18:31:25.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
