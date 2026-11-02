@@ -241,6 +241,18 @@ test("batch receipt freshness is independently verified, including zero-event ba
   "a".repeat(64));
  assert.equal((await putPrivateRiskGateGdelt({DB:db},other,NOW.getTime())).status,503);
 });
+test("GDELT refuses old Control Plane version or invalid internal auth before any B2 requests",async()=>{
+ let sourceCalls=0,b2Calls=0;
+ const invoke=(status)=>publishGdeltRiskEventWideNet({
+  rootToken:"a".repeat(64),now:NOW,
+  readArchive:async()=>{sourceCalls++;throw Error("MUST_NOT_DOWNLOAD")},
+  b2Client:{put:async()=>{b2Calls++;},get:async()=>{b2Calls++;}},
+  fetchImpl:async()=>new Response("",{status})
+ });
+ await assert.rejects(()=>invoke(403),/RG_GDELT_WORKER_DEPLOY_AUTH_DENIED/u);
+ assert.equal(sourceCalls,0);
+ assert.equal(b2Calls,0);
+});
 test("GDELT event shortlist can never call PREDGE, paid API or replace GRO signer",()=>{
  const workflow=readFileSync(new URL("../../.github/workflows/gdelt-v2-event-sync.yml",import.meta.url),"utf8");
  assert.ok(workflow.includes("publish-risk-gate-gdelt-wide-net.mjs"));
