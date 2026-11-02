@@ -53,3 +53,61 @@ test("scheduler outside windows never triggers D1",async()=>{
  const env={};const output=await scheduledUnifiedRisk(env,Date.parse("2026-11-03T12:00:00Z"));
  assert.equal(output.not_due,true);
 });
+
+test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC",async()=>{
+ const now=Date.parse("2026-11-03T05:00:00Z"),days="2026-11-03",store=new Map(),categories=[];
+ const rss='<rss><channel><item><title>Taiwan naval blockade alert - Example Wire</title>'+
+  '<link>https://news.google.com/rss/articles/verified-link-no-event-proof</link>'+
+  '<pubDate>Tue, 03 Nov 2026 04:00:00 GMT</pubDate>'+
+  '<source url="https://www.example.com">Example Publisher</source></item></channel></rss>';
+ const env={RISK_GATE_TIERED_TOKEN:"a".repeat(64),
+ RISK_GATE_OBSERVATION_HMAC_KEY:"test-strong-separate-signing-key-32bytes-min",
+ DB:{prepare(sql){return {
+  bind(...params){return {
+   async first(){
+    if(sql.startsWith("SELECT snapshot_json"))return store.get(params[0]+"|"+params[1]+"|"+params[2])??null;
+    if(sql.startsWith("SELECT * FROM country_gro_verified_hot"))return null;
+    return null;
+   },
+   async all(){if(sql.includes("FROM phase2h_private_raw_news"))return {results:[]};return {results:[]}},
+   async run(){
+    if(sql.startsWith("INSERT OR IGNORE INTO risk_observations"))categories.push(params[3]);
+    if(sql.startsWith("INSERT OR IGNORE INTO unified_risk_snapshots")){
+      const [entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at]=params;
+      store.set(entity_type+"|"+entity_id+"|"+day_utc,
+       {snapshot_json,audit_proof_json,content_sha256,generated_at,supabase_synced_at:null});
+    }
+    return {success:true};
+   }
+  }},
+  async all(){return {results:[]}}
+ }}}};
+ const fetcher=async()=>new Response(rss,{status:200});
+ const req=new Request("https://example.org/v1/risk-gate/unified/evaluate",{
+  method:"POST",headers:{authorization:"Bearer "+"a".repeat(64)},
+  body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",client_policy:"STRICT"})});
+ const result=await unifiedRiskGateEvaluate(req,env,{now,fetcher});
+ assert.equal(result.status,200);
+ const data=await result.json();
+ assert.equal(data.target_id,"TWN");
+ assert.equal(data.tiers.core.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
+ assert.equal(data.unified_risk_score,null);
+ assert.equal(data.categories.GEOPOLITICS.status,"OBSERVED_UNVERIFIED");
+ assert.equal(data.categories.MACRO_FX.risk_score,null);
+ assert.equal(data.categories.CRITICAL_MINERALS.risk_score,null);
+ assert.deepEqual(categories,CATEGORIES);
+ assert.equal(store.size,1);
+ assert.match(data.audit_proof.signature,/^hmac_sha256:[a-f0-9]{64}$/);
+ const again=await scheduledUnifiedRisk(env,now,{fetcher});
+ assert.equal(again.ok,true);
+ assert.equal(again.generated,false);
+ assert.equal(store.size,1);
+});
+test("lenient override requires explicit client acknowledgment",async()=>{
+ const token="a".repeat(64),env={RISK_GATE_TIERED_TOKEN:token};
+ const r=await unifiedRiskGateEvaluate(new Request("https://example.org/v1/risk-gate/unified/evaluate",{
+  method:"POST",headers:{authorization:"Bearer "+token},
+  body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",client_policy:"LENIENT"})
+ }),env);
+ assert.equal(r.status,400);
+});
