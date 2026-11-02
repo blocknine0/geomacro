@@ -22,7 +22,7 @@ test("contract uses the supplied separate SKU prices",()=>{
 test("strict default accepts valid corridor but rejects unauthenticated override claims",()=>{
  assert.equal(parseControlledGateRequest(valid(),now).policy_mode,"STRICT");
  assert.equal(parseControlledGateRequest({...valid(),client_override:{action:"PASS",acknowledged:true}},now),null);
- assert.equal(parseControlledGateRequest({...valid(),product_tier:"POLICY"},now),null);
+ assert.equal(parseControlledGateRequest({...valid(),product_tier:"POLICY"},now).policy_mode,"STRICT");
 });
 test("lenient override requires POLICY tier, explicit action and acknowledgment",()=>{
  const o={...valid("POLICY"),policy_mode:"LENIENT",client_override:{action:"PASS",acknowledged:true}};
@@ -77,4 +77,16 @@ test("lenient client override stays explicit and never grants execution authorit
  assert.equal(v.client_policy_decision,"OVERRIDE_PASS");
  assert.equal(v.client_override_applied,true);
  assert.equal(v.execution_authorized,false);
+});
+
+test("CORE without proof is insufficient rather than advisory pass",()=>{
+ const v=determineControlledGate({request:{...valid("CORE"),policy_mode:"STRICT"},observed:empty});
+ assert.equal(v.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
+ assert.equal(v.billing.chargeable,false);
+});
+test("forged authority source_id with unrelated domain cannot claim authority",()=>{
+ const o=dedupeObservedPublications([{id:"d".repeat(64),source_id:"federal_reserve",
+  url:"https://not-federal.example.net/report",title_hash:"e".repeat(64),
+  published_at:new Date(now).toISOString()}]);
+ assert.equal(o.authoritative_first_party_publications,0);
 });
