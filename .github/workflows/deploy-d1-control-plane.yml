@@ -441,6 +441,33 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Live unified TWN CHN Bab-el-Mandeb 3-category D1 Supabase canary (no funds)
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#CONTROL_PLANE_TOKEN}" -eq 64 || { echo "::error::UNIFIED_CANARY_ADMIN_TOKEN_MISSING"; exit 16; }
+          payload="$(mktemp)"
+          trap 'rm -f "$payload"' EXIT
+          status="$(curl -sS --max-time 55 -o "$payload" -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer $CONTROL_PLANE_TOKEN" \
+            -H "Content-Type: application/json" \
+            "$CONTROL_PLANE_URL/v1/internal/risk-gate/unified-acceptance")"
+          # Never print evidence, bearer headers or raw upstream URLs.
+          if test "$status" != "200" || ! jq -e '
+            .ok == true and .schema == "geomacro.unified-risk-production-acceptance.v1" and
+            .no_funds == true and .commercial_activation == false and
+            (.checked_targets|length) == 3 and
+            all(.checked_targets[]; .ok == true and .categories_present == true and
+              .snapshot_integrity_verified == true and .supabase_synced == true) and
+            .protected_supabase_sync.ok == true
+          ' "$payload" >/dev/null; then
+            echo "::error::UNIFIED_3_TARGET_LIVE_D1_SUPABASE_READBACK_NOT_ACCEPTED"
+            exit 17
+          fi
+          echo "PASS: live Taiwan China Bab-el-Mandeb 3-category D1 and private Supabase hash readback; no funds."
+
       - name: Verify separate Supabase-free Risk Gate authentication and signed-GRO boundary (no funds)
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
