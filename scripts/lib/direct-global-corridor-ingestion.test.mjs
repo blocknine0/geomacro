@@ -57,7 +57,7 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
  assert.equal(result.news_candidate_count,0);
  assert.equal(result.native_news_sources_polled,6);
- assert.equal(result.official_reference_source_checks.length,5);
+ assert.equal(result.official_reference_source_checks.length,9);
  assert.equal(result.official_reference_observation_count,0);
  assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
    "NO_CURRENT_REFERENCE_OBSERVATION");
