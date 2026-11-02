@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:27:22.058Z",
+  "checked_at": "2026-11-02T20:41:38.735Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 245,
+  "item_count": 246,
   "counts": {
     "geopolitics": 114,
-    "macro": 96,
+    "macro": 97,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "bb51004ae6bd4aa865ac06d3d9e4a339cbfdf87ca73154884b4b2272324048ca",
+  "source_native_ids_sha256": "161c2e784ec6c1db1472598675b710f7c7f2d805543ad27c2374b792a35c53c3",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -43,6 +43,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-779d2eb2",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine said Russian Strike on Humanitarian Aid Center Kills 24 - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Ukraine said Russian Strike on Humanitarian Aid Center Kills 24 - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:57:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

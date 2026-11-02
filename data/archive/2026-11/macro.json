@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T20:25:40.421Z",
+  "updated_at": "2026-11-02T20:41:38.735Z",
   "signals": [
     {
       "id": "macro-a94e150c",
@@ -18,6 +18,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-779d2eb2",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine said Russian Strike on Humanitarian Aid Center Kills 24 - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Ukraine said Russian Strike on Humanitarian Aid Center Kills 24 - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:57:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
