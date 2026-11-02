@@ -30,7 +30,10 @@ test("critical-pacing hold with source approval does not become a full publisher
  assert.match(lane,/github\.event\.workflow_run\.name == 'Website Derived News Continuity'/u);
  assert.match(workflow,/workflows: \["Deploy D1 Control Plane", "Website Derived News Continuity"\]/u);
  assert.match(lane,/github\.event\.workflow_run\.conclusion == 'success'/u);
- assert.match(lane,/github\.event\.workflow_run\.head_sha == github\.sha/u);
+ assert.match(lane,/git merge-base --is-ancestor/u);
+ assert.match(lane,/GEOMACRO_TRUSTED_UPSTREAM_SHA/u);
+ assert.match(lane,/git cat-file -e/u);
+ assert.doesNotMatch(lane,/github\.event\.workflow_run\.head_sha == github\.sha/u);
  assert.match(lane,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);
  assert.match(lane,/environment: production/u);
  assert.match(lane,/PHASE2I_PROVIDER_SOURCE_INTAKE:/u);
@@ -84,7 +87,10 @@ test("completed hourly safe-website job provides bounded missed-cron recovery, n
  assert.match(lane,/needs\.quota-admission\.outputs\.source_intake == 'true'/u);
  assert.match(lane,/github\.event\.workflow_run\.conclusion == 'success'/u);
  assert.match(lane,/github\.event\.workflow_run\.head_branch == 'main'/u);
- assert.match(lane,/github\.event\.workflow_run\.head_sha == github\.sha/u);
+ assert.match(lane,/git merge-base --is-ancestor/u);
+ assert.match(lane,/GEOMACRO_TRUSTED_UPSTREAM_SHA/u);
+ assert.match(lane,/git cat-file -e/u);
+ assert.doesNotMatch(lane,/github\.event\.workflow_run\.head_sha == github\.sha/u);
  assert.match(lane,/github\.event\.workflow_run\.head_repository\.full_name == 'blocknine0\/geomacro'/u);
  assert.doesNotMatch(lane,/\|\| github\.event_name == 'push'/u);
  assert.match(lane,/group: geomacro-permanent-news-publication/u);
