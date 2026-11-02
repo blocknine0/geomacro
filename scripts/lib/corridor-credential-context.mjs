@@ -5,7 +5,7 @@
  */
 import {createHash} from "node:crypto";
 import {observeApprovedReliefWeb} from "../ops/observe-approved-reliefweb-live.mjs";
-const HOUR=3600000,MAX_BYTES=256*1024;
+const HOUR=3600000,MAX_BYTES=512*1024;
 export const CREDENTIAL_CORRIDOR_IDS=Object.freeze([
  "fred_api","reliefweb_v2","cryptocompare_news","freightos_fbx"
 ]);
@@ -96,8 +96,8 @@ export async function collectCredentialCorridorContext({
  };
  const slot=now.getUTCHours(),minute=now.getUTCMinutes();
  const fredKey=keys.GEOMACRO_FRED_API_KEY;
- if(!keyOk(fredKey))add("fred_api","PROVIDER_API_AUTH_REQUIRED");
- else if(!force&&(![0,6,12,18].includes(slot)||minute>=30))
+ if(!/^[a-z0-9]{32}$/u.test(fredKey??""))add("fred_api","PROVIDER_API_AUTH_REQUIRED");
+ else if(!force&&(![0,6,12,18].includes(slot)||minute>=15))
   add("fred_api","NOT_DUE_SOURCE_NATIVE_CADENCE");
  else{
   const records=[];let fail=null;
@@ -119,7 +119,7 @@ export async function collectCredentialCorridorContext({
  }
  const appname=keys.GEOMACRO_RELIEFWEB_APPNAME;
  if(!appOk(appname))add("reliefweb_v2","PROVIDER_API_AUTH_REQUIRED");
- else if(!force&&(slot%2!==0||minute>=30))
+ else if(!force&&(slot%2!==0||minute>=15))
   add("reliefweb_v2","NOT_DUE_SOURCE_NATIVE_CADENCE");
  else{
   try{
@@ -139,7 +139,7 @@ export async function collectCredentialCorridorContext({
  }
  const ccKey=keys.GEOMACRO_CRYPTOCOMPARE_API_KEY;
  if(!keyOk(ccKey))add("cryptocompare_news","PROVIDER_API_AUTH_REQUIRED");
- else if(!force&&(minute>=30||slot%1!==0))
+ else if(!force&&(minute>=15))
   add("cryptocompare_news","NOT_DUE_SOURCE_NATIVE_CADENCE");
  else{
   const res=await boundedJson(cryptoNewsUrl,{headers:{
