@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {GDELT_RISK_EVENT_SCHEMA,summarizeGdeltRiskEvents,
  validGdeltPrivateItem} from "../../lib/risk-gate-gdelt-event-wide-net.mjs";
-import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity}
+import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity,readPrivateRiskGateGdeltBatchReceipt}
  from "../../workers/control-plane/src/risk-gate-gdelt-event-index.mjs";
 import {publishGdeltRiskEventWideNet}
  from "../ops/publish-risk-gate-gdelt-wide-net.mjs";
@@ -153,6 +153,8 @@ test("B2 retains full global CAMEO index while D1 remains a diverse bounded hot 
    putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
    url.includes("gdelt-continuity")?
    readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime()):
+   url.includes("gdelt-batch-receipt")?
+   readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams):
    readPrivateRiskGateGdelt({DB:db},new URLSearchParams("limit=40"),NOW.getTime())
  });
  const archived=JSON.parse([...b2Stored.values()][0].toString("utf8"));
@@ -206,6 +208,8 @@ test("bounded real ZIP producer validates MD5, D1 exact put and private get",asy
     return putPrivateRiskGateGdelt({DB:db},JSON.parse(options.body),NOW.getTime());
    if(url.includes("gdelt-continuity"))
     return readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime());
+   if(url.includes("gdelt-batch-receipt"))
+    return readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams);
    return readPrivateRiskGateGdelt({DB:db},
     new URLSearchParams("limit=40"),NOW.getTime());
   }
@@ -253,6 +257,66 @@ test("GDELT refuses old Control Plane version or invalid internal auth before an
  assert.equal(sourceCalls,0);
  assert.equal(b2Calls,0);
 });
+test("exact immutable batch receipt accepts independently newer verified global continuity",async()=>{
+ const now=new Date("2026-11-02T15:26:00.000Z");
+ const db=new DB(),b2Store=new Map(),zipped=Buffer.from("replay-safe genuine-zip-fixture");
+ const manifest={batch_at:BATCH,expected_bytes:zipped.length,
+  expected_md5:createHash("md5").update(zipped).digest("hex")};
+ let exactReads=0,latestWasNewer=false;
+ const receipt=await publishGdeltRiskEventWideNet({
+  rootToken:"a".repeat(64),now,
+  readArchive:async()=>({decoded:text(),manifest,zipped}),
+  b2Client:{put:async(k,v)=>{b2Store.set(k,Buffer.from(v))},
+   get:async(k)=>b2Store.get(k)},
+  fetchImpl:async(url,opts)=>{
+   if(opts.method==="PUT"){
+    const put=await putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),now.getTime());
+    const newer="2026-11-02T15:15:00.000Z";
+    db.batches.set(newer,{batch_at:newer,archive_sha256:"f".repeat(64),
+     b2_archive_key:"geomacro-evidence/v1/private/gdelt-event-wide-net/202611021515/"+
+      "e".repeat(64)+".json",
+     b2_manifest_sha256:"e".repeat(64),b2_event_reference_count:9,
+     d1_hot_record_count:4,verified_at:now.toISOString()});
+    return put;
+   }
+   if(url.includes("gdelt-batch-receipt")){
+    if(new URL(url).searchParams.has("batch_at"))exactReads++;
+    return readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams);
+   }
+   if(url.includes("gdelt-continuity")){
+    const result=await readPrivateRiskGateGdeltContinuity({DB:db},now.getTime());
+    if(db.batches.size>1)latestWasNewer=true;
+    return result;
+   }
+   return readPrivateRiskGateGdelt({DB:db},new URLSearchParams("limit=40"),now.getTime());
+  }
+ });
+ assert.equal(receipt.batch_at,BATCH);
+ assert.equal(receipt.readback_valid,true);
+ assert.equal(latestWasNewer,true);
+ assert.equal(exactReads,1);
+});
+test("tampered same-batch receipt fails even when latest continuity appears healthy",async()=>{
+ const db=new DB(),zipped=Buffer.from("verified-pinned-source-fixture"),b2Store=new Map();
+ const manifest={batch_at:BATCH,expected_bytes:zipped.length,
+  expected_md5:createHash("md5").update(zipped).digest("hex")};
+ await assert.rejects(()=>publishGdeltRiskEventWideNet({
+  rootToken:"a".repeat(64),now:NOW,
+  readArchive:async()=>({decoded:text(),manifest,zipped}),
+  b2Client:{put:async(k,v)=>{b2Store.set(k,Buffer.from(v))},
+   get:async(k)=>b2Store.get(k)},
+  fetchImpl:async(url,opts)=>opts.method==="PUT"?
+   putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
+   url.includes("gdelt-batch-receipt")?
+   new URL(url).searchParams.has("batch_at")?
+    Response.json({ok:true,schema:"geomacro.risk-gate-gdelt-exact-batch-receipt.v1",
+     exact_batch_receipt_verified:true,batch_at:BATCH,
+     archive_sha256:"0".repeat(64)}):
+    readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams):
+   readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime())
+ }),/RG_GDELT_EXACT_BATCH_RECEIPT_MISMATCH/u);
+});
+
 test("GDELT event shortlist can never call PREDGE, paid API or replace GRO signer",()=>{
  const workflow=readFileSync(new URL("../../.github/workflows/gdelt-v2-event-sync.yml",import.meta.url),"utf8");
  assert.ok(workflow.includes("publish-risk-gate-gdelt-wide-net.mjs"));
