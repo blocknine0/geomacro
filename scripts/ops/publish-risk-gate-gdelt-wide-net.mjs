@@ -57,22 +57,33 @@ export async function publishGdeltRiskEventWideNet({
  // original event URLs and raw GDELT ZIP bytes are not stored.
  // This uses two quota-governed B2 requests: PUT then exact GET readback.
  const b2Snapshot={
-  schema:"geomacro.gdelt-event-b2-d1-archive.v1",
+  schema:"geomacro.gdelt-event-b2-d1-archive.v2",
   provider:"gdelt_v2_15m",batch_at:manifest.batch_at,
-  observed_at:now.toISOString(),
   gdelt_zip_archive_sha256:archive_sha256,
   rows_scanned:source.rows_scanned,cameo_shortlisted:source.cameo_shortlisted,
+  archived_cameo_event_references:source.archive_candidate_count,
+  index_country_fips_counts:source.index_country_fips_counts,
+  d1_hot_sample_count:items.length,
   source_event_verification:"INDEX_ONLY",
   commercial_rights_verified:false,customer_delivery_authorized:false,
   independent_event_verified:false,source_publication_time_verified:false,
-  items:items.map(({id,gdelt_event_id,cameo_code,cameo_root,
-   gdelt_index_at,action_geo_fips,corridor_hints,source_url_sha256})=>({
-   id,gdelt_event_id,cameo_code,cameo_root,
-   gdelt_index_at,action_geo_fips,corridor_hints,source_url_sha256
-  }))
+  archive_truncated:source.archive_truncated,
+  // GDELT source index across all CAMEO-qualified rows, not just D1 sample;
+  // URL hashes only. Absence of URL means unusable for source verification.
+  event_index:source.archive_candidates.map(c=>({
+   gdelt_event_id:c.gdelt_event_id,cameo_code:c.cameo_code,
+   cameo_root:c.cameo_root,gdelt_index_at:c.gdelt_index_at,
+   action_geo_fips:c.action_geo_fips,corridor_hints:c.corridor_hints,
+   source_url_sha256:c.source_url===null?null:sha(c.source_url)
+  })),
+  d1_selected_item_hashes:items.map(x=>x.id)
  };
+ if(b2Snapshot.event_index.length!==source.cameo_shortlisted||
+    source.archive_truncated!==false)
+  throw Error("RG_GDELT_B2_ARCHIVE_INCOMPLETE");
  const b2Bytes=Buffer.from(JSON.stringify(b2Snapshot),"utf8");
- if(b2Bytes.length>32000)throw Error("RG_GDELT_B2_SNAPSHOT_TOO_LARGE");
+ if(b2Bytes.length>16000000)
+  throw Error("RG_GDELT_B2_SNAPSHOT_TOO_LARGE");
  const b2Hash=sha(b2Bytes);
  const b2Key="geomacro-evidence/v1/private/gdelt-event-wide-net/"+
   manifest.batch_at.replace(/\D/gu,"").slice(0,12)+"/"+b2Hash+".json";
@@ -127,6 +138,10 @@ export async function publishGdeltRiskEventWideNet({
   b2_exact_readback:true,
   rows_scanned:source.rows_scanned,cameo_shortlisted:source.cameo_shortlisted,
   geolocated_strategic_route_candidates:source.route_hint_count,
+  b2_archived_cameo_event_references:source.archive_candidate_count,
+  b2_archive_complete:source.archive_truncated===false,
+  d1_hot_sample_count:items.length,
+  event_index_country_count:source.index_country_fips_counts.length,
   d1_shortlist_records_verified:ack.exact_d1_readback,
   readback_valid:true,source_records_for_verification_only:true,
   verified_events:0,source_event_time_confirmed:false,

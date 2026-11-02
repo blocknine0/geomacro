@@ -85,7 +85,55 @@ test("five-corridor GDELT CAMEO shortlist is deterministic, bounded, deduplicate
  assert.equal(x.original_event_verified,false);
  assert.equal(x.publication_time_verified,false);
  assert.equal(x.chargeable,false);
+ assert.equal(x.archive_candidate_count,3);
+ assert.equal(x.archive_candidates.length,3);
+ assert.equal(x.d1_hot_sample_count,3);
+ assert.equal(x.archive_truncated,false);
 });
+test("B2 retains full global CAMEO index while D1 remains a diverse bounded hot sample",async()=>{
+ const rows=[];
+ for(let i=1;i<=90;i++){
+  const c=line({id:String(20000+i),root:i%3===0?"20":"18",
+   code:i%3===0?"201":"181",
+   place:i<=7?"Taiwan Strait":"Country capital",
+   source:"https://source"+i+".example.org/report",
+   date:"20261102150000"});
+  const f=c.split("\t");
+  f[53]=""+String.fromCharCode(65+((i-1)%26))+
+    String.fromCharCode(65+(Math.floor((i-1)/26)%26));
+  rows.push(f.join("\t"));
+ }
+ const x=summarizeGdeltRiskEvents(rows.join("\n"),BATCH,NOW.getTime());
+ assert.equal(x.cameo_shortlisted,90);
+ assert.equal(x.archive_candidate_count,90);
+ assert.equal(x.d1_hot_sample_count,40);
+ assert.equal(new Set(x.candidates.map(v=>v.gdelt_event_id)).size,40);
+ assert.ok(x.candidates.some(v=>v.corridor_hints.includes("taiwan-strait")));
+ const b2Stored=new Map(),db=new DB(),compressed=Buffer.from("safe ZIP hash stub");
+ const manifest={batch_at:BATCH,expected_bytes:compressed.length,
+  expected_md5:createHash("md5").update(compressed).digest("hex")};
+ const r=await publishGdeltRiskEventWideNet({
+  rootToken:"a".repeat(64),now:NOW,readArchive:async()=>({
+   decoded:rows.join("\n"),manifest,zipped:compressed
+  }),
+  b2Client:{put:async(k,v)=>{b2Stored.set(k,Buffer.from(v));},
+   get:async k=>b2Stored.get(k)},
+  fetchImpl:async(url,opts)=>opts.method==="PUT"?
+   putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
+   readPrivateRiskGateGdelt({DB:db},new URLSearchParams("limit=40"),NOW.getTime())
+ });
+ const archived=JSON.parse([...b2Stored.values()][0].toString("utf8"));
+ assert.equal(archived.archived_cameo_event_references,90);
+ assert.equal(archived.event_index.length,90);
+ assert.equal(archived.d1_hot_sample_count,40);
+ assert.equal(archived.event_index.every(e=>
+  e.source_url_sha256===null||/^[a-f0-9]{64}$/u.test(e.source_url_sha256)),true);
+ assert.equal(archived.event_index.some(e=>Object.hasOwn(e,"source_url")),false);
+ assert.equal(r.b2_archived_cameo_event_references,90);
+ assert.equal(r.d1_shortlist_records_verified,40);
+ assert.equal(r.b2_exact_readback,true);
+});
+
 test("canonical D1 PUT validates item hashes, CAMEO and prevents paid event promotion",async()=>{
  const db=new DB(),p=packet();
  assert.equal(p.items.length,3);
