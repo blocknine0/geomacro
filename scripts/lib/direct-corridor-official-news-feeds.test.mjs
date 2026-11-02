@@ -12,9 +12,9 @@ const rss=(title,url)=>'<rss><channel><item><title>'+title+'</title><pubDate>Mon
 test("additional WTO and USGS feeds preserve the original 37-entry registry",()=>{
  assert.equal(assertDirectCorridorSupplementalNativeFeeds(),true);
  assert.equal(DIRECT_GLOBAL_CORRIDOR_SOURCES.length,37);
- assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,3);
+ assert.equal(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length,4);
  assert.deepEqual(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.map(x=>x.original_registry_source_id),
-  ["wto_tariffs","usgs_mcs","rbi_releases"]);
+  ["wto_tariffs","usgs_mcs","usgs_mcs","rbi_releases"]);
  assert.ok(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.every(x=>
   x.channel==="CORRIDOR_ONLY"&&x.website_intelligence_enabled===false&&
   x.event_verified===false&&x.commercial_eligible===false));
@@ -76,4 +76,33 @@ test("RBI first-party press releases keep numeric prid so different notices neve
   fetchImpl:async()=>new Response(rss("RBI press release with unsafe parameters",
     "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx?prid=55555&token=secret"))});
  assert.equal(polluted.candidate_count,0);
+});
+
+test("DOE original source is an independent fallback, never a fictitious USGS corroboration",async()=>{
+ const source=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
+  .filter(x=>x.id==="doe_official_critical_materials_news");
+ assert.equal(source.length,1);
+ assert.equal(source[0].independent_alternative_for,"usgs_official_minerals_news");
+ assert.equal(source[0].url,"https://www.energy.gov/rss/energygov/2193718");
+ const url="https://www.energy.gov/articles/energy-department-designates-helium-critical-material";
+ const out=await collectDirectCorridorNativeNews({now:NOW,sources:source,
+   fetchImpl:async()=>new Response(rss(
+    "Energy Department designates helium as a critical material",url))});
+ assert.equal(out.candidate_count,1);
+ assert.equal(out.news_candidates[0].source_id,"doe_official_critical_materials_news");
+ assert.equal(out.news_candidates[0].original_publisher_url,
+   "https://www.energy.gov/rss/energygov/2193718");
+ assert.deepEqual(out.news_candidates[0].categories,["rare_earth"]);
+ assert.equal(out.news_candidates[0].independent_corroboration_verified,false);
+ assert.equal(out.news_candidates[0].commercial_rights_verified,false);
+ assert.equal(out.news_candidates[0].customer_delivery_enabled,false);
+ const unrelated=await collectDirectCorridorNativeNews({now:NOW,sources:source,
+   fetchImpl:async()=>new Response(rss(
+     "Energy Department awards research grants for the electrical grid",url))});
+ assert.equal(unrelated.candidate_count,0);
+ const wrongDomain=await collectDirectCorridorNativeNews({now:NOW,sources:source,
+   fetchImpl:async()=>new Response(rss(
+     "Critical minerals export restrictions announced",
+     "https://usgs.gov/news/critical-minerals"))});
+ assert.equal(wrongDomain.candidate_count,0);
 });
