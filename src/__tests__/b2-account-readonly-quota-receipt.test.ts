@@ -23,8 +23,8 @@ describe("#1827 bounded B2 D1 reservation-account audit", () => {
     expect(result.unattributed_reserved).toBe(1);
     expect(result.limits).toEqual(B2_DAILY_LIMITS);
     expect(result.current_hot_audit_gets_required).toBe(8);
-    expect(result.remaining_reserved_total_headroom).toBe(92);
-    expect(result.remaining_reserved_get_headroom).toBe(42);
+    expect(result.remaining_reserved_total_headroom).toBe(B2_DAILY_LIMITS.total-8);
+    expect(result.remaining_reserved_get_headroom).toBe(B2_DAILY_LIMITS.GET-3);
     expect(result.quota_allows_full_hot_audit).toBe(true);
     expect(result.quota_hold_reason).toBeNull();
     expect(result.provider_account_usage_verified).toBe(false);
@@ -36,19 +36,19 @@ describe("#1827 bounded B2 D1 reservation-account audit", () => {
   });
 
   it("distinguishes exhausted shared GET budget from exhausted total B2 budget without network",()=>{
-    const getHeld={...row,total_requests:43,get_requests:39,put_requests:4,
-      workflow_id:"current_hot_audit",operation:"GET",workflow_requests:39};
+    const getHeld={...row,total_requests:B2_DAILY_LIMITS.GET-2,get_requests:B2_DAILY_LIMITS.GET-6,put_requests:4,
+      workflow_id:"current_hot_audit",operation:"GET",workflow_requests:B2_DAILY_LIMITS.GET-6};
     const getProof=parseB2QuotaWranglerReport(wrap([getHeld]),{now});
     expect(getProof.remaining_reserved_get_headroom).toBe(6);
-    expect(getProof.remaining_reserved_total_headroom).toBe(57);
+    expect(getProof.remaining_reserved_total_headroom).toBe(B2_DAILY_LIMITS.total-(B2_DAILY_LIMITS.GET-2));
     expect(getProof.quota_allows_full_hot_audit).toBe(false);
     expect(getProof.quota_hold_reason).toBe("SHARED_DAILY_GET_HEADROOM_HELD");
-    const totalHeld={...row,total_requests:95,get_requests:25,put_requests:55,
-      head_requests:10,native_auth_requests:5,
-      workflow_id:"current_hot_audit",operation:"GET",workflow_requests:25};
+    const totalHeld={...row,total_requests:715,get_requests:325,put_requests:370,
+      head_requests:15,native_auth_requests:5,
+      workflow_id:"current_hot_audit",operation:"GET",workflow_requests:325};
     const totalProof=parseB2QuotaWranglerReport(wrap([totalHeld]),{now});
     expect(totalProof.remaining_reserved_total_headroom).toBe(5);
-    expect(totalProof.remaining_reserved_get_headroom).toBe(20);
+    expect(totalProof.remaining_reserved_get_headroom).toBe(15);
     expect(totalProof.quota_hold_reason).toBe("SHARED_DAILY_TOTAL_HEADROOM_HELD");
     expect(totalProof.quota_allows_full_hot_audit).toBe(false);
     for(const obj of [getProof,totalProof]){
@@ -91,7 +91,7 @@ describe("#1827 bounded B2 D1 reservation-account audit", () => {
       [valid,{...valid,put_requests:4,workflow_id:"b_writer"}],
       [{...valid,workflow_requests:4}],
       [{...valid,workflow_requests: -1}],
-      [{...valid,get_requests:46,total_requests:51,put_requests:5}],
+      [{...valid,get_requests:B2_DAILY_LIMITS.GET+1,total_requests:B2_DAILY_LIMITS.GET+6,put_requests:5}],
       [{...valid,total_requests:9007199254740992}],
       Array(101).fill(valid),
     ];
