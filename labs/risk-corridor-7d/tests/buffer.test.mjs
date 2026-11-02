@@ -27,3 +27,21 @@ test("only dedicated Risk/Corridor Supabase project can be configured",()=>{
  assert.throws(()=>createSevenDayBuffer({url:"https://ldpwajisioljyjtojvfx.supabase.co",
   serviceKey:"x".repeat(40)}));
 });
+
+test("Supabase new secret key is sent via apikey only, never as a JWT bearer",async()=>{
+ let headers;
+ const key="sb_secret_"+"x".repeat(40);
+ const fetchImpl=async(_url,options)=>{
+   headers=new Headers(options.headers);
+   return new Response("",{status:201});
+ };
+ const buffer=createSevenDayBuffer({url:"https://ymjuwuvbialsevfawvvq.supabase.co",
+   serviceKey:key,fetchImpl,now:()=>new Date("2026-11-02T12:00:00Z")});
+ await buffer.putVerifiedSignal({
+   event_sha256:"a".repeat(64),verified_gro_sha256:"b".repeat(64),
+   country_iso3:"IND",domain:"geopolitics",signal_kind:"gro_driver_conflict",
+   intensity:30,verification_status:"VERIFIED",original_at:"2026-11-02T10:00:00Z"
+ });
+ assert.equal(headers.get("apikey"),key);
+ assert.equal(headers.has("authorization"),false);
+});
