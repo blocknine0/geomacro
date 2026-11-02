@@ -2,7 +2,6 @@ import { describe,expect,it } from "vitest";
 import {readFileSync} from "node:fs";
 
 const jobs = {
-  "gdelt-v2-event-sync.yml":["sync"],
   "gdelt-gal-live-sync.yml":["sync"],
   "eurostat-sovereign-fiscal-promotion.yml":["production-promotion"],
   "ppg-production-promotion-census.yml":["promote-and-census"],
@@ -31,6 +30,22 @@ describe("P0 Supabase free legacy job retirement",()=>{
       }
     });
   }
+  it("keeps the retired GDELT Supabase-only writer unreachable while retaining governed B2+D1 indexing",()=>{
+    const flow=read(".github/workflows/gdelt-v2-event-sync.yml");
+    expect(flow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(flow).toContain('B2_REQUEST_BUDGET: "4"');
+    expect(flow).toContain("publish-risk-gate-gdelt-wide-net.mjs");
+    expect(flow).toContain("GDELT ZIP, B2 full readback then D1 PUT+GET");
+    expect(flow).toContain("github.ref == 'refs/heads/main'");
+    expect(flow).not.toContain("scripts/ingest-gdelt-v2-events-live.mjs");
+    expect(flow).not.toContain("SUPABASE_DB_URL");
+    expect(flow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    const active=read("scripts/ops/publish-risk-gate-gdelt-wide-net.mjs");
+    expect(active).toContain("b2_exact_readback_verified=true");
+    expect(active).toContain("b2_exact_readback:true");
+    expect(active).toContain("chargeable:false");
+    expect(active).toContain("predge_writes:0");
+  });
   it("keeps original-source three-domain monitoring and signed canonical current publishers available",()=>{
     const pub=read(".github/workflows/three-domain-30m-original-publisher-pulse.yml");
     const gri=read(".github/workflows/gri-v12-supabase-free-reviewed-current.yml");

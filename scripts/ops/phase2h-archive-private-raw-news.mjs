@@ -64,6 +64,19 @@ export function verifyPhase2hRawB2Restore(bytes,plan){
  * Use those instead of expanding the root commerce/control-plane secret to
  * another production job. SQL is fixed and params bound, never caller SQL.
  */
+/** D1 REST provider rejects bound string LIMIT/OFFSET (7500).
+ * Integer literals are trusted only after strict fixed numeric range checks.
+ * The private source timestamp remains a bound query parameter.
+ */
+export function phase2hBoundedPendingPageSQL(limit,offset){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>25||
+    !Number.isSafeInteger(offset)||offset<0||offset>299||
+    offset+limit>300)
+  fail("D1_PAGE_BOUNDS_INVALID");
+ return "SELECT raw_json FROM phase2h_private_raw_news WHERE "+
+  "b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  "ORDER BY first_ingested_at,record_id LIMIT "+limit+" OFFSET "+offset;
+}
 export function createPhase2hCanonicalD1({
  env=process.env,fetchImpl=fetch
 }={}){
@@ -119,8 +132,8 @@ export function createPhase2hCanonicalD1({
     let result;
     try{
      result=await sql(
-      "SELECT raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ? OFFSET ?",
-      [cutoff,Math.min(pageSize,maxRows-rows.length),rows.length]
+      phase2hBoundedPendingPageSQL(Math.min(pageSize,maxRows-rows.length),rows.length),
+      [cutoff]
      );
     }catch(error){
      // At most one downgrade to 10 rows. The unchanged quota governor still

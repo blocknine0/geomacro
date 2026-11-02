@@ -100,7 +100,6 @@ describe("permanent intelligence orchestration contract", () => {
     for (const path of [
       ".github/workflows/global-country-raw-source-mesh.yml",
       ".github/workflows/gdelt-gal-live-sync.yml",
-      ".github/workflows/gdelt-v2-event-sync.yml",
       ".github/workflows/realtime-corridor-hot-topic-fanout.yml",
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
@@ -115,6 +114,19 @@ describe("permanent intelligence orchestration contract", () => {
       expect(source, path).not.toContain("schedule:");
       expect(source, path).not.toContain("workflow_run:");
     }
+  });
+
+  it("permits only the governed B2+D1 GDELT replacement without reviving legacy Supabase", () => {
+    const workflow = read(".github/workflows/gdelt-v2-event-sync.yml");
+    expect(workflow).toContain('cron: "7,22,37,52 * * * *"');
+    expect(workflow).toContain("publish-risk-gate-gdelt-wide-net.mjs");
+    expect(workflow).toContain('B2_ACCOUNT_QUOTA_REQUIRED: "1"');
+    expect(workflow).toContain('B2_REQUEST_BUDGET: "4"');
+    expect(workflow).toContain("github.ref == 'refs/heads/main'");
+    expect(workflow).toContain("GDELT ZIP, B2 full readback then D1 PUT+GET");
+    expect(workflow).not.toContain("scripts/ingest-gdelt-v2-events-live.mjs");
+    expect(workflow).not.toContain("SUPABASE_DB_URL");
+    expect(workflow).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
   });
 
   it("keeps Auto Ingest recurring only through verified D1 recovery, with old Supabase writer retired", () => {
