@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T08:07:08.438Z",
+  "checked_at": "2026-11-02T08:55:32.096Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 134,
   "counts": {
-    "geopolitics": 52,
-    "macro": 53,
+    "geopolitics": 51,
+    "macro": 54,
     "rare_earth": 29
   },
-  "source_native_ids_sha256": "b634e4c9791c0740a46f5fd4fcb3819aec8c5a89ce324e9518ea470102c18e3b",
+  "source_native_ids_sha256": "337a0a21b7ec5c47afae3a1fd06882961095997116c738f0d75971d02156501d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -39,6 +39,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T07:11:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3f3b6523",
+      "category": "macro",
+      "title": "Geomacro finds Central Bank of Azerbaijan announced Exchange Rates: Euro Eases, Ruble Gains - Anews.az",
+      "what_changed": "A monitored source feed reports: Central Bank of Azerbaijan announced Exchange Rates: Euro Eases, Ruble Gains - Anews.az. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:24:58.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -157,6 +176,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.jpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7f600b0e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut Lithium Forecasts on Worsening Battery Demand Outlook - Bloomberg",
+      "what_changed": "A monitored source feed reports: Citi cut Lithium Forecasts on Worsening Battery Demand Outlook - Bloomberg. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:03:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -2532,44 +2570,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a73b4ded",
-      "category": "geopolitics",
-      "title": "Geomacro finds UNHCR-IOM Joint Border Monitoring reported # 25 on Inflows From The Islamic Republic of Iran 1 Mar - 22 Oct 2026 - UNHCR - The UN Refugee Agency",
-      "what_changed": "A monitored source feed reports: UNHCR-IOM Joint Border Monitoring reported # 25 on Inflows From The Islamic Republic of Iran 1 Mar - 22 Oct 2026 - UNHCR - The UN Refugee Agency. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T08:19:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-72baa719",
-      "category": "rare_earth",
-      "title": "Geomacro finds Centerra lowered full-year AISC guidance for Mount Milligan",
-      "what_changed": "A monitored source feed reports: Centerra lowered full-year AISC guidance for Mount Milligan. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T08:17:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
