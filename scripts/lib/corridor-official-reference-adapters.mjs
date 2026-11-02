@@ -17,8 +17,8 @@ const API=Object.freeze({
  eurostat_data:"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?geo=EA20&coicop=CP00&sinceTimePeriod=__START_PERIOD__&lang=EN"
 });
 const isDue=(id,now)=>id==="gdelt_v2_15m"||
- (id==="imf_portwatch"?[0,12].includes(now.getUTCHours())&&now.getUTCMinutes()<30:
- [0,6,12,18].includes(now.getUTCHours())&&now.getUTCMinutes()<30);
+ (id==="imf_portwatch"?[0,12].includes(now.getUTCHours())&&now.getUTCMinutes()<15:
+ [0,6,12,18].includes(now.getUTCHours())&&now.getUTCMinutes()<15);
 const idHash=(parts)=>createHash("sha256").update(parts.join("\x1f")).digest("hex");
 function candidate(source_id,metric_id,period,value,now,extra={}){
  if(typeof metric_id!=="string"||!/^[a-z0-9_.-]{3,70}$/u.test(metric_id)||
