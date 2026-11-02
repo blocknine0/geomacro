@@ -6,8 +6,12 @@ import worker from "../src/worker.mjs";
 const config = JSON.parse(readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"));
 const incoming = (path, method="GET")=>new Request("https://geomacro-rc-staging.example"+path, {method});
 
-test("isolated Wrangler config pins exact owner-provisioned staging D1 without cron or main env",()=>{
+test("isolated Wrangler config preserves staging D1 and dashboard deployment safety",()=>{
   assert.equal(config.name,"geomacro-rc-staging");
+  assert.equal(config.compatibility_date,"2026-11-02");
+  assert.equal(config.preview_urls,false);
+  assert.equal(config.observability.enabled,true);
+  assert.equal(config.observability.logs.enabled,true);
   assert.equal(config.main,"src/worker.mjs");
   assert.equal(config.d1_databases.length,1);
   assert.deepEqual(config.d1_databases[0],{
