@@ -82,7 +82,8 @@ async function fetchPrivateFeedSafely(url,options,fetchImpl){
   const location=response.headers.get("location");
   if(!location||hop===3)return response;
   const next=safeFeedRedirect(current,location);
-  if(!next)return new Response(null,{status:502});
+  // Synthetic redirect-block codes are NEVER eligible for transient retries.
+  if(!next)return new Response(null,{status:520});
   try{await response.body?.cancel()}catch{}
   current=next;didRedirect=true;
  }
