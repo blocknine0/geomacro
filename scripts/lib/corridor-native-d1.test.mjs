@@ -35,7 +35,7 @@ class MockD1{
    if(query.includes("WHERE candidate_id IN")){
     const cutoff=params.at(-1);return {results:[...this.rows.values()]
      .filter(r=>params.slice(0,-1).includes(r.candidate_id)&&r.native_published_at>=cutoff)
-     .map(r=>({candidate_id:r.candidate_id}))};
+     .map(r=>({...r}))};
    }
    const cutoff=params[0],limit=params[1];
    return {results:[...this.rows.values()].filter(r=>r.native_published_at>=cutoff)
@@ -55,7 +55,7 @@ class MockD1{
    const a=stmt.params;
    if(!this.rows.has(a[0]))this.rows.set(a[0],{
     candidate_id:a[0],source_id:a[1],native_published_at:a[2],
-    article_url:a[3],candidate_corridor_ids_json:a[6]
+    article_url:a[3],source_title_sha256:a[4],candidate_corridor_ids_json:a[6]
    });
   }
   return prepared.map(()=>({success:true}));
