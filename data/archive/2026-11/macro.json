@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T01:18:34.919Z",
+  "updated_at": "2026-11-02T01:55:18.054Z",
   "signals": [
+    {
+      "id": "macro-49a9b041",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecast for December and 2027. Here's why - CNBC",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecast for December and 2027. Here's why - CNBC. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T01:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-778dfe8b",
       "category": "macro",

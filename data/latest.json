@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T01:51:38.417Z",
+  "checked_at": "2026-11-02T01:55:18.054Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-49a9b041",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecast for December and 2027. Here's why - CNBC",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecast for December and 2027. Here's why - CNBC. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T01:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-778dfe8b",
       "category": "macro",
@@ -1436,6 +1455,25 @@
       "severity": null
     },
     {
+      "id": "macro-e2a8457e",
+      "category": "macro",
+      "title": "Geomacro finds World Bank warned about Sharp Grain Price Increases Through 2027 - AgroLatam",
+      "what_changed": "A monitored source feed reports: World Bank warned about Sharp Grain Price Increases Through 2027 - AgroLatam. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T16:01:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-9196183d",
       "category": "geopolitics",
       "title": "Geomacro finds United Kingdom issued a statement concerning We support Bosnia and Herzegovina's Euro-Atlantic ambitions, as reflected in the will of the majority of her citizens · United Kingdom",
@@ -1451,6 +1489,25 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8f9720d4",
+      "category": "macro",
+      "title": "Geomacro finds Poland approved first fast-track renewable energy zones",
+      "what_changed": "A monitored source feed reports: Poland approved first fast-track renewable energy zones. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:56:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -1531,6 +1588,25 @@
       "severity": null
     },
     {
+      "id": "macro-53df51b6",
+      "category": "macro",
+      "title": "Geomacro finds Brent And WTI Crude Oil Price forecast Rise As Freight Costs Stay High - Exchange Rates UK",
+      "what_changed": "A monitored source feed reports: Brent And WTI Crude Oil Price forecast Rise As Freight Costs Stay High - Exchange Rates UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T15:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-f85c7198",
       "category": "geopolitics",
       "title": "Geomacro finds Undead Software projected Continue to Raise Security Risks",
@@ -1550,6 +1626,25 @@
       "severity": null
     },
     {
+      "id": "macro-06e1f4e0",
+      "category": "macro",
+      "title": "Geomacro finds Exxon raised Its Dividend Yet Again as Oil-Price Rally Boosts Earnings - Barron's",
+      "what_changed": "A monitored source feed reports: Exxon raised Its Dividend Yet Again as Oil-Price Rally Boosts Earnings - Barron's. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T13:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-950dc4b1",
       "category": "geopolitics",
       "title": "Geomacro finds Qatar called for stronger maritime security to promote global peace",
@@ -1563,6 +1658,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.gulf-times.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f3e22469",
+      "category": "macro",
+      "title": "Geomacro finds Corn Fading lowered on Friday AM Trade - TradingView",
+      "what_changed": "A monitored source feed reports: Corn Fading lowered on Friday AM Trade - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T12:37:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1753,6 +1867,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c53f372b",
+      "category": "macro",
+      "title": "Geomacro finds Sadyr Japarov proposed expanding OTS cooperation in energy sector",
+      "what_changed": "A monitored source feed reports: Sadyr Japarov proposed expanding OTS cooperation in energy sector. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T10:11:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
