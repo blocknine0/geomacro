@@ -95,7 +95,8 @@ test("canonical D1 PUT validates item hashes, CAMEO and prevents paid event prom
  const read=await get.json();
  assert.equal(read.count,3);
  assert.equal(read.entries[0].verified_event,false);
- assert.equal(JSON.stringify(read).includes("example-news.org"),false);
+ assert.equal(read.entries.every(entry=>!Object.hasOwn(entry,"source_url")&&
+  /^[a-f0-9]{64}$/u.test(entry.source_url_sha256)),true);
  const malicious=structuredClone(p);
  malicious.items[0].event_verified=true;
  assert.equal((await putPrivateRiskGateGdelt({DB:db},malicious,NOW.getTime())).status,422);
