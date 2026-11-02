@@ -31,6 +31,10 @@ on:
       - "scripts/lib/critical-minerals-registry.mjs"
       - ".github/workflows/deploy-d1-control-plane.yml"
       - ".github/workflows/recover-d1-quota-deployment-after-reset.yml"
+      - "workers/control-plane/src/unified-risk-gate.mjs"
+      - "workers/control-plane/src/unified-risk-private-osint-bridge.mjs"
+      - "workers/control-plane/migrations/0110_unified_private_osint_evidence_index.sql"
+      - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/three-domain-structured-delivery.mjs"
       - "src/__tests__/three-domain-structured-delivery.test.ts"
@@ -123,7 +127,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify unified cron failure visibility and production API route contracts
-        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs
+        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs
 
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: |
@@ -188,7 +192,7 @@ jobs:
           node-version: "24"
 
       - name: Verify unified cron failure visibility and production API route contracts
-        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs
+        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
         run: node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
