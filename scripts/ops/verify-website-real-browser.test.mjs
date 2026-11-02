@@ -15,6 +15,11 @@ test("real browser QA is outside-in and cannot use payment or private APIs",()=>
  assert.ok(s.includes('await trigger.click({timeout:10_000})'));
  assert.ok(s.includes('await links.first().click({timeout:10_000})'));
  assert.ok(s.includes('await page.waitForURL(url=>url.pathname==="/intelligence"'));
+ assert.ok(s.includes('name:/what changed in the world/i'));
+ assert.ok(s.includes('.waitFor({state:"visible",timeout:4_000})'));
+ assert.ok(s.includes('BROWSER_INTELLIGENCE_NOT_RENDERED'));
+ assert.ok(s.includes('stories_logged:false,credentials_logged:false'));
+ assert.equal(s.includes('await timed(1000)'),false);
  assert.ok(s.includes("nav_clicked:true"));
  assert.equal(s.includes('page.goto(ROOT+"/intelligence"'),false);
  assert.ok(s.includes('page.goto(ROOT+"/ask-geomacro"'));

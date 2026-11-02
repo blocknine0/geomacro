@@ -87,16 +87,31 @@ const testBrowser=async({chromium,expected=EXPECTED,githubToken=process.env.GITH
       await links.first().click({timeout:10_000});
     }
     await page.waitForURL(url=>url.pathname==="/intelligence",{timeout:15_000});
-    await page.locator("main").first().waitFor({state:"visible",timeout:15_000});
-    await timed(1000);
+    // A new URL is not a rendered client-side route. The first <main> may
+    // belong to the previous Home page while TanStack finishes the loader.
+    // Require the actual Intelligence H1 in the real DOM, not a mock 200.
+    let intelligenceHeadingVisible=false;
+    try{
+      await page.getByRole("heading",{level:1,name:/what changed in the world/i})
+        .waitFor({state:"visible",timeout:4_000});
+      intelligenceHeadingVisible=true;
+    }catch{/* classified below without logging story text */}
     const intelligence=await page.evaluate(()=>({
-      text:document.body?.innerText??"",
       path:location.pathname,
       title:document.title,
+      mainCount:document.querySelectorAll("main").length,
+      headingCount:document.querySelectorAll("main h1").length,
+      h1Text:[...document.querySelectorAll("main h1")]
+        .map(node=>node.textContent?.trim().slice(0,90)??""),
     }));
-    assert(intelligence.path==="/intelligence"&&
-      /geomacro finds|what changed in the world/i.test(intelligence.text),
-      "BROWSER_INTELLIGENCE_NOT_RENDERED");
+    if(!intelligenceHeadingVisible || intelligence.path!=="/intelligence"){
+      console.error(JSON.stringify({schema:"geomacro.browser-intelligence-route-diagnostic.v1",
+        path:intelligence.path,main_count:intelligence.mainCount,
+        heading_count:intelligence.headingCount,
+        h1_text:intelligence.h1Text,js_page_errors:failures.length,
+        stories_logged:false,credentials_logged:false}));
+      throw Error("BROWSER_INTELLIGENCE_NOT_RENDERED");
+    }
     assert(failures.length===0,"BROWSER_INTELLIGENCE_JS_EXCEPTION");
     const ask=await page.goto(ROOT+"/ask-geomacro",
       {waitUntil:"domcontentloaded",timeout:30_000});
