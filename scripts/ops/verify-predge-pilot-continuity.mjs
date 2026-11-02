@@ -6,6 +6,14 @@ const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PILOT_END="2027-01-17T00:00:00.000Z";
 const MAX_SOURCE_CHECK_AGE_MS=90*60_000;
 const PREFIX="PREDGE_CONTINUITY_NOT_VERIFIED";
+export const PREDGE_DRIVER_MAX_WIRE_BYTES=1_500_000;
+export const PREDGE_DRIVER_MAX_ITEMS=600;
+export function researchWireSize(raw){
+ if(typeof raw!=="string")throw Error(PREFIX+"_WIRE_TYPE");
+ const size=new TextEncoder().encode(raw).byteLength;
+ if(size>PREDGE_DRIVER_MAX_WIRE_BYTES)throw Error(PREFIX+"_PREDGE_DRIVER_BYTES_EXCEEDED");
+ return size;
+}
 export function assessPredgeContinuity(research,publicFeed,gate,now=Date.now(),journal=null){
  if(research?.ok!==true||publicFeed?.ok!==true||
  research.partner_delivery_schema!=="geomacro.predge.research-news-delivery.v1"||
@@ -74,9 +82,9 @@ async function read(path,token){
   signal:AbortSignal.timeout(15000)});
  if(![200,503].includes(response.status))throw Error(PREFIX+"_HTTP_"+response.status);
  const raw=await response.text();
- if(raw.length>1200000)throw Error(PREFIX+"_OVERSIZED");
+ const wire_bytes=researchWireSize(raw);
  let body;try{body=JSON.parse(raw)}catch{throw Error(PREFIX+"_INVALID_JSON")}
- return {status:response.status,body};
+ return {status:response.status,body,wire_bytes};
 }
 export async function runContinuityCheck(token,now){
  if(!/^[a-f0-9]{64}$/.test(token??""))throw Error(PREFIX+"_OWNER_TOKEN_ABSENT");
@@ -89,7 +97,12 @@ export async function runContinuityCheck(token,now){
    (gate.status===503&&gate.body?.status!=="not_ready"))
  throw Error(PREFIX+"_RESEARCH_UNAVAILABLE");
  const journal=await readPredgeJournal(p=>read("/v1/"+p));
- return assessPredgeContinuity(research.body,publicFeed.body,gate.body,now??Date.now(),journal);
+ const receipt=assessPredgeContinuity(research.body,publicFeed.body,gate.body,now??Date.now(),journal);
+ return {...receipt,partner_driver_item_count:research.body.items.length,
+   partner_driver_wire_bytes:research.wire_bytes,
+   partner_driver_max_items:PREDGE_DRIVER_MAX_ITEMS,
+   partner_driver_max_bytes:PREDGE_DRIVER_MAX_WIRE_BYTES,
+   partner_driver_transport_accepted:true};
 }
 if(process.argv[1]?.endsWith("verify-predge-pilot-continuity.mjs")){
  runContinuityCheck(process.env.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE)
@@ -99,6 +112,8 @@ if(process.argv[1]?.endsWith("verify-predge-pilot-continuity.mjs")){
   for(const [category,state] of Object.entries(v.source_checks))
    if(state.release_state==="NO_QUALIFYING_RELEASE_IN_72H")
     console.log("::warning::PREDGE_NO_QUALIFYING_RELEASE_"+category.toUpperCase());
+  if(v.partner_driver_item_count>=480||v.partner_driver_wire_bytes>=1_200_000)
+   console.log("::warning::PREDGE_RESEARCH_FEED_NEARING_DRIVER_LIMIT");
   if(v.renewal_action_required)
   console.log("::warning::PREDGE_PILOT_RENEWAL_REQUIRED_WITHIN_30_DAYS");})
  .catch(e=>{const s=String(e?.message??"");

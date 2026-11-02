@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assessPredgeContinuity} from './verify-predge-pilot-continuity.mjs';
+import {assessPredgeContinuity,researchWireSize,PREDGE_DRIVER_MAX_WIRE_BYTES} from './verify-predge-pilot-continuity.mjs';
 import {buildDerivedNewsStructural} from '../../src/lib/derived-news-structural-bridge.ts';
 const NOW=Date.parse('2026-10-24T14:00:00Z');
 const categories=['geopolitics','macro','rare_earth'];
@@ -81,4 +81,13 @@ test('pilot expiry and thirty-day renewal warning remain enforced',()=>{
  assert.throws(()=>assess(fixture(end),end),/PILOT_EXPIRED/);
  const jan=Date.parse('2027-01-01T00:00:00Z'),p=assess(fixture(jan),jan);
  assert.equal(p.renewal_action_required,true);assert.equal(p.days_until_pilot_end,16);
+});
+
+test('partner size canary uses real UTF-8 bytes rather than JS character count',()=>{
+ assert.equal(researchWireSize('ASCII'),5);
+ assert.equal(researchWireSize('🧭'),4);
+ assert.equal(PREDGE_DRIVER_MAX_WIRE_BYTES,1_500_000);
+ assert.equal(researchWireSize('a'.repeat(1_500_000)),1_500_000);
+ assert.throws(()=>researchWireSize('🧭'.repeat(375001)),/PREDGE_DRIVER_BYTES_EXCEEDED/);
+ assert.throws(()=>researchWireSize(null),/WIRE_TYPE/);
 });
