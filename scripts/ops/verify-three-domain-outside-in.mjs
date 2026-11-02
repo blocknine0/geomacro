@@ -19,7 +19,7 @@ const escDecode=s=>s.replace(/&#x([0-9a-f]+);/giu,(_,n)=>String.fromCodePoint(pa
  ({"&amp;":"&","&quot;":'"',"&apos;":"'","&lt;":"<","&gt;":">","&#39;":"'"}[m]??m));
 export function verifyThreeDomainLivePublication({
  index,latest,coverage,daily,journal,htmlByCategory,now=Date.now(),requirePositive=true,
- classifyDisplay=null,isArchiveEligible=null,strictBacklog=true
+ classifyDisplay=null,isArchiveEligible=null,isTemplateObservation=null,strictBacklog=true
 }={}){
  if(!Number.isFinite(now)||!index||!latest||!coverage||!daily||!journal||!htmlByCategory)
   fail("MISSING_DOCUMENT");
@@ -110,9 +110,17 @@ export function verifyThreeDomainLivePublication({
   const unrepresented=domain.journal.filter(s=>
    !archivedIds.has(s.id)&&stamp(s.published_at)>=now-RETENTION&&
    stamp(s.published_at)<=now);
+  // Static publisher intentionally rejects generic placeholder/actorless
+  // templates even if an older display heuristic considers them concrete.
+  // Measure backlog using the EXACT same archive admissions, never charge
+  // an intentional rejection against operational source-to-archive parity.
+  const templatesExcluded=typeof isTemplateObservation==="function"?
+    unrepresented.filter(s=>isTemplateObservation(s)).length:0;
   const concreteEligible=typeof classifyDisplay==="function"&&
    typeof isArchiveEligible==="function"
-    ?unrepresented.filter(s=>classifyDisplay(s)===null&&isArchiveEligible(s,now,{allowHistorical:false}))
+    ?unrepresented.filter(s=>classifyDisplay(s)===null&&
+      isArchiveEligible(s,now,{allowHistorical:false})&&
+      !(typeof isTemplateObservation==="function"&&isTemplateObservation(s)))
     :[];
   const overdueConcrete=concreteEligible.filter(s=>{
     const first=firstIngest.get(s.id);
@@ -124,14 +132,29 @@ export function verifyThreeDomainLivePublication({
   // static for over an hourly primary + recovery interval is an actual
   // publication gap, even when all the already-archived rows render.
   agedBacklog+=overdue90.length;
-  if(overdue90.length>0&&strictBacklog)
+  if(overdue90.length>0&&strictBacklog){
+   // Counts-only diagnostic from the same single already-budgeted journal
+   // GET: no extra source/D1 reads, no original URLs, no private raw bytes.
+   console.error(JSON.stringify({
+    schema:"geomacro.canonical-static-backlog-diagnostic.v1",
+    category,canonical_rows:domain.journal.length,
+    public_archive_rows:domain.archive.length,
+    unrepresented_d1_rows:unrepresented.length,
+    intentional_templates_excluded:templatesExcluded,
+    eligible_unrepresented:concreteEligible.length,
+    eligible_older_than_90m:overdue90.length,
+    total_original_event_ids_logged:0,
+    new_d1_requests:0,rights_verified:false,
+   }));
    fail("CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_"+category);
+  }
   const rejectionClasses=typeof classifyDisplay==="function"
    ?Object.fromEntries([...new Set(unrepresented.map(s=>classifyDisplay(s)??"ELIGIBLE"))]
       .map(reason=>[reason,unrepresented.filter(s=>(classifyDisplay(s)??"ELIGIBLE")===reason).length]))
    :null;
   result[category]={
    public_d1_not_in_static:unrepresented.length,
+   intentionally_rejected_archive_templates:templatesExcluded,
    public_d1_not_in_static_display_rejections:rejectionClasses,
    public_d1_not_in_static_concrete:concreteEligible.length,
    concrete_not_static_before_snapshot:overdueConcrete.length,
@@ -225,10 +248,11 @@ async function run(){
  // The exact existing website display gate and static archive contract,
  // not a weaker parallel heuristic, classifies journal-only observations.
  const {intelligenceDisplayRejection}=await import("../../src/lib/intelligence-concrete-publication.ts");
- const {isPermanentArchiveSignal}=await import("./publish-permanent-derived-news-archive.mjs");
+ const {isPermanentArchiveSignal,isTemplateObservation}=await import("./publish-permanent-derived-news-archive.mjs");
  const proof=verifyThreeDomainLivePublication({
   index:docs[0],latest:docs[1],coverage:docs[2],daily:docs[3],journal,
   classifyDisplay:intelligenceDisplayRejection,isArchiveEligible:isPermanentArchiveSignal,
+  isTemplateObservation,
   htmlByCategory:{geopolitics:geo,macro,rare_earth:minerals},
   requirePositive:process.env.GEOMACRO_REQUIRE_THREE_CATEGORY_POSITIVE!=="0",
   strictBacklog:process.env.GEOMACRO_ENFORCE_CANONICAL_BACKLOG!=="0"
