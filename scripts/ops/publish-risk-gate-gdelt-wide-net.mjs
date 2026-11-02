@@ -46,7 +46,20 @@ export async function publishGdeltRiskEventWideNet({
    try{body=await ready.json()}catch{}
    if(body?.ok===true&&
       body.schema==="geomacro.risk-gate-gdelt-continuity.v1"){
-    backendReady=true;break;
+    // Also prove the new exact-receipt route exists BEFORE any B2 GET/PUT.
+    // A protected, read-only invalid-query 400 is an actual route contract,
+    // never a dummy row or artificial success response.
+    let proof=null;
+    try{
+     const probe=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-batch-receipt",{
+      method:"GET",redirect:"error",cache:"no-store",
+      headers:{Authorization:bearer},signal:AbortSignal.timeout(10000)
+     });
+     if(probe.status===400)proof=await probe.json();
+    }catch{/* keep bounded preflight rather than spend B2 */}
+    if(proof?.ok===false&&proof.error==="RG_GDELT_BATCH_ID_INVALID"){
+     backendReady=true;break;
+    }
    }
   }
   if(attempt===14)break;
