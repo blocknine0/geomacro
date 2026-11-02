@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
+import {collectPrivateOsint15m,privateOsintRetryAllowance} from "./private-osint-15m-collector.mjs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 const now=new Date("2026-10-25T12:00:00.000Z");
 const titles=[
@@ -258,4 +258,42 @@ test("verified dated Uganda source observations are not buried by larger India b
  assert.equal(result.summary.overflow_selection_fair_to_attributed_countries,true);
  assert.equal(result.summary.title_based_country_matching_is_not_independent_geolocation,true);
  assert.equal(result.summary.publicly_served,false);
+});
+
+test("transient original 503 recovers once; 403, 404 and 429 never retry",async()=>{
+ const registry=[
+  {id:"temporary",url:"https://temporary.example.org/feed",type:"rss",supported:true,categories:["macro"]},
+  {id:"denied",url:"https://denied.example.org/feed",type:"rss",supported:true,categories:["geopolitics"]},
+  {id:"missing",url:"https://missing.example.org/feed",type:"rss",supported:true,categories:["macro"]},
+  {id:"limited",url:"https://limited.example.org/feed",type:"rss",supported:true,categories:["rare_earth"]},
+ ];
+ const counts=new Map();
+ const result=await collectPrivateOsint15m({
+  now,registry,normalize,resolveCountry:()=>null,
+  fetchImpl:async url=>{
+   const host=new URL(url).hostname;
+   counts.set(host,(counts.get(host)??0)+1);
+   if(host==="temporary.example.org"&&counts.get(host)===1)
+    return new Response("temporarily down",{status:503});
+   if(host==="denied.example.org")return new Response(null,{status:403});
+   if(host==="missing.example.org")return new Response(null,{status:404});
+   if(host==="limited.example.org")return new Response(null,{status:429});
+   return new Response(rss,{status:200});
+  }
+ });
+ assert.equal(counts.get("temporary.example.org"),2);
+ for(const h of ["denied","missing","limited"])
+  assert.equal(counts.get(h+".example.org"),1);
+ assert.equal(result.summary.original_feed_transient_retries,1);
+ assert.equal(result.summary.transient_retry_recovered_http_200,1);
+ assert.equal(result.summary.retry_budget_initial,8);
+ assert.ok(result.items.some(x=>x.category==="macro"));
+ assert.equal(result.summary.denied_and_rate_limited_endpoints_never_retried,true);
+});
+test("one registered feed never gains an unbounded retry allowance at the 512-source ceiling",()=>{
+ assert.equal(privateOsintRetryAllowance(512),0);
+ assert.equal(privateOsintRetryAllowance(511),1);
+ assert.equal(privateOsintRetryAllowance(451),8);
+ assert.equal(privateOsintRetryAllowance(0),0);
+ assert.equal(privateOsintRetryAllowance(513),0);
 });
