@@ -18,12 +18,15 @@ const ROUTES=Object.freeze({
  "panama":"panama_canal","malacca":"strait_of_malacca",
  "taiwan-strait":"taiwan_strait","singapore-strait":"singapore_strait"
 });
-const OFFICIAL_SOURCE_IDS=new Set([
- "federal_reserve","boe_news","boj_releases","bank_of_canada",
- "rbi_official_press_releases","wto_official_news",
- "usgs_official_minerals_news","doe_official_critical_materials_news",
- "ukmto_incidents","ukmto_advisories","suez_navigation","panama_canal"
-]);
+const OFFICIAL_SOURCE_HOSTS=Object.freeze({
+ federal_reserve:"federalreserve.gov",boe_news:"bankofengland.co.uk",
+ boj_releases:"boj.or.jp",bank_of_canada:"bankofcanada.ca",
+ rbi_official_press_releases:"rbi.org.in",wto_official_news:"wto.org",
+ usgs_official_minerals_news:"usgs.gov",
+ doe_official_critical_materials_news:"energy.gov",
+ ukmto_incidents:"ukmto.org",ukmto_advisories:"ukmto.org",
+ suez_navigation:"suezcanal.gov.eg",panama_canal:"pancanal.com"
+});
 const HEX=/^[a-f0-9]{64}$/;
 const MAX_AGE=72*3600000,DAY_LIMIT=100;
 const hdr={"Cache-Control":"private, no-store","Vary":"Authorization","X-Content-Type-Options":"nosniff"};
@@ -79,7 +82,8 @@ export function dedupeObservedPublications(observations){
   if(!rec(o)||typeof o.id!=="string"||!HEX.test(o.id)||
    !HEX.test(String(o.title_hash))||typeof o.source_id!=="string"||
    typeof o.url!=="string"||!o.source_id||seen.has(o.id))continue;
-  const h=host(o.url);
+  const h=o.source_id==="google_news_rss_aggregated"&&typeof o.publisher_host==="string"?
+   o.publisher_host:host(o.url);
   if(!h)continue;
   seen.add(o.id);
   // Same-title multi-publisher publication is one potential wire origin.
@@ -89,7 +93,8 @@ export function dedupeObservedPublications(observations){
   origin.add(originKey);domains.add(h);
   chosen.push({id:o.id,source_id:o.source_id,title_hash:fingerprint,
    publisher_host:h,original_published_at:o.published_at,
-   official_source_observed:OFFICIAL_SOURCE_IDS.has(o.source_id)});
+   official_source_observed:Object.hasOwn(OFFICIAL_SOURCE_HOSTS,o.source_id)&&
+    (h===OFFICIAL_SOURCE_HOSTS[o.source_id]||h.endsWith("."+OFFICIAL_SOURCE_HOSTS[o.source_id]))});
  }
  return {items:chosen,source_count:chosen.length,domains_observed:domains.size,
   inferred_origin_groups:origin.size,independent_origins_verified:0,
