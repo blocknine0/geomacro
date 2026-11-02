@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T17:03:26.271Z",
+  "checked_at": "2026-11-02T17:29:25.456Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -26,6 +26,25 @@
         "United Nations"
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5d70a8a5",
+      "category": "rare_earth",
+      "title": "Geomacro finds Indonesia urged nickel producers to curb output amid falling prices - ANTARA News",
+      "what_changed": "A monitored source feed reports: Indonesia urged nickel producers to curb output amid falling prices - ANTARA News. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:45:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -3725,63 +3744,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T17:42:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-6095f105",
-      "category": "rare_earth",
-      "title": "Geomacro finds Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune",
-      "what_changed": "A monitored source feed reports: Malaysia confirmed its raw rare earth export ban survives the Trump trade deal - Startup Fortune. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:28:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e4f84ddd",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs revised China Jewelry Stocks Amid Gold Price Retreat - Yahoo Finance",
-      "what_changed": "A monitored source feed reports: Goldman Sachs revised China Jewelry Stocks Amid Gold Price Retreat - Yahoo Finance. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:25:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-bb82ec57",
-      "category": "macro",
-      "title": "Geomacro finds Corn Holding lowered on Friday - TradingView",
-      "what_changed": "A monitored source feed reports: Corn Holding lowered on Friday - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T17:19:59.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
