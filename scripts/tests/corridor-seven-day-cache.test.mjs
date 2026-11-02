@@ -52,3 +52,45 @@ test("missing acceptance or wrong Supabase host never touches network",async()=>
  },{now:NOW,fetcher:fake});
  assert.equal(b.enabled,false);assert.equal(called,0);
 });
+
+test("remote readback mismatch does not advance D1, successful retry advances exactly once",async()=>{
+ const {DatabaseSync}=await import("node:sqlite");
+ const db=new DatabaseSync(":memory:");
+ db.exec("CREATE TABLE supplementary_7d_cursors(channel TEXT PRIMARY KEY,last_created_at TEXT,last_research_id TEXT,last_verified_sync_at TEXT);"+
+  "CREATE TABLE corridor_private_derived_research(research_id TEXT PRIMARY KEY,analysis_sha256 TEXT,created_at TEXT,structured_json TEXT)");
+ const input=sample();
+ db.prepare("INSERT INTO corridor_private_derived_research VALUES(?,?,?,?)")
+   .run(input.research_id,input.analysis_sha256,input.created_at,input.structured_json);
+ const D1={prepare(sql){
+  return {bind(...values){return {
+    async first(){return db.prepare(sql).get(...values)??null},
+    async all(){return {results:db.prepare(sql).all(...values)}},
+    async run(){return {meta:{changes:db.prepare(sql).run(...values).changes}}}
+   }},async first(){return db.prepare(sql).get()??null}};
+ }};
+ const env={DB:D1,GEOMACRO_SUPABASE_7D_ACCEPTANCE:"ACCEPTED_NEW_PRIVATE_SUPABASE_7D",
+  GEOMACRO_SUPABASE_7D_URL:"https://isolatedgeomacro.supabase.co",
+  GEOMACRO_SUPABASE_7D_SERVICE_ROLE_KEY:"private-".repeat(12)};
+ let posted=0;
+ const fake=async(url,args)=>{
+  assert.ok(url.startsWith("https://isolatedgeomacro.supabase.co/rest/v1/"));
+  if(args.method==="POST"){
+   posted++;const obj=JSON.parse(args.body)[0];
+   assert.equal(obj.verified_event,false);
+   assert.equal(JSON.stringify(obj).includes("private-original"),false);
+   return new Response(null,{status:204});
+  }
+  return Response.json([{id:ID,analysis_sha256:posted===1?"0".repeat(64):SHA}]);
+ };
+ const first=await syncCorridorSevenDay(env,{now:NOW,fetcher:fake});
+ assert.equal(first.ok,false);
+ assert.equal(first.error,"SUPABASE_7D_HASH_READBACK_MISMATCH");
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM supplementary_7d_cursors").get().n,0);
+ const second=await syncCorridorSevenDay(env,{now:NOW,fetcher:fake});
+ assert.equal(second.ok,true);
+ assert.equal(second.synced,1);
+ assert.equal(db.prepare("SELECT last_research_id FROM supplementary_7d_cursors").get().last_research_id,ID);
+ const third=await syncCorridorSevenDay(env,{now:NOW,fetcher:fake});
+ assert.equal(third.synced,0);
+ assert.equal(posted,2);
+});
