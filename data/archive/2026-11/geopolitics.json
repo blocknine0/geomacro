@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T13:34:21.117Z",
+  "updated_at": "2026-11-02T14:30:17.701Z",
   "signals": [
     {
       "id": "geopolitics-0344059b",
@@ -328,6 +328,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-01ee802f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Archeparchy of Haifa condemned attack on Maronite prayer hall in Nahariya",
+      "what_changed": "A monitored source feed reports: Archeparchy of Haifa condemned attack on Maronite prayer hall in Nahariya. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:09:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-3da957b9",
       "category": "geopolitics",
       "title": "Geomacro finds Russia rejected Oleshky truce extension after using ceasefire to mass troops",
@@ -398,6 +417,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.solomontimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1963b62a",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia said air raid alert apps hit by cyberattacks after truce ends",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia said air raid alert apps hit by cyberattacks after truce ends. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:25:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

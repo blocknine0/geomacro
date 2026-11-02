@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T14:12:21.749Z",
+  "checked_at": "2026-11-02T14:30:17.701Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 204,
+  "item_count": 207,
   "counts": {
-    "geopolitics": 86,
-    "macro": 82,
+    "geopolitics": 88,
+    "macro": 83,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "ccca114cfd96563e25def544dd2cf65af8f854871ffeca00488ed7809360d205",
+  "source_native_ids_sha256": "991f5a330fdc5c710c1f78dd6154c799a0ecbeb7efc4c0a75460ac438480a12b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -885,6 +885,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-01ee802f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Archeparchy of Haifa condemned attack on Maronite prayer hall in Nahariya",
+      "what_changed": "A monitored source feed reports: Archeparchy of Haifa condemned attack on Maronite prayer hall in Nahariya. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:09:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-0140bd88",
       "category": "macro",
       "title": "Geomacro finds Goldman Sachs raised December Brent Oil Price Forecast to $105 - Crude Oil Prices Today | OilPrice.com",
@@ -1145,6 +1164,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.solomontimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1963b62a",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia said air raid alert apps hit by cyberattacks after truce ends",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia said air raid alert apps hit by cyberattacks after truce ends. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T06:25:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -2167,6 +2205,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T16:27:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a8b986d2",
+      "category": "macro",
+      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
+      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:19:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
