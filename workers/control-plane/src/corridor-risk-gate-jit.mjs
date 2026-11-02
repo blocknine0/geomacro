@@ -4,6 +4,8 @@
 import {TRACKED_CORRIDORS,buildStrategicCorridorReadiness,
  chooseRiskGateProcessingTier,RG_CORRIDOR_FIRST_VERSION}
  from "../../../lib/risk-gate-corridor-first.mjs";
+import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
+ from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 const AGE=72*3600000,HEX=/^[a-f0-9]{64}$/u;
 const respond=(value,status=200)=>Response.json(value,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"
@@ -76,17 +78,54 @@ export async function readPrivateRiskGateJit(env,query,now=Date.now()){
  const subject_id=query.get("subject_id");
  if(!env?.DB?.prepare)return respond({ok:false,error:"RG_JIT_D1_UNAVAILABLE",chargeable:false},503);
  if(subject_type==="country"){
-  if(typeof subject_id!=="string"||!/^[A-Z]{3}$/u.test(subject_id))
-   return respond({ok:false,error:"RG_JIT_ISO3_INVALID",chargeable:false},400);
+  if(typeof subject_id!=="string"||!phase2hCountry(subject_id))
+   return respond({ok:false,error:"RG_JIT_CANONICAL_ISO3_INVALID",chargeable:false},400);
   const tier=chooseRiskGateProcessingTier({country_iso3:subject_id});
-  // The corridor source tables carry no independently verified ISO3 subject.
-  // A country claim cannot be manufactured from a global news-index record.
-  return respond({ok:false,schema:"geomacro.risk-gate-jit-preflight.v1",
-   subject:{type:"country",id:subject_id},processing_tier:tier.tier,
-   verification_status:"COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED",
-   evidence_references:[],signed_gro:null,risk_gate_decision:null,
-   customer_credits_debited:0,execution_authorized:false,
-   chargeable:false,new_sales_enabled:false},202);
+  // Just-in-time selective D1 read. The existing canonical 195-country
+  // headline resolver must confirm the requested country; a SQL LIKE match
+  // is NEVER sufficient to attribute any original report to a country.
+  const hints=phase2hCountrySqlHints(subject_id).slice(0,8);
+  if(!hints.length)
+   return respond({ok:false,error:"RG_JIT_COUNTRY_HINTS_UNAVAILABLE",chargeable:false},422);
+  try{
+   const lower="lower(json_extract(raw_json,'$.original.original_title'))";
+   const sql="SELECT record_id,category,original_published_at,raw_sha256,raw_json "+
+    "FROM phase2h_private_raw_news WHERE original_published_at>=? "+
+    "AND ("+hints.map(()=>lower+" LIKE ? ESCAPE '!'").join(" OR ")+") "+
+    "ORDER BY original_published_at DESC LIMIT 36";
+   const rows=(await env.DB.prepare(sql).bind(new Date(now-AGE).toISOString(),
+    ...hints.map(s=>"%"+s+"%")).all())?.results??[];
+   const evidence=[];
+   for(const r of rows){
+    if(!HEX.test(r.record_id)||!HEX.test(r.raw_sha256)||
+     !["geopolitics","macro","rare_earth"].includes(r.category)||
+     typeof r.original_published_at!=="string"||
+     !Number.isFinite(Date.parse(r.original_published_at))||
+     now-Date.parse(r.original_published_at)>AGE)continue;
+    let original;
+    try{original=JSON.parse(r.raw_json).original}catch{continue}
+    if(!original||typeof original.original_title!=="string"||
+       original.original_published_at!==r.original_published_at||
+       phase2hHeadlineCountryCandidate(original.original_title)!==subject_id)
+     continue;
+    evidence.push({record_id:r.record_id,category:r.category,
+     original_published_at:r.original_published_at,raw_sha256:r.raw_sha256,
+     original_article_verified:false,commercial_rights_verified:false});
+    if(evidence.length>=12)break;
+   }
+   return respond({ok:true,schema:"geomacro.risk-gate-jit-preflight.v1",
+    subject:{type:"country",id:subject_id},processing_tier:tier.tier,
+    discovery_evidence_count:evidence.length,evidence_references:evidence,
+    verification_status:evidence.length?
+      "ORIGINAL_HEADLINE_COUNTRY_CANDIDATES_UNVERIFIED":
+      "COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED",
+    independently_verified_events:0,signed_gro:null,risk_gate_decision:null,
+    customer_credits_debited:0,execution_authorized:false,
+    chargeable:false,new_sales_enabled:false},202);
+  }catch{
+   return respond({ok:false,error:"RG_JIT_COUNTRY_D1_UNAVAILABLE",
+    chargeable:false,customer_credits_debited:0},503);
+  }
  }
  if(subject_type!=="corridor"||typeof subject_id!=="string"||
     !/^[a-z][a-z-]{2,70}$/u.test(subject_id))
