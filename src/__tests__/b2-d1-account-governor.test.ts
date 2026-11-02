@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createB2D1AccountGovernor } from "../../scripts/ops/b2-d1-account-governor.mjs";
 import { createB2Client,assertGitHubActionsB2AccountGovernor } from "../../scripts/ops/b2-s3-client.mjs";
+import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const env = {
   CLOUDFLARE_ACCOUNT_ID: "1234567890abcdef1234567890abcdef",
@@ -55,7 +56,7 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     expect(calls).toHaveLength(2);
     expect(calls.every(x=>x.method==="POST" && x.url.includes("/d1/database/"))).toBe(true);
     expect(calls[0].body.sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-    expect(calls[0].body.params).toContain(45);
+    expect(calls[0].body.params).toContain(B2_DAILY_LIMITS.GET);
     expect(calls[1].body.sql).toContain("b2_request_quota_workflow_receipt");
     expect(JSON.stringify(calls)).not.toContain("write-secret");
   });
