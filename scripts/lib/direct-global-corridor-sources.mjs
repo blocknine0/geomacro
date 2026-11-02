@@ -561,7 +561,8 @@ export function suppliedGlobalCorridorDirectory(){
       !["global","apac","mena","europe","latam","africa","north-america",
         "maritime-logistics","critical-minerals","digital-assets"].includes(link.section)||
       typeof link.supplied_url!=="string"||typeof link.linked_target_url!=="string"||
-      !/^https?:\\/\\//u.test(link.supplied_url)||!/^https?:\\/\\//u.test(link.linked_target_url)||
+      !(link.supplied_url.startsWith("http://")||link.supplied_url.startsWith("https://"))||
+      !(link.linked_target_url.startsWith("http://")||link.linked_target_url.startsWith("https://"))||
       typeof link.label!=="string"||!link.label)
     throw Error("DIRECT_CORRIDOR_SUPPLIED_LINK_INVALID");
    if(link.supplied_url.startsWith("https://www.google.com/search?q=")){
