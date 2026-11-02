@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T20:11:59.531Z",
+  "updated_at": "2026-11-02T20:18:05.051Z",
   "signals": [
     {
       "id": "macro-a94e150c",
@@ -33,6 +33,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T18:20:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-9e688d70",
+      "category": "macro",
+      "title": "Geomacro finds Iran said Contacts Over Ending War Continue After Talks Finish With No Breakthrough",
+      "what_changed": "A monitored source feed reports: Iran said Contacts Over Ending War Continue After Talks Finish With No Breakthrough. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:03:34.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
