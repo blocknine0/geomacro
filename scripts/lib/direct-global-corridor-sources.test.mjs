@@ -1,62 +1,58 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {DIRECT_GLOBAL_CORRIDOR_SOURCES,assertDirectGlobalCorridorRegistry,
- directGlobalCorridorNewsFeeds,directGlobalCorridorSourceCensus}
- from "./direct-global-corridor-sources.mjs";
-import {registeredReusableNewsSources,collectRegisteredReusableNews}
- from "./registered-reusable-news-source-collector.mjs";
+  directGlobalCorridorNewsFeeds,directGlobalCorridorRouteSources,
+  directGlobalCorridorSourceCensus,assertDirectCorridorWebsiteSeparation,
+  suppliedGlobalCorridorDirectory} from "./direct-global-corridor-sources.mjs";
+import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 
-test("every supplied global, six-region, maritime, mineral and crypto source has a direct mapping",()=>{
+test("all 38 Markdown links including duplicate Panama/UKMTO references are preserved",()=>{
  assert.equal(assertDirectGlobalCorridorRegistry(),true);
- const ids=new Set(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>s.id));
- for(const id of ["gdelt_v2_15m","gdelt_cameo_codebook","reliefweb_v2",
-  "world_bank_wdi","imf_data","wto_tariffs","adb_open_data","recaap_isc",
-  "boj_releases","rbi_releases","asean_customs_missing","ukmto_incidents",
-  "ukmto_advisories","suez_navigation","arab_monetary_fund","ecb_data",
-  "eurostat_data","boe_news","snb_data","panama_canal","eclac_cepal",
-  "bcb_brazil","afdb_documents","afcfta","sarb","federal_reserve",
-  "fred_api","bank_of_canada","freightos_fbx","nyfed_gscpi","imb_piracy",
-  "usgs_mcs","iea_minerals","mining_com","cryptocompare_news",
-  "coindesk_rss","cointelegraph_rss"])assert.ok(ids.has(id),id);
- assert.equal(ids.size,37);
- const removed=DIRECT_GLOBAL_CORRIDOR_SOURCES.find(s=>s.id==="asean_customs_missing");
- assert.equal(removed.url,null);
- assert.equal(removed.state,"REJECTED_REMOVED_LINK");
- assert.ok(DIRECT_GLOBAL_CORRIDOR_SOURCES.every(s=>s.url===null||s.url.startsWith("https://")));
+ const input=suppliedGlobalCorridorDirectory();
+ assert.equal(input.references.length,38);
+ assert.equal(new Set(input.references.map(x=>x.linked_target_url)).size,36);
+ assert.equal(new Set(input.references.map(x=>x.source_id)).size,36);
+ assert.equal(input.unresolved_removed_links.length,1);
+ assert.equal(input.unresolved_removed_links[0].source_id,"asean_customs_missing");
+ assert.deepEqual(input.references.map((x,i)=>x.reference_index),Array.from({length:38},(_,i)=>i+1));
+ assert.equal(input.references.filter(x=>x.source_id==="panama_canal").length,2);
+ assert.equal(input.references.filter(x=>x.source_id==="ukmto_incidents").length,2);
+ assert.ok(input.references.find(x=>x.source_id==="cryptocompare_news")
+    .linked_target_url.startsWith("https://min-api.cryptocompare.com/documentation?"));
+ assert.ok(input.references.some(x=>x.supplied_url.startsWith("http://data.gdeltproject.org/")));
+ assert.ok(input.references.some(x=>x.supplied_url.startsWith("https://www.google.com/search?q=")));
 });
-test("direct feed activation never promotes portals or credential-restricted datasets",()=>{
- const active=directGlobalCorridorNewsFeeds();
- assert.deepEqual(active.map(s=>s.id).sort(),[
-   "direct_boe_news","direct_coindesk_rss","direct_cointelegraph_rss"]);
- assert.ok(active.every(s=>s.categories.length>0&&s.commercial_eligible===false));
- const registry=registeredReusableNewsSources();
- for(const s of active)assert.ok(registry.some(x=>x.id===s.id&&x.url===s.url&&x.supported));
- for(const id of ["mining_com","fred_api","freightos_fbx","reliefweb_v2",
-    "gdelt_cameo_codebook","iea_minerals"]){
-   const source=DIRECT_GLOBAL_CORRIDOR_SOURCES.find(x=>x.id===id);
-   assert.ok(!active.some(x=>x.url===source.url));
+test("all 37 registries remain in separate corridor lane, not D1 website news",()=>{
+ const sources=directGlobalCorridorRouteSources();
+ assert.equal(assertDirectCorridorWebsiteSeparation(),true);
+ assert.equal(sources.length,37);
+ assert.deepEqual(directGlobalCorridorNewsFeeds(),[]);
+ assert.equal(new Set(sources.map(x=>x.id)).size,37);
+ assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),38);
+ assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
+   x.website_intelligence_enabled===false&&x.commercial_eligible===false));
+ const existing=registeredReusableNewsSources();
+ for(const id of ["boe_news","coindesk_rss","cointelegraph_rss"]){
+   const src=DIRECT_GLOBAL_CORRIDOR_SOURCES.find(x=>x.id===id);
+   assert.ok(src);
+   assert.ok(!existing.some(x=>x.id==="direct_"+id));
  }
  const receipt=directGlobalCorridorSourceCensus();
  assert.equal(receipt.registered,37);
- assert.equal(receipt.active_direct_native_feeds,3);
+ assert.equal(receipt.source_link_occurrences,38);
+ assert.equal(receipt.linked_unique_sources,36);
+ assert.equal(receipt.website_intelligence_sourced_feeds,0);
  assert.equal(receipt.production_readbacks_proven,false);
  assert.equal(receipt.paid_publication_authorized,false);
 });
-test("direct source native publication date flows into the existing factual D1 batch contract",async()=>{
- const now=new Date("2026-11-02T00:10:00.000Z");
- const registry=directGlobalCorridorNewsFeeds().filter(x=>x.id==="direct_boe_news")
-   .map(x=>({...x,type:"rss",supported:true}));
- const rss='<rss><channel><item><title>Bank of England interest rates and inflation policy update</title>'+
-   '<pubDate>Mon, 02 Nov 2026 00:00:00 GMT</pubDate></item></channel></rss>';
- const out=await collectRegisteredReusableNews({now,registry,
-   fetchImpl:async()=>new Response(rss,{status:200}),
-   normalize:input=>({schema:"geomacro.reusable-news-json.v1",category:input.category,
-     source:{original_published_at:input.published_at},
-     usage_rights:{commercial_reuse_authorized:false},
-     delivery:{raw_article_included:false}})});
- assert.equal(out.items.length,1);
- assert.equal(out.checks[0].category,"macro");
- assert.equal(out.items[0].source.original_published_at,"2026-11-02T00:00:00.000Z");
- assert.equal(out.summary.paid_publication_authorized,false);
- assert.ok(!JSON.stringify(out).includes("Bank of England interest rates and inflation policy update"));
+test("source directory does not infer direct event extraction from documentation",()=>{
+ const map=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(x=>[x.id,x]));
+ for(const id of ["gdelt_cameo_codebook","reliefweb_v2","world_bank_wdi",
+   "imf_data","wto_tariffs","fred_api","freightos_fbx","iea_minerals"]){
+   assert.ok(map.has(id));
+ }
+ assert.equal(map.get("asean_customs_missing").url,null);
+ assert.ok(DIRECT_GLOBAL_CORRIDOR_SOURCES.every(x=>
+   x.url===null||x.url.startsWith("https://")));
+ assert.ok(directGlobalCorridorRouteSources().every(x=>x.risk_gate_verified===false));
 });
