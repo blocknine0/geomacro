@@ -14,6 +14,8 @@ on:
     paths:
       - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/country-news-mentions-195.mjs"
       - "scripts/lib/country-news-mentions-195.test.mjs"
       - "scripts/lib/observed-country-category-coverage.mjs"
@@ -59,10 +61,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/registered-reusable-news-source-collector.mjs
+          node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/country-news-mentions-195.mjs
           node --check workers/control-plane/src/reusable-source-news.mjs
           node --test scripts/tests/news-product-factory.test.mjs
           node --test scripts/lib/registered-reusable-news-source-collector.test.mjs
+          node --test scripts/lib/direct-global-corridor-sources.test.mjs
           node --test scripts/lib/registered-news-15m-cadence.test.mjs
           node --test scripts/lib/country-news-mentions-195.test.mjs
           node --test scripts/lib/observed-country-category-coverage.test.mjs
