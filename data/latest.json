@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T09:42:36.072Z",
+  "checked_at": "2026-11-02T09:45:28.745Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -24,6 +24,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.vanguardngr.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d3a8e5f2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Melania Trump said 800 People Evacuated from Oleshky as Russia Uses Truce to Regroup",
+      "what_changed": "A monitored source feed reports: Melania Trump said 800 People Evacuated from Oleshky as Russia Uses Truce to Regroup. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:35:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -847,6 +866,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-9a2b3d7b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Nigeria said troops kill 48 Islamist fighters after attacks in Borno, Yobe bases",
+      "what_changed": "A monitored source feed reports: Nigeria said troops kill 48 Islamist fighters after attacks in Borno, Yobe bases. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T23:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-54df3d64",
       "category": "geopolitics",
       "title": "Geomacro finds Justice Department urged sanctions for database analysis critical of its noncitizen voting claims",
@@ -1056,7 +1094,7 @@
       "severity": null
     },
     {
-      "id": "geopolitics-89cf1d03",
+      "id": "geopolitics-610c6116",
       "category": "geopolitics",
       "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English",
       "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English. This report has not been independently verified.",
@@ -1160,6 +1198,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T16:04:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-dd8a713c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Jaishankar held key talks as regional crises test Indian diplomacy - India Today",
+      "what_changed": "A monitored source feed reports: Jaishankar held key talks as regional crises test Indian diplomacy - India Today. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T15:40:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5c4e047a",
+      "category": "geopolitics",
+      "title": "Geomacro finds Dan S. Sullivan said he will accept election results - CNN",
+      "what_changed": "A monitored source feed reports: Dan S. Sullivan said he will accept election results - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T15:40:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
