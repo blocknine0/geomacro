@@ -46,6 +46,7 @@ on:
       - "workers/control-plane/src/corridor-official-reference.mjs"
       - "workers/control-plane/migrations/0097_corridor_official_reference_context.sql"
       - "workers/control-plane/migrations/0096_corridor_native_news_candidates.sql"
+      - "workers/control-plane/migrations/0100_corridor_exact_original_dedup.sql"
   pull_request:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
@@ -86,6 +87,7 @@ on:
       - "workers/control-plane/src/corridor-official-reference.mjs"
       - "workers/control-plane/migrations/0097_corridor_official_reference_context.sql"
       - "workers/control-plane/migrations/0096_corridor_native_news_candidates.sql"
+      - "workers/control-plane/migrations/0100_corridor_exact_original_dedup.sql"
 permissions:
   contents: read
 concurrency:

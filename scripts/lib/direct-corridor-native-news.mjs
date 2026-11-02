@@ -104,6 +104,7 @@ async function loadOnce(spec,fetchImpl){
  if([401,403,429].includes(response.status))return {state:"DENIED_NO_RETRY",body:null};
  if([500,502,503,504].includes(response.status))
    return {state:"FEED_TRANSIENT_HTTP_UNAVAILABLE",body:null};
+ if(response.status===404)return {state:"FEED_NOT_FOUND",body:null};
  if(response.status!==200||(response.url&&response.url!==spec.url))
    return {state:"FEED_HTTP_UNAVAILABLE",body:null};
  if(Number(response.headers?.get?.("content-length")??0)>MAX_BYTES||!response.body)
@@ -126,13 +127,24 @@ async function loadOnce(spec,fetchImpl){
 // One bounded retry for transient connectivity or upstream 5xx only.
 // Never bypass 401/403/429, publisher-host checks or access controls.
 async function load(spec,fetchImpl){
- let first=await loadOnce(spec,fetchImpl);
- if(!["FEED_NETWORK_UNAVAILABLE","FEED_TRANSIENT_HTTP_UNAVAILABLE"].includes(first.state))
-  return first;
- await new Promise(resolve=>setTimeout(resolve,350));
- const second=await loadOnce(spec,fetchImpl);
- return second.state==="FEED_TRANSIENT_HTTP_UNAVAILABLE"?
-  {state:"FEED_HTTP_UNAVAILABLE",body:null}:second;
+ let result=await loadOnce(spec,fetchImpl);
+ if(["FEED_NETWORK_UNAVAILABLE","FEED_TRANSIENT_HTTP_UNAVAILABLE"].includes(result.state)){
+   await new Promise(resolve=>setTimeout(resolve,350));
+   result=await loadOnce(spec,fetchImpl);
+ }
+ // The Federal Reserve's broad press feed has returned 404 in official mesh
+ // production probes. The Fed's own monetary RSS is a separate first-party
+ // endpoint, not a mirror and not independent event corroboration.
+ // Never use alternate feeds on 401/403/429 or invalid article provenance.
+ if(spec.id==="federal_reserve"&&
+    spec.url==="https://www.federalreserve.gov/feeds/press_all.xml"&&
+    ["FEED_NOT_FOUND","FEED_TRANSIENT_HTTP_UNAVAILABLE","FEED_NETWORK_UNAVAILABLE"].includes(result.state)){
+   const alternate={...spec,url:"https://www.federalreserve.gov/feeds/press_monetary.xml"};
+   const fallback=await loadOnce(alternate,fetchImpl);
+   if(fallback.state==="FEED_OBSERVED")return fallback;
+ }
+ return result.state==="FEED_TRANSIENT_HTTP_UNAVAILABLE"?
+   {state:"FEED_HTTP_UNAVAILABLE",body:null}:result;
 }
 export async function collectDirectCorridorNativeNews({sources,fetchImpl=fetch,
  now=new Date(),concurrency=3}={}){

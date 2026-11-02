@@ -142,3 +142,33 @@ test("different original publishers or URLs are not merged just for a similar he
  assert.equal(new Set(out.news_candidates.map(x=>x.article_url)).size,2);
  assert.ok(out.news_candidates.every(x=>x.original_article_verified===false));
 });
+
+test("Fed press-all 404 fails over only to its own first-party monetary RSS",async()=>{
+ const spec={...sources[0],id:"federal_reserve",
+  url:"https://www.federalreserve.gov/feeds/press_all.xml"};
+ const observations=[];
+ const article="https://www.federalreserve.gov/newsevents/pressreleases/monetary20261102a.htm";
+ const out=await collectDirectCorridorNativeNews({sources:[spec],now,
+  fetchImpl:async u=>{
+   observations.push(u);
+   if(u===spec.url)return new Response("",{status:404});
+   if(u==="https://www.federalreserve.gov/feeds/press_monetary.xml")
+    return new Response(rss([item("Federal Reserve monetary policy action",article)]));
+   return new Response("",{status:500});
+  }});
+ assert.deepEqual(observations,[spec.url,
+  "https://www.federalreserve.gov/feeds/press_monetary.xml"]);
+ assert.equal(out.candidate_count,1);
+ assert.equal(out.news_candidates[0].article_url,article);
+ assert.equal(out.news_candidates[0].original_article_verified,false);
+});
+test("publisher 403 never triggers Fed fallback or an invented source",async()=>{
+ const spec={...sources[0],id:"federal_reserve",
+  url:"https://www.federalreserve.gov/feeds/press_all.xml"};
+ const probes=[];
+ const out=await collectDirectCorridorNativeNews({sources:[spec],now,
+  fetchImpl:async url=>{probes.push(url);return new Response("",{status:403});}});
+ assert.equal(out.candidate_count,0);
+ assert.deepEqual(probes,[spec.url]);
+ assert.equal(out.source_checks[0].state,"DENIED_NO_RETRY");
+});
