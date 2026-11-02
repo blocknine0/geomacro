@@ -8,6 +8,7 @@ import {handlePrivateOsint15m} from './private-osint-15m.mjs';
 import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {readPrivateTelegramFreeLiveJson} from './telegram-free-live-research.mjs';
 import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-source-news.mjs';
+import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredCorridorNativeNews} from './corridor-native-news.mjs';
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
@@ -1287,6 +1288,13 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Six-hour fallback TTL for corridor-only private original-link metadata.
+    // Ingest also prunes every hour; no extra cron, public route or quota loop.
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgeExpiredCorridorNativeNews(env).then(r=>{
+        if(!r.ok)console.error("CORRIDOR_NATIVE_D1_TTL_DEFERRED");
+      }).catch(()=>console.error("CORRIDOR_NATIVE_D1_TTL_DEFERRED")));
+
     if(utc.getUTCHours()===0&&utc.getUTCMinutes()===13&&env?.DB?.prepare){
       ctx.waitUntil(env.DB.prepare(
         "DELETE FROM predge_pilot_signed_news_context WHERE singleton=1 AND expires_at<=?"
@@ -1491,6 +1499,15 @@ export default {
         return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));
       if(request.method==='GET'&&url.pathname==='/v1/internal/news-product-factory')
         return readNewsProductFactory(env,url.searchParams);
+      // Separate, authenticated native-link corridor ledger; intentionally no
+      // public/website, PREDGE, private OSINT, x402 or signed-risk exposure.
+      if(url.pathname==="/v1/internal/corridor-native-news"){
+        if(request.method==="PUT"&&!url.search)
+          return putPrivateCorridorNativeNews(env,await readJson(request,112*1024));
+        if(request.method==="GET")
+          return readPrivateCorridorNativeNews(env,url.searchParams);
+        return json({ok:false,error:"CORRIDOR_NATIVE_METHOD_INVALID",chargeable:false},405);
+      }
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
       if(request.method==="PUT"&&url.pathname==="/v1/internal/telegram-export-derived-json"&&!url.search)
