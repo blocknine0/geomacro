@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T15:22:24.651Z",
+  "checked_at": "2026-11-02T15:25:18.513Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -11,7 +11,7 @@
   "supabase_dependency": false,
   "signals": [
     {
-      "id": "macro-f9c85a69",
+      "id": "macro-ec3ce4a5",
       "category": "macro",
       "title": "Geomacro finds OCBC cut Gold Price Forecasts To US$4,250 On Fed Tightening Fears - BusinessToday Malaysia",
       "what_changed": "A monitored source feed reports: OCBC cut Gold Price Forecasts To US$4,250 On Fed Tightening Fears - BusinessToday Malaysia. This report has not been independently verified.",
@@ -2908,6 +2908,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T16:34:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4ffe8291",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said Iran's military 'gone,' vows to finish campaign - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said Iran's military 'gone,' vows to finish campaign - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T16:02:19.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
