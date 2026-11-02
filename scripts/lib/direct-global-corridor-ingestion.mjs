@@ -11,6 +11,7 @@ import {observeIndependentMaritimeOfficialContext}
 import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
 import {collectCorridorOfficialReferences} from "./corridor-official-reference-adapters.mjs";
 import {collectCredentialCorridorContext} from "./corridor-credential-context.mjs";
+import {riskGateSuppliedSourceCensus} from "./risk-gate-supplied-source-rules.mjs";
 
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
@@ -143,6 +144,11 @@ export async function collectDirectCorridorSourceIntake({
     "DIRECT_SOURCE_ADAPTER_UNVERIFIED";
    add(spec,state);
  }
+ const riskGateSources=riskGateSuppliedSourceCensus();
+ if(riskGateSources.registered_sources!==corridor.length||
+    riskGateSources.source_link_occurrences!==39||
+    riskGateSources.sources.some(x=>!byId.has(x.source_id)))
+   throw Error("CORRIDOR_RISK_GATE_SOURCE_MAPPING_DRIFT");
  const known=new Set(states.map(x=>x.id));
  if(states.length!==corridor.length||known.size!==corridor.length||
     states.reduce((n,s)=>n+s.reference_count,0)!==39)
@@ -152,6 +158,8 @@ export async function collectDirectCorridorSourceIntake({
    checked_at:now.toISOString(),channel:"CORRIDOR_ONLY",
    source_count:corridor.length,source_link_occurrences:39,
    unique_linked_sources:37,missing_link_placeholders:0,
+   risk_gate_source_rules:riskGateSources,
+   risk_gate_event_decisions_applied:0,
    source_checks:states,
    candidate_corridors:[...new Set(states.flatMap(s=>s.candidate_corridor_ids))].sort(),
    total_index_metadata_candidates:states.reduce((n,s)=>n+s.metadata_candidates,0),
