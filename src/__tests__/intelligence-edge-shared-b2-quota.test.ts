@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 import worker from "../../workers/intelligence-edge/src/index.mjs";
 import { makeQuotaProtectedIntelligenceConfig } from "../../scripts/ops/configure-intelligence-edge-d1-quota.mjs";
 
@@ -29,7 +30,7 @@ function d1({exhausted=false,failReceipt=false}={}){
             async first() {
               operations.push({sql,args});
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(args).toContain(45);
+              expect(args).toContain(B2_DAILY_LIMITS.GET);
               return exhausted?null:{
                 total_requests:1,get_requests:1,put_requests:0,
                 head_requests:0,native_auth_requests:0,
@@ -82,7 +83,7 @@ describe("#1827 account-wide Intelligence edge Backblaze GET guard",()=>{
     expect(b2).not.toHaveBeenCalled();
   });
 
-  it("global 45-GET exhausted blocks both parallel proof/object B2 requests",async()=>{
+  it("global B2 GET quota exhausted blocks both parallel proof/object B2 requests",async()=>{
     coldCache();
     const b2=vi.fn(async()=>{throw Error("UNEXPECTED_B2_NETWORK");});
     vi.stubGlobal("fetch",b2);

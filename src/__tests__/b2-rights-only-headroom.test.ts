@@ -38,9 +38,9 @@ describe("single rights snapshot read-only D1 preflight", () => {
     expect(g.reserve).not.toHaveBeenCalled();
   });
   it.each([
-    ["total limit", { GET:42, PUT:50, HEAD:4, NATIVE_AUTH:3 }],
-    ["GET limit", { GET:44, PUT:20, HEAD:2, NATIVE_AUTH:2 }],
-    ["PUT limit", { GET:10, PUT:54, HEAD:2, NATIVE_AUTH:2 }],
+    ["total limit", { GET:335, PUT:360, HEAD:15, NATIVE_AUTH:8 }],
+    ["GET limit", { GET:339, PUT:20, HEAD:2, NATIVE_AUTH:2 }],
+    ["PUT limit", { GET:10, PUT:379, HEAD:2, NATIVE_AUTH:2 }],
   ] as const)("holds before B2 write when %s has no 2+2 headroom",async (_name, used) => {
     const g = governor(ledger(used));
     const x = await checkB2RightsOnlyHeadroom({governor:g,now});
