@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T06:10:31.919Z",
+  "checked_at": "2026-11-02T06:32:15.790Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -2285,44 +2285,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e273c847",
-      "category": "macro",
-      "title": "Geomacro finds OSI Systems forecast fiscal 2027 non-GAAP EPS of $11.28 to $11.64 while reaffirming revenue of $1.875B to $1.930B",
-      "what_changed": "A monitored source feed reports: OSI Systems forecast fiscal 2027 non-GAAP EPS of $11.28 to $11.64 while reaffirming revenue of $1.875B to $1.930B. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:29:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-cd44e6ad",
-      "category": "macro",
-      "title": "Geomacro finds Beira Corridor Forum called for stronger regional partnerships to secure Southern Africa’s energy future",
-      "what_changed": "A monitored source feed reports: Beira Corridor Forum called for stronger regional partnerships to secure Southern Africa’s energy future. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:20:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: clubofmozambique.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
