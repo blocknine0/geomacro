@@ -52,8 +52,14 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
     "batch_at,action_geo_fips,corridor_hints_json,source_url_sha256,archive_sha256,"+
     "first_seen_at,last_seen_at,b2_archive_key,b2_manifest_sha256) "+
     "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) "+
-    "ON CONFLICT(event_ref_id) DO UPDATE SET last_seen_at=excluded.last_seen_at "+
-    "WHERE risk_gate_gdelt_event_index.archive_sha256=excluded.archive_sha256")
+    "ON CONFLICT(event_ref_id) DO UPDATE SET last_seen_at=excluded.last_seen_at,"+
+    "b2_archive_key=excluded.b2_archive_key,"+
+    "b2_manifest_sha256=excluded.b2_manifest_sha256 "+
+    "WHERE risk_gate_gdelt_event_index.archive_sha256=excluded.archive_sha256 "+
+    "AND (risk_gate_gdelt_event_index.b2_archive_key IS NULL "+
+    "OR risk_gate_gdelt_event_index.b2_archive_key=excluded.b2_archive_key) "+
+    "AND (risk_gate_gdelt_event_index.b2_manifest_sha256 IS NULL "+
+    "OR risk_gate_gdelt_event_index.b2_manifest_sha256=excluded.b2_manifest_sha256)")
     .bind(x.id,x.gdelt_event_id,x.cameo_code,x.cameo_root,x.gdelt_index_at,
       x.gdelt_batch_at,x.action_geo_fips,JSON.stringify(x.corridor_hints),
       x.source_url_sha256,x.archive_sha256,checked_at,checked_at,
