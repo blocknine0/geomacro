@@ -78,3 +78,27 @@ Tests use SYNTHETIC Bab-el-Mandeb metadata for D1-first fixture, do not claim
 to observe a real shipping incident. The gateway remains no-funds and
 chargeable=false until actual paid entitlement, collected payment, refund
 reconciliation, and source permissions are independently accepted.
+
+## Verified operational corrections (2026-11-02)
+
+- Supabase project geomacro-risk-corridor-7d has table migrated, and
+  public.rls_auto_enable() EXECUTE revoked from PUBLIC/anon/authenticated,
+  granted only to service_role (readback verified; related security warnings gone).
+- Worker binding and D1 name are **geomacro-control-plane**, binding DB,
+  using workers/control-plane/wrangler.example.jsonc and production workflows.
+  Do not execute commands against placeholder geomacro-production-d1.
+- The tiered POST is NOT a daily cron trigger. It requires request_id,
+  requested_at, subject {type:'corridor',id:'bab-el-mandeb'}, product_tier,
+  policy_mode; {corridor_id:'bab-el-mandeb'} alone is invalid.
+- Inspect the snapshot table using corridor_id, day_utc, core_tier,
+  signal_tier, policy_tier, audit_proof, generated_at; there are no id,
+  hmac_proof, or created_at columns in this Supabase schema.
+- The ten-day cleanup does NOT mean delete only >10-day-old rows.
+  The run occurs once per ten days and deletes rows strictly older than
+  three days at that time. No manual destructive DELETE acceptance test
+  should be performed against live records.
+- Secrets must target the exact Worker (geomacro-control-plane) with
+  the production Wrangler config/working directory. A bare wrangler
+  secret put from repository root may target the wrong Worker.
+- The PR remains draft until Cloudflare Worker secrets, D1 migrations,
+  deployed revision and actual live D1-to-Supabase receipts are verified.
