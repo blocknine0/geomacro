@@ -46,8 +46,14 @@ function item(x,now){
  if(!x||typeof x!=="object"||Array.isArray(x)||
     Object.keys(x).length!==KEYS.length||KEYS.some(k=>!Object.hasOwn(x,k)))invalid();
  const p=PUBLISHERS[x.source_id];
+ // The only alternate source in this contract is the Federal Reserve's
+ // first-party monetary RSS. Neither a mirror nor a forged fallback endpoint
+ // can be substituted. The exact feed actually observed must be supplied.
+ const fedMonetaryFallback=x.source_id==="federal_reserve"&&
+   x.original_publisher_url==="https://www.federalreserve.gov/feeds/press_monetary.xml";
  if(!p||!HEX.test(x.id)||!HEX.test(x.source_title_sha256)||
-    x.original_publisher_url!==p[0]||!pinned(x.original_publisher_url,p[0])||
+    !(x.original_publisher_url===p[0]||fedMonetaryFallback)||
+    !pinned(x.original_publisher_url,x.original_publisher_url)||
     !pinned(x.article_url,p[0],true)||!date(x.published_at)||
     Date.parse(x.published_at)>now||now-Date.parse(x.published_at)>AGE||
     !Array.isArray(x.categories)||x.categories.length!==p[1].length||
