@@ -52,11 +52,28 @@ function signedParent(){
     full_b2_readback_verified:true,exact_gzip_restore_verified:true,payload_json};
 }
 function child(parent){
+  // Use the exact deployed risk-indices v1.1 verified-category projection.
+  // A minimal synthetic JSON with merely an upstream parent hash must NEVER
+  // pass the verified Risk Gate / signed GRI lineage contract.
   const payload={schema:"geomacro.public-risk-indices-live.v1",
+    source_project:"ldpwajisioljyjtojvfx",
     generated_at:parent.generated_at,
     parent_global_risk_b2_sha256:parent.b2_sha256,
     parent_global_risk_payload_sha256:parent.payload_sha256,
-    data:{parentMethodologyVersion:"gri-v1.2.0",snapshotAsOf:sourceAt}};
+    data:{contractVersion:"risk-indices-v1.1.0",
+      verificationStatus:"verified",proofScope:"verified-category-projection",
+      parentMethodologyVersion:"gri-v1.2.0",snapshotAsOf:sourceAt,
+      proofHash:h,snapshotId:"genuine-current-parent-001",
+      indices:[
+        ["geopolitics","geopolitics"],
+        ["macro","macro"],
+        ["critical_minerals","rare_earth"],
+      ].map(([key,sourceCategory])=>({
+        key,sourceCategory,status:"available",readingStatus:"current",
+        readingAsOf:sourceAt,readingSnapshotId:"genuine-current-parent-001",
+        score:55,rawScore:55,
+        series:{"7D":{buckets:[{},{}]},"30D":{buckets:[{},{}]}}
+      }))}};
   const payload_json=JSON.stringify(payload);
   return {ok:true,product:"risk-indices",schema:payload.schema,
     proof_schema:"geomacro.public-risk-indices-live-proof.v1",
