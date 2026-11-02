@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T18:13:03.021Z",
+  "checked_at": "2026-11-02T18:49:42.478Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,82 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-e587f36f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Charities condemned proposal to make some refugees wait up to 30 years for settlement, UK politics live",
+      "what_changed": "A monitored source feed reports: Charities condemned proposal to make some refugees wait up to 30 years for settlement, UK politics live. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:38:22.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.theguardian.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-91ff386c",
+      "category": "geopolitics",
+      "title": "Geomacro finds European Commission said refrigerator cyberattack aimed to undermine EU food security",
+      "what_changed": "A monitored source feed reports: European Commission said refrigerator cyberattack aimed to undermine EU food security. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3d509632",
+      "category": "macro",
+      "title": "Geomacro finds Broad Industry Coalition urged Permanent Suspension of Costly U.S. Port Fees on China-Linked Ships",
+      "what_changed": "A monitored source feed reports: Broad Industry Coalition urged Permanent Suspension of Costly U.S. Port Fees on China-Linked Ships. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:20:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-77898378",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said rare ceasefire was cover for Russian regrouping - News24",
+      "what_changed": "A monitored source feed reports: Ukraine said rare ceasefire was cover for Russian regrouping - News24. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:19:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-df4a618e",
       "category": "macro",
@@ -220,6 +296,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-396577c2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Nigeria's Bishops appealed for free and peaceful elections",
+      "what_changed": "A monitored source feed reports: Nigeria's Bishops appealed for free and peaceful elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:27:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-81e8bee0",
       "category": "macro",
       "title": "Geomacro finds Goldman Hikes Oil forecast on ‘Substantial’ Risks to Supply",
@@ -324,6 +419,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T12:27:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c4b4b037",
+      "category": "geopolitics",
+      "title": "Geomacro finds Damascus University launched a New Digital Platform - UNHCR - The UN Refugee Agency",
+      "what_changed": "A monitored source feed reports: Damascus University launched a New Digital Platform - UNHCR - The UN Refugee Agency. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:24:56.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -3782,44 +3896,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T18:52:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2206c7e8",
-      "category": "macro",
-      "title": "Geomacro finds Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Former Richmond Fed President Lacker said he is surprised at the Fed’s approach amid persistent inflation - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T18:31:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-081b678a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said 3 Tankers Strike Mines and Catch Fire in Strait of Hormuz, and Other Mideast News - Military.com",
-      "what_changed": "A monitored source feed reports: Iran said 3 Tankers Strike Mines and Catch Fire in Strait of Hormuz, and Other Mideast News - Military.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T18:27:46.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

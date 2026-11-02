@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T17:31:27.529Z",
+  "updated_at": "2026-11-02T18:49:42.478Z",
   "signals": [
+    {
+      "id": "macro-3d509632",
+      "category": "macro",
+      "title": "Geomacro finds Broad Industry Coalition urged Permanent Suspension of Costly U.S. Port Fees on China-Linked Ships",
+      "what_changed": "A monitored source feed reports: Broad Industry Coalition urged Permanent Suspension of Costly U.S. Port Fees on China-Linked Ships. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T18:20:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-df4a618e",
       "category": "macro",
