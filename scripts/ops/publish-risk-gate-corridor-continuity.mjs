@@ -72,7 +72,9 @@ export async function publishContinuousStrategicCorridors({
  if(country.status!==202)throw Error("RG_LONGTAIL_JIT_FAIL_CLOSED_INVALID");
  const unverified=await country.json();
  if(unverified.processing_tier!=="JIT_REQUEST_ONLY"||
-  unverified.verification_status!=="COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED"||
+  !["COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED",
+    "ORIGINAL_HEADLINE_COUNTRY_CANDIDATES_UNVERIFIED"].includes(unverified.verification_status)||
+  (unverified.discovery_evidence_count??0)<0||
   unverified.customer_credits_debited!==0||unverified.chargeable!==false||
   unverified.signed_gro!==null||unverified.risk_gate_decision!==null)
   throw Error("RG_LONGTAIL_JIT_NO_CHARGE_INVALID");
