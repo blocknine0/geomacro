@@ -11,27 +11,27 @@ import {putPrivateCorridorResearch,getPrivateCorridorResearch,
 import {publishPrivateCorridorResearch}
  from "../ops/publish-private-corridor-research.mjs";
 const TIME="2026-11-02T02:06:00.000Z",now=Date.parse(TIME);
-function observation(){
+function observation(at=TIME){
  const source_id="ecb_data",metric_id="ecb_usd_eur_spot",
  observation_period="2026-10-30",numeric_value=1.15321;
  return {id:createHash("sha256").update(
   [source_id,metric_id,observation_period,String(numeric_value)].join("\x1f")).digest("hex"),
   source_id,metric_id,observation_period,numeric_value,
-  observed_at:TIME,source_native_publication_at:null,
+  observed_at:at,source_native_publication_at:null,
   source_observation_is_not_live_event:true,corridor_ids:[],
   context_only:true,independently_verified_event:false,
   commercial_rights_verified:false,customer_delivery_enabled:false};
 }
-function report(){
+function report(at=TIME){
  return buildPrivateCorridorStructuredResearch({sourceReceipt:{
-   checked_at:TIME,channel:"CORRIDOR_ONLY",news_candidate_count:2,
-   official_reference_observations:[observation()]
+   checked_at:at,channel:"CORRIDOR_ONLY",news_candidate_count:2,
+   official_reference_observations:[observation(at)]
  }});
 }
-function packet(derived=report()){
+function packet(derived=report(),at=TIME){
  const record=derived.structured_records[0],proof=derived.evidence_bundle.proofs[0];
  return {schema:"geomacro.corridor-private-research-d1-batch.v1",
-  channel:"CORRIDOR_ONLY",checked_at:TIME,
+  channel:"CORRIDOR_ONLY",checked_at:at,
   items:[{record,proof,record_sha256:hashStructuredEvidence(record)}],
   website_intelligence_enabled:false,commercial_rights_verified:false};
 }
@@ -74,7 +74,13 @@ class MockD1{
    assert.match(p.query,/INSERT INTO corridor_private_derived_research/u);
    const x=p.args;
    const old=this.rows.get(x[0]);
-   if(old)old.last_verified_at=x[8];
+   if(old){
+     if(old.source_reference_id===x[1]&&old.source_id===x[2]&&
+        old.claim_sha256===x[3]){
+       old.proof_sha256=x[4];old.analysis_sha256=x[5];
+       old.structured_json=x[6];old.last_verified_at=x[8];
+     }
+   }
    else this.rows.set(x[0],{
     research_id:x[0],source_reference_id:x[1],source_id:x[2],
     claim_sha256:x[3],proof_sha256:x[4],analysis_sha256:x[5],
@@ -101,6 +107,25 @@ test("source-fact identity and two-way D1 readback are required",async()=>{
  assert.equal((await read.json()).count,1);
  assert.equal((await purgeExpiredPrivateCorridorResearch({DB},now+96*3600000)).ok,true);
  assert.equal(DB.rows.size,0);
+});
+test("updated analysis for same D1 source fact refreshes exact derived hash without duplicate rows",async()=>{
+ const db=new MockD1(),first=packet();
+ const firstResponse=await putPrivateCorridorResearch({DB:db},first,now);
+ assert.equal(firstResponse.status,200);
+ const oldHash=db.rows.values().next().value.analysis_sha256;
+ const later="2026-11-02T02:11:00.000Z";
+ for(const source of db.sources.values())source.last_observed_at=later;
+ const updated=packet(report(later),later);
+ assert.equal(updated.items[0].record.source_reference_id,
+   first.items[0].record.source_reference_id);
+ assert.notEqual(updated.items[0].record_sha256,first.items[0].record_sha256);
+ const next=await putPrivateCorridorResearch({DB:db},updated,Date.parse(later));
+ assert.equal(next.status,200);
+ assert.equal((await next.json()).verified,1);
+ assert.equal(db.rows.size,1);
+ assert.notEqual(db.rows.values().next().value.analysis_sha256,oldHash);
+ assert.equal(db.rows.values().next().value.analysis_sha256,
+   updated.items[0].record_sha256);
 });
 test("hash alone cannot create evidence without independent source D1 row",async()=>{
  const res=await putPrivateCorridorResearch({DB:new MockD1(false)},packet(),now);
