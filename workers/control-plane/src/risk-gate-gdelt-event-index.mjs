@@ -189,6 +189,46 @@ export async function readPrivateRiskGateGdeltContinuity(env,now=Date.now()){
    verified_event_count:0,signed_gro_generated:false,chargeable:false});
  }catch{return respond({ok:false,error:"RG_GDELT_CONTINUITY_D1_READ_UNAVAILABLE"},503)}
 }
+/** Independent receipt for one exact immutable GDELT source batch.
+ * Never substitute the latest different batch: competing 15-minute syncs
+ * may legitimately complete out of order. Owner-authenticated route only.
+ */
+export async function readPrivateRiskGateGdeltBatchReceipt(env,query=new URLSearchParams()){
+ const raw=query.get("batch_at");
+ if(!raw||query.size!==1||
+   !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(raw)||
+   !Number.isFinite(Date.parse(raw)))
+  return respond({ok:false,error:"RG_GDELT_BATCH_ID_INVALID"},400);
+ if(!env?.DB?.prepare)
+  return respond({ok:false,error:"RG_GDELT_D1_UNAVAILABLE"},503);
+ try{
+  const row=await env.DB.prepare(
+   "SELECT batch_at,archive_sha256,b2_archive_key,b2_manifest_sha256,"+
+   "b2_event_reference_count,d1_hot_record_count,verified_at "+
+   "FROM risk_gate_gdelt_verified_batches WHERE batch_at=?"
+  ).bind(raw).first();
+  if(!row)return respond({ok:false,error:"RG_GDELT_BATCH_NOT_FOUND"},404);
+  const valid=row.batch_at===raw&&
+   HASH.test(String(row.archive_sha256??""))&&
+   HASH.test(String(row.b2_manifest_sha256??""))&&
+   typeof row.b2_archive_key==="string"&&
+   row.b2_archive_key.endsWith("/"+row.b2_manifest_sha256+".json")&&
+   Number.isInteger(row.b2_event_reference_count)&&
+   Number.isInteger(row.d1_hot_record_count)&&
+   row.b2_event_reference_count>=row.d1_hot_record_count&&
+   row.d1_hot_record_count>=0&&
+   Number.isFinite(Date.parse(row.verified_at));
+  if(!valid)return respond({ok:false,error:"RG_GDELT_BATCH_RECEIPT_CORRUPT"},503);
+  return respond({ok:true,schema:"geomacro.risk-gate-gdelt-exact-batch-receipt.v1",
+   batch_at:row.batch_at,archive_sha256:row.archive_sha256,
+   b2_archive_key:row.b2_archive_key,
+   b2_manifest_sha256:row.b2_manifest_sha256,
+   b2_archived_event_count:row.b2_event_reference_count,
+   d1_hot_sample_count:row.d1_hot_record_count,
+   exact_batch_receipt_verified:true,independent_event_verified:false,
+   signed_gro_generated:false,chargeable:false});
+ }catch{return respond({ok:false,error:"RG_GDELT_BATCH_RECEIPT_READ_UNAVAILABLE"},503)}
+}
 export async function purgePrivateRiskGateGdelt(env,now=Date.now()){
  if(!env?.DB?.prepare)return {ok:false};
  try{
