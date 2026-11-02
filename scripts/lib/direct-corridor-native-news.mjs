@@ -148,7 +148,11 @@ export async function collectDirectCorridorNativeNews({sources,fetchImpl=fetch,
  const responses=[];
  for(let i=0;i<sources.length;i+=concurrency)
    responses.push(...await Promise.all(sources.slice(i,i+concurrency).map(s=>load(s,fetchImpl))));
- const checks=[],items=[],seen=new Set();
+ // A single first-party article can be syndicated by multiple feeds, or carry
+ // an edited pubDate. Count the immutable original permalink only once per
+ // poll; identical headlines from different ORIGINAL URLs remain separate
+ // candidate claims and are not mistaken for independent corroboration.
+ const checks=[],items=[],seen=new Set(),seenOriginalPermalink=new Set();
  for(let i=0;i<sources.length;i++){
    const source=sources[i],res=responses[i],blocks=res.body===null?null:feedItems(res.body);
    let state=res.state,dated=0,links=0,routeTagged=0,regionalOnly=0,duplicates=0;
@@ -160,8 +164,10 @@ export async function collectDirectCorridorNativeNews({sources,fetchImpl=fetch,
        dated++;
        if(candidate.missingPermalink)continue;
        links++;
-       if(seen.has(candidate.id)){duplicates++;continue}
-       seen.add(candidate.id);
+       if(seen.has(candidate.id)||seenOriginalPermalink.has(candidate.article_url)){
+         duplicates++;continue;
+       }
+       seen.add(candidate.id);seenOriginalPermalink.add(candidate.article_url);
        if(candidate.candidate_corridor_ids.length)routeTagged++;
        else regionalOnly++;
        if(items.length<MAX_CANDIDATES)items.push(candidate);
