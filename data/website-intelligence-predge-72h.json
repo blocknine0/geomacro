@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T02:07:10.765Z",
+  "checked_at": "2026-11-02T02:10:08.756Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 157,
+  "item_count": 161,
   "counts": {
-    "geopolitics": 57,
-    "macro": 67,
+    "geopolitics": 59,
+    "macro": 69,
     "rare_earth": 33
   },
-  "source_native_ids_sha256": "7b932d95fdfcd4f52e6e1fd9c76375b38f34e6abae55ef02a71b30c24525a55e",
+  "source_native_ids_sha256": "9ae3929602a8bc03f6677ae111a7a9b8e7df8826e0e1ed623d558f06b592d20d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -353,6 +353,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-85d30945",
+      "category": "geopolitics",
+      "title": "Geomacro finds Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS)",
+      "what_changed": "A monitored source feed reports: Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T19:07:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-89cf1d03",
       "category": "geopolitics",
       "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English",
@@ -400,6 +419,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T18:16:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f2b9ae30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Election Chief said Results Valid After Netanyahu Claimed Arabs 'Stole Vote' - Haaretz",
+      "what_changed": "A monitored source feed reports: Election Chief said Results Valid After Netanyahu Claimed Arabs 'Stole Vote' - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T18:08:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -1692,6 +1730,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T17:28:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e4f84ddd",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs revised China Jewelry Stocks Amid Gold Price Retreat - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Goldman Sachs revised China Jewelry Stocks Amid Gold Price Retreat - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:25:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-bb82ec57",
+      "category": "macro",
+      "title": "Geomacro finds Corn Holding lowered on Friday - TradingView",
+      "what_changed": "A monitored source feed reports: Corn Holding lowered on Friday - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T17:19:59.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

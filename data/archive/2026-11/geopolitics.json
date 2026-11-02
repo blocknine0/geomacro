@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T02:07:10.765Z",
+  "updated_at": "2026-11-02T02:10:08.756Z",
   "signals": [
     {
       "id": "geopolitics-b016b3b2",
@@ -119,6 +119,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-85d30945",
+      "category": "geopolitics",
+      "title": "Geomacro finds Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS)",
+      "what_changed": "A monitored source feed reports: Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T19:07:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-89cf1d03",
       "category": "geopolitics",
       "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG tanker in Gulf - Al Arabiya English",
@@ -128,6 +147,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T18:47:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f2b9ae30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Election Chief said Results Valid After Netanyahu Claimed Arabs 'Stole Vote' - Haaretz",
+      "what_changed": "A monitored source feed reports: Election Chief said Results Valid After Netanyahu Claimed Arabs 'Stole Vote' - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T18:08:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
