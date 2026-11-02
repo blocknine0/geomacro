@@ -179,3 +179,45 @@ test("401 auth rejection is final, not retried as a rollout outage",async()=>{
   }}),/CORRIDOR_PRIVATE_D1_PUT_HTTP_401/u);
  assert.equal(requests,1);
 });
+
+test("large native candidate snapshots are partitioned into 10-item D1 batches",async()=>{
+ const published=new Date(fixed-15*60_000).toISOString();
+ const candidates=Array.from({length:30},(_,i)=>({
+  ...candidate(),
+  id:hash("boe_news\x1fhttps://www.bankofengland.co.uk/news/2026/november/corridor-"+i+
+    "\x1f"+published),
+  article_url:"https://www.bankofengland.co.uk/news/2026/november/corridor-"+i,
+  published_at:published
+ }));
+ const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
+  channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
+  source_count:37,native_news_sources_polled:6,news_candidates:candidates,
+  candidate_count:30,website_intelligence_enabled:false,
+  commercial_rights_verified:false};
+ const chunks=[];
+ const out=await publishPrivateCorridorNews({receipt,rootToken:"R".repeat(64),
+  now:new Date(fixed),fetchImpl:async(_,opts)=>{
+   if(opts.method==="GET")return Response.json({
+     ok:true,channel:"CORRIDOR_ONLY",
+     schema:"geomacro.corridor-native-news-private-read.v1",
+     count:0,candidates:[],website_intelligence_enabled:false,
+     commercial_eligible:false,chargeable:false
+   });
+   const items=JSON.parse(opts.body).items;chunks.push(items.length);
+   return Response.json({ok:true,channel:"CORRIDOR_ONLY",
+    schema:"geomacro.corridor-native-news-d1-receipt.v1",
+    submitted:items.length,verified:items.length,
+    d1_readback_verified:true,retention_hours:72,website_intelligence_writes:0,
+    raw_upstream_stored:false,publisher_title_stored:false,
+    paid_publication_authorized:false,chargeable:false});
+  }});
+ assert.deepEqual(chunks,[10,10,10]);
+ assert.equal(out.d1_candidate_records_verified,30);
+ assert.equal(out.provider_calls,4);
+});
+test("failed D1 publishing preserves the bounded private intake receipt artifact",()=>{
+ const workflow=readFileSync(new URL("../../.github/workflows/direct-global-corridor-intake.yml",
+   import.meta.url),"utf8");
+ assert.match(workflow,/name: Upload separate bounded corridor receipt\n\s+if: always\(\)/u);
+ assert.match(workflow,/artifacts\/direct-corridor-intake\/receipt\.json/u);
+});
