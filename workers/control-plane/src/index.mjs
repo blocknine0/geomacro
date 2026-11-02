@@ -1571,7 +1571,7 @@ export default {
       // Owner-admin-only daily census; no article metadata or customer IDs.
       if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
         const day_utc=new Date().toISOString().slice(0,10);
-        const rows=(await env.DB.prepare("SELECT entity_type,COUNT(DISTINCT entity_id) AS entities,SUM(CASE WHEN supabase_synced_at IS NOT NULL THEN 1 ELSE 0 END) AS synced FROM unified_risk_snapshots WHERE day_utc=? GROUP BY entity_type").bind(day_utc).all())?.results??[];
+        const rows=(await env.DB.prepare("SELECT entity_type,COUNT(DISTINCT entity_id) AS entities,SUM(CASE WHEN supabase_synced_at IS NOT NULL THEN 1 ELSE 0 END) AS synced FROM unified_risk_snapshots WHERE day_utc=? AND (entity_type='CORRIDOR' OR entity_id<>'TWN') GROUP BY entity_type").bind(day_utc).all())?.results??[];
         const countries=rows.find(x=>x.entity_type==="COUNTRY");
         const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
         const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
