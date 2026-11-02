@@ -8,7 +8,7 @@ const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-p
 
 test("one-minute canonical production cron and single api.geomacro.live custom domain",()=>{
   assert.deepEqual(config.triggers.crons,["* * * * *"]);
-  assert.deepEqual(config.routes,[{pattern:"api.geomacro.live",custom_domain:true}]);
+  assert.deepEqual(config.routes,[{pattern:"api.geomacro.live",custom_domain:true,zone_name:"geomacro.live"}]);
   assert.equal(config.name,"geomacro-control-plane");
   assert.equal(config.workers_dev,true);
 });
