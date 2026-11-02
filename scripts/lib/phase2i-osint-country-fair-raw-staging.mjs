@@ -58,6 +58,17 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   throw Error("PHASE2I_OSINT_RAW_PLAN_INVALID");
  const dedup=withoutAmbiguousSameOriginal(candidates);
  const originals=buildPhase2hPrivateRawRecords(dedup.candidates,{now,derive});
+ // D1 private intake and the website both retain only 72h of native-dated
+ // original observations. Do not spend the scarce 3/5-row source-intake
+ // approval on old records that cannot become a current article. Preserve
+ // historical metadata in the source sweep but NEVER renew its source clock.
+ const RETENTION_MS=72*3600_000;
+ const recentOriginals=originals.records.filter(row=>{
+  const nativeAt=Date.parse(row.original.original_published_at);
+  return Number.isFinite(nativeAt)&&nativeAt<=now.getTime()+60_000&&
+    nativeAt>=now.getTime()-RETENTION_MS;
+ });
+ const expired_native_originals=originals.records.length-recentOriginals.length;
  // This is a private country selection hint, NEVER an immutable raw-record
  // assertion or a source's event location. Neither D1 hash nor paid rights move.
  const routing=new Map(dedup.candidates.map(c=>[
@@ -82,7 +93,7 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
  // depth-zero news and permanently starves the second original in a country.
  const baseQuota=Math.floor(maxRows/CATS.length);
  const lanes=CATS.map((category,index)=>{
-  const eligible=originals.records.filter(r=>r.category===category);
+  const eligible=recentOriginals.filter(r=>r.category===category);
   const cells=new Map();
   for(const row of eligible){
    const iso3=phase2hHeadlineCountryCandidate(row.original.original_title)
@@ -119,7 +130,7 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
    if(item)selected.push(item);
   }
  }
- const available=originals.records.length;
+ const available=recentOriginals.length;
  const attributed=selected.filter(r=>phase2hHeadlineCountryCandidate(
   r.original.original_title)!==null).length;
  const issuerContextSelected=selected.filter(r=>
@@ -127,7 +138,9 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   issuerRouteFor(r)!==null).length;
  return Object.freeze({records:selected,selected_count:selected.length,
   available_originals:available,deferred_count:available-selected.length,
-  selected_by_category:counts(selected),available_by_category:counts(originals.records),
+  selected_by_category:counts(selected),available_by_category:counts(recentOriginals),
+  original_native_72h_eligible:recentOriginals.length,
+  original_native_72h_expired:expired_native_originals,
   country_attributed_candidate_count:attributed,
   issuer_context_country_routing_count:issuerContextSelected,
   same_original_ambiguous_dropped:dedup.conflicting_original_identities,
