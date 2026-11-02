@@ -9,6 +9,7 @@ import {observeUkmtoOfficialIndex} from "./ukmto-official-corridor-index.mjs";
 import {observeIndependentMaritimeOfficialContext}
  from "./independent-maritime-official-context.mjs";
 import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
+import {collectCorridorOfficialReferences} from "./corridor-official-reference-adapters.mjs";
 
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
@@ -42,7 +43,8 @@ async function probePinnedPortal(spec,fetchImpl){
 }
 export async function collectDirectCorridorSourceIntake({
  now=new Date(),fetchImpl=fetch,observeUkmto=observeUkmtoOfficialIndex,
- observeIndependent=observeIndependentMaritimeOfficialContext
+ observeIndependent=observeIndependentMaritimeOfficialContext,
+ observeOfficial=collectCorridorOfficialReferences
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function")throw Error("DIRECT_CORRIDOR_INTAKE_INVALID");
@@ -81,6 +83,28 @@ export async function collectDirectCorridorSourceIntake({
  const native=await collectDirectCorridorNativeNews({sources:nativeSources,fetchImpl,now});
  for(const check of native.source_checks)
    add(byId.get(check.id),check.state,{metadata_candidates:check.metadata_candidates});
+ // Independent official batch/series adapters, not headline news.
+ // IMF PortWatch is an existing supplementary named-route family outside
+ // the 37 source URLs; no extra registration or website routing implied.
+ const official=await observeOfficial({now,fetchImpl});
+ if(official?.schema!=="geomacro.corridor-official-reference-intake.v1"||
+   official.channel!=="CORRIDOR_ONLY"||
+   !Array.isArray(official.source_checks)||official.source_checks.length!==5||
+   !Array.isArray(official.observations)||
+   official.observation_count!==official.observations.length||
+   official.observation_count>60||
+   official.website_intelligence_writes!==0||
+   official.commercial_rights_verified!==false)
+   throw Error("CORRIDOR_OFFICIAL_SOURCE_CONTRACT_INVALID");
+ const updated=new Set();
+ for(const check of official.source_checks){
+   if(check.id==="imf_portwatch")continue;
+   if(!byId.has(check.id)||updated.has(check.id))
+     throw Error("CORRIDOR_OFFICIAL_SOURCE_MAPPING_INVALID");
+   updated.add(check.id);
+   add(byId.get(check.id),check.state,{metadata_candidates:check.observations});
+ }
+ if(updated.size!==4)throw Error("CORRIDOR_OFFICIAL_SOURCE_MAPPING_INCOMPLETE");
  // All other supplied destinations remain registered and visible, but are
  // never misrepresented as machine-readable event feeds. These must receive
  // provider-specific parser/credential acceptance before canonical cutover.
@@ -113,6 +137,10 @@ export async function collectDirectCorridorSourceIntake({
    news_candidates:native.news_candidates,
    native_news_event_verification:false,
    news_candidate_retention_hours:72,
+   official_reference_source_checks:official.source_checks,
+   official_reference_observation_count:official.observation_count,
+   official_reference_observations:official.observations,
+   official_reference_events_verified:false,
    website_intelligence_writes:0,website_intelligence_enabled:false,
    source_news_collector_calls:0,
    native_event_evidence_written_to_canonical_db:false,
