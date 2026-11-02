@@ -3,6 +3,7 @@
 import {mkdirSync,writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {collectDirectCorridorSourceIntake} from "../lib/direct-global-corridor-ingestion.mjs";
+import {buildPrivateCorridorStructuredResearch} from "../lib/corridor-derived-structured-research.mjs";
 export async function runDirectCorridorIntake({
  observe=collectDirectCorridorSourceIntake
 }={}){
@@ -45,6 +46,15 @@ export async function runDirectCorridorIntake({
       item.customer_delivery_enabled!==false||
       item.independently_verified_event!==false))
    throw Error("CORRIDOR_OFFICIAL_PROVENANCE_INVALID");
+ // Automatically transform normalized source observations to GeoMacro-owned
+ // five-part PRIVATE research. No monetization or source-license bypass.
+ const structured=buildPrivateCorridorStructuredResearch({sourceReceipt:receipt});
+ if(structured.structured_record_count!==receipt.official_reference_observation_count||
+    structured.source_article_candidates_not_converted!==receipt.news_candidate_count||
+    structured.commercial_eligible!==false||
+    structured.customer_delivery_authorized!==false||
+    structured.website_intelligence_writes!==0||structured.predge_writes!==0)
+   throw Error("CORRIDOR_PRIVATE_STRUCTURED_OUTPUT_BOUNDARY_INVALID");
  const dir="artifacts/direct-corridor-intake";
  mkdirSync(dir,{recursive:true,mode:0o700});
  writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
@@ -69,6 +79,8 @@ export async function runDirectCorridorIntake({
    website_intelligence_enabled:false,website_intelligence_writes:0,
    commercial_rights_verified:false,paid_output_authorized:false
  },null,2)+"\n",{mode:0o600});
+ writeFileSync(dir+"/structured-research.json",JSON.stringify(structured,null,2)+"\n",
+   {mode:0o600});
  const summary={
    schema:receipt.schema,channel:receipt.channel,checked_at:receipt.checked_at,
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,
@@ -76,6 +88,7 @@ export async function runDirectCorridorIntake({
    native_news_sources_polled:receipt.native_news_sources_polled,
    news_candidate_count:receipt.news_candidate_count,
    official_reference_observations:receipt.official_reference_observation_count,
+   private_structured_research_records:structured.structured_record_count,
    official_reference_sources_due:receipt.official_reference_source_checks.filter(x=>x.state!=="NOT_DUE_SOURCE_NATIVE_CADENCE").length,
    candidate_corridor_count:receipt.candidate_corridors.length,
    portal_or_metadata_sources_observed:receipt.source_checks.filter(x=>
