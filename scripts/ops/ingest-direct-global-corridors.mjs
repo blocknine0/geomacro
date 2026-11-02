@@ -76,7 +76,7 @@ export async function runDirectCorridorIntake({
    schema:CRYPTO_NEWS_SCHEMA,channel:"CORRIDOR_ONLY",
    checked_at:receipt.checked_at,items:cryptoRecords,
    website_intelligence_enabled:false,commercial_rights_verified:false
- },null,2)+"\\n",{mode:0o600});
+ },null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/news-candidates.json",JSON.stringify({
    schema:"geomacro.corridor-native-news-candidates.v1",
