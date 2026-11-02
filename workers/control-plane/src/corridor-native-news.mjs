@@ -78,7 +78,8 @@ export function validateCorridorNativeNewsBatch(batch,now=Date.now()){
    !date(batch.checked_at)||Math.abs(now-Date.parse(batch.checked_at))>15*60000||
    !Array.isArray(batch.items)||batch.items.length>MAX)invalid();
  const normalized=batch.items.map(x=>item(x,now));
- if(new Set(normalized.map(x=>x[0])).size!==normalized.length)invalid();
+ if(new Set(normalized.map(x=>x[0])).size!==normalized.length||
+    new Set(normalized.map(x=>x[3])).size!==normalized.length)invalid();
  return normalized;
 }
 // Immutable article identity is source+article URL+source-native publication time.
@@ -99,7 +100,8 @@ const SQL_INSERT="INSERT INTO corridor_native_news_candidates "+
  "AND (corridor_native_news_candidates.source_title_sha256 IS NOT excluded.source_title_sha256 "+
  "OR corridor_native_news_candidates.source_region_refs_json IS NOT excluded.source_region_refs_json "+
  "OR corridor_native_news_candidates.candidate_corridor_ids_json IS NOT excluded.candidate_corridor_ids_json "+
- "OR corridor_native_news_candidates.categories_json IS NOT excluded.categories_json)";
+ "OR corridor_native_news_candidates.categories_json IS NOT excluded.categories_json) "+
+ "ON CONFLICT(article_url) DO NOTHING";
 export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
  let records;try{records=validateCorridorNativeNewsBatch(batch,now)}
  catch{return reply({ok:false,error:"CORRIDOR_PRIVATE_ITEM_INVALID",chargeable:false},422)}
@@ -115,32 +117,48 @@ export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
    return reply({ok:false,error:"CORRIDOR_PRIVATE_D1_UNAVAILABLE",chargeable:false},503);
  const checked=new Date(now).toISOString(),cutoff=new Date(now-AGE).toISOString();
  try{
-  if(records.length)
-   await env.DB.batch(records.map(x=>env.DB.prepare(SQL_INSERT).bind(...x,checked)));
+  // Expire first: a native date revision must not collide with an old
+  // record which is no longer inside the hard 72-hour retention window.
   await env.DB.prepare("DELETE FROM corridor_native_news_candidates "+
     "WHERE native_published_at < ?").bind(cutoff).run();
-  let found=0;
+  if(records.length)
+   await env.DB.batch(records.map(x=>env.DB.prepare(SQL_INSERT).bind(...x,checked)));
+  let found=0,duplicates=0;
   if(records.length){
    const placeholders=records.map(()=>"?").join(",");
+   // Durable article identity is the original HTTPS permalink, not the RSS
+   // feed ID or an edited pubDate. A second feed/date does not corroborate
+   // the event and must not create another stored candidate.
    const rows=await env.DB.prepare("SELECT candidate_id,source_id,native_published_at,article_url,source_title_sha256,"+
     "source_region_refs_json,candidate_corridor_ids_json,categories_json "+
-    "FROM corridor_native_news_candidates WHERE candidate_id IN ("+
+    "FROM corridor_native_news_candidates WHERE article_url IN ("+
     placeholders+") AND native_published_at >= ?")
-     .bind(...records.map(x=>x[0]),cutoff).all();
-   const existing=new Map((rows?.results??[]).map(x=>[x.candidate_id,x]));
-   found=records.filter(x=>{
-     const r=existing.get(x[0]);
-     return r&&r.source_id===x[1]&&r.native_published_at===x[2]&&
-       r.article_url===x[3]&&r.source_title_sha256===x[4]&&
-       r.source_region_refs_json===x[5]&&
-       r.candidate_corridor_ids_json===x[6]&&r.categories_json===x[7];
-   }).length;
+     .bind(...records.map(x=>x[3]),cutoff).all();
+   const existing=new Map((rows?.results??[]).map(x=>[x.article_url,x]));
+   for(const x of records){
+     const r=existing.get(x[3]);
+     if(!r)continue;
+     if(r.candidate_id!==x[0]){
+       // The original article is already recorded. Keep its first observed
+       // native timestamp and source rather than inventing a new occurrence.
+       // Each existing row was admitted through the signed-origin validator.
+       duplicates++;
+       found++;
+       continue;
+     }
+     if(r.source_id===x[1]&&r.native_published_at===x[2]&&
+        r.article_url===x[3]&&r.source_title_sha256===x[4]&&
+        r.source_region_refs_json===x[5]&&
+        r.candidate_corridor_ids_json===x[6]&&r.categories_json===x[7])
+       found++;
+   }
   }
   if(found!==records.length)
     return reply({ok:false,error:"CORRIDOR_NATIVE_D1_READBACK_MISMATCH",
       expected:records.length,verified:found,chargeable:false},503);
   return reply({ok:true,schema:"geomacro.corridor-native-news-d1-receipt.v1",
    checked_at:checked,channel:"CORRIDOR_ONLY",submitted:records.length,verified:found,
+   deduplicated_existing_original_urls:duplicates,
    d1_readback_verified:true,retention_hours:72,website_intelligence_writes:0,
    publisher_title_stored:false,raw_upstream_stored:false,
    paid_publication_authorized:false,signed_gro_generated:false,chargeable:false});
