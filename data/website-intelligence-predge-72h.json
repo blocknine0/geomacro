@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T02:43:59.214Z",
+  "checked_at": "2026-11-02T05:52:09.395Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 161,
+  "item_count": 140,
   "counts": {
-    "geopolitics": 59,
-    "macro": 69,
-    "rare_earth": 33
+    "geopolitics": 52,
+    "macro": 56,
+    "rare_earth": 32
   },
-  "source_native_ids_sha256": "1e82d843f10d420e98afa04fa67f764f972a3256c4edf9990ff81196586219a5",
+  "source_native_ids_sha256": "c8941ad5e85240f2cb30d614b117af4428c9d80779e0aa7d15621cf2d0b094f9",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-b4359940",
+      "category": "macro",
+      "title": "Geomacro finds Central Bank of Egypt raised key rates by 100 bps in first hike since March 2024 - TradingView",
+      "what_changed": "A monitored source feed reports: Central Bank of Egypt raised key rates by 100 bps in first hike since March 2024 - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-6d4914a9",
       "category": "geopolitics",
@@ -2665,424 +2684,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a22ae9ff",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan said inflation hit 2% target after 13 years",
-      "what_changed": "A monitored source feed reports: Bank of Japan said inflation hit 2% target after 13 years. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:46:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.euronews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e5ef0fcb",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan said inflation hit 2% target after 13 years - Euronews.com",
-      "what_changed": "A monitored source feed reports: Bank of Japan said inflation hit 2% target after 13 years - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:46:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a50d74cc",
-      "category": "geopolitics",
-      "title": "Geomacro finds India said AI, maritime security key priorities for its UNSC candidature for 2028, 29",
-      "what_changed": "A monitored source feed reports: India said AI, maritime security key priorities for its UNSC candidature for 2028, 29. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:40:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-9b0512f2",
-      "category": "macro",
-      "title": "Geomacro finds Murata raised full-year outlook as AI demand drives 41% profit growth - Investing.com",
-      "what_changed": "A monitored source feed reports: Murata raised full-year outlook as AI demand drives 41% profit growth - Investing.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:36:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e53d5f76",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said four tankers on fire after hitting mines in Strait of Hormuz",
-      "what_changed": "A monitored source feed reports: Iran said four tankers on fire after hitting mines in Strait of Hormuz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:34:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-098ba213",
-      "category": "macro",
-      "title": "Geomacro finds Kyrgyzstan announced plans to switch to paperless trade with other countries",
-      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to switch to paperless trade with other countries. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:33:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: 24.kg"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d46a5f35",
-      "category": "macro",
-      "title": "Geomacro finds Kyrgyzstan announced plans to switch to paperless trade with other countries",
-      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to switch to paperless trade with other countries. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:33:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: 24.kg"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-55a68f25",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro",
-      "what_changed": "A monitored source feed reports: Russia launched Overnight Attacks Across Ukraine, Leaving Over 350,000 Without Power in Dnipro. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:28:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b0833a33",
-      "category": "macro",
-      "title": "Geomacro finds Costamare reported revenue of over $614m and net profit of $241.2m in 9-month",
-      "what_changed": "A monitored source feed reports: Costamare reported revenue of over $614m and net profit of $241.2m in 9-month. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:12:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.naftemporiki.gr"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-bbb9c65d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Kim urged drone dominance as North Korea fires missiles and rockets - The Japan Times",
-      "what_changed": "A monitored source feed reports: Kim urged drone dominance as North Korea fires missiles and rockets - The Japan Times. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:43:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-27dd11d1",
-      "category": "macro",
-      "title": "Geomacro finds Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網",
-      "what_changed": "A monitored source feed reports: Japan kept rates steady as inflation hits 2pc target - 香港電台新聞網. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:42:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-2e6c1ab0",
-      "category": "geopolitics",
-      "title": "Geomacro finds India called for protecting freedom of navigation, global trade at UN amid maritime security threats",
-      "what_changed": "A monitored source feed reports: India called for protecting freedom of navigation, global trade at UN amid maritime security threats. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:37:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: timesofindia.indiatimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f9a0624d",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan held Fire While Signaling Rate Hikes Ahead - WSJ",
-      "what_changed": "A monitored source feed reports: Bank of Japan held Fire While Signaling Rate Hikes Ahead - WSJ. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:31:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5f2ec049",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper Drops As Glencore reported 3% Rise In Nine-Month Copper Output This Year By Kedia Advisory - Investing.com India",
-      "what_changed": "A monitored source feed reports: Copper Drops As Glencore reported 3% Rise In Nine-Month Copper Output This Year By Kedia Advisory - Investing.com India. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:23:11.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1d77ebae",
-      "category": "macro",
-      "title": "Geomacro finds BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory",
-      "what_changed": "A monitored source feed reports: BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T04:20:27.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-05f7a6b7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Binance said security incident had estimated $6.3B impact, $3B in assets frozen",
-      "what_changed": "A monitored source feed reports: Binance said security incident had estimated $6.3B impact, $3B in assets frozen. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:52:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: moxie.foxbusiness.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2b620d37",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan said 2% inflation target reached - Financial Times",
-      "what_changed": "A monitored source feed reports: Bank of Japan said 2% inflation target reached - Financial Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:24:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-aa71e7f3",
-      "category": "macro",
-      "title": "Geomacro finds BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory",
-      "what_changed": "A monitored source feed reports: BOJ held rates as inflation aligns with 2% target for first time since 2013 - Forex Factory. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:20:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8ddc10ed",
-      "category": "macro",
-      "title": "Geomacro finds BOJ kept interest rates steady, signals further rate hikes - Reuters",
-      "what_changed": "A monitored source feed reports: BOJ kept interest rates steady, signals further rate hikes - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1c555574",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan held rates steady even as inflation ticks up - The Japan Times",
-      "what_changed": "A monitored source feed reports: Bank of Japan held rates steady even as inflation ticks up - The Japan Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:12:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-366ad29e",
-      "category": "macro",
-      "title": "Geomacro finds Petronas recorded RM152.4b revenue in first half of 2026",
-      "what_changed": "A monitored source feed reports: Petronas recorded RM152.4b revenue in first half of 2026. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:02:24.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.malaymail.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a54804ac",
-      "category": "geopolitics",
-      "title": "Geomacro finds UN Security Council held seventh straw poll for next secretary general",
-      "what_changed": "A monitored source feed reports: UN Security Council held seventh straw poll for next secretary general. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T03:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
