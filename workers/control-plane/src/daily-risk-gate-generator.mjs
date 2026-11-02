@@ -160,7 +160,7 @@ export async function syncDailyRiskToSupabase(env,{now=Date.now(),fetcher=fetch}
   await remote(cfg,"/rest/v1/geomacro_daily_tiered_risk_gates?on_conflict=corridor_id,day_utc",
    {method:"POST",headers:{"Content-Type":"application/json",
     Prefer:"resolution=merge-duplicates,return=minimal"},body:json(payload)},fetcher);
-  const terms=rows.map(r=>"(corridor_id.eq."+encodeURIComponent(r.corridor_id)+",day_utc.eq."+r.day_utc+")").join(",");
+  const terms=rows.map(r=>"and(corridor_id.eq."+encodeURIComponent(r.corridor_id)+",day_utc.eq."+r.day_utc+")").join(",");
   const response=await remote(cfg,"/rest/v1/geomacro_daily_tiered_risk_gates?select=corridor_id,day_utc,content_sha256&or=("+terms+")",{},fetcher);
   const read=await response.json();
   if(!Array.isArray(read)||read.length!==rows.length||
