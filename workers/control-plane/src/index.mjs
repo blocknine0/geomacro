@@ -1,4 +1,5 @@
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
 import {serveSelfCertifiedNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
@@ -1292,6 +1293,8 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    if(utc.getUTCMinutes()%15===7&&env?.DB?.prepare)
+      ctx.waitUntil(corridorWatchTick(env).then(r=>{if(!r.ok)console.error('CORRIDOR_WATCH_UNAVAILABLE')}).catch(()=>console.error('CORRIDOR_WATCH_UNAVAILABLE')));
     // Six-hour fallback TTL for corridor-only private original-link metadata.
     // Ingest also prunes every hour; no extra cron, public route or quota loop.
     if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
@@ -1519,6 +1522,8 @@ export default {
       }
       if(request.method==="PUT"&&url.pathname==="/v1/public-news-r2-snapshot"&&!url.search)
         return publishPublicNewsR2Snapshot(env,await readJson(request,PUBLIC_NEWS_R2_MAX_BYTES));
+      if(request.method==='GET'&&url.pathname==='/v1/internal/corridor-pipeline-health'&&!url.search)
+        return corridorWatchRead(env);
       if(request.method==='GET'&&url.pathname==='/v1/internal/news-product-factory')
         return readNewsProductFactory(env,url.searchParams);
       // Separate, authenticated native-link corridor ledger; intentionally no
