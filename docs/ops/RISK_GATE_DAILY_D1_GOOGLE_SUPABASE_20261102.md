@@ -5,8 +5,9 @@ pricing, token, research feed or payment integration.
 
 ## Production data contract
 
-- Run at 06:00 UTC via existing Worker one-minute cron; retry every ten minutes
-  during the 06 UTC hour. No second Cloudflare scheduler.
+- Run at 06:00 UTC via existing Worker one-minute cron; two corridors per
+  five-minute slot, six slots repeated after 30 minutes to retry incomplete
+  batches while respecting Free-plan CPU. No second scheduler.
 - Existing canonical D1 corridor_native_news_candidates in the last 24 hours
   take priority. Missing corridor coverage triggers one bounded Google News RSS
   search (<=600 KB, <=20 metadata items). RSS publisher tags do not constitute
@@ -46,8 +47,9 @@ country pair. Country-to-country corridors remain an existing on-demand path.
 At 06:12 UTC the Worker checks a durable D1 housekeeping schedule. After
 Supabase activation the first cleanup is scheduled ten days later. Every ten
 days thereafter, delete only rows strictly older than three days. Verify
-remote deletion by SELECT before advancing the schedule. On failure retry at
-a later eligible scheduled tick. No daily deletion.
+remote deletion by SELECT before advancing the schedule. Only already synced
+old D1 snapshots are also pruned; unsynced D1 rows remain. On failure retry
+at a later eligible scheduled tick. No daily deletion.
 
 Because cleanup is every ten days, the effective retained age varies between
 approximately 3 and 13 days during the normal cycle.
