@@ -13,6 +13,7 @@ import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredC
 import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredOfficialCorridorReferences} from './corridor-official-reference.mjs';
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
 import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
+import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit,purgePrivateStrategicRiskGate} from "./corridor-risk-gate-jit.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1316,6 +1317,10 @@ export default {
       }).catch(()=>console.error("CRYPTO_NEWS_D1_TTL_DEFERRED")));
 
     if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgePrivateStrategicRiskGate(env).then(r=>{
+        if(!r.ok)console.error("RG_STRATEGIC_TTL_DEFERRED");
+      }).catch(()=>console.error("RG_STRATEGIC_TTL_DEFERRED")));
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
       ctx.waitUntil(purgePrivateRiskGateSourcePack(env).then(r=>{
         if(!r.ok)console.error("RG_SOURCE_PACK_TTL_DEFERRED");
       }).catch(()=>console.error("RG_SOURCE_PACK_TTL_DEFERRED")));
@@ -1548,6 +1553,18 @@ export default {
       // Non-commercial pricing-variant Risk Gate evidence only. This endpoint
       // remains BEHIND existing internal admin authentication. Never used as
       // paid Risk Gate or for partner PREDGE inference.
+      // D1-native corridor-first strategic polling + authenticated, no-credit
+      // JIT evidence preflight. Not a customer charge or GRO signature.
+      if(url.pathname==="/v1/internal/risk-gate/corridor-first-tick"){
+        if(request.method==="POST"&&!url.search)
+          return tickPrivateStrategicRiskGate(env);
+        return json({ok:false,error:"RG_STRATEGIC_METHOD_INVALID",chargeable:false},405);
+      }
+      if(url.pathname==="/v1/internal/risk-gate/jit"){
+        if(request.method==="GET")
+          return readPrivateRiskGateJit(env,url.searchParams);
+        return json({ok:false,error:"RG_JIT_METHOD_INVALID",chargeable:false},405);
+      }
       if(url.pathname==="/v1/internal/corridor-risk-gate-source-pack"){
         if(request.method==="PUT"&&!url.search)
           return putPrivateRiskGateSourcePack(env,await readJson(request,32*1024));
