@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:18:05.051Z",
+  "checked_at": "2026-11-02T20:25:40.421Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 244,
   "counts": {
-    "geopolitics": 112,
+    "geopolitics": 113,
     "macro": 96,
-    "rare_earth": 36
+    "rare_earth": 35
   },
-  "source_native_ids_sha256": "5668d3dd282b9db464408d83b3a48502218fbd52b07a4d667501adf59a1f067e",
+  "source_native_ids_sha256": "b810bcb7d42d730a17f3406d397031caa5b3358ac63f295729d25bc1deda7f5d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -784,6 +784,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ea6caf2d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said Russia Used Melania Trump Ceasefire To Strengthen Positions - Newsweek",
+      "what_changed": "A monitored source feed reports: Ukraine said Russia Used Melania Trump Ceasefire To Strengthen Positions - Newsweek. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4637,25 +4656,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T20:41:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-b454461b",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert",
-      "what_changed": "A monitored source feed reports: Cochilco cut Chile Copper Output Forecast, Lifts Price to US$6.18/lb - Discovery Alert. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T20:24:34.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

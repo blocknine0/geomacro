@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T20:18:05.051Z",
+  "updated_at": "2026-11-02T20:25:40.421Z",
   "signals": [
     {
       "id": "geopolitics-37a9dd40",
@@ -360,6 +360,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ea6caf2d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said Russia Used Melania Trump Ceasefire To Strengthen Positions - Newsweek",
+      "what_changed": "A monitored source feed reports: Ukraine said Russia Used Melania Trump Ceasefire To Strengthen Positions - Newsweek. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
