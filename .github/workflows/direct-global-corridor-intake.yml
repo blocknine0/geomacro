@@ -9,12 +9,14 @@ on:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
       - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/ops/ingest-direct-global-corridors.mjs"
   pull_request:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
       - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.test.mjs"

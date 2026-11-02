@@ -8,6 +8,8 @@
  * commercial reuse rights are distinct downstream gates.
  */
 
+import {readFileSync} from "node:fs";
+
 export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
   {
     "id": "gdelt_v2_15m",
@@ -539,49 +541,85 @@ export function assertDirectGlobalCorridorRegistry(registry=DIRECT_GLOBAL_CORRID
   }
   return true;
 }
-// Chokepoint, freight, maritime-safety and supply-chain observations are
-// an isolated CORRIDOR channel. They never enter Website Intelligence.
-export const CORRIDOR_ONLY_SOURCE_IDS=Object.freeze([
-  "recaap_isc","ukmto_incidents","ukmto_advisories","suez_navigation",
-  "panama_canal","freightos_fbx","nyfed_gscpi","imb_piracy",
-]);
+// Every entry in the uploaded 2026-11-02 Markdown document is a CORRIDOR
+// source reference, including regional macro, minerals and digital-assets.
+// References are NOT evidence of live data, licenses or verified risk scores.
+export function suppliedGlobalCorridorDirectory(){
+ const record=JSON.parse(readFileSync(new URL("../../config/global-corridor-supplied-links.v1.json",import.meta.url),"utf8"));
+ if(record.schema!=="geomacro.global-corridor-supplied-links.v1"||
+    record.website_intelligence_enabled!==false||
+    record.source_link_occurrences!==38||record.unique_source_ids_with_url!==36||
+    !Array.isArray(record.references)||record.references.length!==38||
+    !Array.isArray(record.unresolved_removed_links)||record.unresolved_removed_links.length!==1)
+   throw Error("DIRECT_CORRIDOR_SUPPLIED_DOCUMENT_CONTRACT_INVALID");
+ const known=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
+ const seenIds=new Set(),seenLinks=new Set(),indices=new Set(),seenUrl=new Set();
+ for(const link of record.references){
+   const entry=known.get(link.source_id);
+   if(!entry||!entry.url||indices.has(link.reference_index)||
+      !Number.isSafeInteger(link.reference_index)||link.reference_index<1||link.reference_index>38||
+      !["global","apac","mena","europe","latam","africa","north-america",
+        "maritime-logistics","critical-minerals","digital-assets"].includes(link.section)||
+      typeof link.supplied_url!=="string"||typeof link.linked_target_url!=="string"||
+      !(link.supplied_url.startsWith("http://")||link.supplied_url.startsWith("https://"))||
+      !(link.linked_target_url.startsWith("http://")||link.linked_target_url.startsWith("https://"))||
+      typeof link.label!=="string"||!link.label)
+    throw Error("DIRECT_CORRIDOR_SUPPLIED_LINK_INVALID");
+   if(link.supplied_url.startsWith("https://www.google.com/search?q=")){
+     if(decodeURIComponent(link.supplied_url.split("?q=")[1])!==link.linked_target_url)
+       throw Error("DIRECT_CORRIDOR_SEARCH_WRAPPER_MISMATCH");
+   }else if(link.supplied_url!==link.linked_target_url)
+     throw Error("DIRECT_CORRIDOR_LINK_TARGET_CHANGED");
+   seenIds.add(link.source_id);seenLinks.add(link.linked_target_url);
+   indices.add(link.reference_index);seenUrl.add(link.supplied_url);
+ }
+ if(indices.size!==38||seenIds.size!==36||seenLinks.size!==36||
+    record.unresolved_removed_links[0]?.source_id!=="asean_customs_missing"||
+    known.get("asean_customs_missing")?.url!==null||known.size!==37)
+   throw Error("DIRECT_CORRIDOR_DOCUMENT_MAPPING_INCOMPLETE");
+ return Object.freeze(record);
+}
+export const CORRIDOR_ONLY_SOURCE_IDS=Object.freeze(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>s.id));
 export function directGlobalCorridorRouteSources(){
-  assertDirectGlobalCorridorRegistry();
-  const ids=new Set(CORRIDOR_ONLY_SOURCE_IDS);
-  const entries=DIRECT_GLOBAL_CORRIDOR_SOURCES.filter(x=>ids.has(x.id));
-  if(entries.length!==ids.size)throw Error("DIRECT_CORRIDOR_SOURCE_MISSING");
-  return Object.freeze(entries.map(s=>Object.freeze({...s,channel:"CORRIDOR_ONLY",
-    website_intelligence_enabled:false,risk_gate_verified:false,
-    commercial_eligible:false})));
+ assertDirectGlobalCorridorRegistry();
+ const directory=suppliedGlobalCorridorDirectory();
+ const byId=new Map();
+ for(const entry of directory.references){
+   if(!byId.has(entry.source_id))byId.set(entry.source_id,[]);
+   byId.get(entry.source_id).push(Object.freeze({...entry}));
+ }
+ return Object.freeze(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>Object.freeze({...s,
+   channel:"CORRIDOR_ONLY",website_intelligence_enabled:false,
+   source_references:Object.freeze(byId.get(s.id)??[]),
+   risk_gate_verified:false,commercial_eligible:false})));
 }
+// Explicitly empty: none of the 38 submitted links may be inserted into
+// Website Intelligence. Historic independent publisher feeds are untouched.
+export function directGlobalCorridorNewsFeeds(){return Object.freeze([]);}
 export function assertDirectCorridorWebsiteSeparation(){
-  const corridorIds=new Set(CORRIDOR_ONLY_SOURCE_IDS);
-  const corridorUrls=new Set(directGlobalCorridorRouteSources().map(s=>s.url));
-  if(directGlobalCorridorNewsFeeds().some(s=>corridorIds.has(s.id.replace(/^direct_/u,""))||corridorUrls.has(s.url)))
-    throw Error("CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
-  return true;
-}
-// This is DIRECT publication input, not a private OSINT source list.
-// Do not add inaccessible portal pages, paywalled APIs, dataset PDFs or
-// aggregator raw bodies to this news publisher.
-export function directGlobalCorridorNewsFeeds(){
-  assertDirectGlobalCorridorRegistry();
-  const denied=new Set(CORRIDOR_ONLY_SOURCE_IDS);
-  return Object.freeze(DIRECT_GLOBAL_CORRIDOR_SOURCES
-    .filter(s=>s.state==="POLL_DIRECT_FEED"&&!denied.has(s.id))
-    .map(s=>Object.freeze({id:"direct_"+s.id,url:s.url,format:"rss",
-      categories:[...s.categories],priority:false,officialDocument:false,
-      source_kind:"NATIVE_FEED",commercial_eligible:false})));
+ const sources=directGlobalCorridorRouteSources();
+ if(sources.length!==37||sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
+     s.website_intelligence_enabled!==false||
+     (s.id!=="asean_customs_missing"&&s.source_references.length===0))||
+    directGlobalCorridorNewsFeeds().length!==0)
+   throw Error("DIRECT_CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
+ return true;
 }
 export function directGlobalCorridorSourceCensus(){
-  assertDirectGlobalCorridorRegistry();
-  return Object.freeze({schema:"geomacro.direct-global-corridor-source-census.v1",
-    registered:DIRECT_GLOBAL_CORRIDOR_SOURCES.length,
-    active_direct_native_feeds:DIRECT_GLOBAL_CORRIDOR_SOURCES.filter(s=>s.state==="POLL_DIRECT_FEED").length,
-    known_existing_adapters_or_feeds:DIRECT_GLOBAL_CORRIDOR_SOURCES.filter(s=>
-      ["EXISTING_DIRECT_FEED","EXISTING_ADAPTER_UNVERIFIED"].includes(s.state)).length,
-    adapter_or_access_blockers:DIRECT_GLOBAL_CORRIDOR_SOURCES.filter(s=>
-      ["PORTAL_ENDPOINT_REQUIRED","CREDENTIAL_REQUIRED","TRANSPORT_BLOCKED","REJECTED_REMOVED_LINK"].includes(s.state)).length,
-    certified_country_cells:0,production_readbacks_proven:false,
-    commercial_source_rights_inferred:false,paid_publication_authorized:false});
+ assertDirectCorridorWebsiteSeparation();
+ const sources=directGlobalCorridorRouteSources();
+ return Object.freeze({schema:"geomacro.direct-global-corridor-source-census.v2",
+   source_link_occurrences:38,linked_unique_sources:36,
+   total_registered_sources:sources.length,removed_link_placeholders:1,
+   registered:sources.length,corridor_only_sources:sources.length,
+   website_intelligence_sourced_feeds:0,
+   active_direct_native_feeds:0,
+   configured_rss_candidate_count:sources.filter(s=>s.format==="rss").length,
+   known_existing_adapters_or_feeds:sources.filter(s=>
+     ["EXISTING_DIRECT_FEED","EXISTING_ADAPTER_UNVERIFIED"].includes(s.state)).length,
+   adapter_or_access_blockers:sources.filter(s=>
+     ["PORTAL_ENDPOINT_REQUIRED","CREDENTIAL_REQUIRED","TRANSPORT_BLOCKED","REJECTED_REMOVED_LINK"].includes(s.state)).length,
+   certified_country_cells:0,production_readbacks_proven:false,
+   canonical_corridor_events_verified:false,
+   commercial_source_rights_inferred:false,paid_publication_authorized:false});
 }

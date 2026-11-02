@@ -9,7 +9,6 @@ import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
 import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
-import {directGlobalCorridorNewsFeeds} from "./direct-global-corridor-sources.mjs";
 import {EXPANDED_OFFICIAL_SOURCES} from "../ops/probe-expanded-official-source-mesh.mjs";
 import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.mjs";
 
@@ -106,8 +105,6 @@ export function registeredReusableNewsSources(){
     ...PUBLIC_FEED_ROTATION.map(x=>({...x,categories:CATEGORY})),
     ...PRESIDENTIAL_ACTION_SOURCE_FEEDS,
     ...CURATED_US_MACRO_PAIR_FEEDS,
-    // Direct publisher RSS (BoE and digital-asset policy sources), not OSINT.
-    ...directGlobalCorridorNewsFeeds(),
   ];
   const map=new Map();
   for(const item of inputs){

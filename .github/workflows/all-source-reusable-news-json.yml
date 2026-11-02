@@ -15,6 +15,7 @@ on:
       - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/country-news-mentions-195.mjs"
       - "scripts/lib/country-news-mentions-195.test.mjs"

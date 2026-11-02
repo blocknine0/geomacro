@@ -1,0 +1,324 @@
+{
+  "schema": "geomacro.global-corridor-supplied-links.v1",
+  "submitted_document": "geomacro_global_corridor_sources.md",
+  "submitted_markdown_sha256": "34e2ab1da0fc7f8e51c95807e921dc5bae2d181537a2b1768741eedc9bd2d25b",
+  "purpose": "ALL_SUPPLIED_LINKS_CORRIDOR_ONLY",
+  "website_intelligence_enabled": false,
+  "source_link_occurrences": 38,
+  "unique_source_ids_with_url": 36,
+  "duplicate_link_occurrences": 2,
+  "unresolved_removed_links": [
+    {
+      "source_id": "asean_customs_missing",
+      "section": "apac",
+      "reason": "suspicious link removed in source Markdown",
+      "supplied_url": null
+    }
+  ],
+  "references": [
+    {
+      "reference_index": 1,
+      "source_id": "gdelt_v2_15m",
+      "label": "GDELT 15-Minute Raw Update",
+      "section": "global",
+      "supplied_url": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt",
+      "linked_target_url": "http://data.gdeltproject.org/gdeltv2/lastupdate.txt"
+    },
+    {
+      "reference_index": 2,
+      "source_id": "gdelt_cameo_codebook",
+      "label": "GDELT Codebook Reference",
+      "section": "global",
+      "supplied_url": "https://www.google.com/search?q=http://data.gdeltproject.org/documentation/GDELT-Event_Codebook-V2.0.pdf",
+      "linked_target_url": "http://data.gdeltproject.org/documentation/GDELT-Event_Codebook-V2.0.pdf"
+    },
+    {
+      "reference_index": 3,
+      "source_id": "reliefweb_v2",
+      "label": "ReliefWeb API Documentation",
+      "section": "global",
+      "supplied_url": "https://reliefweb.int/help/api",
+      "linked_target_url": "https://reliefweb.int/help/api"
+    },
+    {
+      "reference_index": 4,
+      "source_id": "world_bank_wdi",
+      "label": "World Bank API Reference",
+      "section": "global",
+      "supplied_url": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392-about-the-indicators-api-documentation",
+      "linked_target_url": "https://datahelpdesk.worldbank.org/knowledgebase/articles/889392-about-the-indicators-api-documentation"
+    },
+    {
+      "reference_index": 5,
+      "source_id": "imf_data",
+      "label": "IMF Data Portal",
+      "section": "global",
+      "supplied_url": "https://www.imf.org/en/Data",
+      "linked_target_url": "https://www.imf.org/en/Data"
+    },
+    {
+      "reference_index": 6,
+      "source_id": "wto_tariffs",
+      "label": "WTO Tariff Download Facility",
+      "section": "global",
+      "supplied_url": "https://www.google.com/search?q=https://tariffdata.wto.org/",
+      "linked_target_url": "https://tariffdata.wto.org/"
+    },
+    {
+      "reference_index": 7,
+      "source_id": "adb_open_data",
+      "label": "Asian Development Bank (ADB) Open Data",
+      "section": "apac",
+      "supplied_url": "https://www.google.com/search?q=https://data.adb.org/",
+      "linked_target_url": "https://data.adb.org/"
+    },
+    {
+      "reference_index": 8,
+      "source_id": "recaap_isc",
+      "label": "ReCAAP ISC (Information Sharing Centre)",
+      "section": "apac",
+      "supplied_url": "https://www.recaap.org/",
+      "linked_target_url": "https://www.recaap.org/"
+    },
+    {
+      "reference_index": 9,
+      "source_id": "boj_releases",
+      "label": "Bank of Japan (BOJ) Policy Releases",
+      "section": "apac",
+      "supplied_url": "https://www.boj.or.jp/en/mopo/index.htm",
+      "linked_target_url": "https://www.boj.or.jp/en/mopo/index.htm"
+    },
+    {
+      "reference_index": 10,
+      "source_id": "rbi_releases",
+      "label": "Reserve Bank of India (RBI) Press Releases",
+      "section": "apac",
+      "supplied_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx",
+      "linked_target_url": "https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx"
+    },
+    {
+      "reference_index": 11,
+      "source_id": "ukmto_incidents",
+      "label": "UKMTO Recent Incidents",
+      "section": "mena",
+      "supplied_url": "https://www.ukmto.org/recent-incidents",
+      "linked_target_url": "https://www.ukmto.org/recent-incidents"
+    },
+    {
+      "reference_index": 12,
+      "source_id": "ukmto_advisories",
+      "label": "UKMTO Products & Advisories",
+      "section": "mena",
+      "supplied_url": "https://www.ukmto.org/ukmto-products",
+      "linked_target_url": "https://www.ukmto.org/ukmto-products"
+    },
+    {
+      "reference_index": 13,
+      "source_id": "suez_navigation",
+      "label": "Suez Canal Authority Navigation Circulars",
+      "section": "mena",
+      "supplied_url": "https://www.suezcanal.gov.eg/English/Navigation/NavigationCirculars/Pages/default.aspx",
+      "linked_target_url": "https://www.suezcanal.gov.eg/English/Navigation/NavigationCirculars/Pages/default.aspx"
+    },
+    {
+      "reference_index": 14,
+      "source_id": "arab_monetary_fund",
+      "label": "Arab Monetary Fund Data Portal",
+      "section": "mena",
+      "supplied_url": "https://www.amf.org.ae/en",
+      "linked_target_url": "https://www.amf.org.ae/en"
+    },
+    {
+      "reference_index": 15,
+      "source_id": "ecb_data",
+      "label": "European Central Bank (ECB) Data Portal",
+      "section": "europe",
+      "supplied_url": "https://data.ecb.europa.eu/",
+      "linked_target_url": "https://data.ecb.europa.eu/"
+    },
+    {
+      "reference_index": 16,
+      "source_id": "eurostat_data",
+      "label": "Eurostat Database",
+      "section": "europe",
+      "supplied_url": "https://ec.europa.eu/eurostat/web/main/data/database",
+      "linked_target_url": "https://ec.europa.eu/eurostat/web/main/data/database"
+    },
+    {
+      "reference_index": 17,
+      "source_id": "boe_news",
+      "label": "Bank of England (BoE) News & Releases",
+      "section": "europe",
+      "supplied_url": "https://www.bankofengland.co.uk/news",
+      "linked_target_url": "https://www.bankofengland.co.uk/news"
+    },
+    {
+      "reference_index": 18,
+      "source_id": "snb_data",
+      "label": "Swiss National Bank (SNB)",
+      "section": "europe",
+      "supplied_url": "https://www.snb.ch/en/",
+      "linked_target_url": "https://www.snb.ch/en/"
+    },
+    {
+      "reference_index": 19,
+      "source_id": "panama_canal",
+      "label": "Panama Canal Authority Advisories to Shipping",
+      "section": "latam",
+      "supplied_url": "https://pancanal.com/en/advisories-to-shipping/",
+      "linked_target_url": "https://pancanal.com/en/advisories-to-shipping/"
+    },
+    {
+      "reference_index": 20,
+      "source_id": "eclac_cepal",
+      "label": "UN ECLAC (CEPAL) Data Portal",
+      "section": "latam",
+      "supplied_url": "https://www.cepal.org/en",
+      "linked_target_url": "https://www.cepal.org/en"
+    },
+    {
+      "reference_index": 21,
+      "source_id": "bcb_brazil",
+      "label": "Banco Central do Brasil",
+      "section": "latam",
+      "supplied_url": "https://www.bcb.gov.br/en",
+      "linked_target_url": "https://www.bcb.gov.br/en"
+    },
+    {
+      "reference_index": 22,
+      "source_id": "afdb_documents",
+      "label": "African Development Bank (AfDB) Data Documents",
+      "section": "africa",
+      "supplied_url": "https://www.google.com/search?q=https://www.afdb.org/en/documents",
+      "linked_target_url": "https://www.afdb.org/en/documents"
+    },
+    {
+      "reference_index": 23,
+      "source_id": "afcfta",
+      "label": "African Continental Free Trade Area (AfCFTA)",
+      "section": "africa",
+      "supplied_url": "https://www.google.com/search?q=https://afcfta.au.int/",
+      "linked_target_url": "https://afcfta.au.int/"
+    },
+    {
+      "reference_index": 24,
+      "source_id": "sarb",
+      "label": "South African Reserve Bank (SARB)",
+      "section": "africa",
+      "supplied_url": "https://www.resbank.co.za/",
+      "linked_target_url": "https://www.resbank.co.za/"
+    },
+    {
+      "reference_index": 25,
+      "source_id": "federal_reserve",
+      "label": "Federal Reserve Board Press Releases",
+      "section": "north-america",
+      "supplied_url": "https://www.google.com/search?q=https://www.federalreserve.gov/feeds/press_all.xml",
+      "linked_target_url": "https://www.federalreserve.gov/feeds/press_all.xml"
+    },
+    {
+      "reference_index": 26,
+      "source_id": "fred_api",
+      "label": "FRED API (Federal Reserve Bank of St. Louis)",
+      "section": "north-america",
+      "supplied_url": "https://fred.stlouisfed.org/docs/api/fred/",
+      "linked_target_url": "https://fred.stlouisfed.org/docs/api/fred/"
+    },
+    {
+      "reference_index": 27,
+      "source_id": "bank_of_canada",
+      "label": "Bank of Canada Notices",
+      "section": "north-america",
+      "supplied_url": "https://www.bankofcanada.ca/",
+      "linked_target_url": "https://www.bankofcanada.ca/"
+    },
+    {
+      "reference_index": 28,
+      "source_id": "freightos_fbx",
+      "label": "Freightos Baltic Index (FBX)",
+      "section": "maritime-logistics",
+      "supplied_url": "https://fbx.freightos.com/",
+      "linked_target_url": "https://fbx.freightos.com/"
+    },
+    {
+      "reference_index": 29,
+      "source_id": "nyfed_gscpi",
+      "label": "NY Fed Global Supply Chain Pressure Index (GSCPI)",
+      "section": "maritime-logistics",
+      "supplied_url": "https://www.newyorkfed.org/research/policy/gscpi",
+      "linked_target_url": "https://www.newyorkfed.org/research/policy/gscpi"
+    },
+    {
+      "reference_index": 30,
+      "source_id": "panama_canal",
+      "label": "Panama Canal Advisory",
+      "section": "maritime-logistics",
+      "supplied_url": "https://pancanal.com/en/advisories-to-shipping/",
+      "linked_target_url": "https://pancanal.com/en/advisories-to-shipping/"
+    },
+    {
+      "reference_index": 31,
+      "source_id": "ukmto_incidents",
+      "label": "UKMTO Incident Alerts",
+      "section": "maritime-logistics",
+      "supplied_url": "https://www.ukmto.org/recent-incidents",
+      "linked_target_url": "https://www.ukmto.org/recent-incidents"
+    },
+    {
+      "reference_index": 32,
+      "source_id": "imb_piracy",
+      "label": "IMB Piracy Reporting Centre",
+      "section": "maritime-logistics",
+      "supplied_url": "https://www.google.com/search?q=https://www.icc-ccs.org/piracy-reporting-centre",
+      "linked_target_url": "https://www.icc-ccs.org/piracy-reporting-centre"
+    },
+    {
+      "reference_index": 33,
+      "source_id": "usgs_mcs",
+      "label": "USGS National Minerals Information Center",
+      "section": "critical-minerals",
+      "supplied_url": "https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries",
+      "linked_target_url": "https://www.usgs.gov/centers/national-minerals-information-center/mineral-commodity-summaries"
+    },
+    {
+      "reference_index": 34,
+      "source_id": "iea_minerals",
+      "label": "IEA Critical Minerals Data Explorer",
+      "section": "critical-minerals",
+      "supplied_url": "https://www.iea.org/data-and-statistics/data-tools/critical-minerals-data-explorer",
+      "linked_target_url": "https://www.iea.org/data-and-statistics/data-tools/critical-minerals-data-explorer"
+    },
+    {
+      "reference_index": 35,
+      "source_id": "mining_com",
+      "label": "Mining.com RSS Feed",
+      "section": "critical-minerals",
+      "supplied_url": "https://www.google.com/search?q=https://www.mining.com/feed/",
+      "linked_target_url": "https://www.mining.com/feed/"
+    },
+    {
+      "reference_index": 36,
+      "source_id": "cryptocompare_news",
+      "label": "CryptoCompare (CCData) News REST API",
+      "section": "digital-assets",
+      "supplied_url": "https://www.google.com/search?q=https://min-api.cryptocompare.com/documentation%3Fkey%3DNews%26cat%3DlatestNewsArticlesEndpoint",
+      "linked_target_url": "https://min-api.cryptocompare.com/documentation?key=News&cat=latestNewsArticlesEndpoint"
+    },
+    {
+      "reference_index": 37,
+      "source_id": "coindesk_rss",
+      "label": "CoinDesk Outbound RSS Feed",
+      "section": "digital-assets",
+      "supplied_url": "https://www.google.com/search?q=https://www.coindesk.com/arc/outboundfeeds/rss/",
+      "linked_target_url": "https://www.coindesk.com/arc/outboundfeeds/rss/"
+    },
+    {
+      "reference_index": 38,
+      "source_id": "cointelegraph_rss",
+      "label": "Cointelegraph RSS Feed",
+      "section": "digital-assets",
+      "supplied_url": "https://www.google.com/search?q=https://cointelegraph.com/rss",
+      "linked_target_url": "https://cointelegraph.com/rss"
+    }
+  ]
+}
