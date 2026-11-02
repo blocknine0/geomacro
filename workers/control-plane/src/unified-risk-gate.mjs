@@ -259,6 +259,7 @@ export async function cleanupUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fet
   if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
   await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM risk_observations WHERE created_at<?").bind(cutoff).run();
+  await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE day_utc<?").bind(cutoff.slice(0,10)).run();
   await env.DB.prepare("UPDATE risk_gate_daily_housekeeping SET last_cleanup_at=?,next_cleanup_at=? WHERE job_id='unified_supabase_ten_day'")
    .bind(iso(now),iso(now+TEN)).run();
   return {ok:true,verified:true,minimum_retention_days:3,interval_days:10};
