@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T07:35:54.579Z",
+  "checked_at": "2026-11-02T07:39:46.884Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,101 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-872e385f",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecast for December and 2027. Here's why - CNBC TV18",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecast for December and 2027. Here's why - CNBC TV18. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:11:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f31e8307",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pro-Kurdish DEM Party urged faster peace process following Ocalan prison transfer - Rudaw",
+      "what_changed": "A monitored source feed reports: Pro-Kurdish DEM Party urged faster peace process following Ocalan prison transfer - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T05:26:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-886db3e8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:56:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-72ef2ab0",
+      "category": "geopolitics",
+      "title": "Geomacro finds China said Stealth Attack Drone Flew From Its Catapult-Equipped Assault Ship - SOFX",
+      "what_changed": "A monitored source feed reports: China said Stealth Attack Drone Flew From Its Catapult-Equipped Assault Ship - SOFX. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:42:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-44730c33",
+      "category": "geopolitics",
+      "title": "Geomacro finds Lubinets announced end of ceasefire in Oleshky",
+      "what_changed": "A monitored source feed reports: Lubinets announced end of ceasefire in Oleshky. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-b4359940",
       "category": "macro",
@@ -24,6 +119,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9f67d680",
+      "category": "geopolitics",
+      "title": "Geomacro finds Netanyahu urged Trump to attack Iran as US pursues further negotiations before midterms - report",
+      "what_changed": "A monitored source feed reports: Netanyahu urged Trump to attack Iran as US pursues further negotiations before midterms - report. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:14:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.jpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-f8708bb8",
+      "category": "rare_earth",
+      "title": "Geomacro finds ICGLR called for audit of mineral supply chains",
+      "what_changed": "A monitored source feed reports: ICGLR called for audit of mineral supply chains. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T03:33:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.lusakatimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1069,6 +1202,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-84bf866a",
+      "category": "macro",
+      "title": "Geomacro finds Ethiopian Deposit Insurance Fund recorded ETB2.6Bln in Q1 Premiums",
+      "what_changed": "A monitored source feed reports: Ethiopian Deposit Insurance Fund recorded ETB2.6Bln in Q1 Premiums. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-31T08:05:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thereporterethiopia.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
