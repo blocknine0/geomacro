@@ -17,12 +17,17 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
   Object.keys(packet).sort().join("|")!==[
    "schema","checked_at","batch_at","items","archive_sha256","provider",
    "source_event_verification","commercial_rights_verified","customer_debit_enabled",
-   "predge_writes"].sort().join("|")||
+   "predge_writes",
+   "b2_archive_key","b2_manifest_sha256","b2_exact_readback_verified"].sort().join("|")||
   packet.schema!==GDELT_RISK_EVENT_SCHEMA||packet.provider!=="gdelt_v2_15m"||
   packet.source_event_verification!=="INDEX_ONLY"||
   packet.commercial_rights_verified!==false||
   packet.customer_debit_enabled!==false||packet.predge_writes!==0||
-  !HASH.test(packet.archive_sha256)||
+  !HASH.test(packet.archive_sha256)||!HASH.test(packet.b2_manifest_sha256)||
+  packet.b2_exact_readback_verified!==true||
+  typeof packet.b2_archive_key!=="string"||
+  !/^geomacro-evidence\/v1\/private\/gdelt-event-wide-net\/\d{12}\/[a-f0-9]{64}\.json$/u.test(packet.b2_archive_key)||
+  !packet.b2_archive_key.endsWith("/"+packet.b2_manifest_sha256+".json")||
   !Number.isFinite(Date.parse(packet.checked_at))||
   Math.abs(now-Date.parse(packet.checked_at))>15*60000||
   !Number.isFinite(Date.parse(packet.batch_at))||
@@ -45,12 +50,14 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
     "INSERT INTO risk_gate_gdelt_event_index "+
     "(event_ref_id,gdelt_event_id,cameo_code,cameo_root,gdelt_index_at,"+
     "batch_at,action_geo_fips,corridor_hints_json,source_url_sha256,archive_sha256,"+
-    "first_seen_at,last_seen_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "+
+    "first_seen_at,last_seen_at,b2_archive_key,b2_manifest_sha256) "+
+    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?) "+
     "ON CONFLICT(event_ref_id) DO UPDATE SET last_seen_at=excluded.last_seen_at "+
     "WHERE risk_gate_gdelt_event_index.archive_sha256=excluded.archive_sha256")
     .bind(x.id,x.gdelt_event_id,x.cameo_code,x.cameo_root,x.gdelt_index_at,
       x.gdelt_batch_at,x.action_geo_fips,JSON.stringify(x.corridor_hints),
-      x.source_url_sha256,x.archive_sha256,checked_at,checked_at));
+      x.source_url_sha256,x.archive_sha256,checked_at,checked_at,
+      packet.b2_archive_key,packet.b2_manifest_sha256));
    await env.DB.batch(writes);
   }
   await env.DB.prepare("DELETE FROM risk_gate_gdelt_event_index "+
@@ -58,7 +65,8 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
   const rows=packet.items.length?
     (await env.DB.prepare("SELECT event_ref_id,gdelt_event_id,cameo_code,"+
      "cameo_root,gdelt_index_at,batch_at,action_geo_fips,corridor_hints_json,"+
-     "source_url_sha256,archive_sha256 FROM risk_gate_gdelt_event_index "+
+     "source_url_sha256,archive_sha256,b2_archive_key,b2_manifest_sha256 "+
+     "FROM risk_gate_gdelt_event_index "+
      "WHERE event_ref_id IN ("+packet.items.map(()=>"?").join(",")+")")
      .bind(...packet.items.map(x=>x.id)).all())?.results??[]:[];
   const byId=new Map(rows.map(r=>[r.event_ref_id,r]));
@@ -69,13 +77,18 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
     r.gdelt_index_at===x.gdelt_index_at&&r.batch_at===x.gdelt_batch_at&&
     r.action_geo_fips===x.action_geo_fips&&
     r.corridor_hints_json===JSON.stringify(x.corridor_hints)&&
-    r.source_url_sha256===x.source_url_sha256&&r.archive_sha256===x.archive_sha256;
+    r.source_url_sha256===x.source_url_sha256&&r.archive_sha256===x.archive_sha256&&
+    r.b2_archive_key===packet.b2_archive_key&&
+    r.b2_manifest_sha256===packet.b2_manifest_sha256;
   }).length;
   if(exact!==packet.items.length)return respond({ok:false,
    error:"RG_GDELT_D1_READBACK_MISMATCH",submitted:packet.items.length,
    readback:exact,chargeable:false},503);
   return respond({ok:true,schema:"geomacro.risk-gate-gdelt-d1-acceptance.v1",
    provider:"gdelt_v2_15m",source_zip_integrity_proof:packet.archive_sha256,
+   b2_archive_key:packet.b2_archive_key,
+   b2_manifest_sha256:packet.b2_manifest_sha256,
+   b2_exact_readback_verified:true,
    shortlisted:packet.items.length,exact_d1_readback:exact,
    source_event_verification:"INDEX_ONLY",
    verified_event_count:0,commercial_rights_verified:false,
@@ -91,7 +104,8 @@ export async function readPrivateRiskGateGdelt(env,query=new URLSearchParams(),n
   return respond({ok:false,error:"RG_GDELT_LIMIT_INVALID"},400);
  try{
   const rows=(await env.DB.prepare("SELECT event_ref_id,gdelt_event_id,cameo_code,"+
-   "cameo_root,gdelt_index_at,action_geo_fips,corridor_hints_json,source_url_sha256 "+
+   "cameo_root,gdelt_index_at,action_geo_fips,corridor_hints_json,source_url_sha256,"+
+   "b2_archive_key,b2_manifest_sha256 "+
    "FROM risk_gate_gdelt_event_index WHERE gdelt_index_at>=? "+
    "ORDER BY gdelt_index_at DESC LIMIT ?")
     .bind(new Date(now-TTL).toISOString(),Number(limit)).all())?.results??[];
@@ -103,6 +117,7 @@ export async function readPrivateRiskGateGdelt(env,query=new URLSearchParams(),n
      action_geo_fips:r.action_geo_fips,
      corridor_hints:JSON.parse(r.corridor_hints_json),
      source_url_sha256:r.source_url_sha256,
+     b2_archive_key:r.b2_archive_key,b2_manifest_sha256:r.b2_manifest_sha256,
      verified_event:false,commercial_eligible:false})),
    chargeable:false,signed_gro_generated:false,
    independent_event_verified:false,customer_debit_enabled:false});
