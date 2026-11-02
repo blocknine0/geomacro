@@ -293,6 +293,9 @@ jobs:
       - name: Append canonical original-dated D1 candidates and deploy static archive
         id: permanent-archive
         env:
+          # Quota admission is mandatory. Held/failed quota means ZERO extra D1
+          # reads, while source-derived append-only publication continues.
+          GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.result == 'success' && needs.quota-admission.outputs.research == 'true' }}
           GITHUB_TOKEN: ${{ github.token }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
