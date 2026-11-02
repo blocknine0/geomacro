@@ -469,6 +469,47 @@ jobs:
           fi
           echo "PASS: live Taiwan China Bab-el-Mandeb 3-category D1 and private Supabase hash readback; no funds."
 
+      - name: Verify production API custom domain with authenticated D1 census (no funds)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#CONTROL_PLANE_TOKEN}" -eq 64 || { echo "::error::API_DOMAIN_ADMIN_TOKEN_MISSING"; exit 20; }
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          trap 'rm -f "$headers" "$body"' EXIT
+          accepted=0
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            status="$(curl -sS --max-time 12 --connect-timeout 7 \
+              -D "$headers" -o "$body" -w '%{http_code}' \
+              -H "Authorization: Bearer $CONTROL_PLANE_TOKEN" \
+              -H 'Accept: application/json' \
+              -H 'Cache-Control: no-cache' \
+              'https://api.geomacro.live/v1/internal/risk-gate/unified-census' || true)"
+            if test "$status" = 200 &&
+              grep -Eiq '^cache-control:[[:space:]]*no-store([[:space:]]|$)' "$headers" &&
+              jq -e '.ok == true and .schema == "geomacro.unified-risk-census.v1" and
+                .expected.country == 195 and .expected.corridor == 12 and
+                .commercial_activation == false' "$body" >/dev/null 2>&1; then
+              accepted=1
+              break
+            fi
+            sleep 8
+          done
+          if test "$accepted" -ne 1; then
+            echo "::error::API_CUSTOM_DOMAIN_DNS_TLS_AUTH_OR_CENSUS_UNVERIFIED"
+            exit 21
+          fi
+          # Prove the public hostname cannot bypass protected unified evaluation.
+          unauthorized="$(curl -sS --max-time 12 -o /dev/null -w '%{http_code}' \
+            -H 'Content-Type: application/json' -X POST \
+            -d '{"target_type":"COUNTRY","target_id":"TWN","client_policy":"STRICT"}' \
+            'https://api.geomacro.live/v1/risk-gate/unified/evaluate' || true)"
+          test "$unauthorized" = 401 || {
+            echo "::error::API_CUSTOM_DOMAIN_UNAUTHORIZED_EVALUATION_NOT_DENIED"
+            exit 22
+          }
+          echo "PASS: custom-domain TLS, authenticated private D1 census, no-store and denied anonymous evaluation; no funds."
+
       - name: Verify separate Supabase-free Risk Gate authentication and signed-GRO boundary (no funds)
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
