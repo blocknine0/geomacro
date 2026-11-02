@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T06:32:15.790Z",
+  "checked_at": "2026-11-02T06:49:09.929Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 136,
+  "item_count": 133,
   "counts": {
-    "geopolitics": 52,
+    "geopolitics": 50,
     "macro": 53,
-    "rare_earth": 31
+    "rare_earth": 30
   },
-  "source_native_ids_sha256": "747f024c4f8a58c63df5990bd9b8631f4817b9527370b10972cccc7474879192",
+  "source_native_ids_sha256": "c9126fefd9cea51f10f9b14501610eb425fe9450fc7e16c6c4976396e0bbcec4",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2551,63 +2551,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a29487c0",
-      "category": "geopolitics",
-      "title": "Geomacro finds Saudi Arabia said one injured, material damage after missiles intercepted",
-      "what_changed": "A monitored source feed reports: Saudi Arabia said one injured, material damage after missiles intercepted. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:43:17.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.khaleejtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-012c4fbc",
-      "category": "rare_earth",
-      "title": "Geomacro finds IMC Rare Earths reported yttrium discoveries at Brazil project",
-      "what_changed": "A monitored source feed reports: IMC Rare Earths reported yttrium discoveries at Brazil project. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:39:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-20c9a726",
-      "category": "geopolitics",
-      "title": "Geomacro finds Philippines raised volcano alert level as blast sends ash skyward",
-      "what_changed": "A monitored source feed reports: Philippines raised volcano alert level as blast sends ash skyward. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:33:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
