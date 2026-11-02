@@ -297,15 +297,14 @@ test("exact immutable batch receipt accepts independently newer verified global 
  assert.equal(exactReads,1);
 });
 test("tampered same-batch receipt fails even when latest continuity appears healthy",async()=>{
- const db=new DB(),zipped=Buffer.from("verified-pinned-source-fixture");
+ const db=new DB(),zipped=Buffer.from("verified-pinned-source-fixture"),b2Store=new Map();
  const manifest={batch_at:BATCH,expected_bytes:zipped.length,
   expected_md5:createHash("md5").update(zipped).digest("hex")};
  await assert.rejects(()=>publishGdeltRiskEventWideNet({
   rootToken:"a".repeat(64),now:NOW,
   readArchive:async()=>({decoded:text(),manifest,zipped}),
-  b2Client:{put:async()=>{},get:async()=>Buffer.from(JSON.stringify({
-   schema:"NOT_FOR_PRODUCTION"
-  }))},
+  b2Client:{put:async(k,v)=>{b2Store.set(k,Buffer.from(v))},
+   get:async(k)=>b2Store.get(k)},
   fetchImpl:async(url,opts)=>opts.method==="PUT"?
    putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
    url.includes("gdelt-batch-receipt")?
@@ -313,7 +312,7 @@ test("tampered same-batch receipt fails even when latest continuity appears heal
      exact_batch_receipt_verified:true,batch_at:BATCH,
      archive_sha256:"0".repeat(64)}):
    readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime())
- }),/RG_GDELT_B2_EXACT_READBACK_FAILED/u);
+ }),/RG_GDELT_EXACT_BATCH_RECEIPT_MISMATCH/u);
 });
 
 test("GDELT event shortlist can never call PREDGE, paid API or replace GRO signer",()=>{
