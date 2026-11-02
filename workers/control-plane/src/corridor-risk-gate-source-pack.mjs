@@ -77,6 +77,53 @@ export async function putPrivateRiskGateSourcePack(env,payload,now=Date.now()){
    website_intelligence_writes:0,predge_writes:0,retention_hours:72});
  }catch{return reply({ok:false,error:"RG_SOURCE_PACK_D1_WRITE_UNAVAILABLE",chargeable:false},503)}
 }
+/**
+ * Canonical D1 server-local source selection. This avoids a race where a
+ * GitHub receipt sampled IDs before duplicate normalization/other writes.
+ * All refs are selected from the same D1 that will verify and persist them.
+ * This is still evidence-only research, not an event verifier or paid path.
+ */
+export async function materializeCanonicalRiskGateSourcePack(env,now=Date.now()){
+ if(!env?.DB?.prepare)return reply({ok:false,error:"RG_CANONICAL_D1_UNAVAILABLE",chargeable:false},503);
+ if(!Number.isFinite(now))return reply({ok:false,error:"RG_CANONICAL_CLOCK_INVALID",chargeable:false},422);
+ const checked_at=new Date(now).toISOString(),cutoff=new Date(now-TTL).toISOString();
+ try{
+  const native=(await env.DB.prepare("SELECT candidate_id,source_id,native_published_at "+
+   "FROM corridor_native_news_candidates WHERE native_published_at>=? "+
+   "AND native_published_at<=? ORDER BY native_published_at DESC LIMIT 6")
+   .bind(cutoff,checked_at).all())?.results??[];
+  const crypto=(await env.DB.prepare("SELECT article_id,published_at "+
+   "FROM corridor_crypto_individual_research WHERE published_at>=? "+
+   "AND published_at<=? ORDER BY published_at DESC LIMIT 6")
+   .bind(cutoff,checked_at).all())?.results??[];
+  const official=(await env.DB.prepare("SELECT reference_id,source_id,observation_period "+
+   "FROM corridor_official_reference_context WHERE last_observed_at>=? "+
+   "AND source_id <> 'gdelt_v2_15m' "+
+   "AND metric_id <> 'cryptocompare_24h_news_sample_count' "+
+   "ORDER BY last_observed_at DESC LIMIT 6")
+   .bind(cutoff).all())?.results??[];
+  const refs=[
+   ...native.map(r=>({id:r.candidate_id,kind:"NATIVE_RSS",
+    source_id:r.source_id,source_period:r.native_published_at})),
+   ...crypto.map(r=>({id:r.article_id,kind:"CRYPTO_INDIVIDUAL",
+    source_id:"cryptocompare_news",source_period:r.published_at})),
+   ...official.map(r=>({id:r.reference_id,kind:"OFFICIAL_REFERENCE",
+    source_id:r.source_id,source_period:r.observation_period}))
+  ];
+  const pack=buildRiskGateSourcePack({checked_at,refs});
+  const result=await putPrivateRiskGateSourcePack(env,pack,now);
+  if(result.status!==200)return result;
+  const receipt=await result.json();
+  return reply({...receipt,
+   selection:"CANONICAL_D1_SOURCE_LOCAL",
+   source_classes:{native_rss:native.length,crypto_individual:crypto.length,
+    official_reference:official.length},
+   gdelt_batch_metrics_excluded:true});
+ }catch{
+  return reply({ok:false,error:"RG_CANONICAL_D1_SOURCE_SELECTION_UNAVAILABLE",
+   chargeable:false},503);
+ }
+}
 export async function readPrivateRiskGateSourcePack(env,params=new URLSearchParams(),now=Date.now()){
  if(!env?.DB?.prepare)return reply({ok:false,error:"RG_SOURCE_PACK_D1_UNAVAILABLE"},503);
  const limit=params.get("limit")??"3";
