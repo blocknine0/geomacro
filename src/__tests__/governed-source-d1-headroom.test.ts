@@ -27,7 +27,7 @@ const env={
 
 describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=>{
   it("admits capacity for two independent read-back-verified source archives",()=>{
-    const decision=evaluateGovernedB2Headroom(from({GET:23,PUT:53}),{
+    const decision=evaluateGovernedB2Headroom(from({GET:320,PUT:370}),{
       getRequests:2,putRequests:2,now:clock,
     });
     expect(decision).toMatchObject({
@@ -43,12 +43,12 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
   });
 
   it("admits exactly one shared PUT+GET pair without weakening account limits",()=>{
-    const decision = evaluateGovernedB2Headroom(from({GET:44,PUT:54}),{
+    const decision = evaluateGovernedB2Headroom(from({GET:339,PUT:379}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(decision.admitted).toBe(true);
     expect(decision.b2_requests_by_this_check).toBe(0);
-    const denied = evaluateGovernedB2Headroom(from({GET:45,PUT:54}),{
+    const denied = evaluateGovernedB2Headroom(from({GET:340,PUT:379}),{
       getRequests:1,putRequests:1,now:clock,
     });
     expect(denied.admitted).toBe(false);
@@ -56,10 +56,10 @@ describe("#1827 read-only B2 daily account quota gate for governed EIA/NOAA",()=
 
   it("holds exactly at shared GET/PUT/total limits without spending a B2 ticket",()=>{
     for(const [status,request] of [
-      [from({GET:44,PUT:5}),{getRequests:2,putRequests:2}],
-      [from({GET:4,PUT:54}),{getRequests:2,putRequests:2}],
-      [from({GET:44,PUT:50,HEAD:5}),{getRequests:2,putRequests:2}],
-      [from({GET:17,PUT:47}),{getRequests:9,putRequests:9}],
+      [from({GET:339,PUT:5}),{getRequests:2,putRequests:2}],
+      [from({GET:4,PUT:379}),{getRequests:2,putRequests:2}],
+      [from({GET:335,PUT:365,HEAD:18}),{getRequests:2,putRequests:2}],
+      [from({GET:334,PUT:370}),{getRequests:9,putRequests:9}],
     ] as const) {
       const d=evaluateGovernedB2Headroom(status,{...request,now:clock});
       expect(d.admitted).toBe(false);
