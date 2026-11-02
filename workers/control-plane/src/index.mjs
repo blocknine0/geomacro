@@ -30,7 +30,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,verifyUnifiedRiskDailyRemoteCensus} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1306,18 +1306,15 @@ export default {
       const minute=utc.getUTCHours()*60+utc.getUTCMinutes();
       if(minute>=300&&minute<495||minute>=500&&minute<1050)
         ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
-          .then(r=>{if(!r.ok)console.error("UNIFIED_195X3_GENERATION_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_195X3_GENERATION_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_195X3_GENERATION_DEFERRED:"+r.error)}));
       if(utc.getUTCMinutes()%15===10&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
-          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_SUPABASE_SYNC_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_SYNC_DEFERRED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(cleanupUnifiedRiskSupabase(env,{now:utc.getTime()})
-          .then(r=>{if(!r.ok)console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")})
-          .catch(()=>console.error("UNIFIED_SUPABASE_CLEANUP_DEFERRED")));
+          .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_CLEANUP_DEFERRED:"+r.error)}));
     }
     // D1-first daily 06 UTC, two of twelve corridors per 5-minute slot.
     // Slots repeat after 30 minutes to retry interrupted batches for free-tier CPU.
@@ -1577,11 +1574,23 @@ export default {
         const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
         const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
         const country_synced=Number(countries?.synced??0),corridor_synced=Number(corridors?.synced??0);
-        const complete=country_count===195&&corridor_count===12&&
+        const local_complete=country_count===195&&corridor_count===12&&
           country_synced===195&&corridor_synced===12;
+        // Never turn yesterday's Supabase sync flag into today's green receipt.
+        // Make one bounded fresh remote exact-ID/hash readback only when all
+        // local canonical rows already exist; return counts, never private data.
+        const remote=local_complete?
+          await verifyUnifiedRiskDailyRemoteCensus(env,day_utc):
+          {ok:false,error:"UNIFIED_CENSUS_LOCAL_INCOMPLETE"};
+        const complete=local_complete&&remote.ok===true&&
+          remote.remote_count===207&&remote.remote_hash_matches===207;
         return json({schema:"geomacro.unified-risk-census.v1",ok:true,day_utc,
           country_count,corridor_count,country_synced,corridor_synced,
           expected:{country:195,corridor:12,total:207},
+          supabase_live_readback_verified:complete,
+          remote_count:remote.ok===true?remote.remote_count:0,
+          remote_hash_matches:remote.ok===true?remote.remote_hash_matches:0,
+          remote_readback_status:remote.ok===true?"MATCHED":"INCOMPLETE_OR_UNAVAILABLE",
           complete,commercial_activation:false});
       }
       // Owner-admin-only, exact three-target production acceptance.

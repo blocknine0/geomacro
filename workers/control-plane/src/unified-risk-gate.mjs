@@ -242,6 +242,46 @@ export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}
   return {ok:true,synced:rows.length,hash_readback_verified:true};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_SYNC_FAILED"}}
 }
+/** One strictly bounded, fresh remote D1-to-Supabase daily hash census.
+ * It is not enough that D1 remembers a previous successful write:
+ * 18:30 UTC acceptance must prove the exact 207 canonical identities and
+ * hashes still exist remotely. Optional TWN is supplementary and excluded.
+ * This never fetches private articles, spends money or invents a risk score.
+ */
+export async function verifyUnifiedRiskDailyRemoteCensus(env,day,{fetcher=fetch}={}){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(day??"")))
+   return {ok:false,error:"UNIFIED_CENSUS_DAY_INVALID"};
+ const cfg=supabaseCfg(env);
+ if(!cfg)return {ok:false,error:"UNIFIED_CENSUS_SUPABASE_NOT_CONFIGURED"};
+ try{
+  if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_CENSUS_D1_UNAVAILABLE"};
+  const local=(await env.DB.prepare(
+   "SELECT entity_type,entity_id,content_sha256,supabase_synced_at FROM unified_risk_snapshots "+
+   "WHERE day_utc=? AND (entity_type='CORRIDOR' OR entity_id<>'TWN') LIMIT 210"
+  ).bind(day).all())?.results??[];
+  const expected=new Set(CANONICAL_UNIFIED_TARGETS.map(identity));
+  if(local.length!==expected.size ||
+    local.some(r=>!expected.has(r.entity_type+"|"+r.entity_id)||
+      !hex.test(String(r.content_sha256??""))||!r.supabase_synced_at))
+    return {ok:false,error:"UNIFIED_CENSUS_LOCAL_INCOMPLETE"};
+  const localMap=new Map(local.map(r=>[r.entity_type+"|"+r.entity_id,r.content_sha256]));
+  if(localMap.size!==expected.size)return {ok:false,error:"UNIFIED_CENSUS_LOCAL_DUPLICATE"};
+  const url="/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,content_sha256"+
+    "&day_utc=eq."+encodeURIComponent(day)+"&limit=210";
+  const found=await (await remote(cfg,url,{},fetcher)).json();
+  if(!Array.isArray(found)||found.length>210)return {ok:false,error:"UNIFIED_CENSUS_REMOTE_INVALID"};
+  const canonical=found.filter(r=>!(r.entity_type==="COUNTRY"&&r.entity_id==="TWN"));
+  if(canonical.length!==expected.size||
+    canonical.some(r=>!expected.has(r.entity_type+"|"+r.entity_id)||
+      !hex.test(String(r.content_sha256??""))||
+      localMap.get(r.entity_type+"|"+r.entity_id)!==r.content_sha256))
+    return {ok:false,error:"UNIFIED_CENSUS_REMOTE_HASH_MISMATCH"};
+  if(new Set(canonical.map(r=>r.entity_type+"|"+r.entity_id)).size!==expected.size)
+    return {ok:false,error:"UNIFIED_CENSUS_REMOTE_DUPLICATE"};
+  return {ok:true,remote_count:expected.size,remote_hash_matches:expected.size,
+    verified_at:iso(Date.now())};
+ }catch{return {ok:false,error:"UNIFIED_CENSUS_REMOTE_READBACK_UNAVAILABLE"}}
+}
 /** Hourly bounded prune: preserve seven rolling days of verified snapshots.
  * Remote Supabase removal and empty-old-row readback precede any local D1
  * deletion. Unsynced D1 snapshots are never purged by this maintenance.
