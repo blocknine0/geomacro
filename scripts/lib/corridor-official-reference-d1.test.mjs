@@ -96,7 +96,8 @@ test("scheduled publisher performs both root-authenticated PUT and GET",async()=
  const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
  const input={schema:"geomacro.corridor-official-reference-intake.v1",
   channel:"CORRIDOR_ONLY",checked_at:new Date(now).toISOString(),
-  source_checks:["gdelt_v2_15m","world_bank_wdi","ecb_data","eurostat_data","imf_portwatch"]
+  source_checks:["gdelt_v2_15m","world_bank_wdi","ecb_data","eurostat_data","imf_portwatch",
+   "fred_api","reliefweb_v2","cryptocompare_news","freightos_fbx"]
    .map(id=>({id,state:"OFFICIAL_REFERENCE_OBSERVED",observations:id==="ecb_data"?1:0})),
   observation_count:1,observations:[observation()],website_intelligence_enabled:false,
   commercial_rights_verified:false};
