@@ -458,6 +458,7 @@ jobs:
           if test "$status" != "200" || ! jq -e '
             .ok == true and .schema == "geomacro.unified-risk-production-acceptance.v1" and
             .no_funds == true and .commercial_activation == false and
+            .authenticated_unified_api_200 == true and
             (.checked_targets|length) == 3 and
             all(.checked_targets[]; .ok == true and .categories_present == true and
               .snapshot_integrity_verified == true and .supabase_synced == true) and
