@@ -15,6 +15,11 @@ on:
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/risk-gate-supplied-source-rules.mjs"
+      - "lib/risk-gate-source-pack.mjs"
+      - "scripts/lib/risk-gate-source-pack.test.mjs"
+      - "scripts/ops/publish-private-risk-gate-source-packs.mjs"
+      - "workers/control-plane/src/corridor-risk-gate-source-pack.mjs"
+      - "workers/control-plane/migrations/0100_corridor_risk_gate_source_packs.sql"
       - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
       - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
@@ -55,6 +60,11 @@ on:
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/risk-gate-supplied-source-rules.mjs"
+      - "lib/risk-gate-source-pack.mjs"
+      - "scripts/lib/risk-gate-source-pack.test.mjs"
+      - "scripts/ops/publish-private-risk-gate-source-packs.mjs"
+      - "workers/control-plane/src/corridor-risk-gate-source-pack.mjs"
+      - "workers/control-plane/migrations/0100_corridor_risk_gate_source_packs.sql"
       - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
       - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
@@ -110,6 +120,9 @@ jobs:
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
           node --check scripts/lib/risk-gate-supplied-source-rules.mjs
+          node --check lib/risk-gate-source-pack.mjs
+          node --check workers/control-plane/src/corridor-risk-gate-source-pack.mjs
+          node --check scripts/ops/publish-private-risk-gate-source-packs.mjs
           node --check scripts/lib/direct-corridor-native-news.mjs
           node --check scripts/lib/direct-corridor-official-news-feeds.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
@@ -129,6 +142,7 @@ jobs:
           node --test scripts/lib/direct-global-corridor-sources.test.mjs
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
           node --test scripts/lib/risk-gate-supplied-source-rules.test.mjs
+          node --test scripts/lib/risk-gate-source-pack.test.mjs
           node --test scripts/lib/direct-corridor-native-news.test.mjs
           node --test scripts/lib/direct-corridor-official-news-feeds.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
@@ -191,6 +205,17 @@ jobs:
             exit 2
           }
           node scripts/ops/publish-private-crypto-individual-research.mjs
+      - name: Materialize all three locked-price Risk Gate evidence packs in private D1
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || {
+            echo "::error::RG_SOURCE_PACK_D1_ROOT_CREDENTIAL_MISSING"
+            exit 2
+          }
+          node scripts/ops/publish-private-risk-gate-source-packs.mjs
       - name: Upload separate bounded corridor receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -206,5 +231,7 @@ jobs:
             artifacts/direct-corridor-intake/research-d1-readback.json
             artifacts/direct-corridor-intake/crypto-individual-research.json
             artifacts/direct-corridor-intake/crypto-individual-d1-readback.json
+            artifacts/direct-corridor-intake/risk-gate-source-pack.json
+            artifacts/direct-corridor-intake/risk-gate-source-d1-readback.json
           if-no-files-found: error
           retention-days: 3

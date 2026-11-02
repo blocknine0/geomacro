@@ -1,0 +1,110 @@
+#!/usr/bin/env node
+/** After canonical source D1 readbacks, stage EXACT private source-bound Risk Gate
+ * evidence packs for the three existing-price variants. No new sales.
+ */
+import {createHmac} from "node:crypto";
+import {readFileSync,writeFileSync} from "node:fs";
+import {pathToFileURL} from "node:url";
+import {buildRiskGateSourcePack,RG_VARIANTS,RG_PRICE_CATALOG}
+ from "../../lib/risk-gate-source-pack.mjs";
+const ENDPOINT="https://geomacro-control-plane.daspallab202391.workers.dev";
+export function riskGatePackFromPrivateSourceReceipts(receipt){
+ if(!receipt||receipt.channel!=="CORRIDOR_ONLY"||
+  !Array.isArray(receipt.news_candidates)||
+  !Array.isArray(receipt.crypto_news_candidates)||
+  !Array.isArray(receipt.official_reference_observations))
+  throw Error("RG_INTAKE_SOURCE_RECEIPT_INVALID");
+ // Deterministic limited evidence sample. Counts reflect ONLY sampled rows.
+ // All observed metadata is already persisted by independently verified D1
+ // writers in the preceding source-intake steps.
+ const refs=[
+  ...receipt.news_candidates.slice(0,6).map(r=>({
+   id:r.id,kind:"NATIVE_RSS",source_id:r.source_id,source_period:r.published_at
+  })),
+  ...receipt.crypto_news_candidates.slice(0,6).map(r=>({
+   id:r.id,kind:"CRYPTO_INDIVIDUAL",source_id:"cryptocompare_news",
+   source_period:r.published_at
+  })),
+  ...receipt.official_reference_observations.slice(0,6).map(r=>({
+   id:r.id,kind:"OFFICIAL_REFERENCE",source_id:r.source_id,
+   source_period:r.observation_period
+  }))
+ ];
+ return buildRiskGateSourcePack({checked_at:receipt.checked_at,refs});
+}
+export async function publishRiskGateSourcePacks({
+ pack,rootToken,now=new Date(),fetchImpl=fetch,endpoint=ENDPOINT
+}={}){
+ if(!pack||pack.schema!=="geomacro.risk-gate-source-pack.v1"||
+   pack.price_variants?.length!==RG_VARIANTS.length||
+   pack.price_variants.some((v,i)=>v.price_variant!==RG_VARIANTS[i]||
+     v.pricing_catalog_version!==RG_PRICE_CATALOG||v.eligible_for_quote!==false||
+     v.action_decision!==null||v.execution_authorized!==false)||
+   typeof rootToken!=="string"||rootToken.trim().length<32||
+   typeof fetchImpl!=="function"||endpoint!==ENDPOINT||
+   Math.abs(now.getTime()-Date.parse(pack.checked_at))>15*60000)
+   throw Error("RG_SOURCE_PACK_PUBLISH_INVALID");
+ const bearer=createHmac("sha256",rootToken.trim()).update(
+  "geomacro-control-plane-v1").digest("hex");
+ let response;
+ for(let attempt=0;attempt<5;attempt++){
+  try{response=await fetchImpl(endpoint+"/v1/internal/corridor-risk-gate-source-pack",{
+   method:"PUT",redirect:"error",cache:"no-store",
+   headers:{Authorization:"Bearer "+bearer,"Content-Type":"application/json"},
+   body:JSON.stringify(pack),signal:AbortSignal.timeout(15000)
+  });}catch{throw Error("RG_SOURCE_PACK_PUT_NETWORK_UNAVAILABLE")}
+  if(response.status===200)break;
+  if(![404,503].includes(response.status)||attempt===4)
+   throw Error("RG_SOURCE_PACK_PUT_HTTP_"+response.status);
+  await new Promise(resolve=>setTimeout(resolve,(attempt+1)*5000));
+ }
+ let written;try{written=await response.json()}catch{throw Error("RG_SOURCE_PACK_D1_ACK_INVALID")}
+ if(written.ok!==true||written.verified!==1||
+   written.pricing_variant_count!==3||written.three_variant_structure_verified!==true||
+   written.reference_rows_crosschecked!==pack.source_refs.length||
+   written.canonical_d1_source_provenance_checked!==true||
+   written.independent_events_verified!==0||written.signed_gro_generated!==false||
+   written.chargeable!==false||written.new_sales_enabled!==false||
+   written.execution_authorized!==false||written.retention_hours!==72)
+  throw Error("RG_SOURCE_PACK_D1_ACK_INVALID");
+ const res=await fetchImpl(endpoint+"/v1/internal/corridor-risk-gate-source-pack?limit=3",{
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{Authorization:"Bearer "+bearer},signal:AbortSignal.timeout(15000)
+ });
+ if(res.status!==200)throw Error("RG_SOURCE_PACK_GET_HTTP_"+res.status);
+ let got;try{got=await res.json()}catch{throw Error("RG_SOURCE_PACK_GET_INVALID")}
+ if(got.ok!==true||got.count!==got.records?.length||
+  got.new_sales_enabled!==false||got.chargeable!==false||
+  got.execution_authorized!==false||
+  !got.records.some(r=>r.snapshot_id===written.snapshot_id&&
+   r.price_variants.length===3&&r.price_variants.every((x,i)=>
+    x.variant===RG_VARIANTS[i]&&x.readiness==="EVIDENCE_ONLY_VERIFICATION_REQUIRED")))
+  throw Error("RG_SOURCE_PACK_GET_READBACK_MISMATCH");
+ return {schema:"geomacro.risk-gate-source-pack-production-acceptance.v1",
+  checked_at:now.toISOString(),snapshot_id:written.snapshot_id,
+  source_references_crosschecked:pack.source_refs.length,
+  price_variants_provisioned:3,d1_put_readback:true,d1_get_readback:true,
+  auto_data_creation:true,verified_risk_events:0,signed_gro_generated:false,
+  paid_quote_enabled:false,chargeable:false,execution_authorized:false,
+  website_intelligence_writes:0,predge_writes:0};
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+ try{
+  if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+     process.env.GITHUB_REF!=="refs/heads/main"||
+     !/^\d{1,20}$/u.test(process.env.GITHUB_RUN_ID??""))
+   throw Error("RG_SOURCE_PACK_MAIN_ONLY");
+  const source=JSON.parse(readFileSync(
+   "artifacts/direct-corridor-intake/receipt.json","utf8"));
+  const pack=riskGatePackFromPrivateSourceReceipts(source);
+  writeFileSync("artifacts/direct-corridor-intake/risk-gate-source-pack.json",
+   JSON.stringify(pack,null,2)+"\n",{mode:0o600});
+  const result=await publishRiskGateSourcePacks({
+   pack,rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN
+  });
+  writeFileSync("artifacts/direct-corridor-intake/risk-gate-source-d1-readback.json",
+   JSON.stringify(result,null,2)+"\n",{mode:0o600});
+  console.log(JSON.stringify(result));
+ }catch(e){console.error("::error::"+String(e?.message??"RG_UNKNOWN").slice(0,110));
+  process.exitCode=2}
+}
