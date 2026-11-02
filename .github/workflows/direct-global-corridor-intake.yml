@@ -15,6 +15,8 @@ on:
       - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
       - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
+      - "scripts/lib/direct-corridor-official-news-feeds.mjs"
+      - "scripts/lib/direct-corridor-official-news-feeds.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
       - "scripts/lib/corridor-derived-structured-research.mjs"
@@ -46,6 +48,8 @@ on:
       - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
       - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
+      - "scripts/lib/direct-corridor-official-news-feeds.mjs"
+      - "scripts/lib/direct-corridor-official-news-feeds.test.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
       - "scripts/lib/corridor-derived-structured-research.mjs"
@@ -90,6 +94,7 @@ jobs:
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
           node --check scripts/lib/risk-gate-supplied-source-rules.mjs
           node --check scripts/lib/direct-corridor-native-news.mjs
+          node --check scripts/lib/direct-corridor-official-news-feeds.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
           node --check scripts/lib/corridor-credential-context.mjs
           node --check scripts/lib/corridor-derived-structured-research.mjs
@@ -105,6 +110,7 @@ jobs:
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
           node --test scripts/lib/risk-gate-supplied-source-rules.test.mjs
           node --test scripts/lib/direct-corridor-native-news.test.mjs
+          node --test scripts/lib/direct-corridor-official-news-feeds.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
           node --test scripts/lib/corridor-official-reference-adapters.test.mjs
           node --test scripts/lib/corridor-credential-context.test.mjs
