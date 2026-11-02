@@ -34,6 +34,17 @@ export async function runDirectCorridorIntake({
       item.source_time_is_not_event_time!==true||
       item.original_article_verified!==false))
    throw Error("CORRIDOR_NATIVE_NEWS_PROVENANCE_INVALID");
+ if(!Array.isArray(receipt.official_reference_source_checks)||
+    receipt.official_reference_source_checks.length!==5||
+    receipt.official_reference_observation_count!==
+      receipt.official_reference_observations?.length||
+    receipt.official_reference_observation_count>60||
+    receipt.official_reference_observations.some(item=>
+      typeof item.id!=="string"||!/^[a-f0-9]{64}$/u.test(item.id)||
+      item.context_only!==true||item.commercial_rights_verified!==false||
+      item.customer_delivery_enabled!==false||
+      item.independently_verified_event!==false))
+   throw Error("CORRIDOR_OFFICIAL_PROVENANCE_INVALID");
  const dir="artifacts/direct-corridor-intake";
  mkdirSync(dir,{recursive:true,mode:0o700});
  writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
@@ -48,12 +59,25 @@ export async function runDirectCorridorIntake({
    raw_publisher_content_saved:false,commercial_rights_verified:false,
    customer_delivery_enabled:false,signed_gro_generated:false
  },null,2)+"\n",{mode:0o600});
+ writeFileSync(dir+"/official-references.json",JSON.stringify({
+   schema:receipt.official_reference_source_checks.length===5?
+     "geomacro.corridor-official-reference-intake.v1":null,
+   channel:"CORRIDOR_ONLY",checked_at:receipt.checked_at,
+   source_checks:receipt.official_reference_source_checks,
+   observation_count:receipt.official_reference_observation_count,
+   observations:receipt.official_reference_observations,
+   website_intelligence_enabled:false,website_intelligence_writes:0,
+   commercial_rights_verified:false,paid_output_authorized:false
+ },null,2)+"\n",{mode:0o600});
  const summary={
    schema:receipt.schema,channel:receipt.channel,checked_at:receipt.checked_at,
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,
    unique_linked_sources:receipt.unique_linked_sources,
    native_news_sources_polled:receipt.native_news_sources_polled,
-   news_candidate_count:receipt.news_candidate_count,candidate_corridor_count:receipt.candidate_corridors.length,
+   news_candidate_count:receipt.news_candidate_count,
+   official_reference_observations:receipt.official_reference_observation_count,
+   official_reference_sources_due:receipt.official_reference_source_checks.filter(x=>x.state!=="NOT_DUE_SOURCE_NATIVE_CADENCE").length,
+   candidate_corridor_count:receipt.candidate_corridors.length,
    portal_or_metadata_sources_observed:receipt.source_checks.filter(x=>
      x.metadata_candidates>0||["PORTAL_TRANSPORT_OBSERVED_NO_EVENT",
        "RECENT_INDEX_CONTEXT_OBSERVED","OFFICIAL_PERIODIC_REPORT_INDEX_OBSERVED"].includes(x.state)).length,

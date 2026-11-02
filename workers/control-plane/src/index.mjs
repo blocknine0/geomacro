@@ -9,6 +9,7 @@ import {readPrivateTelegramResearchJson} from './telegram-research-json.mjs';
 import {readPrivateTelegramFreeLiveJson} from './telegram-free-live-research.mjs';
 import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-source-news.mjs';
 import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredCorridorNativeNews} from './corridor-native-news.mjs';
+import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredOfficialCorridorReferences} from './corridor-official-reference.mjs';
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
@@ -1294,6 +1295,10 @@ export default {
       ctx.waitUntil(purgeExpiredCorridorNativeNews(env).then(r=>{
         if(!r.ok)console.error("CORRIDOR_NATIVE_D1_TTL_DEFERRED");
       }).catch(()=>console.error("CORRIDOR_NATIVE_D1_TTL_DEFERRED")));
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgeExpiredOfficialCorridorReferences(env).then(r=>{
+        if(!r.ok)console.error("CORRIDOR_OFFICIAL_REFERENCE_TTL_DEFERRED");
+      }).catch(()=>console.error("CORRIDOR_OFFICIAL_REFERENCE_TTL_DEFERRED")));
 
     if(utc.getUTCHours()===0&&utc.getUTCMinutes()===13&&env?.DB?.prepare){
       ctx.waitUntil(env.DB.prepare(
@@ -1507,6 +1512,13 @@ export default {
         if(request.method==="GET")
           return readPrivateCorridorNativeNews(env,url.searchParams);
         return json({ok:false,error:"CORRIDOR_NATIVE_METHOD_INVALID",chargeable:false},405);
+      }
+      if(url.pathname==="/v1/internal/corridor-official-reference"){
+        if(request.method==="PUT"&&!url.search)
+          return putOfficialCorridorReference(env,await readJson(request,96*1024));
+        if(request.method==="GET")
+          return readOfficialCorridorReference(env,url.searchParams);
+        return json({ok:false,error:"CORRIDOR_OFFICIAL_REFERENCE_METHOD_INVALID",chargeable:false},405);
       }
       if(request.method==="PUT"&&url.pathname==="/v1/reusable-source-news"&&!url.search)
         return publishReusableSourceNews(env,await readJson(request,96*1024));
