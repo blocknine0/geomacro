@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T11:45:56.618Z",
+  "checked_at": "2026-11-02T11:53:32.950Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -3269,25 +3269,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T12:08:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2f380064",
-      "category": "macro",
-      "title": "Geomacro finds Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor",
-      "what_changed": "A monitored source feed reports: Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T11:51:24.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

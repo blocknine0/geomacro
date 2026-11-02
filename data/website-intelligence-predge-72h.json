@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T11:45:56.618Z",
+  "checked_at": "2026-11-02T11:53:32.950Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 194,
+  "item_count": 193,
   "counts": {
     "geopolitics": 84,
-    "macro": 79,
+    "macro": 78,
     "rare_earth": 31
   },
-  "source_native_ids_sha256": "ae51b0da4165fc0a9b0b01f82bb91d215b3822a3c2de202414d61716cddae10b",
+  "source_native_ids_sha256": "7944e686c9fc716e6eefbfb47970b9dc7eeae65a2520e44dd8ad8b93a1c0a088",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3687,25 +3687,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T12:08:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2f380064",
-      "category": "macro",
-      "title": "Geomacro finds Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor",
-      "what_changed": "A monitored source feed reports: Fed Hike Bets lowered Gold’s Entry Price as Custody Shapes Digital Demand - Crux Investor. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T11:51:24.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
