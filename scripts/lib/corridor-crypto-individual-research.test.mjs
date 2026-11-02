@@ -52,6 +52,71 @@ test("existing 24h API sample converts separately to per-article candidates",asy
  assert.ok(!serialized.includes("utm_source"));
  assert.ok(!serialized.includes("C".repeat(40)));
 });
+test("current CCData uppercase article schema yields actual five-part candidate",async()=>{
+ const minuteLate=new Date("2026-11-02T07:36:00.000Z");
+ const ts=Math.floor(minuteLate.getTime()/1000)-300;
+ const api={Type:100,Message:"News list successfully returned",Data:[
+  {TYPE:"121",ID:62866961,PUBLISHED_ON:ts,
+   TITLE:"Regulator releases new crypto custody policy",
+   URL:"https://coinpaper.com/news/new-crypto-policy?utm_source=ccdata",
+   SOURCE_ID:93,SOURCE_DATA:{SOURCE_KEY:"coinpaper",NAME:"Coinpaper"},
+   CATEGORY_DATA:[{CATEGORY:"BLOCKCHAIN"}],
+   BODY:"THIRD_PARTY_FULL_ARTICLE_BODY_MUST_NOT_PERSIST"},
+  {ID:62866962,PUBLISHED_ON:ts,
+   TITLE:"Bitcoin ETF market activity drives trading coverage",
+   URL:"https://www.coindesk.com/markets/2026/11/02/bitcoin-etf",
+   SOURCE_DATA:{NAME:"CoinDesk"}},
+  {ID:62866963,PUBLISHED_ON:ts,
+   TITLE:"Bitcoin hash rate and energy",
+   URL:"https://coinpaper.com/news/bitcoin-hashrate",
+   SOURCE_DATA:{NAME:"Invalid/Source Name"}}
+ ]};
+ let fetches=0;
+ const out=await collectCredentialCorridorContext({
+  now:minuteLate,forceCryptoNews:true,
+  keys:{GEOMACRO_CRYPTOCOMPARE_API_KEY:"z".repeat(40),
+   GEOMACRO_FRED_API_KEY:"a".repeat(32),
+   GEOMACRO_RELIEFWEB_APPNAME:"GeomacroCorridor_2026_a"},
+  observeReliefWeb:async()=>{throw Error("OTHER_PROVIDER_QUOTA_MUST_BE_SKIPPED");},
+  fetchImpl:async(url)=>{
+   fetches++;assert.match(url,/cryptocompare\.com/u);
+   return Response.json(api);
+  }
+ });
+ assert.equal(fetches,1,"force only the designated crypto API");
+ assert.equal(out.source_checks.find(x=>x.id==="fred_api").state,
+  "NOT_DUE_SOURCE_NATIVE_CADENCE");
+ assert.equal(out.source_checks.find(x=>x.id==="reliefweb_v2").state,
+  "NOT_DUE_SOURCE_NATIVE_CADENCE");
+ assert.equal(out.crypto_news_candidate_count,3);
+ assert.equal(out.crypto_news_extraction.api_records,3);
+ assert.equal(out.crypto_news_extraction.recent_unique_ids,3);
+ assert.equal(out.crypto_news_extraction.eligible_article_candidates,3);
+ assert.equal(out.crypto_news_candidates[0].provider_id,"62866961");
+ assert.equal(out.crypto_news_candidates[0].source_name,"Coinpaper");
+ assert.equal(out.crypto_news_candidates[0].topic,"CRYPTO_POLICY");
+ assert.equal(out.crypto_news_candidates[0].article_url,
+  "https://coinpaper.com/news/new-crypto-policy");
+ assert.equal(out.crypto_news_candidates[1].source_name,"CoinDesk");
+ // Untrusted upstream publisher name never copied blindly: fallback to link host.
+ assert.equal(out.crypto_news_candidates[2].source_name,"coinpaper.com");
+ const serialized=JSON.stringify(out);
+ assert.ok(!serialized.includes("THIRD_PARTY_FULL_ARTICLE_BODY_MUST_NOT_PERSIST"));
+ assert.ok(!serialized.includes("Regulator releases new crypto"));
+ assert.ok(!serialized.includes("Invalid/Source Name"));
+});
+test("configured CryptoCompare respects native source cadence without hourly trigger",async()=>{
+ const out=await collectCredentialCorridorContext({
+  now:new Date("2026-11-02T07:36:00.000Z"),
+  keys:{GEOMACRO_CRYPTOCOMPARE_API_KEY:"z".repeat(40)},
+  fetchImpl:async()=>{throw Error("NO_API_POLL_OUTSIDE_HOURLY_TICK")}
+ });
+ assert.equal(out.source_checks.find(x=>x.id==="cryptocompare_news").state,
+  "NOT_DUE_SOURCE_NATIVE_CADENCE");
+ assert.equal(out.crypto_news_candidate_count,0);
+ assert.equal(out.crypto_news_extraction,null);
+});
+
 test("five-part output is conservative and never claims a verified event",()=>{
  const record=cryptoIndividualRecord(base());
  assert.deepEqual(Object.keys(record.structured),["what_happened","why_it_matters",

@@ -3,7 +3,10 @@ name: Direct Global Corridor Intake (Isolated)
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "6,21,36,51 * * * *"
+    # The 6th-minute tick is the sole intended hourly CryptoCompare request.
+    # Delayed GitHub runners still honor this scheduled event.
+    - cron: "6 * * * *"
+    - cron: "21,36,51 * * * *"
   push:
     branches: [main]
     paths:
@@ -155,6 +158,7 @@ jobs:
           GEOMACRO_FRED_API_KEY: ${{ secrets.GEOMACRO_FRED_API_KEY }}
           GEOMACRO_RELIEFWEB_APPNAME: ${{ secrets.GEOMACRO_RELIEFWEB_APPNAME }}
           GEOMACRO_CRYPTOCOMPARE_API_KEY: ${{ secrets.GEOMACRO_CRYPTOCOMPARE_API_KEY }}
+          GEOMACRO_CRYPTO_HOURLY_TICK: ${{ github.event_name == 'schedule' && github.event.schedule == '6 * * * *' }}
         run: |
           set -euo pipefail
           node scripts/ops/ingest-direct-global-corridors.mjs

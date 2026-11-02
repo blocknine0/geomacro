@@ -70,26 +70,47 @@ function parseFred(data,series,now){
  return null;
 }
 function parseNews(data,now){
- if(data?.Response==="Error"||!Array.isArray(data?.Data)||data.Data.length>200)
+ if(data?.Response==="Error"||data?.Type===99||
+    !Array.isArray(data?.Data)||data.Data.length>200)
   throw Error("CRYPTOCOMPARE_RESPONSE_INVALID");
- const ids=new Set(),candidates=[];
+ const ids=new Set(),candidates=[],rejected={
+  expired_or_invalid_identity:0,invalid_original_link:0,
+  missing_original_title:0,invalid_publisher_attribution:0,
+  candidate_cap:0
+ };
  for(const row of data.Data){
-  const timestamp=row?.published_on;
-  const provider_id=String(row?.id??row?.ID??"");
+  const timestamp=row?.published_on??row?.PUBLISHED_ON;
+  const providerIdRaw=row?.id??row?.ID;
+  const provider_id=typeof providerIdRaw==="number"&&Number.isSafeInteger(providerIdRaw)?
+   String(providerIdRaw):typeof providerIdRaw==="string"?providerIdRaw:"";
   if(!/^[a-zA-Z0-9_-]{2,90}$/u.test(provider_id)||ids.has(provider_id)||
     !Number.isSafeInteger(timestamp)||timestamp*1000>now.getTime()||
-    now.getTime()-timestamp*1000>24*HOUR)continue;
+    now.getTime()-timestamp*1000>24*HOUR){
+    rejected.expired_or_invalid_identity++;continue;
+  }
   ids.add(provider_id);
-  const original=normalizedCryptoArticleUrl(row?.url);
-  const title=typeof row?.title==="string"?row.title.trim():"";
-  const source=typeof row?.source==="string"?row.source.trim():"";
-  if(!original||title.length<8||title.length>300||
-     !/^[\p{L}\p{N} ._&'()-]{2,70}$/u.test(source)||
-     candidates.length>=50)continue;
+  const original=normalizedCryptoArticleUrl(row?.url??row?.URL);
+  if(!original){rejected.invalid_original_link++;continue;}
+  const rawTitle=row?.title??row?.TITLE;
+  const title=typeof rawTitle==="string"?rawTitle.trim():"";
+  if(title.length<8||title.length>300){rejected.missing_original_title++;continue;}
+  const originalSource=row?.source??row?.SOURCE??
+    row?.SOURCE_DATA?.NAME??row?.source_data?.name;
+  const host=new URL(original).hostname;
+  const sourceName=typeof originalSource==="string"?originalSource.trim():"";
+  const source=/^[\p{L}\p{N} ._&'()-]{2,70}$/u.test(sourceName)?
+    sourceName:host;
+  if(!/^[\p{L}\p{N} ._&'()-]{2,70}$/u.test(source)){
+    rejected.invalid_publisher_attribution++;continue;
+  }
+  if(candidates.length>=50){rejected.candidate_cap++;continue;}
   const published_at=new Date(timestamp*1000).toISOString();
   const id=createHash("sha256").update(["cryptocompare_news",provider_id,
    published_at,original].join("\x1f")).digest("hex");
-  const topic=cryptoNewsTopic(title+" "+String(row?.categories??""));
+  const categoryNames=Array.isArray(row?.CATEGORY_DATA)?
+   row.CATEGORY_DATA.slice(0,12).map(x=>String(x?.CATEGORY??x?.NAME??"")).join(" "):
+   String(row?.categories??row?.CATEGORIES??"");
+  const topic=cryptoNewsTopic(title+" "+categoryNames);
   candidates.push({
    id,provider_id,article_url:original,source_name:source,
    published_at,title_sha256:createHash("sha256").update(title).digest("hex"),
@@ -100,17 +121,23 @@ function parseNews(data,now){
    commercial_rights_verified:false,customer_delivery_enabled:false
   });
  }
- return {sample_count:ids.size,candidates,observation:observation("cryptocompare_news",
+ return {sample_count:ids.size,candidates,
+  diagnostics:{api_records:data.Data.length,recent_unique_ids:ids.size,
+   eligible_article_candidates:candidates.length,rejected},
+  observation:observation("cryptocompare_news",
   "cryptocompare_24h_news_sample_count",now.toISOString(),ids.size,now)};
 }
 export async function collectCredentialCorridorContext({
  now=new Date(),fetchImpl=fetch,keys=process.env,
- observeReliefWeb=observeApprovedReliefWeb,force=false
+ observeReliefWeb=observeApprovedReliefWeb,force=false,forceCryptoNews=false
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
   typeof fetchImpl!=="function"||!keys||typeof keys!=="object"||
-  typeof observeReliefWeb!=="function")throw Error("CORRIDOR_CREDENTIAL_INPUT_INVALID");
- const checks=[],observations=[],cryptoNewsCandidates=[],add=(id,state,items=[])=>{
+  typeof observeReliefWeb!=="function"||typeof forceCryptoNews!=="boolean")
+   throw Error("CORRIDOR_CREDENTIAL_INPUT_INVALID");
+ const checks=[],observations=[],cryptoNewsCandidates=[];
+ let cryptoNewsDiagnostics=null;
+ const add=(id,state,items=[])=>{
   checks.push({id,state,observations:items.length});
   observations.push(...items);
  };
@@ -159,7 +186,7 @@ export async function collectCredentialCorridorContext({
  }
  const ccKey=keys.GEOMACRO_CRYPTOCOMPARE_API_KEY;
  if(!keyOk(ccKey))add("cryptocompare_news","PROVIDER_API_AUTH_REQUIRED");
- else if(!force&&(minute>=15))
+ else if(!force&&!forceCryptoNews&&(minute>=15))
   add("cryptocompare_news","NOT_DUE_SOURCE_NATIVE_CADENCE");
  else{
   const res=await boundedJson(cryptoNewsUrl,{headers:{
@@ -169,6 +196,7 @@ export async function collectCredentialCorridorContext({
   else try{
    const parsed=parseNews(res.data,now);
    cryptoNewsCandidates.push(...parsed.candidates);
+   cryptoNewsDiagnostics=parsed.diagnostics;
    add("cryptocompare_news","OFFICIAL_REFERENCE_OBSERVED",[parsed.observation]);
   }catch{add("cryptocompare_news","PROVIDER_RESPONSE_SCHEMA_UNVERIFIED")}
  }
@@ -183,6 +211,7 @@ export async function collectCredentialCorridorContext({
   source_checks:checks,observation_count:observations.length,observations,
   crypto_news_candidate_count:cryptoNewsCandidates.length,
   crypto_news_candidates:cryptoNewsCandidates,
+  crypto_news_extraction:cryptoNewsDiagnostics,
   website_intelligence_writes:0,commercial_rights_verified:false,
   paid_output_authorized:false,credential_values_written:false});
 }

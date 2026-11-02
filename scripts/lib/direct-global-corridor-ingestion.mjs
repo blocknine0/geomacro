@@ -122,7 +122,11 @@ export async function collectDirectCorridorSourceIntake({
  if(updated.size!==4)throw Error("CORRIDOR_OFFICIAL_SOURCE_MAPPING_INCOMPLETE");
  // Approved credentials are opt-in, supplied only by GitHub production secrets.
  // When absent, all credential providers report explicit non-active states.
- const credentials=await observeCredential({now,fetchImpl});
+ // GitHub's hourly cron may start late. Only the designated hourly
+ // schedule may force CryptoCompare; FRED and ReliefWeb retain native cadence.
+ const cryptoNewsHourlyTick=process.env.GEOMACRO_CRYPTO_HOURLY_TICK==="true";
+ const credentials=await observeCredential({now,fetchImpl,
+   forceCryptoNews:cryptoNewsHourlyTick});
  if(credentials?.schema!=="geomacro.corridor-credential-context-intake.v1"||
    credentials.channel!=="CORRIDOR_ONLY"||
    !Array.isArray(credentials.source_checks)||credentials.source_checks.length!==4||
@@ -190,6 +194,7 @@ export async function collectDirectCorridorSourceIntake({
    official_reference_observation_count:official.observation_count+credentials.observation_count,
    official_reference_observations:[...official.observations,...credentials.observations],
    crypto_news_candidate_count:credentials.crypto_news_candidate_count,
+   crypto_news_extraction:credentials.crypto_news_extraction,
    crypto_news_candidates:credentials.crypto_news_candidates,
    official_reference_events_verified:false,
    website_intelligence_writes:0,website_intelligence_enabled:false,
