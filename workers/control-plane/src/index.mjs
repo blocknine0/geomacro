@@ -15,7 +15,7 @@ import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredO
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
 import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack,materializeCanonicalRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
 import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit,purgePrivateStrategicRiskGate} from "./corridor-risk-gate-jit.mjs";
-import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,purgePrivateRiskGateGdelt} from "./risk-gate-gdelt-event-index.mjs";
+import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity,purgePrivateRiskGateGdelt} from "./risk-gate-gdelt-event-index.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
@@ -1306,6 +1306,15 @@ export default {
     // Independent 15-minute Worker-native strategic Risk Gate context cache.
     // D1 only, 5 pre-registered corridors, no external provider quota,
     // paid delivery, new cron trigger or customer debit.
+    // GDELT 15-minute GitHub producer is independent. Check accepted B2+D1
+    // batch freshness from the Worker 1-minute cron, without any B2 quota.
+    if(utc.getUTCMinutes()%15===12&&env?.DB?.prepare)
+      ctx.waitUntil(readPrivateRiskGateGdeltContinuity(env,utc.getTime())
+        .then(async r=>{
+          const p=await r.json();
+          if(r.status!==200||p.healthy!==true)
+            console.error("RG_GDELT_B2_D1_FRESHNESS_STALE");
+        }).catch(()=>console.error("RG_GDELT_B2_D1_FRESHNESS_STALE")));
     if(utc.getUTCMinutes()%15===8&&env?.DB?.prepare&&env?.DB?.batch)
       ctx.waitUntil(tickPrivateStrategicRiskGate(env,utc.getTime()).then(r=>{
         if(r.status!==200)console.error("RG_STRATEGIC_15M_TICK_UNAVAILABLE");
@@ -1577,6 +1586,11 @@ export default {
       // JIT evidence preflight. Not a customer charge or GRO signature.
       // Separate GDELT event-index signal intake (auth-protected);
       // CAMEO/index data never becomes a verified event or paid Risk Gate.
+      if(url.pathname==="/v1/internal/risk-gate/gdelt-continuity"){
+        if(request.method==="GET")
+          return readPrivateRiskGateGdeltContinuity(env);
+        return json({ok:false,error:"RG_GDELT_CONTINUITY_METHOD_INVALID"},405);
+      }
       if(url.pathname==="/v1/internal/risk-gate/gdelt-event-index"){
         if(request.method==="PUT"&&!url.search)
           return putPrivateRiskGateGdelt(env,await readJson(request,32*1024));
