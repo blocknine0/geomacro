@@ -4,17 +4,10 @@
   "submitted_markdown_sha256": "34e2ab1da0fc7f8e51c95807e921dc5bae2d181537a2b1768741eedc9bd2d25b",
   "purpose": "ALL_SUPPLIED_LINKS_CORRIDOR_ONLY",
   "website_intelligence_enabled": false,
-  "source_link_occurrences": 38,
-  "unique_source_ids_with_url": 36,
+  "source_link_occurrences": 39,
+  "unique_source_ids_with_url": 37,
   "duplicate_link_occurrences": 2,
-  "unresolved_removed_links": [
-    {
-      "source_id": "asean_customs_missing",
-      "section": "apac",
-      "reason": "suspicious link removed in source Markdown",
-      "supplied_url": null
-    }
-  ],
+  "unresolved_removed_links": [],
   "references": [
     {
       "reference_index": 1,
@@ -319,6 +312,25 @@
       "section": "digital-assets",
       "supplied_url": "https://www.google.com/search?q=https://cointelegraph.com/rss",
       "linked_target_url": "https://cointelegraph.com/rss"
+    },
+    {
+      "reference_index": 39,
+      "source_id": "asean_customs",
+      "label": "ASEAN Customs — Official ASEAN Economic Community Portal",
+      "section": "apac",
+      "supplied_url": "https://asean.org/our-communities/economic-community/asean-customs/",
+      "linked_target_url": "https://asean.org/our-communities/economic-community/asean-customs/"
+    }
+  ],
+  "original_markdown_link_occurrences": 38,
+  "followup_submitted_link_occurrences": 1,
+  "resolved_removed_links": [
+    {
+      "original_source_id": "asean_customs_missing",
+      "source_id": "asean_customs",
+      "section": "apac",
+      "replacement_official_url": "https://asean.org/our-communities/economic-community/asean-customs/",
+      "resolution": "Official ASEAN Customs URL supplied in follow-up on 2026-11-02; this URL was not present in the original Markdown."
     }
   ]
 }

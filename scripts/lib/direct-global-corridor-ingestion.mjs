@@ -9,7 +9,7 @@ import {observeUkmtoOfficialIndex} from "./ukmto-official-corridor-index.mjs";
 import {observeIndependentMaritimeOfficialContext}
  from "./independent-maritime-official-context.mjs";
 
-const TRANSPORT_ONLY=new Set(["ukmto_advisories","suez_navigation","panama_canal",
+const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
 const MAX_BYTES=128*1024;
 async function probePinnedPortal(spec,fetchImpl){
@@ -139,13 +139,13 @@ export async function collectDirectCorridorSourceIntake({
  }
  const known=new Set(states.map(x=>x.id));
  if(states.length!==corridor.length||known.size!==corridor.length||
-    states.reduce((n,s)=>n+s.reference_count,0)!==38)
+    states.reduce((n,s)=>n+s.reference_count,0)!==39)
    throw Error("DIRECT_CORRIDOR_INTAKE_CENSUS_INCOMPLETE");
  return Object.freeze({
    schema:"geomacro.direct-corridor-source-intake.v2",
    checked_at:now.toISOString(),channel:"CORRIDOR_ONLY",
-   source_count:corridor.length,source_link_occurrences:38,
-   unique_linked_sources:36,missing_link_placeholders:1,
+   source_count:corridor.length,source_link_occurrences:39,
+   unique_linked_sources:37,missing_link_placeholders:0,
    source_checks:states,
    candidate_corridors:[...new Set(states.flatMap(s=>s.candidate_corridor_ids))].sort(),
    total_index_metadata_candidates:states.reduce((n,s)=>n+s.metadata_candidates,0),

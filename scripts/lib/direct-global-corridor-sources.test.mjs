@@ -6,15 +6,24 @@ import {DIRECT_GLOBAL_CORRIDOR_SOURCES,assertDirectGlobalCorridorRegistry,
   suppliedGlobalCorridorDirectory} from "./direct-global-corridor-sources.mjs";
 import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
 
-test("all 38 Markdown links including duplicate Panama/UKMTO references are preserved",()=>{
+test("all original 38 Markdown links plus official ASEAN customs follow-up are preserved",()=>{
  assert.equal(assertDirectGlobalCorridorRegistry(),true);
  const input=suppliedGlobalCorridorDirectory();
- assert.equal(input.references.length,38);
- assert.equal(new Set(input.references.map(x=>x.linked_target_url)).size,36);
- assert.equal(new Set(input.references.map(x=>x.source_id)).size,36);
- assert.equal(input.unresolved_removed_links.length,1);
- assert.equal(input.unresolved_removed_links[0].source_id,"asean_customs_missing");
- assert.deepEqual(input.references.map((x,i)=>x.reference_index),Array.from({length:38},(_,i)=>i+1));
+ assert.equal(input.references.length,39);
+ assert.equal(new Set(input.references.map(x=>x.linked_target_url)).size,37);
+ assert.equal(new Set(input.references.map(x=>x.source_id)).size,37);
+ assert.equal(input.original_markdown_link_occurrences,38);
+ assert.equal(input.followup_submitted_link_occurrences,1);
+ assert.equal(input.unresolved_removed_links.length,0);
+ assert.equal(input.resolved_removed_links.length,1);
+ assert.equal(input.resolved_removed_links[0].source_id,"asean_customs");
+ assert.deepEqual(input.references[38],{
+   reference_index:39,source_id:"asean_customs",
+   label:"ASEAN Customs — Official ASEAN Economic Community Portal",section:"apac",
+   supplied_url:"https://asean.org/our-communities/economic-community/asean-customs/",
+   linked_target_url:"https://asean.org/our-communities/economic-community/asean-customs/"
+ });
+ assert.deepEqual(input.references.map((x,i)=>x.reference_index),Array.from({length:39},(_,i)=>i+1));
  assert.equal(input.references.filter(x=>x.source_id==="panama_canal").length,2);
  assert.equal(input.references.filter(x=>x.source_id==="ukmto_incidents").length,2);
  assert.ok(input.references.find(x=>x.source_id==="cryptocompare_news")
@@ -28,7 +37,7 @@ test("all 37 registries remain in separate corridor lane, not D1 website news",(
  assert.equal(sources.length,37);
  assert.deepEqual(directGlobalCorridorNewsFeeds(),[]);
  assert.equal(new Set(sources.map(x=>x.id)).size,37);
- assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),38);
+ assert.equal(sources.reduce((n,x)=>n+x.source_references.length,0),39);
  assert.ok(sources.every(x=>x.channel==="CORRIDOR_ONLY"&&
    x.website_intelligence_enabled===false&&x.commercial_eligible===false));
  const existing=registeredReusableNewsSources();
@@ -39,8 +48,8 @@ test("all 37 registries remain in separate corridor lane, not D1 website news",(
  }
  const receipt=directGlobalCorridorSourceCensus();
  assert.equal(receipt.registered,37);
- assert.equal(receipt.source_link_occurrences,38);
- assert.equal(receipt.linked_unique_sources,36);
+ assert.equal(receipt.source_link_occurrences,39);
+ assert.equal(receipt.linked_unique_sources,37);
  assert.equal(receipt.website_intelligence_sourced_feeds,0);
  assert.equal(receipt.production_readbacks_proven,false);
  assert.equal(receipt.paid_publication_authorized,false);
@@ -51,7 +60,10 @@ test("source directory does not infer direct event extraction from documentation
    "imf_data","wto_tariffs","fred_api","freightos_fbx","iea_minerals"]){
    assert.ok(map.has(id));
  }
- assert.equal(map.get("asean_customs_missing").url,null);
+ assert.equal(map.get("asean_customs").url,
+   "https://asean.org/our-communities/economic-community/asean-customs/");
+ assert.equal(map.get("asean_customs").state,"PORTAL_ENDPOINT_REQUIRED");
+ assert.equal(map.get("asean_customs").format,"portal");
  assert.ok(DIRECT_GLOBAL_CORRIDOR_SOURCES.every(x=>
    x.url===null||x.url.startsWith("https://")));
  assert.ok(directGlobalCorridorRouteSources().every(x=>x.risk_gate_verified===false));

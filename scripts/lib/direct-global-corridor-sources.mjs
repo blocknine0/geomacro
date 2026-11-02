@@ -145,10 +145,10 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
     "state": "PORTAL_ENDPOINT_REQUIRED"
   },
   {
-    "id": "asean_customs_missing",
-    "name": "Regional ASEAN Customs Source [removed link]",
-    "url": null,
-    "format": "invalid",
+    "id": "asean_customs",
+    "name": "ASEAN Customs — Official ASEAN Economic Community Portal",
+    "url": "https://asean.org/our-communities/economic-community/asean-customs/",
+    "format": "portal",
     "categories": [
       "geopolitics",
       "macro"
@@ -156,7 +156,7 @@ export const DIRECT_GLOBAL_CORRIDOR_SOURCES=Object.freeze([
     "corridors": [
       "apac"
     ],
-    "state": "REJECTED_REMOVED_LINK"
+    "state": "PORTAL_ENDPOINT_REQUIRED"
   },
   {
     "id": "ukmto_incidents",
@@ -548,16 +548,19 @@ export function suppliedGlobalCorridorDirectory(){
  const record=JSON.parse(readFileSync(new URL("../../config/global-corridor-supplied-links.v1.json",import.meta.url),"utf8"));
  if(record.schema!=="geomacro.global-corridor-supplied-links.v1"||
     record.website_intelligence_enabled!==false||
-    record.source_link_occurrences!==38||record.unique_source_ids_with_url!==36||
-    !Array.isArray(record.references)||record.references.length!==38||
-    !Array.isArray(record.unresolved_removed_links)||record.unresolved_removed_links.length!==1)
+    record.source_link_occurrences!==39||record.unique_source_ids_with_url!==37||
+    record.original_markdown_link_occurrences!==38||
+    record.followup_submitted_link_occurrences!==1||
+    !Array.isArray(record.references)||record.references.length!==39||
+    !Array.isArray(record.unresolved_removed_links)||record.unresolved_removed_links.length!==0||
+    !Array.isArray(record.resolved_removed_links)||record.resolved_removed_links.length!==1)
    throw Error("DIRECT_CORRIDOR_SUPPLIED_DOCUMENT_CONTRACT_INVALID");
  const known=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
  const seenIds=new Set(),seenLinks=new Set(),indices=new Set(),seenUrl=new Set();
  for(const link of record.references){
    const entry=known.get(link.source_id);
    if(!entry||!entry.url||indices.has(link.reference_index)||
-      !Number.isSafeInteger(link.reference_index)||link.reference_index<1||link.reference_index>38||
+      !Number.isSafeInteger(link.reference_index)||link.reference_index<1||link.reference_index>39||
       !["global","apac","mena","europe","latam","africa","north-america",
         "maritime-logistics","critical-minerals","digital-assets"].includes(link.section)||
       typeof link.supplied_url!=="string"||typeof link.linked_target_url!=="string"||
@@ -573,9 +576,14 @@ export function suppliedGlobalCorridorDirectory(){
    seenIds.add(link.source_id);seenLinks.add(link.linked_target_url);
    indices.add(link.reference_index);seenUrl.add(link.supplied_url);
  }
- if(indices.size!==38||seenIds.size!==36||seenLinks.size!==36||
-    record.unresolved_removed_links[0]?.source_id!=="asean_customs_missing"||
-    known.get("asean_customs_missing")?.url!==null||known.size!==37)
+ if(indices.size!==39||seenIds.size!==37||seenLinks.size!==37||
+    record.resolved_removed_links[0]?.original_source_id!=="asean_customs_missing"||
+    record.resolved_removed_links[0]?.source_id!=="asean_customs"||
+    record.resolved_removed_links[0]?.replacement_official_url!==
+      "https://asean.org/our-communities/economic-community/asean-customs/"||
+    known.get("asean_customs")?.url!==
+      "https://asean.org/our-communities/economic-community/asean-customs/"||
+    known.has("asean_customs_missing")||known.size!==37)
    throw Error("DIRECT_CORRIDOR_DOCUMENT_MAPPING_INCOMPLETE");
  return Object.freeze(record);
 }
@@ -593,14 +601,13 @@ export function directGlobalCorridorRouteSources(){
    source_references:Object.freeze(byId.get(s.id)??[]),
    risk_gate_verified:false,commercial_eligible:false})));
 }
-// Explicitly empty: none of the 38 submitted links may be inserted into
+// Explicitly empty: none of the 39 submitted links may be inserted into
 // Website Intelligence. Historic independent publisher feeds are untouched.
 export function directGlobalCorridorNewsFeeds(){return Object.freeze([]);}
 export function assertDirectCorridorWebsiteSeparation(){
  const sources=directGlobalCorridorRouteSources();
  if(sources.length!==37||sources.some(s=>s.channel!=="CORRIDOR_ONLY"||
-     s.website_intelligence_enabled!==false||
-     (s.id!=="asean_customs_missing"&&s.source_references.length===0))||
+     s.website_intelligence_enabled!==false||s.source_references.length===0)||
     directGlobalCorridorNewsFeeds().length!==0)
    throw Error("DIRECT_CORRIDOR_SOURCE_LEAKED_TO_WEBSITE_INTELLIGENCE");
  return true;
@@ -609,8 +616,8 @@ export function directGlobalCorridorSourceCensus(){
  assertDirectCorridorWebsiteSeparation();
  const sources=directGlobalCorridorRouteSources();
  return Object.freeze({schema:"geomacro.direct-global-corridor-source-census.v2",
-   source_link_occurrences:38,linked_unique_sources:36,
-   total_registered_sources:sources.length,removed_link_placeholders:1,
+   source_link_occurrences:39,linked_unique_sources:37,
+   total_registered_sources:sources.length,removed_link_placeholders:0,
    registered:sources.length,corridor_only_sources:sources.length,
    website_intelligence_sourced_feeds:0,
    active_direct_native_feeds:0,
