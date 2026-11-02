@@ -35,7 +35,8 @@ export async function tickPrivateStrategicRiskGate(env,now=Date.now()){
   return respond({ok:false,error:"RG_STRATEGIC_D1_UNAVAILABLE",chargeable:false},503);
  try{
   const snapshots=await Promise.all(TRACKED_CORRIDORS.map(x=>calculate(env.DB,x.id,now)));
-  await env.DB.batch(snapshots.map(s=>{
+  const digests=await Promise.all(snapshots.map(s=>hash(JSON.stringify(s))));
+  await env.DB.batch(snapshots.map((s,i)=>{
    const json=JSON.stringify(s);
    return env.DB.prepare("INSERT INTO corridor_risk_gate_strategic_snapshots "+
      "(corridor_id,checked_at,content_sha256,source_candidate_count,structured_json) "+
@@ -43,15 +44,11 @@ export async function tickPrivateStrategicRiskGate(env,now=Date.now()){
      "checked_at=excluded.checked_at,content_sha256=excluded.content_sha256,"+
      "source_candidate_count=excluded.source_candidate_count,"+
      "structured_json=excluded.structured_json")
-    .bind(s.corridor_id,s.checked_at,"",s.native_evidence_count,json);
+    .bind(s.corridor_id,s.checked_at,digests[i],s.native_evidence_count,json);
   }));
-  // Hash values must be written before public/consumer acceptance, never a placeholder.
-  // Updated atomically for each verified snapshot; no high-volume DB read loop.
-  for(const s of snapshots){
-   const integrity=await hash(JSON.stringify(s));
-   await env.DB.prepare("UPDATE corridor_risk_gate_strategic_snapshots "+
-    "SET content_sha256=? WHERE corridor_id=? AND checked_at=?")
-    .bind(integrity,s.corridor_id,s.checked_at).run();
+  // Hash generated before insertion and then independently compared.
+  for(let i=0;i<snapshots.length;i++){
+   const s=snapshots[i],integrity=digests[i];
    const row=await env.DB.prepare("SELECT checked_at,content_sha256,source_candidate_count,structured_json "+
     "FROM corridor_risk_gate_strategic_snapshots WHERE corridor_id=?")
     .bind(s.corridor_id).first();
