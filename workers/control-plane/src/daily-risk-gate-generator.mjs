@@ -236,6 +236,35 @@ export async function runDailyRiskGates(env,opts={}){
  return {ok:results.every(x=>x.ok),schema:DAILY_RG_SCHEMA,day_utc:iso(now).slice(0,10),
   corridor_count:results.length,results,supabase_sync:sync,charged_calls:0};
 }
+async function verifyStoredDaily(row,env){
+ const canonical={schema:DAILY_RG_SCHEMA,corridor_id:row.corridor_id,day_utc:row.day_utc,
+  observation:JSON.parse(row.observation_json),core_tier:JSON.parse(row.core_tier_json),
+  signal_tier:JSON.parse(row.signal_tier_json),policy_tier:JSON.parse(row.policy_tier_json)};
+ if(await hash(json(canonical))!==row.content_sha256)return null;
+ const proof=JSON.parse(row.hmac_proof_json);
+ if(proof.observation_hash!==row.content_sha256||proof.signature_scope!=="OBSERVATION_INTEGRITY_NOT_EVENT_TRUTH")
+  return null;
+ const secret=String(env.RISK_GATE_OBSERVATION_HMAC_KEY??"");
+ if(enc.encode(secret).length<32)return null;
+ const key=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["verify"]);
+ const mac=String(proof.integrity_signature??"");
+ if(!/^hmac_sha256:[a-f0-9]{64}$/.test(mac))return null;
+ const bytes=Uint8Array.from(mac.slice(12).match(/.{2}/g),x=>parseInt(x,16));
+ const ok=await crypto.subtle.verify("HMAC",key,bytes,enc.encode(json({
+  schema:DAILY_RG_SCHEMA,observation_hash:proof.observation_hash,timestamp_utc:proof.timestamp_utc
+ })));
+ return ok?{canonical,proof}:null;
+}
+/** Audited D1 projection shared by the daily GET and tiered POST. */
+export async function readDailyRiskObservation(env,corridor_id,now=Date.now()){
+ if(!registry(corridor_id)||!env?.DB?.prepare)return null;
+ const row=await existingSnapshot(env,corridor_id,iso(now).slice(0,10));
+ if(!row)return null;
+ const trusted=await verifyStoredDaily(row,env);
+ return trusted?{...trusted.canonical,audit_proof:trusted.proof,
+  generated_at:row.generated_at,supabase_synced:!!row.supabase_synced_at}:null;
+}
+
 export async function getDailyRiskGate(env,url,request,now=Date.now()){
  const token=String(env?.RISK_GATE_TIERED_TOKEN??"");
  const given=request.headers.get("authorization")??"";
@@ -243,14 +272,8 @@ export async function getDailyRiskGate(env,url,request,now=Date.now()){
  const id=url.searchParams.get("corridor_id");
  if(!registry(id))return respond({ok:false,error:"UNKNOWN_CORRIDOR"},400);
  try{
-  const row=await existingSnapshot(env,id,iso(now).slice(0,10));
-  if(!row)return respond({ok:false,error:"TODAY_SNAPSHOT_NOT_READY",chargeable:false},404);
-  const canonical={schema:DAILY_RG_SCHEMA,corridor_id:id,day_utc:row.day_utc,
-   observation:JSON.parse(row.observation_json),core_tier:JSON.parse(row.core_tier_json),
-   signal_tier:JSON.parse(row.signal_tier_json),policy_tier:JSON.parse(row.policy_tier_json)};
-  if(await hash(json(canonical))!==row.content_sha256)return respond({ok:false,error:"SNAPSHOT_INTEGRITY_FAILED"},503);
-  return respond({ok:true,...canonical,audit_proof:JSON.parse(row.hmac_proof_json),
-   generated_at:row.generated_at,supabase_synced:!!row.supabase_synced_at,
-   chargeable:false,execution_authorized:false});
+  const verified=await readDailyRiskObservation(env,id,now);
+  if(!verified)return respond({ok:false,error:"TODAY_SNAPSHOT_UNAVAILABLE_OR_INVALID",chargeable:false},404);
+  return respond({ok:true,...verified,chargeable:false,execution_authorized:false});
  }catch{return respond({ok:false,error:"RG_DAILY_D1_UNAVAILABLE"},503)}
 }
