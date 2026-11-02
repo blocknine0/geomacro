@@ -2,6 +2,9 @@
 /** Independent corridor-only source receipt. No website publisher imported. */
 import {mkdirSync,writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
+import {createHash} from "node:crypto";
+import {cryptoIndividualRecord,validCryptoIndividual,CRYPTO_NEWS_SCHEMA}
+ from "../../lib/crypto-news-individual-structured.mjs";
 import {collectDirectCorridorSourceIntake} from "../lib/direct-global-corridor-ingestion.mjs";
 import {buildPrivateCorridorStructuredResearch} from "../lib/corridor-derived-structured-research.mjs";
 export async function runDirectCorridorIntake({
@@ -55,8 +58,25 @@ export async function runDirectCorridorIntake({
     structured.customer_delivery_authorized!==false||
     structured.website_intelligence_writes!==0||structured.predge_writes!==0)
    throw Error("CORRIDOR_PRIVATE_STRUCTURED_OUTPUT_BOUNDARY_INVALID");
+ // Build GeoMacro's exact five-part structured metadata per article; no
+ // publisher headline/body, source-event claims or public customer release.
+ if(!Array.isArray(receipt.crypto_news_candidates)||
+    receipt.crypto_news_candidate_count!==receipt.crypto_news_candidates.length||
+    receipt.crypto_news_candidate_count>50||
+    receipt.crypto_news_candidates.some(c=>!validCryptoIndividual(c,Date.parse(receipt.checked_at))))
+   throw Error("CRYPTO_INDIVIDUAL_NEWS_PROVENANCE_INVALID");
+ const cryptoRecords=receipt.crypto_news_candidates.map(candidate=>{
+   const record=cryptoIndividualRecord(candidate);
+   return {record,record_sha256:createHash("sha256")
+    .update(JSON.stringify(record)).digest("hex")};
+ });
  const dir="artifacts/direct-corridor-intake";
  mkdirSync(dir,{recursive:true,mode:0o700});
+ writeFileSync(dir+"/crypto-individual-research.json",JSON.stringify({
+   schema:CRYPTO_NEWS_SCHEMA,channel:"CORRIDOR_ONLY",
+   checked_at:receipt.checked_at,items:cryptoRecords,
+   website_intelligence_enabled:false,commercial_rights_verified:false
+ },null,2)+"\\n",{mode:0o600});
  writeFileSync(dir+"/receipt.json",JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/news-candidates.json",JSON.stringify({
    schema:"geomacro.corridor-native-news-candidates.v1",
@@ -90,6 +110,7 @@ export async function runDirectCorridorIntake({
      source_id:x.id,state:x.state,metadata_candidates:x.metadata_candidates,
      candidate_corridor_records:x.candidate_corridor_records
    }))??[],
+   crypto_individual_news_candidates:cryptoRecords.length,
    news_candidate_count:receipt.news_candidate_count,
    official_reference_observations:receipt.official_reference_observation_count,
    private_structured_research_records:structured.structured_record_count,

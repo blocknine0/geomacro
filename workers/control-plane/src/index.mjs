@@ -11,6 +11,7 @@ import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-sou
 import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredCorridorNativeNews} from './corridor-native-news.mjs';
 import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredOfficialCorridorReferences} from './corridor-official-reference.mjs';
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
+import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
 import {MACHINE_INTELLIGENCE_PROOF_SCHEMA,isIntelligenceProofSchema,isIntelligenceSourceContract} from "../../../lib/intelligence-publication-authority.mjs";
 import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
@@ -1305,6 +1306,11 @@ export default {
         if(!r.ok)console.error("CORRIDOR_PRIVATE_RESEARCH_TTL_DEFERRED");
       }).catch(()=>console.error("CORRIDOR_PRIVATE_RESEARCH_TTL_DEFERRED")));
 
+    if([0,6,12,18].includes(utc.getUTCHours())&&utc.getUTCMinutes()===13&&env?.DB?.prepare)
+      ctx.waitUntil(purgePrivateCryptoNewsResearch(env).then(r=>{
+        if(!r.ok)console.error("CRYPTO_NEWS_D1_TTL_DEFERRED");
+      }).catch(()=>console.error("CRYPTO_NEWS_D1_TTL_DEFERRED")));
+
     if(utc.getUTCHours()===0&&utc.getUTCMinutes()===13&&env?.DB?.prepare){
       ctx.waitUntil(env.DB.prepare(
         "DELETE FROM predge_pilot_signed_news_context WHERE singleton=1 AND expires_at<=?"
@@ -1517,6 +1523,16 @@ export default {
         if(request.method==="GET")
           return readPrivateCorridorNativeNews(env,url.searchParams);
         return json({ok:false,error:"CORRIDOR_NATIVE_METHOD_INVALID",chargeable:false},405);
+      }
+      // CryptoCompare individual indexed links and five-part metadata research;
+      // existing admin authorization above, never a public/Risk Gate endpoint.
+      if(url.pathname==="/v1/internal/corridor-crypto-individual-research"){
+        if(request.method==="PUT"&&!url.search)
+          return putPrivateCryptoNewsResearch(env,await readJson(request,100*1024));
+        if(request.method==="GET")
+          return readPrivateCryptoNewsResearch(env,url.searchParams);
+        return json({ok:false,error:"CRYPTO_NEWS_PRIVATE_METHOD_INVALID",
+          chargeable:false},405);
       }
       if(url.pathname==="/v1/internal/corridor-official-reference"){
         if(request.method==="PUT"&&!url.search)

@@ -130,7 +130,11 @@ export async function collectDirectCorridorSourceIntake({
    credentials.observation_count!==credentials.observations.length||
    credentials.observation_count>5||
    credentials.website_intelligence_writes!==0||
-   credentials.commercial_rights_verified!==false)
+   credentials.commercial_rights_verified!==false||
+   !Array.isArray(credentials.crypto_news_candidates)||
+   !Number.isInteger(credentials.crypto_news_candidate_count)||
+   credentials.crypto_news_candidates.length!==credentials.crypto_news_candidate_count||
+   credentials.crypto_news_candidate_count>50)
    throw Error("CORRIDOR_CREDENTIAL_SOURCE_CONTRACT_INVALID");
  const credentialIds=new Set();
  for(const check of credentials.source_checks){
@@ -185,6 +189,8 @@ export async function collectDirectCorridorSourceIntake({
    official_reference_source_checks:[...official.source_checks,...credentials.source_checks],
    official_reference_observation_count:official.observation_count+credentials.observation_count,
    official_reference_observations:[...official.observations,...credentials.observations],
+   crypto_news_candidate_count:credentials.crypto_news_candidate_count,
+   crypto_news_candidates:credentials.crypto_news_candidates,
    official_reference_events_verified:false,
    website_intelligence_writes:0,website_intelligence_enabled:false,
    source_news_collector_calls:0,
