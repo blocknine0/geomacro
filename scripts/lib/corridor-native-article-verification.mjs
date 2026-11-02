@@ -175,6 +175,54 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
   if((result.observations||[]).length)routeEvidence++;
   if((result.route_mentions||[]).length)bodyRouteMentions++;
   if(pair.length)corroborated++;
+  const firstSourceAt=new Date(referenceClock).toISOString();
+  const routeContexts=result.route_mentions||[];
+  const sourceStatus=pair.length?"TWO_DISTINCT_REGISTERED_SOURCES_MATCH":
+   (result.observations||[]).length?"SINGLE_SOURCE_UNCORROBORATED":
+   routeContexts.length?"CORRIDOR_CONTEXT_ONLY":"NO_CORRIDOR_EVIDENCE";
+  // A five-part first-party STRUCTURED CANDIDATE, NEVER paid signed GRO.
+  // Raw article bodies inform facts but are never reproduced; no fabricated
+  // magnitude/market prices/precise occurrence clocks or customer assertion.
+  const intelligence={
+    schema:"geomacro.structured-source-candidate.v1",
+    what_happened:{
+      observation_kind:"PUBLISHER_REPORTED_SOURCE_CANDIDATE",
+      reference_event_time:firstSourceAt,
+      reference_event_time_basis:pair.length?"EARLIEST_CORROBORATING_PUBLICATION":
+       "EARLIEST_OBSERVED_PUBLICATION_PROXY_SINGLE_SOURCE",
+      actual_occurrence_time_verified:false,
+      corridor_ids:routeContexts,
+      extracted_route_action_vessel_reports:reportGroups.map(g=>({
+        corridor_id:g.route_id,reported_action:g.action,
+        vessel_token_sha256:g.vessel_token_hash})),
+      incident_verified:false
+    },
+    why_it_matters:{
+      corridor_context_present:routeContexts.length>0,
+      impact_on_transit_verified:false,
+      explanatory_assessment:"AWAITING_EVIDENCE"
+    },
+    market_relevance:{
+      freight_transmission_measured:false,
+      price_or_flow_impact_verified:false,
+      market_effect_assessment:"NOT_ESTABLISHED"
+    },
+    what_to_watch:{
+      required_followup:["OFFICIAL_INCIDENT_NOTICE","INDEPENDENT_EVENT_CORROBORATION",
+        "MEASURED_ROUTE_FLOW_OR_FREIGHT_EFFECT"],
+      scheduled_reverification_state:"BOUNDED_SOURCE_OBSERVATION_ONLY"
+    },
+    evidence_confidence:{
+      evidence_type:"PUBLISHER_ORIGINAL_BODY_DERIVED_FACTS",
+      status:sourceStatus,
+      independent_registered_source_count:Math.max(1,...reportGroups.map(g=>g.independent_issuer_count)),
+      independent_article_report_match:pair.length>0,
+      source_article_body_sha256:result.body_hash||null,
+      physical_event_time_verified:false,
+      rights_for_commercial_delivery_verified:false,
+      signed_gro_verified:false
+    }
+  };
   return {candidate_id:candidate.id,source_id:candidate.source_id,
    state:pair.length?"INDEPENDENT_VESSEL_ROUTE_REPORT_MATCH":
      (result.observations||[]).length?"SINGLE_SOURCE_ROUTE_CLAUSE_OBSERVED":
@@ -190,6 +238,7 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
    physical_occurrence_time_verified:false,
    // Structured extracted facts from raw transient bodies, no republished text.
    structured_evidence:reportGroups,
+   structured_intelligence_candidate:intelligence,
    extracted_context_class:pair.length?"CORROBORATED_PUBLISHER_REPORT":
     (result.observations||[]).length?"SINGLE_PUBLISHER_ROUTE_REPORT":
     (result.route_mentions||[]).length?"ROUTE_MENTION_ONLY":"NO_ROUTE_EVIDENCE",
