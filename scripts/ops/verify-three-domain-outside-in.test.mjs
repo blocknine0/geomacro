@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {verifyThreeDomainLivePublication} from "./verify-three-domain-outside-in.mjs";
+import {verifyThreeDomainLivePublication,readCurrentArchiveOriginalIds} from "./verify-three-domain-outside-in.mjs";
 const now=Date.parse("2026-11-02T00:00:00.000Z");
 const at="2026-11-01T23:10:00.000Z";
 const categories=["geopolitics","macro","rare_earth"];
@@ -102,4 +102,47 @@ test("publisher-rejected template is not an eligible backlog or a fake new findi
  assert.equal(out.category.geopolitics.public_d1_not_in_static,1);
  assert.equal(out.category.geopolitics.public_d1_not_in_static_concrete,0);
  assert.equal(out.aged_eligible_unpublished,0);
+});
+
+test("complete month shard establishes static publication despite latest preview dedup",()=>{
+ const x=fixture();
+ const extra={...signals[0],id:"geopolitics-000000dd"};
+ x.journal.signals.push(extra);
+ x.journal.returned_rows=4;
+ x.journal.first_ingest=[{id:extra.id,first_seen_at:"2026-11-01T19:00:00.000Z"}];
+ x.classifyDisplay=()=>null;
+ x.isArchiveEligible=()=>true;
+ x.isTemplateObservation=()=>false;
+ x.archiveOriginalIds=new Set([...signals.map(y=>y.id),extra.id]);
+ const proof=verifyThreeDomainLivePublication(x);
+ assert.equal(proof.verified,true);
+ assert.equal(proof.category.geopolitics.public_d1_not_in_static,0);
+ assert.equal(proof.category.geopolitics.represented_in_full_shards_not_latest_preview,1);
+ x.archiveOriginalIds.delete(extra.id);
+ assert.throws(()=>verifyThreeDomainLivePublication(x),
+  /THREE_DOMAIN_LIVE_CANONICAL_ELIGIBLE_ARCHIVE_BACKLOG_geopolitics/);
+});
+test("current immutable 72h shard IDs are read without D1, and tampered shard fails closed",async()=>{
+ const index={months:["2026-11","2026-10","2026-09"]},fetched=[];
+ const read=async url=>{
+  fetched.push(url);
+  const tokens=url.split("/");
+  const category=tokens.at(-1).replace(".json","");
+  const month=tokens.at(-2);
+  const id=category+"-"+(month==="2026-11"?"11111111":"22222222");
+  return JSON.stringify({schema:"geomacro.permanent-derived-news-archive-month.v1",
+   month,category,signals:[{id,category,
+    published_at:month+"-01T00:00:00.000Z"}]});
+ };
+ const ids=await readCurrentArchiveOriginalIds(index,now,read);
+ assert.equal(fetched.length,6);
+ assert.equal(ids.size,6);
+ assert.ok(fetched.every(x=>!x.includes("2026-09")));
+ const bad=async url=>{
+  const doc=JSON.parse(await read(url));
+  doc.signals[0].id="fake";
+  return JSON.stringify(doc);
+ };
+ await assert.rejects(readCurrentArchiveOriginalIds(index,now,bad),
+  /ARCHIVE_MONTH_SHARD_ID_INVALID/);
 });
