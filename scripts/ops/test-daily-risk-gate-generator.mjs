@@ -145,5 +145,5 @@ test("Supabase multi-corridor hash readback uses valid PostgREST and/or filter",
  assert.equal(receipt.ok,true);
  assert.equal(receipt.synced,2);
  assert.equal(updated.length,2);
- assert.match(readbackUrl,/or=\\(and\\(corridor_id\\.eq\\.bab-el-mandeb,day_utc\\.eq\\.2026-11-02\\),and\\(corridor_id\\.eq\\.hormuz,day_utc\\.eq\\.2026-11-02\\)\\)/);
+ assert.match(readbackUrl,/or=\(and\(corridor_id\.eq\.bab-el-mandeb,day_utc\.eq\.2026-11-02\),and\(corridor_id\.eq\.hormuz,day_utc\.eq\.2026-11-02\)\)/);
 });
