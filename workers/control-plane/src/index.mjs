@@ -30,7 +30,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,verifyUnifiedRiskDailyRemoteCensus} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1574,11 +1574,23 @@ export default {
         const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
         const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
         const country_synced=Number(countries?.synced??0),corridor_synced=Number(corridors?.synced??0);
-        const complete=country_count===195&&corridor_count===12&&
+        const local_complete=country_count===195&&corridor_count===12&&
           country_synced===195&&corridor_synced===12;
+        // Never turn yesterday's Supabase sync flag into today's green receipt.
+        // Make one bounded fresh remote exact-ID/hash readback only when all
+        // local canonical rows already exist; return counts, never private data.
+        const remote=local_complete?
+          await verifyUnifiedRiskDailyRemoteCensus(env,day_utc):
+          {ok:false,error:"UNIFIED_CENSUS_LOCAL_INCOMPLETE"};
+        const complete=local_complete&&remote.ok===true&&
+          remote.remote_count===207&&remote.remote_hash_matches===207;
         return json({schema:"geomacro.unified-risk-census.v1",ok:true,day_utc,
           country_count,corridor_count,country_synced,corridor_synced,
           expected:{country:195,corridor:12,total:207},
+          supabase_live_readback_verified:complete,
+          remote_count:remote.ok===true?remote.remote_count:0,
+          remote_hash_matches:remote.ok===true?remote.remote_hash_matches:0,
+          remote_readback_status:remote.ok===true?"MATCHED":"INCOMPLETE_OR_UNAVAILABLE",
           complete,commercial_activation:false});
       }
       // Owner-admin-only, exact three-target production acceptance.
