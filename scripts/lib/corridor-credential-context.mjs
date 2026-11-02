@@ -84,11 +84,11 @@ function parseNews(data,now){
   const title=typeof row?.title==="string"?row.title.trim():"";
   const source=typeof row?.source==="string"?row.source.trim():"";
   if(!original||title.length<8||title.length>300||
-     !/^[\\p{L}\\p{N} ._&'()-]{2,70}$/u.test(source)||
+     !/^[\p{L}\p{N} ._&'()-]{2,70}$/u.test(source)||
      candidates.length>=50)continue;
   const published_at=new Date(timestamp*1000).toISOString();
   const id=createHash("sha256").update(["cryptocompare_news",provider_id,
-   published_at,original].join("\\x1f")).digest("hex");
+   published_at,original].join("\x1f")).digest("hex");
   const topic=cryptoNewsTopic(title+" "+String(row?.categories??""));
   candidates.push({
    id,provider_id,article_url:original,source_name:source,
