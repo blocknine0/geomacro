@@ -9,7 +9,7 @@ import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
-const enc=new TextEncoder(),DAY=86400000,THREE=3*DAY,TEN=10*DAY;
+const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
 const hash=async s=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s))),
  b=>b.toString(16).padStart(2,"0")).join("");
@@ -242,27 +242,24 @@ export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}
   return {ok:true,synced:rows.length,hash_readback_verified:true};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_SYNC_FAILED"}}
 }
+/** Hourly bounded prune: preserve seven rolling days of verified snapshots.
+ * Remote Supabase removal and empty-old-row readback precede any local D1
+ * deletion. Unsynced D1 snapshots are never purged by this maintenance.
+ */
 export async function cleanupUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}={}){
  const cfg=supabaseCfg(env);
  if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
  try{
-  const old=await env.DB.prepare("SELECT next_cleanup_at FROM risk_gate_daily_housekeeping WHERE job_id='unified_supabase_ten_day'").first();
-  if(!old){
-   await env.DB.prepare("INSERT OR IGNORE INTO risk_gate_daily_housekeeping(job_id,next_cleanup_at) VALUES('unified_supabase_ten_day',?)")
-    .bind(iso(now+TEN)).run();
-   return {ok:true,initialized:true};
-  }
-  if(Date.parse(old.next_cleanup_at)>now)return {ok:true,not_due:true};
-  const cutoff=iso(now-THREE),encoded=encodeURIComponent(cutoff);
+  const cutoff=iso(now-SEVEN),encoded=encodeURIComponent(cutoff);
   await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?generated_at=lt."+encoded,{method:"DELETE"},fetcher);
   const check=await (await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?select=entity_id&generated_at=lt."+encoded+"&limit=1",{},fetcher)).json();
   if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
   await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM risk_observations WHERE created_at<?").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE day_utc<?").bind(cutoff.slice(0,10)).run();
-  await env.DB.prepare("UPDATE risk_gate_daily_housekeeping SET last_cleanup_at=?,next_cleanup_at=? WHERE job_id='unified_supabase_ten_day'")
-   .bind(iso(now),iso(now+TEN)).run();
-  return {ok:true,verified:true,minimum_retention_days:3,interval_days:10};
+  await env.DB.prepare("INSERT INTO risk_gate_daily_housekeeping(job_id,last_cleanup_at,next_cleanup_at) VALUES('unified_supabase_seven_day',?,?) ON CONFLICT(job_id) DO UPDATE SET last_cleanup_at=excluded.last_cleanup_at,next_cleanup_at=excluded.next_cleanup_at")
+   .bind(iso(now),iso(now+60*60000)).run();
+  return {ok:true,verified:true,retention_days:7,interval_hours:1};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_CLEANUP_FAILED"}}
 }
 export async function unifiedRiskGateEvaluate(request,env,opts={}){

@@ -1,6 +1,6 @@
 # Unified Risk Gate: permanent 207-cell daily acceptance and bounded recovery
 
-Status: production code from PRs #3415-#3417 deployed; this patch adds missed-slot retry.
+Status: PRs #3415-#3418 merged and deployed; seven-day rolling retention is handled by a separate guarded follow-up.
 The 195-country canonical registry excludes supplementary on-demand Taiwan (TWN).
 Canonical census target is **195 country daily snapshots + 12 strategic corridors**.
 Each snapshot contains **three** category fields (GEOPOLITICS, MACRO_FX,
@@ -38,9 +38,12 @@ Unknown or unverified risk stays null and hard gate stays insufficient evidence.
   per-row remote content-hash readback, D1 sync mark after successful check.
 - Daily at 18:30: signed-protected GitHub no-funds census MUST report exactly
   195 countries + 12 corridors, each Supabase-confirmed; failure is visible.
-- Every 10 days, at first due 08:35 tick: remove Supabase records older
-  than three days; confirm empty old-row readback before D1 pruning.
-  Never delete fresh records just to simulate a cleanup acceptance.
+- Hourly at minute :35 UTC, remove Supabase snapshots older than seven
+  rolling days and confirm the remote old-row readback is empty before
+  pruning only synced D1 snapshots, observations and retry ledger entries.
+  Unsynced D1 records are never removed by snapshot cleanup.
+  A remote-delete or readback failure stops the D1 prune and retries at
+  the next hourly tick.
 
 ## Correct Supabase operational query
 
