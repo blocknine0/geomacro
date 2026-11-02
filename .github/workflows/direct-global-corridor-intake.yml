@@ -170,6 +170,20 @@ jobs:
           node scripts/ops/publish-private-corridor-native-news.mjs
           node scripts/ops/publish-private-corridor-official-references.mjs
           node scripts/ops/publish-private-corridor-research.mjs
+
+      # Independent private product lane: an unrelated official/derived D1
+      # write failure must not suppress this exact source's acceptance test.
+      # Keep failed status for any failed lane; no continue-on-error.
+      - name: Publish individual CryptoCompare five-part research to private D1
+        if: ${{ always() && github.ref == 'refs/heads/main' }}
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GEOMACRO_COMMERCE_LEDGER_TOKEN" || {
+            echo "::error::CRYPTO_INDIVIDUAL_D1_ROOT_CREDENTIAL_MISSING"
+            exit 2
+          }
           node scripts/ops/publish-private-crypto-individual-research.mjs
       - name: Upload separate bounded corridor receipt
         if: always()
