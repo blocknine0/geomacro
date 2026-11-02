@@ -21,6 +21,9 @@ on:
       - "scripts/tests/phase2h-live-proof-guard.test.mjs"
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs"
+      - "scripts/tests/phase2i-ciphertext-b2-archive.test.mjs"
+      - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - "scripts/ops/phase2i-b-evidence-bridge.mjs"
@@ -55,7 +58,7 @@ jobs:
         with:
           node-version: "22"
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
-        run: node --test scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
+        run: node --test scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
       github.event_name == 'schedule' &&
@@ -214,6 +217,62 @@ jobs:
             artifacts/derived-news/phase2h-permanent-production-acceptance.json
             artifacts/derived-news/phase2h-canonical-census-receipt.json
           retention-days: 90
+          if-no-files-found: warn
+
+  phase2i-governed-source-ciphertext-b2:
+    name: Preserve all captured 72h eligible originals in B2 ciphertext (independent GET proof)
+    needs: [quota-admission, raw-b2-to-production-question]
+    if: >-
+      always() &&
+      github.event_name == 'schedule' &&
+      github.event.schedule == '29 0,6,12,18 * * *' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.raw_archive == 'true'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 12
+    permissions:
+      contents: read
+      actions: read
+    env:
+      PHASE2H_PROVIDER_MAINTENANCE: ${{ needs.quota-admission.outputs.raw_archive }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
+      B2_REQUEST_BUDGET: "10"
+      GH_TOKEN: ${{ github.token }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Guard AES-256-GCM queue and exact scoped B2 retention before production I/O
+        run: |
+          node --check scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs
+          node --test scripts/tests/phase2i-ciphertext-b2-archive.test.mjs
+      - name: B2 ciphertext PUT, two independent GET/SHA restores and provider lifecycle readback
+        run: |
+          set -euo pipefail
+          rm -f artifacts/derived-news/phase2i-ciphertext-b2-acceptance.json
+          node scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs
+      - name: Retain metadata-only source ciphertext B2 receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: phase2i-private-source-ciphertext-b2-${{ github.run_id }}
+          path: artifacts/derived-news/phase2i-ciphertext-b2-acceptance.json
+          retention-days: 7
           if-no-files-found: warn
 
   phase2ib-durable-archive-cycle:
