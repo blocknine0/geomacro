@@ -151,6 +151,12 @@ test("long-tail country lookup finds source-linked ORIGINAL headlines without si
  assert.ok(!JSON.stringify(result).includes("United States government"));
 });
 
+test("long-tail country JIT uses bounded indexed category scans, not unbounded JSON LIKE",()=>{
+ const code=readFileSync(new URL("../../workers/control-plane/src/corridor-risk-gate-jit.mjs",import.meta.url),"utf8");
+ assert.ok(code.includes("WHERE category=? AND original_published_at>=?"));
+ assert.ok(code.includes("ORDER BY original_published_at DESC LIMIT 64"));
+ assert.ok(!code.includes("json_extract(raw_json"));
+});
 test("real private publisher performs five corridor JIT checks and longtail safety check",async()=>{
  const db=new MockD1(),secret="a".repeat(64);
  const run=await publishContinuousStrategicCorridors({rootToken:secret,fetchImpl:async(url,opt)=>{
