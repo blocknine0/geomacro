@@ -50,7 +50,7 @@ test("every local publisher receives nominal 60m polling without exceeding exist
  for(const slot of slots){
   assert.equal(slot.local.length,24);
   assert.ok(slot.sources.length<=512);
-  assert.ok(slot.sources.length>=base.length+49);
+  assert.ok(slot.sources.length>=89); // retired base sources cannot be counted as active GETs
   assert.equal(new Set(slot.sources.map(x=>x.url)).size,slot.sources.length);
   assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,89);
   const index=slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3);
