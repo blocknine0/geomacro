@@ -39,7 +39,11 @@ jobs:
               .ok == true and .schema == "geomacro.unified-risk-census.v1" and
               .complete == true and .country_count == 195 and
               .corridor_count == 12 and .country_synced == 195 and
-              .corridor_synced == 12 and .commercial_activation == false
+              .corridor_synced == 12 and
+              .supabase_live_readback_verified == true and
+              .remote_count == 207 and .remote_hash_matches == 207 and
+              .remote_readback_status == "MATCHED" and
+              .commercial_activation == false
             ' "$tmp" >/dev/null 2>&1; then
               echo "PASS: 195 country/day and 12 corridor/day signed observations D1+Supabase sync census."
               exit 0
@@ -48,5 +52,5 @@ jobs:
           done
           echo "::error::UNIFIED_207_SNAPSHOT_DAILY_CENSUS_INCOMPLETE"
           # Show only aggregate counts, no original sources or protected key.
-          jq -c '{day_utc,country_count,corridor_count,country_synced,corridor_synced,complete}' "$tmp" 2>/dev/null || true
+          jq -c '{day_utc,country_count,corridor_count,country_synced,corridor_synced,remote_count,remote_hash_matches,supabase_live_readback_verified,complete}' "$tmp" 2>/dev/null || true
           exit 3
