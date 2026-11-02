@@ -64,7 +64,7 @@ test("GDELT export batch indices are never used as Risk Gate event evidence",()=
   ...receipt(),news_candidates:[],crypto_news_candidates:[],
   official_reference_observations:[
    {id:"d".repeat(64),source_id:"gdelt_v2_15m",
-    metric_id:"gdelt_export_batch_bytes",observation_period:TIME},
+    metric_id:"gdelt_export_batch_bytes",observation_period:clock},
    {id:"e".repeat(64),source_id:"fred_api",
     metric_id:"treasury_10y_yield",observation_period:"2026-11-01"}
   ]
