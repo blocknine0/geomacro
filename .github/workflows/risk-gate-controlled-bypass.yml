@@ -19,6 +19,7 @@ on:
   push:
     branches:
       - 'feature/risk-gate-tiered-controlled-bypass-20261102'
+      - 'feature/unified-risk-195x3-corridors-20261103'
   workflow_dispatch:
 
 permissions:
@@ -43,4 +44,4 @@ jobs:
           node --check workers/control-plane/src/unified-risk-gate.mjs
           node --check workers/control-plane/src/unified-risk-engine.mjs
       - name: Run deterministic boundary tests
-        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs scripts/ops/test-daily-risk-gate-generator.mjs
+        run: node --test scripts/ops/test-risk-gate-controlled-bypass.mjs scripts/ops/test-daily-risk-gate-generator.mjs scripts/ops/test-unified-risk-gate.mjs
