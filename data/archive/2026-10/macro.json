@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-10",
   "category": "macro",
-  "updated_at": "2026-11-01T23:28:46.922Z",
+  "updated_at": "2026-11-02T00:41:24.597Z",
   "signals": [
     {
       "id": "macro-44642ace",
@@ -242,6 +242,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T10:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e63e8959",
+      "category": "macro",
+      "title": "Geomacro finds World Bank forecast sharp rise in grain prices through 2027 - Miller Magazine",
+      "what_changed": "A monitored source feed reports: World Bank forecast sharp rise in grain prices through 2027 - Miller Magazine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-10-30T09:32:21.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
