@@ -18,10 +18,12 @@ const b={...a,candidate_id:"b".repeat(64),source_id:"coindesk_rss",
  native_published_at:date(15),
  article_url:"https://www.coindesk.com/markets/red-sea-risk"};
 class MockD1{
- constructor(rows=[a,b]){this.input=rows;this.snapshots=new Map()}
+ constructor(rows=[a,b]){this.input=rows;this.snapshots=new Map();this.countryRows=[]}
  prepare(query){return {bind:(...params)=>({
   query,params,
   all:async()=>{
+   if(query.includes("FROM phase2h_private_raw_news"))
+    return {results:this.countryRows??[]};
    if(query.includes("FROM corridor_native_news_candidates"))
     return {results:this.input.filter(r=>
       r.native_published_at>=params[0]&&r.native_published_at<=params[1]&&
@@ -119,6 +121,36 @@ test("admin JIT preflight remains no-charge even when source titles appear to co
  assert.equal((await readPrivateRiskGateJit({DB:db},
   new URLSearchParams("subject_type=country&subject_id=BAD!"),now)).status,400);
 });
+test("long-tail country lookup finds source-linked ORIGINAL headlines without signing or charging",async()=>{
+ const db=new MockD1();
+ db.countryRows=[{
+  record_id:"c".repeat(64),category:"geopolitics",
+  original_published_at:date(45),raw_sha256:"e".repeat(64),
+  raw_json:JSON.stringify({original:{
+   original_title:"United States government issues a new policy announcement",
+   original_published_at:date(45)}})
+ },{
+  record_id:"d".repeat(64),category:"macro",
+  original_published_at:date(40),raw_sha256:"e".repeat(64),
+  raw_json:JSON.stringify({original:{
+   original_title:"India central bank releases statement",
+   original_published_at:date(40)}})
+ }];
+ const j=await readPrivateRiskGateJit({DB:db},
+  new URLSearchParams("subject_type=country&subject_id=USA"),now);
+ assert.equal(j.status,202);
+ const result=await j.json();
+ assert.equal(result.discovery_evidence_count,1);
+ assert.equal(result.evidence_references[0].record_id,"c".repeat(64));
+ assert.equal(result.processing_tier,"JIT_REQUEST_ONLY");
+ assert.equal(result.verification_status,"ORIGINAL_HEADLINE_COUNTRY_CANDIDATES_UNVERIFIED");
+ assert.equal(result.independently_verified_events,0);
+ assert.equal(result.customer_credits_debited,0);
+ assert.equal(result.signed_gro,null);
+ assert.equal(result.chargeable,false);
+ assert.ok(!JSON.stringify(result).includes("United States government"));
+});
+
 test("real private publisher performs five corridor JIT checks and longtail safety check",async()=>{
  const db=new MockD1(),secret="a".repeat(64);
  const run=await publishContinuousStrategicCorridors({rootToken:secret,fetchImpl:async(url,opt)=>{
