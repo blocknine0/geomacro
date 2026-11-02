@@ -137,7 +137,13 @@ test("actual unified snapshot uses private OSINT only as unverified fallback; no
  assert.equal(riskRows.get("GEOPOLITICS").status,"OBSERVED_UNVERIFIED");
  const stored=JSON.stringify([...riskRows.values()])+JSON.stringify(snapshot);
  assert.ok(!stored.includes(H)&&!stored.includes(I),"raw research identities never stored in risk outputs");
- assert.ok(!stored.includes("example.org")&&!stored.includes("projection_json"));
+ const derived=riskRows.get("GEOPOLITICS").payload;
+ for(const field of ["url","article_url","original_url","source_url","source_id",
+    "publisher_host","projection_json","item_id","original_title"]){
+  assert.equal(Object.hasOwn(derived,field),false,field+" must never leave the OSINT ring");
+  assert.equal(Object.hasOwn(snapshot.categories.GEOPOLITICS,field),false);
+ }
+ assert.equal(derived.private_osint_original_page_verified,false);
  assert.match(audit_proof.signature,/^hmac_sha256:[a-f0-9]{64}$/);
  assert.equal(seenSql.filter(q=>q.includes("FROM private_osint_news_25h")).length,3);
  assert.equal(seenSql.some(q=>q.includes("SELECT projection_json FROM private_osint_news_25h")),false);
