@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T18:49:42.478Z",
+  "updated_at": "2026-11-02T18:53:07.298Z",
   "signals": [
     {
       "id": "geopolitics-e587f36f",
@@ -77,6 +77,101 @@
         "United Nations"
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b5f2a0ec",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said rare ceasefire was cover for Russian regrouping - Reuters",
+      "what_changed": "A monitored source feed reports: Ukraine said rare ceasefire was cover for Russian regrouping - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:47:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-41a96e32",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States approved $2.1 billion Patriot missile sale to Ukraine",
+      "what_changed": "A monitored source feed reports: United States approved $2.1 billion Patriot missile sale to Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:46:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.militarytimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4d951977",
+      "category": "geopolitics",
+      "title": "Geomacro finds China urged Gulf nations to develop new security architecture, top diplomat",
+      "what_changed": "A monitored source feed reports: China urged Gulf nations to develop new security architecture, top diplomat. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:40:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1cc82e9c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said in 'intensive' negotiations with US to avert war via mediators",
+      "what_changed": "A monitored source feed reports: Iran said in 'intensive' negotiations with US to avert war via mediators. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:37:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c3ae01f0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK",
+      "what_changed": "A monitored source feed reports: Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
