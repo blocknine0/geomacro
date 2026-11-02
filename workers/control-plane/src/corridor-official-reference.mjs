@@ -2,13 +2,16 @@
  * No source article, no Website Intelligence, PREDGE, x402 or paid scoring.
  */
 const AGE=72*3600000,HEX=/^[a-f0-9]{64}$/u;
-const ALLOWED=new Set(["gdelt_v2_15m","world_bank_wdi","ecb_data","eurostat_data","imf_portwatch"]);
+const ALLOWED=new Set(["gdelt_v2_15m","world_bank_wdi","ecb_data","eurostat_data","imf_portwatch","fred_api","reliefweb_v2","cryptocompare_news"]);
 const METRICS={
  gdelt_v2_15m:/^gdelt_(?:export|gkg|mentions)_batch_bytes$/u,
  world_bank_wdi:/^wdi_gdp_growth_(?:us|cn|in|de|gb)$/u,
  ecb_data:/^ecb_usd_eur_spot$/u,
  eurostat_data:/^eurostat_ea20_hicp_annual_pct$/u,
- imf_portwatch:/^portwatch_daily_transit_pct_change$/u
+ imf_portwatch:/^portwatch_daily_transit_pct_change$/u,
+ fred_api:/^fred_(?:dgs10_yield_percent|wti_usd_per_barrel)$/u,
+ reliefweb_v2:/^reliefweb_native_24h_reports_sample_count$/u,
+ cryptocompare_news:/^cryptocompare_24h_news_sample_count$/u
 };
 const ROUTES=new Set(["suez_canal","panama_canal","bab_el_mandeb",
  "strait_of_malacca","strait_of_hormuz","taiwan_strait"]);

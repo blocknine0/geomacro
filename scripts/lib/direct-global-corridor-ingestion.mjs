@@ -10,6 +10,7 @@ import {observeIndependentMaritimeOfficialContext}
  from "./independent-maritime-official-context.mjs";
 import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
 import {collectCorridorOfficialReferences} from "./corridor-official-reference-adapters.mjs";
+import {collectCredentialCorridorContext} from "./corridor-credential-context.mjs";
 
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
@@ -44,7 +45,8 @@ async function probePinnedPortal(spec,fetchImpl){
 export async function collectDirectCorridorSourceIntake({
  now=new Date(),fetchImpl=fetch,observeUkmto=observeUkmtoOfficialIndex,
  observeIndependent=observeIndependentMaritimeOfficialContext,
- observeOfficial=collectCorridorOfficialReferences
+ observeOfficial=collectCorridorOfficialReferences,
+ observeCredential=collectCredentialCorridorContext
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     typeof fetchImpl!=="function")throw Error("DIRECT_CORRIDOR_INTAKE_INVALID");
@@ -105,6 +107,27 @@ export async function collectDirectCorridorSourceIntake({
    add(byId.get(check.id),check.state,{metadata_candidates:check.observations});
  }
  if(updated.size!==4)throw Error("CORRIDOR_OFFICIAL_SOURCE_MAPPING_INCOMPLETE");
+ // Approved credentials are opt-in, supplied only by GitHub production secrets.
+ // When absent, all credential providers report explicit non-active states.
+ const credentials=await observeCredential({now,fetchImpl});
+ if(credentials?.schema!=="geomacro.corridor-credential-context-intake.v1"||
+   credentials.channel!=="CORRIDOR_ONLY"||
+   !Array.isArray(credentials.source_checks)||credentials.source_checks.length!==4||
+   !Array.isArray(credentials.observations)||
+   credentials.observation_count!==credentials.observations.length||
+   credentials.observation_count>5||
+   credentials.website_intelligence_writes!==0||
+   credentials.commercial_rights_verified!==false)
+   throw Error("CORRIDOR_CREDENTIAL_SOURCE_CONTRACT_INVALID");
+ const credentialIds=new Set();
+ for(const check of credentials.source_checks){
+   if(!byId.has(check.id)||credentialIds.has(check.id)||
+     states.some(x=>x.id===check.id))
+     throw Error("CORRIDOR_CREDENTIAL_SOURCE_MAPPING_INVALID");
+   credentialIds.add(check.id);
+   add(byId.get(check.id),check.state,{metadata_candidates:check.observations});
+ }
+ if(credentialIds.size!==4)throw Error("CORRIDOR_CREDENTIAL_SOURCE_MAPPING_INCOMPLETE");
  // All other supplied destinations remain registered and visible, but are
  // never misrepresented as machine-readable event feeds. These must receive
  // provider-specific parser/credential acceptance before canonical cutover.
@@ -137,9 +160,9 @@ export async function collectDirectCorridorSourceIntake({
    news_candidates:native.news_candidates,
    native_news_event_verification:false,
    news_candidate_retention_hours:72,
-   official_reference_source_checks:official.source_checks,
-   official_reference_observation_count:official.observation_count,
-   official_reference_observations:official.observations,
+   official_reference_source_checks:[...official.source_checks,...credentials.source_checks],
+   official_reference_observation_count:official.observation_count+credentials.observation_count,
+   official_reference_observations:[...official.observations,...credentials.observations],
    official_reference_events_verified:false,
    website_intelligence_writes:0,website_intelligence_enabled:false,
    source_news_collector_calls:0,

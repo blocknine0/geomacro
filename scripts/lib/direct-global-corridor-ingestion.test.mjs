@@ -57,7 +57,7 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
  assert.equal(result.news_candidate_count,0);
  assert.equal(result.native_news_sources_polled,6);
- assert.equal(result.official_reference_source_checks.length,5);
+ assert.equal(result.official_reference_source_checks.length,9);
  assert.equal(result.official_reference_observation_count,0);
  assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
    "NO_CURRENT_REFERENCE_OBSERVATION");
@@ -96,6 +96,6 @@ test("provider denial is visible but never retried or bypassed",async()=>{
  assert.equal(result.source_checks.find(x=>x.id==="suez_navigation").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="asean_customs").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="coindesk_rss").state,"DENIED_NO_RETRY");
- assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_API_AUTH_REQUIRED");
+ assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_ENTITLEMENT_DISABLED_NO_PAID_PROVIDER");
  assert.equal(result.website_intelligence_writes,0);
 });

@@ -11,7 +11,7 @@ export async function publishOfficialCorridorReferences({receipt,rootToken,now=n
  if(!receipt||receipt.schema!=="geomacro.corridor-official-reference-intake.v1"||
    receipt.channel!=="CORRIDOR_ONLY"||receipt.website_intelligence_enabled!==false||
    receipt.commercial_rights_verified!==false||
-   !Array.isArray(receipt.source_checks)||receipt.source_checks.length!==5||
+   !Array.isArray(receipt.source_checks)||receipt.source_checks.length!==9||
    !Array.isArray(receipt.observations)||receipt.observations.length>60||
    receipt.observation_count!==receipt.observations.length||
    !Number.isFinite(Date.parse(receipt.checked_at))||
@@ -23,17 +23,26 @@ export async function publishOfficialCorridorReferences({receipt,rootToken,now=n
    throw Error("CORRIDOR_OFFICIAL_PUBLISH_INVALID");
  const token=createHmac("sha256",rootToken.trim()).update(
    "geomacro-control-plane-v1").digest("hex");
- let response;try{
-  response=await fetchImpl(endpoint+"/v1/internal/corridor-official-reference",{
+ // Production Workers deployment and Actions intake are independent jobs.
+ // Bound retries only for rollout 404/503 (no redirects, never auth failures).
+ const packet={schema:"geomacro.corridor-official-reference-batch.v1",
+  channel:"CORRIDOR_ONLY",checked_at:now.toISOString(),
+  observations:receipt.observations,commercial_rights_verified:false,
+  website_intelligence_enabled:false};
+ let response,attempts=0;
+ for(let i=0;i<6;i++){
+  attempts++;
+  try{response=await fetchImpl(endpoint+"/v1/internal/corridor-official-reference",{
    method:"PUT",redirect:"error",cache:"no-store",
    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-   body:JSON.stringify({schema:"geomacro.corridor-official-reference-batch.v1",
-    channel:"CORRIDOR_ONLY",checked_at:now.toISOString(),
-    observations:receipt.observations,commercial_rights_verified:false,
-    website_intelligence_enabled:false}),signal:AbortSignal.timeout(15000)
-  })
- }catch{throw Error("CORRIDOR_OFFICIAL_D1_NETWORK_UNAVAILABLE")}
- if(response.status!==200)throw Error("CORRIDOR_OFFICIAL_D1_PUT_HTTP_"+response.status);
+   body:JSON.stringify(packet),signal:AbortSignal.timeout(15000)
+  })}catch{throw Error("CORRIDOR_OFFICIAL_D1_NETWORK_UNAVAILABLE")}
+  if(response.status===200)break;
+  if(![404,503].includes(response.status)||i===5)
+   throw Error("CORRIDOR_OFFICIAL_D1_PUT_HTTP_"+response.status);
+  await new Promise(resolve=>setTimeout(resolve,5000*(i+1)));
+ }
+
  let body;try{body=await response.json()}catch{throw Error("CORRIDOR_OFFICIAL_D1_ACK_INVALID")}
  if(body.ok!==true||body.schema!=="geomacro.corridor-official-reference-d1-receipt.v1"||
     body.channel!=="CORRIDOR_ONLY"||body.submitted!==receipt.observations.length||
@@ -61,7 +70,7 @@ export async function publishOfficialCorridorReferences({receipt,rootToken,now=n
   sources_with_observations:receipt.source_checks.filter(x=>x.observations>0).length,
   observations:receipt.observation_count,d1_records_verified:body.verified,
   authenticated_d1_put_readback:true,authenticated_d1_get_readback:true,
-  recent_readback_count:second.count,retention_hours:72,requests:2,
+  recent_readback_count:second.count,retention_hours:72,requests:attempts+1,
   independent_events_verified:0,website_intelligence_writes:0,
   commercial_eligible:false,signed_gro_generated:false,payments:0};
 }

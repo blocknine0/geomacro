@@ -35,7 +35,7 @@ export async function runDirectCorridorIntake({
       item.original_article_verified!==false))
    throw Error("CORRIDOR_NATIVE_NEWS_PROVENANCE_INVALID");
  if(!Array.isArray(receipt.official_reference_source_checks)||
-    receipt.official_reference_source_checks.length!==5||
+    receipt.official_reference_source_checks.length!==9||
     receipt.official_reference_observation_count!==
       receipt.official_reference_observations?.length||
     receipt.official_reference_observation_count>60||
@@ -60,7 +60,7 @@ export async function runDirectCorridorIntake({
    customer_delivery_enabled:false,signed_gro_generated:false
  },null,2)+"\n",{mode:0o600});
  writeFileSync(dir+"/official-references.json",JSON.stringify({
-   schema:receipt.official_reference_source_checks.length===5?
+   schema:receipt.official_reference_source_checks.length===9?
      "geomacro.corridor-official-reference-intake.v1":null,
    channel:"CORRIDOR_ONLY",checked_at:receipt.checked_at,
    source_checks:receipt.official_reference_source_checks,
