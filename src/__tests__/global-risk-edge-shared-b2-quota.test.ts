@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
+import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 import { makeQuotaProtectedGlobalRiskConfig } from "../../scripts/ops/configure-global-risk-edge-d1-quota.mjs";
 import worker from "../../workers/global-risk-edge/src/index.mjs";
 
@@ -26,7 +27,7 @@ function dbFixture({exhausted=false,failReceipt=false}={}) {
           return {
             async first() {
               expect(sql).toContain("ON CONFLICT(day_utc) DO UPDATE");
-              expect(params).toContain(45);
+              expect(params).toContain(B2_DAILY_LIMITS.GET);
               if(exhausted)return null;
               return {
                 total_requests:1,get_requests:1,put_requests:0,
