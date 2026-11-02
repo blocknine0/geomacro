@@ -91,14 +91,16 @@ test("10-day cleanup initializes once, preserves last three days, and only delet
   RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
   RISK_GATE_SUPABASE_URL:"https://rgexample.supabase.co",
   RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"protected-test-service-role-key-not-production",
-  DB:{prepare(sql){return {bind(...p){return {
+  DB:{prepare(sql){return {
    async first(){return when?{next_cleanup_at:when}:null},
-   async run(){
-    if(sql.startsWith("INSERT OR IGNORE"))when=p[0];
-    if(sql.startsWith("UPDATE risk_gate_daily_housekeeping"))when=p[0];
-    return {success:true};
-   }
-  }}}}}
+   bind(...p){return {
+    async run(){
+     if(sql.startsWith("INSERT OR IGNORE"))when=p[0];
+     if(sql.startsWith("UPDATE risk_gate_daily_housekeeping"))when=p[0];
+     return {success:true};
+    }
+   }}
+  }}}
  };
  const fetcher=async(url,options)=>{
   if(options.method==="DELETE"){deleted++;cutoff=url;return new Response("",{status:204})}
