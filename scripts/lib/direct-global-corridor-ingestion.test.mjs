@@ -11,7 +11,15 @@ const customObservers={
    candidate_corridor_ids:["bab_el_mandeb"],recent_index_report_candidates:1}),
  observeIndependent:async()=>({sources:[{
    id:"recaap_isc_weekly_reports",index_state:"OFFICIAL_PERIODIC_REPORT_INDEX_OBSERVED",
-   metadata_candidate_count:2}]})
+   metadata_candidate_count:2}]}),
+ observeOfficial:async()=>({
+   schema:"geomacro.corridor-official-reference-intake.v1",
+   channel:"CORRIDOR_ONLY",source_checks:[
+     "gdelt_v2_15m","world_bank_wdi","ecb_data","eurostat_data","imf_portwatch"
+   ].map(id=>({id,state:"NO_CURRENT_REFERENCE_OBSERVATION",observations:0})),
+   observation_count:0,observations:[],
+   website_intelligence_writes:0,commercial_rights_verified:false
+ })
 };
 test("all 37 uploaded global / regional / chokepoint / mineral / crypto entries are corridor-only",()=>{
  assert.equal(assertDirectCorridorWebsiteSeparation(),true);
@@ -49,6 +57,10 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.native_event_evidence_written_to_canonical_db,false);
  assert.equal(result.news_candidate_count,0);
  assert.equal(result.native_news_sources_polled,6);
+ assert.equal(result.official_reference_source_checks.length,5);
+ assert.equal(result.official_reference_observation_count,0);
+ assert.equal(result.source_checks.find(x=>x.id==="gdelt_v2_15m").state,
+   "NO_CURRENT_REFERENCE_OBSERVATION");
  assert.equal(result.d1_writes,0);
  assert.equal(result.b2_writes,0);
  assert.equal(result.chargeable,false);
@@ -78,7 +90,8 @@ test("provider denial is visible but never retried or bypassed",async()=>{
  const result=await collectDirectCorridorSourceIntake({now:DATE,
   fetchImpl:async()=>new Response("",{status:403}),
   observeUkmto:async()=>{throw Error("PROVIDER_DENIED")},
-  observeIndependent:async()=>({sources:[]})});
+  observeIndependent:async()=>({sources:[]}),
+  observeOfficial:customObservers.observeOfficial});
  assert.equal(result.source_checks.find(x=>x.id==="ukmto_incidents").state,"PROVIDER_UNAVAILABLE");
  assert.equal(result.source_checks.find(x=>x.id==="suez_navigation").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="asean_customs").state,"DENIED_NO_RETRY");
