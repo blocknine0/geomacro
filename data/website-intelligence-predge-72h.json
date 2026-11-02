@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T14:46:38.589Z",
+  "checked_at": "2026-11-02T14:51:34.782Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 211,
+  "item_count": 214,
   "counts": {
-    "geopolitics": 91,
-    "macro": 84,
+    "geopolitics": 93,
+    "macro": 85,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "c13256649736b0dcce09015264715667752b7aa7b28f211a8faa35168f2245f0",
+  "source_native_ids_sha256": "c75e4b1cc87cba73b7061d88ccc325a27658c606d52fa8cfb7ae6313f80a380a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1084,6 +1084,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T07:58:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5c0f30f8",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecasts on high supply disruption risks - TradingView",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecasts on high supply disruption risks - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:55:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -2443,6 +2462,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-7b4cc5c3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky confirmed attack on Russian rocket fuel factory, missile launcher system - The Kyiv Independent",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed attack on Russian rocket fuel factory, missile launcher system - The Kyiv Independent. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T14:07:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-853cb4fe",
       "category": "geopolitics",
       "title": "Geomacro finds Zelensky confirmed attack on Russian rocket fuel factory, missile launcher system",
@@ -2528,6 +2566,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T13:17:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-cd16e4d7",
+      "category": "geopolitics",
+      "title": "Geomacro finds France launched ‘attempted murder’ probe after petrol bomb attack on security forces - Arab News",
+      "what_changed": "A monitored source feed reports: France launched ‘attempted murder’ probe after petrol bomb attack on security forces - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T12:24:55.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

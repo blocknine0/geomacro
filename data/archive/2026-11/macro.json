@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T14:46:38.589Z",
+  "updated_at": "2026-11-02T14:51:34.782Z",
   "signals": [
     {
       "id": "macro-f205331b",
@@ -432,6 +432,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T07:58:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5c0f30f8",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecasts on high supply disruption risks - TradingView",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecasts on high supply disruption risks - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:55:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
