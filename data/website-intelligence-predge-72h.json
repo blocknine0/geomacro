@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T05:52:09.395Z",
+  "checked_at": "2026-11-02T06:10:31.919Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 140,
+  "item_count": 138,
   "counts": {
     "geopolitics": 52,
-    "macro": 56,
-    "rare_earth": 32
+    "macro": 55,
+    "rare_earth": 31
   },
-  "source_native_ids_sha256": "c8941ad5e85240f2cb30d614b117af4428c9d80779e0aa7d15621cf2d0b094f9",
+  "source_native_ids_sha256": "4a7a8ab71b8dd190999a3dc8d9378796e707592f1d2cfe7f67529a5827a37b48",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2646,44 +2646,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: clubofmozambique.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ba9a910c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Tanzania and Angola agreed to link ocean corridors by rail",
-      "what_changed": "A monitored source feed reports: Tanzania and Angola agreed to link ocean corridors by rail. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T06:03:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-20d0a021",
-      "category": "macro",
-      "title": "Geomacro finds CTI urged Congress to postpone November 1 rally, says ₹10,000-12,000 crore trade in Delhi markets at risk",
-      "what_changed": "A monitored source feed reports: CTI urged Congress to postpone November 1 rally, says ₹10,000-12,000 crore trade in Delhi markets at risk. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T05:54:21.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
