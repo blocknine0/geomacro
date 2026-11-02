@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T20:03:59.452Z",
+  "checked_at": "2026-11-02T20:11:59.531Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-a94e150c",
+      "category": "macro",
+      "title": "Geomacro finds JUSAG said strike continues despite progress in talks with Judicial Service management",
+      "what_changed": "A monitored source feed reports: JUSAG said strike continues despite progress in talks with Judicial Service management. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:07:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-37a9dd40",
       "category": "geopolitics",
@@ -328,6 +347,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5847a0ad",
+      "category": "geopolitics",
+      "title": "Geomacro finds MCK raised alarm over rising attacks on journalists ahead of 2027 polls",
+      "what_changed": "A monitored source feed reports: MCK raised alarm over rising attacks on journalists ahead of 2027 polls. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:06:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: nation.africa"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

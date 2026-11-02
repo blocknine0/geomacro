@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T20:03:59.452Z",
+  "checked_at": "2026-11-02T20:11:59.531Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 241,
+  "item_count": 243,
   "counts": {
-    "geopolitics": 111,
-    "macro": 94,
+    "geopolitics": 112,
+    "macro": 95,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "d7c62a878c2e099f18c43ebd2b0a3233aa4182f1b6688ef295147890d22eec34",
+  "source_native_ids_sha256": "af77df0a4cf37b0f6ba5b825708695fe9e771f1e20c62a75ef4cb54e3e22073e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-a94e150c",
+      "category": "macro",
+      "title": "Geomacro finds JUSAG said strike continues despite progress in talks with Judicial Service management",
+      "what_changed": "A monitored source feed reports: JUSAG said strike continues despite progress in talks with Judicial Service management. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:07:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-37a9dd40",
       "category": "geopolitics",
@@ -347,6 +366,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5847a0ad",
+      "category": "geopolitics",
+      "title": "Geomacro finds MCK raised alarm over rising attacks on journalists ahead of 2027 polls",
+      "what_changed": "A monitored source feed reports: MCK raised alarm over rising attacks on journalists ahead of 2027 polls. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:06:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: nation.africa"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
