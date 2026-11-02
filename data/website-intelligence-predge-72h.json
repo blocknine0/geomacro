@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T12:22:28.278Z",
+  "checked_at": "2026-11-02T12:25:24.536Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 198,
+  "item_count": 197,
   "counts": {
     "geopolitics": 86,
     "macro": 80,
-    "rare_earth": 32
+    "rare_earth": 31
   },
-  "source_native_ids_sha256": "78538253ec81e471acf7958c284e974535d94723465c7253fc57eb7ea9868288",
+  "source_native_ids_sha256": "999f04951ea0f3c799ff9d91562fda32c6154cce87e692d42269343fb5902a68",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3763,25 +3763,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T12:37:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-09a447f8",
-      "category": "rare_earth",
-      "title": "Geomacro finds Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk",
-      "what_changed": "A monitored source feed reports: Chile's INE reported Copper production (Sep) -15.1% Y/Y - Newsquawk. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T12:23:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
