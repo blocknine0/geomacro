@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
  parseGoogleRiskRss,deriveDailyRiskTiers,DAILY_RG_CORRIDORS,
  generateOneDailyRiskGate,readDailyRiskObservation,getDailyRiskGate,
- cleanupDailyRiskSupabase
+ cleanupDailyRiskSupabase,syncDailyRiskToSupabase
 } from "../../workers/control-plane/src/daily-risk-gate-generator.mjs";
 
 const now=Date.parse("2026-11-02T06:00:00.000Z"),clock=new Date(now).toISOString();
@@ -117,4 +117,33 @@ test("10-day cleanup initializes once, preserves last three days, and only delet
  assert.equal(deleted,1);
  assert.match(cutoff,/generated_at=lt\./);
  assert.ok(cutoff.includes(encodeURIComponent(new Date(now+7*86400000).toISOString())));
+});
+
+test("Supabase multi-corridor hash readback uses valid PostgREST and/or filter",async()=>{
+ const rows=["bab-el-mandeb","hormuz"].map((corridor_id,i)=>({
+  corridor_id,day_utc:"2026-11-02",core_tier_json:'{"tier":"CORE"}',
+  signal_tier_json:'{"tier":"SIGNAL"}',policy_tier_json:'{"tier":"POLICY"}',
+  observation_json:'{"count":0}',hmac_proof_json:'{"integrity":"test"}',
+  content_sha256:String(i+1).repeat(64),generated_at:clock
+ }));
+ const updated=[];let readbackUrl="";
+ const env={RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
+  RISK_GATE_SUPABASE_URL:"https://rgexample.supabase.co",
+  RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"protected-test-service-role-key-not-production",
+  DB:{prepare(sql){return {
+   async all(){assert.match(sql,/WHERE supabase_synced_at IS NULL/);return {results:rows}},
+   bind(...args){return {async run(){updated.push(args);return {success:true}}}}
+  }}}
+ };
+ const fetcher=async (url,opts)=>{
+  if(opts.method==="POST")return new Response(null,{status:204});
+  readbackUrl=url;
+  return Response.json(rows.map(r=>({corridor_id:r.corridor_id,
+   day_utc:r.day_utc,content_sha256:r.content_sha256})));
+ };
+ const receipt=await syncDailyRiskToSupabase(env,{now,fetcher});
+ assert.equal(receipt.ok,true);
+ assert.equal(receipt.synced,2);
+ assert.equal(updated.length,2);
+ assert.match(readbackUrl,/or=\\(and\\(corridor_id\\.eq\\.bab-el-mandeb,day_utc\\.eq\\.2026-11-02\\),and\\(corridor_id\\.eq\\.hormuz,day_utc\\.eq\\.2026-11-02\\)\\)/);
 });
