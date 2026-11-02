@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-01T23:28:46.922Z",
+  "checked_at": "2026-11-02T00:34:32.224Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -2173,101 +2173,6 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c6b92ad8",
-      "category": "geopolitics",
-      "title": "Geomacro finds Binance said $2.54bn in crypto funds frozen amid ‘potential security issue’",
-      "what_changed": "A monitored source feed reports: Binance said $2.54bn in crypto funds frozen amid ‘potential security issue’. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T00:29:24.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3ac10d7c",
-      "category": "macro",
-      "title": "Geomacro finds China increased LNG imports from Russia by 44.3% to 7.19 mln tons in January-September - TASS",
-      "what_changed": "A monitored source feed reports: China increased LNG imports from Russia by 44.3% to 7.19 mln tons in January-September - TASS. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T00:05:03.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-570a1945",
-      "category": "rare_earth",
-      "title": "Geomacro finds Glencore reported Higher Q3 Copper Production, Maintains 2026 Guidance - marketscreener.com",
-      "what_changed": "A monitored source feed reports: Glencore reported Higher Q3 Copper Production, Maintains 2026 Guidance - marketscreener.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T00:02:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-afa99493",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said conflict in Ukraine nearing its end - TASS",
-      "what_changed": "A monitored source feed reports: Trump said conflict in Ukraine nearing its end - TASS. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T00:02:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2abe42c4",
-      "category": "macro",
-      "title": "Geomacro finds Statistics Canada published GDP estimates for August 2026 · Canada",
-      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
-      "what_changed": "Statistics Canada published GDP estimates for August 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
-      "geography": "Canada",
-      "development_type": "official update",
-      "topic": "official economic statistics",
-      "published_at": "2026-10-30",
-      "date_precision": "day",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Statistics Canada"
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }
