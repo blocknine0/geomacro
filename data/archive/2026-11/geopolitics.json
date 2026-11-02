@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T10:06:11.907Z",
+  "updated_at": "2026-11-02T10:31:40.294Z",
   "signals": [
+    {
+      "id": "geopolitics-0e279de1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Egypt signed $1 billion World Bank deal as war compounds economic pressures",
+      "what_changed": "A monitored source feed reports: Egypt signed $1 billion World Bank deal as war compounds economic pressures. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:23:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a9c9a511",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US in no rush for Iran deal, keeps possibility of renewed war open",
+      "what_changed": "A monitored source feed reports: Trump said US in no rush for Iran deal, keeps possibility of renewed war open. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:22:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6cb0ce34",
+      "category": "geopolitics",
+      "title": "Geomacro finds No announced plans to destroy countries as colonial powers crumble, top Russian security official",
+      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers crumble, top Russian security official. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:19:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-9e6dab28",
       "category": "geopolitics",
@@ -546,6 +603,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T18:08:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c2e42719",
+      "category": "geopolitics",
+      "title": "Geomacro finds Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News",
+      "what_changed": "A monitored source feed reports: Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:07:22.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

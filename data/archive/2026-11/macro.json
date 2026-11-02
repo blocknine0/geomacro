@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T10:06:11.907Z",
+  "updated_at": "2026-11-02T10:31:40.294Z",
   "signals": [
     {
       "id": "macro-2ed1c37e",
@@ -214,6 +214,25 @@
       "severity": null
     },
     {
+      "id": "macro-74442f97",
+      "category": "macro",
+      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-3e5287c9",
       "category": "macro",
       "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
@@ -227,6 +246,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelnewsasia.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-34a245e5",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecasts on high supply disruption risks - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecasts on high supply disruption risks - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:58:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

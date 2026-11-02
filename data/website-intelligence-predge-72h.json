@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T10:28:34.041Z",
+  "checked_at": "2026-11-02T10:31:40.294Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 176,
+  "item_count": 180,
   "counts": {
-    "geopolitics": 72,
-    "macro": 73,
-    "rare_earth": 31
+    "geopolitics": 76,
+    "macro": 75,
+    "rare_earth": 29
   },
-  "source_native_ids_sha256": "14a980f4899a63f575c8d5524c3551276465d091b24a93d2d0f26ef394d827ee",
+  "source_native_ids_sha256": "b0669ab655ced625ab3850330474c1b7d608dbbc1e269c06c0ee848db3c1d3d2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-0e279de1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Egypt signed $1 billion World Bank deal as war compounds economic pressures",
+      "what_changed": "A monitored source feed reports: Egypt signed $1 billion World Bank deal as war compounds economic pressures. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:23:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a9c9a511",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US in no rush for Iran deal, keeps possibility of renewed war open",
+      "what_changed": "A monitored source feed reports: Trump said US in no rush for Iran deal, keeps possibility of renewed war open. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:22:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6cb0ce34",
+      "category": "geopolitics",
+      "title": "Geomacro finds No announced plans to destroy countries as colonial powers crumble, top Russian security official",
+      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers crumble, top Russian security official. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:19:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-9e6dab28",
       "category": "geopolitics",
@@ -334,6 +391,25 @@
       "severity": null
     },
     {
+      "id": "macro-74442f97",
+      "category": "macro",
+      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-3e5287c9",
       "category": "macro",
       "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
@@ -362,6 +438,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T08:14:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-34a245e5",
+      "category": "macro",
+      "title": "Geomacro finds Goldman raised oil price forecasts on high supply disruption risks - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Goldman raised oil price forecasts on high supply disruption risks - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:58:53.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -1392,6 +1487,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: globalnews.ca"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c2e42719",
+      "category": "geopolitics",
+      "title": "Geomacro finds Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News",
+      "what_changed": "A monitored source feed reports: Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:07:22.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -3326,44 +3440,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T10:50:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-58a93bfb",
-      "category": "rare_earth",
-      "title": "Geomacro finds Jupiter reported solid first-quarter performance despite challenging manganese market",
-      "what_changed": "A monitored source feed reports: Jupiter reported solid first-quarter performance despite challenging manganese market. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T10:31:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-bf500280",
-      "category": "rare_earth",
-      "title": "Geomacro finds Jupiter reported solid first-quarter performance despite challenging manganese market - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Jupiter reported solid first-quarter performance despite challenging manganese market - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T10:31:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
