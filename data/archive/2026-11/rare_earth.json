@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-02T11:17:15.059Z",
+  "updated_at": "2026-11-02T11:18:12.156Z",
   "signals": [
     {
       "id": "rare_earth-0a68e230",
@@ -24,6 +24,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-c2983338",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut lithium price outlook on weaker demand (LIT:NYSEARCA) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Citi cut lithium price outlook on weaker demand (LIT:NYSEARCA) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:06:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-3f7ace5f",
       "category": "rare_earth",
       "title": "Geomacro finds Medallion reported high-grade drill results at Kundip Mining Centre",
@@ -37,6 +56,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-742dfb14",
+      "category": "rare_earth",
+      "title": "Geomacro finds Ajax extended Nueva Celti Copper Project Option to November 30 - TipRanks",
+      "what_changed": "A monitored source feed reports: Ajax extended Nueva Celti Copper Project Option to November 30 - TipRanks. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:04:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
