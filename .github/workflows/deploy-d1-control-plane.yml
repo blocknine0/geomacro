@@ -302,6 +302,13 @@ jobs:
           fs.writeFileSync('workers/control-plane/wrangler.runtime.jsonc', JSON.stringify(config, null, 2));
           NODE
 
+      - name: Admit native API custom domain only for active owner-account Cloudflare zone
+        id: api_domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/prepare-cloudflare-custom-domain-runtime.mjs
+
       - name: Observe account-wide D1 free quota without spending D1 rows
         # Diagnostic only. Cloudflare GraphQL reports account-wide usage;
         # neither a missing metrics permission nor exhausted headroom grants
@@ -476,6 +483,7 @@ jobs:
           echo "PASS: live Taiwan China Bab-el-Mandeb 3-category D1 and private Supabase hash readback; no funds."
 
       - name: Verify production API custom domain with authenticated D1 census (no funds)
+        if: steps.api_domain.outputs.admitted == 'true'
         shell: bash
         run: |
           set -euo pipefail
