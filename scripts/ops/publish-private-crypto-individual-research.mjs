@@ -6,6 +6,23 @@ import {pathToFileURL} from "node:url";
 import {CRYPTO_NEWS_SCHEMA,cryptoIndividualRecord,validCryptoIndividual}
  from "../../lib/crypto-news-individual-structured.mjs";
 const ENDPOINT="https://geomacro-control-plane.daspallab202391.workers.dev";
+/** A healthy upstream 24h sample must never silently become zero article records. */
+export function assertCryptoIndividualSourceParity(sourceReceipt,articleReceipt){
+ if(!sourceReceipt||!articleReceipt||!Array.isArray(articleReceipt.items)||
+   sourceReceipt.channel!=="CORRIDOR_ONLY"||
+   articleReceipt.channel!=="CORRIDOR_ONLY")
+  throw Error("CRYPTO_INDIVIDUAL_SOURCE_PARITY_INPUT_INVALID");
+ const d=sourceReceipt.crypto_news_extraction;
+ if(d!==null&&d!==undefined){
+  if(!Number.isInteger(d.recent_unique_ids)||d.recent_unique_ids<0||
+     !Number.isInteger(d.eligible_article_candidates)||
+     d.eligible_article_candidates!==articleReceipt.items.length)
+    throw Error("CRYPTO_INDIVIDUAL_SOURCE_PARITY_MISMATCH");
+  if(d.recent_unique_ids>0&&articleReceipt.items.length===0)
+    throw Error("CRYPTO_INDIVIDUAL_UPSTREAM_NONEMPTY_BUT_NO_VALID_ITEMS");
+ }
+ return true;
+}
 export async function publishPrivateCryptoIndividualNews({
  receipt,rootToken,now=new Date(),fetchImpl=fetch,endpoint=ENDPOINT
 }={}){
@@ -95,6 +112,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
    throw Error("CRYPTO_INDIVIDUAL_MAIN_ONLY");
   const receipt=JSON.parse(readFileSync(
    "artifacts/direct-corridor-intake/crypto-individual-research.json","utf8"));
+  const sourceReceipt=JSON.parse(readFileSync(
+   "artifacts/direct-corridor-intake/receipt.json","utf8"));
+  assertCryptoIndividualSourceParity(sourceReceipt,receipt);
   const output=await publishPrivateCryptoIndividualNews({
    receipt,rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN
   });
