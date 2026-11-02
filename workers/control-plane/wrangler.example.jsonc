@@ -27,7 +27,8 @@
   "routes": [
     {
       "pattern": "api.geomacro.live",
-      "custom_domain": true
+      "custom_domain": true,
+      "zone_name": "geomacro.live"
     }
   ]
 }
