@@ -153,17 +153,46 @@ export async function publishGdeltRiskEventWideNet({
   ack.risk_gate_paid_delivery_enabled!==false||ack.retention_hours!==72||
   ack.website_intelligence_writes!==0||ack.predge_writes!==0)
    throw Error("RG_GDELT_D1_PROVENANCE_READBACK_INVALID");
+ // The newest global batch may advance while this batch is completing.
+ // Independently read the exact immutable B2+D1 receipt by batch ID.
+ const exactUrl=endpoint+"/v1/internal/risk-gate/gdelt-batch-receipt?batch_at="+
+  encodeURIComponent(manifest.batch_at);
+ const exactResponse=await fetchImpl(exactUrl,{
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{Authorization:bearer},signal:AbortSignal.timeout(15000)
+ });
+ if(exactResponse.status!==200)
+  throw Error("RG_GDELT_EXACT_BATCH_READBACK_HTTP_"+exactResponse.status);
+ const exactReceipt=await exactResponse.json();
+ if(exactReceipt.ok!==true||
+  exactReceipt.schema!=="geomacro.risk-gate-gdelt-exact-batch-receipt.v1"||
+  exactReceipt.exact_batch_receipt_verified!==true||
+  exactReceipt.batch_at!==manifest.batch_at||
+  exactReceipt.archive_sha256!==archive_sha256||
+  exactReceipt.b2_archive_key!==b2Key||
+  exactReceipt.b2_manifest_sha256!==b2Hash||
+  exactReceipt.b2_archived_event_count!==source.archive_candidate_count||
+  exactReceipt.d1_hot_sample_count!==items.length||
+  exactReceipt.independent_event_verified!==false||
+  exactReceipt.signed_gro_generated!==false||
+  exactReceipt.chargeable!==false)
+  throw Error("RG_GDELT_EXACT_BATCH_RECEIPT_MISMATCH");
+ // Still require the global source lane to be genuinely fresh; a later
+ // independently verified 15-minute batch is not a false failure.
  const status=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-continuity",{
   method:"GET",redirect:"error",cache:"no-store",
   headers:{Authorization:bearer},signal:AbortSignal.timeout(15000)
  });
  if(status.status!==200)throw Error("RG_GDELT_CONTINUITY_HTTP_"+status.status);
  const latest=await status.json();
+ const latestAt=Date.parse(String(latest?.last_verified_batch_at??""));
+ const currentAt=Date.parse(manifest.batch_at);
+ const sameBatch=latest.last_verified_batch_at===manifest.batch_at;
  if(latest.schema!=="geomacro.risk-gate-gdelt-continuity.v1"||
   latest.ok!==true||latest.healthy!==true||
-  latest.last_verified_batch_at!==manifest.batch_at||
-  latest.last_b2_manifest_sha256!==b2Hash||
-  latest.last_b2_archived_events!==source.archive_candidate_count)
+  !Number.isFinite(latestAt)||latestAt<currentAt||
+  (sameBatch&&(latest.last_b2_manifest_sha256!==b2Hash||
+    latest.last_b2_archived_events!==source.archive_candidate_count)))
    throw Error("RG_GDELT_FRESHNESS_READBACK_MISMATCH");
  const get=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-event-index?limit=40",{
   method:"GET",redirect:"error",cache:"no-store",
