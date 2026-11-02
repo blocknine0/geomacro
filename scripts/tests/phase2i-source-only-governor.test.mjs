@@ -28,7 +28,9 @@ test("critical-pacing hold with source approval does not become a full publisher
  assert.match(lane,/github\.event_name == 'workflow_run'/u);
  assert.match(lane,/github\.event\.workflow_run\.name == 'Deploy D1 Control Plane'/u);
  assert.match(lane,/github\.event\.workflow_run\.name == 'Website Derived News Continuity'/u);
- assert.match(workflow,/workflows: \["Deploy D1 Control Plane", "Website Derived News Continuity"\]/u);
+ assert.match(workflow,/workflows: \["Deploy D1 Control Plane", "Website Derived News Continuity", "Three-Domain 30-Minute Original Publisher Pulse"\]/u);
+ assert.match(lane,/github\.event\.workflow_run\.name == 'Three-Domain 30-Minute Original Publisher Pulse'/u);
+ assert.doesNotMatch(workflow,/workflows: \[[^\]]*"Website Derived News Cadence Backstop"/u);
  assert.match(lane,/github\.event\.workflow_run\.conclusion == 'success'/u);
  assert.match(lane,/git merge-base --is-ancestor/u);
  assert.match(lane,/GEOMACRO_TRUSTED_UPSTREAM_SHA/u);
