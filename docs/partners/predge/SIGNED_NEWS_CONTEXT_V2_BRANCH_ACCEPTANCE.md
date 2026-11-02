@@ -43,6 +43,10 @@
 - **Operational limits:** scheduled Actions may be delayed or skipped, and upstream failure/API outages can keep a sample stale. If its 1-hour TTL expires, GET returns 503. An alarm/watchdog and a second actual successful wake are required to establish reliability; neither a green disabled job nor a manual dispatch proves recurring continuity. Approval and acceptance by the PREDGE partner remain distinct from technical live-readback.
 - The current pilot implementation has a hard stop at **2027-01-17 00:00 UTC**. This automation does not extend the pilot agreement, enable paid GRO, or authorize real execution.
 
+## Full-feed driver size canary
+
+The existing protected PREDGE research-continuity check validates the **actual UTF-8 response byte count** against PREDGE's 1,500,000-byte driver maximum, rather than JavaScript string length. The existing 600-item limit is independently checked. Its safe aggregate receipt prints `partner_driver_item_count`, `partner_driver_wire_bytes`, `partner_driver_max_items`, `partner_driver_max_bytes` and `partner_driver_transport_accepted`; it never logs research IDs or article content. At >=480 items or >=1,200,000 bytes a warning is emitted. If either limit is exceeded, acceptance fails closed; no fabricated truncation or silent contract change. Any longer full-feed delivery requires PREDGE to agree to a versioned pagination or increased-size contract. Signed preview remains bounded independently to 50/category and 1.5MB.
+
 ## Data comparison
 
 `node scripts/ops/predge-paired-read-v2.mjs capture /private/ours.json` captures only ID/category/original timestamp tuples from one authenticated read with 0600 output.
