@@ -43,10 +43,11 @@ export function buildPhase2iCiphertextB2Object({
  // Store only the current eligible native-dated subset. Otherwise a six-hour
  // lag could re-archive originals expired since the Actions snapshot.
  // Domain-separated deterministic nonce keeps an exact retry content-addressed
- // while different authenticated source snapshots receive different nonces.
+ // while a different archive timestamp or source snapshot changes the nonce.
  const nonce=createHmac("sha256",root)
   .update("geomacro.phase2i-b2-reseal.v1\n")
-  .update(envelope.ciphertext).digest().subarray(0,12);
+  .update(envelope.ciphertext).update("\n").update(now.toISOString())
+  .digest().subarray(0,12);
  const current=sealPrivatePhase2iSourceBacklog({
   candidates:restored.candidates,root,now:now.getTime(),nonce});
  const bytes=Buffer.from(JSON.stringify(current)+"\n","utf8");
