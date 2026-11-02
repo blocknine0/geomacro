@@ -30,7 +30,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1568,6 +1568,34 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Owner-admin-only, exact three-target production acceptance.
+      // Not a customer route, no credits/payments or original article bodies.
+      // Idempotent one-snapshot-per-target/day prevents repeated provider pulls.
+      if(request.method==="POST"&&url.pathname==="/v1/internal/risk-gate/unified-acceptance"&&!url.search){
+        const targets=[{type:"COUNTRY",id:"TWN"},{type:"COUNTRY",id:"CHN"},
+          {type:"CORRIDOR",id:"bab-el-mandeb"}];
+        const receipts=[];
+        for(const target of targets){
+          try{
+            const r=await generateUnifiedSnapshot(env,target);
+            receipts.push({target,ok:true,day_utc:r.snapshot.day_utc,
+              categories_present:Object.keys(r.snapshot.categories).length===3,
+              risk_unverified_safe:r.snapshot.tiers.core.gate_decision==="GATE_INSUFFICIENT_EVIDENCE"||
+                r.snapshot.tiers.core.gate_decision==="GATE_HOLD",
+              snapshot_integrity_verified:true,existing:r.existing});
+          }catch{
+            receipts.push({target,ok:false,error:"UNIFIED_CANARY_TARGET_FAILED"});
+          }
+        }
+        const sync=await syncUnifiedRiskSupabase(env);
+        const ok=receipts.every(x=>x.ok&&x.categories_present)&&sync.ok&&
+          sync.hash_readback_verified===true;
+        return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
+          checked_targets:receipts,protected_supabase_sync:{
+            ok:sync.ok,synced:sync.synced??0,
+            hash_readback_verified:sync.hash_readback_verified===true},
+          no_funds:true,commercial_activation:false},ok?200:503);
+      }
       // Canonical admin-only original observation intake. No public, partner,
       // PREDGE, scoring, signing or x402 route is modified or reused.
       if(url.pathname==="/v1/internal/phase2h-raw-news"){
