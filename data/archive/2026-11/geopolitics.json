@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T09:38:05.583Z",
+  "updated_at": "2026-11-02T09:42:36.072Z",
   "signals": [
+    {
+      "id": "geopolitics-4dd82e92",
+      "category": "geopolitics",
+      "title": "Geomacro finds Xi said China willing to work with Arab, GCC countries for regional peace - China Daily",
+      "what_changed": "A monitored source feed reports: Xi said China willing to work with Arab, GCC countries for regional peace - China Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:25:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-178cf0b2",
       "category": "geopolitics",

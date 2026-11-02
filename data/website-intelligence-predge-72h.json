@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T09:38:05.583Z",
+  "checked_at": "2026-11-02T09:42:36.072Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 163,
+  "item_count": 165,
   "counts": {
-    "geopolitics": 59,
-    "macro": 74,
+    "geopolitics": 60,
+    "macro": 75,
     "rare_earth": 30
   },
-  "source_native_ids_sha256": "ea3a9965febf5a8aefaed68d237dd5e614a659f9f216a02a07bb51ff7db02466",
+  "source_native_ids_sha256": "be5f3ba16f861dd02251185c08f39e31354404e8935296e859a7a33637874f6c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-3fb85f31",
+      "category": "macro",
+      "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
+      "what_changed": "A monitored source feed reports: Iran said considering two-day plan to reopen Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:38:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vanguardngr.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a94bd61c",
       "category": "macro",
@@ -43,6 +62,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4dd82e92",
+      "category": "geopolitics",
+      "title": "Geomacro finds Xi said China willing to work with Arab, GCC countries for regional peace - China Daily",
+      "what_changed": "A monitored source feed reports: Xi said China willing to work with Arab, GCC countries for regional peace - China Daily. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:25:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
