@@ -7,6 +7,7 @@
  * Raw publisher content is transient and never stored here.
  */
 import {createHash} from "node:crypto";
+import {evidenceFromCorridorObservations,hashStructuredEvidence} from "./corridor-source-evidence-proof.mjs";
 import {directGlobalCorridorRouteSources} from "./direct-global-corridor-sources.mjs";
 const SOURCES=new Map(directGlobalCorridorRouteSources().map(s=>[s.id,{
  name:s.name,url:s.url
@@ -125,7 +126,7 @@ function allowedRow(row,checkedAt){
   throw Error("CORRIDOR_DERIVED_SOURCE_PROVENANCE_INVALID");
  return {source,originalUrl,definition:configFor(row)};
 }
-function structuralAnalysis(row,checkedAt){
+function structuralAnalysis(row,checkedAt,proof){
  const {source,originalUrl,definition}=allowedRow(row,checkedAt);
  const referenceValue=Number(row.numeric_value.toPrecision(8));
  const impact=row.source_id==="imf_portwatch"&&row.corridor_ids.length>0?
@@ -134,6 +135,8 @@ function structuralAnalysis(row,checkedAt){
   id:sha("geomacro.corridor-private-structured-research.v1\x1f"+row.id),
   channel:"CORRIDOR_ONLY",analysis_kind:"PRIVATE_SOURCE_GROUNDED_RESEARCH",
   source_reference_id:row.id,source_id:row.source_id,
+  source_proof_sha256:proof.proof_sha256,
+  analysis_claim_sha256:proof.claim_sha256,
   source_name:source.name,source_url:originalUrl,
   observation_period:row.observation_period,
   source_observed_at:row.observed_at,analysis_at:checkedAt,
@@ -154,7 +157,13 @@ function structuralAnalysis(row,checkedAt){
    independent_event_corroboration:false,
    causality_verified:false,
    source_specific_reuse_review:POLICY[row.source_id]??"PERMISSION_REVIEW_REQUIRED",
-   confidence:"SOURCE_METADATA_ONLY",
+   confidence:proof.independently_corroborated?
+      "MULTISOURCE_NUMERIC_VALUE_MATCH_NOT_EVENT_PROOF":"SOURCE_METADATA_ONLY",
+   source_proof_sha256:proof.proof_sha256,
+   source_observation_checksum_verified:true,
+   evidence_status:proof.evidence_status,
+   independent_source_comparisons:proof.independent_sources_checked,
+   contradictions_detected:proof.conflicting_source_records,
    commercial_permission_confirmed:false
   },
   interpretation_is_automated:true,
@@ -174,9 +183,20 @@ export function buildPrivateCorridorStructuredResearch({
     !Number.isInteger(sourceReceipt.news_candidate_count)||
     sourceReceipt.news_candidate_count<0||sourceReceipt.news_candidate_count>160)
   throw Error("CORRIDOR_DERIVED_INPUT_INVALID");
+ const evidence=evidenceFromCorridorObservations({
+   receipt:sourceReceipt,checkedAt,
+   sourceLookup:id=>({source_url:URLS[id]??SOURCES.get(id)?.url})
+ });
+ const proofMap=new Map(evidence.proofs.map(x=>[x.source_reference_id,x]));
+ if(evidence.proof_count!==sourceReceipt.official_reference_observations.length)
+   throw Error("CORRIDOR_DERIVED_SOURCE_PROOFS_MISSING");
  const seen=new Set(),analysis=[];
  for(const row of sourceReceipt.official_reference_observations){
-  const item=structuralAnalysis(row,checkedAt);
+  const proof=proofMap.get(row.id);
+  if(!proof||!proof.source_record_id_recomputed||
+      !/^[a-f0-9]{64}$/u.test(proof.proof_sha256))
+    throw Error("CORRIDOR_DERIVED_EVIDENCE_RECOMPUTATION_FAILED");
+  const item=structuralAnalysis(row,checkedAt,proof);
   if(seen.has(item.source_reference_id))
     throw Error("CORRIDOR_DERIVED_DUPLICATE_SOURCE_REFERENCE");
   seen.add(item.source_reference_id);analysis.push(item);
@@ -186,6 +206,13 @@ export function buildPrivateCorridorStructuredResearch({
   channel:"CORRIDOR_ONLY",generated_at:checkedAt,
   structured_record_count:analysis.length,
   structured_records:analysis,
+  evidence_bundle:evidence,
+  analysis_manifest_sha256:hashStructuredEvidence(analysis.map(x=>({
+    id:x.id,source_reference_id:x.source_reference_id,
+    source_proof_sha256:x.source_proof_sha256,
+    what_happened:x.what_happened,why_it_matters:x.why_it_matters,
+    market_relevance:x.market_relevance,what_to_watch:x.what_to_watch
+  }))),
   source_article_candidates_not_converted:sourceReceipt.news_candidate_count,
   reason_unconverted:"Article candidates only contain source links/time/hash; no verified article event evidence or licensed text.",
   raw_article_text_persisted:false,
