@@ -23,7 +23,10 @@ const validSha=(s)=>typeof s==="string"&&/^[a-f0-9]{40}$/u.test(s);
  * package/lock/config/build files. Compare must be canonical exact-head,
  * complete (<300 changed files and <250 commits) and non-forking.
  */
-export const SAFE_NON_WEBSITE_PATH = /^(?:\.github\/workflows\/[a-z0-9._-]+\.ya?ml|docs\/[A-Za-z0-9_./-]+|scripts\/(?:ops|tests)\/[A-Za-z0-9_./-]+|scripts\/lib\/(?:phase2h-registered-private-quota|source-only-website-handoff|website-canonical-archive-catchup|phase2i-encrypted-source-backlog|phase2i-osint-country-fair-raw-staging)(?:\.test)?\.mjs|src\/__tests__\/[A-Za-z0-9_./-]+\.test\.[cm]?[jt]sx?|src\/lib\/free-derived-deep-health\.server\.test\.ts)$/u;
+// Explicit inventory of *Actions-only* sources, separate from SSR/site assets.
+// Never whitelist an entire scripts/lib or config directory: bridges and
+// published routes must still force a real website deployment.
+export const SAFE_NON_WEBSITE_PATH = /^(?:\.github\/workflows\/[a-z0-9._-]+\.ya?ml|docs\/[A-Za-z0-9_./-]+|scripts\/(?:ops|tests)\/[A-Za-z0-9_./-]+|scripts\/lib\/(?:phase2h-registered-private-quota|source-only-website-handoff|website-canonical-archive-catchup|phase2i-encrypted-source-backlog|phase2i-osint-country-fair-raw-staging|phase2ib-fastlane-private-staging|private-osint-15m-collector|private-osint-country-rotation|private-osint-global-hub-overlay|private-osint-global-sources|private-osint-local-publisher-rotation|private-osint-official-priority-sources|private-osint-retired-sources)(?:\.test)?\.mjs|config\/private-osint-local-rss-candidates\.v1\.json|src\/__tests__\/[A-Za-z0-9_./-]+\.test\.[cm]?[jt]sx?|src\/lib\/free-derived-deep-health\.server\.test\.ts)$/u;
 export function classifyPublishedSourceEquivalence(compare,siteSha,mainSha){
   if(!validSha(siteSha)||!validSha(mainSha)||siteSha===mainSha||
      !compare||compare.status!=="ahead"||
