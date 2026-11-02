@@ -15,7 +15,7 @@ import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
  */
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
-import {rotatingPrivateLocalPublisherSources,PRIVATE_LOCAL_FEEDS_PER_TICK} from "./private-osint-local-publisher-rotation.mjs";
+import {budgetedPrivateLocalPublisherSources} from "./private-osint-local-publisher-rotation.mjs";
 
 export const COUNTRY_DISCOVERY_PER_TICK=49;
 export const COUNTRY_DISCOVERY_CYCLE_SLOTS=4;
@@ -53,7 +53,7 @@ const STEP_MS=15*60000;
 
 export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
-    ![COUNTRY_DISCOVERY_PER_TICK,COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK,46,22].includes(perTick)||
+    (!Number.isSafeInteger(perTick)||perTick<1||perTick>COUNTRY_DISCOVERY_PER_TICK)||
     !Array.isArray(countries)||countries.length!==195||
     new Set(countries.map(c=>c?.iso3)).size!==195||
     countries.some(c=>!/^[A-Z]{3}$/u.test(c?.iso3??"")||
@@ -93,14 +93,13 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  const activeBase=base.filter(s=>!isRetiredPrivateOsintSource(s));
  const urls=new Set(activeBase.map(s=>s.url));
  if(urls.size!==activeBase.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
- // Preserve all 463 native/index publisher endpoints and 24 local candidates.
- // Overlay exact, pinned multilateral hubs by reallocating only rotating
- // Google index slots, never by increasing the existing 512 network GET cap.
- // Tiny synthetic test registries keep their original country-index behavior.
- const local=includeLocalGapLane?rotatingPrivateLocalPublisherSources(now).filter(s=>!isRetiredPrivateOsintSource(s)):[];
+ // First preserve every active pinned base / official priority / minerals
+ // publisher; only discovery-index slots may be displaced by 195-country
+ // native local feeds. A 512-source run is the immutable network request cap.
  const normalIndex=includeLocalGapLane?
   COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK:COUNTRY_DISCOVERY_PER_TICK;
- if(activeBase.length+local.length+normalIndex>512)
+ if(activeBase.length+1>512||
+    (!includeLocalGapLane&&activeBase.length+normalIndex>512))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
@@ -113,7 +112,23 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
   privateMineralNationalRssSources().filter(source=>!urls.has(source.url)&&
     !isRetiredPrivateOsintSource(source)&&!priority.some(p=>p.url===source.url)&&
     !hubs.some(hub=>hub.url===source.url)):[];
- const indexPerTick=Math.min(normalIndex,512-activeBase.length-local.length-hubs.length-priority.length-newMineral.length);
+ const availableForLocalAndIndex=512-activeBase.length-hubs.length-
+    priority.length-newMineral.length;
+ if(availableForLocalAndIndex<1)
+  throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
+ // Spend the free positions on first-party country-local RSS, not discovery
+ // search hints. Reserve at least one native-country discovery query; more
+ // whenever enough space remains. The fallback-only global 195x3 routing
+ // stays available even when individual country-index lead latency grows.
+ // Preserve eight spare upstream requests for independent publisher
+ // transient retries. The full source + actual retry count can never exceed
+ // the existing 512 global fetch ceiling.
+ const retrySpare=includeLocalGapLane&&activeBase.length>=300?
+   Math.min(8,Math.max(0,availableForLocalAndIndex-1)):0;
+ const slots=availableForLocalAndIndex-retrySpare;
+ const local=includeLocalGapLane?
+   budgetedPrivateLocalPublisherSources(now,Math.min(96,Math.max(0,slots-1))):[];
+ const indexPerTick=Math.min(normalIndex,slots-local.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
@@ -124,7 +139,17 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  }
  if(activeBase.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
-      PRIVATE_LOCAL_FEEDS_PER_TICK+COUNTRY_DISCOVERY_LOCAL_LANE_PER_TICK+hubs.length+priority.length+newMineral.length))
+      local.length+indexPerTick+hubs.length+priority.length+newMineral.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...activeBase,...fresh]).map(qualifyPrivateNationalPrimaryScope);
+}
+
+/** Real configuration-based nominal discovery round, not a hard freshness SLA. */
+export function nominalPrivateCountryIndexCycleMinutes(registry){
+ if(!Array.isArray(registry))
+  throw Error("PRIVATE_OSINT_COUNTRY_DISCOVERY_CYCLE_INVALID");
+ const indices=registry.filter(source=>
+   source?.private_discovery_index_only===true&&
+   /^[A-Z]{3}$/u.test(source.discovery_country_iso3??"")).length;
+ return indices>0?15*Math.ceil(195/indices):null;
 }

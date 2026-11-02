@@ -33,7 +33,7 @@ test("all priority candidates join every 15-minute tick, excluding retired and d
    const count=batch.filter(row=>row.url===s.url).length;
    assert.equal(count,retirement.has(s.id)?0:1);
   }
-  assert.equal(batch.filter(s=>s.private_country_local_candidate).length,24);
+  assert.equal(batch.filter(s=>s.private_country_local_candidate).length,89);
  }
 });
 test("publisher HTTP denial or missing native publication time cannot create a qualified item",async()=>{

@@ -4,7 +4,8 @@ import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {privateOsintRuntimeSources,rotatingPrivateCountryDiscoverySources,
  COUNTRY_DISCOVERY_LOCAL_LANE_CYCLE_MINUTES} from "./private-osint-country-rotation.mjs";
 import {PRIVATE_LOCAL_FEEDS_PER_TICK,PRIVATE_LOCAL_NOMINAL_CYCLE_MINUTES,
- privateLocalPublisherCandidates,rotatingPrivateLocalPublisherSources} from
+ privateLocalPublisherCandidates,rotatingPrivateLocalPublisherSources,
+ budgetedPrivateLocalPublisherSources} from
  "./private-osint-local-publisher-rotation.mjs";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
@@ -49,10 +50,11 @@ test("every local publisher receives nominal 60m polling without exceeding exist
  for(const slot of slots){
   assert.equal(slot.local.length,24);
   assert.ok(slot.sources.length<=512);
-  assert.ok(slot.sources.length<=base.length+49+3); // 3 nonduplicate official hub candidates
+  assert.ok(slot.sources.length>=89); // retired base sources cannot be counted as active GETs
   assert.equal(new Set(slot.sources.map(x=>x.url)).size,slot.sources.length);
-  assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,24);
-  assert.equal(slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length,25);
+  assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,89);
+  const index=slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3);
+  assert.ok(index.length>=1&&index.length<=25);
   assert.equal(slot.sources.filter(x=>x.launch_watch&&x.private_discovery_index_only).length,3);
  }
  const all=slots.flatMap(x=>x.local);
@@ -111,4 +113,25 @@ test("local manifest rejects duplicate URLs and forged permissions, never adding
   }))};
  assert.equal(good.length,96);
  assert.throws(()=>privateLocalPublisherCandidates(invalid),/PRIVATE_LOCAL_PUBLISHER_CANDIDATE_UNSAFE/);
+});
+
+test("active local publisher inventory is fully polled in a source tick while preserving native quotas",()=>{
+ const all=budgetedPrivateLocalPublisherSources(at,96);
+ assert.equal(all.length,89);
+ assert.equal(new Set(all.map(x=>x.id)).size,all.length);
+ assert.equal(new Set(all.map(x=>x.publisher_country_iso3)).size>=86,true);
+ const production=privateOsintRuntimeSources(at,privateOsintGlobalSources(),
+   COUNTRIES_195,{includeLocalGapLane:true});
+ assert.ok(production.length<=512);
+ assert.deepEqual(new Set(production.filter(x=>x.private_country_local_candidate).map(x=>x.id)),
+   new Set(all.map(x=>x.id)));
+ assert.ok(production.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length>=1);
+ assert.ok(production.every(x=>x.commercial_eligible!==true&&x.publicly_deliverable!==true));
+ const deferred=new Set();
+ for(let n=0;n<9;n++){
+  const quarter=new Date(at.getTime()+n*15*60_000);
+  for(const source of budgetedPrivateLocalPublisherSources(quarter,10))
+   deferred.add(source.id);
+ }
+ assert.equal(deferred.size,89,"partial network budget rotates all approved local publishers");
 });
