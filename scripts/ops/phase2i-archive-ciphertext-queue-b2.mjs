@@ -87,8 +87,13 @@ export async function readPhase2iProtectedArtifact({
   signal:AbortSignal.timeout(15_000)});
  if(response.status!==200||response.redirected)fail("ARTIFACT_INDEX_UNAVAILABLE");
  const doc=await response.json();
+ // A 72h queue can produce far more than 500 main-run snapshots at high
+ // workflow_run cadence. Only the newest <=100 provider-ordered artifacts
+ // are needed to authenticate a <=6-hour main-branch source snapshot.
+ // Never use the total account history as an arbitrary availability veto.
  if(!Array.isArray(doc?.artifacts)||doc.artifacts.length>100||
-    !Number.isSafeInteger(doc.total_count)||doc.total_count>500)
+    !Number.isSafeInteger(doc.total_count)||doc.total_count<0||
+    doc.total_count<doc.artifacts.length)
   fail("ARTIFACT_INDEX_AMBIGUOUS");
  const found=selectPrivatePhase2iBacklogArtifact(doc.artifacts,now.getTime());
  if(!found||now.getTime()-Date.parse(found.created_at)>sixHours)

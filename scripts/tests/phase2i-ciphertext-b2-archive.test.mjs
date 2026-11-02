@@ -1,4 +1,6 @@
 import {test} from "node:test";
+import {writeFileSync} from "node:fs";
+import {join} from "node:path";
 import assert from "node:assert/strict";
 import {sealPrivatePhase2iSourceBacklog,unsealPrivatePhase2iSourceBacklog} from "../lib/phase2i-encrypted-source-backlog.mjs";
 import {buildPhase2iCiphertextB2Object,verifyPhase2iCiphertextB2Readback,
@@ -89,6 +91,41 @@ test("B2 provider must prove scoped 1+1-day deletion and reject broader conflict
    fileNamePrefix:"geomacro-evidence/v1/private/",
    daysFromUploadingToHiding:1,daysFromHidingToDeleting:0
  }]),/SOURCE_QUEUE_BROAD_LIFECYCLE_CONFLICT/);
+});
+test("a high-frequency source cadence may exceed 500 artifacts without losing the newest trusted B2 queue",async()=>{
+ const sealed=envelope([candidate(80,"geopolitics"),candidate(81,"macro")]);
+ const meta={
+  total_count:5000,artifacts:[{name:"geomacro-private-phase2i-72h-ciphertext",
+   expired:false,id:5001,created_at:"2026-11-02T11:55:00.000Z",
+   workflow_run:{id:41479999999,head_branch:"main"}}]
+ };
+ let archiveDownloaded=false;
+ const got=await readPhase2iProtectedArtifact({
+  token:"t".repeat(30),now:NOW,
+  fetchImpl:async()=>({status:200,redirected:false,json:async()=>meta}),
+  downloadImpl:(_program,args)=>{
+   assert.deepEqual(args.slice(0,3),["run","download","41479999999"]);
+   writeFileSync(join(args.at(-1),"queue.json"),JSON.stringify(sealed));
+   archiveDownloaded=true;
+  }
+ });
+ assert.equal(got.sourceRunId,41479999999);
+ assert.equal(archiveDownloaded,true);
+ const plan=buildPhase2iCiphertextB2Object({
+   envelope:got.envelope,root:ROOT,now:NOW,sourceRunId:got.sourceRunId
+ });
+ assert.equal(plan.candidate_count,2);
+});
+test("reject malformed total counts without fetching private artifact",async()=>{
+ let read=false;
+ await assert.rejects(()=>readPhase2iProtectedArtifact({
+  token:"x".repeat(30),now:NOW,
+  fetchImpl:async()=>({status:200,redirected:false,json:async()=>({
+    total_count:0,artifacts:[{name:"geomacro-private-phase2i-72h-ciphertext"}]
+  })}),
+  downloadImpl:()=>{read=true;}
+ }),/PHASE2I_B2_ARTIFACT_INDEX_AMBIGUOUS/);
+ assert.equal(read,false);
 });
 test("only main-branch recent exact-name Github ciphertext can be selected",async()=>{
  let downloads=0;
