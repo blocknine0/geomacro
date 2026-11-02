@@ -21,11 +21,12 @@ const observer=async()=>({routes:[{
  corridor_id:"suez_canal",latest_observation_day:"2026-11-01",
  observation_state:"DAILY_REFERENCE_OBSERVED",consecutive_day_change_pct:4.8
 }]});
+const sourceHost=url=>new URL(url).hostname.toLowerCase();
 const fetchImpl=async url=>{
- if(url.includes("gdeltproject.org"))return new Response(sources.gdelt,{status:200});
- if(url.includes("worldbank.org"))return new Response(sources.world,{status:200});
- if(url.includes("ecb.europa.eu"))return new Response(sources.ecb,{status:200});
- if(url.includes("eurostat"))return new Response(sources.eurostat,{status:200});
+ if(sourceHost(url)==="data.gdeltproject.org")return new Response(sources.gdelt,{status:200});
+ if(sourceHost(url)==="api.worldbank.org")return new Response(sources.world,{status:200});
+ if(sourceHost(url)==="data-api.ecb.europa.eu")return new Response(sources.ecb,{status:200});
+ if(sourceHost(url)==="ec.europa.eu")return new Response(sources.eurostat,{status:200});
  throw Error("UNPINNED");
 };
 test("source-specific adapters gather real facts without manufacturing news",async()=>{
@@ -61,7 +62,7 @@ test("official source-native cadences reduce provider calls and never assert rea
 });
 test("provider 403 and malformed API payloads are reported, never silently replaced",async()=>{
  const output=await collectCorridorOfficialReferences({now:NOW,force:true,
-  fetchImpl:async url=>url.includes("gdeltproject.org")?
+  fetchImpl:async url=>sourceHost(url)==="data.gdeltproject.org"?
    new Response("",{status:403}):new Response("<html>not-json</html>"),
   observePortwatch:async()=>{throw Error("access denied")}
  });
