@@ -12,7 +12,13 @@ export const DAILY_RG_CORRIDORS=Object.freeze([
  {id:"hormuz",native:"strait_of_hormuz",keywords:'"Strait of Hormuz" (oil OR tanker OR ship)'},
  {id:"suez",native:"suez_canal",keywords:'"Suez Canal" (shipping OR transit OR disruption)'},
  {id:"malacca",native:"strait_of_malacca",keywords:'"Strait of Malacca" (ship OR piracy OR traffic)'},
- {id:"taiwan-strait",native:"taiwan_strait",keywords:'"Taiwan Strait" (shipping OR blockade OR military)'}
+ {id:"taiwan-strait",native:"taiwan_strait",keywords:'"Taiwan Strait" (shipping OR blockade OR military)'},
+ {id:"panama",native:"panama_canal",keywords:'"Panama Canal" (transit OR drought OR shipping)'},
+ {id:"singapore-strait",native:"singapore_strait",keywords:'"Singapore Strait" (shipping OR piracy OR vessel)'},
+ {id:"south-china-sea",native:"south_china_sea",keywords:'"South China Sea" (shipping OR maritime OR blockade)'},
+ {id:"gulf-of-aden",native:"gulf_of_aden_somali_basin",keywords:'"Gulf of Aden" (vessel OR piracy OR maritime)'},
+ {id:"gulf-of-guinea",native:"gulf_of_guinea",keywords:'"Gulf of Guinea" (ship OR piracy OR oil)'},
+ {id:"black-sea-grain",native:"black_sea_grain_kerch",keywords:'"Black Sea" (grain OR shipping OR Kerch)'}
 ]);
 const DAY=86400000,THREE=3*DAY,TEN=10*DAY,MAX_RSS_BYTES=600000;
 const SHA=/^[0-9a-f]{64}$/;
