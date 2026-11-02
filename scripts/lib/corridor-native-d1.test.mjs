@@ -145,3 +145,37 @@ test("index router is private after existing strong CONTROL_PLANE_TOKEN and neve
  assert.ok(route>auth);
  assert.ok(!src.includes('/v1/public/corridor-native-news'));
 });
+
+test("native D1 publisher retries rollout 503 once, but never bypasses verified readback",async()=>{
+ const db=new MockD1(),root="R".repeat(64);
+ const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
+  channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
+  source_count:37,native_news_sources_polled:6,news_candidates:[candidate()],
+  candidate_count:1,website_intelligence_enabled:false,
+  commercial_rights_verified:false};
+ let count=0;
+ const result=await publishPrivateCorridorNews({receipt,rootToken:root,
+  now:new Date(fixed),fetchImpl:async(url,opts)=>{
+    if(opts.method==="GET")
+      return readPrivateCorridorNativeNews({DB:db},new URLSearchParams("limit=25"),fixed);
+    count++;
+    if(count===1)return Response.json({ok:false},{status:503});
+    return putPrivateCorridorNativeNews({DB:db},JSON.parse(opts.body),fixed);
+  }});
+ assert.equal(count,2);
+ assert.equal(result.provider_calls,3);
+ assert.equal(result.d1_candidate_records_verified,1);
+});
+test("401 auth rejection is final, not retried as a rollout outage",async()=>{
+ const receipt={schema:"geomacro.corridor-native-news-candidates.v1",
+  channel:"CORRIDOR_ONLY",checked_at:new Date(fixed).toISOString(),
+  source_count:37,native_news_sources_polled:6,news_candidates:[candidate()],
+  candidate_count:1,website_intelligence_enabled:false,
+  commercial_rights_verified:false};
+ let requests=0;
+ await assert.rejects(publishPrivateCorridorNews({receipt,rootToken:"Q".repeat(64),
+  now:new Date(fixed),fetchImpl:async()=>{
+   requests++;return Response.json({ok:false},{status:401});
+  }}),/CORRIDOR_PRIVATE_D1_PUT_HTTP_401/u);
+ assert.equal(requests,1);
+});
