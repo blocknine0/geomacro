@@ -259,6 +259,7 @@ export async function cleanupUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fet
   if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
   await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM risk_observations WHERE created_at<?").bind(cutoff).run();
+  await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE day_utc<?").bind(cutoff.slice(0,10)).run();
   await env.DB.prepare("UPDATE risk_gate_daily_housekeeping SET last_cleanup_at=?,next_cleanup_at=? WHERE job_id='unified_supabase_ten_day'")
    .bind(iso(now),iso(now+TEN)).run();
   return {ok:true,verified:true,minimum_retention_days:3,interval_days:10};
@@ -310,18 +311,65 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
  }catch{return reply({ok:false,error:"UNIFIED_PRODUCTION_EVIDENCE_OR_STORAGE_UNAVAILABLE",chargeable:false},503)}
 }
 /** 195 countries once each UTC day; 12 corridors in separate minute slots. */
+// Exactly 195 canonical countries and 12 strategic corridors; TWN canary is
+// intentionally supplementary and excluded from the canonical 207 census.
+export const CANONICAL_UNIFIED_TARGETS=Object.freeze([
+ ...PHASE2H_COUNTRIES_195.map(c=>Object.freeze({type:"COUNTRY",id:c.iso3})),
+ ...DAILY_RG_CORRIDORS.map(c=>Object.freeze({type:"CORRIDOR",id:c.id}))
+]);
+const identity=x=>x.type+"|"+x.id;
+export function selectUnifiedRecoveryTarget(completed,attempts,now){
+ const minute=new Date(now).getUTCHours()*60+new Date(now).getUTCMinutes();
+ if(minute<512||minute>=1050)return null;
+ const done=new Set(completed.map(x=>x.entity_type+"|"+x.entity_id));
+ const byId=new Map(attempts.map(x=>[x.entity_type+"|"+x.entity_id,x]));
+ const start=(minute-512)%CANONICAL_UNIFIED_TARGETS.length;
+ for(let i=0;i<CANONICAL_UNIFIED_TARGETS.length;i++){
+  const target=CANONICAL_UNIFIED_TARGETS[(start+i)%CANONICAL_UNIFIED_TARGETS.length];
+  if(done.has(identity(target)))continue;
+  const prev=byId.get(identity(target));
+  if(prev&&(Number(prev.attempt_count)>=3||
+      Date.parse(prev.next_retry_at)>now))continue;
+  return target;
+ }
+ return null;
+}
+/** Primary minute slots plus one bounded catch-up target/minute until 17:30 UTC.
+ * The D1 attempt ledger prevents a failing upstream feed from looping forever.
+ */
 export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
- const d=new Date(now),minute=d.getUTCHours()*60+d.getUTCMinutes(),countryIdx=minute-5*60;
+ const d=new Date(now),minute=d.getUTCHours()*60+d.getUTCMinutes(),countryIdx=minute-300;
  let target=null;
- if(countryIdx>=0&&countryIdx<PHASE2H_COUNTRIES_195.length){
-  target={type:"COUNTRY",id:PHASE2H_COUNTRIES_195[countryIdx].iso3};
- }else if(d.getUTCHours()===8&&d.getUTCMinutes()>=20&&d.getUTCMinutes()<32){
-  target={type:"CORRIDOR",id:DAILY_RG_CORRIDORS[d.getUTCMinutes()-20].id};
+ if(countryIdx>=0&&countryIdx<PHASE2H_COUNTRIES_195.length)
+  target=CANONICAL_UNIFIED_TARGETS[countryIdx];
+ else if(minute>=500&&minute<512)
+  target=CANONICAL_UNIFIED_TARGETS[195+minute-500];
+ else if(minute>=512&&minute<1050){
+  if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_RECOVERY_D1_UNAVAILABLE"};
+  try{
+   const day=iso(now).slice(0,10);
+   const [completed,attempts]=await Promise.all([
+    env.DB.prepare("SELECT entity_type,entity_id FROM unified_risk_snapshots WHERE day_utc=?").bind(day).all(),
+    env.DB.prepare("SELECT entity_type,entity_id,attempt_count,next_retry_at FROM unified_risk_generation_attempts WHERE day_utc=?").bind(day).all()
+   ]);
+   target=selectUnifiedRecoveryTarget(completed?.results??[],attempts?.results??[],now);
+  }catch{return {ok:false,error:"UNIFIED_RECOVERY_CENSUS_UNAVAILABLE"}}
  }
  if(!target)return {ok:true,not_due:true};
+ if(!env?.DB?.prepare)return {ok:false,target,error:"UNIFIED_D1_UNAVAILABLE"};
  try{
-  const r=await generateUnifiedSnapshot(env,target,{now,...opts});
-  return {ok:true,target,generated:!r.existing,day_utc:r.snapshot.day_utc,
-   category_count:CATEGORIES.length,verified_categories:CATEGORIES.filter(c=>r.snapshot.categories[c]?.status==="VERIFIED_SIGNED_GRO").length};
+  const day=iso(now).slice(0,10),timestamp=iso(now),retryAt=iso(now+15*60000);
+  const receipt=await env.DB.prepare(
+   "INSERT INTO unified_risk_generation_attempts(day_utc,entity_type,entity_id,attempt_count,last_attempt_at,next_retry_at) "+
+   "VALUES(?,?,?,1,?,?) ON CONFLICT(day_utc,entity_type,entity_id) DO UPDATE SET "+
+   "attempt_count=attempt_count+1,last_attempt_at=excluded.last_attempt_at,"+
+   "next_retry_at=excluded.next_retry_at "+
+   "WHERE attempt_count<3 AND next_retry_at<=? RETURNING attempt_count"
+  ).bind(day,target.type,target.id,timestamp,retryAt,timestamp).first();
+  if(!receipt)return {ok:true,target,skipped_retry_budget:true};
+  const result=await generateUnifiedSnapshot(env,target,{now,...opts});
+  return {ok:true,target,generated:!result.existing,day_utc:result.snapshot.day_utc,
+   category_count:CATEGORIES.length,
+   verified_categories:CATEGORIES.filter(c=>result.snapshot.categories[c]?.status==="VERIFIED_SIGNED_GRO").length};
  }catch{return {ok:false,target,error:"UNIFIED_SCHEDULED_GENERATION_FAILED"}}
 }

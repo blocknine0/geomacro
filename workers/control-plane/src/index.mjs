@@ -1304,7 +1304,7 @@ export default {
     // Successful generated snapshots are immutable per UTC day.
     if(env?.DB?.prepare){
       const minute=utc.getUTCHours()*60+utc.getUTCMinutes();
-      if(minute>=300&&minute<495||minute>=500&&minute<512)
+      if(minute>=300&&minute<495||minute>=500&&minute<1050)
         ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
           .then(r=>{if(!r.ok)console.error("UNIFIED_195X3_GENERATION_DEFERRED")})
           .catch(()=>console.error("UNIFIED_195X3_GENERATION_DEFERRED")));
