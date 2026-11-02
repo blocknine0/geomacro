@@ -19,7 +19,7 @@ export async function runDirectCorridorIntake({
     receipt.supabase_writes!==0||receipt.chargeable!==false)
    throw Error("DIRECT_CORRIDOR_OUTPUT_BOUNDARY_INVALID");
  // Fail closed if any candidate breaks publisher provenance, age or isolation.
- if(receipt.native_news_sources_polled!==8||
+ if(receipt.native_news_sources_polled!==9||
     !Number.isSafeInteger(receipt.news_candidate_count)||
     receipt.news_candidate_count<0||receipt.news_candidate_count>160||
     receipt.news_candidate_count!==receipt.news_candidates?.length||
@@ -86,6 +86,10 @@ export async function runDirectCorridorIntake({
    source_count:receipt.source_count,source_link_occurrences:receipt.source_link_occurrences,
    unique_linked_sources:receipt.unique_linked_sources,
    native_news_sources_polled:receipt.native_news_sources_polled,
+   supplemental_native_feed_checks:receipt.supplemental_native_feed_checks?.map(x=>({
+     source_id:x.id,state:x.state,metadata_candidates:x.metadata_candidates,
+     candidate_corridor_records:x.candidate_corridor_records
+   }))??[],
    news_candidate_count:receipt.news_candidate_count,
    official_reference_observations:receipt.official_reference_observation_count,
    private_structured_research_records:structured.structured_record_count,

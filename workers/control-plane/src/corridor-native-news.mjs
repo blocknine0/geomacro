@@ -11,7 +11,8 @@ const PUBLISHERS=Object.freeze({
  coindesk_rss:["https://www.coindesk.com/arc/outboundfeeds/rss/",["geopolitics","macro"]],
  cointelegraph_rss:["https://cointelegraph.com/rss",["geopolitics","macro"]],
  wto_official_news:["https://www.wto.org/library/rss/latest_news_e.xml",["geopolitics","macro"]],
- usgs_official_minerals_news:["https://www.usgs.gov/news/minerals/feed",["rare_earth"]]
+ usgs_official_minerals_news:["https://www.usgs.gov/news/minerals/feed",["rare_earth"]],
+ rbi_official_press_releases:["https://www.rbi.org.in/pressreleases_rss.xml",["macro"]]
 });
 const ROUTES=new Set(["strait_of_hormuz","bab_el_mandeb","suez_canal","panama_canal",
  "strait_of_malacca","singapore_strait","south_china_sea","taiwan_strait","red_sea",
@@ -30,8 +31,15 @@ function invalid(){throw Error("CORRIDOR_PRIVATE_ITEM_INVALID")}
 function pinned(url,expected,article=false){
  let u,b;try{u=new URL(url);b=new URL(expected)}catch{return false}
  const host=x=>x.hostname.toLowerCase().replace(/^www\./u,"");
- return u.protocol==="https:"&&!u.username&&!u.password&&!u.port&&!u.hash&&!u.search&&
-   host(u)===host(b)&&u.href.length<=1024&&(article||u.href===expected);
+ if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
+    host(u)!==host(b)||u.href.length>1024)return false;
+ if(!article)return !u.search&&u.href===expected;
+ if(!u.search)return true;
+ // Never accept arbitrary query parameters. Preserve exactly one numeric
+ // RBI press-release ID for the one reviewed official RSS publisher.
+ return b.hostname==="www.rbi.org.in"&&
+   /^\/scripts\/BS_PressReleaseDisplay\.aspx$/iu.test(u.pathname)&&
+   /^\?prid=[0-9]{1,9}$/u.test(u.search);
 }
 function item(x,now){
  if(!x||typeof x!=="object"||Array.isArray(x)||
