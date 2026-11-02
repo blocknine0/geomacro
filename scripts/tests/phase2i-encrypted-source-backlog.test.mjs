@@ -27,6 +27,20 @@ test("encrypted complete queue roundtrips, retaining original native time and al
   new Set(["geopolitics","macro","rare_earth"]));
  assert.ok(read.candidates.some(x=>x.publishedAt===items[0].publishedAt));
 });
+test("authenticated D1 acknowledgements survive AEAD queue handoff and fresh re-observations",()=>{
+ const acknowledged={...item(77),d1Acknowledged:true};
+ const saved=mergePrivatePhase2iSourceBacklog([acknowledged],[item(77)],NOW);
+ assert.equal(saved.available,1);
+ assert.equal(saved.candidates[0].d1Acknowledged,true);
+ const sealed=sealPrivatePhase2iSourceBacklog({candidates:saved.candidates,root:ROOT,now:NOW});
+ assert.equal(JSON.stringify(sealed).includes("d1Acknowledged"),false);
+ const replay=unsealPrivatePhase2iSourceBacklog(sealed,ROOT,NOW+15*60_000);
+ assert.equal(replay.candidates[0].d1Acknowledged,true);
+ const different={...item(78),d1Acknowledged:false};
+ const renewed=mergePrivatePhase2iSourceBacklog(replay.candidates,[different],NOW+15*60_000);
+ assert.equal(renewed.candidates.find(c=>c.articleUrl===different.articleUrl).d1Acknowledged,false);
+ assert.equal(mergePrivatePhase2iSourceBacklog([], [{...item(79),d1Acknowledged:"true"}],NOW).available,0);
+});
 test("re-observed unchanged original is deduplicated; conflicting original title quarantined",()=>{
  const original=item(4);
  const same=mergePrivatePhase2iSourceBacklog([original],[original],NOW);
