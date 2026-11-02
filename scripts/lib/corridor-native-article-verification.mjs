@@ -95,6 +95,8 @@ async function fetchArticle(candidate,fetchImpl){
  catch{return {state:"ARTICLE_ENCODING_INVALID"}}
  const text=textFromArticleHtml(html);
  if(!text||text.length<80)return {state:"ARTICLE_BODY_UNVERIFIED"};
+ const route_mentions=Object.entries(ROUTES).filter(([,re])=>
+  new RegExp(re.source,"iu").test(text)).map(([name])=>name).sort();
  const observations=[];
  for(const [route,re] of Object.entries(ROUTES)){
   for(const mention of text.matchAll(re)){
@@ -113,7 +115,7 @@ async function fetchArticle(candidate,fetchImpl){
    }
   }
  }
- return {state:"ARTICLE_BODY_READ",body_hash:hexHash(text),observations:observations.slice(0,12)};
+ return {state:"ARTICLE_BODY_READ",body_hash:hexHash(text),route_mentions,observations:observations.slice(0,12)};
 }
 export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
   fetchImpl=fetch,maxPerRun=MAX_PER_RUN,concurrency=MAX_CONCURRENCY}={}){
@@ -142,7 +144,7 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
   arr.push({source_id:candidate.source_id,published:Date.parse(candidate.published_at)});
   matched.set(o.key,arr);
  }
- let corroborated=0,articleBodies=0,routeEvidence=0;
+ let corroborated=0,articleBodies=0,routeEvidence=0,bodyRouteMentions=0;
  const items=gathered.map(({candidate,result})=>{
   if(result.state==="ARTICLE_BODY_READ")articleBodies++;
   const pair=(result.observations||[]).filter(o=>{
@@ -151,12 +153,14 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
      Math.abs(x.published-Date.parse(candidate.published_at))<=36*3600000);
   });
   if((result.observations||[]).length)routeEvidence++;
+  if((result.route_mentions||[]).length)bodyRouteMentions++;
   if(pair.length)corroborated++;
   return {candidate_id:candidate.id,source_id:candidate.source_id,
    state:pair.length?"INDEPENDENT_VESSEL_ROUTE_REPORT_MATCH":
-     (result.observations||[]).length?"SINGLE_SOURCE_ROUTE_CLAUSE_OBSERVED":result.state,
+     (result.observations||[]).length?"SINGLE_SOURCE_ROUTE_CLAUSE_OBSERVED":
+     (result.route_mentions||[]).length?"ARTICLE_ROUTE_CONTEXT_ONLY":result.state,
    article_body_read:result.state==="ARTICLE_BODY_READ",
-   route_context_ids:[...new Set((result.observations||[]).map(o=>o.route))].sort(),
+   route_context_ids:result.route_mentions||[],
    independent_report_match:pair.length>0,
    event_verified:false,corridor_impact_verified:false,
    signed_gro_verified:false,commercial_rights_verified:false,
@@ -167,7 +171,8 @@ export async function verifyNativeCorridorCandidates({candidates,now=new Date(),
   channel:"CORRIDOR_ONLY",checked_at:now.toISOString(),
   candidate_count:candidates.length,inspected_count:items.length,
   deferred_count:candidates.length-items.length,
-  article_body_reads:articleBodies,route_clause_observed:routeEvidence,
+  article_body_reads:articleBodies,body_route_mentions:bodyRouteMentions,
+  route_clause_observed:routeEvidence,
   independent_vessel_route_matches:corroborated,
   verified_corridor_events:0,verified_commercial_rights:0,
   source_article_bodies_saved:false,publisher_headlines_saved:false,
