@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS risk_gate_tiered_requests (
  request_hash TEXT NOT NULL CHECK(length(request_hash)=64),
  state TEXT NOT NULL CHECK(state IN ('PENDING','CLAIMED','DONE')),
  created_at TEXT NOT NULL,
+ claimed_at TEXT,
  finished_at TEXT,
  response_json TEXT,
  PRIMARY KEY(client_id,request_id)
