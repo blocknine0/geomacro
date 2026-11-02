@@ -94,6 +94,8 @@ export async function publishGdeltRiskEventWideNet({
  packet.b2_archive_key=b2Key;
  packet.b2_manifest_sha256=b2Hash;
  packet.b2_exact_readback_verified=true;
+ packet.b2_archived_event_count=source.archive_candidate_count;
+ packet.b2_archive_complete=true;
  const bearer="Bearer "+createHmac("sha256",rootToken.trim())
   .update("geomacro-control-plane-v1").digest("hex");
  let response;
@@ -114,11 +116,25 @@ export async function publishGdeltRiskEventWideNet({
   ack.source_zip_integrity_proof!==archive_sha256||
   ack.b2_archive_key!==b2Key||ack.b2_manifest_sha256!==b2Hash||
   ack.b2_exact_readback_verified!==true||
+  ack.b2_archived_event_count!==source.archive_candidate_count||
+  ack.batch_receipt_verified!==true||
   ack.verified_event_count!==0||ack.signed_gro_generated!==false||
   ack.chargeable!==false||ack.customer_credits_debited!==0||
   ack.risk_gate_paid_delivery_enabled!==false||ack.retention_hours!==72||
   ack.website_intelligence_writes!==0||ack.predge_writes!==0)
    throw Error("RG_GDELT_D1_PROVENANCE_READBACK_INVALID");
+ const status=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-continuity",{
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{Authorization:bearer},signal:AbortSignal.timeout(15000)
+ });
+ if(status.status!==200)throw Error("RG_GDELT_CONTINUITY_HTTP_"+status.status);
+ const latest=await status.json();
+ if(latest.schema!=="geomacro.risk-gate-gdelt-continuity.v1"||
+  latest.ok!==true||latest.healthy!==true||
+  latest.last_verified_batch_at!==manifest.batch_at||
+  latest.last_b2_manifest_sha256!==b2Hash||
+  latest.last_b2_archived_events!==source.archive_candidate_count)
+   throw Error("RG_GDELT_FRESHNESS_READBACK_MISMATCH");
  const get=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-event-index?limit=40",{
   method:"GET",redirect:"error",cache:"no-store",
   headers:{Authorization:bearer},signal:AbortSignal.timeout(15000)
@@ -140,6 +156,7 @@ export async function publishGdeltRiskEventWideNet({
   geolocated_strategic_route_candidates:source.route_hint_count,
   b2_archived_cameo_event_references:source.archive_candidate_count,
   b2_archive_complete:source.archive_truncated===false,
+  batch_freshness_verified:true,
   d1_hot_sample_count:items.length,
   event_index_country_count:source.index_country_fips_counts.length,
   d1_shortlist_records_verified:ack.exact_d1_readback,

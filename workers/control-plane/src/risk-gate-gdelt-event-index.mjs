@@ -18,13 +18,18 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
    "schema","checked_at","batch_at","items","archive_sha256","provider",
    "source_event_verification","commercial_rights_verified","customer_debit_enabled",
    "predge_writes",
-   "b2_archive_key","b2_manifest_sha256","b2_exact_readback_verified"].sort().join("|")||
+   "b2_archive_key","b2_manifest_sha256","b2_exact_readback_verified",
+   "b2_archived_event_count","b2_archive_complete"].sort().join("|")||
   packet.schema!==GDELT_RISK_EVENT_SCHEMA||packet.provider!=="gdelt_v2_15m"||
   packet.source_event_verification!=="INDEX_ONLY"||
   packet.commercial_rights_verified!==false||
   packet.customer_debit_enabled!==false||packet.predge_writes!==0||
   !HASH.test(packet.archive_sha256)||!HASH.test(packet.b2_manifest_sha256)||
   packet.b2_exact_readback_verified!==true||
+  packet.b2_archive_complete!==true||
+  !Number.isInteger(packet.b2_archived_event_count)||
+  packet.b2_archived_event_count<packet.items?.length||
+  packet.b2_archived_event_count>30000||
   typeof packet.b2_archive_key!=="string"||
   !/^geomacro-evidence\/v1\/private\/gdelt-event-wide-net\/\d{12}\/[a-f0-9]{64}\.json$/u.test(packet.b2_archive_key)||
   !packet.b2_archive_key.endsWith("/"+packet.b2_manifest_sha256+".json")||
@@ -90,12 +95,41 @@ export async function putPrivateRiskGateGdelt(env,packet,now=Date.now()){
   if(exact!==packet.items.length)return respond({ok:false,
    error:"RG_GDELT_D1_READBACK_MISMATCH",submitted:packet.items.length,
    readback:exact,chargeable:false},503);
+  // A zero-CAMEO batch still gets a receipt. The authoritative source of
+  // continuity is the verified B2 manifest + D1 batch acceptance, never a
+  // nonempty article count. Immutable batch identity guards any reruns.
+  await env.DB.prepare("INSERT INTO risk_gate_gdelt_verified_batches "+
+   "(batch_at,archive_sha256,b2_archive_key,b2_manifest_sha256,"+
+   "b2_event_reference_count,d1_hot_record_count,verified_at) "+
+   "VALUES (?,?,?,?,?,?,?) "+
+   "ON CONFLICT(batch_at) DO UPDATE SET verified_at=excluded.verified_at "+
+   "WHERE risk_gate_gdelt_verified_batches.archive_sha256=excluded.archive_sha256 "+
+   "AND risk_gate_gdelt_verified_batches.b2_manifest_sha256=excluded.b2_manifest_sha256 "+
+   "AND risk_gate_gdelt_verified_batches.b2_archive_key=excluded.b2_archive_key "+
+   "AND risk_gate_gdelt_verified_batches.b2_event_reference_count=excluded.b2_event_reference_count "+
+   "AND risk_gate_gdelt_verified_batches.d1_hot_record_count=excluded.d1_hot_record_count")
+   .bind(packet.batch_at,packet.archive_sha256,packet.b2_archive_key,
+    packet.b2_manifest_sha256,packet.b2_archived_event_count,
+    packet.items.length,checked_at).run();
+  const batch=await env.DB.prepare("SELECT batch_at,archive_sha256,"+
+   "b2_archive_key,b2_manifest_sha256,b2_event_reference_count,"+
+   "d1_hot_record_count FROM risk_gate_gdelt_verified_batches WHERE batch_at=?")
+   .bind(packet.batch_at).first();
+  if(!batch||batch.archive_sha256!==packet.archive_sha256||
+     batch.b2_archive_key!==packet.b2_archive_key||
+     batch.b2_manifest_sha256!==packet.b2_manifest_sha256||
+     batch.b2_event_reference_count!==packet.b2_archived_event_count||
+     batch.d1_hot_record_count!==packet.items.length)
+    return respond({ok:false,error:"RG_GDELT_BATCH_RECEIPT_MISMATCH",chargeable:false},503);
+
   return respond({ok:true,schema:"geomacro.risk-gate-gdelt-d1-acceptance.v1",
    provider:"gdelt_v2_15m",source_zip_integrity_proof:packet.archive_sha256,
    b2_archive_key:packet.b2_archive_key,
    b2_manifest_sha256:packet.b2_manifest_sha256,
    b2_exact_readback_verified:true,
    shortlisted:packet.items.length,exact_d1_readback:exact,
+   b2_archived_event_count:packet.b2_archived_event_count,
+   batch_receipt_verified:true,
    source_event_verification:"INDEX_ONLY",
    verified_event_count:0,commercial_rights_verified:false,
    signed_gro_generated:false,customer_credits_debited:0,
@@ -129,9 +163,40 @@ export async function readPrivateRiskGateGdelt(env,query=new URLSearchParams(),n
    independent_event_verified:false,customer_debit_enabled:false});
  }catch{return respond({ok:false,error:"RG_GDELT_D1_READ_UNAVAILABLE"},503)}
 }
+/**
+ * Authenticated B2+D1 continuity probe. Healthy means last fully verified
+ * *source batch* is <=45min old, not that any real incident is verified.
+ */
+export async function readPrivateRiskGateGdeltContinuity(env,now=Date.now()){
+ if(!env?.DB?.prepare)return respond({ok:false,error:"RG_GDELT_CONTINUITY_D1_UNAVAILABLE"},503);
+ try{
+  const row=await env.DB.prepare("SELECT batch_at,b2_manifest_sha256,"+
+   "b2_event_reference_count,d1_hot_record_count,verified_at "+
+   "FROM risk_gate_gdelt_verified_batches ORDER BY batch_at DESC LIMIT 1").first();
+  if(!row)return respond({ok:true,schema:"geomacro.risk-gate-gdelt-continuity.v1",
+   healthy:false,last_verified_batch_at:null,
+   reason:"NO_SUCCESSFUL_GDELT_B2_D1_SOURCE_BATCH",
+   verified_event_count:0,chargeable:false});
+  const age=now-Date.parse(row.batch_at);
+  const healthy=Number.isFinite(age)&&age>=0&&age<=45*60000;
+  return respond({ok:true,schema:"geomacro.risk-gate-gdelt-continuity.v1",
+   healthy,last_verified_batch_at:row.batch_at,
+   last_b2_manifest_sha256:row.b2_manifest_sha256,
+   last_b2_archived_events:row.b2_event_reference_count,
+   last_d1_hot_records:row.d1_hot_record_count,
+   batch_lag_minutes:Math.max(0,Math.floor(age/60000)),
+   reason:healthy?"SOURCE_BATCH_WITHIN_45_MINUTES":"SOURCE_BATCH_STALE",
+   verified_event_count:0,signed_gro_generated:false,chargeable:false});
+ }catch{return respond({ok:false,error:"RG_GDELT_CONTINUITY_D1_READ_UNAVAILABLE"},503)}
+}
 export async function purgePrivateRiskGateGdelt(env,now=Date.now()){
  if(!env?.DB?.prepare)return {ok:false};
- try{await env.DB.prepare("DELETE FROM risk_gate_gdelt_event_index "+
-  "WHERE gdelt_index_at < ?").bind(new Date(now-TTL).toISOString()).run();
-  return {ok:true}}catch{return {ok:false}}
+ try{
+  const cutoff=new Date(now-TTL).toISOString();
+  await env.DB.prepare("DELETE FROM risk_gate_gdelt_event_index "+
+   "WHERE gdelt_index_at < ?").bind(cutoff).run();
+  await env.DB.prepare("DELETE FROM risk_gate_gdelt_verified_batches "+
+   "WHERE batch_at < ?").bind(cutoff).run();
+  return {ok:true}
+ }catch{return {ok:false}}
 }
