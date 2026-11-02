@@ -47,6 +47,9 @@ on:
       - "workers/control-plane/migrations/0028_private_osint_15m_durable.sql"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
+      - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
+      - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
       - "scripts/lib/source-only-website-handoff.mjs"
       - "scripts/ops/publish-source-only-website-derived.ts"
       - "scripts/tests/source-only-website-handoff.test.mjs"
@@ -162,6 +165,9 @@ on:
       - "scripts/tests/revenue-source-demand-195x3.test.mjs"
       - "scripts/ops/private-osint-15m-tick.ts"
       - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
+      - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
+      - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
       - "scripts/lib/phase2i-single-sweep-original-index.mjs"
       - "scripts/tests/phase2i-single-sweep-original-index.test.mjs"
@@ -251,6 +257,8 @@ jobs:
           node --test scripts/tests/phase2i-single-sweep-original-index.test.mjs
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
           node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
+          node --test scripts/tests/phase2i-encrypted-source-backlog.test.mjs
+          node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
           node --check scripts/lib/private-osint-15m-collector.mjs
           node --check scripts/lib/private-osint-15m-durable-publisher.mjs
           node --check scripts/lib/private-osint-website-bridge.mjs
@@ -456,6 +464,7 @@ jobs:
     name: Governed source-only original news and optional canonical-to-static website delivery
     permissions:
       contents: write
+      actions: read
     # One quota-admitted private micro-bundle on schedule OR a verified
     # successful same-repo main control-plane deployment. Never from a push
     # or arbitrary workflow wakeup; preserve existing Free D1 admission.
@@ -493,6 +502,18 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      # Restore only a trusted main-branch AES-GCM ciphertext snapshot.
+      # This optional GitHub artifact is NOT D1 and cannot grant paid rights.
+      - name: Restore previous 72h source original queue into protected runner memory
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+        run: |
+          set -euo pipefail
+          node scripts/ops/preload-phase2i-encrypted-backlog.mjs
       # Research-funded public projection is a separate job step; this stage
       # still writes ONLY the original provider-admitted private D1 rows.
       # The private handoff file is never uploaded as a GitHub artifact.
@@ -501,6 +522,8 @@ jobs:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
           GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+          GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT: ${{ runner.temp }}/phase2i-ciphertext/queue.json
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
           PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
@@ -510,6 +533,19 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Persist only AES-GCM ciphertext for the next admitted source cycle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-private-phase2i-72h-ciphertext
+          path: ${{ runner.temp }}/phase2i-ciphertext/queue.json
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+      - name: Remove unencrypted prior queue from protected runner
+        if: always()
+        env:
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+        run: rm -f -- "$GEOMACRO_PHASE2I_PRIOR_QUEUE"
       - name: Publish concrete current source-only findings to FREE public journal only with separate research headroom
         if: needs.quota-admission.outputs.critical == 'true' && needs.quota-admission.outputs.research == 'true'
         env:

@@ -54,7 +54,11 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
  assert.match(sourceOnly,/stagePhase2iOsintFairRaw/u);
  assert.match(sourceOnly,/createPhase2iSingleSweepOriginalIndex/u);
  assert.match(sourceOnly,/onOriginalCandidate:singleSweep\.observe/u);
- assert.match(sourceOnly,/candidates:indexed\.candidates/u);
+ assert.match(sourceOnly,/prior\.candidates,indexed\.candidates/u);
+ assert.match(sourceOnly,/candidates:queue\.candidates/u);
+ assert.match(sourceOnly,/sealPrivatePhase2iSourceBacklog/u);
+ assert.match(workflow,/geomacro-private-phase2i-72h-ciphertext/u);
+ assert.match(workflow,/retention-days: 3/u);
  assert.match(sourceOnly,/\.\.\.indexed\.summary/u);
  assert.match(sourceOnly,/collectPrivateOsint15m/u);
  assert.match(sourceOnly,/includeLocalGapLane:true/u);

@@ -9,8 +9,8 @@
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac} from "node:crypto";
-import {resolve,sep} from "node:path";
-import {writeFileSync} from "node:fs";
+import {resolve,sep,dirname} from "node:path";
+import {writeFileSync,readFileSync,mkdirSync} from "node:fs";
 import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
@@ -20,6 +20,8 @@ import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-st
 import {persistPrivateOsintHeartbeats} from "../lib/phase2i-osint-source-heartbeat.mjs";
 import {createPhase2iSingleSweepOriginalIndex} from "../lib/phase2i-single-sweep-original-index.mjs";
 import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
+import {mergePrivatePhase2iSourceBacklog,sealPrivatePhase2iSourceBacklog}
+ from "../lib/phase2i-encrypted-source-backlog.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
@@ -60,8 +62,24 @@ if(result.summary.configured_country_routes!==195||
  result.summary.source_endpoints_attempted!==result.summary.registered_source_endpoints)
  throw Error("PHASE2I_SOURCE_ONLY_195X3_SOURCE_SWEEP_UNVERIFIED");
 const indexed=singleSweep.finish();
+// The preceding trusted runner-only preloader restores the latest encrypted
+// historical candidate queue. NEVER accept untrusted plaintext from a URL,
+// env value or pull-request artifact. No additional publisher fetches.
+const temp=resolve(String(env.RUNNER_TEMP??"/never"));
+const priorPath=resolve(String(env.GEOMACRO_PHASE2I_PRIOR_QUEUE??"/missing"));
+const cipherPath=resolve(String(env.GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT??"/missing"));
+if(!priorPath.startsWith(temp+sep)||!cipherPath.startsWith(temp+sep)||
+   priorPath===cipherPath)throw Error("PHASE2I_BACKLOG_RUNNER_PATH_INVALID");
+const prior=JSON.parse(readFileSync(priorPath,"utf8"));
+if(prior.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
+   !Array.isArray(prior.candidates)||prior.candidates.length>8000||
+   !Number.isFinite(Date.parse(prior.loaded_at))||
+   now.getTime()-Date.parse(prior.loaded_at)>5*60_000)
+ throw Error("PHASE2I_BACKLOG_RUNNER_PRIOR_UNVERIFIED");
+const queue=mergePrivatePhase2iSourceBacklog(
+ prior.candidates,indexed.candidates,now.getTime());
 const stage=await stagePhase2iOsintFairRaw({
- candidates:indexed.candidates,now,derive:deriveStatelessSignals,
+ candidates:queue.candidates,now,derive:deriveStatelessSignals,
  maxRows:admittedRows,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
  token:controlToken,
@@ -73,6 +91,25 @@ if(stage.selected_count>0&&stage.d1_readback_verified!==true)
 // and independently read them back; never create an article or renew clocks
 // when actual sources were denied/unavailable.
 const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now});
+// Save a FULL 72h snapshot after the D1 receipt and source health pass. The
+// workflow uploads only these AEAD bytes (not original metadata or URLs).
+// If artifact upload fails, previous snapshots remain accessible by name.
+const sealed=sealPrivatePhase2iSourceBacklog({
+ candidates:queue.candidates,root,now:Date.now()});
+mkdirSync(dirname(cipherPath),{recursive:true,mode:0o700});
+writeFileSync(cipherPath,JSON.stringify(sealed)+"\n",{
+ encoding:"utf8",mode:0o600,flag:"wx"});
+console.log(JSON.stringify({
+ schema:"geomacro.phase2i-encrypted-backlog-producer.v1",
+ source_candidates_held_72h:queue.available,
+ invalid_or_expired_removed:queue.expired_or_invalid,
+ exact_duplicates_removed:queue.duplicate_suppressed,
+ conflicting_originals_quarantined:queue.immutable_conflicts_quarantined,
+ ciphertext_artifact_created:true,
+ ciphertext_uploaded_and_durable_verified:false,
+ provider_extra_requests:0,d1_extra_rows:0,
+ private_originals_logged:false,commercial_rights_verified:false
+}));
 // Research-funded public newsroom publisher consumes only this same sweep.
  // Source-only staging is complete and independently D1 verified FIRST.
  // Never expose raw original candidates as Actions artifacts, outputs or logs.
