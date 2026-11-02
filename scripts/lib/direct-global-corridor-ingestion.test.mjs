@@ -96,6 +96,6 @@ test("provider denial is visible but never retried or bypassed",async()=>{
  assert.equal(result.source_checks.find(x=>x.id==="suez_navigation").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="asean_customs").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="coindesk_rss").state,"DENIED_NO_RETRY");
- assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_API_AUTH_REQUIRED");
+ assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_ENTITLEMENT_DISABLED_NO_PAID_PROVIDER");
  assert.equal(result.website_intelligence_writes,0);
 });
