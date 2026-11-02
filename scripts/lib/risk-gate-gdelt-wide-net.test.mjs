@@ -280,7 +280,7 @@ test("exact immutable batch receipt accepts independently newer verified global 
     return put;
    }
    if(url.includes("gdelt-batch-receipt")){
-    exactReads++;
+    if(new URL(url).searchParams.has("batch_at"))exactReads++;
     return readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams);
    }
    if(url.includes("gdelt-continuity")){
@@ -308,9 +308,11 @@ test("tampered same-batch receipt fails even when latest continuity appears heal
   fetchImpl:async(url,opts)=>opts.method==="PUT"?
    putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
    url.includes("gdelt-batch-receipt")?
-   Response.json({ok:true,schema:"geomacro.risk-gate-gdelt-exact-batch-receipt.v1",
+   new URL(url).searchParams.has("batch_at")?
+    Response.json({ok:true,schema:"geomacro.risk-gate-gdelt-exact-batch-receipt.v1",
      exact_batch_receipt_verified:true,batch_at:BATCH,
      archive_sha256:"0".repeat(64)}):
+    readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams):
    readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime())
  }),/RG_GDELT_EXACT_BATCH_RECEIPT_MISMATCH/u);
 });
