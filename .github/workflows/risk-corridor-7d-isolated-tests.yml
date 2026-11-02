@@ -26,3 +26,7 @@ jobs:
           for f in labs/risk-corridor-7d/src/*.mjs; do node --check "$f"; done
       - name: Offline tests - no secrets or deployment
         run: node --test labs/risk-corridor-7d/tests/*.test.mjs
+      - name: Wrangler bundle dry-run only - never deploy
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 deploy --dry-run --config labs/risk-corridor-7d/wrangler.jsonc --outdir /tmp/geomacro-rc-staging-build
