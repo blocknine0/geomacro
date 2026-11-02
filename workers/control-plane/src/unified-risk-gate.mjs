@@ -8,6 +8,7 @@ import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator
 import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
+import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bridge.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
@@ -174,22 +175,45 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  const gro=await signedGro(env,target,now);
  const signedCategoryScores=validatedSignedCategoryScores(gro);
  const readings=await Promise.all(CATEGORIES.map(async category=>{
-  const native=await d1Observed(env,target,category,now);
-  const entries=native.length?native:await googleObserved(target,category,now,fetcher);
-  return {category,entries:compactEvidence(entries),source_lane:native.length?"D1_FIRST":"GOOGLE_GAP_FILL_OR_EMPTY"};
+  // Highest-fidelity existing canonical originals are first. A private OSINT
+  // projection is used ONLY as a fallback, never counted beside a potentially
+  // duplicate original, and can never independently verify a risk event.
+  const native=compactEvidence(await d1Observed(env,target,category,now));
+  if(native.length)return {category,entries:native,
+   source_lane:"D1_FIRST",private_osint_observed_count:0};
+  if(type==="COUNTRY"){
+   const research=await countPrivateOsintCountryEvidence(env,{
+    countryId:id,category,now
+   });
+   if(research.observed_count>0)return {category,entries:[],
+    source_lane:research.source_lane,
+    private_osint_observed_count:research.observed_count};
+  }
+  // Countries without country-attributed private OSINT and all corridor
+  // targets keep the existing bounded Google fallback. We cannot infer a
+  // corridor from a country-level private OSINT title tag.
+  return {category,entries:compactEvidence(await googleObserved(target,category,now,fetcher)),
+   source_lane:"GOOGLE_GAP_FILL_OR_EMPTY",private_osint_observed_count:0};
  }));
  const categories={};
  for(const x of readings){
   const score=signedCategoryScores[x.category]??null;
-  const v=categoryView(x.category,x.entries.length,score,gro);
-  categories[x.category]={...v,source_lane:x.source_lane};
+  const sourceCount=x.entries.length||x.private_osint_observed_count;
+  const v=categoryView(x.category,sourceCount,score,gro);
+  categories[x.category]={...v,source_lane:x.source_lane,
+   private_osint_research_only:x.private_osint_observed_count>0};
+  // Only the *count* of anonymous research items may leave the private
+  // OSINT ring. Never store their item IDs, original titles, raw projections,
+  // article URLs, publishers or source names in risk observations/snapshots.
   const payload={schema:"geomacro.risk-observation.v1",sources:x.entries,
+    private_osint_research_observation_count:x.private_osint_observed_count,
+    private_osint_original_page_verified:false,
     provenance:"METADATA_ONLY_NO_ORIGINAL_ARTICLE_CONTENT",
     publisher_attribution_does_not_verify_incident:true};
   const idhash=await hash(type+"|"+id+"|"+x.category+"|"+day);
   await env.DB.prepare("INSERT OR IGNORE INTO risk_observations(id,entity_type,entity_id,category,day_utc,risk_score,confidence,evidence_payload,source_count,is_authoritative,evidence_status,gro_object_id,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
    .bind(idhash,type,id,x.category,day,v.risk_score,v.confidence,JSON.stringify(payload),
-    x.entries.length,0,v.status,v.signed_gro_object_id,iso(now)).run();
+    sourceCount,0,v.status,v.signed_gro_object_id,iso(now)).run();
  }
  const scores=Object.fromEntries(CATEGORIES.map(k=>[k,categories[k].risk_score]));
  const score=calculateUnifiedRisk(scores);
