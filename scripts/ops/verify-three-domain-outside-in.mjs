@@ -232,7 +232,7 @@ export async function readCurrentArchiveOriginalIds(index,now=Date.now(),read=re
     index.months.length>600)fail("ARCHIVE_INDEX_MONTHS_INVALID");
  const start=new Date(now-RETENTION).toISOString().slice(0,7);
  const end=new Date(now).toISOString().slice(0,7);
- const months=index.months.filter(m=>/^\\d{4}-(?:0[1-9]|1[0-2])$/u.test(m)&&
+ const months=index.months.filter(m=>/^\d{4}-(?:0[1-9]|1[0-2])$/u.test(m)&&
    m>=start&&m<=end);
  if(!months.length)fail("ARCHIVE_CURRENT_SHARDS_NOT_INDEXED");
  const ids=new Set();
