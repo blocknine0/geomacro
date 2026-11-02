@@ -111,6 +111,7 @@ export async function runDirectCorridorIntake({
      candidate_corridor_records:x.candidate_corridor_records
    }))??[],
    crypto_individual_news_candidates:cryptoRecords.length,
+   crypto_news_extraction:receipt.crypto_news_extraction??null,
    news_candidate_count:receipt.news_candidate_count,
    official_reference_observations:receipt.official_reference_observation_count,
    private_structured_research_records:structured.structured_record_count,
