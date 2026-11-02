@@ -1612,9 +1612,30 @@ export default {
             row.snapshot_integrity_verified=!!check.audit_proof;
           }catch{row.ok=false;row.supabase_synced=false}
         }
+        // Exercise the production customer route handler with the existing
+        // private tiered credential, without transmitting it over the network.
+        let authenticated_unified_api_200=false;
+        const privateToken=String(env.RISK_GATE_TIERED_TOKEN??"");
+        if(/^[a-f0-9]{64}$/.test(privateToken)){
+          try{
+            const inProcess=new Request(new URL("/v1/risk-gate/unified/evaluate",request.url),{
+              method:"POST",headers:{"Authorization":"Bearer "+privateToken,
+                "Content-Type":"application/json"},
+              body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",
+                client_policy:"STRICT"})});
+            const probe=await unifiedRiskGateEvaluate(inProcess,env);
+            const body=await probe.json();
+            authenticated_unified_api_200=probe.status===200&&body.ok===true&&
+              body?.tiers?.core?.gate_decision==="GATE_INSUFFICIENT_EVIDENCE"&&
+              Object.keys(body.categories??{}).length===3&&
+              /^hmac_sha256:[a-f0-9]{64}$/.test(body?.audit_proof?.signature??"");
+          }catch{/* no successful proof */}
+        }
         const ok=receipts.every(x=>x.ok&&x.categories_present&&
-          x.snapshot_integrity_verified&&x.supabase_synced)&&sync.ok;
+          x.snapshot_integrity_verified&&x.supabase_synced)&&
+          sync.ok&&authenticated_unified_api_200;
         return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
+          authenticated_unified_api_200,
           checked_targets:receipts,protected_supabase_sync:{
             ok:sync.ok,synced:sync.synced??0,
             hash_readback_verified:sync.hash_readback_verified===true||
