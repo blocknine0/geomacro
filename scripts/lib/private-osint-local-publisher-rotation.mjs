@@ -83,3 +83,26 @@ export function rotatingPrivateLocalPublisherSources(now=new Date(),all=privateL
  return Object.freeze(Array.from({length:PRIVATE_LOCAL_FEEDS_PER_TICK},(_,i)=>
   live[(start+i)%live.length]));
 }
+
+/**
+ * All already-pinned, nonretired local publishers can share the unused
+ * portion of the hard 512-GET global source ceiling. If not enough capacity
+ * remains, rotate a deterministic bounded subset each 15-minute cycle.
+ * This is source polling, NOT event-country or commercial verification.
+ */
+export function budgetedPrivateLocalPublisherSources(
+ now=new Date(),maxSources=96,all=privateLocalPublisherCandidates()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
+    !Number.isSafeInteger(maxSources)||maxSources<0||maxSources>96||
+    !Array.isArray(all)||all.length!==96||
+    new Set(all.map(x=>x?.id)).size!==96||
+    new Set(all.map(x=>x?.url)).size!==96)
+  throw Error("PRIVATE_LOCAL_PUBLISHER_BUDGET_INVALID");
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ const count=Math.min(maxSources,live.length);
+ if(!count)return Object.freeze([]);
+ const slot=Math.floor(now.getTime()/PERIOD_MS);
+ const start=(slot*count)%live.length;
+ return Object.freeze(Array.from({length:count},(_,i)=>
+  live[(start+i)%live.length]));
+}
