@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T22:36:31.881Z",
+  "checked_at": "2026-11-02T23:34:42.848Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 244,
+  "item_count": 242,
   "counts": {
-    "geopolitics": 112,
+    "geopolitics": 111,
     "macro": 98,
-    "rare_earth": 34
+    "rare_earth": 33
   },
-  "source_native_ids_sha256": "7e41bd2ff58c6c864c612c6050a38d26df8e334cbe2c20cd4ba090a4f9e9ba89",
+  "source_native_ids_sha256": "3c5236e93ff6e33c71b1c7d3f03d6479ce3501372ee3cbe1860ec3580fb9f358",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4618,44 +4618,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T01:16:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6c4e357a",
-      "category": "geopolitics",
-      "title": "Geomacro finds U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine",
-      "what_changed": "A monitored source feed reports: U.S. State Department approved potential $2.1 billion sale of 500 Patriot air defense missiles to Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T23:08:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: meduza.io"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ce21fb0a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Exxon announced plans to spend $10B on refining business to boost margins, CEO says (XOM:NYSE) - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T22:46:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
