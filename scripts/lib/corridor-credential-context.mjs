@@ -5,6 +5,8 @@
  */
 import {createHash} from "node:crypto";
 import {observeApprovedReliefWeb} from "../ops/observe-approved-reliefweb-live.mjs";
+import {cryptoNewsTopic,normalizedCryptoArticleUrl}
+ from "../../lib/crypto-news-individual-structured.mjs";
 const HOUR=3600000,MAX_BYTES=512*1024;
 export const CREDENTIAL_CORRIDOR_IDS=Object.freeze([
  "fred_api","reliefweb_v2","cryptocompare_news","freightos_fbx"
@@ -70,18 +72,36 @@ function parseFred(data,series,now){
 function parseNews(data,now){
  if(data?.Response==="Error"||!Array.isArray(data?.Data)||data.Data.length>200)
   throw Error("CRYPTOCOMPARE_RESPONSE_INVALID");
- const ids=new Set();
+ const ids=new Set(),candidates=[];
  for(const row of data.Data){
   const timestamp=row?.published_on;
-  const id=String(row?.id??row?.ID??"");
-  if(!/^[a-zA-Z0-9_-]{2,90}$/u.test(id)||ids.has(id)||
-   !Number.isSafeInteger(timestamp)||timestamp*1000>now.getTime()||
-   now.getTime()-timestamp*1000>24*HOUR)continue;
-  ids.add(id);
+  const provider_id=String(row?.id??row?.ID??"");
+  if(!/^[a-zA-Z0-9_-]{2,90}$/u.test(provider_id)||ids.has(provider_id)||
+    !Number.isSafeInteger(timestamp)||timestamp*1000>now.getTime()||
+    now.getTime()-timestamp*1000>24*HOUR)continue;
+  ids.add(provider_id);
+  const original=normalizedCryptoArticleUrl(row?.url);
+  const title=typeof row?.title==="string"?row.title.trim():"";
+  const source=typeof row?.source==="string"?row.source.trim():"";
+  if(!original||title.length<8||title.length>300||
+     !/^[\\p{L}\\p{N} ._&'()-]{2,70}$/u.test(source)||
+     candidates.length>=50)continue;
+  const published_at=new Date(timestamp*1000).toISOString();
+  const id=createHash("sha256").update(["cryptocompare_news",provider_id,
+   published_at,original].join("\\x1f")).digest("hex");
+  const topic=cryptoNewsTopic(title+" "+String(row?.categories??""));
+  candidates.push({
+   id,provider_id,article_url:original,source_name:source,
+   published_at,title_sha256:createHash("sha256").update(title).digest("hex"),
+   topic,categories:topic==="CRYPTO_POLICY"?["geopolitics","macro"]:["macro"],
+   attribution:"CRYPTOCOMPARE_NEWS_API_AGGREGATOR_METADATA",
+   source_time_is_not_event_time:true,original_article_verified:false,
+   independent_corroboration_verified:false,
+   commercial_rights_verified:false,customer_delivery_enabled:false
+  });
  }
- return observation("cryptocompare_news",
-  "cryptocompare_24h_news_sample_count",now.toISOString(),
-  ids.size,now);
+ return {sample_count:ids.size,candidates,observation:observation("cryptocompare_news",
+  "cryptocompare_24h_news_sample_count",now.toISOString(),ids.size,now)};
 }
 export async function collectCredentialCorridorContext({
  now=new Date(),fetchImpl=fetch,keys=process.env,
@@ -90,7 +110,7 @@ export async function collectCredentialCorridorContext({
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
   typeof fetchImpl!=="function"||!keys||typeof keys!=="object"||
   typeof observeReliefWeb!=="function")throw Error("CORRIDOR_CREDENTIAL_INPUT_INVALID");
- const checks=[],observations=[],add=(id,state,items=[])=>{
+ const checks=[],observations=[],cryptoNewsCandidates=[],add=(id,state,items=[])=>{
   checks.push({id,state,observations:items.length});
   observations.push(...items);
  };
@@ -146,9 +166,11 @@ export async function collectCredentialCorridorContext({
    Accept:"application/json",Authorization:"Apikey "+ccKey
   }},fetchImpl);
   if(res.state!=="OK")add("cryptocompare_news",res.state);
-  else try{add("cryptocompare_news","OFFICIAL_REFERENCE_OBSERVED",
-      [parseNews(res.data,now)])}
-   catch{add("cryptocompare_news","PROVIDER_RESPONSE_SCHEMA_UNVERIFIED")}
+  else try{
+   const parsed=parseNews(res.data,now);
+   cryptoNewsCandidates.push(...parsed.candidates);
+   add("cryptocompare_news","OFFICIAL_REFERENCE_OBSERVED",[parsed.observation]);
+  }catch{add("cryptocompare_news","PROVIDER_RESPONSE_SCHEMA_UNVERIFIED")}
  }
  // Free/no-paid provider requirement: refuse FBX automatically even when credentials exist.
  add("freightos_fbx","PROVIDER_ENTITLEMENT_DISABLED_NO_PAID_PROVIDER");
@@ -159,6 +181,8 @@ export async function collectCredentialCorridorContext({
  return Object.freeze({schema:"geomacro.corridor-credential-context-intake.v1",
   channel:"CORRIDOR_ONLY",checked_at:now.toISOString(),
   source_checks:checks,observation_count:observations.length,observations,
+  crypto_news_candidate_count:cryptoNewsCandidates.length,
+  crypto_news_candidates:cryptoNewsCandidates,
   website_intelligence_writes:0,commercial_rights_verified:false,
   paid_output_authorized:false,credential_values_written:false});
 }
