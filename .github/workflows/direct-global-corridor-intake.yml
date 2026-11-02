@@ -11,6 +11,9 @@ on:
       - "scripts/lib/direct-global-corridor-sources.mjs"
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/lib/risk-gate-supplied-source-rules.mjs"
+      - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
+      - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
@@ -39,6 +42,9 @@ on:
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/lib/risk-gate-supplied-source-rules.mjs"
+      - "scripts/lib/risk-gate-supplied-source-rules.test.mjs"
+      - "docs/RISK_GATE_SUPPLIED_SOURCE_RULES.md"
       - "scripts/lib/direct-corridor-native-news.mjs"
       - "scripts/lib/corridor-official-reference-adapters.mjs"
       - "scripts/lib/corridor-credential-context.mjs"
@@ -82,6 +88,7 @@ jobs:
           set -euo pipefail
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/direct-global-corridor-ingestion.mjs
+          node --check scripts/lib/risk-gate-supplied-source-rules.mjs
           node --check scripts/lib/direct-corridor-native-news.mjs
           node --check scripts/lib/corridor-official-reference-adapters.mjs
           node --check scripts/lib/corridor-credential-context.mjs
@@ -96,6 +103,7 @@ jobs:
           node --check workers/control-plane/src/corridor-native-news.mjs
           node --test scripts/lib/direct-global-corridor-sources.test.mjs
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
+          node --test scripts/lib/risk-gate-supplied-source-rules.test.mjs
           node --test scripts/lib/direct-corridor-native-news.test.mjs
           node --test scripts/lib/corridor-native-d1.test.mjs
           node --test scripts/lib/corridor-official-reference-adapters.test.mjs
