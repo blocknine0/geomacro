@@ -8,10 +8,10 @@
 
 **Expected candidate Data API origin:** `https://ymjuwuvbialsevfawvvq.supabase.co` (endpoint and credentials NOT YET REMOTELY VERIFIED)
 
-**Important:** Candidate storage client rejects any other Supabase URL, including old GeoMacro. SQL migrations are prepared but NOT applied to this project.
+**Important:** Candidate storage client rejects any other Supabase URL, including old GeoMacro. Owner-provided SQL output confirms four Supabase tables with RLS enabled, hourly pg_cron job registered and manual purge function callable. Authenticated client write/automatic scheduled execution and physical expiry deletion remain unverified.
 
 
-**Owner-provided NEW Cloudflare STAGING D1 (not yet connected):** `geomacro-risk-corridor-staging`, UUID `9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9`; future Worker binding `RC_STAGING_D1`. This identifier is not a credential; D1 schema application and runtime access remain pending.
+**Owner-provided NEW Cloudflare STAGING D1:** `geomacro-risk-corridor-staging`, UUID `9f9c3a23-d299-4af1-9c4f-db9cc4bcb2f9`; bound as `RC_STAGING_D1` to owner-created `geomacro-rc-staging` Worker, evidenced by screenshot. Owner-supplied D1 readback shows five tables. The source-controlled `wrangler.jsonc` preserves that binding for future **isolated** deployments; deployed Worker code and runtime readback have not yet been accepted.
 
 **Status:** isolated coding candidate. NOT PRODUCTION. NO LIVE FUNDS. NO EXISTING MAIN/PREDGE MODIFICATIONS.
 
@@ -36,6 +36,8 @@
 | src/geomacro-bridge.ts | Existing GeoMacro GRO signature verifier and Risk Gate engine adapter |
 | src/d1-ledger.mjs | D1 multi-tenant key auth, claim/replay, proof-gated receipts and summary |
 | src/http.mjs | Staging-only HTTP POST candidate, not registered in GeoMacro production |
+| src/worker.mjs | Fail-closed staging Worker entrypoint with read-only D1 health probe; no source sync or payment |
+| wrangler.jsonc | Exact staging Worker name, script entrypoint and dedicated D1 binding; no scheduled triggers |
 | src/supabase-buffer.mjs | Optional service-only 7-day derived signals and read-side TTL |
 | sql/001_supabase_7d.sql | NEW Supabase tables, RLS/service-only, expiry indexes and purge function |
 | sql/004_supabase_activate_cleanup.sql | Hourly cron after extension enabled on NEW project |
@@ -49,7 +51,7 @@ Node 22 or newer, offline, no credentials required:
 
     node --test labs/risk-corridor-7d/tests/*.test.mjs
 
-The branch-specific workflow risk-corridor-7d-isolated-tests.yml runs syntax and offline tests with contents:read only. No secrets, production deployments or payment actions.
+The branch-specific workflow risk-corridor-7d-isolated-tests.yml runs syntax and offline tests with contents:read only. No secrets, production deployments or payment actions. Creating these files does not deploy the script or alter the existing Hello World staging Worker. A separate, explicitly approved staging-only deployment is required.
 
 ## Example request (candidate only)
 
