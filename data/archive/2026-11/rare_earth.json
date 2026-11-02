@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-02T15:56:47.445Z",
+  "updated_at": "2026-11-02T16:41:40.552Z",
   "signals": [
     {
       "id": "rare_earth-fdf76bdb",
@@ -18,6 +18,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-84881699",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Rhenium Zircon Resource increased Explained - Rare Earth Exchanges",
+      "what_changed": "A monitored source feed reports: China Rhenium Zircon Resource increased Explained - Rare Earth Exchanges. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:55:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-2130351d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Trekor Metals Limited Shares Close lowered Amid Copper Market Volatility on October 30 2026 - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Trekor Metals Limited Shares Close lowered Amid Copper Market Volatility on October 30 2026 - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -63,6 +101,25 @@
     },
     {
       "id": "rare_earth-63239bae",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow",
+      "what_changed": "A monitored source feed reports: Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:21:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-66ecb2b6",
       "category": "rare_earth",
       "title": "Geomacro finds Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow",
       "what_changed": "A monitored source feed reports: Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow. This report has not been independently verified.",

@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T15:58:29.178Z",
+  "checked_at": "2026-11-02T16:41:40.552Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 220,
+  "item_count": 222,
   "counts": {
     "geopolitics": 97,
-    "macro": 87,
-    "rare_earth": 36
+    "macro": 86,
+    "rare_earth": 39
   },
-  "source_native_ids_sha256": "24b474c826f6700aefcbf87681348cd9f321196e0ac23b3cbdb6ca1d6ea5999e",
+  "source_native_ids_sha256": "ac0832ac8fc455a79ec04ef841fbffad8abeac2c6e639b2a6fb4259542dff5fa",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -106,6 +106,25 @@
       "severity": null
     },
     {
+      "id": "rare_earth-84881699",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Rhenium Zircon Resource increased Explained - Rare Earth Exchanges",
+      "what_changed": "A monitored source feed reports: China Rhenium Zircon Resource increased Explained - Rare Earth Exchanges. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:55:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-42031962",
       "category": "geopolitics",
       "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Messenger",
@@ -153,6 +172,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T14:31:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-2130351d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Trekor Metals Limited Shares Close lowered Amid Copper Market Volatility on October 30 2026 - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Trekor Metals Limited Shares Close lowered Amid Copper Market Volatility on October 30 2026 - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:05:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -297,6 +335,25 @@
     },
     {
       "id": "rare_earth-63239bae",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow",
+      "what_changed": "A monitored source feed reports: Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:21:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-66ecb2b6",
       "category": "rare_earth",
       "title": "Geomacro finds Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow",
       "what_changed": "A monitored source feed reports: Rare Earths Americas reported 48% Improvement in Rare Earth Leach... - Quantisnow. This report has not been independently verified.",
@@ -4181,25 +4238,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-30T17:02:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e2a8457e",
-      "category": "macro",
-      "title": "Geomacro finds World Bank warned about Sharp Grain Price Increases Through 2027 - AgroLatam",
-      "what_changed": "A monitored source feed reports: World Bank warned about Sharp Grain Price Increases Through 2027 - AgroLatam. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T16:01:07.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
