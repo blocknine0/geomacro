@@ -13,7 +13,7 @@ const digest=async value=>{
 };
 const TYPES=Object.freeze({
  NATIVE_RSS:{table:"corridor_native_news_candidates",id:"candidate_id",date:"native_published_at"},
- CRYPTO_INDIVIDUAL:{table:"corridor_crypto_individual_research",id:"article_id",date:"published_at"},
+ CRYPTO_INDIVIDUAL:{table:"corridor_crypto_individual_research",id:"article_id",date:"published_at",source:"'cryptocompare_news'"},
  OFFICIAL_REFERENCE:{table:"corridor_official_reference_context",id:"reference_id",date:"observation_period"}
 });
 async function checkSourceD1(env,refs){
@@ -21,7 +21,8 @@ async function checkSourceD1(env,refs){
   const wanted=refs.filter(r=>r.kind===kind);
   if(!wanted.length)continue;
   const rows=(await env.DB.prepare(
-   "SELECT "+spec.id+" AS reference_id,source_id,"+spec.date+" AS source_period FROM "+
+   "SELECT "+spec.id+" AS reference_id,"+(spec.source??"source_id")+" AS source_id,"+
+   spec.date+" AS source_period FROM "+
    spec.table+" WHERE "+spec.id+" IN ("+wanted.map(()=>"?").join(",")+")"
   ).bind(...wanted.map(r=>r.id)).all())?.results??[];
   const found=new Map(rows.map(r=>[r.reference_id,r]));
