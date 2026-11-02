@@ -141,7 +141,8 @@ async function load(spec,fetchImpl){
     ["FEED_NOT_FOUND","FEED_TRANSIENT_HTTP_UNAVAILABLE","FEED_NETWORK_UNAVAILABLE"].includes(result.state)){
    const alternate={...spec,url:"https://www.federalreserve.gov/feeds/press_monetary.xml"};
    const fallback=await loadOnce(alternate,fetchImpl);
-   if(fallback.state==="FEED_OBSERVED")return fallback;
+   if(fallback.state==="FEED_OBSERVED")
+     return {...fallback,actualFeedUrl:alternate.url};
  }
  return result.state==="FEED_TRANSIENT_HTTP_UNAVAILABLE"?
    {state:"FEED_HTTP_UNAVAILABLE",body:null}:result;
@@ -167,11 +168,14 @@ export async function collectDirectCorridorNativeNews({sources,fetchImpl=fetch,
  const checks=[],items=[],seen=new Set(),seenOriginalPermalink=new Set();
  for(let i=0;i<sources.length;i++){
    const source=sources[i],res=responses[i],blocks=res.body===null?null:feedItems(res.body);
+   // Keep the *actual* first-party RSS endpoint in the source provenance;
+   // never credit a broken primary feed for an alternate official response.
+   const articleSource=res.actualFeedUrl?{...source,url:res.actualFeedUrl}:source;
    let state=res.state,dated=0,links=0,routeTagged=0,regionalOnly=0,duplicates=0;
    if(res.body!==null){
      state=blocks===null?"NOT_A_NATIVE_FEED":"NO_RECENT_NATIVE_ITEM_DATE";
      for(const b of blocks??[]){
-       const candidate=extract(b,source,now);
+       const candidate=extract(b,articleSource,now);
        if(!candidate)continue;
        dated++;
        if(candidate.missingPermalink)continue;

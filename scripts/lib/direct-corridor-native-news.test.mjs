@@ -160,6 +160,8 @@ test("Fed press-all 404 fails over only to its own first-party monetary RSS",asy
   "https://www.federalreserve.gov/feeds/press_monetary.xml"]);
  assert.equal(out.candidate_count,1);
  assert.equal(out.news_candidates[0].article_url,article);
+ assert.equal(out.news_candidates[0].original_publisher_url,
+   "https://www.federalreserve.gov/feeds/press_monetary.xml");
  assert.equal(out.news_candidates[0].original_article_verified,false);
 });
 test("publisher 403 never triggers Fed fallback or an invented source",async()=>{
