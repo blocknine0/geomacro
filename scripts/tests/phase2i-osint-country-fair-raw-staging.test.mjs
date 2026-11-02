@@ -42,6 +42,27 @@ test("585 country/category cells all reach the fair private-D1 admission plan ov
  }
  assert.equal(visited.size,585);
 });
+test("verified encrypted D1 receipts free admission slots for genuinely new source originals",async()=>{
+ const india=PHASE2H_COUNTRIES_195.find(c=>c.iso3==="IND");
+ const c=cats.flatMap((cat,i)=>[mk(india,cat,900+i),mk(india,cat,910+i)]);
+ const initial=planPhase2iOsintCountryFairRaw(c,{now,derive,maxRows:5});
+ const verified=new Set(initial.records.map(row=>row.record_id));
+ const {createHash}=await import("node:crypto");
+ const acknowledged=c.map(candidate=>({...candidate,
+  d1Acknowledged:verified.has(createHash("sha256").update(
+    candidate.category+"\n"+candidate.articleUrl+"\n"+candidate.publishedAt).digest("hex"))}));
+ const after=planPhase2iOsintCountryFairRaw(acknowledged,{now,derive,maxRows:5});
+ assert.equal(after.selected_count,1);
+ assert.equal(after.already_d1_verified_excluded,5);
+ assert.ok(!verified.has(after.records[0].record_id));
+ const receipt=await stagePhase2iOsintFairRaw({candidates:acknowledged,now,derive,maxRows:5,
+  returnVerifiedRecordIds:true,post:async({records})=>({stored:records.length,duplicate:0,
+   readback_verified:true,per_original_readback_verified:true,
+   verified_originals:records.length})});
+ assert.deepEqual(receipt.verified_record_ids,[after.records[0].record_id]);
+ assert.equal(receipt.d1_inserted,1);
+ assert.equal(receipt.d1_readback_verified,true);
+});
 test("same immutable news key with inconsistent original bytes is quarantined, not a full-batch failure",()=>{
  const india=PHASE2H_COUNTRIES_195.find(c=>c.iso3==="IND");
  const base=mk(india,"macro",1);
