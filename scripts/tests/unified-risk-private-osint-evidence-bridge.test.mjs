@@ -82,29 +82,41 @@ test("actual unified snapshot uses private OSINT only as unverified fallback; no
   {item_id:H,native_feed_published_at:AT,verification_status:PRIVATE_OSINT_RISK_STATUS},
   {item_id:I,native_feed_published_at:AT,verification_status:PRIVATE_OSINT_RISK_STATUS},
  ];
- const DB={prepare(sql){seenSql.push(sql);return {bind(...args){return {
-  async first(){
-   if(sql.startsWith("SELECT snapshot_json"))
-    return snapshots.get(args[0]+"|"+args[1]+"|"+args[2])??null;
-   return null;
+ const DB={
+  prepare(sql){
+   seenSql.push(sql);
+   return {
+    bind(...args){
+     return {
+      async first(){
+       if(sql.startsWith("SELECT snapshot_json"))
+        return snapshots.get(args[0]+"|"+args[1]+"|"+args[2])??null;
+       return null;
+      },
+      async all(){
+       if(sql.includes("FROM private_osint_news_25h"))
+        return {results:args[1]==="geopolitics"?researchRows:[]};
+       return {results:[]};
+      },
+      async run(){
+       if(sql.startsWith("INSERT OR IGNORE INTO risk_observations"))
+        riskRows.set(args[3],{
+         payload:JSON.parse(args[7]),sourceCount:args[8],status:args[10],
+        });
+       if(sql.startsWith("INSERT OR IGNORE INTO unified_risk_snapshots")){
+        snapshots.set(args[0]+"|"+args[1]+"|"+args[2],{
+         snapshot_json:args[3],audit_proof_json:args[4],
+         content_sha256:args[5],generated_at:args[6],supabase_synced_at:null,
+        });
+       }
+       return {success:true};
+      },
+     };
+    },
+    all:async()=>({results:[]}),
+   };
   },
-  async all(){
-   if(sql.includes("FROM private_osint_news_25h"))
-    return {results:args[1]==="geopolitics"?researchRows:[]};
-   return {results:[]};
-  },
-  async run(){
-   if(sql.startsWith("INSERT OR IGNORE INTO risk_observations"))
-    riskRows.set(args[3],{payload:JSON.parse(args[7]),sourceCount:args[8],status:args[10]});
-   if(sql.startsWith("INSERT OR IGNORE INTO unified_risk_snapshots")){
-    snapshots.set(args[0]+"|"+args[1]+"|"+args[2],{
-     snapshot_json:args[3],audit_proof_json:args[4],content_sha256:args[5],
-     generated_at:args[6],supabase_synced_at:null,
-    });
-   }
-   return {success:true};
-  }
- }}},all:async()=>({results:[]})}}};
+ };
  const env={DB,RISK_GATE_OBSERVATION_HMAC_KEY:"unit-test-domain-separated-hmac-secret-32bytes-plus"};
  const fetcher=async url=>{fetches.push(url);return Response.json({},{status:503})};
  const {snapshot,audit_proof}=await generateUnifiedSnapshot(env,{type:"COUNTRY",id:"BGD"},{now:NOW,fetcher});
