@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T19:52:01.922Z",
+  "checked_at": "2026-11-02T19:54:38.824Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 232,
+  "item_count": 238,
   "counts": {
     "geopolitics": 110,
-    "macro": 86,
+    "macro": 92,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "f8c0bd076ca090bfcf6a02067aab35e12b9d287fff58537a3924d8579ae106e9",
+  "source_native_ids_sha256": "eabfa2aaec515d18169e5214ba04a0060b3cf561564037abb8b7023e267029c8",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -163,6 +163,25 @@
       "severity": null
     },
     {
+      "id": "macro-74d7d80d",
+      "category": "macro",
+      "title": "Geomacro finds IDF said It Arrested 18 Settlers During Illegal West Bank Outpost Evacuation - Haaretz",
+      "what_changed": "A monitored source feed reports: IDF said It Arrested 18 Settlers During Illegal West Bank Outpost Evacuation - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-b5f2a0ec",
       "category": "geopolitics",
       "title": "Geomacro finds Ukraine said rare ceasefire was cover for Russian regrouping - Reuters",
@@ -258,12 +277,107 @@
       "severity": null
     },
     {
+      "id": "macro-266456ed",
+      "category": "macro",
+      "title": "Geomacro finds Bank of Russia raised dollar exchange rate to 80.97 rubles for November 3",
+      "what_changed": "A monitored source feed reports: Bank of Russia raised dollar exchange rate to 80.97 rubles for November 3. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:35:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a87ae3a2",
+      "category": "macro",
+      "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan",
+      "what_changed": "A monitored source feed reports: U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4b11f571",
+      "category": "macro",
+      "title": "Geomacro finds ShaQ Express unveiled advisory board to strengthen growth agenda",
+      "what_changed": "A monitored source feed reports: ShaQ Express unveiled advisory board to strengthen growth agenda. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:11:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-62a3e613",
+      "category": "macro",
+      "title": "Geomacro finds Newsom proposed $1 billion California film and TV tax credit - Politico",
+      "what_changed": "A monitored source feed reports: Newsom proposed $1 billion California film and TV tax credit - Politico. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-c3ae01f0",
       "category": "geopolitics",
       "title": "Geomacro finds Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK",
       "what_changed": "A monitored source feed reports: Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK. This report has not been independently verified.",
       "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
       "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8d1f1dfd",
+      "category": "macro",
+      "title": "Geomacro finds Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK",
+      "what_changed": "A monitored source feed reports: Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T16:00:00.000Z",
