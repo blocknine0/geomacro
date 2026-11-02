@@ -20,16 +20,16 @@ class D1{
  prepare(query){return {bind:(...args)=>({
   all:async()=>{
    if(query.includes("FROM corridor_native_news_candidates"))
-    return {results:this.good?[query.includes("SELECT candidate_id")?
+    return {results:this.good?[!query.includes(" AS reference_id")?
       {candidate_id:"a".repeat(64),source_id:"cointelegraph_rss",
        native_published_at:nativeAt}:
       {reference_id:"a".repeat(64),source_id:"cointelegraph_rss",source_period:nativeAt}]:[]};
    if(query.includes("FROM corridor_crypto_individual_research"))
-    return {results:[query.includes("SELECT article_id")?
+    return {results:[!query.includes(" AS reference_id")?
       {article_id:"b".repeat(64),published_at:cryptoAt}:
       {reference_id:"b".repeat(64),source_id:"cryptocompare_news",source_period:cryptoAt}]};
    if(query.includes("FROM corridor_official_reference_context"))
-    return {results:[query.includes("SELECT reference_id,source_id,observation_period")?
+    return {results:[!query.includes(" AS reference_id")?
       {reference_id:"c".repeat(64),source_id:"fred_api",observation_period:"2026-11-01"}:
       {reference_id:"c".repeat(64),source_id:"fred_api",source_period:"2026-11-01"}]};
    if(query.includes("FROM corridor_risk_gate_source_packs"))
