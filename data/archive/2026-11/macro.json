@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-02T15:10:21.747Z",
+  "updated_at": "2026-11-02T15:12:32.579Z",
   "signals": [
+    {
+      "id": "macro-81e8bee0",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Hikes Oil forecast on ‘Substantial’ Risks to Supply",
+      "what_changed": "A monitored source feed reports: Goldman Hikes Oil forecast on ‘Substantial’ Risks to Supply. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:20:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f205331b",
       "category": "macro",

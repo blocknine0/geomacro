@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T15:10:21.747Z",
+  "checked_at": "2026-11-02T15:12:32.579Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-2e374f0e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - ABC News - Breaking News, Latest News and Videos",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - ABC News - Breaking News, Latest News and Videos. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-97df202b",
       "category": "geopolitics",
@@ -24,6 +43,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-81e8bee0",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Hikes Oil forecast on ‘Substantial’ Risks to Supply",
+      "what_changed": "A monitored source feed reports: Goldman Hikes Oil forecast on ‘Substantial’ Risks to Supply. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:20:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -334,6 +372,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-d4d8ed80",
+      "category": "geopolitics",
+      "title": "Geomacro finds Mhlauli urged young people to participate in local government elections",
+      "what_changed": "A monitored source feed reports: Mhlauli urged young people to participate in local government elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T11:33:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.sanews.gov.za"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-40b7b2c2",
       "category": "geopolitics",
       "title": "Geomacro finds N. Bahr El Ghazal approved $80,000 health budget for elections",
@@ -505,6 +562,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-b1543dfd",
+      "category": "geopolitics",
+      "title": "Geomacro finds N West Premier called for peaceful, high turnout elections",
+      "what_changed": "A monitored source feed reports: N West Premier called for peaceful, high turnout elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:33:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.sanews.gov.za"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-b69a7903",
       "category": "geopolitics",
       "title": "Geomacro finds Al Jaber said global energy security needs overhaul as 1bn oil barrels drained from inventory",
@@ -575,6 +651,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1ce6d8cb",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - dailyrecordnews.com",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - dailyrecordnews.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T10:22:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -670,6 +765,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-bbabd64c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Malaysia approved new train line extension to Thai border - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Malaysia approved new train line extension to Thai border - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:43:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
