@@ -4,7 +4,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {GDELT_RISK_EVENT_SCHEMA,summarizeGdeltRiskEvents,
  validGdeltPrivateItem} from "../../lib/risk-gate-gdelt-event-wide-net.mjs";
-import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity}
+import {putPrivateRiskGateGdelt,readPrivateRiskGateGdelt,readPrivateRiskGateGdeltContinuity,readPrivateRiskGateGdeltBatchReceipt}
  from "../../workers/control-plane/src/risk-gate-gdelt-event-index.mjs";
 import {publishGdeltRiskEventWideNet}
  from "../ops/publish-risk-gate-gdelt-wide-net.mjs";
@@ -153,6 +153,8 @@ test("B2 retains full global CAMEO index while D1 remains a diverse bounded hot 
    putPrivateRiskGateGdelt({DB:db},JSON.parse(opts.body),NOW.getTime()):
    url.includes("gdelt-continuity")?
    readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime()):
+   url.includes("gdelt-batch-receipt")?
+   readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams):
    readPrivateRiskGateGdelt({DB:db},new URLSearchParams("limit=40"),NOW.getTime())
  });
  const archived=JSON.parse([...b2Stored.values()][0].toString("utf8"));
@@ -206,6 +208,8 @@ test("bounded real ZIP producer validates MD5, D1 exact put and private get",asy
     return putPrivateRiskGateGdelt({DB:db},JSON.parse(options.body),NOW.getTime());
    if(url.includes("gdelt-continuity"))
     return readPrivateRiskGateGdeltContinuity({DB:db},NOW.getTime());
+   if(url.includes("gdelt-batch-receipt"))
+    return readPrivateRiskGateGdeltBatchReceipt({DB:db},new URL(url).searchParams);
    return readPrivateRiskGateGdelt({DB:db},
     new URLSearchParams("limit=40"),NOW.getTime());
   }
