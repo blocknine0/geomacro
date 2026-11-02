@@ -13,7 +13,7 @@ import {publicReusableSourceNews,publishReusableSourceNews} from './reusable-sou
 import {putPrivateCorridorNativeNews,readPrivateCorridorNativeNews,purgeExpiredCorridorNativeNews} from './corridor-native-news.mjs';
 import {putOfficialCorridorReference,readOfficialCorridorReference,purgeExpiredOfficialCorridorReferences} from './corridor-official-reference.mjs';
 import {putPrivateCorridorResearch,getPrivateCorridorResearch,purgeExpiredPrivateCorridorResearch} from './corridor-private-research.mjs';
-import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
+import {putPrivateRiskGateSourcePack,readPrivateRiskGateSourcePack,purgePrivateRiskGateSourcePack,materializeCanonicalRiskGateSourcePack} from "./corridor-risk-gate-source-pack.mjs";
 import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit,purgePrivateStrategicRiskGate} from "./corridor-risk-gate-jit.mjs";
 import {putPrivateCryptoNewsResearch,readPrivateCryptoNewsResearch,purgePrivateCryptoNewsResearch} from "./corridor-crypto-individual-research.mjs";
 import {writeOwnerTelegramExportJson,privateOwnerTelegramExportJson} from './telegram-export-derived-json.mjs';
@@ -1581,6 +1581,8 @@ export default {
         return json({ok:false,error:"RG_JIT_METHOD_INVALID",chargeable:false},405);
       }
       if(url.pathname==="/v1/internal/corridor-risk-gate-source-pack"){
+        if(request.method==="POST"&&!url.search)
+          return materializeCanonicalRiskGateSourcePack(env);
         if(request.method==="PUT"&&!url.search)
           return putPrivateRiskGateSourcePack(env,await readJson(request,32*1024));
         if(request.method==="GET")
