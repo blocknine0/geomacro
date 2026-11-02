@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T14:30:17.701Z",
+  "checked_at": "2026-11-02T14:33:28.856Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 207,
+  "item_count": 208,
   "counts": {
     "geopolitics": 88,
-    "macro": 83,
+    "macro": 84,
     "rare_earth": 36
   },
-  "source_native_ids_sha256": "991f5a330fdc5c710c1f78dd6154c799a0ecbeb7efc4c0a75460ac438480a12b",
+  "source_native_ids_sha256": "85cb16fee5af1aeff401de347c67775085c0dab11d3c287378655118e69f9f8b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1103,6 +1103,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T07:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-becf0edd",
+      "category": "macro",
+      "title": "Geomacro finds Israeli Siege kept Nearly 80,000 Palestinian Students Out of School in West Bank's Hebron - Fars",
+      "what_changed": "A monitored source feed reports: Israeli Siege kept Nearly 80,000 Palestinian Students Out of School in West Bank's Hebron - Fars. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T07:13:02.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
