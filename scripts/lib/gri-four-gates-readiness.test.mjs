@@ -76,6 +76,7 @@ function child(parent){
       }))}};
   const payload_json=JSON.stringify(payload);
   return {ok:true,product:"risk-indices",schema:payload.schema,
+    generated_at:payload.generated_at,
     proof_schema:"geomacro.public-risk-indices-live-proof.v1",
     verification_mode:"direct-b2-readback",
     b2_object_key:"geomacro-evidence/v1/live/risk-indices-independent/latest.json.gz",
