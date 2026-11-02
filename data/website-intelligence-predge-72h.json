@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T13:02:41.273Z",
+  "checked_at": "2026-11-02T13:04:07.898Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 204,
+  "item_count": 203,
   "counts": {
     "geopolitics": 87,
-    "macro": 82,
+    "macro": 81,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "ca4c6cf7fbc1198c3849235bb5e53eff1f4e41139c4f12f424f3cd68dc93c6ee",
+  "source_native_ids_sha256": "763b4814a5fbfbe5574e67aef6d52a0b87aba2e029b93e0e6a9a6f32450b6f4a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3881,25 +3881,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-06e1f4e0",
-      "category": "macro",
-      "title": "Geomacro finds Exxon raised Its Dividend Yet Again as Oil-Price Rally Boosts Earnings - Barron's",
-      "what_changed": "A monitored source feed reports: Exxon raised Its Dividend Yet Again as Oil-Price Rally Boosts Earnings - Barron's. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T13:04:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
