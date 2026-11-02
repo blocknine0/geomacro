@@ -51,12 +51,24 @@ class MockD1{
  })}}
  async batch(prepared){
   for(const stmt of prepared){
-   assert.match(stmt.query,/INSERT OR IGNORE INTO corridor_native_news_candidates/u);
+   assert.match(stmt.query,/INSERT INTO corridor_native_news_candidates/u);
+   assert.match(stmt.query,/ON CONFLICT\(candidate_id\) DO UPDATE SET/u);
+   assert.match(stmt.query,/corridor_native_news_candidates\.article_url=excluded\.article_url/u);
    const a=stmt.params;
-   if(!this.rows.has(a[0]))this.rows.set(a[0],{
+   const prev=this.rows.get(a[0]);
+   if(!prev)this.rows.set(a[0],{
     candidate_id:a[0],source_id:a[1],native_published_at:a[2],
-    article_url:a[3],source_title_sha256:a[4],candidate_corridor_ids_json:a[6]
+    article_url:a[3],source_title_sha256:a[4],
+    source_region_refs_json:a[5],candidate_corridor_ids_json:a[6],
+    categories_json:a[7]
    });
+   else if(prev.source_id===a[1]&&prev.native_published_at===a[2]&&
+      prev.article_url===a[3]){
+      prev.source_title_sha256=a[4];
+      prev.source_region_refs_json=a[5];
+      prev.candidate_corridor_ids_json=a[6];
+      prev.categories_json=a[7];
+   }
   }
   return prepared.map(()=>({success:true}));
  }
@@ -220,4 +232,36 @@ test("failed D1 publishing preserves the bounded private intake receipt artifact
    import.meta.url),"utf8");
  assert.match(workflow,/name: Upload separate bounded corridor receipt\n\s+if: always\(\)/u);
  assert.match(workflow,/artifacts\/direct-corridor-intake\/receipt\.json/u);
+});
+
+test("same immutable article accepts revised publisher headline hash and corridor hints",async()=>{
+ const db=new MockD1(),first=candidate();
+ const initial=await putPrivateCorridorNativeNews({DB:db},packet([first]),fixed);
+ assert.equal(initial.status,200);
+ const updated={...first,source_title_sha256:hash("Revised official headline"),
+   candidate_corridor_ids:["red_sea","suez_canal"]};
+ const next=await putPrivateCorridorNativeNews({DB:db},packet([updated]),fixed);
+ assert.equal(next.status,200);
+ assert.equal((await next.json()).d1_readback_verified,true);
+ assert.equal(db.rows.size,1);
+ assert.equal(db.rows.get(first.id).source_title_sha256,updated.source_title_sha256);
+ assert.equal(db.rows.get(first.id).candidate_corridor_ids_json,
+   JSON.stringify(["red_sea","suez_canal"]));
+});
+test("on-conflict guard refuses nonidentical identity rather than rewriting the article",async()=>{
+ const db=new MockD1(),original=candidate();
+ db.rows.set(original.id,{
+  candidate_id:original.id,source_id:original.source_id,
+  native_published_at:original.published_at,
+  article_url:"https://www.bankofengland.co.uk/news/old-other-url",
+  source_title_sha256:original.source_title_sha256,
+  source_region_refs_json:JSON.stringify(original.source_region_refs),
+  candidate_corridor_ids_json:JSON.stringify(original.candidate_corridor_ids),
+  categories_json:JSON.stringify(original.categories)
+ });
+ const reply=await putPrivateCorridorNativeNews({DB:db},packet([original]),fixed);
+ assert.equal(reply.status,503);
+ assert.equal((await reply.json()).error,"CORRIDOR_NATIVE_D1_READBACK_MISMATCH");
+ assert.equal(db.rows.get(original.id).article_url,
+   "https://www.bankofengland.co.uk/news/old-other-url");
 });

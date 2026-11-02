@@ -70,10 +70,25 @@ export function validateCorridorNativeNewsBatch(batch,now=Date.now()){
  if(new Set(normalized.map(x=>x[0])).size!==normalized.length)invalid();
  return normalized;
 }
-const SQL_INSERT="INSERT OR IGNORE INTO corridor_native_news_candidates "+
+// Immutable article identity is source+article URL+source-native publication time.
+// Headline hashes and corridor hints can legitimately change on later RSS polls.
+// Only update mutable hashes/hints when the immutable identity matches exactly.
+const SQL_INSERT="INSERT INTO corridor_native_news_candidates "+
  "(candidate_id,source_id,native_published_at,article_url,source_title_sha256,"+
  "source_region_refs_json,candidate_corridor_ids_json,categories_json,first_ingested_at) "+
- "VALUES (?,?,?,?,?,?,?,?,?)";
+ "VALUES (?,?,?,?,?,?,?,?,?) "+
+ "ON CONFLICT(candidate_id) DO UPDATE SET "+
+ "source_title_sha256=excluded.source_title_sha256,"+
+ "source_region_refs_json=excluded.source_region_refs_json,"+
+ "candidate_corridor_ids_json=excluded.candidate_corridor_ids_json,"+
+ "categories_json=excluded.categories_json "+
+ "WHERE corridor_native_news_candidates.source_id=excluded.source_id "+
+ "AND corridor_native_news_candidates.native_published_at=excluded.native_published_at "+
+ "AND corridor_native_news_candidates.article_url=excluded.article_url "+
+ "AND (corridor_native_news_candidates.source_title_sha256 IS NOT excluded.source_title_sha256 "+
+ "OR corridor_native_news_candidates.source_region_refs_json IS NOT excluded.source_region_refs_json "+
+ "OR corridor_native_news_candidates.candidate_corridor_ids_json IS NOT excluded.candidate_corridor_ids_json "+
+ "OR corridor_native_news_candidates.categories_json IS NOT excluded.categories_json)";
 export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
  let records;try{records=validateCorridorNativeNewsBatch(batch,now)}
  catch{return reply({ok:false,error:"CORRIDOR_PRIVATE_ITEM_INVALID",chargeable:false},422)}
@@ -96,7 +111,8 @@ export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
   let found=0;
   if(records.length){
    const placeholders=records.map(()=>"?").join(",");
-   const rows=await env.DB.prepare("SELECT candidate_id,source_id,native_published_at,article_url,source_title_sha256 "+
+   const rows=await env.DB.prepare("SELECT candidate_id,source_id,native_published_at,article_url,source_title_sha256,"+
+    "source_region_refs_json,candidate_corridor_ids_json,categories_json "+
     "FROM corridor_native_news_candidates WHERE candidate_id IN ("+
     placeholders+") AND native_published_at >= ?")
      .bind(...records.map(x=>x[0]),cutoff).all();
@@ -104,7 +120,9 @@ export async function putPrivateCorridorNativeNews(env,batch,now=Date.now()){
    found=records.filter(x=>{
      const r=existing.get(x[0]);
      return r&&r.source_id===x[1]&&r.native_published_at===x[2]&&
-       r.article_url===x[3]&&r.source_title_sha256===x[4];
+       r.article_url===x[3]&&r.source_title_sha256===x[4]&&
+       r.source_region_refs_json===x[5]&&
+       r.candidate_corridor_ids_json===x[6]&&r.categories_json===x[7];
    }).length;
   }
   if(found!==records.length)
