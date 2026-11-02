@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T12:43:37.025Z",
+  "checked_at": "2026-11-02T13:02:41.273Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 199,
+  "item_count": 204,
   "counts": {
-    "geopolitics": 86,
-    "macro": 79,
-    "rare_earth": 34
+    "geopolitics": 87,
+    "macro": 82,
+    "rare_earth": 35
   },
-  "source_native_ids_sha256": "f44ca4b50e6c3693cc8fc25a171805e7011ff9b1e59196de14e19e31eacf4e9c",
+  "source_native_ids_sha256": "ca4c6cf7fbc1198c3849235bb5e53eff1f4e41139c4f12f424f3cd68dc93c6ee",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,120 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-7340f933",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi Slashes Lithium Price forecast While Miners Press Ahead With Major Expansions - NAI500",
+      "what_changed": "A monitored source feed reports: Citi Slashes Lithium Price forecast While Miners Press Ahead With Major Expansions - NAI500. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:00:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0344059b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Lubinets Rejects Sky News reported of Russian Troop Regrouping During Ceasefire",
+      "what_changed": "A monitored source feed reports: Lubinets Rejects Sky News reported of Russian Troop Regrouping During Ceasefire. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:58:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1e33ec39",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US hit Iran hard a few times, mostly hangs back in conflict",
+      "what_changed": "A monitored source feed reports: Trump said US hit Iran hard a few times, mostly hangs back in conflict. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:53:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f205331b",
+      "category": "macro",
+      "title": "Geomacro finds BoG Governor called for trust-based regulation of virtual assets to protect financial stability",
+      "what_changed": "A monitored source feed reports: BoG Governor called for trust-based regulation of virtual assets to protect financial stability. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:28:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.myjoyonline.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-28439bcd",
+      "category": "macro",
+      "title": "Geomacro finds Citi cut 3-month lithium price forecasts amid slower battery demand and economic pressures - Pluang",
+      "what_changed": "A monitored source feed reports: Citi cut 3-month lithium price forecasts amid slower battery demand and economic pressures - Pluang. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:27:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-15ead347",
+      "category": "macro",
+      "title": "Geomacro finds Oman and China signed deals to boost trade and investment",
+      "what_changed": "A monitored source feed reports: Oman and China signed deals to boost trade and investment. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:18:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f7d975cc",
       "category": "macro",
@@ -3786,25 +3900,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-950dc4b1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Qatar called for stronger maritime security to promote global peace",
-      "what_changed": "A monitored source feed reports: Qatar called for stronger maritime security to promote global peace. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T13:02:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.gulf-times.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
