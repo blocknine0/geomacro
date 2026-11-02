@@ -90,16 +90,29 @@ function parseWorldBank(body,now){
     row.date,row.value,now)];
  }).slice(0,25);
 }
+function splitCsv(line){
+ const result=[];let value="",quoted=false;
+ for(let i=0;i<line.length;i++){
+   const char=line[i];
+   if(char==='"'){
+     if(quoted&&line[i+1]==='"'){value+='"';i++}
+     else quoted=!quoted;
+   }else if(char===","&&!quoted){result.push(value);value=""}
+   else value+=char;
+ }
+ if(quoted||result.length>40)throw Error("ECB_CSV_MALFORMED");
+ result.push(value);
+ return result;
+}
 function parseEcb(body,now){
  const lines=body.trim().split(/\r?\n/gu);
  if(lines.length<2||lines.length>20)throw Error("ECB_CSV_UNEXPECTED");
- const heads=lines[0].split(",").map(x=>x.replace(/"/gu,"").trim().toUpperCase());
+ const heads=splitCsv(lines[0]).map(x=>x.trim().toUpperCase());
  const time=heads.indexOf("TIME_PERIOD"),value=heads.indexOf("OBS_VALUE");
  if(time<0||value<0)throw Error("ECB_CSV_SCHEMA_INVALID");
  return lines.slice(1).flatMap(line=>{
-  // No implicit parsing of quoted comma fields; reject instead of shifting columns.
-  if(/"/u.test(line))return [];
-  const cells=line.split(",");
+  const cells=splitCsv(line);
+  if(cells.length!==heads.length)return [];
   if(!/^\d{4}-\d{2}-\d{2}$/u.test(cells[time]??"")||
      !/^\d{1,4}(?:\.\d{1,7})?$/u.test(cells[value]??""))return [];
   const rate=Number(cells[value]);
