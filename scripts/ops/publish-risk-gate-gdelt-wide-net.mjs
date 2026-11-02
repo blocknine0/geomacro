@@ -22,6 +22,37 @@ export async function publishGdeltRiskEventWideNet({
    typeof b2Client.get!=="function"||
    !(now instanceof Date)||!Number.isFinite(now.getTime())||endpoint!==ENDPOINT)
    throw Error("RG_GDELT_PRODUCTION_INPUT_INVALID");
+ // GitHub push workflows and Control Plane deployment run independently.
+ // Wait for the NEW authenticated exact schema before source/B2 activity.
+ // This prevents old Worker 422 during cutover and burns no B2 quota.
+ const bearer="Bearer "+createHmac("sha256",rootToken.trim())
+  .update("geomacro-control-plane-v1").digest("hex");
+ let backendReady=false;
+ for(let attempt=0;attempt<15;attempt++){
+  let ready;
+  try{
+   ready=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-continuity",{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{Authorization:bearer},signal:AbortSignal.timeout(15000)
+   });
+  }catch{
+   if(attempt===14)throw Error("RG_GDELT_WORKER_DEPLOY_NOT_READY");
+   await new Promise(resolve=>setTimeout(resolve,4000));continue;
+  }
+  if(ready.status===401||ready.status===403)
+   throw Error("RG_GDELT_WORKER_DEPLOY_AUTH_DENIED");
+  if(ready.status===200){
+   let body=null;
+   try{body=await ready.json()}catch{}
+   if(body?.ok===true&&
+      body.schema==="geomacro.risk-gate-gdelt-continuity.v1"){
+    backendReady=true;break;
+   }
+  }
+  if(attempt===14)break;
+  await new Promise(resolve=>setTimeout(resolve,4000));
+ }
+ if(!backendReady)throw Error("RG_GDELT_WORKER_DEPLOY_NOT_READY");
  // Strictly bounded pinned ZIP: existing readArchive enforces GDELT host,
  // manifest clock, md5 and compressed/uncompressed byte limits.
  const {decoded,manifest,zipped}=await readArchive({now,kind:"events",max404Fallbacks:4});
@@ -96,8 +127,7 @@ export async function publishGdeltRiskEventWideNet({
  packet.b2_exact_readback_verified=true;
  packet.b2_archived_event_count=source.archive_candidate_count;
  packet.b2_archive_complete=true;
- const bearer="Bearer "+createHmac("sha256",rootToken.trim())
-  .update("geomacro-control-plane-v1").digest("hex");
+
  let response;
  for(let attempt=0;attempt<5;attempt++){
   try{response=await fetchImpl(endpoint+"/v1/internal/risk-gate/gdelt-event-index",{
