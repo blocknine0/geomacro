@@ -44,6 +44,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
    candidate_count:result.candidate_count,inspected_count:result.inspected_count,
    deferred_count:result.deferred_count,
    article_body_reads:result.article_body_reads,
+   body_route_mentions:result.body_route_mentions,
    route_clause_observed:result.route_clause_observed,
    independent_vessel_route_matches:result.independent_vessel_route_matches,
    verified_corridor_events:0,paid_output_authorized:false}));
