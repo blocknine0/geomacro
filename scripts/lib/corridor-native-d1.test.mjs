@@ -321,5 +321,5 @@ test("D1 migration preserves one original permalink and adds unique constraint",
  assert.match(sql,/GROUP BY article_url/u);
  assert.match(sql,/CREATE UNIQUE INDEX IF NOT EXISTS idx_corridor_native_news_exact_original/u);
  const worker=readFileSync(new URL("../../workers/control-plane/src/corridor-native-news.mjs",import.meta.url),"utf8");
- assert.match(worker,/ON CONFLICT\\(article_url\\) DO NOTHING/u);
+ assert.ok(worker.includes("ON CONFLICT(article_url) DO NOTHING"));
 });
