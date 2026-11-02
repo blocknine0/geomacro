@@ -30,7 +30,8 @@ function candidateOk(c,now){
      !/^[A-Z]{3}$/u.test(c.issuerContextCountryIso3)||
    c.sourceUrl!==null&&c.sourceUrl!==undefined&&
      (typeof c.sourceUrl!=="string"||!c.sourceUrl.startsWith("https://"))||
-   !isTime(c.publishedAt))return false;
+   !isTime(c.publishedAt)||
+   (c.d1Acknowledged!==undefined&&typeof c.d1Acknowledged!=="boolean"))return false;
  const age=now-Date.parse(c.publishedAt);
  if(age < -60_000 || age>TTL)return false;
  try{
@@ -46,7 +47,10 @@ function candidateOk(c,now){
  return true;
 }
 const id=c=>JSON.stringify([c.category,c.articleUrl,c.publishedAt]);
-/** Drop old candidates and quarantine inconsistent immutables across runs. */
+/** Drop old candidates and quarantine inconsistent immutables across runs.
+ * A D1 acknowledgement is sealed ONLY after authenticated per-original
+ * readback. Re-observation cannot erase it or renew the native clock.
+ */
 export function mergePrivatePhase2iSourceBacklog(prior,observed,now=Date.now()){
  if(!Number.isFinite(now)||!Array.isArray(prior)||!Array.isArray(observed)||
     prior.length>MAX_CANDIDATES||observed.length>MAX_CANDIDATES)
@@ -63,14 +67,17 @@ export function mergePrivatePhase2iSourceBacklog(prior,observed,now=Date.now()){
     seen.delete(key);conflicts.add(key);continue;
    }
    duplicate++;
-   if(previous.sourceUrl!==c.sourceUrl||
-      previous.issuerContextCountryIso3!==c.issuerContextCountryIso3)
-    seen.set(key,{...previous,sourceUrl:null,issuerContextCountryIso3:null});
+   const metadataConflict=previous.sourceUrl!==c.sourceUrl||
+      previous.issuerContextCountryIso3!==c.issuerContextCountryIso3;
+   if(metadataConflict||c.d1Acknowledged===true)
+    seen.set(key,{...previous,
+      ...(metadataConflict?{sourceUrl:null,issuerContextCountryIso3:null}:{}),
+      d1Acknowledged:previous.d1Acknowledged===true||c.d1Acknowledged===true});
   }else seen.set(key,{category:c.category,articleUrl:c.articleUrl,
     publishedAt:c.publishedAt,title:c.title,sourceId:c.sourceId,
     sourceUrl:c.sourceUrl??null,
     issuerContextCountryIso3:c.issuerContextCountryIso3??null,
-    credit:c.credit??null});
+    credit:c.credit??null,d1Acknowledged:c.d1Acknowledged===true});
  }
  if(seen.size>MAX_CANDIDATES)
   throw Error("PHASE2I_BACKLOG_CAPACITY_NOT_DURABLE");

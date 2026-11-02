@@ -57,7 +57,10 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
     !Number.isInteger(maxRows)||maxRows<3||maxRows>MAX)
   throw Error("PHASE2I_OSINT_RAW_PLAN_INVALID");
  const dedup=withoutAmbiguousSameOriginal(candidates);
- const originals=buildPhase2hPrivateRawRecords(dedup.candidates,{now,derive});
+ // Retain genuine native time, but never respend a scarce admitted D1 slot
+ // on an original authenticated and acknowledged in the encrypted queue.
+ const pending=dedup.candidates.filter(c=>c.d1Acknowledged!==true);
+ const originals=buildPhase2hPrivateRawRecords(pending,{now,derive});
  // D1 private intake and the website both retain only 72h of native-dated
  // original observations. Do not spend the scarce 3/5-row source-intake
  // approval on old records that cannot become a current article. Preserve
@@ -144,6 +147,7 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   country_attributed_candidate_count:attributed,
   issuer_context_country_routing_count:issuerContextSelected,
   same_original_ambiguous_dropped:dedup.conflicting_original_identities,
+  already_d1_verified_excluded:dedup.candidates.length-pending.length,
   invalid_dropped:originals.discarded_invalid,
   paid_eligible:false,commercial_rights_verified:false,
   original_country_independently_verified:false});
@@ -151,7 +155,7 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
 
 export async function stagePhase2iOsintFairRaw({
  candidates,now=new Date(),derive,controlPlaneRoot,token,
- fetchImpl=fetch,post,maxRows=MAX
+ fetchImpl=fetch,post,maxRows=MAX,returnVerifiedRecordIds=false
 }={}){
  const plan=planPhase2iOsintCountryFairRaw(candidates,{now,derive,maxRows});
  const {records,...safe}=plan;
@@ -160,6 +164,7 @@ export async function stagePhase2iOsintFairRaw({
   ...safe,status:"NO_NATIVE_ORIGINAL_TO_STAGE",d1_inserted:0,
   d1_unchanged:0,d1_rejected_conflicts:0,d1_readback_verified:false,
   b2_verified:false,payments:0,
+  ...(returnVerifiedRecordIds?{verified_record_ids:[]}:{}),
  });
  const receipt=await postPhase2iCollisionIsolated({
   records,controlPlaneRoot,token,fetchImpl,...(post?{post}:{})
@@ -176,5 +181,6 @@ export async function stagePhase2iOsintFairRaw({
   per_original_authenticated_d1_verified:receipt.per_original_authenticated_d1_verified,
   d1_readback_verified:receipt.readback_verified,
   b2_verified:false,payments:0,
+  ...(returnVerifiedRecordIds?{verified_record_ids:receipt.verifiedRecordIds}:{}),
  });
 }
