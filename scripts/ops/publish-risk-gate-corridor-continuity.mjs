@@ -24,7 +24,7 @@ export async function publishContinuousStrategicCorridors({
    });
   }catch{throw Error("RG_STRATEGIC_NETWORK_UNAVAILABLE")}
   if(response.status===200)break;
-  if(![404,503].includes(response.status)||attempt===4)
+  if(![404,405,503].includes(response.status)||attempt===4)
    throw Error("RG_STRATEGIC_TICK_HTTP_"+response.status);
   await new Promise(resolve=>setTimeout(resolve,5000*(attempt+1)));
  }
