@@ -85,3 +85,21 @@ test("rejects concrete journal ID stuck outside static beyond 90-minute recovery
  x.journal.first_ingest[0].first_seen_at="2026-11-01T23:45:00.000Z";
  assert.equal(verifyThreeDomainLivePublication(x).verified,true);
 });
+
+test("publisher-rejected template is not an eligible backlog or a fake new finding",()=>{
+ const x=fixture(),template={...signals[0],id:"geopolitics-000000aa",
+  title:"Geomacro finds official update on security",
+  what_changed:"The dated original release concerns security policy and does not establish a named actor performing a verifiable action."};
+ x.journal.signals.push(template);
+ x.journal.returned_rows=x.journal.signals.length;
+ x.journal.first_ingest=[{id:template.id,first_seen_at:"2026-11-01T17:00:00.000Z"}];
+ x.classifyDisplay=()=>null;
+ x.isArchiveEligible=()=>true;
+ x.isTemplateObservation=s=>s.id===template.id;
+ const out=verifyThreeDomainLivePublication(x);
+ assert.equal(out.verified,true);
+ assert.equal(out.category.geopolitics.intentionally_rejected_archive_templates,1);
+ assert.equal(out.category.geopolitics.public_d1_not_in_static,1);
+ assert.equal(out.category.geopolitics.public_d1_not_in_static_concrete,0);
+ assert.equal(out.aged_eligible_unpublished,0);
+});
