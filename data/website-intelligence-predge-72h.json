@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T17:29:25.456Z",
+  "checked_at": "2026-11-02T17:31:27.529Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 220,
+  "item_count": 227,
   "counts": {
-    "geopolitics": 98,
-    "macro": 83,
+    "geopolitics": 103,
+    "macro": 85,
     "rare_earth": 39
   },
-  "source_native_ids_sha256": "a09fa8b886f18123dbe55bf331f95cbda800395f8d9fc8a7285dba6a3c6bb771",
+  "source_native_ids_sha256": "80b946672d6d0437ea1afe23ddb0bef8b0c787feeaf7af24d2f5e638fcce8344",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-df4a618e",
+      "category": "macro",
+      "title": "Geomacro finds Anthropic reported $17bn in Q3 revenue before supersized IPO - The National",
+      "what_changed": "A monitored source feed reports: Anthropic reported $17bn in Q3 revenue before supersized IPO - The National. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T17:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-3d373de2",
       "category": "geopolitics",
@@ -1113,6 +1132,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-46379707",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said rare ceasefire was cover for Russian regrouping - The Straits Times",
+      "what_changed": "A monitored source feed reports: Ukraine said rare ceasefire was cover for Russian regrouping - The Straits Times. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-a94bd61c",
       "category": "macro",
       "title": "Geomacro finds Iran said considering two-day plan to reopen Hormuz",
@@ -1208,6 +1246,25 @@
       "severity": null
     },
     {
+      "id": "macro-01876f00",
+      "category": "macro",
+      "title": "Geomacro finds Iran said US Naval Blockade Must End Before Hormuz Can Be Reopened, Secured - Fars",
+      "what_changed": "A monitored source feed reports: Iran said US Naval Blockade Must End Before Hormuz Can Be Reopened, Secured - Fars. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:15:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-ed22d81a",
       "category": "macro",
       "title": "Geomacro finds Goldman Sachs raised BrightSpring Health stock price target on strong growth outlook - Investing.com UK",
@@ -1240,6 +1297,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.vaticannews.va"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4afb9c78",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - Audacy",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - Audacy. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6948de0f",
+      "category": "geopolitics",
+      "title": "Geomacro finds NEURC proposed cutting Ukrenergo’s transmission tariff for 2027 - EXPRO Consulting",
+      "what_changed": "A monitored source feed reports: NEURC proposed cutting Ukrenergo’s transmission tariff for 2027 - EXPRO Consulting. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T09:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1331,6 +1426,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T08:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-cc9d22d4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said Russia used ceasefire to reinforce military positions - TVP World",
+      "what_changed": "A monitored source feed reports: Ukraine said Russia used ceasefire to reinforce military positions - TVP World. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4cfd3acc",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said contacts over ending war continue after talks finish with no breakthrough - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Iran said contacts over ending war continue after talks finish with no breakthrough - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T08:37:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
