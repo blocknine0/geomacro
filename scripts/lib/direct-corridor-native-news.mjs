@@ -44,14 +44,23 @@ function validClock(raw,now){
  return Number.isFinite(t)&&t<=now.getTime()&&now.getTime()-t<=72*3600000?
     new Date(t).toISOString():null;
 }
-function samePublisherPermalink(raw,feedUrl){
+function samePublisherPermalink(raw,feedUrl,sourceId){
  if(typeof raw!=="string"||raw.length>2048)return null;
  let link,feed;
  try{link=new URL(clean(raw),feedUrl);feed=new URL(feedUrl)}catch{return null}
  const host=h=>h.toLowerCase().replace(/^www\./u,"");
  if(link.protocol!=="https:"||link.username||link.password||link.port||
     host(link.hostname)!==host(feed.hostname))return null;
- link.hash="";link.search="";
+ if(sourceId==="rbi_official_press_releases"&&link.search){
+   // The RBI press-release ID is the article identity. Stripping prid
+   // would collapse distinct stories into one permalink.
+   if(!/^\/scripts\/BS_PressReleaseDisplay\.aspx$/iu.test(link.pathname)||
+      [...link.searchParams.keys()].length!==1)return null;
+   const [[key,value]]=[...link.searchParams];
+   if(key.toLowerCase()!=="prid"||!/^[0-9]{1,9}$/u.test(value))return null;
+   link.search="?prid="+value;
+ }else link.search="";
+ link.hash="";
  return link.href.length<=1024?link.href:null;
 }
 function feedItems(body){
@@ -73,7 +82,7 @@ function extract(block,source,now){
    .find(x=>!/\brel=["'](?:self|enclosure)["']/iu.test(x[1]));
   href=link?.[1].match(/\bhref=["']([^"']{1,2048})["']/iu)?.[1]??"";
  }
- const articleUrl=samePublisherPermalink(href,source.url);
+ const articleUrl=samePublisherPermalink(href,source.url,source.id);
  if(!articleUrl)return {missingPermalink:true};
  const candidate_corridor_ids=ROUTES.filter(([id,re])=>re.test(headline)).map(([id])=>id);
  return {id:createHash("sha256").update(source.id+"\x1f"+articleUrl+"\x1f"+published).digest("hex"),
