@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-02T10:44:04.780Z",
+  "checked_at": "2026-11-02T10:47:17.329Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 185,
+  "item_count": 187,
   "counts": {
-    "geopolitics": 80,
+    "geopolitics": 82,
     "macro": 76,
     "rare_earth": 29
   },
-  "source_native_ids_sha256": "c582a6b98d566c74f8ddf71d8e1ba78e97a243a35f6cd3493cc2c26e7807917c",
+  "source_native_ids_sha256": "8658ab56b883fef0414eab1c753be15fd627ba316177e0cf43ef3414d1ec22bf",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -809,6 +809,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-03aa4f70",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said drone strikes hit Ukrainian cargo vessel - Breakingthenews.net",
+      "what_changed": "A monitored source feed reports: Russia said drone strikes hit Ukrainian cargo vessel - Breakingthenews.net. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T05:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-815d1985",
       "category": "geopolitics",
       "title": "Geomacro finds Cathay Pacific said data from 53,000 bookings compromised in Amadeus cyberattack - Bangkok Post",
@@ -1031,6 +1050,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.lusakatimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7c9816c1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Arab League urged joint action against disinformation, AI-generated false content - Arab News",
+      "what_changed": "A monitored source feed reports: Arab League urged joint action against disinformation, AI-generated false content - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T03:00:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
