@@ -234,7 +234,10 @@ export async function generateOneDailyRiskGate(env,c,{now=Date.now(),fetcher=fet
 export async function runDailyRiskGates(env,opts={}){
  const now=opts.now??Date.now(),results=[];
  if(!env?.DB?.prepare)return {ok:false,error:"RG_D1_UNAVAILABLE"};
- for(const c of DAILY_RG_CORRIDORS){
+ const batch=Array.isArray(opts.corridors)?opts.corridors:DAILY_RG_CORRIDORS;
+ if(!batch.length||batch.length>2||batch.some(c=>!registry(c.id)))
+  return {ok:false,error:"RG_DAILY_BATCH_SIZE_INVALID"};
+ for(const c of batch){
   try{results.push(await generateOneDailyRiskGate(env,c,{...opts,now}))}
   catch{results.push({ok:false,corridor_id:c.id,error:"RG_CORRIDOR_GENERATION_FAILED"})}
  }
