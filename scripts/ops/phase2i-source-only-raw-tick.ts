@@ -8,7 +8,7 @@
  * CRITICAL_ONLY (critical=true, research=false):
  * no full OSINT health ring, speculative research, signing or public output.
  */
-import {createHmac} from "node:crypto";
+import {createHmac,createHash} from "node:crypto";
 import {resolve,sep,dirname} from "node:path";
 import {writeFileSync,readFileSync,mkdirSync} from "node:fs";
 import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
@@ -80,7 +80,7 @@ const queue=mergePrivatePhase2iSourceBacklog(
  prior.candidates,indexed.candidates,now.getTime());
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
- maxRows:admittedRows,
+ maxRows:admittedRows,returnVerifiedRecordIds:true,
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
  token:controlToken,
 });
@@ -91,17 +91,32 @@ if(stage.selected_count>0&&stage.d1_readback_verified!==true)
 // and independently read them back; never create an article or renew clocks
 // when actual sources were denied/unavailable.
 const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now});
+// Acknowledge only exact original IDs returned after authenticated D1 readback.
+// All receipt identities stay in the protected runner and AES-GCM queue.
+const verifiedIds=new Set(stage.verified_record_ids??[]);
+const candidatesWithD1Receipts=queue.candidates.map(candidate=>{
+ const native=candidate.datePrecision==="day"
+  ?candidate.publishedAt.slice(0,10):candidate.publishedAt;
+ const hash=createHash("sha256").update(
+  candidate.category+"\n"+candidate.articleUrl+"\n"+native).digest("hex");
+ return verifiedIds.has(hash)?{...candidate,d1Acknowledged:true}:candidate;
+});
+const newAcknowledgements=candidatesWithD1Receipts.filter((c,i)=>
+ c.d1Acknowledged===true&&queue.candidates[i].d1Acknowledged!==true).length;
 // Save a FULL 72h snapshot after the D1 receipt and source health pass. The
 // workflow uploads only these AEAD bytes (not original metadata or URLs).
 // If artifact upload fails, previous snapshots remain accessible by name.
 const sealed=sealPrivatePhase2iSourceBacklog({
- candidates:queue.candidates,root,now:Date.now()});
+ candidates:candidatesWithD1Receipts,root,now:Date.now()});
 mkdirSync(dirname(cipherPath),{recursive:true,mode:0o700});
 writeFileSync(cipherPath,JSON.stringify(sealed)+"\n",{
  encoding:"utf8",mode:0o600,flag:"wx"});
 console.log(JSON.stringify({
  schema:"geomacro.phase2i-encrypted-backlog-producer.v1",
  source_candidates_held_72h:queue.available,
+ d1_originals_acknowledged_in_encrypted_queue:candidatesWithD1Receipts.filter(c=>
+  c.d1Acknowledged===true).length,
+ newly_acknowledged_originals:newAcknowledgements,
  invalid_or_expired_removed:queue.expired_or_invalid,
  exact_duplicates_removed:queue.duplicate_suppressed,
  conflicting_originals_quarantined:queue.immutable_conflicts_quarantined,
