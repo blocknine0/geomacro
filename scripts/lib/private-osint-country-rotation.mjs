@@ -120,9 +120,15 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  // search hints. Reserve at least one native-country discovery query; more
  // whenever enough space remains. The fallback-only global 195x3 routing
  // stays available even when individual country-index lead latency grows.
+ // Preserve eight spare upstream requests for independent publisher
+ // transient retries. The full source + actual retry count can never exceed
+ // the existing 512 global fetch ceiling.
+ const retrySpare=includeLocalGapLane&&activeBase.length>=300?
+   Math.min(8,Math.max(0,availableForLocalAndIndex-1)):0;
+ const slots=availableForLocalAndIndex-retrySpare;
  const local=includeLocalGapLane?
-   budgetedPrivateLocalPublisherSources(now,Math.max(0,availableForLocalAndIndex-1)):[];
- const indexPerTick=Math.min(normalIndex,availableForLocalAndIndex-local.length);
+   budgetedPrivateLocalPublisherSources(now,Math.max(0,slots-1)):[];
+ const indexPerTick=Math.min(normalIndex,slots-local.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
