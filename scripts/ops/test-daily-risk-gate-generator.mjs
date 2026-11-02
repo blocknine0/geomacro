@@ -103,7 +103,7 @@ test("10-day cleanup initializes once, preserves last three days, and only delet
   }}}
  };
  const fetcher=async(url,options)=>{
-  if(options.method==="DELETE"){deleted++;cutoff=url;return new Response("",{status:204})}
+  if(options.method==="DELETE"){deleted++;cutoff=url;return new Response(null,{status:204})}
   return new Response("[]",{status:200,headers:{"Content-Type":"application/json"}});
  };
  const first=await cleanupDailyRiskSupabase(env,{now,fetcher});
