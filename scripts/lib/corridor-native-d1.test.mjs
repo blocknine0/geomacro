@@ -323,3 +323,23 @@ test("D1 migration preserves one original permalink and adds unique constraint",
  const worker=readFileSync(new URL("../../workers/control-plane/src/corridor-native-news.mjs",import.meta.url),"utf8");
  assert.ok(worker.includes("ON CONFLICT(article_url) DO NOTHING"));
 });
+
+test("Fed fallback is admitted only with its actual strictly pinned first-party RSS",()=>{
+ const original="https://www.federalreserve.gov/newsevents/pressreleases/monetary20261102a.htm";
+ const primary="https://www.federalreserve.gov/feeds/press_all.xml";
+ const alternate="https://www.federalreserve.gov/feeds/press_monetary.xml";
+ const fed={...candidate(),source_id:"federal_reserve",
+  id:hash("federal_reserve\x1f"+original+"\x1f"+published),
+  original_publisher_url:alternate,article_url:original,categories:["macro"],
+  source_region_refs:["americas"]};
+ assert.equal(validateCorridorNativeNewsBatch(packet([fed]),fixed).length,1);
+ assert.equal(validateCorridorNativeNewsBatch(
+  packet([{...fed,original_publisher_url:primary}]),fixed).length,1);
+ for(const fake of [
+  "https://www.federalreserve.gov/feeds/press_market.xml",
+  "https://evil.example/feeds/press_monetary.xml",
+  "https://www.federalreserve.gov/feeds/press_monetary.xml?test=1"
+ ])assert.throws(()=>validateCorridorNativeNewsBatch(
+  packet([{...fed,original_publisher_url:fake}]),fixed),
+  /CORRIDOR_PRIVATE_ITEM_INVALID/u);
+});
