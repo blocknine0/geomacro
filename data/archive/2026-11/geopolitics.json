@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-02T18:56:28.976Z",
+  "updated_at": "2026-11-02T19:42:35.283Z",
   "signals": [
     {
       "id": "geopolitics-e587f36f",
@@ -227,6 +227,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0abce1dd",
+      "category": "geopolitics",
+      "title": "Geomacro finds Vietnam cut electricity tariff and temporarily removes petrol excise tax - London Daily News",
+      "what_changed": "A monitored source feed reports: Vietnam cut electricity tariff and temporarily removes petrol excise tax - London Daily News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:43:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
