@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-02T07:39:46.884Z",
+  "checked_at": "2026-11-02T08:07:08.438Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -2266,44 +2266,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-eeb5bb9e",
-      "category": "rare_earth",
-      "title": "Geomacro finds Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada",
-      "what_changed": "A monitored source feed reports: Metals.io launched tokenised copper trading as demand grows - Yahoo! Finance Canada. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T08:02:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7b163556",
-      "category": "geopolitics",
-      "title": "Geomacro finds Oleshky Residents left for Ukraine, Russia as Truce Holds for 87 Hours",
-      "what_changed": "A monitored source feed reports: Oleshky Residents left for Ukraine, Russia as Truce Holds for 87 Hours. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-30T07:57:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
