@@ -11,7 +11,7 @@ export async function publishOfficialCorridorReferences({receipt,rootToken,now=n
  if(!receipt||receipt.schema!=="geomacro.corridor-official-reference-intake.v1"||
    receipt.channel!=="CORRIDOR_ONLY"||receipt.website_intelligence_enabled!==false||
    receipt.commercial_rights_verified!==false||
-   !Array.isArray(receipt.source_checks)||receipt.source_checks.length!==5||
+   !Array.isArray(receipt.source_checks)||receipt.source_checks.length!==9||
    !Array.isArray(receipt.observations)||receipt.observations.length>60||
    receipt.observation_count!==receipt.observations.length||
    !Number.isFinite(Date.parse(receipt.checked_at))||
