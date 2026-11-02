@@ -1,0 +1,72 @@
+name: Direct Global Corridor Intake (Isolated)
+# Strict corridor-only upstream polling. Never feeds Website Intelligence.
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "11 */2 * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/direct-global-corridor-intake.yml"
+      - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/ops/ingest-direct-global-corridors.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/direct-global-corridor-intake.yml"
+      - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "scripts/lib/direct-global-corridor-sources.test.mjs"
+      - "scripts/lib/direct-global-corridor-ingestion.mjs"
+      - "scripts/lib/direct-global-corridor-ingestion.test.mjs"
+      - "scripts/ops/ingest-direct-global-corridors.mjs"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-direct-corridor-intake
+  cancel-in-progress: false
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify direct corridor isolation
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/direct-global-corridor-sources.mjs
+          node --check scripts/lib/direct-global-corridor-ingestion.mjs
+          node --check scripts/ops/ingest-direct-global-corridors.mjs
+          node --test scripts/lib/direct-global-corridor-sources.test.mjs
+          node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
+  source-intake:
+    needs: contracts
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Collect independent corridor source evidence only
+        run: |
+          set -euo pipefail
+          node scripts/ops/ingest-direct-global-corridors.mjs
+      - name: Upload separate bounded corridor receipt
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-direct-corridor-source-intake
+          path: artifacts/direct-corridor-intake/receipt.json
+          if-no-files-found: error
+          retention-days: 3
