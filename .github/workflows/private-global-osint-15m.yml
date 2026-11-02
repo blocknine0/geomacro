@@ -485,8 +485,7 @@ jobs:
          github.event.workflow_run.name == 'Website Derived News Continuity') &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro' &&
-        github.event.workflow_run.head_sha == github.sha))
+        github.event.workflow_run.head_repository.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     environment: production
@@ -502,6 +501,27 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      # A verified upstream main run may complete just before a later main
+      # merge. Exact SHA equality silently disables ingestion for that race.
+      # Accept ONLY an ancestor of the checked-out canonical main commit.
+      # A PR, fork, force-push/orphaned SHA or unknown commit never wakes it.
+      - name: Authenticate source workflow-run commit as current-main ancestor
+        if: github.event_name == 'workflow_run'
+        env:
+          GEOMACRO_TRUSTED_UPSTREAM_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${GEOMACRO_TRUSTED_UPSTREAM_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::SOURCE_UPSTREAM_SHA_INVALID"; exit 3;
+          }
+          git cat-file -e "${GEOMACRO_TRUSTED_UPSTREAM_SHA}^{commit}" || {
+            echo "::error::SOURCE_UPSTREAM_COMMIT_MISSING"; exit 3;
+          }
+          git merge-base --is-ancestor "$GEOMACRO_TRUSTED_UPSTREAM_SHA" HEAD || {
+            echo "::error::SOURCE_UPSTREAM_NOT_CANONICAL_ANCESTOR"; exit 3;
+          }
+          echo "Trusted same-repository completed main ancestor verified."
       # Restore only a trusted main-branch AES-GCM ciphertext snapshot.
       # This optional GitHub artifact is NOT D1 and cannot grant paid rights.
       - name: Restore previous 72h source original queue into protected runner memory
