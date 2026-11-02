@@ -24,7 +24,7 @@ export async function publishContinuousStrategicCorridors({
    });
   }catch{throw Error("RG_STRATEGIC_NETWORK_UNAVAILABLE")}
   if(response.status===200)break;
-  if(![404,503].includes(response.status)||attempt===4)
+  if(![404,405,503].includes(response.status)||attempt===4)
    throw Error("RG_STRATEGIC_TICK_HTTP_"+response.status);
   await new Promise(resolve=>setTimeout(resolve,5000*(attempt+1)));
  }
@@ -69,7 +69,16 @@ export async function publishContinuousStrategicCorridors({
    method:"GET",redirect:"error",cache:"no-store",
    headers:{Authorization:auth},signal:AbortSignal.timeout(15000)
   });
- if(country.status!==202)throw Error("RG_LONGTAIL_JIT_FAIL_CLOSED_INVALID");
+ if(country.status!==202){
+  let diagnostic="UNCLASSIFIED";
+  try{
+   const failed=await country.json();
+   const allow=["RG_JIT_COUNTRY_D1_UNAVAILABLE","RG_JIT_COUNTRY_HINTS_UNAVAILABLE",
+    "RG_JIT_D1_UNAVAILABLE","RG_JIT_CANONICAL_ISO3_INVALID"];
+   if(allow.includes(failed?.error))diagnostic=failed.error;
+  }catch{}
+  throw Error("RG_LONGTAIL_JIT_HTTP_"+country.status+"_"+diagnostic);
+ }
  const unverified=await country.json();
  if(unverified.processing_tier!=="JIT_REQUEST_ONLY"||
   !["COUNTRY_SPECIFIC_VERIFIED_EVIDENCE_REQUIRED",

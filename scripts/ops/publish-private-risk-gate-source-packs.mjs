@@ -92,6 +92,69 @@ export async function publishRiskGateSourcePacks({
   paid_quote_enabled:false,chargeable:false,execution_authorized:false,
   website_intelligence_writes:0,predge_writes:0};
 }
+/**
+ * Run post-source intake. Server selects and verifies the *same* canonical D1
+ * data it materializes; the GitHub receipt is not an authoritative snapshot.
+ * All authorizations and no-charge boundaries remain as before.
+ */
+export async function publishCanonicalRiskGateSourcePacks({
+ rootToken,fetchImpl=fetch,endpoint=ENDPOINT
+}={}){
+ if(typeof rootToken!=="string"||rootToken.trim().length<32||
+    typeof fetchImpl!=="function"||endpoint!==ENDPOINT)
+  throw Error("RG_CANONICAL_SOURCE_INPUT_INVALID");
+ const bearer="Bearer "+createHmac("sha256",rootToken.trim())
+   .update("geomacro-control-plane-v1").digest("hex");
+ let res;
+ for(let attempt=0;attempt<5;attempt++){
+  try{res=await fetchImpl(endpoint+"/v1/internal/corridor-risk-gate-source-pack",{
+   method:"POST",redirect:"error",cache:"no-store",
+   headers:{"Authorization":bearer},signal:AbortSignal.timeout(15000)
+  });}catch{throw Error("RG_CANONICAL_D1_NETWORK_UNAVAILABLE")}
+  if(res.status===200)break;
+  if(![404,405,503].includes(res.status)||attempt===4)
+   throw Error("RG_CANONICAL_D1_POST_HTTP_"+res.status);
+  await new Promise(done=>setTimeout(done,(attempt+1)*5000));
+ }
+ let body;try{body=await res.json()}catch{throw Error("RG_CANONICAL_D1_ACK_UNPARSEABLE")}
+ if(body.ok!==true||body.schema!=="geomacro.risk-gate-source-pack-d1-receipt.v1"||
+   body.selection!=="CANONICAL_D1_SOURCE_LOCAL"||body.verified!==1||
+   body.pricing_variant_count!==3||body.three_variant_structure_verified!==true||
+   !Number.isInteger(body.reference_rows_crosschecked)||body.reference_rows_crosschecked<0||
+   body.canonical_d1_source_provenance_checked!==true||
+   body.independent_events_verified!==0||body.signed_gro_generated!==false||
+   body.chargeable!==false||body.new_sales_enabled!==false||
+   body.commercial_eligible!==false||body.execution_authorized!==false||
+   body.predge_writes!==0||body.website_intelligence_writes!==0||
+   body.retention_hours!==72)
+  throw Error("RG_CANONICAL_D1_ACK_INVALID");
+ let read;
+ try{read=await fetchImpl(endpoint+"/v1/internal/corridor-risk-gate-source-pack?limit=3",{
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{"Authorization":bearer},signal:AbortSignal.timeout(15000)
+ });}catch{throw Error("RG_CANONICAL_D1_GET_NETWORK_UNAVAILABLE")}
+ if(read.status!==200)throw Error("RG_CANONICAL_D1_GET_HTTP_"+read.status);
+ let json;try{json=await read.json()}catch{throw Error("RG_CANONICAL_D1_GET_INVALID")}
+ if(json.ok!==true||!Array.isArray(json.records)||
+   !json.records.some(x=>x.snapshot_id===body.snapshot_id&&
+      x.price_variants?.length===RG_VARIANTS.length&&
+      x.price_variants.every((v,i)=>v.variant===RG_VARIANTS[i]&&
+        v.readiness==="EVIDENCE_ONLY_VERIFICATION_REQUIRED"))||
+    json.chargeable!==false||json.new_sales_enabled!==false||
+    json.execution_authorized!==false)
+  throw Error("RG_CANONICAL_D1_GET_READBACK_MISMATCH");
+ return {
+  schema:"geomacro.risk-gate-canonical-source-production-acceptance.v1",
+  checked_at:new Date().toISOString(),
+  snapshot_id:body.snapshot_id,selection:body.selection,
+  source_references_crosschecked:body.reference_rows_crosschecked,
+  source_classes:body.source_classes,priced_variants_prepared:3,
+  canonical_d1_put_readback:true,canonical_d1_get_readback:true,
+  verified_events:0,signed_gro_generated:false,paid_quote_enabled:false,
+  credits_debited:0,chargeable:false,execution_authorized:false,
+  predge_writes:0,website_intelligence_writes:0
+ };
+}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  try{
   if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
@@ -103,8 +166,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
   const pack=riskGatePackFromPrivateSourceReceipts(source);
   writeFileSync("artifacts/direct-corridor-intake/risk-gate-source-pack.json",
    JSON.stringify(pack,null,2)+"\n",{mode:0o600});
-  const result=await publishRiskGateSourcePacks({
-   pack,rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN
+  const result=await publishCanonicalRiskGateSourcePacks({
+   rootToken:process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN
   });
   writeFileSync("artifacts/direct-corridor-intake/risk-gate-source-d1-readback.json",
    JSON.stringify(result,null,2)+"\n",{mode:0o600});
