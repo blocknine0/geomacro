@@ -10,7 +10,7 @@ import {execFileSync} from "node:child_process";
 import {mkdtempSync,readFileSync,rmSync,mkdirSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {pathToFileURL} from "node:url";
+import {fileURLToPath} from "node:url";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2iSourceB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
@@ -196,7 +196,7 @@ export async function runPhase2iCiphertextB2Archive({
   else process.env.D1_DATABASE_ID=previousId;
  }
 }
-if(process.argv[1]&&resolve(process.argv[1])===pathToFileURL(import.meta.url)){
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{
   const r=await runPhase2iCiphertextB2Archive();
   mkdirSync("artifacts/derived-news",{recursive:true,mode:0o700});
