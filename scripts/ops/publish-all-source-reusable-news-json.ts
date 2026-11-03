@@ -37,7 +37,9 @@ const collected=await collectRegisteredReusableNews({
     try{sourceId=new URL(raw.source_url).hostname}catch{}
     phase2hOriginals.push({category:raw.category,title:raw.title,
       articleUrl:raw.article_url,publishedAt:raw.published_at,
-      sourceId,sourceUrl:raw.source_url,credit:null});
+      sourceId,sourceUrl:raw.source_url,
+      ...(typeof raw.description==="string"?{description:raw.description}:{}),
+      credit:null});
   },
 });
 // The existing registered-source batch now also preserves private original
