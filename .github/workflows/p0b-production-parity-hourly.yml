@@ -61,6 +61,19 @@ jobs:
             .source_registry.enabled>0 and .worker_b2_credentials_present==true and
             .worker_queue_binding_present==true
           ' >/dev/null || { echo "::error::P0B_REAL_QUEUE_NOT_ACTIVE"; exit 3; }
+          # Source diagnostics are fully redacted before logging.
+          # This admin endpoint may return URLs, titles or cursors; NEVER echo
+          # the raw response, only hardcoded state enum counts.
+          REGISTRY="$(curl --fail-with-body -fsS --max-time 30 \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/source-registry")"
+          printf '%s' "$REGISTRY" | jq -c '{
+            schema: "geomacro.p0b.private-source-state-census.v1",
+            registry_page_count:(.sources | length),
+            last_state_counts:(.sources | group_by(.last_state // "NOT_POLLED") |
+              map({key:(.[0].last_state // "NOT_POLLED"),value:length}) | from_entries),
+            sources_polled_in_page:(.sources | map(select(.last_polled_at != null)) | length),
+            failure_count_in_page:(.sources | map(select(.consecutive_failures > 0)) | length)
+          }'
           PROOF="$(curl --fail-with-body -fsS --max-time 30 -X POST \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/verify-latest")"
           printf '%s' "$PROOF" | jq -e '
