@@ -1,0 +1,62 @@
+name: Part 2 Source D1 and Rights Acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/lib/private-unscored-source-d1*"
+      - "scripts/lib/reliefweb-private-d1.mjs"
+      - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/run-rss-live-cycle.mjs"
+      - "scripts/ingest-reliefweb-live.mjs"
+      - "scripts/ingest-news.js"
+      - ".github/workflows/ingest-reliefweb-live.yml"
+      - ".github/workflows/rss-private-d1-15m.yml"
+      - ".github/workflows/restricted-private-current-scoring.yml"
+      - ".github/workflows/part2-source-d1-acceptance.yml"
+      - "src/__tests__/approved-reliefweb-live-observer.test.ts"
+      - "src/__tests__/official-original-issuer-rights.test.ts"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/part2-source-d1-acceptance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-acceptance:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Validate executable source adapters
+        run: |
+          set -euo pipefail
+          node --check scripts/run-rss-live-cycle.mjs
+          node --check scripts/ingest-news.js
+          node --check scripts/ingest-reliefweb-live.mjs
+          node --check scripts/lib/private-unscored-source-d1.mjs
+          node --check scripts/lib/reliefweb-private-d1.mjs
+          node --check scripts/lib/official-original-issuer-rights.mjs
+      - name: Execute unscored source D1 admission and readback contracts
+        run: node --test scripts/lib/private-unscored-source-d1.test.mjs scripts/lib/classifier-provider-configuration.test.mjs
+      - name: Install locked dependencies for existing invariants
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Execute rights, ReliefWeb, Postgres-isolation and retired GDELT regression tests
+        run: |
+          bun x vitest run \
+            src/__tests__/official-original-issuer-rights.test.ts \
+            src/__tests__/approved-reliefweb-live-observer.test.ts \
+            src/__tests__/rss-direct-postgres-transport-static.test.ts \
+            src/__tests__/p0-legacy-supabase-reachable-jobs-retired.test.ts \
+            src/__tests__/ingest-provider-fallback.test.js
