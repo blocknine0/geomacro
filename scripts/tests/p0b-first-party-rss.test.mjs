@@ -186,3 +186,15 @@ test("NRCan national Atom feed admits native Canadian mineral release",async()=>
  assert.equal(r.items[0].first_party_feed_metadata_verified,true);
  assert.equal(r.items[0].paid_eligible,false);
 });
+
+test("Atom title with nested markup is not sanitized into accepted evidence",async()=>{
+ const atom='<feed><entry><title>Canada <script><script>announces critical minerals investment</script></script></title>'+
+ '<link href="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html"/>'+
+ '<published>2026-10-30T08:00:00Z</published></entry></feed>';
+ const fetchImpl=async url=>({status:200,redirected:false,
+  headers:{get:()=>"application/atom+xml"},
+  text:async()=>url.includes("api.io.canada.ca")?atom:"<rss><channel/></rss>"});
+ const r=await p0bFirstPartyFeedNews({countryIso3:"CAN",countryName:"Canada",
+  category:"rare_earth",question:"Canada critical minerals",now,fetchImpl});
+ assert.equal(r.items.length,0);
+});
