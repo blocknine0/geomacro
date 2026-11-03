@@ -69,7 +69,8 @@ test("R2 only handles permitted anonymous public immediate and source-neutral pa
       return {size:300,async text(){return JSON.stringify(bundle())}};
     }}
   };
-  for(const q of ["/v1/public/website-derived-news-immediate",
+  for(const q of ["/v1/public/latest-feed.json",
+    "/v1/public/website-derived-news-immediate",
     "/v1/public/derived-structural-72h",
     "/v1/public/derived-structural-72h?domain=macro"]){
     const response=await readPublicNewsR2Snapshot(new Request(base+q),env,now);
@@ -77,17 +78,18 @@ test("R2 only handles permitted anonymous public immediate and source-neutral pa
     assert.equal(response.headers.get("X-GeoMacro-Public-Offload"),"r2");
     assert.equal((await response.json()).ok,true);
   }
-  assert.equal(reads,3);
+  assert.equal(reads,4);
   for(const [q,headers] of [
     ["/v1/partner/predge/derived-structural-72h",{}],
     ["/v1/public/website-derived-news",{}],
+    ["/v1/public/latest-feed.json?domain=macro",{}],
     ["/v1/public/derived-structural-72h?country=USA",{}],
     ["/v1/public/derived-structural-72h",{Authorization:"Bearer private"}],
     ["/v1/public/derived-structural-72h",{"Cache-Control":"no-cache"}]
   ]){
     assert.equal(await readPublicNewsR2Snapshot(new Request(base+q,{headers}),env,now),null);
   }
-  assert.equal(reads,3);
+  assert.equal(reads,4);
 });
 
 test("R2 unavailable/stale/invalid never returns fake success, always yields D1 fallback",async()=>{
