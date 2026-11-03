@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T10:10:10.849Z",
+  "updated_at": "2026-11-03T10:18:05.271Z",
   "signals": [
+    {
+      "id": "geopolitics-70a6807c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oluyede called for Enhanced Inter-Service Synergy To Tackle National Security Threats",
+      "what_changed": "A monitored source feed reports: Oluyede called for Enhanced Inter-Service Synergy To Tackle National Security Threats. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:14:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.channelstv.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-a4db1c9a",
       "category": "geopolitics",
@@ -309,6 +328,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-b915639d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran MP said Khamenei orders addressed military intelligence coordination gap - Iran International",
+      "what_changed": "A monitored source feed reports: Iran MP said Khamenei orders addressed military intelligence coordination gap - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:42:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-42031962",
       "category": "geopolitics",
       "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Messenger",
@@ -318,6 +356,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T14:41:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-14410c7f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Hezbollah announced aid to Lebanese displaced by war with Israel - Arab News",
+      "what_changed": "A monitored source feed reports: Hezbollah announced aid to Lebanese displaced by war with Israel - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T14:41:12.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
