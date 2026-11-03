@@ -381,6 +381,43 @@ test("only B2-acknowledged records enter the protected exact-question JSON",asyn
  assert.equal((await miss.json()).question_matches.length,0);
 });
 
+test("protected Phase2H GET keyset accepts exact bounded cursor and rejects malformed archive queries",async()=>{
+ const item=data().records.find(x=>x.category==="macro");
+ assert.ok(item);
+ const observations=[];
+ const db={prepare(sql){
+  observations.push(sql);
+  return {bind(...bound){
+   observations.push(bound);
+   return {all:async()=>({results:[{
+     record_id:item.record_id,category:item.category,
+     raw_sha256:item.raw_sha256,raw_json:JSON.stringify(item),
+   }]})};
+  }};
+ }};
+ const cursor=new URLSearchParams({
+  archive_cursor_clock:new Date(now.getTime()-60_000).toISOString(),
+  archive_cursor_id:"0".repeat(64),limit:"1",
+ });
+ const response=await phase2hPrivateRawGet({DB:db},cursor,now.getTime());
+ assert.equal(response.status,200);
+ const doc=await response.json();
+ assert.equal(doc.rows.length,1);
+ assert.equal(doc.rows[0].record_id,item.record_id);
+ assert.equal(doc.paid_eligible,false);
+ assert.equal(doc.raw_public_delivery,false);
+ assert.ok(observations.some(x=>typeof x==="string"&&
+  x.includes("first_ingested_at>? OR (first_ingested_at=? AND record_id>?)")));
+ for(const query of [
+  new URLSearchParams({archive_cursor_clock:"2026-01-01",archive_cursor_id:"0".repeat(64)}),
+  new URLSearchParams({archive_cursor_clock:now.toISOString()}),
+  new URLSearchParams({archive_cursor_clock:now.toISOString(),archive_cursor_id:"0".repeat(64),limit:"26"}),
+  new URLSearchParams({archive_cursor_clock:now.toISOString(),archive_cursor_id:"0".repeat(64),question:"Any recent sanctions?"}),
+ ]){
+  const rejected=await phase2hPrivateRawGet({DB:db},query,now.getTime());
+  assert.equal(rejected.status,400);
+ }
+});
 test("production acceptance links verified B2 hash, canonical ID and HTTP five-part JSON",async()=>{
  const row=buildPhase2hPrivateRawRecords([candidates[1]],{now,
   derive:items=>items.map(item=>({
