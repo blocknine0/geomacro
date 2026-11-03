@@ -12,6 +12,7 @@ on:
       - "scripts/ops/test-rss-native-clock.py"
       - "scripts/ops/test-official-ogl-atom-feeds.py"
       - "config/official-ogl-atom-sources.json"
+      - "config/global-first-party-rss-rights.v1.json"
       - "scripts/ops/report-global-195-rss-source-readiness.py"
       - "config/india-pib-official-reuse-rights.json"
   push:
@@ -26,6 +27,7 @@ on:
       - "scripts/ops/test-rss-category-lanes.py"
       - "scripts/ops/test-official-ogl-atom-feeds.py"
       - "config/official-ogl-atom-sources.json"
+      - "config/global-first-party-rss-rights.v1.json"
       - "scripts/ops/report-global-195-rss-source-readiness.py"
       - "config/india-pib-official-reuse-rights.json"
   schedule:
