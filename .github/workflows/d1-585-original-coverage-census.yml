@@ -2,6 +2,10 @@ name: GeoMacro 585 Country Category D1 Original Coverage Census
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/d1-585-original-coverage-census.yml"
+      - "scripts/ops/audit-production-d1-585-originals.py"
   push:
     branches: [main]
     paths:
