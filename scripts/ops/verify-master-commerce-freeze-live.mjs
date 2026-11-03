@@ -5,9 +5,50 @@
  * This is an acceptance probe only; it cannot activate or disable payment.
  */
 import { mkdir, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 const BASE = "https://geomacro.live";
-const sha = String(process.env.GEOMACRO_PRODUCTION_ACCEPTANCE_SHA ?? "").toLowerCase();
-if (!/^[0-9a-f]{40}$/.test(sha)) throw Error("EXACT_CANONICAL_SHA_REQUIRED");
+// Pin to the reviewed, actually published security release rather than
+// arbitrary later news-ingestion commits. Require that ALL security-sensitive
+// sources at checkout still equal that audited ancestor, fail closed on drift.
+const manifest = JSON.parse(readFileSync("config/commercial-security-accepted-release.v1.json", "utf8"));
+const sha = String(manifest.approved_live_release_sha ?? "").toLowerCase();
+if (manifest.schema_version !== "geomacro.commercial-security-accepted-release.v1" ||
+    manifest.canonical_repository !== "blocknine0/geomacro" ||
+    manifest.freeze_expected !== true ||
+    manifest.body_limit_bytes !== 8192 ||
+    manifest.paid_write_probe_count !== 14 ||
+    !/^[0-9a-f]{40}$/.test(sha))
+  throw Error("REVIEWED_SECURITY_RELEASE_MANIFEST_INVALID");
+const requiredSecurityPaths = [
+  "src/lib/commercial-launch-gate.server.ts",
+  "src/lib/central-security.server.ts",
+  "server/middleware/00-central-security.ts",
+  "workers/control-plane/src/central-security-policies.mjs",
+  "src/lib/bounded-commercial-request-body.server.ts",
+  "src/lib/mainnet-intelligence-endpoint.server.ts",
+  "src/lib/category-intelligence-alias.server.ts",
+  "src/routes/api.x402.circle_.intelligence.ts",
+  "src/routes/api.x402.nevermined_.intelligence.ts",
+  "src/lib/public-paid-output-boundary.ts",
+  "src/lib/commercial-access-contract.ts",
+];
+if (!Array.isArray(manifest.security_source_paths) ||
+    manifest.security_source_paths.length !== requiredSecurityPaths.length ||
+    !requiredSecurityPaths.every(path => manifest.security_source_paths.includes(path)))
+  throw Error("REVIEWED_SECURITY_SOURCE_SCOPE_INVALID");
+const optionalCallerSha = process.env.GEOMACRO_PRODUCTION_ACCEPTANCE_SHA?.toLowerCase();
+if (optionalCallerSha && optionalCallerSha !== sha)
+  throw Error("UNREVIEWED_SECURITY_RELEASE_OVERRIDE_FORBIDDEN");
+let securitySourceParityVerified = false;
+try {
+  execFileSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { stdio:"ignore" });
+  execFileSync("git", ["diff", "--quiet", sha, "HEAD", "--",
+    ...requiredSecurityPaths], { stdio:"ignore" });
+  securitySourceParityVerified = true;
+} catch {
+  // Do not promote changed or unavailable provenance to an accepted release.
+}
 
 const PAID_POSTS = [
   "/api/v1/payments/paypal/create-order",
@@ -32,6 +73,7 @@ const evidence = {
   expected_canonical_sha: sha,
   observed_canonical_sha: null,
   live_sha_verified: false,
+  security_source_parity_verified: securitySourceParityVerified,
   homepage_http_status: 0,
   security_headers_verified: false,
   frozen_routes: [],
@@ -58,7 +100,7 @@ async function request(path, method) {
     throw Error("PROBE_RESPONSE_TOO_LARGE");
   return {status:response.status,headers:response.headers,body};
 }
-const problems=[];
+const problems = securitySourceParityVerified ? [] : ["REVIEWED_SECURITY_SOURCE_DRIFT_OR_MISSING_ANCESTOR"];
 try {
   const home=await request("/","GET");
   evidence.homepage_http_status=home.status;
