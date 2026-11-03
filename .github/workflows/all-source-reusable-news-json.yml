@@ -14,6 +14,7 @@ on:
     paths:
       - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/lib/private-osint-national-primary-scope.mjs"
       - "scripts/lib/phase2h-original-metadata.mjs"
       - "scripts/ops/phase2h-b2-first-private-raw.mjs"
       - "scripts/tests/phase2h-b2-first-private-raw.test.mjs"
