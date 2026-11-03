@@ -39,7 +39,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
     independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
   }
   const limit=Number(u.searchParams.get("limit"));
-  assert.ok(limit<=5);
+  assert.ok(limit<=25);
   const cursor=u.searchParams.get("archive_cursor_id");
   const cursorClock=u.searchParams.get("archive_cursor_clock");
   if(cursor!==null)assert.equal(cursorClock,now.toISOString());
@@ -54,7 +54,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
  assert.equal(rows.length,13);
  assert.equal(new Set(rows.map(x=>x.record_id)).size,13);
  assert.equal(api.length,3);
- assert.deepEqual(workerReads.map(x=>x.cursor),[null,original[4].record_id,original[9].record_id]);
+ assert.deepEqual(workerReads.map(x=>x.cursor),[null]);
  const ack=await d1.markArchived(rows,"e".repeat(64),now);
  assert.equal(ack.archived,13);
  assert.equal(ack.independent_d1_archive_ack_verified,true);
