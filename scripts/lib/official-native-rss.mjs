@@ -16,19 +16,19 @@ export const OFFICIAL_NATIVE_FEEDS = Object.freeze({
   geopolitics: Object.freeze({
     url: "https://news.un.org/feed/subscribe/en/news/topic/peace-and-security/feed/rss.xml",
     host: "news.un.org",
-    source_id: "un_news_peace_security_rss_pending_review",
+    source_id: "un_news_security_original_rss_review",
     topics: /\b(?:security council|ceasefire|sanctions?|armed conflict|border conflict|military|missile|airstrikes?|invasion|displacement|peace talks|humanitarian crisis|war crimes|hostilities|geopolitical|peacekeeping)\b/iu,
   }),
   macro: Object.freeze({
     url: "https://www.federalreserve.gov/feeds/press_monetary.xml",
     host: "www.federalreserve.gov",
-    source_id: "federal_reserve_monetary_rss_pending_review",
+    source_id: "fed_monetary_original_press_rss_review",
     topics: /\b(?:fomc|monetary|interest rates?|rate (?:cut|hike|increase|reduction)|federal funds|inflation|foreign exchange|currency|central bank|economic outlook|reserve balances)\b/iu,
   }),
   rare_earth: Object.freeze({
     url: "https://www.usgs.gov/news/minerals/feed",
     host: "www.usgs.gov",
-    source_id: "usgs_mineral_news_rss_pending_review",
+    source_id: "usgs_minerals_original_news_rss_review",
     topics: /\b(?:critical minerals?|rare earths?|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|mineral (?:supply|production|reserve|trade|deposit|resource|assessment)|mineral commodity|strategic minerals?)\b/iu,
   }),
 });
