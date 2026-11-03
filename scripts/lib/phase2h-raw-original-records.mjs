@@ -2,6 +2,7 @@
  * Source-native publication clocks are never replaced by ingestion timestamps.
  */
 import {createHash} from "node:crypto";
+import {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
 /** Founder-locked three-domain contract: transform every admitted raw original
  * into GeoMacro-authored five-part analysis without a manual commerce review.
@@ -103,11 +104,18 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   const s=Array.isArray(signals)?signals.find(x=>x.category===c.category&&
     x.published_at===c.publishedAt&&
     typeof x.what_changed==="string"&&typeof x.why_it_matters==="string"):null;
+  // Event-specific actor/action grounded in this exact issuer headline.
+  // Title/metadata extraction is not independent corroboration or permission.
+  // Only an actually fetched source excerpt may authorize the fallback.
+  // A headline alone remains RAW_MONITOR when the old model found no event.
+  const hasMetadata=typeof c.description==="string"&&
+    c.description.trim().length>=45&&!/[<>]/u.test(c.description);
+  const headlineEvent=hasMetadata?p0bHeadlineEvent(c.title,c.category):null;
   const topic=s?.topic??null;
   const analysis={
    schema:"geomacro.phase2h.private-five-part.v1",
-   what_happened:{text:s?.what_changed??null,original_observation_id:observationId},
-   why_it_matters:{text:phase2hEventSpecificWhy(s),independently_verified:false},
+   what_happened:{text:s?.what_changed??headlineEvent?.what??null,original_observation_id:observationId},
+   why_it_matters:{text:phase2hEventSpecificWhy(s)??headlineEvent?.why??null,independently_verified:false},
    market_relevance:{potential_watch_channels:channels(topic),observed_market_reaction_verified:false,
      confirmed_instruments:[],price_direction:null,price_change:null},
    what_to_watch:{event_topic:topic,trigger:"NEXT_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION",
