@@ -103,20 +103,30 @@ const evidence = {
   result: "FAIL_CLOSED",
 };
 async function request(path, method) {
-  const response = await fetch(BASE + path, {
-    method,
-    redirect: "error",
-    cache: "no-store",
-    headers: { Accept: method === "GET" ? "*/*" : "application/json",
-      ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
-      "User-Agent": "GeomacroSecurityFreezeAcceptance/1.0" },
-    ...(method === "POST" ? { body: "{}" } : {}),
-    signal: AbortSignal.timeout(12000),
-  });
-  const body = await response.text();
-  if (new TextEncoder().encode(body).byteLength > 131072)
-    throw Error("PROBE_RESPONSE_TOO_LARGE");
-  return {status:response.status,headers:response.headers,body};
+  let lastError;
+  // Allow one bounded retry for transient TLS/DNS/transport timeout. HTTP
+  // failures and incorrect security responses are NEVER retried into success.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch(BASE + path, {
+        method, redirect: "error", cache: "no-store",
+        headers: { Accept: method === "GET" ? "*/*" : "application/json",
+          ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+          "User-Agent": "GeomacroSecurityFreezeAcceptance/1.0" },
+        ...(method === "POST" ? { body: "{}" } : {}),
+        signal: AbortSignal.timeout(20000),
+      });
+      const body = await response.text();
+      if (new TextEncoder().encode(body).byteLength > 131072)
+        throw Error("PROBE_RESPONSE_TOO_LARGE");
+      return {status:response.status,headers:response.headers,body};
+    } catch (error) {
+      if (error instanceof Error && error.message === "PROBE_RESPONSE_TOO_LARGE")
+        throw error;
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : Error("PROBE_TRANSPORT_UNAVAILABLE");
 }
 const problems = securitySourceParityVerified ? [] : ["REVIEWED_SECURITY_SOURCE_DRIFT_OR_MISSING_ANCESTOR"];
 try {
