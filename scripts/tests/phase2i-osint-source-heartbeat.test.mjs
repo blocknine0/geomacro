@@ -86,3 +86,39 @@ test("readback mismatch must not report a heartbeat acceptance",async()=>{
   summary:coverage(),now:AT,createClient:client
  }),/READBACK_UNVERIFIED/);
 });
+
+
+test("full collector batch above website 768 cap is valid without score or publication",()=>{
+ const one=coverage({macro:{
+   registered:120,checked:120,healthy:18,observed:9,empty:9,
+   healthy_distinct_feed_endpoints:12,native_dated_items_in_collector_batch:901,
+   status:"LIVE_FEED_AND_DATED_ITEMS_THIS_TICK"
+ }});
+ const rows=planPrivateOsintHeartbeats(one,AT);
+ const macro=rows.find(row=>row.category==="macro");
+ assert.equal(macro.native_dated_items_in_collector_batch,901);
+ assert.equal(macro.new_events_verified,false);
+ assert.equal(macro.commercial_rights_verified,false);
+ assert.equal(macro.chargeable,false);
+});
+
+test("category count must stay bounded by truly checked feeds, not global website cap",()=>{
+ assert.throws(()=>planPrivateOsintHeartbeats(coverage({macro:{
+   registered:120,checked:5,healthy:4,observed:4,empty:0,
+   healthy_distinct_feed_endpoints:4,native_dated_items_in_collector_batch:501,
+   status:"LIVE_FEED_AND_DATED_ITEMS_THIS_TICK"
+ }}),AT),/PRIVATE_OSINT_HEARTBEAT_CATEGORY_INVALID/);
+});
+
+test("a truthful unregistered category retains no-source heartbeat instead of aborting three-domain ingestion",()=>{
+ const rows=planPrivateOsintHeartbeats(coverage({rare_earth:{
+   registered:0,checked:0,healthy:0,observed:0,empty:0,
+   healthy_distinct_feed_endpoints:0,native_dated_items_in_collector_batch:0,
+   status:"NO_SOURCE_REGISTERED"
+ }}),AT);
+ const minerals=rows.find(row=>row.category==="rare_earth");
+ assert.equal(minerals.healthy,false);
+ assert.equal(minerals.source_status,"NO_SOURCE_REGISTERED");
+ assert.equal(minerals.new_events_verified,false);
+ assert.equal(minerals.chargeable,false);
+});
