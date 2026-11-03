@@ -64,7 +64,7 @@ test("403 access denial or 7500 impostor never enables fallback",async()=>{
  for(const [status,code] of [[403,7500],[400,7100]]){
   let workerCalls=0;
   const fetchImpl=async(url)=>{
-   if(!String(url).includes("api.cloudflare.com"))workerCalls++;
+   if(!new URL(url).hostname==="api.cloudflare.com")workerCalls++;
    return denial(status,code);
   };
   await assert.rejects(
@@ -76,7 +76,7 @@ test("403 access denial or 7500 impostor never enables fallback",async()=>{
 test("bad admin response never produces B2 or D1 proof",async()=>{
  let workerCalls=0;
  const fetchImpl=async(url)=>{
-  if(String(url).includes("api.cloudflare.com"))return denial(400,7500);
+  if(new URL(url).hostname==="api.cloudflare.com")return denial(400,7500);
   workerCalls++;
   return Response.json({ok:true,rows:original.slice(0,5),
    schema:"geomacro.phase2h.private-pending-archive.v1",
