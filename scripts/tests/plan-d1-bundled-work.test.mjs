@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic,planRegisteredAdaptiveFreeOriginals,REGISTERED_ADAPTIVE_FREE_CAP} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
 const now=new Date("2026-10-27T12:00:00.000Z");
@@ -355,4 +355,37 @@ test("Phase2H cleanup grant funds exactly one provider-budgeted daily pass",()=>
    assert.ok(snap.remaining_rows_written>reserved);
   }else assert.equal(cap,0);
  }
+});
+
+test("registered producer conservatively admits up to 20 real D1 rows under verified Free headroom",()=>{
+ const t=new Date("2026-10-27T12:00:00.000Z");
+ const p=planD1BundledWork(quota(1_000_000,10_000),{now:t});
+ assert.equal(REGISTERED_ADAPTIVE_FREE_CAP.max_originals_per_15m,20);
+ assert.ok(p.registered_private_max_new_rows>=5);
+ assert.ok(p.registered_private_max_new_rows<=20);
+ assert.equal(p.registered_private_adaptive_free_budgeted,true);
+ const slots=p.source_intake_budget_to_utc_reset.remaining_source_slots;
+ const extra=p.registered_private_max_new_rows-5;
+ assert.equal(p.registered_private_extra_daily_write_reserve,slots*extra*16);
+ assert.equal(p.registered_private_extra_daily_read_reserve,slots*extra*64);
+ assert.ok(p.remaining_rows_written>
+   23000+p.source_intake_budget_to_utc_reset.rows_written+
+   p.registered_private_extra_daily_write_reserve+10_000);
+ assert.ok(p.remaining_rows_read>
+   1250000+p.source_intake_budget_to_utc_reset.rows_read+
+   p.registered_private_extra_daily_read_reserve+100_000);
+});
+test("adaptive producer is closed on denial/stale or insufficient account-wide budget",()=>{
+ const t=new Date("2026-10-27T12:00:00.000Z");
+ for(const [r,w] of [[1_000,86_000],[5_000_000,100_000],[4_700_000,10_000]]){
+  const p=planD1BundledWork(quota(r,w),{now:t});
+  assert.equal(p.registered_private_max_new_rows,0);
+ }
+ const q=planD1BundledWork(quota(2_900_000,50_000),{now:t});
+ assert.ok(q.registered_private_max_new_rows>=0);
+ assert.equal(planRegisteredAdaptiveFreeOriginals(null,null,{
+  now:t,criticalGranted:false}).max_new_rows,0);
+ assert.equal(planRegisteredAdaptiveFreeOriginals({remaining_rows_read:4_000_000,
+  remaining_rows_written:100_000},{remaining_source_slots:48,rows_read:1000,rows_written:1000},{
+   now:t,criticalGranted:false}).max_new_rows,0);
 });
