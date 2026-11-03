@@ -10,7 +10,11 @@ on:
       - "workers/control-plane/migrations/0093_customer_email_provider_quota.sql"
       - "workers/control-plane/migrations/0094_customer_login_runtime.sql"
       - "workers/control-plane/migrations/0095_customer_grant_scoped_usage.sql"
+      - "workers/control-plane/migrations/0096_customer_prepaid_pack_spend.sql"
+      - "workers/control-plane/migrations/0097_customer_paypal_checkout_intents.sql"
       - "workers/control-plane/src/customer-paid-ledger.mjs"
+      - "workers/control-plane/src/customer-paypal-funding.mjs"
+      - "scripts/tests/customer-paypal-funding.test.mjs"
       - "scripts/tests/customer-paid-ledger.test.mjs"
       - "workers/control-plane/src/customer-runtime.mjs"
       - "workers/control-plane/src/index.mjs"
@@ -33,7 +37,11 @@ on:
       - "workers/control-plane/migrations/0093_customer_email_provider_quota.sql"
       - "workers/control-plane/migrations/0094_customer_login_runtime.sql"
       - "workers/control-plane/migrations/0095_customer_grant_scoped_usage.sql"
+      - "workers/control-plane/migrations/0096_customer_prepaid_pack_spend.sql"
+      - "workers/control-plane/migrations/0097_customer_paypal_checkout_intents.sql"
       - "workers/control-plane/src/customer-paid-ledger.mjs"
+      - "workers/control-plane/src/customer-paypal-funding.mjs"
+      - "scripts/tests/customer-paypal-funding.test.mjs"
       - "scripts/tests/customer-paid-ledger.test.mjs"
       - "workers/control-plane/src/customer-runtime.mjs"
       - "scripts/tests/customer-runtime.test.mjs"
@@ -59,7 +67,7 @@ jobs:
         with:
           node-version: "24"
       - name: Check D1 schema invariants with isolated SQLite
-        run: node --test scripts/tests/customer-canonical-d1-schema.test.mjs scripts/tests/customer-email-provider-failover.test.mjs scripts/tests/customer-runtime.test.mjs scripts/tests/customer-paid-ledger.test.mjs
+        run: node --test scripts/tests/customer-canonical-d1-schema.test.mjs scripts/tests/customer-email-provider-failover.test.mjs scripts/tests/customer-runtime.test.mjs scripts/tests/customer-paid-ledger.test.mjs scripts/tests/customer-paypal-funding.test.mjs
 
   production-schema-acceptance:
     # PRs NEVER receive production secrets and never write to D1.
@@ -116,7 +124,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for table in users sessions credit_ledger api_keys customer_payment_receipts customer_entitlement_grants customer_otp_challenges customer_otp_send_events customer_email_dispatch_attempts customer_login_challenges customer_login_verify_events customer_usage_receipts; do
+          for table in users sessions credit_ledger api_keys customer_payment_receipts customer_entitlement_grants customer_otp_challenges customer_otp_send_events customer_email_dispatch_attempts customer_login_challenges customer_login_verify_events customer_usage_receipts customer_paypal_checkout_intents; do
             npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.customer-acceptance.jsonc --command "SELECT COUNT(*) AS record_count FROM ${table};"
           done
           echo "PASS: canonical customer D1 schema exists and can be read"

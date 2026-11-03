@@ -51,7 +51,7 @@ export async function customerBody(request:Request):Promise<Record<string,unknow
 }
 type WorkerResult={ok:boolean;code?:string;user?:{id:string;email:string};session_token?:string;max_age?:number;[key:string]:unknown};
 export async function callCustomerWorker(request:Request,action:string,payload:Record<string,unknown>={}):Promise<WorkerResult>{
- if(!/^(otp-start|otp-verify|session|account|key-create|key-revoke|logout|paid-authorize|paid-debit)$/.test(action))throw new CustomerError(400,"CUSTOMER_ACTION_INVALID");
+ if(!/^(otp-start|otp-verify|session|account|key-create|key-revoke|logout|paid-authorize|paid-debit|paypal-intent-create|paypal-order-bind|paypal-intent-read|paypal-capture-claim|paypal-fund)$/.test(action))throw new CustomerError(400,"CUSTOMER_ACTION_INVALID");
  // Read protected configuration per request. There is deliberately no retired
  // Auth/PostgREST fallback, default URL, or generic control-plane token fallback.
  const raw=process.env.GEOMACRO_CUSTOMER_WORKER_URL??"",token=process.env.GEOMACRO_CUSTOMER_SSR_TOKEN??"";
@@ -80,7 +80,7 @@ export async function callCustomerWorker(request:Request,action:string,payload:R
  let body:WorkerResult;try{body=await response.json() as WorkerResult;}catch{throw new CustomerError(503,"CUSTOMER_D1_RESPONSE_INVALID");}
  if(!body||body.ok!==true||!response.ok){
   const code=typeof body?.code==="string"&&/^CUSTOMER_[A-Z0-9_]{1,80}$/.test(body.code)?body.code:"CUSTOMER_D1_UNAVAILABLE";
-  throw new CustomerError([400,401,403,404,413,415,429,503].includes(response.status)?response.status:503,code);
+  throw new CustomerError([400,401,403,404,409,413,415,423,429,503].includes(response.status)?response.status:503,code);
  }
  return body;
 }

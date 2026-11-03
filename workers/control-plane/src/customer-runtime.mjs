@@ -1,5 +1,6 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
 import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,CustomerPaidError} from './customer-paid-ledger.mjs';
+import {assertCustomerPayPalCheckoutReady,prepareCustomerPayPalCheckoutIntent,bindCustomerPayPalProviderOrder,readCustomerPayPalCheckoutIntent,claimCustomerPayPalCapture,fundCanonicalCustomerFromVerifiedPayPal,CustomerFundingError} from './customer-paypal-funding.mjs';
 
 export const CUSTOMER_KEY_GATE='CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED';
 const HEADERS={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
@@ -49,7 +50,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -121,6 +122,50 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    return reply({ok:true,user:created,session_token:opaque,max_age:3600});
   }
   const user=await session(db,pepper,body.session_token,at);
+  // PayPal is a dedicated authenticated server-to-server flow. No browser
+  // capture receipt, caller price, account or arbitrary identity is trusted.
+  if(action.startsWith('paypal-')){
+   assertCustomerPayPalCheckoutReady(env);
+   const fields=Object.keys(body);
+   const keys={
+    'paypal-intent-create':['session_token','sku'],
+    'paypal-order-bind':['session_token','intent_id','order_id'],
+    'paypal-intent-read':['session_token','order_id'],
+    'paypal-capture-claim':['session_token','order_id'],
+    'paypal-fund':['session_token','proof','attestation'],
+   };
+   const allowed=keys[action];
+   if(!allowed||fields.some(k=>!allowed.includes(k))||allowed.some(k=>!Object.hasOwn(body,k)))
+    fail(400,'CUSTOMER_PAYPAL_BODY_INVALID');
+   try{
+    if(action==='paypal-intent-create'){
+     if(typeof body.sku!=='string')fail(400,'CUSTOMER_PAYPAL_SKU_INVALID');
+     return reply({ok:true,...await prepareCustomerPayPalCheckoutIntent(db,user.id,body.sku,at)});
+    }
+    if(action==='paypal-order-bind'){
+     if(typeof body.intent_id!=='string'||typeof body.order_id!=='string')
+      fail(400,'CUSTOMER_PAYPAL_ORDER_BINDING_INVALID');
+     return reply(await bindCustomerPayPalProviderOrder(db,user.id,body.intent_id,body.order_id,at));
+    }
+    if(action==='paypal-intent-read'||action==='paypal-capture-claim'){
+     if(typeof body.order_id!=='string')fail(400,'CUSTOMER_PAYPAL_ORDER_ID_INVALID');
+     return reply({ok:true,...(action==='paypal-intent-read'
+       ?await readCustomerPayPalCheckoutIntent(db,user.id,body.order_id)
+       :await claimCustomerPayPalCapture(db,user.id,body.order_id,at))});
+    }
+    if(action==='paypal-fund'){
+     if(!body.proof||typeof body.proof!=='object'||Array.isArray(body.proof)||
+        typeof body.attestation!=='string')
+       fail(400,'CUSTOMER_PAYPAL_PROOF_INVALID');
+     return reply(await fundCanonicalCustomerFromVerifiedPayPal(db,env,{
+       userId:user.id,proof:body.proof,attestation:body.attestation,
+     },at));
+    }
+   }catch(error){
+    if(error instanceof CustomerFundingError)fail(error.status,error.code);
+    throw error;
+   }
+  }
   if(action==='session')return reply({ok:true,user:{id:user.id,email:user.email}});
   if(action==='logout'){
    await db.prepare(`UPDATE sessions SET revoked_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL`).bind(at,user.session_id,user.id).run();return reply({ok:true});

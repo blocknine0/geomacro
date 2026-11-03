@@ -18,6 +18,11 @@ const PERMITTED=Object.freeze({
   starter_dev:['intelligence_query','structural_country_digest','structural_country_profile'],
   pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile'],
   business_pilot:CUSTOMER_ENABLED_CAPABILITIES,
+  // One-time prepaid credit packs are spendable on any currently live
+  // intelligence capability. They never unlock retired GRI or public Risk Gate.
+  credits_100:CUSTOMER_ENABLED_CAPABILITIES,
+  credits_500:CUSTOMER_ENABLED_CAPABILITIES,
+  credits_1500:CUSTOMER_ENABLED_CAPABILITIES,
 });
 const tokenPattern=/^gmk_live_[0-9a-f]{64}$/;
 const requestPattern=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
@@ -198,7 +203,12 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
   const grant=grants.find(g=>Object.hasOwn(PERMITTED,g.tier)&&g.remaining>0);
   if(!grant)fail(403,'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED');
   const scopes=['intelligence:read','structural:read'];
-  if(grant.tier==='business_pilot')scopes.push('signed:read','risk-gate:read');
+  // Preserve the existing Business Pilot granted scope; the separate
+  // capability eligibility gate still withholds new public Risk Gate sales.
+  if(grants.some(g=>g.remaining>0 && g.tier==='business_pilot'))
+    scopes.push('signed:read','risk-gate:read');
+  else if(grants.some(g=>g.remaining>0 && String(g.tier).startsWith('credits_')))
+    scopes.push('signed:read');
   const key='gmk_live_'+randHex(32),keyId='gmk_live_'+randHex(16);
   const hash=await customerPaidKeyDigest(env,key);
   try{

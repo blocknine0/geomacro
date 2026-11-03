@@ -109,6 +109,9 @@ const PAID_INTELLIGENCE_WRITES = new Set([
 
 function isPaidCommercialWrite(pathname: string, method: string): boolean {
   if (["GET", "HEAD", "OPTIONS"].includes(method)) return false;
+  // A signed PayPal refund webhook is a CREDIT REVOCATION, not a payable
+  // operation. It must remain available even during emergency freeze.
+  if (pathname === "/api/v1/payments/paypal" && method === "POST") return false;
   if (pathname === "/api/v1/intelligence/availability" ||
       pathname === "/api/v1/payments/preflight" ||
       pathname === "/api/x402/risk/availability") return false;
@@ -201,6 +204,11 @@ export function classifyCentralSecurityRoute(
   ].includes(pathname)) {
     return "public_api";
   }
+
+  // PayPal provider reversal receipts must still revoke credits while
+  // sales/checkout are globally frozen; independent signature verification
+  // is mandatory in the handler before any D1 reversal.
+  if (pathname === "/api/v1/payments/paypal" && method === "POST") return "api_write";
 
   // Funds-initiation and capture paths must not fall through to generic
   // api_write, including PayPal and Base/Polygon checkout adapters. Discovery
