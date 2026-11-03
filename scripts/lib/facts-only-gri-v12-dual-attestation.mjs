@@ -67,8 +67,22 @@ export function verifyPinnedFactsOnlyGriV12Proof(source,env=process.env){
      !SIG.test(p.rights_signature_b64??""))return false;
   const expectedInputHash=sha(canonicalJson({
     fact_hash:s.factualRecordSha256,
+    source_id:s.sourceId,
+    source_access_authorized:s.sourceAccessAuthorized,
+    source_terms_allow_processing:s.sourceTermsAllowThisProcessing,
+    attribution_recorded:s.attributionRecorded,
+    publisher_expression_reused:s.publisherExpressionReused,
+    raw_article_text_stored:s.rawArticleTextStored,
+    original_article_redistributed:s.originalArticleRedistributed,
+    independent_same_event_verified:s.independentSameEventVerified,
+    source_native_time_verified:s.sourceNativeTimeVerified,
     independent_evidence:(s.independentEvidence??[]).map(e=>({
       kind:e.kind,issuer:e.issuer,url:e.url,sha256:e.contentSha256,
+      independently_fetched:e.independentlyFetched,
+      issuer_verified:e.issuerVerified,same_event_verified:e.sameEventVerified,
+      fact_verified:e.factVerified,
+      licence_or_public_domain_verified:e.licenceOrPublicDomainVerified,
+      third_party_material_excluded:e.thirdPartyMaterialExcluded,
     })).sort((a,b)=>a.sha256.localeCompare(b.sha256)),
     score_events:p.score_events,
     as_of:p.as_of,

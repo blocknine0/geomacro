@@ -66,8 +66,22 @@ const signedFixture=()=>{
  assert.equal(methodology_hash,sha(canonicalJson(methodologyManifest())));
  const input_hash=sha(canonicalJson({
   fact_hash:source.factualRecordSha256,
+  source_id:source.sourceId,
+  source_access_authorized:source.sourceAccessAuthorized,
+  source_terms_allow_processing:source.sourceTermsAllowThisProcessing,
+  attribution_recorded:source.attributionRecorded,
+  publisher_expression_reused:source.publisherExpressionReused,
+  raw_article_text_stored:source.rawArticleTextStored,
+  original_article_redistributed:source.originalArticleRedistributed,
+  independent_same_event_verified:source.independentSameEventVerified,
+  source_native_time_verified:source.sourceNativeTimeVerified,
   independent_evidence:source.independentEvidence.map(e=>({
    kind:e.kind,issuer:e.issuer,url:e.url,sha256:e.contentSha256,
+   independently_fetched:e.independentlyFetched,
+   issuer_verified:e.issuerVerified,same_event_verified:e.sameEventVerified,
+   fact_verified:e.factVerified,
+   licence_or_public_domain_verified:e.licenceOrPublicDomainVerified,
+   third_party_material_excluded:e.thirdPartyMaterialExcluded,
   })),
   score_events,as_of:asOf,
  }));
@@ -125,6 +139,17 @@ test("reject score tamper, missing proof, copied article text and unpinned autho
   assert.equal(verifyPinnedFactsOnlyGriV12Proof({
     ...source,scoreProof:{...source.scoreProof,...p},
   },config),false);
+ }
+ for(const patch of [
+  {sourceTermsAllowThisProcessing:false},
+  {attributionRecorded:false},
+  {sourceId:"some_other_news_source"},
+  {independentEvidence:[{...source.independentEvidence[0],
+    licenceOrPublicDomainVerified:false}]},
+  {independentEvidence:[{...source.independentEvidence[0],
+    thirdPartyMaterialExcluded:false}]},
+ ]){
+  assert.equal(verifyPinnedFactsOnlyGriV12Proof({...source,...patch},config),false);
  }
  assert.equal(verifyPinnedFactsOnlyGriV12Proof({...source,scoreProof:null},config),false);
  assert.equal(verifyPinnedFactsOnlyGriV12Proof(source,{
