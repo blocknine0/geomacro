@@ -8,7 +8,7 @@ import {createHash} from "node:crypto";
 import {normalizeNativeFeedXml,verifiedRdfItemClock} from "./native-feed-xml-normalizer.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
-import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
+import {sourceIsPinnedNationalPrimary,qualifyPrivateNationalPrimaryScope,pinnedNationalPrimaryPublisherCountry} from "./private-osint-national-primary-scope.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
 import {EXPANDED_OFFICIAL_SOURCES} from "../ops/probe-expanded-official-source-mesh.mjs";
 import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.mjs";
@@ -62,6 +62,19 @@ export const CURATED_US_MACRO_PAIR_FEEDS=Object.freeze([
   url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
   categories:["macro"],format:"rss",priority:true,officialDocument:false}),
 ]);
+/** Eight existing first-party private-OSINT feeds with exact vetted issuer
+ * jurisdiction. This is NOT independent proof of a news event or country risk.
+ */
+export const PINNED_NATIONAL_PRIMARY_NEWS_FEEDS=Object.freeze([
+ {id:"rba_national_policy",url:"https://www.rba.gov.au/rss/rss-cb-media-releases.xml",categories:["macro"],format:"rss"},
+ {id:"sarb_national_policy",url:"https://www.resbank.co.za/bin/sarb/solr/publications/rss",categories:["macro"],format:"rss"},
+ {id:"statssa_national_macro",url:"https://www.statssa.gov.za/?feed=rss2",categories:["macro"],format:"rss"},
+ {id:"kenya_central_bank_macro",url:"https://www.centralbank.go.ke/feed/",categories:["macro"],format:"rss"},
+ {id:"canada_nrcan_critical_minerals",url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",categories:["rare_earth"],format:"atom"},
+ {id:"india_rbi_policy",url:"https://www.rbi.org.in/pressreleases_rss.xml",categories:["macro"],format:"rss"},
+ {id:"chile_cochilco_minerals",url:"https://www.cochilco.cl/web/noticias/feed/",categories:["rare_earth"],format:"rss"},
+ {id:"south_africa_dmpr_minerals",url:"https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",categories:["rare_earth"],format:"rss"},
+].map(x=>Object.freeze(x)));
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const scalar=x=>typeof x==="string"?x:"";
 // For CJK scripts 14 native characters can communicate a complete headline;
@@ -103,8 +116,12 @@ function normalizeCatalogueSource(r){
   // JSON is supported only for explicitly registered HTTPS sources, using
   // bounded native per-item time metadata (no API-index clock promotion).
   const supported=["rss","atom","xml","rdf","json"].includes(type);
-  return {id:r.id,url:r.url,categories,type,supported,
-    priority:r.priority===true,officialDocument:r.officialDocument===true};
+  const country=pinnedNationalPrimaryPublisherCountry(r.url);
+  return qualifyPrivateNationalPrimaryScope({
+    id:r.id,url:r.url,categories,type,supported,
+    priority:r.priority===true,officialDocument:r.officialDocument===true,
+    ...(country?{publisher_country_iso3:country}:{}),
+  });
 }
 export function registeredReusableNewsSources(){
   const inputs=[
@@ -113,6 +130,7 @@ export function registeredReusableNewsSources(){
     ...PUBLIC_FEED_ROTATION.map(x=>({...x,categories:CATEGORY})),
     ...PRESIDENTIAL_ACTION_SOURCE_FEEDS,
     ...CURATED_US_MACRO_PAIR_FEEDS,
+    ...PINNED_NATIONAL_PRIMARY_NEWS_FEEDS,
   ];
   const map=new Map();
   for(const item of inputs){
