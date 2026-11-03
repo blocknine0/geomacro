@@ -179,6 +179,14 @@ export async function fetchDirectDerivedNews(
   fetchImpl: typeof fetch = fetch,
   now = Date.now(),
 ): Promise<StatelessIntelligenceSignal[]> {
+  // Keep the built website independent from each incoming news release.
+  // Read the existing Cloudflare edge-backed live D1 bundle with its shared
+  // per-POP cache; retain the immutable archive as outage continuity only.
+  try {
+    return await fetchAllDerivedNews(fetchImpl,now,{fresh:false});
+  } catch {
+    // A stale archive must never be mislabeled as newly ingested evidence.
+  }
   const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL,{
     method:"GET",
     headers:{Accept:"application/json"},
