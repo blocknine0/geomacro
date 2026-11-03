@@ -13,9 +13,9 @@ test("critical private OSINT and research both require same finite Cloudflare ad
 });
 test("registered source bulk JSON writer requires account-wide headroom before source fetch",()=>{
  const file=workflow("all-source-reusable-news-json.yml");
- assert.match(file,/if: steps\.quota\.outputs\.critical == 'true'/);
+ assert.match(file,/if: steps\.quota\.outputs\.source_intake == 'true'/);
  assert.match(file,/run: bun scripts\/ops\/plan-d1-bundled-work\.mjs/);
- assert.match(file,/if: steps\.quota\.outputs\.critical != 'true'/);
+ assert.match(file,/if: steps\.quota\.outputs\.source_intake != 'true'/);
  assert.match(file,/all-source-reusable-news-json\.ts/);
 });
 test("hourly and fallback derived source work do not burn P0 ingestion reserve",()=>{
