@@ -180,7 +180,7 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
     // Native item publication only: RSS pubDate or Atom published.
     // Feed updated/issue day and collection clock are never publication time.
     const native=xmlTag(entry,"pubDate")??xmlTag(entry,"published")??
-      verifiedRdfItemClock(normalized,entry);
+      (allowRdfNativeDates?verifiedRdfItemClock(normalized,entry):null);
     const rssLink=xmlTag(entry,"link");
     const atomLink=entry.match(/<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/iu)?.[1]??null;
     result.push({title,native,articleUrl:rssLink??atomLink});
