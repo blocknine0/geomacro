@@ -158,28 +158,6 @@
       "commercial_promotion_requires_separate_main_gates": true
     },
     {
-      "source_id": "uk_dft_ogl_shipping_macro_atom",
-      "category": "MACRO",
-      "publisher": "UK Department for Transport",
-      "publisher_page": "https://www.gov.uk/government/organisations/department-for-transport",
-      "feed_url": "https://www.gov.uk/government/organisations/department-for-transport.atom",
-      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
-      "rights_reference": "https://www.gov.uk/help/terms-conditions",
-      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
-      "telegram_content_license": false,
-      "license_conditions": [
-        "attribution_to_original_publisher",
-        "link_to_source",
-        "mark_derived_content",
-        "exclude_credited_third_party_content"
-      ],
-      "uses_publisher_native_clock_only": true,
-      "owner_country_iso3": "GBR",
-      "private_research_only": true,
-      "commercial_promotion_requires_separate_main_gates": true
-    },
-    {
       "source_id": "uk_bist_ogl_minerals_atom",
       "category": "CRITICAL_MINERALS",
       "publisher": "UK Department for Business, Innovation, Science and Trade",
