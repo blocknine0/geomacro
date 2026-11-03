@@ -8,6 +8,8 @@ on:
       - ".github/workflows/rss-private-d1-15m.yml"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/lib/private-unscored-source-d1.mjs"
+      - "workers/telegram-flash/worker.py"
+      - "scripts/ops/test-rss-native-clock.py"
   schedule:
     - cron: "11,26,41,56 * * * *"
 
@@ -55,6 +57,7 @@ jobs:
           node --check scripts/run-rss-live-cycle.mjs
           node --check scripts/lib/private-unscored-source-d1.mjs
           node --test scripts/lib/private-unscored-source-d1.test.mjs
+          python scripts/ops/test-rss-native-clock.py
       - name: Require canonical private D1 credential
         shell: bash
         run: |
