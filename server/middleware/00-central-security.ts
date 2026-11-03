@@ -46,7 +46,21 @@ export default defineEventHandler(async (event) => {
     "X-Geomacro-Security-Version": CENTRAL_SECURITY_VERSION,
   });
 
+  // H3 v2 discards headers prepared through setResponseHeader when an
+  // HTTP error is thrown; bind no-store and security headers to the error.
   const host = getRequestHost(event).toLowerCase();
+  const securityErrorHeaders = {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "X-Geomacro-Security-Version": CENTRAL_SECURITY_VERSION,
+    ...(host === "geomacro.live" || host === "www.geomacro.live"
+      ? { "Strict-Transport-Security": "max-age=31536000; includeSubDomains" }
+      : {}),
+  };
   if (host === "geomacro.live" || host === "www.geomacro.live") {
     setResponseHeader(
       event,
@@ -69,6 +83,7 @@ export default defineEventHandler(async (event) => {
   if (oversizedProxyHeader) {
     setResponseHeader(event, "Cache-Control", "no-store");
     throw createError({
+      headers: securityErrorHeaders,
       statusCode: 431,
       statusMessage: "Request headers are too large",
       data: {
@@ -124,6 +139,7 @@ export default defineEventHandler(async (event) => {
     }
 
     throw createError({
+      headers: securityErrorHeaders,
       statusCode: decision.status,
       statusMessage: "Request blocked by Geomacro central security policy",
       data: {
@@ -147,6 +163,7 @@ export default defineEventHandler(async (event) => {
     if (realFunds.required && !realFunds.ready) {
       setResponseHeader(event, "Cache-Control", "no-store");
       throw createError({
+        headers: securityErrorHeaders,
         statusCode: 503,
         statusMessage: "Real-funds security gate is locked",
         data: {
@@ -167,6 +184,7 @@ export default defineEventHandler(async (event) => {
       } catch {
         setResponseHeader(event, "Cache-Control", "no-store");
         throw createError({
+          headers: securityErrorHeaders,
           statusCode: 503,
           statusMessage: "Real-funds security gate is locked",
           data: {
