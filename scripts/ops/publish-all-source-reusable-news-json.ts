@@ -9,6 +9,7 @@ import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 import {buildPhase2hPrivateRawRecords,postPhase2hCollisionIsolated} from "../lib/phase2h-raw-original-records.mjs";
 import {planRegisteredPrivateOriginals} from "../lib/phase2h-registered-private-quota.mjs";
+import {hydrateSelectedOriginalMetadata} from "../lib/phase2h-original-metadata.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
 import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
@@ -36,7 +37,7 @@ const collected=await collectRegisteredReusableNews({
     try{sourceId=new URL(raw.source_url).hostname}catch{}
     phase2hOriginals.push({category:raw.category,title:raw.title,
       articleUrl:raw.article_url,publishedAt:raw.published_at,
-      sourceId,credit:null});
+      sourceId,sourceUrl:raw.source_url,credit:null});
   },
 });
 // The existing registered-source batch now also preserves private original
@@ -57,8 +58,36 @@ if(!/^(?:[1-9]|1[0-9]|20)$/u.test(quotaRaw))
 const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{
  now:new Date(),maxPerSlot:Number(quotaRaw),
 });
+// Fetch only quota-selected genuine originals, not thousands of raw
+// discovery candidates. Website/PREDGE production objects remain unchanged.
+// Never use unverified upstream metadata as a clock or paid rights grant.
+const originalById=new Map(phase2hOriginals.map(c=>[
+ createHash("sha256").update(c.category+"\\n"+c.articleUrl+"\\n"+c.publishedAt)
+  .digest("hex"),c,
+]));
+const selectedOriginals=phase2hQuota.records.map(r=>originalById.get(r.record_id));
+if(selectedOriginals.some(x=>!x))
+ throw Error("PHASE2H_SELECTED_ORIGINAL_METADATA_ID_MISSING");
+const metadata=await hydrateSelectedOriginalMetadata(selectedOriginals);
+const enhanced=buildPhase2hPrivateRawRecords(metadata.candidates,{
+ now:new Date(),derive:deriveStatelessSignals,
+});
+const enhancedById=new Map(enhanced.records.map(r=>[r.record_id,r]));
+if(enhancedById.size!==phase2hQuota.records.length||
+   phase2hQuota.records.some(r=>!enhancedById.has(r.record_id)))
+ throw Error("PHASE2H_METADATA_ORIGINAL_IDENTITY_DIVERGED");
+console.log(JSON.stringify({
+ schema:metadata.schema,
+ selected_originals:phase2hQuota.records.length,
+ metadata_summaries_observed:metadata.metadata_summaries_observed,
+ missing_or_invalid:metadata.missing_or_invalid,
+ denied_or_rate_limited:metadata.denied_or_rate_limited,
+ not_first_party:metadata.not_first_party,
+ source_full_article_stored:false,rights_verified:false,paid_eligible:false,
+}));
 const phase2hD1=await postPhase2hCollisionIsolated({
- records:phase2hQuota.records,controlPlaneRoot:endpoint,token,
+ records:phase2hQuota.records.map(r=>enhancedById.get(r.record_id)),
+ controlPlaneRoot:endpoint,token,
  maxAttempts:phase2hQuota.max_collision_attempts,
 });
 if(phase2hD1.rejected_conflicts>0)
