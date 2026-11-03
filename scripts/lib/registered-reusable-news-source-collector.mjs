@@ -247,7 +247,7 @@ export async function collectRegisteredReusableNews({
      CATEGORY.some(c=>!(topicPatterns?.[c] instanceof RegExp)||/[gy]/u.test(topicPatterns[c].flags)))
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
-  const checks=[],items=[],seen=new Set();
+  const checks=[],items=[],seen=new Set(),seenOriginalUrls=new Set();
   let capacitySkipped=0,nationalPrimaryFallbacks=0;
   // A sequential 15s timeout for 24 pinned endpoints could exceed the target
   // window by itself. Bounded parallelism preserves source ordering, limits
@@ -348,9 +348,27 @@ export async function collectRegisteredReusableNews({
         const identity=deduplicateIndexItems&&new URL(s.url).hostname==="news.google.com"?
           "google-news-rss-index-v1":s.id;
         const id=hex([identity,category,at,item.title].join("\n"));
+        // A publisher permalink may be syndicated across several indexed feeds.
+        // Use only the strict HTTPS URL identity for deduplication. Do not infer
+        // that two different URLs or similar headlines describe the same event.
+        let originalKey=null;
+        if(typeof item.articleUrl==="string"){
+          try{
+            const canonical=new URL(item.articleUrl);
+            if(canonical.protocol==="https:"&&!canonical.username&&!canonical.password&&
+               !canonical.port&&canonical.hostname.includes(".")&&
+               canonical.href.length<=2048){
+              canonical.hash="";
+              for(const k of [...canonical.searchParams.keys()])
+                if(/^utm_|^(?:fbclid|gclid)$/iu.test(k))canonical.searchParams.delete(k);
+              originalKey=hex(category+"\n"+canonical.href);
+            }
+          }catch{/* unsupported original link has no dedup authority */}
+        }
         const safe={...normalized,id:"news-"+id};
-        if(!seen.has(id)){
+        if(!seen.has(id)&&!(originalKey&&seenOriginalUrls.has(originalKey))){
           seen.add(id);
+          if(originalKey)seenOriginalUrls.add(originalKey);
           if(items.length<MAX_ITEMS_PER_RUN){
              items.push(safe);candidates++;domainCandidates[category]++;
              if(sourceFallback)nationalPrimaryFallbacks++;
@@ -393,6 +411,7 @@ export async function collectRegisteredReusableNews({
       selected_source_endpoints:active.length,
       completed_source_endpoints:new Set(checks.map(c=>c.source_ref)).size,
       observed_news_items:items.length,
+      duplicate_original_permalinks_filtered_in_memory:seenOriginalUrls.size,
       issuer_context_country_fallbacks_not_independently_verified:nationalPrimaryFallbacks,
       excluded_by_collector_capacity:capacitySkipped,
       all_matching_items_captured_within_scanned_feeds:capacitySkipped===0,
