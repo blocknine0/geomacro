@@ -323,12 +323,22 @@ export function phase2hQuestionDirectAnswer(question,analysis){
    focus==="what_to_watch"?selected?.trigger??null:null};
 }
 export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=Date.now(),globalFallback=p0bGlobalNewsFallback){
- if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category","p0a_probe"].includes(k))||
+ if(!env?.DB||[...params.keys()].some(k=>!["archived","limit","question","record_id","country_iso3","category","p0a_probe","archive_cursor_clock","archive_cursor_id"].includes(k))||
    params.getAll("archived").length>1||params.getAll("limit").length>1||
    params.getAll("question").length>1||params.getAll("record_id").length>1||
    params.getAll("country_iso3").length>1||params.getAll("category").length>1||
-   params.getAll("p0a_probe").length>1)
+   params.getAll("p0a_probe").length>1||
+   params.getAll("archive_cursor_clock").length>1||
+   params.getAll("archive_cursor_id").length>1)
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
+ const archiveClock=params.get("archive_cursor_clock");
+ const archiveId=params.get("archive_cursor_id");
+ const archiveKeyset=archiveClock!==null||archiveId!==null;
+ if(archiveKeyset&&(
+    archiveClock===null||archiveId===null||
+    !/^20\d{2}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u.test(archiveClock)||
+    !Number.isFinite(Date.parse(archiveClock))||!HEX.test(archiveId)))
+  return safeReply({ok:false,error:"PRIVATE_RAW_ARCHIVE_CURSOR_INVALID"},400);
  const question=params.get("question");
  const requestedId=params.get("record_id");
  const qualityProbe=params.get("p0a_probe")==="1";
@@ -338,12 +348,14 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    !phase2hCountry(countryIso3)||!CATEGORIES.has(category)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  if(params.has("archived")||
+   archiveKeyset&&(question!==null||requestedId!==null||countryScoped||qualityProbe)||
    params.has("p0a_probe")&&(!qualityProbe||requestedId===null||countryScoped)||
    requestedId!==null&&(!HEX.test(requestedId)||question===null)||
    question!==null&&(question.length<3||question.length>180||/[<>]/u.test(question)))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  const limit=Number(params.get("limit")??"40");
- if(!Number.isSafeInteger(limit)||limit<1||limit>100||question!==null&&params.has("archived"))
+ if(!Number.isSafeInteger(limit)||limit<1||limit>100||
+    archiveKeyset&&limit>25||question!==null&&params.has("archived"))
   return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
  let dbReadStarted=false,dbReadSucceeded=false;
  try{
@@ -389,7 +401,16 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   const results=countryQuery?
     await countryQuery.all():
     question===null?
-    await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ?").bind(cutoff,limit).all():
+    (archiveKeyset?
+      // Internal admin-only fallback for Cloudflare REST /query HTTP 400/7500.
+      // Indexed keyset; same 72h cap, no public/raw/partner route.
+      await env.DB.prepare(
+        "SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news "+
+        "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+        "AND (first_ingested_at>? OR (first_ingested_at=? AND record_id>?)) "+
+        "ORDER BY first_ingested_at,record_id LIMIT ?"
+      ).bind(cutoff,archiveClock,archiveClock,archiveId,limit).all():
+      await env.DB.prepare("SELECT record_id,category,raw_sha256,raw_json FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL AND first_ingested_at>? ORDER BY first_ingested_at,record_id LIMIT ?").bind(cutoff,limit).all()):
     requestedId!==null?
       // Authorized exact-ID archived news can be retrieved from retained D1
       // beyond 72h. Never widen unarchived probes or broad category search.
