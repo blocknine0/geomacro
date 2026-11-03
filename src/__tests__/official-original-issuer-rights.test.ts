@@ -115,8 +115,10 @@ describe("universal facts-only derived commercial candidate policy",()=>{
    expect(x.originalSourceSignalOnly).toBe(true);
    expect(x.independentFactsVerified).toBe(true);
    expect(x.allowMathematicalScore).toBe(true);
-   expect(x.commercialEligible).toBe(true);
-   expect(x.status).toBe("DERIVED_FACTS_COMMERCIAL_CANDIDATE");
+   // Without two independently pinned Ed25519 signatures, boolean scoring
+   // assertions and SHA-shaped placeholders NEVER authorize commercial use.
+   expect(x.commercialEligible).toBe(false);
+   expect(x.status).toBe("PENDING_INDEPENDENT_SCORE_AUDIT");
    expect(x.paidDeliveryAuthorized).toBe(false);
    expect(x.signedGroAuthorized).toBe(false);
  });
@@ -153,7 +155,7 @@ describe("universal facts-only derived commercial candidate policy",()=>{
      ],
    });
    expect(x.allowMathematicalScore).toBe(true);
-   expect(x.commercialEligible).toBe(true);
+   expect(x.commercialEligible).toBe(false);
    expect(x.paidDeliveryAuthorized).toBe(false);
  });
  it("invalid evidence provenance, country and event identity cannot manufacture a verified score",()=>{
