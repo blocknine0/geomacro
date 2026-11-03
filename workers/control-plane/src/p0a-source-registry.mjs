@@ -84,7 +84,7 @@ export async function upsertP0aSourceRegistry(env,body){
     'rights_tier=excluded.rights_tier,polling_interval_sec=excluded.polling_interval_sec,'+
     'rate_limit_backoff=excluded.rate_limit_backoff,fallback_endpoint=excluded.fallback_endpoint,'+
     // A config refresh must never reset the production ETag / Last-Modified cursor.
-    'updated_at=strftime("%Y-%m-%dT%H:%M:%fZ","now")')
+    'updated_at=CURRENT_TIMESTAMP')
     .bind(s.source_id,s.canonical_endpoint,s.parser_type,s.intended_category,
      s.country_iso3,s.rights_tier,s.polling_interval_sec,JSON.stringify(s.rate_limit_backoff),
      s.fallback_endpoint,s.last_cursor));
