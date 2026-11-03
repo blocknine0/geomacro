@@ -134,6 +134,8 @@ console.log(JSON.stringify({
  source_origins_selected:originalRows.length,
  state:b2FirstStatus,
  archived_after_d1_readback:b2ArchiveAck?.archived??0,
+ deferred_archive_ack_count:b2ArchiveAck?.deferred??0,
+ all_selected_originals_archived:b2ArchiveAck?.all_selected_originals_archived===true,
  b2_put_two_full_sha_gets_verified:b2First?.storage_confirmed===true,
  canonical_d1_archive_ack_verified:b2ArchiveAck?.d1_ack_verified===true,
  retained_d1_only_on_b2_failure:true,
@@ -151,7 +153,9 @@ console.log(JSON.stringify({schema:"geomacro.phase2h.registered-source-originals
  verified_originals:phase2hD1.verified_originals,
  excluded_invalid:phase2h.discarded_invalid,
  canonical_d1_readback_verified:phase2hD1.readback_verified,
- b2_verified:b2ArchiveAck?.d1_ack_verified===true,rights_verified:false,payments:0}));
+ b2_verified:b2ArchiveAck?.all_selected_originals_archived===true,
+ b2_archived_original_count:b2ArchiveAck?.archived??0,
+ rights_verified:false,payments:0}));
 const info=collected.summary;
 if(collected.checks.length===0)throw Error("REUSABLE_SOURCE_NEWS_NO_ATTEMPTS");
 const packing=prepareReusableNewsBatches({

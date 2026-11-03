@@ -63,7 +63,7 @@ test("genuine gzip object has two GET/SHA proofs before D1 write/ack",async()=>{
  assert.equal(receipt.paid_eligible,false);
  let calls=0;
  const ack=await acknowledgeB2FirstD1({
-  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0},
+  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,verified_originals:1},
   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
   token:"a".repeat(64),
   fetchImpl:async(url,opts)=>{
@@ -115,15 +115,68 @@ test("historic immutable duplicates do not get bogus B2 archived metadata",async
  assert.equal(result.status,"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY");
 });
 test("false Worker ACK cannot be counted as B2-first D1 parity",async()=>{
- await assert.rejects(
-  acknowledgeB2FirstD1({
-   receipt:{storage_confirmed:true,rows,record_count:1,object_sha256:"e".repeat(64)},
-   postResult:{stored:1,duplicate:0,rejected_conflicts:0},
-   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
-   token:"a".repeat(64),
-   fetchImpl:async()=>Response.json({ok:true,archived:1,
-    independent_d1_archive_ack_verified:false,rights_verified:false,payments:0}),
-  }),/PHASE2H_B2_FIRST_D1_ARCHIVE_ACK_NOT_VERIFIED/u);
+ const result=await acknowledgeB2FirstD1({
+  receipt:{storage_confirmed:true,rows,record_count:1,object_sha256:"e".repeat(64)},
+  postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,verified_originals:1},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async()=>Response.json({ok:true,archived:1,
+   independent_d1_archive_ack_verified:false,rights_verified:false,payments:0}),
+ });
+ assert.equal(result.archived,0);
+ assert.equal(result.deferred,1);
+ assert.equal(result.d1_ack_verified,false);
+ assert.equal(result.all_selected_originals_archived,false);
+});
+test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original batch",async()=>{
+ const r2=buildPhase2hPrivateRawRecords([{
+  category:"geopolitics",
+  title:"Government announces new regional border security measures",
+  sourceId:"government",articleUrl:"https://government.example.org/border",
+  publishedAt:"2026-11-03T19:35:00.000Z",credit:null,
+ }],{now,derive:()=>[]}).records[0];
+ const selected=[...rows,r2],calls=[];
+ const receipt={storage_confirmed:true,rows:selected,record_count:2,
+  object_sha256:"e".repeat(64)};
+ const result=await acknowledgeB2FirstD1({
+  receipt,postResult:{stored:1,duplicate:1,rejected_conflicts:0,
+   verified_originals:2,readback_verified:true},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async(url,opts)=>{
+   const body=JSON.parse(opts.body);
+   assert.equal(body.items.length,1);
+   const id=body.items[0].record_id;
+   calls.push(id);
+   return id===r2.record_id?
+    Response.json({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},{status:503}):
+    Response.json({ok:true,archived:1,independent_d1_archive_ack_verified:true,
+     rights_verified:false,payments:0});
+  },
+ });
+ assert.deepEqual(calls,selected.map(r=>r.record_id));
+ assert.equal(result.archived,1);
+ assert.equal(result.deferred,1);
+ assert.equal(result.status,"B2_FIRST_PARTIAL_D1_ACK_VERIFIED");
+ assert.equal(result.d1_ack_verified,true);
+ assert.equal(result.all_selected_originals_archived,false);
+});
+
+
+test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{
+ let puts=0;
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED");},
+  b2Factory:()=>{puts++;throw Error("UNREACHABLE");},
+ }),/PHASE2H_B2_FIRST_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ assert.equal(puts,0);
+});
+test("untrusted raw lifecycle error strings can never disclose provider details",async()=>{
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
+ }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
 });
 
 test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{
