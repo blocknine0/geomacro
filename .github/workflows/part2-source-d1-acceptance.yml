@@ -8,6 +8,9 @@ on:
       - "scripts/lib/reliefweb-private-d1.mjs"
       - "scripts/lib/official-native-rss.mjs"
       - "scripts/lib/official-original-issuer-rights.mjs"
+      - "src/lib/on-demand-evidence-qualification.server.ts"
+      - "src/lib/on-demand-evidence-qualification.server.test.ts"
+      - "docs/ops/UNIVERSAL_FACTS_ONLY_COMMERCIAL_REUSE_2026_11_03.md"
       - "scripts/run-rss-live-cycle.mjs"
       - "workers/telegram-flash/worker.py"
       - "scripts/ops/test-rss-native-clock.py"
@@ -60,6 +63,7 @@ jobs:
         run: |
           bun x vitest run \
             src/__tests__/official-original-issuer-rights.test.ts \
+            src/lib/on-demand-evidence-qualification.server.test.ts \
             src/__tests__/approved-reliefweb-live-observer.test.ts \
             src/__tests__/rss-direct-postgres-transport-static.test.ts \
             src/__tests__/p0-legacy-supabase-reachable-jobs-retired.test.ts \

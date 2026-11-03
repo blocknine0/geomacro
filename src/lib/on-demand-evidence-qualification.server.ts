@@ -9,7 +9,7 @@ import {
 } from "./on-demand-global-discovery.server";
 import { buildPrivateOnDemandMacroDrivers } from "./on-demand-private-macro-drivers.server";
 import type { PrivateOnDemandMacroRightsProof } from "./on-demand-private-macro-rights.server";
-import { issuerRightsDisposition } from "../../scripts/lib/official-original-issuer-rights.mjs";
+import { issuerRightsDisposition,resolveDerivedCommercialEligibility } from "../../scripts/lib/official-original-issuer-rights.mjs";
 
 /**
  * Phase 2, Step 3: the ONLY bridge from genuine private original retrieval
@@ -44,6 +44,7 @@ export type QualifiedPrivateEvidence = Readonly<{
     independent_same_event_verified: false;
     conflicting_facts_disposition: "NOT_VERIFIED";
     rights_status: string;
+    derived_facts_commercial_status: string;
     article_commercial_rights_verified: false;
     attributable_publisher_identity: string;
     original_url_private: string;
@@ -211,7 +212,19 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
       sha(encode(source.item_scoped_summary_private??"")),
       originalAt,source.domain,search.country_iso3,search.mineral??null,
     ]));
-    const rights=issuerRightsDisposition({sourceId:REVIEW_RIGHTS_ID[source.publisher_family]});
+    const rightsId=REVIEW_RIGHTS_ID[source.publisher_family];
+    const rights=issuerRightsDisposition({sourceId:rightsId});
+    // Publisher claims in this private intake are NOT independent facts,
+    // nor evidence of permitted source processing or an audited risk score.
+    // Universal facts-only derived review stays explicitly unapproved.
+    const derivedRights=resolveDerivedCommercialEligibility({
+      sourceId:rightsId??source.publisher_family,
+      sourceAccessAuthorized:source.first_party_article_url_verified===true,
+      sourceTermsAllowThisProcessing:false,
+      independentEvidence:[],
+      publisherExpressionReused:false,rawArticleTextStored:false,
+      originalArticleRedistributed:false,attributionRecorded:false,
+    });
     const record:QualifiedPrivateEvidence["originals"][number]={
       category:source.domain,source_family:source.publisher_family,
       publisher_claim:source.article_title,
@@ -230,6 +243,7 @@ export function qualifyRetrievedOnDemandEvidence(input: Readonly<{
       independent_same_event_verified:false,
       conflicting_facts_disposition:"NOT_VERIFIED",
       rights_status:rights.status,
+      derived_facts_commercial_status:derivedRights.status,
       article_commercial_rights_verified:false,
       attributable_publisher_identity:source.publisher_family,
       original_url_private:source.article_url,

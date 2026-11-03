@@ -66,6 +66,7 @@ describe("Phase 2 private qualification bridge - synthetic regression fixtures, 
     expect(q.originals[0].evidence_kind).toBe("HISTORICAL_PUBLISHER_ANNOUNCEMENT");
     expect(q.originals[0].original_clock_basis).toBe("VERIFIED_ORIGINAL_PAGE");
     expect(q.originals[0].article_commercial_rights_verified).toBe(false);
+    expect(q.originals[0].derived_facts_commercial_status).toBe("HOLD_SOURCE_ACCESS_OR_EXPRESSION");
     expect(q.qualified_for_same_event_signing).toBe(false);
     expect(q.commercial_delivery_eligible).toBe(false);
     expect(q.evidence_fingerprint_sha256).toMatch(/^[a-f0-9]{64}$/);
