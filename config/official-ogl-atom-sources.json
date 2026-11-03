@@ -1,0 +1,95 @@
+{
+  "schema": "geomacro.official-free-atom-license-registry.v1",
+  "policy": "Official UK government Crown-copyright feeds normally carry OGL v3 reuse rights; individual third-party credits and source page exceptions must be checked. The license does NOT authorize Telegram-origin collection.",
+  "access_method": "first-party HTTPS Atom, no Telegram client/API",
+  "sources": [
+    {
+      "source_id": "uk_fcdo_ogl_official_atom",
+      "category": "GEOPOLITICS",
+      "publisher": "UK Foreign, Commonwealth & Development Office",
+      "publisher_page": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office",
+      "feed_url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_hmt_ogl_official_atom",
+      "category": "MACRO",
+      "publisher": "HM Treasury",
+      "publisher_page": "https://www.gov.uk/government/organisations/hm-treasury",
+      "feed_url": "https://www.gov.uk/government/organisations/hm-treasury.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_dbt_ogl_minerals_atom",
+      "category": "CRITICAL_MINERALS",
+      "publisher": "UK Department for Business and Trade",
+      "publisher_page": "https://www.gov.uk/government/organisations/department-for-business-and-trade",
+      "feed_url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_desnz_ogl_minerals_atom",
+      "category": "CRITICAL_MINERALS",
+      "publisher": "UK Department for Energy Security and Net Zero",
+      "publisher_page": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero",
+      "feed_url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    }
+  ]
+}
