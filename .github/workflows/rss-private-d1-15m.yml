@@ -2,6 +2,12 @@ name: RSS canonical private D1 originals every 15 minutes
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/rss-private-d1-15m.yml"
+      - "scripts/ops/plan-rss-category-lanes.py"
+      - "scripts/ops/test-rss-category-lanes.py"
+      - "workers/telegram-flash/worker.py"
   push:
     branches: [main]
     paths:
@@ -10,6 +16,8 @@ on:
       - "scripts/lib/private-unscored-source-d1.mjs"
       - "workers/telegram-flash/worker.py"
       - "scripts/ops/test-rss-native-clock.py"
+      - "scripts/ops/plan-rss-category-lanes.py"
+      - "scripts/ops/test-rss-category-lanes.py"
   schedule:
     - cron: "11,26,41,56 * * * *"
 
@@ -17,11 +25,31 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-private-rss-d1
+  group: geomacro-private-rss-d1-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'production' }}
   cancel-in-progress: false
 
 jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Checkout exact source without secrets
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Python 3.12
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Verify every configured RSS source maps to exactly one category
+        run: python -m unittest discover -s scripts/ops -p 'test-rss-category-lanes.py' -v
+
   ingest:
+    needs: contract
+    strategy:
+      fail-fast: false
+      matrix:
+        category: [GEOPOLITICS, MACRO, CRITICAL_MINERALS]
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -48,6 +76,13 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
+      - name: Auto-partition authoritative RSS feed registry for this category
+        env:
+          RSS_CATEGORY: ${{ matrix.category }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/ops/plan-rss-category-lanes.py --category "$RSS_CATEGORY" --github-env "$GITHUB_ENV"
       - name: Install RSS worker dependencies
         run: python -m pip install --disable-pip-version-check -r workers/telegram-flash/requirements.txt
       - name: Verify private D1 adapters and regression tests
@@ -63,7 +98,7 @@ jobs:
         run: |
           set -euo pipefail
           test "${#GEOMACRO_COMMERCE_LEDGER_TOKEN}" -ge 32 || { echo "::error::PRIVATE_D1_AUTH_REQUIRED"; exit 2; }
-      - name: Fetch original RSS, deduplicate and verify D1 private readback
+      - name: Fetch independently, deduplicate and verify this category in D1
         shell: bash
         run: |
           set -euo pipefail
