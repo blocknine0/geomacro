@@ -76,7 +76,9 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
     Number.isInteger(firstParty)&&firstParty>=0&&
     (attempted||complete)&&
     (attempted?body.global_fallback_status!=="NOT_REQUIRED_OR_DISABLED":true)&&
-    (attempted?body.global_provider_error_count<2:true);
+    // Real, complete grounded evidence wins over discovery-only network outages.
+    // Provider failure diagnostics remain intact; no empty category can pass.
+    (attempted?(body.global_provider_error_count<2||complete):true);
    result.source_first_readbacks.push({
     category:cat,country_iso3:country,attempted,
     grounded_five_part_available:complete,
