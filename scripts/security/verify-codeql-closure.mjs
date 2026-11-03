@@ -45,11 +45,8 @@ async function githubJson(fetchImpl, path, token) {
   catch {throw new Error("CODEQL_SECURITY_API_JSON_INVALID");}
 }
 function validAnalysis(x, sha) {
-  return x && x.commit_sha === sha &&
-    x.ref === CODEQL_REF && x.tool?.name === "CodeQL" &&
-    x.error === "" || Boolean(x && x.commit_sha === sha &&
-      x.ref === CODEQL_REF && x.tool?.name === "CodeQL" &&
-      (x.error === null || x.error === undefined));
+  return x?.commit_sha === sha && x.ref === CODEQL_REF &&
+    x.tool?.name === "CodeQL" && !x.error;
 }
 export async function verifyCodeqlClosure({
   fetchImpl=fetch,token,sha,repo=CODEQL_REPOSITORY,
