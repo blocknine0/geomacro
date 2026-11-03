@@ -1,0 +1,84 @@
+name: GeoMacro 585 Country Category D1 Original Coverage Census
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/d1-585-original-coverage-census.yml"
+      - "scripts/ops/audit-production-d1-585-originals.py"
+  schedule:
+    - cron: "17 0,6,12,18 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-585-country-original-coverage-audit
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Validate fail-closed 195 x 3 count-only production census
+        run: python scripts/ops/audit-production-d1-585-originals.py --self-test
+
+  production-read-only-census:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Require read-only D1 credentials
+        run: |
+          set -euo pipefail
+          test "${#CLOUDFLARE_API_TOKEN}" -ge 20 || { echo "::error::CLOUDFLARE_TOKEN_MISSING"; exit 2; }
+          test "${#CLOUDFLARE_ACCOUNT_ID}" -eq 32 || { echo "::error::CLOUDFLARE_ACCOUNT_MISSING"; exit 2; }
+      - name: Resolve exact production D1 binding without creating or migrating
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@4.136.3" d1 list --json > /tmp/geomacro-d1-databases.json
+          node --input-type=module <<'JAVASCRIPT'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const rows=JSON.parse(readFileSync('/tmp/geomacro-d1-databases.json','utf8'));
+          const id=rows.filter(x=>x.name==='geomacro-control-plane');
+          if(id.length!==1||! /^[0-9a-f-]{32,36}$/i.test(String(id[0].uuid??'')))
+            throw Error('CANONICAL_PRODUCTION_D1_UNAVAILABLE');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          writeFileSync('/tmp/wrangler-coverage-audit.json',JSON.stringify({
+            name:'geomacro-coverage-audit-read-only',account_id:account,
+            d1_databases:[{binding:'DB',database_name:'geomacro-control-plane',database_id:id[0].uuid}],
+          }));
+          JAVASCRIPT
+      - name: Read one 72-hour country-category aggregated D1 query
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL="SELECT risk_country_iso3,category,COUNT(*) AS original_count,MAX(original_published_at) AS last_published_at FROM phase2h_private_raw_news WHERE risk_country_iso3 IS NOT NULL AND risk_country_iso3 != 'ZZZ' AND original_published_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now','-72 hours') GROUP BY risk_country_iso3,category ORDER BY risk_country_iso3,category;"
+          npx -y "wrangler@4.136.3" d1 execute DB --remote --config /tmp/wrangler-coverage-audit.json --json --command "$SQL" > /tmp/geomacro-d1-585-counts.json
+      - name: Print count-only proof and honest 585-cell gaps
+        run: |
+          set -euo pipefail
+          python scripts/ops/audit-production-d1-585-originals.py --result-json /tmp/geomacro-d1-585-counts.json
