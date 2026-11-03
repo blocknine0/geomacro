@@ -4,7 +4,7 @@
  * Every attempt re-observes native evidence; nothing is called durably queued.
  */
 export const REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT=3;
-export const REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP=20;
+export const REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP=150;
 export const REGISTERED_SOURCE_SLOT_MINUTES=15;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const MS=60_000;
@@ -32,7 +32,7 @@ export function planRegisteredPrivateOriginals(records,{now=new Date(),maxPerSlo
     a.original.original_published_at)||a.record_id.localeCompare(b.record_id)));
  const cycle=Math.floor(now.getTime()/(REGISTERED_SOURCE_SLOT_MINUTES*MS));
  // Advance by a full fair-share window, not one item per cycle. With
- // a 20-item admission cap a one-item rotation would re-submit almost all
+ // a 150-item admission cap a one-item rotation would re-submit almost all
  // originals on every 15-minute tick and waste D1 quota on duplicates.
  const activeLaneCount=lanes.filter(rows=>rows.length>0).length;
  const fairStride=Math.ceil(maxPerSlot/Math.max(1,activeLaneCount));
