@@ -16,6 +16,9 @@ on:
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
       - "scripts/lib/private-osint-national-primary-scope.mjs"
       - "scripts/lib/phase2h-original-metadata.mjs"
+      - "scripts/lib/p0b-event-grounded-projection.mjs"
+      - "scripts/lib/private-osint-gdelt-global.mjs"
+      - "scripts/tests/private-osint-gdelt-static.test.mjs"
       - "scripts/ops/phase2h-b2-first-private-raw.mjs"
       - "scripts/tests/phase2h-b2-first-private-raw.test.mjs"
       - "scripts/tests/phase2h-original-metadata.test.mjs"
@@ -73,6 +76,9 @@ jobs:
           node --check scripts/ops/phase2h-b2-first-private-raw.mjs
           node --test scripts/tests/phase2h-b2-first-private-raw.test.mjs
           node --test scripts/tests/phase2h-original-metadata.test.mjs
+          node --test scripts/tests/private-osint-gdelt-static.test.mjs
+          node --test scripts/tests/p0a-evidence-quality.test.mjs
+          node --test scripts/tests/p0b-live-global-search.test.mjs
           node --check scripts/ops/collect-registered-source-health-only.mjs
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/country-news-mentions-195.mjs
