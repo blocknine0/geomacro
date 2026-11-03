@@ -12,6 +12,10 @@ on:
       - 'src/workers/ingest-consumer.ts'
       - 'src/workers/backlog-drain-cron.ts'
       - 'tests/p0_b_admission_test.ts'
+      - 'workers/control-plane/src/p0b-ingestion-status.mjs'
+      - 'scripts/ops/seed-p0b-pinned-registry.mjs'
+      - 'scripts/tests/p0b-production-readiness.test.mjs'
+      - '.github/workflows/deploy-d1-control-plane.yml'
       - 'package.json'
       - '.github/workflows/p0b-admission-tests.yml'
   workflow_dispatch:
