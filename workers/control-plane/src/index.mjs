@@ -1,4 +1,5 @@
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
 import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from './corridor-seven-day-cache.mjs';
 import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
@@ -1406,6 +1407,8 @@ export default {
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if(url.pathname==="/api/webhooks/telegram-flash")
+      return relayTelegramFlashWebhook(request,env);
     // Independent customer authentication boundary; no inherited operator auth.
     if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
