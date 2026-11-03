@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T13:20:02.884Z",
+  "checked_at": "2026-11-03T13:54:59.162Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 298,
+  "item_count": 300,
   "counts": {
     "geopolitics": 132,
-    "macro": 125,
+    "macro": 127,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "da18cfa9a1105de9c976da4d7646254f97b3c8dcd7fc90fba8dd98ff1f278390",
+  "source_native_ids_sha256": "409535241c79466d86bea19b1c529c6fea86b4c22c318070e06a39555ce6dfa8",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-85cc884a",
+      "category": "macro",
+      "title": "Geomacro finds CVR Energy launched $750M stock offering to fund refinery acquisition",
+      "what_changed": "A monitored source feed reports: CVR Energy launched $750M stock offering to fund refinery acquisition. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:48:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a39a4211",
+      "category": "macro",
+      "title": "Geomacro finds CAG reported reveal Local Government’s loss of 5.34bn/- in revenue",
+      "what_changed": "A monitored source feed reports: CAG reported reveal Local Government’s loss of 5.34bn/- in revenue. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:44:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-7b412e50",
       "category": "macro",

@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T13:20:02.884Z",
+  "checked_at": "2026-11-03T13:54:59.162Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-85cc884a",
+      "category": "macro",
+      "title": "Geomacro finds CVR Energy launched $750M stock offering to fund refinery acquisition",
+      "what_changed": "A monitored source feed reports: CVR Energy launched $750M stock offering to fund refinery acquisition. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:48:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a39a4211",
+      "category": "macro",
+      "title": "Geomacro finds CAG reported reveal Local Government’s loss of 5.34bn/- in revenue",
+      "what_changed": "A monitored source feed reports: CAG reported reveal Local Government’s loss of 5.34bn/- in revenue. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:44:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: dailynews.co.tz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-7b412e50",
       "category": "macro",
@@ -4679,44 +4717,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1ceda984",
-      "category": "macro",
-      "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
-      "what_changed": "A monitored source feed reports: Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T06:17:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-536b75c1",
-      "category": "macro",
-      "title": "Geomacro finds Shipping Strikes In Hormuz left Both Sides With Economic Pain",
-      "what_changed": "A monitored source feed reports: Shipping Strikes In Hormuz left Both Sides With Economic Pain. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T03:45:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
