@@ -62,7 +62,7 @@ const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{
 // discovery candidates. Website/PREDGE production objects remain unchanged.
 // Never use unverified upstream metadata as a clock or paid rights grant.
 const originalById=new Map(phase2hOriginals.map(c=>[
- createHash("sha256").update(c.category+"\\n"+c.articleUrl+"\\n"+c.publishedAt)
+ createHash("sha256").update(c.category+"\n"+c.articleUrl+"\n"+c.publishedAt)
   .digest("hex"),c,
 ]));
 const selectedOriginals=phase2hQuota.records.map(r=>originalById.get(r.record_id));
@@ -73,13 +73,16 @@ const enhanced=buildPhase2hPrivateRawRecords(metadata.candidates,{
  now:new Date(),derive:deriveStatelessSignals,
 });
 const enhancedById=new Map(enhanced.records.map(r=>[r.record_id,r]));
+const evidenceReady=enhanced.records.filter(r=>
+ typeof r.analysis?.what_happened?.text==="string"&&
+ typeof r.analysis?.why_it_matters?.text==="string").length;
 if(enhancedById.size!==phase2hQuota.records.length||
    phase2hQuota.records.some(r=>!enhancedById.has(r.record_id)))
  throw Error("PHASE2H_METADATA_ORIGINAL_IDENTITY_DIVERGED");
 console.log(JSON.stringify({
  schema:metadata.schema,
  selected_originals:phase2hQuota.records.length,
- metadata_summaries_observed:metadata.metadata_summaries_observed,
+ metadata_summaries_observed:metadata.metadata_summaries_observed,\n derived_five_part_fields_filled:evidenceReady,\n independently_verified_five_part_count:0,
  missing_or_invalid:metadata.missing_or_invalid,
  denied_or_rate_limited:metadata.denied_or_rate_limited,
  not_first_party:metadata.not_first_party,
