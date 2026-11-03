@@ -34,7 +34,8 @@ def get_sources_and_gate():
 class OpenLicensedOfficialFeedTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.feeds,cls.match=get_sources_and_gate()
+        cls.feeds,gate=get_sources_and_gate()
+        cls.match=staticmethod(gate)
         cls.by_id={x["source_id"]:x for x in cls.feeds}
         cls.policy=json.loads(EVIDENCE.read_text(encoding="utf-8"))
     def test_24_feeds_and_no_registry_duplicate(self):
