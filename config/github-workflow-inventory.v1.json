@@ -350,6 +350,7 @@
     "tameion-agent-readiness.yml",
     "telegram-b2-d1-consumer.yml",
     "telegram-discovery-roots-audit.yml",
+    "telegram-flash-relay-ci.yml",
     "telegram-manual-research-contract.yml",
     "telegram-owner-original-news-reader.yml",
     "telegram-signals-readonly-health.yml",
