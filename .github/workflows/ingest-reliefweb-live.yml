@@ -2,6 +2,12 @@ name: Ingest ReliefWeb live metadata into canonical private D1
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ingest-reliefweb-live.yml"
+      - "scripts/ingest-reliefweb-live.mjs"
+      - "scripts/lib/reliefweb-private-d1.mjs"
   schedule:
     - cron: "3,18,33,48 * * * *"
 
