@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {p0bFirstPartyFeedNews} from "../lib/p0b-first-party-rss.mjs";
+import {p0bFirstPartyFeedNews,xmlValue} from "../lib/p0b-first-party-rss.mjs";
 import {p0bGlobalNewsFallback} from "../lib/p0b-live-global-search.mjs";
 const now=Date.parse("2026-10-30T09:00:00.000Z");
 const xml='<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'+
@@ -141,4 +141,19 @@ test("RSS XML tag parsing accepts real whitespace/CDATA without escaped literal 
   category:"geopolitics",question:"Ukraine sanctions",now,fetchImpl:fake});
  assert.equal(result.items.length,1);
  assert.equal(result.items[0].paid_eligible,false);
+});
+
+test("RSS XML metadata decodes only one layer of escaped entities",()=>{
+ assert.equal(xmlValue("<title>Value &amp;lt;script&amp;gt;</title>","title"),
+  "Value &lt;script&gt;");
+ assert.equal(xmlValue("<title>Value &lt;script&gt;</title>","title"),
+  "Value <script>");
+ assert.equal(xmlValue("<title>A &amp;#39; nested and &quot;quoted&quot;</title>","title"),
+  "A &#39; nested and \"quoted\"");
+ assert.equal(xmlValue("<title>One &amp;amp; two &amp; three</title>","title"),
+  "One &amp; two & three");
+ assert.equal(xmlValue("<title><![CDATA[A &amp;lt;script&amp;gt;]]></title>","title"),
+  "A &lt;script&gt;");
+ assert.equal(xmlValue("<link>https://news.un.org/en/story/2026/10/1234567</link>","link"),
+  "https://news.un.org/en/story/2026/10/1234567");
 });
