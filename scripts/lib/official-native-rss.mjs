@@ -1,4 +1,5 @@
 import { fetchOriginalAlternate } from "./official-native-alternates.mjs";
+import {normalizeNativeFeedXml,verifiedRdfItemClock} from "./native-feed-xml-normalizer.mjs";
 import {validatePrivatePulseRefs,privateOriginalMatchesPulse,canonicalPrivateOriginalArticleSha,assertPrivatePulseArticleContext} from "./private-novel-pulse-match.mjs";
 import {createD1ControlPlaneStateClient} from "./d1-control-plane-state.mjs";
 import {selectPrivateNovelPulseRefs} from "./private-novel-pulse-match.mjs";
@@ -35,7 +36,7 @@ export const OFFICIAL_NATIVE_FEEDS = Object.freeze({
 const MAX_RESPONSE_BYTES = 384 * 1024;
 const MAX_ITEM_COUNT = 100;
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-const VALID_TYPES = /^(?:application\/(?:rss\+xml|atom\+xml|xml)|text\/xml)(?:;|$)/iu;
+const VALID_TYPES = /^(?:application\/(?:rss\+xml|atom\+xml|rdf\+xml|xml)|text\/xml)(?:;|$)/iu;
 
 function unescapeXml(value) {
   return String(value ?? "").replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu, "$1")
@@ -68,8 +69,8 @@ function safeOriginalUrl(raw, host) {
 // A SOURCE-NATIVE per-item <pubDate> is essential.
 export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs = MAX_AGE_MS, diagnostics = null, broadPrivateIntake = false) {
   const config = OFFICIAL_NATIVE_FEEDS[category];
-  if (!config || typeof xml !== "string" || xml.length > MAX_RESPONSE_BYTES ||
-      !xml.includes("<rss") || /<!DOCTYPE|<!ENTITY/iu.test(xml)) {
+  const normalized=normalizeNativeFeedXml(xml,MAX_RESPONSE_BYTES);
+  if (!config || !normalized) {
     throw new Error("OFFICIAL_NATIVE_RSS_DOCUMENT_INVALID");
   }
   const asOfMs = now.getTime();
@@ -77,7 +78,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
       maxAgeMs < 60_000 || maxAgeMs > MAX_AGE_MS) {
     throw new Error("OFFICIAL_NATIVE_RSS_CLOCK_INVALID");
   }
-  const items = [...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)].slice(0, MAX_ITEM_COUNT);
+  const items = [...normalized.matchAll(/<(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:item|entry)>/giu)].slice(0, MAX_ITEM_COUNT);
   const dedupe = new Set();
   const rows = [];
   const stats = {
@@ -95,7 +96,8 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     // same-ID first-party permalink GUID names the true article identity.
     // Reuse the ORIGINAL pulse's strict, already-reviewed resolver so URL
     // SHA and source-native timestamp match the separately readback D1 row.
-    const rawLink=field(block,"link");
+    const rawLink=field(block,"link")||
+      block.match(/<link\\b[^>]*\\bhref\\s*=\\s*["']([^"']+)["'][^>]*\\/?\\s*>/iu)?.[1]||"";
     const canonical=category==="geopolitics"
       ?officialOriginalRssArticleUrl(block,{id:"un_news_security_original_rss_review"})
       :null;
@@ -110,7 +112,11 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     const link=category==="geopolitics"
       ?(canonical??(isUnFeedRouter?null:rawLink)):rawLink;
     const url = safeOriginalUrl(link, config.host);
-    const original = field(block, "pubDate");
+    const rssDate=field(block,"pubDate"),atomPublished=field(block,"published");
+    const rdfDate=verifiedRdfItemClock(normalized,block);
+    const original=rssDate||atomPublished||rdfDate;
+    const nativeBasis=rssDate?"publisher_rss_item_pubDate":
+      atomPublished?"publisher_atom_entry_published":"publisher_rdf_item_dc_date";
     const at = officialItemNativePublicationMs(original);
     if (Number.isFinite(at)) stats.item_native_pubdate_count += 1;
     // Publication dates later than the evaluation clock are not evidence of
@@ -130,7 +136,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
       source: config.host, sourceDomain: config.host,
       discoveryProvider: "official_native_rss",
       nativePublishedAtVerified: true,
-      nativeTimeEvidence: "publisher_rss_item_pubDate",
+      nativeTimeEvidence: nativeBasis,
       privateOnly: true,
       rightsVerified: false,
       commercialEligible: false,
