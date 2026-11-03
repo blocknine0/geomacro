@@ -65,14 +65,29 @@ function safeHeadline(raw) {
 
 export function rssSpoolPrivateCandidates(payloads,now=new Date()) {
   if(!Array.isArray(payloads))throw Error("RSS_PRIVATE_D1_PAYLOADS_INVALID");
-  const result=[],diagnostics={seen:payloads.length,accepted:0,invalid:0,regex_only:0};
+  const diagnostics={seen:payloads.length,accepted:0,invalid:0,regex_only:0,
+    missing_category:0,missing_native_publication:0,invalid_or_stale_publication:0,
+    invalid_headline:0,invalid_source_url:0,invalid_source_id:0};
+  const result=[];
   for(const row of payloads){
     const topic=rssSourceCategory(row),publishedAt=nativeSourceClock(row?.published_at,now);
     const title=safeHeadline(row?.headline);
     const articleUrl=originalHttps(row?.source_url);
     const sourceId=String(row?.source_id??"").trim();
-    if(!topic||!publishedAt||!title||!articleUrl||!sourceId||
-      sourceId.length>110){diagnostics.invalid++;continue;}
+    const invalidSourceId=!sourceId||sourceId.length>110;
+    if(!topic||!publishedAt||!title||!articleUrl||invalidSourceId){
+      diagnostics.invalid++;
+      if(!topic)diagnostics.missing_category++;
+      if(!publishedAt){
+        if(typeof row?.published_at!=="string"||!row.published_at.trim())
+          diagnostics.missing_native_publication++;
+        else diagnostics.invalid_or_stale_publication++;
+      }
+      if(!title)diagnostics.invalid_headline++;
+      if(!articleUrl)diagnostics.invalid_source_url++;
+      if(invalidSourceId)diagnostics.invalid_source_id++;
+      continue;
+    }
     if(topic.basis==="title_regex_unscored")diagnostics.regex_only++;
     result.push({category:topic.category,sourceId,title,articleUrl,publishedAt,credit:null});
   }
