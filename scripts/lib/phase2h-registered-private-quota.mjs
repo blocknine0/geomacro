@@ -31,7 +31,13 @@ export function planRegisteredPrivateOriginals(records,{now=new Date(),maxPerSlo
   .sort((a,b)=>b.original.original_published_at.localeCompare(
     a.original.original_published_at)||a.record_id.localeCompare(b.record_id)));
  const cycle=Math.floor(now.getTime()/(REGISTERED_SOURCE_SLOT_MINUTES*MS));
- const counts=[0,0,0],offsets=lanes.map(rows=>rows.length?cycle%rows.length:0);
+ // Advance by a full fair-share window, not one item per cycle. With
+ // a 20-item admission cap a one-item rotation would re-submit almost all
+ // originals on every 15-minute tick and waste D1 quota on duplicates.
+ const activeLaneCount=lanes.filter(rows=>rows.length>0).length;
+ const fairStride=Math.ceil(maxPerSlot/Math.max(1,activeLaneCount));
+ const counts=[0,0,0],offsets=lanes.map(rows=>
+  rows.length?(cycle*fairStride)%rows.length:0);
  const selected=[];
  while(selected.length<maxPerSlot){
   let advanced=false;
