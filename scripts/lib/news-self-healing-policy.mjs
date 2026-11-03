@@ -17,7 +17,7 @@ const outcome=(status,reason,workflow=null,counts=null)=>Object.freeze({
 });
 const parse=stamp=>Date.parse(typeof stamp==="string"?stamp:"");
 export function planNewsSelfHeal({
- archive=null,archiveAvailable=false,d1=null,d1Available=false,
+ archive=null,archiveAvailable=false,archiveRows=null,d1=null,d1Available=false,
  websiteOk=null,researchAllowed=false,now=Date.now(),
  classifyDisplay=()=>null,isArchiveEligible=()=>false
 }={}){
@@ -78,13 +78,26 @@ export function planNewsSelfHeal({
    !/^[a-f0-9]{64}$/u.test(String(coverage.eligible_ids_sha256??""))
  ))
   return outcome("BLOCKED","ARCHIVE_PREVIEW_INCOMPLETE");
+ // For a truncated public preview, the caller must independently read
+ // the immutable public month/category shards and cross-check the actual
+ // full 72-hour distinct corpus. An incomplete preview is never itself
+ // evidence of a missing record.
+ if(outside>0 && (!Array.isArray(archiveRows)||
+    archiveRows.length!==latest.signals.length+outside))
+  return outcome("BLOCKED","ARCHIVE_SHARD_READBACK_REQUIRED");
  const archived=new Map(),seen=new Set();
- for(const s of latest.signals){
+ for(const s of outside>0?archiveRows:latest.signals){
   if(!CATEGORIES.includes(s?.category)||typeof s.id!=="string"||
       seen.has(s.id)||!Number.isFinite(parse(s.published_at)))
    return outcome("BLOCKED","STATIC_ROW_INVALID");
   archived.set(s.id,s);seen.add(s.id);
  }
+ if(outside>0 && latest.signals.some(s=>{
+    const row=archived.get(s.id);
+    return !row||row.category!==s.category||
+      row.published_at!==s.published_at||row.status!==s.status||
+      row.date_precision!==s.date_precision;
+  }))return outcome("BLOCKED","ARCHIVE_SHARD_PREVIEW_MISMATCH");
  const firstSeen=new Map();
  for(let i=0;i<d1.signals.length;i++){
   const s=d1.signals[i],t=d1.first_ingest[i];
@@ -94,7 +107,7 @@ export function planNewsSelfHeal({
   firstSeen.set(s.id,parse(t.first_seen_at));
  }
  const counts={geopolitics:0,macro:0,rare_earth:0};
- let ambiguous=0,unverifiedOutsidePreview=0;
+ let ambiguous=0;
  for(const s of d1.signals){
   const pub=parse(s.published_at);
   if(!Number.isFinite(pub)||pub>now||pub<now-WINDOW)continue;
@@ -107,13 +120,6 @@ export function planNewsSelfHeal({
   }
   if(classifyDisplay(s)!==null||!isArchiveEligible(s,now,{allowHistorical:false}))
    continue;
-  // With independently counted non-preview OSINT in month shards, absence
-  // from latest.json cannot prove this unverified D1 row needs republishing.
-  // Retain a truthful held/needs-shard-proof state rather than loop-dispatching
-  // the hourly publisher on ordinary 250-row preview truncation.
-  if(outside>0 && s.status==="osint_feed_observed_unverified"){
-   unverifiedOutsidePreview++;continue;
-  }
   const first=firstSeen.get(s.id);
   if(!Number.isFinite(first)||first>now+60_000){
    ambiguous++;continue;
@@ -127,8 +133,6 @@ export function planNewsSelfHeal({
    HOURLY_WORKFLOW,counts);
  if(websiteOk===false)return outcome("BLOCKED","WEBSITE_RENDER_UNAVAILABLE");
  if(ambiguous>0)return outcome("BLOCKED","D1_FIRST_INGEST_UNVERIFIED");
- if(unverifiedOutsidePreview>0)
-  return outcome("HELD","SHARDED_OSINT_NOT_PROVEN_BY_BOUNDED_PREVIEW");
  return outcome("HEALTHY","STATIC_D1_SITE_CONSISTENT");
 }
 /** No endless runs: <=1 in-flight and no accepted dispatch in past 2h;
