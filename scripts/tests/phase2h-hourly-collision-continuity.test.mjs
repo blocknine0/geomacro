@@ -61,8 +61,8 @@ test("quota, network, auth, and other errors still fail closed",async()=>{
   }),new RegExp(err));
  }
 });
-test("all 21 originals split into bounded 20-item batches with exact positive proofs",async()=>{
- const many=Array.from({length:21},(_,i)=>({
+test("all 51 originals split into bounded 50-item batches with exact positive proofs",async()=>{
+ const many=Array.from({length:51},(_,i)=>({
   record_id:"id-"+i,category:["geopolitics","macro","rare_earth"][i%3]
  }));
  const lengths=[];
@@ -71,10 +71,10 @@ test("all 21 originals split into bounded 20-item batches with exact positive pr
    lengths.push(group.length);return positive(group);
   }
  });
- assert.deepEqual(lengths,[20,1]);
- assert.equal(receipt.stored,21);
+ assert.deepEqual(lengths,[50,1]);
+ assert.equal(receipt.stored,51);
  assert.equal(receipt.rejected_conflicts,0);
- assert.equal(receipt.verified_originals,21);
+ assert.equal(receipt.verified_originals,51);
 });
 test("attempt budget is bounded even under adversarial collisions",async()=>{
  await assert.rejects(postPhase2hCollisionIsolated({
