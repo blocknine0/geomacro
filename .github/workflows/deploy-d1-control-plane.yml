@@ -447,9 +447,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SQL_FILE="$RUNNER_TEMP/geomacro-p0b-seed-${GITHUB_RUN_ID}.sql"
+          SQL_FILE="p0b-seed.generated.sql"
           trap 'rm -f "$SQL_FILE"' EXIT
-          node ../../scripts/ops/seed-p0b-pinned-registry.mjs --output "$SQL_FILE"
+          node ../../scripts/ops/seed-p0b-pinned-registry.mjs
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --file "$SQL_FILE" >/dev/null
           CENSUS="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT intended_category,COUNT(*) AS n FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;")"
           for category in CRITICAL_MINERALS GEOPOLITICS MACRO_FX; do
