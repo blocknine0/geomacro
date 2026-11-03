@@ -1,0 +1,45 @@
+name: Master Commerce Freeze Live Acceptance (No Funds)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/central-security.server.ts"
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "server/middleware/00-central-security.ts"
+      - "workers/control-plane/src/central-security-policies.mjs"
+      - "scripts/ops/verify-master-commerce-freeze-live.mjs"
+      - ".github/workflows/master-commerce-freeze-live-acceptance.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-master-commerce-freeze-live-acceptance
+  cancel-in-progress: false
+
+jobs:
+  frozen-live:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Inspect deployed SHA and verify live global OFF (no funds)
+        run: node scripts/ops/verify-master-commerce-freeze-live.mjs
+      - name: Retain no-secrets acceptance receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-master-commerce-freeze-no-funds
+          path: artifacts/commerce/master-freeze-live.json
+          if-no-files-found: warn
+          retention-days: 7
