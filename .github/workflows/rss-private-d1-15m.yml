@@ -11,6 +11,7 @@ on:
       - "scripts/ops/test-rss-native-clock.py"
       - "scripts/ops/test-official-ogl-atom-feeds.py"
       - "config/official-ogl-atom-sources.json"
+      - "config/india-pib-official-reuse-rights.json"
   push:
     branches: [main]
     paths:
@@ -23,6 +24,7 @@ on:
       - "scripts/ops/test-rss-category-lanes.py"
       - "scripts/ops/test-official-ogl-atom-feeds.py"
       - "config/official-ogl-atom-sources.json"
+      - "config/india-pib-official-reuse-rights.json"
   schedule:
     - cron: "11,26,41,56 * * * *"
 
