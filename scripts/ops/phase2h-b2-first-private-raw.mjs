@@ -95,9 +95,10 @@ export async function stageB2FirstPrivateOriginals({
   d1_receipt_pending:true,paid_eligible:false,rights_verified:false,
  });
 }
-/** D1 exact-record ack only if all selected originals were newly and
- * immutably written; already retained projector versions may have a
- * different raw SHA, and must be archived by canonical recovery instead.
+/** D1 exact-record ACK only for individually proven NEW immutable rows.
+ * When the B2 object contains retained historical rows, they remain pending
+ * canonical recovery; the other genuine D1 originals are not starved.
+ * An aggregate count never authorizes a row-level archive acknowledgement.
  */
 export async function acknowledgeB2FirstD1({
  receipt,postResult,endpoint,token,fetchImpl=fetch,
@@ -107,18 +108,31 @@ export async function acknowledgeB2FirstD1({
  if(!Array.isArray(receipt.rows)||!Number.isSafeInteger(receipt.record_count)||
     receipt.record_count!==receipt.rows.length||receipt.record_count>SOURCE_MAX)
   safeFailure("ACK_INVALID_BATCH");
- if(postResult?.stored!==receipt.record_count||
-    postResult?.duplicate!==0||postResult?.rejected_conflicts!==0){
+ const stored=postResult?.stored,duplicate=postResult?.duplicate,
+   rejected=postResult?.rejected_conflicts;
+ const proofIds=postResult?.newly_stored_immutable_record_ids;
+ const proofAvailable=postResult?.archive_proof_available===true;
+ const selectedIds=new Set(Array.isArray(proofIds)?proofIds:[]);
+ const byId=new Map(receipt.rows.map(row=>[row.record_id,row]));
+ // Fail closed on an old Worker or incomplete per-original D1 proof. This
+ // cannot be upgraded by a plain count or the batch's B2 SHA alone.
+ if(!Number.isSafeInteger(stored)||!Number.isSafeInteger(duplicate)||
+    !Number.isSafeInteger(rejected)||stored+duplicate+rejected!==receipt.record_count||
+    !proofAvailable||!Array.isArray(proofIds)||selectedIds.size!==stored||
+    proofIds.length!==stored||proofIds.some(id=>!byId.has(id)))
   return {status:"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY",
     archived:0,storage_confirmed:true};
- }
+ const rowsForAck=receipt.rows.filter(row=>selectedIds.has(row.record_id));
+ if(!rowsForAck.length)
+  return {status:"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY",
+    archived:0,storage_confirmed:true};
  if(endpoint!=="https://geomacro-control-plane.daspallab202391.workers.dev"||
     typeof token!=="string"||token.length<32)
   safeFailure("ACK_AUTH_REQUIRED");
  const body={
   schema:"geomacro.phase2h.b2-archive-ack.v1",
   object_sha256:receipt.object_sha256,
-  items:receipt.rows.map(r=>({
+  items:rowsForAck.map(r=>({
    record_id:r.record_id,raw_sha256:r.raw_sha256,
   })),
  };
@@ -132,14 +146,17 @@ export async function acknowledgeB2FirstD1({
   data=await response.json();
  }catch{safeFailure("D1_ARCHIVE_ACK_UNAVAILABLE")}
  if(response.status!==200||data?.ok!==true||
-    data.archived!==receipt.record_count||
+    data.archived!==rowsForAck.length||
     data.independent_d1_archive_ack_verified!==true||
     data.rights_verified!==false||data.payments!==0)
   safeFailure("D1_ARCHIVE_ACK_NOT_VERIFIED");
  return {
   schema:"geomacro.phase2h.b2-first-d1-ack.v1",
-  status:"B2_FIRST_AND_CANONICAL_D1_FULL_READBACK_ACCEPTED",
-  archived:receipt.record_count,
+  status:rowsForAck.length===receipt.record_count?
+   "B2_FIRST_AND_CANONICAL_D1_FULL_READBACK_ACCEPTED":
+   "B2_FIRST_PARTIAL_CANONICAL_D1_ACK_HISTORIC_PENDING",
+  archived:rowsForAck.length,
+  historical_rows_pending:receipt.record_count-rowsForAck.length,
   b2_verified:true,d1_ack_verified:true,
   paid_eligible:false,commercial_rights_verified:false,
  };
