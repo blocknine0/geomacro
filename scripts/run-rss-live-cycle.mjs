@@ -224,6 +224,16 @@ async function main() {
         payloads.push(JSON.parse(await readFile(path.join(spoolDir,name),"utf8")));
       }
       const {candidates,diagnostics} = rssSpoolPrivateCandidates(payloads);
+      // A green fetch is not a green ingest: publish non-sensitive aggregate
+      // diagnostics when all fetched originals lack admissible native metadata.
+      // Never substitute retrieval time or invent scores to hide this failure.
+      if(diagnostics.seen>0 && diagnostics.accepted===0){
+        console.log(JSON.stringify({
+          schema:"geomacro.rss-private-d1-admission-failure.v1",
+          error:"RSS_PRIVATE_D1_ZERO_ADMITTED",source_diagnostics:diagnostics,
+        }));
+        throw Error("RSS_PRIVATE_D1_ZERO_ADMITTED");
+      }
       const saved = await persistUnscoredSourceCandidatesD1(candidates);
       ingestSummary = {ok:true,attempted:diagnostics.seen,accepted:saved.persisted+saved.unchanged,
         execution_mode:"private_canonical_d1",source_diagnostics:diagnostics,
