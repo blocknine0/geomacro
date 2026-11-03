@@ -149,6 +149,9 @@ jobs:
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
+      - name: Verify Telegram Bot webhook relay preserves secret and no-leak ACK
+        run: node --test scripts/tests/telegram-flash-relay.test.mjs
+
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: |
           node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
