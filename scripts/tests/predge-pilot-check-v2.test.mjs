@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,sign as signBytes,verify as verifyBytes} from "node:crypto";
 import {
  buildUnsignedPilotCheck,canonicalJson,toBytes,signablePilotCheck,sha256,
- validatePilotEnvelopeShape,verifySignedPilotCheck,requireActivePilotTrust,MAX_WIRE_BYTES
+ validatePilotEnvelopeShape,verifySignedPilotCheck,requireActivePilotTrust,MAX_WIRE_BYTES,
+ SIGNED_RESEARCH_VALIDITY_MS
 } from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2}
  from "../../workers/control-plane/src/predge-pilot-check-v2.mjs";
@@ -110,9 +111,22 @@ test("signed format and canonical-byte consistency reject an unpinned signer",as
   registry:{"geomacro-risk-2026-03":{status:"retired",public_key_spki_b64:"malicious"}}}),
   /PREDGE_PILOT_TRUST_REGISTRY/);
 });
+test("Predge-approved three-hour research envelope accepts before expiry and rejects at expiry",()=>{
+ const body=buildUnsignedPilotCheck(feed([item(0)]),NOW);
+ assert.equal(SIGNED_RESEARCH_VALIDITY_MS,3*60*60*1000);
+ assert.equal(Date.parse(body.expires_at)-Date.parse(body.generated_at),SIGNED_RESEARCH_VALIDITY_MS);
+ assert.equal(validatePilotEnvelopeShape(body,NOW+SIGNED_RESEARCH_VALIDITY_MS-1,false),true);
+ assert.throws(()=>validatePilotEnvelopeShape(body,NOW+SIGNED_RESEARCH_VALIDITY_MS,false),
+   /PREDGE_PILOT_ENVELOPE_EXPIRED/);
+ // Source retention, original news attribution, and paid execution boundaries remain unchanged.
+ assert.equal(body.risk_gate.news_context.retention_hours,72);
+ assert.equal(body.risk_gate.news_context.affects_risk_gate,false);
+ assert.equal(body.chargeable,false);
+});
 test("expired and fake CONTINUE envelopes always reject",()=>{
  const body=buildUnsignedPilotCheck(feed([item(0)]),NOW);
- assert.throws(()=>validatePilotEnvelopeShape(body,NOW+3600_001,false),/PREDGE_PILOT_ENVELOPE_EXPIRED/);
+ assert.throws(()=>validatePilotEnvelopeShape(body,NOW+SIGNED_RESEARCH_VALIDITY_MS+1,false),
+   /PREDGE_PILOT_ENVELOPE_EXPIRED/);
  body.risk_gate.decision="CONTINUE";
  assert.throws(()=>validatePilotEnvelopeShape(body,NOW,false),/PREDGE_PILOT_RISK_GATE_BOUNDARY/);
 });
