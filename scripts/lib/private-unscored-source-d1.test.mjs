@@ -1,4 +1,6 @@
 import {spawnSync} from "node:child_process";
+import {runReliefWebPrivateD1} from "./reliefweb-private-d1.mjs";
+import {deriveControlPlaneRootToken} from "../ops/derive-control-plane-root-token.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -143,4 +145,32 @@ test("scheduled ReliefWeb D1 mode never imports retired Supabase client",()=>{
   assert.equal(result.status,1);
   assert.match(result.stderr,/RELIEFWEB_PRIVATE_D1_AUTH_REQUIRED/u);
   assert.doesNotMatch(result.stderr,/ERR_MODULE_NOT_FOUND|supabase-js/u);
+});
+
+test("ReliefWeb D1 writer uses existing HMAC-derived Control Plane token",async()=>{
+  const root="q".repeat(40);
+  let observed=false;
+  const reply=await runReliefWebPrivateD1({
+    env:{RELIEFWEB_APPROVED_APPNAME:"approved-fixture",
+      GEOMACRO_COMMERCE_LEDGER_TOKEN:root,RELIEFWEB_MAX_REPORTS:"2"},
+    now,
+    fetchImpl:async url=>{
+      assert.equal(new URL(url).searchParams.get("appname"),"approved-fixture");
+      return Response.json({data:[{id:100,fields:{title:"UN humanitarian displacement update",
+        date:{original:"2026-11-03T08:00:00Z"},
+        url:"https://reliefweb.int/report/example"}}]});
+    },
+    persist:async (rows,options)=>{
+      assert.equal(rows.length,1);
+      assert.equal(options.token,deriveControlPlaneRootToken(root));
+      assert.notEqual(options.token,root);
+      observed=true;
+      return {d1_exact_readback_verified:true,proposed:1,persisted:1,
+        unchanged:0,existing_identity_conflicts_quarantined:0,
+        identity_conflicts_quarantined:0};
+    },
+  });
+  assert.equal(observed,true);
+  assert.equal(reply.d1_records_written,1);
+  assert.equal(reply.d1_exact_readback_verified,true);
 });
