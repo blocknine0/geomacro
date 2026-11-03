@@ -34,7 +34,7 @@ jobs:
       BREAKING_RSS_ENABLED: "true"
       BREAKING_RSS_RUN_ONCE: "true"
       BREAKING_RSS_BOOTSTRAP_MAX_ITEMS: "10"
-      BREAKING_FEED_USER_AGENT: "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)"
+      BREAKING_FEED_USER_AGENT: "GeoMacro-Research-Bot/1.0 (+https://geomacro.live)"
     steps:
       - name: Checkout canonical source without credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
