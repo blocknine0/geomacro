@@ -8,6 +8,8 @@ on:
       - "scripts/lib/reliefweb-private-d1.mjs"
       - "scripts/lib/official-native-rss.mjs"
       - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - "src/lib/on-demand-evidence-qualification.server.ts"
       - "src/lib/on-demand-evidence-qualification.server.test.ts"
       - "docs/ops/UNIVERSAL_FACTS_ONLY_COMMERCIAL_REUSE_2026_11_03.md"
@@ -53,6 +55,7 @@ jobs:
           node --check scripts/lib/private-unscored-source-d1.mjs
           node --check scripts/lib/reliefweb-private-d1.mjs
           node --check scripts/lib/official-original-issuer-rights.mjs
+          node --test scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
       - name: Validate publisher-native RSS clock with negative cases
         run: python3 scripts/ops/test-rss-native-clock.py
       - name: Execute unscored source D1 admission and readback contracts
