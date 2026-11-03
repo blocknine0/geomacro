@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-03T17:36:39.712Z",
+  "updated_at": "2026-11-03T17:41:55.815Z",
   "signals": [
+    {
+      "id": "rare_earth-1f04fb23",
+      "category": "rare_earth",
+      "title": "Geomacro finds Developer of Kazakhstan Tungsten projected Drops Merger and Plans U.S. Listing",
+      "what_changed": "A monitored source feed reports: Developer of Kazakhstan Tungsten projected Drops Merger and Plans U.S. Listing. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:26:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timesca.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-7a5142b1",
       "category": "rare_earth",
@@ -398,6 +417,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-720b7519",
+      "category": "rare_earth",
+      "title": "Geomacro finds American Lithium increased Macusani Uranium Measured and Indicated Resource - Toronto Star",
+      "what_changed": "A monitored source feed reports: American Lithium increased Macusani Uranium Measured and Indicated Resource - Toronto Star. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
