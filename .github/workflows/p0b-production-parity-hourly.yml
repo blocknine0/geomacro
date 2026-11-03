@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   real-parity:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && vars.GEOMACRO_P0B_ENABLE == '1'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: production
