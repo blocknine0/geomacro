@@ -1,3 +1,4 @@
+import {spawnSync} from "node:child_process";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -52,6 +53,9 @@ test("RSS private observation admission rejects unsafe and undated inputs",()=>{
   const out=rssSpoolPrivateCandidates(rows,now);
   assert.deepEqual(out.candidates.map(x=>x.category),["macro","rare_earth","geopolitics"]);
   assert.equal(out.diagnostics.invalid,2);
+  assert.equal(out.diagnostics.missing_native_publication,1);
+  assert.equal(out.diagnostics.invalid_source_url,1);
+  assert.equal(out.diagnostics.invalid_or_stale_publication,0);
   assert.equal(out.diagnostics.regex_only,1);
   assert.equal(out.candidates.every(x=>!Object.hasOwn(x,"severity")),true);
 });
@@ -127,4 +131,16 @@ test("one conflicting D1 identity cannot invalidate another original's readback"
   assert.equal(saved.identity_conflicts_quarantined,1);
   assert.equal(saved.d1_exact_readback_verified,true);
   assert.equal(saved.paid_eligible,false);
+});
+
+test("scheduled ReliefWeb D1 mode never imports retired Supabase client",()=>{
+  const result=spawnSync(process.execPath,["scripts/ingest-reliefweb-live.mjs"],{
+    encoding:"utf8",timeout:10000,
+    env:{...process.env,RELIEFWEB_TRANSPORT:"d1_private",
+      RELIEFWEB_APPROVED_APPNAME:"approved-fixture",
+      GEOMACRO_COMMERCE_LEDGER_TOKEN:""},
+  });
+  assert.equal(result.status,1);
+  assert.match(result.stderr,/RELIEFWEB_PRIVATE_D1_AUTH_REQUIRED/u);
+  assert.doesNotMatch(result.stderr,/ERR_MODULE_NOT_FOUND|supabase-js/u);
 });
