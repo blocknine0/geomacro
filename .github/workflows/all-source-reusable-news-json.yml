@@ -14,6 +14,7 @@ on:
     paths:
       - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/ops/collect-registered-source-health-only.mjs"
       - "scripts/lib/direct-global-corridor-sources.mjs"
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
@@ -62,6 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/lib/registered-reusable-news-source-collector.mjs
+          node --check scripts/ops/collect-registered-source-health-only.mjs
           node --check scripts/lib/direct-global-corridor-sources.mjs
           node --check scripts/lib/country-news-mentions-195.mjs
           node --check workers/control-plane/src/reusable-source-news.mjs
@@ -130,6 +132,9 @@ jobs:
         env:
           QUOTA_STATE: ${{ steps.quota.outputs.state }}
         run: echo "::notice::D1_FACTUAL_INTAKE_HELD_${QUOTA_STATE}; source fetch and D1 write intentionally not executed."
+      - name: Keep registered-source discovery alive without D1 writes during holds
+        if: steps.quota.outputs.critical != 'true'
+        run: bun scripts/ops/collect-registered-source-health-only.mjs
       - name: Collect, publish and read back factual JSON
         if: steps.quota.outputs.critical == 'true'
         shell: bash
