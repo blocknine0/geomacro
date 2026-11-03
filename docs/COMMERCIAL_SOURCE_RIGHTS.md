@@ -1,7 +1,7 @@
 # Commercial source-rights evidence register
 
 **Status:** commercialization control document  
-**Last reviewed:** 2026-09-16
+**Last reviewed:** 2026-11-03
 
 This register records the engineering evidence and delivery restrictions used when Geomacro marks an external source eligible for paid Risk API / Risk Gate delivery.
 
@@ -40,6 +40,7 @@ Unknown or omitted eligibility fails closed as `UNVERIFIED`.
 
 | Source ID | Dataset / product | Current engineering status | Commercial delivery rule |
 |---|---|---:|---|
+| `ecb_fx` | ECB daily euro FX reference rates, exact official XML feed | `VERIFIED` | Reuse of published original statistics with `Source: ECB statistics` attribution, unchanged original values and original reference day; exclude third-party data. Derived crosses are identified separately; not streaming spot FX or event-scored news. |
 | `world_bank_indicators` | World Development Indicators, World Bank source `2` | `VERIFIED` | Permitted only for the exact pinned WDI contract with attribution and provenance retained |
 | `world_bank_qpsd` | World Bank Quarterly Public Sector Debt (QPSD), DataBank source `3009` | `VERIFIED` | Exact QPSD dataset only. Derived sovereign-fiscal intelligence may be delivered with source attribution/provenance. General-government and central-government concepts remain separate; raw bulk redistribution is disabled |
 | `world_bank_wgi_political_stability` | Worldwide Governance Indicators, 2025 Revision | `VERIFIED` | Permitted for the WGI dataset itself under its recorded CC BY 4.0 terms; underlying third-party source material does not inherit this status |
@@ -59,6 +60,17 @@ Unknown or omitted eligibility fails closed as `UNVERIFIED`.
 The machine-readable runtime evidence register is `scripts/commercial-source-rights-evidence.mjs`. `scripts/commercial-source-policy.mjs` derives its non-default commercial approvals from that register, and regression coverage requires every runtime `VERIFIED` source to be represented here.
 
 ## Evidence-backed reviewed controls
+
+### ECB daily reference FX (exact-scoped addition, 2026-11-03)
+
+- Source ID: `ecb_fx`. Publisher: European Central Bank (ECB).
+- Exact data contract: `https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml`, ECB-published daily euro foreign exchange reference rates.
+- Official rights policy: `https://www.ecb.europa.eu/stats/ecb_statistics/governance_and_quality_framework/html/usage_policy.en.html`.
+- The ESCB permits reuse of publicly released statistics irrespective of commercial/non-commercial purpose, with source quoted and original published statistics/metadata unchanged. Third-party data is excluded without its own permission.
+- GeoMacro permits only properly attributed derived reference-FX output from this pinned source; the actual reference day and non-executable nature of reference rates are retained. Original observations remain unchanged, calculated crosses must be clearly labelled, and raw redistribution is disabled in GeoMacro's customer delivery contract.
+- This records source/dataset rights only. No source-country row, numeric Risk Gate score, independently verified event, signing approval, or customer-paid delivery is certified by this register entry.
+- FRED is **not** granted any equivalent source-wide approval: its API/website terms and third-party-owned series impose separate commercial-use restrictions, including source-specific permission requirements. Official reference: `https://fred.stlouisfed.org/docs/api/terms_of_use.html`.
+
 
 ### World Bank World Development Indicators
 
