@@ -110,6 +110,7 @@ export async function persistUnscoredSourceCandidatesD1(candidates,{
     records:plan.records,controlPlaneRoot:PRIVATE_SOURCE_D1_ROOT,token,fetchImpl,
   });
   if(receipt.readback_verified!==true||
+     receipt.per_original_readback_verified!==true||
      receipt.verified_originals!==plan.records.length)
     throw Error("PRIVATE_SOURCE_D1_EXACT_READBACK_UNVERIFIED");
   return Object.freeze({
