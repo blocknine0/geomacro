@@ -18,6 +18,10 @@ EXPECTED={
     "uk_hmt_ogl_official_atom":"MACRO",
     "uk_dbt_ogl_minerals_atom":"CRITICAL_MINERALS",
     "uk_desnz_ogl_minerals_atom":"CRITICAL_MINERALS",
+    "uk_mod_ogl_security_atom":"GEOPOLITICS",
+    "uk_cabinet_ogl_security_atom":"GEOPOLITICS",
+    "uk_obr_ogl_macro_atom":"MACRO",
+    "uk_bist_ogl_minerals_atom":"CRITICAL_MINERALS",
 }
 def get_sources_and_gate():
     tree=ast.parse(WORKER.read_text(encoding="utf-8"))
@@ -38,8 +42,8 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
         cls.match=staticmethod(gate)
         cls.by_id={x["source_id"]:x for x in cls.feeds}
         cls.policy=json.loads(EVIDENCE.read_text(encoding="utf-8"))
-    def test_25_feeds_and_no_registry_duplicate(self):
-        self.assertEqual(len(self.feeds),25)
+    def test_31_feeds_and_no_registry_duplicate(self):
+        self.assertEqual(len(self.feeds),31)
         self.assertEqual(len(self.by_id),len(self.feeds))
         self.assertEqual(set(EXPECTED)-set(self.by_id),set())
     def test_exact_license_provenance_and_no_telegram_impersonation(self):
@@ -93,6 +97,45 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
         self.assertFalse(self.match(
             {"title":"Ministry of Coal recognition awards"},
             source["required_title_keywords"]))
+
+    def test_global_first_party_metadata_only_rights_and_category_filters(self):
+        rights = json.loads((ROOT / "config/global-first-party-rss-rights.v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(rights["schema"], "geomacro.first-party-global-rss-rights-and-scope.v1")
+        self.assertEqual(len(rights["sources"]), 2)
+        for row in rights["sources"]:
+            source = self.by_id[row["source_id"]]
+            self.assertEqual(source["url"], row["feed_url"])
+            self.assertTrue(source["event_type"].startswith(row["category"] + "_"))
+            self.assertTrue(row["feed_url"].startswith("https://"))
+            self.assertFalse(row["commercial_eligible"])
+            self.assertTrue(row["original_publisher_native_time_required"])
+            self.assertTrue(row["original_publisher_not_event_country"])
+            self.assertGreaterEqual(len(source["required_title_keywords"]), 10)
+        self.assertTrue(self.match(
+            {"title": "Security Council demands ceasefire in region"},
+            self.by_id["un_hq_official_press_rss"]["required_title_keywords"]))
+        self.assertTrue(self.match(
+            {"title": "New world trade tariffs in dispute"},
+            self.by_id["wto_global_trade_rss"]["required_title_keywords"]))
+
+    def test_new_issuer_feed_urls_do_not_duplicate_existing_private_osint_sources(self):
+        manifests = (
+            "private-osint-working-sources.v1.json",
+            "private-osint-macro-minerals-additions.v1.json",
+            "private-osint-mineral-first-party-rss-expansion.v1.json",
+        )
+        existing_urls = set()
+        for name in manifests:
+            data = json.loads((ROOT / "config" / name).read_text(encoding="utf-8"))
+            existing_urls.update(row["url"] for row in data["sources"])
+        newly_added = set(EXPECTED) - {
+            "uk_fcdo_ogl_official_atom", "uk_hmt_ogl_official_atom",
+            "uk_dbt_ogl_minerals_atom", "uk_desnz_ogl_minerals_atom",
+        }
+        newly_added.update(row["source_id"] for row in json.loads(
+            (ROOT / "config/global-first-party-rss-rights.v1.json").read_text(encoding="utf-8"))["sources"])
+        for source_id in newly_added:
+            self.assertNotIn(self.by_id[source_id]["url"], existing_urls, source_id)
 
     def test_no_partial_word_match_or_missing_rule(self):
         self.assertFalse(self.match({"title":"Award ceremony"},["war"]))

@@ -1,0 +1,30 @@
+{
+  "schema": "geomacro.first-party-global-rss-rights-and-scope.v1",
+  "purpose": "First-party publisher metadata discovery only; source access does not establish commercial re-use or verified publication; no Telegram material is collected.",
+  "sources": [
+    {
+      "source_id": "un_hq_official_press_rss",
+      "category": "GEOPOLITICS",
+      "publisher": "United Nations Headquarters Press",
+      "publisher_reference": "https://press.un.org/en",
+      "feed_url": "https://press.un.org/en/rss.xml",
+      "reuse_policy": "RIGHTS_REVIEW_REQUIRED_METADATA_ONLY",
+      "reuse_reference": "https://www.un.org/en/about-us/terms-of-use",
+      "commercial_eligible": false,
+      "original_publisher_native_time_required": true,
+      "original_publisher_not_event_country": true
+    },
+    {
+      "source_id": "wto_global_trade_rss",
+      "category": "MACRO",
+      "publisher": "World Trade Organization",
+      "publisher_reference": "https://www.wto.org/english/res_e/webcas_e/rss_e.htm",
+      "feed_url": "https://www.wto.org/library/rss/latest_news_e.xml",
+      "reuse_policy": "WTO_NEWS_RSS_ATTRIBUTION_REQUIRED_NO_LOGO",
+      "reuse_reference": "https://www.wto.org/english/res_e/webcas_e/rss_e.htm",
+      "commercial_eligible": false,
+      "original_publisher_native_time_required": true,
+      "original_publisher_not_event_country": true
+    }
+  ]
+}
