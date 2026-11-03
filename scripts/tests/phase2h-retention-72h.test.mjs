@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {phase2hNewsCutoff,phase2hRawWithinRetention,planPhase2hD1RetentionDelete,
  PHASE2H_NEWS_MAX_AGE_MS,PHASE2H_NEWS_CLEANUP_LIMIT,
  PHASE2H_NEWS_CLEANUP_RUN_LIMIT} from "../lib/phase2h-retention-72h.mjs";
-import {assertPhase2hB2Lifecycle,assertPhase2hB2ManualRetention,PHASE2H_B2_PREFIX}
+import {assertPhase2hB2Lifecycle,assertPhase2hB2ManualRetention,verifyPhase2hB2Lifecycle,PHASE2H_B2_PREFIX}
  from "../ops/phase2h-verify-b2-72h-lifecycle.mjs";
 import {cleanupPhase2hD1} from "../ops/phase2h-72h-d1-cleanup.mjs";
 const now=Date.parse("2026-10-30T15:00:00.000Z");
@@ -215,4 +215,42 @@ test("cleanup cannot exceed provider grant or borrow critical capacity",async()=
   {GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"},
  ])await assert.rejects(()=>cleanupPhase2hD1({env:{...env,...override},now,
    fetchImpl:db.fetchImpl}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
+});
+
+test("both guarded Phase2H B2 writer identities can verify real-provider-shaped lifecycle receipts",async()=>{
+ for(const workflowId of ["derived_news_backup","registered_original_archive"]){
+  const calls=[];
+  const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+   GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
+   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:workflowId,
+   B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key",
+  };
+  const got=await verifyPhase2hB2Lifecycle({env,
+   governor:{reserve:async kind=>{calls.push(kind);}},
+   fetchImpl:async url=>{
+    if(String(url).endsWith("b2_authorize_account"))
+     return Response.json({authorizationToken:"provider-token",accountId:"account123",
+      apiInfo:{storageApi:{apiUrl:"https://api001.backblazeb2.com",
+       allowed:{capabilities:["listBuckets"]}}}});
+    if(String(url).includes("b2_list_buckets"))
+     return Response.json({buckets:[{bucketName:"geomacro-private-archive",
+      lifecycleRules:[]}]});
+    throw Error("UNEXPECTED_PROVIDER_ENDPOINT");
+   },
+  });
+  assert.equal(got.phase2h_raw_prefix_verified,true);
+  assert.equal(got.auto_deletion_paused,true);
+  assert.deepEqual(calls,["NATIVE_AUTH","GET"]);
+ }
+});
+test("arbitrary B2 identity remains rejected before native HTTP calls",async()=>{
+ let called=false;
+ await assert.rejects(verifyPhase2hB2Lifecycle({
+  env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+   GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
+   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"untrusted_actor",
+   B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key"},
+  governor:{reserve:async()=>{called=true;}},
+ }),/PHASE2H_B2_72H_PROTECTED_GOVERNED_MAIN_REQUIRED/u);
+ assert.equal(called,false);
 });
