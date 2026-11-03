@@ -52,7 +52,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
  const d1=createPhase2hCanonicalD1({env,fetchImpl});
  const rows=await d1.readPending(now);
  assert.equal(rows.length,51);
- assert.equal(new Set(rows.map(x=>x.record_id)).size,13);
+ assert.equal(new Set(rows.map(x=>x.record_id)).size,51);
  assert.equal(api.length,3);
  assert.deepEqual(workerReads.map(x=>x.cursor),[null,original[24].record_id,original[49].record_id]);
  const ack=await d1.markArchived(rows,"e".repeat(64),now);
