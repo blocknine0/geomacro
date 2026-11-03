@@ -29,6 +29,9 @@ const CONFIDENCE=new Set(["OFFICIAL_RELEASE_OBSERVED_UNSCORED",
   "DATED_OFFICIAL_FEED_CANDIDATE_UNCLASSIFIED","MONITORED_SOURCE_REPORT_UNVERIFIED"]);
 const HOURS_72=72*60*60*1000;
 const HOUR=60*60*1000;
+// Predge-approved signed research/pilot envelope lifetime (3 Nov 2026).
+// This does not extend source freshness, 72h retention, or paid GRO validity.
+export const SIGNED_RESEARCH_VALIDITY_MS=3*HOUR;
 const encoder=new TextEncoder();
 const isObject=v=>v!==null&&typeof v==="object"&&!Array.isArray(v);
 function assert(value,code){if(!value)throw Error("PREDGE_PILOT_"+code);}
@@ -114,7 +117,7 @@ export function buildUnsignedPilotCheck(feed,now=Date.now()){
   const {items_by_category,make}=prepare(feed,now);
   function assemble(){return {
     ok:true,schema:PILOT_CHECK_SCHEMA,generated_at:new Date(now).toISOString(),
-    expires_at:new Date(now+HOUR).toISOString(),pilot_only:true,
+    expires_at:new Date(now+SIGNED_RESEARCH_VALIDITY_MS).toISOString(),pilot_only:true,
     execution_authorized:false,chargeable:false,
     risk_gate:{schema_version:"risk-gate-1.0",decision:"PAUSE",
       recommended_action:"BLOCK",reason_codes:["UNSCORED_RESEARCH_ONLY_NO_VERIFIED_GRO"],
@@ -149,7 +152,8 @@ export function validatePilotEnvelopeShape(obj,now=Date.now(),signed=true){
     obj.pilot_only===true&&obj.execution_authorized===false&&obj.chargeable===false,"ENVELOPE");
   const created=timestamp(obj.generated_at),expiry=timestamp(obj.expires_at);
   assert(Number.isFinite(created)&&Number.isFinite(expiry)&&created<=now+300_000&&
-    created>now-HOUR&&expiry>now&&expiry-created<=HOUR+1000,"ENVELOPE_EXPIRED");
+    created>now-SIGNED_RESEARCH_VALIDITY_MS&&expiry>now&&
+    expiry>created&&expiry-created<=SIGNED_RESEARCH_VALIDITY_MS,"ENVELOPE_EXPIRED");
   const rg=obj.risk_gate;
   assert(isObject(rg)&&rg.schema_version==="risk-gate-1.0"&&rg.decision==="PAUSE"&&
     rg.recommended_action==="BLOCK"&&rg.execution_authorized===false&&
