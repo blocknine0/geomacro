@@ -27,9 +27,11 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).not.toContain("website-derived-news-html");
-    // The archive and current feed are public static assets, not D1 reads.
-    expect(desk).toContain("Historical findings come from the append-only static archive");
-    expect(desk).toContain("read has a D1 or server-function fallback");
+    // Static archive plus a separately published R2-only JSON snapshot, neither
+    // of which requires a browser D1 read, an RPC or a website-code rebuild.
+    expect(desk).toContain("Historical findings come from the static archive");
+    expect(desk).toContain("fetchEdgeLatestDerivedNews().catch(()=>fetchDirectDerivedNews())");
+    expect(desk).toContain("without a website rebuild or D1 browser reads");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");

@@ -1160,5 +1160,20 @@
     "payment_authorized": false,
     "published_source_sha_unchanged": true,
     "production_publish_acceptance_pending": true
+  },
+  "approved_r2_latest_json_intelligence_20261104": {
+    "approval": "Founder explicitly requested on 2026-11-04 that GeoMacro Website Intelligence read continuously published latest news from a build-independent Cloudflare R2/edge JSON snapshot, rather than require a Lovable/GitHub rebuild for each new item.",
+    "approved_source_commit": "8e64fdc71151d65a30d68677a208ec730ef21d48",
+    "approved_paths": [
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/routes/intelligence.tsx"
+    ],
+    "exact_blob_lock": true,
+    "scope": "Intelligence only; R2-only current-news read with last verified static archive fallback, preserving all three categories and source clocks.",
+    "homepage_finds_permanent_removal_unchanged": true,
+    "global_risk_final_lock_unmodified": true,
+    "predge_unmodified": true,
+    "payments_unchanged": true,
+    "production_deploy_acceptance_required": true
   }
 }

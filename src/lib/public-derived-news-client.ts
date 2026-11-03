@@ -81,6 +81,10 @@ const GEOMACRO_CANONICAL_D1_BUNDLE_URL =
 export const GEOMACRO_PERMANENT_ARCHIVE_BASE_URL =
   "https://geomacro-public-finds-archive.daspallab202391.workers.dev";
 export const GEOMACRO_PERMANENT_LATEST_URL=GEOMACRO_PERMANENT_ARCHIVE_BASE_URL+"/latest.json";
+// Existing 15-minute D1-origin public projection, published to R2 without
+// coupling new data to a Lovable or website source-code build.
+export const GEOMACRO_EDGE_LATEST_URL =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/latest-feed.json";
 const PERMANENT_ARCHIVE_INDEX_SCHEMA="geomacro.permanent-derived-news-archive-index.v1";
 const PERMANENT_ARCHIVE_MONTH_SCHEMA="geomacro.permanent-derived-news-archive-month.v1";
 const PERMANENT_ARCHIVE_CATEGORIES=["geopolitics","macro","rare_earth"] as const;
@@ -173,6 +177,26 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
   }
   // A malformed object cannot be permitted to smuggle source metadata to UI.
   return value.signals.filter(s => safeSignal(s, now));
+}
+
+export async function fetchEdgeLatestDerivedNews(
+  fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]>{
+  const response=await fetchWithoutRedirectUsing(fetchImpl,GEOMACRO_EDGE_LATEST_URL,{
+    method:"GET",headers:{Accept:"application/json"},
+    signal:AbortSignal.timeout(7_000),
+  });
+  if(!response.ok||response.headers.get("X-GeoMacro-Public-Offload")!=="r2"||
+     Number(response.headers.get("content-length")??0)>512_000)
+    throw Error("DERIVED_NEWS_EDGE_R2_UNAVAILABLE");
+  const body=await response.text();
+  if(body.length>512_000)throw Error("DERIVED_NEWS_EDGE_R2_OVERSIZE");
+  const doc=JSON.parse(body) as Record<string,unknown>;
+  const checked=Date.parse(String(doc.checked_at??""));
+  if(!Number.isFinite(checked)||checked>now+60_000||
+      now-checked>24*3600_000)
+    throw Error("DERIVED_NEWS_EDGE_R2_STALE");
+  return checkedDerivedNews(doc,now);
 }
 
 export async function fetchDirectDerivedNews(

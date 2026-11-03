@@ -5,6 +5,8 @@ import {p0bGlobalNewsFallback} from "../lib/p0b-live-global-search.mjs";
 import {p0aAuditOriginal} from "../lib/p0a-evidence-quality.mjs";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 const now=Date.parse("2026-10-30T09:00:00.000Z");
+const gdeltManifest=()=>["export.CSV","mentions.CSV","gkg.csv"]
+ .map(kind=>"1234 "+"a".repeat(32)+" https://data.gdeltproject.org/gdeltv2/20261030084500."+kind+".zip").join("\\n").replaceAll("\\n","\n");
 test("all three category originals allow bounded event-specific fact and implication",()=>{
  for(const [category,title] of [
   ["geopolitics","United Nations announces sanctions on export shipments"],
@@ -35,20 +37,20 @@ test("latest world discovery is not substituted for original publisher proof",as
  const calls=[];
  const fetchImpl=async url=>{
   const u=new URL(url);calls.push(u.hostname+u.pathname);
-  const data=u.hostname==="api.gdeltproject.org"?
+  const data=u.hostname==="data.gdeltproject.org"?
    {articles:[{title:"Article",url:"https://example.org/world"}]}:
    u.pathname==="/api/search.json"?
    {results:[{link:"/government/news/india-lithium-recycling"}]}:
    {title:"India announces lithium recycling programme",
     first_published_at:"2026-10-30T08:00:00.000Z"};
   return {status:200,redirected:false,headers:{get:()=>"application/json"},
-   text:async()=>JSON.stringify(data)};
+   text:async()=>u.hostname==="data.gdeltproject.org"?gdeltManifest():JSON.stringify(data)};
  };
  const r=await p0bGlobalNewsFallback({question:"India lithium recycling programme",
   countryIso3:"IND",category:"rare_earth",fetchImpl,now});
  assert.equal(r.attempted,true);
  assert.equal(r.first_party_matches.length,1);
- assert.equal(r.gdelt_discovery_count,1);
+ assert.equal(r.gdelt_discovery_count,0);
  assert.equal(r.first_party_matches[0].paid_eligible,false);
  assert.equal(r.exhaustive_global_search,false);
  assert.ok(calls.includes("www.gov.uk/api/content/government/news/india-lithium-recycling"));
@@ -135,13 +137,12 @@ test("transient GDELT timeout gets one bounded discovery retry, never a verified
  let gdeltCalls=0;const durations=[];
  const fetchImpl=async (url,options)=>{
   const host=new URL(url).hostname;
-  if(host==="api.gdeltproject.org"){
+  if(host==="data.gdeltproject.org"){
    gdeltCalls++;durations.push(options.signal ? "bounded" : "unbounded");
    if(gdeltCalls===1)throw Object.assign(new Error("simulated provider timeout"),
      {name:"TimeoutError"});
-   return {status:200,redirected:false,headers:{get:()=>"application/json"},
-    text:async()=>JSON.stringify({articles:[{title:"Unverified discovery",
-      url:"https://example.org/discovery"}]})};
+   return {status:200,redirected:false,headers:{get:()=>"text/plain"},
+    text:async()=>gdeltManifest()};
   }
   if(host==="www.gov.uk")return {status:200,redirected:false,
    headers:{get:()=>"application/json"},text:async()=>JSON.stringify({results:[]})};
@@ -152,17 +153,17 @@ test("transient GDELT timeout gets one bounded discovery retry, never a verified
   countryIso3:"UKR",category:"geopolitics",now,fetchImpl});
  assert.equal(gdeltCalls,2);
  assert.deepEqual(durations,["bounded","bounded"]);
- assert.equal(result.gdelt_discovery_count,1);
+ assert.equal(result.gdelt_discovery_count,0);
  assert.equal(result.provider_diagnostics.gdelt,"OK");
  assert.equal(result.first_party_matches.length,0);
- assert.equal(result.status,"DISCOVERY_ONLY_UNVERIFIED");
+ assert.equal(result.status,"NO_VERIFIED_NEWS");
  assert.ok(!JSON.stringify(result).includes("Unverified discovery"));
 });
 test("permanent GDELT timeout retries at most twice and fails closed",async()=>{
  let gdeltCalls=0;
  const fetchImpl=async url=>{
   const host=new URL(url).hostname;
-  if(host==="api.gdeltproject.org"){
+  if(host==="data.gdeltproject.org"){
    gdeltCalls++;
    throw Object.assign(new Error("simulated timeout"),{name:"TimeoutError"});
   }
