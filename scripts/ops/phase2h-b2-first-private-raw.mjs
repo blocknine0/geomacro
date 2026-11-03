@@ -53,7 +53,14 @@ export async function stageB2FirstPrivateOriginals({
    storage_confirmed:false,rows:[]});
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor})}
- catch{safeFailure("PROVIDER_LIFECYCLE_UNVERIFIED")}
+ catch(error){
+  const reason=String(error?.message??"");
+  // Preserve the verifier's finite redacted provider enum, never any raw
+  // HTTP body, auth token, key, bucket metadata or publisher title.
+  const expected=/^PHASE2H_B2_72H_(?:PROTECTED_GOVERNED_MAIN_REQUIRED|PROVIDER_UNAVAILABLE|PROVIDER_RESPONSE_INVALID|PROVIDER_JSON_INVALID|READ_BUCKET_LIFECYCLE_CAPABILITY_MISSING|STORAGE_API_ORIGIN_INVALID|BUCKET_LIST_UNVERIFIED|EXACT_BUCKET_NOT_VERIFIED|AUTOMATIC_DELETION_STILL_ENABLED|ARCHIVE_READ_PAIR_INCOMPLETE|PROVIDER_READ_CREDENTIAL_MISSING)$/u;
+  if(expected.test(reason))safeFailure(reason.slice("PHASE2H_B2_72H_".length));
+  safeFailure("PROVIDER_LIFECYCLE_UNVERIFIED");
+ }
  if(lifecycle?.phase2h_raw_prefix_verified!==true||
     lifecycle?.auto_deletion_paused!==true||
     lifecycle?.no_bucket_mutation!==true)
