@@ -230,6 +230,7 @@
     "machine-private-key-location-audit.yml",
     "marketplace-listing-observation.yml",
     "marketplace-submission-evidence.yml",
+    "master-commerce-freeze-live-acceptance.yml",
     "million-agent-distributed-load-contract.yml",
     "million-agent-distributed-staging-execution.yml",
     "minimum-free-derived-production-health.yml",
