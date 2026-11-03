@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T10:21:21.324Z",
+  "checked_at": "2026-11-03T11:08:21.336Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 262,
+  "item_count": 259,
   "counts": {
-    "geopolitics": 115,
-    "macro": 106,
-    "rare_earth": 41
+    "geopolitics": 114,
+    "macro": 105,
+    "rare_earth": 40
   },
-  "source_native_ids_sha256": "ab8453cf0fc72d62b2de779a9492f504b1a4fdc666f6d70cbbbd6e071ce84193",
+  "source_native_ids_sha256": "c439f57cca71030d8a69b1d9320d3bf211670ed3981d7f7468b0267eb8f92a5c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4945,63 +4945,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: rt-english.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0abb23f0",
-      "category": "geopolitics",
-      "title": "Geomacro finds IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw",
-      "what_changed": "A monitored source feed reports: IRGC said two oil tankers halted, caught fire in Strait of Hormuz - Rudaw. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T11:05:13.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-17d0125c",
-      "category": "macro",
-      "title": "Geomacro finds China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia",
-      "what_changed": "A monitored source feed reports: China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T10:38:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-4671f284",
-      "category": "rare_earth",
-      "title": "Geomacro finds China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia",
-      "what_changed": "A monitored source feed reports: China Reports Major increased In Gold, Nickel And Rhenium Reserves - BusinessToday Malaysia. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T10:38:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
