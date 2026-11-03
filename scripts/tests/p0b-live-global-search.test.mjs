@@ -130,3 +130,52 @@ test("official call and statement headline speech acts produce factual, distinct
  assert.equal(p0bHeadlineEvent("Foreign Minister's call with President of Ukraine",
   "macro"),null);
 });
+
+test("transient GDELT timeout gets one bounded discovery retry, never a verified GRO",async()=>{
+ let gdeltCalls=0;const durations=[];
+ const fetchImpl=async (url,options)=>{
+  const host=new URL(url).hostname;
+  if(host==="api.gdeltproject.org"){
+   gdeltCalls++;durations.push(options.signal ? "bounded" : "unbounded");
+   if(gdeltCalls===1)throw Object.assign(new Error("simulated provider timeout"),
+     {name:"TimeoutError"});
+   return {status:200,redirected:false,headers:{get:()=>"application/json"},
+    text:async()=>JSON.stringify({articles:[{title:"Unverified discovery",
+      url:"https://example.org/discovery"}]})};
+  }
+  if(host==="www.gov.uk")return {status:200,redirected:false,
+   headers:{get:()=>"application/json"},text:async()=>JSON.stringify({results:[]})};
+  return {status:404,redirected:false,headers:{get:()=>"text/plain"},
+    text:async()=>""};
+ };
+ const result=await p0bGlobalNewsFallback({question:"Ukraine sanctions update",
+  countryIso3:"UKR",category:"geopolitics",now,fetchImpl});
+ assert.equal(gdeltCalls,2);
+ assert.deepEqual(durations,["bounded","bounded"]);
+ assert.equal(result.gdelt_discovery_count,1);
+ assert.equal(result.provider_diagnostics.gdelt,"OK");
+ assert.equal(result.first_party_matches.length,0);
+ assert.equal(result.status,"DISCOVERY_ONLY_UNVERIFIED");
+ assert.ok(!JSON.stringify(result).includes("Unverified discovery"));
+});
+test("permanent GDELT timeout retries at most twice and fails closed",async()=>{
+ let gdeltCalls=0;
+ const fetchImpl=async url=>{
+  const host=new URL(url).hostname;
+  if(host==="api.gdeltproject.org"){
+   gdeltCalls++;
+   throw Object.assign(new Error("simulated timeout"),{name:"TimeoutError"});
+  }
+  if(host==="www.gov.uk")return {status:200,redirected:false,
+   headers:{get:()=>"application/json"},text:async()=>JSON.stringify({results:[]})};
+  return {status:404,redirected:false,headers:{get:()=>"text/plain"},
+   text:async()=>""};
+ };
+ const result=await p0bGlobalNewsFallback({question:"Latest Canada critical minerals news",
+  countryIso3:"CAN",category:"rare_earth",now,fetchImpl});
+ assert.equal(gdeltCalls,2);
+ assert.equal(result.provider_diagnostics.gdelt,"UPSTREAM_TIMEOUT");
+ assert.equal(result.first_party_matches.length,0);
+ assert.equal(result.gdelt_discovery_count,0);
+ assert.equal(result.exhaustive_global_search,false);
+});
