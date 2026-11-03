@@ -439,11 +439,29 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   // must be evaluated against a freshly verified Ed25519 GRO, not RSS counts.
   // Client-specific result is never misrepresented as part of the daily HMAC.
   const now=opts.now??Date.now();
-  const gro=payload.approved_thresholds?
-   await signedGro(env,target,now):null;
+  // Always re-evaluate the CURRENT pinned, Ed25519-verified and
+  // commercial-qualified GRO at query time. Never replace/re-sign an
+  // immutable daily observation because a GRO arrives later that day.
+  const gro=await signedGro(env,target,now);
   const trustedScores=validatedSignedCategoryScores(gro);
   const independentScore=calculateUnifiedRisk(Object.fromEntries(
    CATEGORIES.map(k=>[k,trustedScores[k]??null])));
+  const signedLiveStatus=!gro?"CURRENT_SIGNED_GRO_UNAVAILABLE":
+   independentScore.unifiedScore===null?
+    "CURRENT_SIGNED_GRO_THREE_CATEGORY_INCOMPLETE":
+    "CURRENT_ED25519_VERIFIED_THREE_CATEGORY_SCORE";
+  const verifiedLiveScoring={
+   status:signedLiveStatus,
+   unified_risk_score:independentScore.unifiedScore,
+   category_scores:Object.fromEntries(CATEGORIES.map(k=>[k,trustedScores[k]??null])),
+   missing_categories:independentScore.missing_categories,
+   signed_gro_object_id:gro?.object_id??null,
+   gro_generated_at:gro?.generated_at??null,
+   gro_expires_at:gro?.expires_at??null,
+   trusted_signed_gro_verified:gro!==null,
+   included_in_daily_snapshot_hmac:false,
+   commercial_action_authorized:false,
+  };
   const customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
    groVerified:!!gro,confidence:gro?.confidence??null,
    policy:payload.approved_thresholds
@@ -456,6 +474,9 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
    policy_evaluation_proof_scope:"NOT_INCLUDED_IN_DAILY_SNAPSHOT_HMAC",
    policy_evaluation_has_verified_gro:!!gro,
+   verified_live_scoring:verifiedLiveScoring,
+   policy_evaluation_has_complete_verified_score:
+    gro!==null&&independentScore.unifiedScore!==null,
    requested_lenient_override:lenient,
    override_acknowledged:payload.override_acknowledged===true,
    client_override_applied:lenient,execution_authorized:false};
