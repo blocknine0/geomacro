@@ -70,7 +70,6 @@ export const xmlValue=(xml,tag)=>{
   .replace(/\s+/gu," ").trim();
  return text.length<=350?text:null;
 };
-const ATOM_TITLE=/<title(?:\s[^>]*)?>([\s\S]*?)<\/title\s*>/iu;
 const ATOM_PUBLISHED=/<published(?:\s[^>]*)?>([\s\S]*?)<\/published\s*>/iu;
 const ATOM_LINK=/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*\/?\s*>/iu;
 const sha=async data=>[...new Uint8Array(await crypto.subtle.digest(
@@ -110,7 +109,7 @@ export async function p0bFirstPartyFeedNews({
   for(const match of matches){
    if(++scanned>40||items.length>=2)break;
    const part=match[1],isAtom=source.format==="atom";
-   const title=isAtom?ATOM_TITLE.exec(part)?.[1]?.replace(/<[^>]+>/gu,"").trim():xmlValue(part,"title");
+   const title=xmlValue(part,"title");
    const url=pinnedPermalink(isAtom?ATOM_LINK.exec(part)?.[1]:xmlValue(part,"link"),source);
    const time=officialItemNativePublicationMs(isAtom?ATOM_PUBLISHED.exec(part)?.[1]?.trim():xmlValue(part,"pubDate"));
    if(!title||title.length<12||title.length>260||/[<>]/u.test(title)||
