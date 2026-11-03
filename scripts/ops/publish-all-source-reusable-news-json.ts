@@ -82,7 +82,9 @@ if(enhancedById.size!==phase2hQuota.records.length||
 console.log(JSON.stringify({
  schema:metadata.schema,
  selected_originals:phase2hQuota.records.length,
- metadata_summaries_observed:metadata.metadata_summaries_observed,\n derived_five_part_fields_filled:evidenceReady,\n independently_verified_five_part_count:0,
+ metadata_summaries_observed:metadata.metadata_summaries_observed,
+ derived_five_part_fields_filled:evidenceReady,
+ independently_verified_five_part_count:0,
  missing_or_invalid:metadata.missing_or_invalid,
  denied_or_rate_limited:metadata.denied_or_rate_limited,
  not_first_party:metadata.not_first_party,
