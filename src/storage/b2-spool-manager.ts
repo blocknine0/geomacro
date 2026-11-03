@@ -4,6 +4,7 @@
  * existing account-wide D1 B2 quota ledger. No source payload enters public D1.
  */
 import {reserveB2AccountQuota} from '../../workers/control-plane/src/b2-account-quota.mjs';
+import {canonicalJson} from '../lib/canonical-json.ts';
 
 export interface SpoolPayload {
  candidateSha256: string;
@@ -135,7 +136,7 @@ export class B2SpoolManager {
   let payload:SpoolPayload;
   try{payload=JSON.parse(DECODER.decode(plain))}catch{throw Error('P0B_SPOOL_PAYLOAD_INVALID')}
   if(payload.sourceId!==sourceId||payload.candidateSha256!==sha||
-    await p0bSha256(JSON.stringify(payload.rawPayload))!==sha)
+    await p0bSha256(canonicalJson(payload.rawPayload))!==sha)
    throw Error('P0B_SPOOL_CONTENT_ID_MISMATCH');
   return payload;
  }
@@ -178,7 +179,7 @@ export class B2SpoolManager {
  async spoolAndVerify(payload:SpoolPayload):Promise<SpoolReceipt>{
   if(!payload||!SHA.test(payload.candidateSha256)||!ID.test(payload.sourceId)||
     !Number.isFinite(Date.parse(payload.discoveredAt))||
-    await p0bSha256(JSON.stringify(payload.rawPayload))!==payload.candidateSha256)
+    await p0bSha256(canonicalJson(payload.rawPayload))!==payload.candidateSha256)
    throw Error('P0B_CANDIDATE_IDENTITY_INVALID');
   const day=this.now().toISOString().slice(0,10).replace(/-/gu,'');
   const key=objectKey(payload.sourceId,payload.candidateSha256,day);
