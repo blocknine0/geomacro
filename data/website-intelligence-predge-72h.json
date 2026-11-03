@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T17:49:34.478Z",
+  "checked_at": "2026-11-03T17:52:06.243Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 346,
+  "item_count": 347,
   "counts": {
     "geopolitics": 152,
-    "macro": 151,
+    "macro": 152,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "69bf0c6530a32304aef8565ad9f7212c342bbaa956457a094312b972517a6624",
+  "source_native_ids_sha256": "98aedbf32e643ccd7c2e55aa5c1a60c5bcfa57f0d9b69d36d27356015b7eab24",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -221,6 +221,25 @@
     },
     {
       "id": "macro-2690110f",
+      "category": "macro",
+      "title": "Geomacro finds FSP announced New Flagship 1200W Gold Non-Modular FSP1200-50ADA Power Supply - TechPowerUp",
+      "what_changed": "A monitored source feed reports: FSP announced New Flagship 1200W Gold Non-Modular FSP1200-50ADA Power Supply - TechPowerUp. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:42:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-570b8bfb",
       "category": "macro",
       "title": "Geomacro finds FSP announced New Flagship 1200W Gold Non-Modular FSP1200-50ADA Power Supply - TechPowerUp",
       "what_changed": "A monitored source feed reports: FSP announced New Flagship 1200W Gold Non-Modular FSP1200-50ADA Power Supply - TechPowerUp. This report has not been independently verified.",

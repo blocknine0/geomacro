@@ -1,6 +1,6 @@
 {
   "schema": "geomacro.free-derived-archive-eligibility.v1",
-  "checked_at": "2026-11-03T17:49:34.478Z",
+  "checked_at": "2026-11-03T17:52:06.243Z",
   "retention_hours": 72,
   "eligibility_policy": "CONCRETE_ORIGINAL_RELEASE_UNSCORED_ONLY",
   "original_release_eligible_total": 2,
@@ -30,7 +30,7 @@
   },
   "free_displayable_outside_latest_preview": 68,
   "free_displayable_status": "MIXED_OFFICIAL_AND_EXPLICITLY_UNVERIFIED",
-  "duplicate_or_template_excluded": 28,
+  "duplicate_or_template_excluded": 29,
   "latest_preview_rows": 250,
   "latest_preview_official_rows": 1,
   "eligible_outside_latest_preview": 1,
