@@ -29,3 +29,8 @@ export function sourceIsPinnedNationalPrimary(source){
    PINNED.get(source.url)===source.publisher_country_iso3&&
    source.domestic_event_context==="PUBLISHER_DOMESTIC_SCOPE_UNVERIFIED_EVENT";
 }
+
+/** Explicit vetted issuer URL → jurisdiction, not an event-country proof. */
+export function pinnedNationalPrimaryPublisherCountry(url){
+ return typeof url==="string"?PINNED.get(url)??null:null;
+}
