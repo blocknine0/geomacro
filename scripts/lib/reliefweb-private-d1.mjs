@@ -1,6 +1,7 @@
 import {
   reliefwebPrivateCandidates,persistUnscoredSourceCandidatesD1,
 } from "./private-unscored-source-d1.mjs";
+import {deriveControlPlaneRootToken} from "../ops/derive-control-plane-root-token.mjs";
 
 /** Single current ReliefWeb metadata-only API page -> existing canonical D1.
  * Original partner report bodies are neither requested nor stored.
@@ -36,7 +37,10 @@ export async function runReliefWebPrivateD1({
   let data;try{data=JSON.parse(responseText)}catch{throw Error("RELIEFWEB_PRIVATE_D1_RESPONSE_INVALID")}
   if(!Array.isArray(data?.data))throw Error("RELIEFWEB_PRIVATE_D1_DATA_INVALID");
   const {candidates,diagnostics}=reliefwebPrivateCandidates(data.data,now);
-  const saved=await persist(candidates,{now,token,fetchImpl});
+  // The control-plane compares against CONTROL_PLANE_TOKEN, derived via
+  // HMAC from the protected commerce root; never send the root as a bearer.
+  const controlPlaneToken=deriveControlPlaneRootToken(token);
+  const saved=await persist(candidates,{now,token:controlPlaneToken,fetchImpl});
   if(saved.d1_exact_readback_verified!==true||
     saved.proposed!==saved.persisted+saved.unchanged+
       saved.existing_identity_conflicts_quarantined)

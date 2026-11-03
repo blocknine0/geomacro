@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdtemp, rm, writeFile, readdir, readFile } from "node:fs/promises";
 import {rssSpoolPrivateCandidates,persistUnscoredSourceCandidatesD1} from "./lib/private-unscored-source-d1.mjs";
+import {deriveControlPlaneRootToken} from "./ops/derive-control-plane-root-token.mjs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -234,7 +235,12 @@ async function main() {
         }));
         throw Error("RSS_PRIVATE_D1_ZERO_ADMITTED");
       }
-      const saved = await persistUnscoredSourceCandidatesD1(candidates);
+      // Production Worker authorizes the derived CONTROL_PLANE_TOKEN,
+      // never the commerce root from GitHub secrets.
+      const controlPlaneToken=deriveControlPlaneRootToken(
+        process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN);
+      const saved = await persistUnscoredSourceCandidatesD1(
+        candidates,{token:controlPlaneToken});
       ingestSummary = {ok:true,attempted:diagnostics.seen,accepted:saved.persisted+saved.unchanged,
         execution_mode:"private_canonical_d1",source_diagnostics:diagnostics,
         private_d1_receipt:saved};

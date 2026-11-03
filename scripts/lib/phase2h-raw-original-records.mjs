@@ -178,6 +178,10 @@ export async function postPhase2hPrivateRawRecords({
    const reason=typeof data?.reason_code==="string"&&
      /^PHASE2H_PRIVATE_RAW_[A-Z_]{3,90}$/u.test(data.reason_code)
       ?data.reason_code:"PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE";
+   // HTTP status alone is safe for operational diagnosis. Never emit
+   // response bodies, credentials, source URLs or private evidence.
+   if(reason==="PHASE2H_PRIVATE_D1_PERSIST_UNAVAILABLE")
+     console.error("PHASE2H_PRIVATE_D1_HTTP_STATUS_"+response.status);
    throw Error(reason);
   }
   const receipt=await response.json();
