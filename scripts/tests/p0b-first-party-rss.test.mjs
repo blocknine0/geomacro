@@ -10,8 +10,10 @@ const xml='<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel>'+
 const stub=async url=>{
  const u=new URL(url);
  const isFeed=u.hostname==="news.un.org";
+ const manifest=["export.CSV","mentions.CSV","gkg.csv"].map(kind=>
+  "1234 "+"a".repeat(32)+" https://data.gdeltproject.org/gdeltv2/20261030084500."+kind+".zip").join("\n");
  const body=isFeed?xml:u.hostname==="www.gov.uk"?
-  JSON.stringify({results:[]}):JSON.stringify({articles:[]});
+  JSON.stringify({results:[]}):u.hostname==="data.gdeltproject.org"?manifest:JSON.stringify({articles:[]});
  return {status:200,redirected:false,
   headers:{get:k=>k==="content-type"?(isFeed?"application/rss+xml":"application/json"):null},
   text:async()=>body};
