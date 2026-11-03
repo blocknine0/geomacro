@@ -79,6 +79,7 @@ function verifyWorkerSources(stdout, allowPartial = false) {
   let ready = null;
   const lastState = new Map();
   const hadError = new Set();
+  const sourcePoll = new Map();
 
   for (const raw of stdout.split(/\r?\n/)) {
     try {
@@ -91,6 +92,15 @@ function verifyWorkerSources(stdout, allowPartial = false) {
           lastState.set(sourceId, "error");
         } else if (event.ok === true) {
           lastState.set(sourceId, "success");
+          // Public source identifiers and count-only stats; never titles, URLs,
+          // response bodies, errors or publisher secrets.
+          const bounded = (value) => Number.isInteger(value) && value >= 0 && value <= 100000 ? value : null;
+          const transport = ["rss", "official_page_fallback"].includes(event.transport) ? event.transport : "unknown";
+          sourcePoll.set(sourceId, {
+            entries_seen: bounded(event.entries_seen),
+            new_items: bounded(event.new_items),
+            transport,
+          });
         }
       }
     } catch {}
@@ -112,6 +122,9 @@ function verifyWorkerSources(stdout, allowPartial = false) {
     incomplete_sources:missing.sort(),
     partial_success:missing.length>0,
     sources: expected.sort(),
+    source_poll_counts: Object.fromEntries(expected.sort().map((id) => [
+      id, sourcePoll.get(id) ?? {entries_seen: null, new_items: null, transport: "unknown"},
+    ])),
   };
 }
 
@@ -229,9 +242,28 @@ async function main() {
       // diagnostics when all fetched originals lack admissible native metadata.
       // Never substitute retrieval time or invent scores to hide this failure.
       if(diagnostics.seen>0 && diagnostics.accepted===0){
+        // Only counts and configured public feed IDs; no article, headline,
+        // URL, raw body, credentials, or candidate timestamp leaves the runner.
+        const counts = Object.fromEntries(sourceSummary.sources.map((id) => [id, {
+          spooled: 0, timestamp_present: 0, date_parseable: 0,
+        }]));
+        for (const payload of payloads) {
+          const id = payload?.source_id;
+          if (!Object.hasOwn(counts, id)) continue;
+          const row = counts[id];
+          row.spooled += 1;
+          if (typeof payload.published_at === "string" && payload.published_at.trim()) {
+            row.timestamp_present += 1;
+            if (Number.isFinite(Date.parse(payload.published_at))) row.date_parseable += 1;
+          }
+        }
         console.log(JSON.stringify({
-          schema:"geomacro.rss-private-d1-admission-failure.v1",
+          schema:"geomacro.rss-private-d1-admission-failure.v2",
           error:"RSS_PRIVATE_D1_ZERO_ADMITTED",source_diagnostics:diagnostics,
+          source_poll_counts: sourceSummary.source_poll_counts,
+          source_spool_counts: counts,
+          sources_completed: sourceSummary.completed_source_count,
+          sources_configured: sourceSummary.configured_source_count,
         }));
         throw Error("RSS_PRIVATE_D1_ZERO_ADMITTED");
       }
