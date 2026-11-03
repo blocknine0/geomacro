@@ -45,7 +45,7 @@ const RSS_ITEM_TAGS=Object.freeze({
  link:/<link(?:\s[^>]*)?>([\s\S]*?)<\/link\s*>/iu,
  pubDate:/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate\s*>/iu,
 });
-const xmlValue=(xml,tag)=>{
+export const xmlValue=(xml,tag)=>{
  const re=RSS_ITEM_TAGS[tag];
  if(!re)return null;
  let text=re.exec(xml)?.[1]?.trim()??null;
