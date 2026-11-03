@@ -248,7 +248,7 @@ export async function collectRegisteredReusableNews({
     throw Error("REUSABLE_NEWS_COLLECTOR_INPUT_INVALID");
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set(),seenOriginalUrls=new Set();
-  let capacitySkipped=0,nationalPrimaryFallbacks=0;
+  let capacitySkipped=0,nationalPrimaryFallbacks=0,duplicateOriginalLinks=0;
   // A sequential 15s timeout for 24 pinned endpoints could exceed the target
   // window by itself. Bounded parallelism preserves source ordering, limits
   // simultaneous requests, and never forwards raw feed bodies to D1.
@@ -366,7 +366,9 @@ export async function collectRegisteredReusableNews({
           }catch{/* unsupported original link has no dedup authority */}
         }
         const safe={...normalized,id:"news-"+id};
-        if(!seen.has(id)&&!(originalKey&&seenOriginalUrls.has(originalKey))){
+        const duplicateOriginal=Boolean(originalKey&&seenOriginalUrls.has(originalKey));
+        if(duplicateOriginal)duplicateOriginalLinks++;
+        if(!seen.has(id)&&!duplicateOriginal){
           seen.add(id);
           if(originalKey)seenOriginalUrls.add(originalKey);
           if(items.length<MAX_ITEMS_PER_RUN){
@@ -411,7 +413,7 @@ export async function collectRegisteredReusableNews({
       selected_source_endpoints:active.length,
       completed_source_endpoints:new Set(checks.map(c=>c.source_ref)).size,
       observed_news_items:items.length,
-      duplicate_original_permalinks_filtered_in_memory:seenOriginalUrls.size,
+      duplicate_original_permalinks_filtered_in_memory:duplicateOriginalLinks,
       issuer_context_country_fallbacks_not_independently_verified:nationalPrimaryFallbacks,
       excluded_by_collector_capacity:capacitySkipped,
       all_matching_items_captured_within_scanned_feeds:capacitySkipped===0,
