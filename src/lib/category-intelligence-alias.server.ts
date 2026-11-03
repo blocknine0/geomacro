@@ -7,7 +7,9 @@ import { readCategoryLiveObservation } from "./category-live-observation.server"
 import { readCategoryOpenData } from "./category-open-data.server";
 import {automatedFindsResponse} from "./automated-finds-reader.server";
 
-const MAX_BODY_BYTES = 32 * 1024;
+import { readBoundedCommercialBody, MAX_COMMERCIAL_REQUEST_BODY_BYTES } from "./bounded-commercial-request-body.server";
+
+const MAX_BODY_BYTES = MAX_COMMERCIAL_REQUEST_BODY_BYTES;
 const CANONICAL_PATH = "/api/v1/intelligence/query";
 
 type CategoryConfig = {
@@ -265,8 +267,10 @@ export function createCategoryIntelligenceHandlers(config: CategoryConfig) {
 
       let rawText: string;
       try {
-        rawText = await request.text();
-      } catch {
+        rawText = await readBoundedCommercialBody(request, MAX_BODY_BYTES);
+      } catch (error) {
+        if (error instanceof Response && error.status === 413)
+          return errorResponse("CATEGORY_REQUEST_TOO_LARGE", 413);
         return errorResponse("INVALID_CATEGORY_QUERY");
       }
       if (new TextEncoder().encode(rawText).byteLength > MAX_BODY_BYTES) {
