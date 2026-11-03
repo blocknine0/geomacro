@@ -3,6 +3,7 @@ import {
 } from "node:crypto";
 
 import { CENTRAL_SECURITY_POLICIES } from "../../workers/control-plane/src/central-security-policies.mjs";
+import { getCommercialLaunchState } from "./commercial-launch-gate.server";
 import { consumeD1CentralSecurityBudget, centralSecurityBudgetFailureCode } from "./d1-central-security-budget.server";
 const POLICIES = CENTRAL_SECURITY_POLICIES as Record<Exclude<CentralSecurityRouteClass, "page">, BudgetPolicy>;
 
@@ -87,6 +88,80 @@ export function isCoinbaseTestnetLocalSecurityFallbackAllowed(
 }
 
 
+/**
+ * Fast, no-network commercial incident guard. It runs before auth, body parsing,
+ * distributed budgets or any settlement handler, including legacy aliases.
+ * GET/HEAD/OPTIONS discovery and independent research/PREDGE ingestion remain live.
+ *
+ * This protects each Nitro request using the configuration visible to that
+ * deployment. Updating a Cloudflare secret is NOT an instantaneous global flip:
+ * operators must wait for rollout and verify every deployed entry point.
+ */
+const PAID_INTELLIGENCE_WRITES = new Set([
+  "/api/v1/intelligence/query",
+  "/api/v1/intelligence/geopolitics",
+  "/api/v1/intelligence/macro-fx",
+  "/api/v1/intelligence/critical-minerals",
+  "/api/v1/intelligence/structured-answer",
+  "/api/v1/agent",
+  "/api/agent/risk",
+]);
+
+function isPaidCommercialWrite(pathname: string, method: string): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(method)) return false;
+  if (pathname === "/api/v1/intelligence/availability" ||
+      pathname === "/api/v1/payments/preflight" ||
+      pathname === "/api/x402/risk/availability") return false;
+  return PAID_INTELLIGENCE_WRITES.has(pathname) ||
+    pathname.startsWith("/api/x402/") ||
+    pathname.startsWith("/api/v1/payments/") ||
+    pathname.startsWith("/api/commercial/") ||
+    pathname === "/api/risk-gate" ||
+    pathname.startsWith("/api/risk-gate/") ||
+    (pathname.startsWith("/api/goat/") &&
+      process.env.GOATX402_ENVIRONMENT?.trim().toLowerCase() === "mainnet");
+}
+
+function paymentProviderFromPath(pathname: string): string | null {
+  if (pathname.startsWith("/api/v1/payments/paypal")) return "paypal";
+  if (pathname.startsWith("/api/x402/circle/")) return "circle_gateway_x402";
+  if (pathname.startsWith("/api/x402/nevermined/")) return "nevermined";
+  if (pathname.startsWith("/api/goat/")) return "goat_x402";
+  if (pathname === "/api/x402/intelligence" ||
+      pathname === "/api/x402/risk") return "coinbase_x402";
+  // Canonical multi-provider intelligent endpoints select their payment
+  // provider after parsing the signed payment. Their provider-specific
+  // settlement adapters perform the final quarantine check.
+  return null;
+}
+
+export function commercialEmergencyDecision(
+  pathnameInput: string,
+  methodInput: string,
+): CentralSecurityDecision | null {
+  const pathname = normalizedPathname(pathnameInput);
+  const method = String(methodInput || "GET").toUpperCase();
+  if (!isPaidCommercialWrite(pathname, method)) return null;
+
+  const state = getCommercialLaunchState();
+  const routeClass = classifyCentralSecurityRoute(pathname, method);
+  if (state.emergencyFrozen) {
+    return {
+      allowed: false, status: 423,
+      code: "GEOMACRO_COMMERCE_EMERGENCY_FREEZE_ACTIVE", routeClass,
+    };
+  }
+  const provider = paymentProviderFromPath(pathname);
+  if (provider && state.disabledProviders.includes(provider)) {
+    return {
+      allowed: false, status: 423,
+      code: provider.toUpperCase().replace(/[^A-Z0-9]+/g, "_") +
+        "_PRODUCTION_QUARANTINED", routeClass,
+    };
+  }
+  return null;
+}
+
 export function classifyCentralSecurityRoute(
   pathnameInput: string,
   methodInput: string,
@@ -126,6 +201,16 @@ export function classifyCentralSecurityRoute(
   ].includes(pathname)) {
     return "public_api";
   }
+
+  // Funds-initiation and capture paths must not fall through to generic
+  // api_write, including PayPal and Base/Polygon checkout adapters. Discovery
+  // and no-charge preflight endpoints retain their existing public classes.
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS" &&
+      pathname.startsWith("/api/v1/payments/") &&
+      pathname !== "/api/v1/payments/preflight") return "payment";
+
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS" &&
+      pathname === "/api/v1/intelligence/structured-answer") return "payment";
 
   if (
     pathname.startsWith("/api/x402") ||
@@ -456,6 +541,9 @@ export async function enforceCentralRequestSecurity(
       input.pathname,
       input.method,
     );
+
+  const emergency = commercialEmergencyDecision(input.pathname, input.method);
+  if (emergency) return emergency;
 
   if (routeClass === "page") {
     return {

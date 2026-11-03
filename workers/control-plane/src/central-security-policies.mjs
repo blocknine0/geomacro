@@ -68,7 +68,9 @@ export const CENTRAL_SECURITY_POLICIES = {
     windowSeconds: 60,
     perClient: 45,
     global: 900,
-    maxBodyBytes: 32 * 1024,
+    // Central paid-request envelope: maximum 8 KiB for declared body bytes.
+    // Individual handlers also validate actual decoded/request body size.
+    maxBodyBytes: 8192,
     distributed: true,
     failClosed: true,
   },
