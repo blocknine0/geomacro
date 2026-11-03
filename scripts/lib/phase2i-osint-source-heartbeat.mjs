@@ -29,9 +29,15 @@ export function planPrivateOsintHeartbeats(summary,now=new Date()){
       ![c.registered,c.checked,c.healthy,c.empty,c.observed,
          c.healthy_distinct_feed_endpoints,c.native_dated_items_in_collector_batch]
         .every(v=>Number.isSafeInteger(v)&&v>=0)||
-      c.registered<1||c.checked>c.registered||c.healthy>c.checked||
+      c.checked>c.registered||c.healthy>c.checked||
       c.healthy_distinct_feed_endpoints>c.healthy||
-      c.native_dated_items_in_collector_batch>768||
+      // The collector caps WEBSITE selection at 768 across all domains, but
+      // this category coverage describes the full pre-selection native batch.
+      // Each checked feed can contribute at most 100 parsed items; rejecting
+      // valid bursts above 768 crashed the source-only D1 intake after write.
+      c.native_dated_items_in_collector_batch>c.checked*100||
+      (c.registered===0&&(c.checked!==0||c.healthy!==0||
+        c.native_dated_items_in_collector_batch!==0))||
       (c.healthy===0&&c.healthy_distinct_feed_endpoints!==0)||
       (c.healthy>0&&c.healthy_distinct_feed_endpoints===0)||
       !["LIVE_FEED_AND_DATED_ITEMS_THIS_TICK",
@@ -39,7 +45,8 @@ export function planPrivateOsintHeartbeats(summary,now=new Date()){
         "NO_HEALTHY_FEED_THIS_TICK","NO_SOURCE_REGISTERED"].includes(c.status))
      throw Error("PRIVATE_OSINT_HEARTBEAT_CATEGORY_INVALID");
    const healthy=c.healthy_distinct_feed_endpoints>0;
-   if((!healthy&&c.status!=="NO_HEALTHY_FEED_THIS_TICK")||
+   if((!healthy&&c.status!==(c.registered===0?
+        "NO_SOURCE_REGISTERED":"NO_HEALTHY_FEED_THIS_TICK"))||
       (healthy&&!(c.status==="LIVE_FEED_AND_DATED_ITEMS_THIS_TICK"||
                     c.status==="LIVE_FEED_HEALTHY_NO_MATCHING_DATED_ITEMS")))
      throw Error("PRIVATE_OSINT_HEARTBEAT_HEALTH_CONTRADICTS");
