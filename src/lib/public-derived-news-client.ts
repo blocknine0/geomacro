@@ -178,14 +178,22 @@ export function checkedDerivedNews(doc: unknown, now = Date.now()): StatelessInt
 export async function fetchDirectDerivedNews(
   fetchImpl: typeof fetch = fetch,
   now = Date.now(),
+  options: {preferLive?:boolean} = {},
 ): Promise<StatelessIntelligenceSignal[]> {
   // Keep the built website independent from each incoming news release.
   // Read the existing Cloudflare edge-backed live D1 bundle with its shared
   // per-POP cache; retain the immutable archive as outage continuity only.
-  try {
-    return await fetchAllDerivedNews(fetchImpl,now,{fresh:false});
-  } catch {
-    // A stale archive must never be mislabeled as newly ingested evidence.
+  // Production callers use the built-in fetch and favor the live edge.
+  // Explicitly injected transport clients retain the original static contract
+  // unless they opt into live reads, preventing duplicate requests in the
+  // source-neutral API/projector paths already governed by their own budgets.
+  const preferLive=options.preferLive??fetchImpl===globalThis.fetch;
+  if(preferLive){
+    try {
+      return await fetchAllDerivedNews(fetchImpl,now,{fresh:false});
+    } catch {
+      // A stale archive must never be mislabeled as newly ingested evidence.
+    }
   }
   const response = await fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL,{
     method:"GET",
