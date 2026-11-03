@@ -62,5 +62,35 @@ class PublisherNativeClockTests(unittest.TestCase):
         self.assertFalse(self.detect({"published": "2026-11-03T12:70:00Z"}))
 
 
+class GovernedSourceRegistryTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        tree = ast.parse(Path("workers/telegram-flash/worker.py").read_text(encoding="utf-8"))
+        assignments = [node for node in tree.body
+                       if isinstance(node, ast.AnnAssign)
+                       and isinstance(node.target, ast.Name)
+                       and node.target.id == "DEFAULT_RSS_FEEDS"]
+        if len(assignments) != 1:
+            raise AssertionError("RSS_DEFAULT_SOURCE_REGISTRY_UNAVAILABLE")
+        cls.sources = {entry["source_id"]: entry
+                       for entry in ast.literal_eval(assignments[0].value)}
+
+    def test_independent_critical_materials_feeds(self):
+        doe = self.sources["doe_critical_materials_rss"]
+        mining = self.sources["mining_com_critical_minerals_rss"]
+        self.assertEqual(doe["url"], "https://www.energy.gov/rss/energygov/2193718")
+        self.assertEqual(mining["url"], "https://www.mining.com/feed/")
+        self.assertEqual(doe["event_type"], "CRITICAL_MINERALS_GOVERNMENT_RELEASE")
+        self.assertEqual(mining["event_type"], "CRITICAL_MINERALS_INDUSTRY_REPORT")
+        self.assertNotEqual(doe["source_id"], "usgs_minerals_news_rss")
+        self.assertEqual(len(self.sources), 20)
+
+    def test_eu_official_rss_fallback_does_not_fabricate_date(self):
+        source = self.sources["eu_council_press_rss"]
+        self.assertEqual(source["retry_attempts"], 3)
+        self.assertIn("consilium.europa.eu", source["fallback_url"])
+        self.assertEqual(source["fallback_link_prefix"], "/en/press/press-releases/")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
