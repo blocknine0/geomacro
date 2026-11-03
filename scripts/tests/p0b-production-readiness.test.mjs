@@ -67,8 +67,8 @@ test('P0-B admin readiness returns D1 state only and refuses empty registry',asy
   assert.equal(data.genuine_end_to_end_b2_remote_acceptance_proven,false);
   assert.equal(data.source_registry.enabled,1);
   const asText=JSON.stringify(data);
-  assert.ok(!asText.includes('example.org'));
-  assert.ok(!asText.includes('not-a-secret'));
+  assert.doesNotMatch(asText,/https?:\/\//u);
+  assert.doesNotMatch(asText,/not-a-secret/u);
   const disabled=await getP0bIngestionStatus({...env,GEOMACRO_P0B_ADMISSION_ACTIVE:'0'});
   assert.equal((await disabled.json()).ready_for_real_acceptance,false);
  }finally{db.close()}
