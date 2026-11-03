@@ -21,6 +21,8 @@ on:
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
@@ -58,6 +60,8 @@ on:
       # source edits; wake the existing guarded main deployment and exact-SHA
       # readback rather than leaving production on an old revision.
       - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
