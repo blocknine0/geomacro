@@ -325,9 +325,11 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // Separate from source intake/signing; reserve 250k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
-      250_000+PREDGE_D1_FREE_HEADROOM.rows_read &&
+      250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
+      registeredAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
-      5_000+PREDGE_D1_FREE_HEADROOM.rows_written &&
+      5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
+      registeredAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
       D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
@@ -340,9 +342,11 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // B2 network attempts still require their own shared atomic reservations.
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
-      250_100+PREDGE_D1_FREE_HEADROOM.rows_read &&
+      250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
+      registeredAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
-      5_100+PREDGE_D1_FREE_HEADROOM.rows_written;
+      5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
+      registeredAdaptive.extra_write_reserved;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
