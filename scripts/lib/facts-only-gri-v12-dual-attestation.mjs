@@ -29,17 +29,34 @@ const keys=env=>{
   return facts&&rights&&facts.actual!==rights.actual?{facts,rights}:null;
  }catch{return null;}
 };
-const noRawExpression=events=>{
+// The numerical GRI input is structured facts only. Check recursively:
+// an article paragraph hidden under nested metadata must not bypass the
+// top-level forbidden-key check. Keep bounds finite on untrusted input.
+export const scoreEventsAreFactsOnly=events=>{
  if(!Array.isArray(events)||events.length<1||events.length>250)return false;
- const forbidden=new Set(["title","source_title","summary","description",
-  "article_body","article_text","original_content","raw_content","full_text"]);
+ const forbidden=new Set(["title","source_title","headline","article_headline",
+  "source_headline","summary","description","article_body","article_text",
+  "original_content","raw_content","full_text","body_text","paragraph"]);
+ const clean=(value,depth=0)=>{
+  if(depth>4)return false;
+  if(value===null||typeof value==="boolean")return true;
+  if(typeof value==="number")return Number.isFinite(value);
+  if(typeof value==="string")
+   return value.length<=250&&!/\\n\\s*\\n/u.test(value);
+  if(Array.isArray(value))
+   return value.length<=250&&value.every(x=>clean(x,depth+1));
+  if(typeof value!=="object")return false;
+  const fields=Object.entries(value);
+  return fields.length<=75&&fields.every(([name,v])=>
+   !forbidden.has(name.toLowerCase())&&clean(v,depth+1));
+ };
  return events.every(row=>row&&typeof row==="object"&&!Array.isArray(row)&&
-  !Object.keys(row).some(key=>forbidden.has(key))&&
-  typeof row.story_canonical_label==="string"&&
+  clean(row)&&typeof row.story_canonical_label==="string"&&
   /^[A-Z][A-Z0-9_]{3,79}$/u.test(row.story_canonical_label)&&
   typeof row.story_decision_rationale==="string"&&
   row.story_decision_rationale.length<=96);
 };
+
 /** Return true only for a genuinely recomputable, separately signed proof.
  * @param {object} source The server's trusted candidate + independently read provenance.
  * @param {object} env Protected server environment. Callers in product code
@@ -51,7 +68,7 @@ export function verifyPinnedFactsOnlyGriV12Proof(source,env=process.env){
   const p=s?.scoreProof;
   const authorities=keys(env);
   if(!p||!authorities||p.schema!==FACTS_GRI_PROOF_SCHEMA||
-     !noRawExpression(p.score_events)||
+     !scoreEventsAreFactsOnly(p.score_events)||
      typeof p.as_of!=="string"||
      !Number.isFinite(Date.parse(p.as_of))||
      Math.abs(Date.now()-Date.parse(p.as_of))>72*3_600_000||
