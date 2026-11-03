@@ -2,17 +2,19 @@
 
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, readdir, readFile } from "node:fs/promises";
+import {rssSpoolPrivateCandidates,persistUnscoredSourceCandidatesD1} from "./lib/private-unscored-source-d1.mjs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 
 const DB_URL = String(process.env.SUPABASE_DB_URL ?? "").trim();
 const DB_MODE = String(process.env.GRI_DB_MODE ?? "").trim().toLowerCase();
+const D1_PRIVATE = String(process.env.RSS_LIVE_CYCLE_TRANSPORT ?? "").toLowerCase() === "d1_private";
 const SUMMARY_OUT = String(process.env.RSS_LIVE_CYCLE_SUMMARY_OUT ?? "").trim();
 const SKIP_CORROBORATION = String(process.env.RSS_LIVE_SKIP_CORROBORATION ?? "").trim().toLowerCase() === "true";
 
-if (!DB_URL || DB_MODE !== "direct_postgres") {
+if (!D1_PRIVATE && (!DB_URL || DB_MODE !== "direct_postgres")) {
   throw new Error("RSS_LIVE_CYCLE_REQUIRES_DIRECT_POSTGRES");
 }
 
@@ -72,7 +74,7 @@ function parseLastJson(stdout, label) {
   throw new Error(`${label}_JSON_OUTPUT_MISSING`);
 }
 
-function verifyWorkerSources(stdout) {
+function verifyWorkerSources(stdout, allowPartial = false) {
   let ready = null;
   const lastState = new Map();
   const hadError = new Set();
@@ -99,12 +101,15 @@ function verifyWorkerSources(stdout) {
 
   const expected = [...new Set(ready.feeds.map(String).filter(Boolean))];
   const missing = expected.filter((id) => lastState.get(id) !== "success");
-  if (missing.length) throw new Error("RSS_SOURCES_INCOMPLETE");
+  if (missing.length && (!allowPartial || expected.length === missing.length)) throw new Error("RSS_SOURCES_INCOMPLETE");
 
   return {
     configured_source_count: expected.length,
     completed_source_count: expected.filter((id) => lastState.get(id) === "success").length,
     recovered_source_count: expected.filter((id) => lastState.get(id) === "success" && hadError.has(id)).length,
+    missing_source_count:missing.length,
+    incomplete_sources:missing.sort(),
+    partial_success:missing.length>0,
     sources: expected.sort(),
   };
 }
@@ -147,7 +152,7 @@ async function createLocalSpoolServer(spoolDir) {
         countries: /^[A-Z]{3}$/.test(country) ? [country] : [],
         scoring_eligible: false,
         persisted: false,
-        transport: "local_spool_pending_canonical_direct_postgres",
+        transport: D1_PRIVATE ? "local_spool_pending_private_d1" : "local_spool_pending_canonical_direct_postgres",
       }));
     } catch {
       response.writeHead(400, { "content-type": "application/json", "cache-control": "no-store" });
@@ -177,6 +182,10 @@ async function closeServer(server) {
 }
 
 async function main() {
+  // Require the existing protected D1 control-plane write credential BEFORE
+  // creating a source spool or making a publisher request.
+  if (D1_PRIVATE && String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").length < 32)
+    throw new Error("RSS_PRIVATE_D1_AUTH_REQUIRED");
   const spoolDir = await mkdtemp(path.join(tmpdir(), "geomacro-rss-spool-"));
   let server = null;
   try {
@@ -194,28 +203,52 @@ async function main() {
         BREAKING_RSS_ENABLED: "true",
         BREAKING_RSS_RUN_ONCE: "true",
       },
+      forward: !D1_PRIVATE,
     });
     await closeServer(server);
     server = null;
 
-    if (worker.code !== 0) {
+    if (worker.code !== 0 && !D1_PRIVATE) {
       throw new Error("RSS_WORKER_FAILED");
     }
-    const sourceSummary = verifyWorkerSources(worker.stdout);
-
-    const ingest = await runCommand(
-      "bun",
-      ["scripts/run-live-flash-ingest-local.ts", "--payload-dir", spoolDir],
-      { forward: true },
-    );
-    if (ingest.code !== 0) throw new Error("RSS_CANONICAL_DIRECT_INGEST_FAILED");
-    const ingestSummary = parseLastJson(ingest.stdout, "RSS_CANONICAL_DIRECT_INGEST");
-    if (ingestSummary?.ok !== true || Number(ingestSummary.accepted) !== local.spooledCount()) {
-      throw new Error("RSS_CANONICAL_DIRECT_INGEST_COUNT_MISMATCH");
+    const sourceSummary = verifyWorkerSources(worker.stdout, D1_PRIVATE);
+    // Legacy Postgres and its strict local corroboration stay unchanged.
+    // D1 private intake only persists genuine dated publisher metadata with
+    // the repository's existing immutable SHA, dedup and D1 exact readback.
+    let ingestSummary;
+    if (D1_PRIVATE) {
+      const names = await readdir(spoolDir);
+      const payloads = [];
+      for (const name of names) {
+        if (!/^[a-f0-9]{64}\.json$/u.test(name)) throw Error("RSS_SPOOL_NAME_INVALID");
+        payloads.push(JSON.parse(await readFile(path.join(spoolDir,name),"utf8")));
+      }
+      const {candidates,diagnostics} = rssSpoolPrivateCandidates(payloads);
+      const saved = await persistUnscoredSourceCandidatesD1(candidates);
+      ingestSummary = {ok:true,attempted:diagnostics.seen,accepted:saved.persisted+saved.unchanged,
+        execution_mode:"private_canonical_d1",source_diagnostics:diagnostics,
+        private_d1_receipt:saved};
+    } else {
+      const ingest = await runCommand(
+        "bun",
+        ["scripts/run-live-flash-ingest-local.ts", "--payload-dir", spoolDir],
+        { forward: true },
+      );
+      if (ingest.code !== 0) throw new Error("RSS_CANONICAL_DIRECT_INGEST_FAILED");
+      ingestSummary = parseLastJson(ingest.stdout, "RSS_CANONICAL_DIRECT_INGEST");
+      if (ingestSummary?.ok !== true || Number(ingestSummary.accepted) !== local.spooledCount()) {
+        throw new Error("RSS_CANONICAL_DIRECT_INGEST_COUNT_MISMATCH");
+      }
     }
 
     let corroborationSummary;
-    if (SKIP_CORROBORATION) {
+    if (D1_PRIVATE) {
+      corroborationSummary = {
+        ok:true,skipped:true,reason:"private_d1_unscored_original_metadata_only",
+        processed:0,verified:0,corroborating:0,unverified:0,
+        execution_mode:"not_claimed_by_private_discovery",threshold_weakening:false,
+      };
+    } else if (SKIP_CORROBORATION) {
       corroborationSummary = {
         ok: true,
         skipped: true,
@@ -243,18 +276,20 @@ async function main() {
     const summary = {
       ok: true,
       schema: "geomacro.rss-live-cycle.v2",
-      transport: "canonical_direct_postgres",
+      transport: D1_PRIVATE ? "private_canonical_d1" : "canonical_direct_postgres",
       edge_function_dependency: false,
       source_summary: sourceSummary,
       spool: {
         payloads: local.spooledCount(),
-        durable_authority: "canonical_live_flash_tables",
+        durable_authority: D1_PRIVATE ? "phase2h_private_raw_news" : "canonical_live_flash_tables",
         prepromotion: false,
       },
       ingestion: {
         attempted: Number(ingestSummary.attempted ?? 0),
         accepted: Number(ingestSummary.accepted ?? 0),
         execution_mode: ingestSummary.execution_mode,
+        ...(D1_PRIVATE ? {private_d1_receipt:ingestSummary.private_d1_receipt,
+          source_diagnostics:ingestSummary.source_diagnostics} : {}),
       },
       corroboration: {
         ok: true,

@@ -7,6 +7,14 @@ import {
   upsertObservations,
 } from "./lib-live-source-utils.mjs"
 
+import {runReliefWebPrivateD1} from "./lib/reliefweb-private-d1.mjs";
+
+// The scheduled canonical D1 mode does not instantiate the legacy Supabase
+// client. Historical direct-Postgres invocation remains available on demand.
+if (process.env.RELIEFWEB_TRANSPORT === "d1_private") {
+  const receipt=await runReliefWebPrivateD1();
+  console.log(JSON.stringify(receipt));
+} else {
 const SOURCE_ID =
   "reliefweb"
 
@@ -340,3 +348,5 @@ console.log({
 console.log(
   "PASS: RELIEFWEB V2 CURRENT REPORT INGESTION CLEAN"
 )
+
+}

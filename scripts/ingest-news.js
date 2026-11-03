@@ -1,4 +1,5 @@
 import {buildClassifyPrompt} from './lib/canonical-risk-classification-prompt.mjs';
+import {privateTitleTopicHint} from './lib/private-unscored-source-d1.mjs';
 import {requireConfiguredClassifier,createOptionalGroqClient} from './lib/classifier-provider-configuration.mjs';
 import { createClient } from '@supabase/supabase-js';
 import Groq from 'groq-sdk';
@@ -22,11 +23,12 @@ import {
 } from './lib/restricted-private-scoring-diagnostics.mjs';
 
 dotenv.config();
-requireConfiguredClassifier();
 
-// Private staging reuses the exact canonical classifier and source gates, but
-// never constructs or queries a Supabase data-plane client.
+// Discovery and private original intake remain operational with zero model
+// credentials; only model-scored paid publication may depend on a classifier.
+// Private staging reuses canonical gates without constructing a Supabase client.
 const PRIVATE_B2_STAGE = process.argv.includes('--private-scored-stage');
+if (!PRIVATE_B2_STAGE) requireConfiguredClassifier();
 const supabase = PRIVATE_B2_STAGE ? null : createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -265,6 +267,7 @@ const classifierHealth = {
 
   articlesAttempted: 0,
   articlesClassified: 0,
+  unscoredTitleFallbackArticles: 0,
 
   degraded: false,
 };
@@ -1761,6 +1764,19 @@ async function checkArticlesBatchRelevance(
 
   classifierHealth.degraded = true;
 
+  if (PRIVATE_B2_STAGE) {
+    // All free model providers may be unavailable or quota-exhausted. Keep
+    // private SOURCE DISCOVERY alive without inventing a numerical severity,
+    // confident classifier verdict or GRO admission. A regex is only a
+    // source-domain *hint* and cannot satisfy passesGates().
+    classifierHealth.unscoredTitleFallbackArticles += articles.length;
+    return articles.map(article => ({
+      relevant: false, category: 'none', severity: 0, confidence: 0,
+      narrative: null, summary: null, ungrounded: false,
+      classificationProvider: 'title_regex_unscored',
+      sourceTopicHint: privateTitleTopicHint(article.title),
+    }));
+  }
   throw classifierUnavailableError(
     providerWasAttempted
       ? 'No healthy classification provider remains for this ingestion run.'
@@ -1809,7 +1825,9 @@ async function assessWithRetry(articles, category) {
 
     classifierHealth.batchesCompleted++;
     classifierHealth.articlesClassified +=
-      assessments.length;
+      assessments.filter(assessment =>
+        assessment.classificationProvider !== 'title_regex_unscored'
+      ).length;
 
     return assessments;
   } catch (error) {
@@ -3539,7 +3557,8 @@ async function ingestNews() {
       for (let i = 0; i < batch.length; i++) {
         const article = batch[i];
         const assessment = assessments[i];
-        if(PRIVATE_B2_STAGE && assessment){
+        if(PRIVATE_B2_STAGE && assessment &&
+          assessment.classificationProvider !== 'title_regex_unscored'){
           const id=privateOriginalRef(article);
           if(id)returnedOriginalRefs.add(id);
         }
@@ -3780,7 +3799,14 @@ async function ingestNews() {
         `${classifierHealth.articlesAttempted} attempted article(s).`
     );
 
-    process.exitCode = 1;
+    // Private D1 source ingestion has an independent durable receipt. An
+    // unscored deterministic hint is *not* a scoring failure requiring source
+    // discovery to stop. Other unexpected classifier/runtime failures remain
+    // fatal. Never change signed/paid gate status based on this fallback.
+    if (!PRIVATE_B2_STAGE || classifierHealth.batchesFailed > 0)
+      process.exitCode = 1;
+    else
+      console.warn('PRIVATE_SOURCE_DISCOVERY_CONTINUES_UNSCORED_NO_PAID_PROMOTION');
   }
 }
 

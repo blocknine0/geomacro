@@ -84,10 +84,12 @@ export function issuerRightsDisposition({sourceId,originalPublisherOwned=false,
     publisherRightsTerms:rule.terms,
     status:!licenseRecognized&&!notice?"HOLD_SOURCE_RIGHTS_OR_NOTICE":
       candidate?"PUBLISHER_RIGHTS_REVIEW_CANDIDATE":"HOLD_ITEM_LEVEL_EXCEPTIONS",
-    // Even a reviewed issuer article still needs purpose-specific legal signoff,
-    // unaltered provenance and country/event confirmation. Never auto grant.
+    // Grant the per-item issuer-rights disposition ONLY after the existing
+    // ownership, third-party exclusion, attribution and notice (when required)
+    // assertions have all been supplied. Other independent paid-product gates
+    // (source authentication, event evidence, signatures) remain separate.
     possibleDerivedUse:candidate,
-    articleCommercialRightsVerified:false,
-    commercialEligible:false,
+    articleCommercialRightsVerified:candidate,
+    commercialEligible:candidate,
   });
 }
