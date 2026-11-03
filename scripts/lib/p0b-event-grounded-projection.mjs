@@ -88,11 +88,23 @@ export function p0bHeadlineEvent(title,category){
  }
  return null;
 }
+/** First-party metadata can contain an event not expressed in the headline.
+ * Only an actually observed event statement may be projected as a fact.
+ */
+export function p0bMetadataEvent(title,description,category){
+ const headline=p0bHeadlineEvent(title,category);
+ if(headline)return headline;
+ if(typeof description!=="string"||description.length<45||
+    description.length>360||unsafe(description))return null;
+ const lead=description.split(/(?<=[.!?])\s+/u)[0].replace(/[.!?]+$/u,"").trim();
+ return p0bHeadlineEvent(lead,category);
+}
 export function p0bProjectEvidenceBounded(item){
  if(!item?.analysis||!item?.original||!item.record_id)return null;
  const originalAudit=p0aAuditOriginal(item);
  if(originalAudit.status==="PASS")return Object.freeze(item.analysis);
- const event=p0bHeadlineEvent(item.original.original_title,item.category);
+ const event=p0bMetadataEvent(item.original.original_title,
+  item.original.original_content,item.category);
  if(!event)return null;
  const candidate={...item.analysis,
    what_happened:{...item.analysis.what_happened,text:event.what},
