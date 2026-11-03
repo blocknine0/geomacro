@@ -2,7 +2,7 @@
  * Source-native publication clocks are never replaced by ingestion timestamps.
  */
 import {createHash} from "node:crypto";
-import {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
+import {p0bMetadataEvent} from "./p0b-event-grounded-projection.mjs";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
 /** Founder-locked three-domain contract: transform every admitted raw original
  * into GeoMacro-authored five-part analysis without a manual commerce review.
@@ -83,6 +83,12 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
     /Open Government Licence v3\.0/u.test(c.credit);
   // A source issuing only a calendar day MUST NOT acquire a fictitious UTC
   // hour from an upstream parser's midnight sentinel.
+  // Publisher feed description or bounded first-party page metadata remains
+  // private evidence, never an independently verified event or paid right.
+  const privateDescription=typeof c.description==="string"&&
+    c.description.trim().length>=45&&c.description.length<=360&&
+    !/[<>]|https?:\/\/|\b(?:ignore previous|system prompt|api keys?)\b/iu.test(c.description)?
+      c.description.trim():null;
   const nativeDay=c.datePrecision==="day"||/^20\d{2}-\d{2}-\d{2}$/u.test(c.publishedAt);
   const nativePublished=nativeDay
     ?c.publishedAt.slice(0,10):c.publishedAt;
@@ -91,9 +97,9 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
    original_published_at:nativePublished,
    date_precision:nativeDay?"day":"exact",
    original_title:c.title,
-   original_content:openLicense&&typeof c.description==="string"&&
-     c.description.length<=900&&!/[<>]/u.test(c.description)?c.description:null,
-   content_scope:openLicense?"OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT":"ORIGINAL_FEED_METADATA_ONLY",
+   original_content:privateDescription,
+   content_scope:openLicense?"OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT":
+     privateDescription?"PRIVATE_SOURCE_DESCRIPTION_ONLY":"ORIGINAL_FEED_METADATA_ONLY",
    full_article_html_collected:false,
    original_article_license_verified:false,
    source_credit:typeof c.credit==="string"&&c.credit.length<=250?c.credit:null,
@@ -110,7 +116,7 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   // A headline alone remains RAW_MONITOR when the old model found no event.
   const hasMetadata=typeof c.description==="string"&&
     c.description.trim().length>=45&&!/[<>]/u.test(c.description);
-  const headlineEvent=hasMetadata?p0bHeadlineEvent(c.title,c.category):null;
+  const headlineEvent=hasMetadata?p0bMetadataEvent(c.title,c.description,c.category):null;
   const topic=s?.topic??null;
   const analysis={
    schema:"geomacro.phase2h.private-five-part.v1",
