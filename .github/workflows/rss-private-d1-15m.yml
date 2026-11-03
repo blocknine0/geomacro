@@ -8,6 +8,7 @@ on:
       - "scripts/ops/plan-rss-category-lanes.py"
       - "scripts/ops/test-rss-category-lanes.py"
       - "workers/telegram-flash/worker.py"
+      - "scripts/ops/test-rss-native-clock.py"
   push:
     branches: [main]
     paths:
@@ -43,6 +44,8 @@ jobs:
           python-version: "3.12"
       - name: Verify every configured RSS source maps to exactly one category
         run: python scripts/ops/test-rss-category-lanes.py -v
+      - name: Verify publisher-native publication precision without invented clock
+        run: python scripts/ops/test-rss-native-clock.py
 
   ingest:
     needs: contract
