@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T12:49:28.794Z",
+  "updated_at": "2026-11-03T13:20:02.884Z",
   "signals": [
+    {
+      "id": "geopolitics-4f831517",
+      "category": "geopolitics",
+      "title": "Geomacro finds Yei launched voter education amid calls to prevent election violence",
+      "what_changed": "A monitored source feed reports: Yei launched voter education amid calls to prevent election violence. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:00:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a88f55d0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Tusk said Poland thwarted possible provocation on Kaliningrad border overnight",
+      "what_changed": "A monitored source feed reports: Tusk said Poland thwarted possible provocation on Kaliningrad border overnight. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:59:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-8ea30ec3",
       "category": "geopolitics",
@@ -290,6 +328,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-a359659f",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched defensive strikes at Iranian targets near Strait of Hormuz - CBS News",
+      "what_changed": "A monitored source feed reports: U.S. launched defensive strikes at Iranian targets near Strait of Hormuz - CBS News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T02:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-46ec05af",
       "category": "geopolitics",
       "title": "Geomacro finds Beijing launched diplomatic flurry amid threat of renewed U.S. war with Iran - The Washington Post",
@@ -322,6 +379,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-55ef1b2f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky confirmed Ukraine Retaliated Against Russian Cyberattack by Hacking Moscow’s Emergency Alert App",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed Ukraine Retaliated Against Russian Cyberattack by Hacking Moscow’s Emergency Alert App. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T01:21:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5f451aff",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions",
+      "what_changed": "A monitored source feed reports: Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:46:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-402d2f34",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump raised doubts about renewed attacks on Iran, says deal with Tehran possible",
+      "what_changed": "A monitored source feed reports: Trump raised doubts about renewed attacks on Iran, says deal with Tehran possible. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:46:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.haaretz.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

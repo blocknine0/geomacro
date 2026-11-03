@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T13:17:57.751Z",
+  "checked_at": "2026-11-03T13:20:02.884Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 289,
+  "item_count": 298,
   "counts": {
-    "geopolitics": 126,
-    "macro": 122,
+    "geopolitics": 132,
+    "macro": 125,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "778c10d96a66b315a3781dc970e3025140316e2966680ce53744fdff163b81f9",
+  "source_native_ids_sha256": "da18cfa9a1105de9c976da4d7646254f97b3c8dcd7fc90fba8dd98ff1f278390",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,101 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-7b412e50",
+      "category": "macro",
+      "title": "Geomacro finds Shopify reported US$462M Q3 net income, revenue up more than 30 per cent",
+      "what_changed": "A monitored source feed reports: Shopify reported US$462M Q3 net income, revenue up more than 30 per cent. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:11:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4f831517",
+      "category": "geopolitics",
+      "title": "Geomacro finds Yei launched voter education amid calls to prevent election violence",
+      "what_changed": "A monitored source feed reports: Yei launched voter education amid calls to prevent election violence. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:00:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.radiotamazuj.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a88f55d0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Tusk said Poland thwarted possible provocation on Kaliningrad border overnight",
+      "what_changed": "A monitored source feed reports: Tusk said Poland thwarted possible provocation on Kaliningrad border overnight. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:59:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-eef69c91",
+      "category": "macro",
+      "title": "Geomacro finds Energy Transfer raised guidance despite third quarter earnings miss - Investing.com",
+      "what_changed": "A monitored source feed reports: Energy Transfer raised guidance despite third quarter earnings miss - Investing.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:56:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d733f7b8",
+      "category": "macro",
+      "title": "Geomacro finds National Wheat Yield Contest announced 2026 Winners - American Ag Network",
+      "what_changed": "A monitored source feed reports: National Wheat Yield Contest announced 2026 Winners - American Ag Network. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:54:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-8ea30ec3",
       "category": "geopolitics",
@@ -790,6 +885,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-a359659f",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched defensive strikes at Iranian targets near Strait of Hormuz - CBS News",
+      "what_changed": "A monitored source feed reports: U.S. launched defensive strikes at Iranian targets near Strait of Hormuz - CBS News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T02:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-d819c06d",
       "category": "macro",
       "title": "Geomacro finds U.S. launched defensive strikes at Iranian targets near Strait of Hormuz - CBS News",
@@ -885,6 +999,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-55ef1b2f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky confirmed Ukraine Retaliated Against Russian Cyberattack by Hacking Moscow’s Emergency Alert App",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed Ukraine Retaliated Against Russian Cyberattack by Hacking Moscow’s Emergency Alert App. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T01:21:40.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-adac3ec5",
       "category": "rare_earth",
       "title": "Geomacro finds Indonesia urged Nickel Producers to Cut Output as Global Prices Fall - Tempo.co English",
@@ -898,6 +1031,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-5f451aff",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions",
+      "what_changed": "A monitored source feed reports: Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:46:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-402d2f34",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump raised doubts about renewed attacks on Iran, says deal with Tehran possible",
+      "what_changed": "A monitored source feed reports: Trump raised doubts about renewed attacks on Iran, says deal with Tehran possible. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:46:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.haaretz.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
