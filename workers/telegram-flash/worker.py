@@ -525,6 +525,33 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
             "magnet supply", "battery material",
         ],
     },
+    {
+        # India PIB original government press releases. Its published
+        # copyright policy permits reproduction without prior approval, with
+        # attribution and third-party exceptions. This is NOT Telegram data.
+        "source_id": "india_pib_licensed_minerals_rss",
+        "name": "India PIB Official Critical Minerals Releases (free-reuse)",
+        "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+        "event_type": "CRITICAL_MINERALS_INDIA_OFFICIAL_RELEASE",
+        "country_iso3": "IND",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "retry_backoff_seconds": 1,
+        "required_title_keywords": [
+            "critical mineral", "critical minerals", "strategic minerals",
+            "rare earth", "rare earths", "lithium", "cobalt", "nickel",
+            "graphite", "gallium", "germanium", "mineral export",
+            "mineral supply", "national critical mineral mission",
+            "rare earth elements",
+        ],
+        "priority_keywords": [
+            "critical mineral", "strategic mineral", "rare earth",
+            "lithium", "cobalt", "nickel", "graphite", "gallium",
+        ],
+        "priority_max_items": 10,
+    },
 ]
 
 
