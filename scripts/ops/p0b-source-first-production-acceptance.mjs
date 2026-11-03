@@ -83,6 +83,7 @@ const verify=async({env=process.env,fetchImpl=fetch,now=new Date()}={})=>{
     category:cat,country_iso3:country,attempted,
     grounded_five_part_available:complete,
     verified_first_party_count:firstParty,
+    verified_reliefweb_catalogue_count:body.global_reliefweb_catalogue_count??0,
     verified_first_party_rss_count:body.global_official_rss_verified_count??0,
     discovery_only_count:body.global_discovery_only_count??0,
     provider_errors:body.global_provider_error_count??null,

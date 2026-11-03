@@ -33,6 +33,11 @@ export function formatP0BReceiptComment(raw,run){
      x.provider_diagnostics.gdelt:"UNVERIFIED")+
    "; rss="+(/^[A-Z_0-9]{2,60}$/u.test(x?.provider_diagnostics?.rss??"")?
      x.provider_diagnostics.rss:"UNVERIFIED")+
+   "; reliefweb="+(/^[A-Z_0-9]{2,60}$/u.test(x?.provider_diagnostics?.reliefweb??"")?
+     x.provider_diagnostics.reliefweb:"UNVERIFIED")+
+   "; reliefweb_catalogue_count="+
+    (Number.isInteger(x?.verified_reliefweb_catalogue_count)?
+     x.verified_reliefweb_catalogue_count:0)+
    "; first_party_rss_count="+
     (Number.isInteger(x?.verified_first_party_rss_count)?
      x.verified_first_party_rss_count:0)+

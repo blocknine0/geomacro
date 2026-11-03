@@ -483,7 +483,10 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    global_discovery_only_count:globalResult?.gdelt_discovery_count??0,
    global_provider_error_count:globalResult?.provider_errors??0,
    global_provider_diagnostics:globalResult?.provider_diagnostics??null,
-   global_first_party_verified_count:globalResult?.first_party_matches?.length??0,
+   global_first_party_verified_count:globalResult?.first_party_matches?.filter(x=>
+    x.reliefweb_catalogue_metadata_verified!==true).length??0,
+   global_reliefweb_catalogue_count:globalResult?.first_party_matches?.filter(x=>
+    x.reliefweb_catalogue_metadata_verified===true).length??0,
    global_official_rss_verified_count:globalResult?.first_party_rss_verified_count??0,
    // Prefer a verified publisher-metadata fallback over an incomplete
    // canonical original; never force clients to select a null first result.
@@ -535,7 +538,10 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
      global_discovery_only_count:live.gdelt_discovery_count??0,
      global_provider_error_count:live.provider_errors??0,
      global_provider_diagnostics:live.provider_diagnostics??null,
-     global_first_party_verified_count:proof.length,
+     global_first_party_verified_count:proof.filter(x=>
+      x.reliefweb_catalogue_metadata_verified!==true).length,
+     global_reliefweb_catalogue_count:proof.filter(x=>
+      x.reliefweb_catalogue_metadata_verified===true).length,
      global_official_rss_verified_count:live.first_party_rss_verified_count??0,
      question_matches:proof.map(item=>({
       ...item,country_iso3:countryIso3,
