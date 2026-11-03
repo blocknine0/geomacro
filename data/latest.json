@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T12:40:58.002Z",
+  "checked_at": "2026-11-03T12:49:28.794Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-8ea30ec3",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched strikes on Iranian targets in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: U.S. launched strikes on Iranian targets in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:40:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8bcfe400",
+      "category": "macro",
+      "title": "Geomacro finds Thomson Reuters reported Q3 profit down from year ago, revenue up 10 per cent",
+      "what_changed": "A monitored source feed reports: Thomson Reuters reported Q3 profit down from year ago, revenue up 10 per cent. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:37:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-24fdba3b",
       "category": "macro",
@@ -1417,6 +1455,25 @@
       "severity": null
     },
     {
+      "id": "macro-73b2e90e",
+      "category": "macro",
+      "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:32:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-a87ae3a2",
       "category": "macro",
       "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan",
@@ -1502,6 +1559,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T16:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7da82b35",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T15:43:54.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -1711,6 +1787,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T14:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6575addd",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pezeshkian said Khamenei granted government 'certain authorities' over peace talks - Iran International",
+      "what_changed": "A monitored source feed reports: Pezeshkian said Khamenei granted government 'certain authorities' over peace talks - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:45:52.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4552,82 +4647,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-82f087a9",
-      "category": "geopolitics",
-      "title": "Geomacro finds Lawmakers said US briefing showed Russia targeting Democrats with misinformation",
-      "what_changed": "A monitored source feed reports: Lawmakers said US briefing showed Russia targeting Democrats with misinformation. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T10:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.rappler.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ae904fc7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Court released two Arab party activists, criticizes police election bribe probe - Haaretz",
-      "what_changed": "A monitored source feed reports: Court released two Arab party activists, criticizes police election bribe probe - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T09:57:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b9319666",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
-      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:13:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-f24e8770",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia launched massive morning drone attack on Ukraine - The New Voice of Ukraine",
-      "what_changed": "A monitored source feed reports: Russia launched massive morning drone attack on Ukraine - The New Voice of Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:12:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-1ceda984",
       "category": "macro",
       "title": "Geomacro finds Russia said drone hit ‘industrial enterprise’ near Moscow, Kyiv claims hit major refinery - Arab News",
@@ -4736,25 +4755,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ce668119",
-      "category": "macro",
-      "title": "Geomacro finds Juba City Council launched digital payment system to improve transparency",
-      "what_changed": "A monitored source feed reports: Juba City Council launched digital payment system to improve transparency. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T14:02:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.radiotamazuj.org"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

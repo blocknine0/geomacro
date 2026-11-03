@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T12:40:58.002Z",
+  "updated_at": "2026-11-03T12:49:28.794Z",
   "signals": [
+    {
+      "id": "macro-8bcfe400",
+      "category": "macro",
+      "title": "Geomacro finds Thomson Reuters reported Q3 profit down from year ago, revenue up 10 per cent",
+      "what_changed": "A monitored source feed reports: Thomson Reuters reported Q3 profit down from year ago, revenue up 10 per cent. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:37:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-24fdba3b",
       "category": "macro",
@@ -708,6 +727,25 @@
       "severity": null
     },
     {
+      "id": "macro-73b2e90e",
+      "category": "macro",
+      "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T16:32:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-a87ae3a2",
       "category": "macro",
       "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan",
@@ -774,6 +812,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T16:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7da82b35",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T15:43:54.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

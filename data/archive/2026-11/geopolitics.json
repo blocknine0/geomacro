@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T12:40:58.002Z",
+  "updated_at": "2026-11-03T12:49:28.794Z",
   "signals": [
+    {
+      "id": "geopolitics-8ea30ec3",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched strikes on Iranian targets in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: U.S. launched strikes on Iranian targets in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:40:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-476d133b",
       "category": "geopolitics",
@@ -721,6 +740,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: notesfrompoland.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6575addd",
+      "category": "geopolitics",
+      "title": "Geomacro finds Pezeshkian said Khamenei granted government 'certain authorities' over peace talks - Iran International",
+      "what_changed": "A monitored source feed reports: Pezeshkian said Khamenei granted government 'certain authorities' over peace talks - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T13:45:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
