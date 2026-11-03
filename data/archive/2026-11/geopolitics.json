@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T12:19:04.902Z",
+  "updated_at": "2026-11-03T12:40:58.002Z",
   "signals": [
+    {
+      "id": "geopolitics-476d133b",
+      "category": "geopolitics",
+      "title": "Geomacro finds India agreed to cut tariffs on bulk Scotch whisky - The Drinks Business",
+      "what_changed": "A monitored source feed reports: India agreed to cut tariffs on bulk Scotch whisky - The Drinks Business. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-13c3f828",
       "category": "geopolitics",
@@ -284,6 +303,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-059f9f43",
+      "category": "geopolitics",
+      "title": "Geomacro finds Secretary Mullin announced Results of Operation Guardian Crackdown on Illegal Aliens with Commercial Driver’s Licenses - Homeland Security (.gov)",
+      "what_changed": "A monitored source feed reports: Secretary Mullin announced Results of Operation Guardian Crackdown on Illegal Aliens with Commercial Driver’s Licenses - Homeland Security (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T22:51:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

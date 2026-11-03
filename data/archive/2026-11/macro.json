@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T12:19:04.902Z",
+  "updated_at": "2026-11-03T12:40:58.002Z",
   "signals": [
+    {
+      "id": "macro-24fdba3b",
+      "category": "macro",
+      "title": "Geomacro finds Eaton Vance Tax-Advantaged Dividend Income Fund raised monthly dividend by 15.4% to $0.1899/share",
+      "what_changed": "A monitored source feed reports: Eaton Vance Tax-Advantaged Dividend Income Fund raised monthly dividend by 15.4% to $0.1899/share. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:34:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-cef168cb",
+      "category": "macro",
+      "title": "Geomacro finds Eaton Vance Tax-Advtgd Glbl Dividend Oppty Fd raised monthly dividend by 22% to $0.2114/share",
+      "what_changed": "A monitored source feed reports: Eaton Vance Tax-Advtgd Glbl Dividend Oppty Fd raised monthly dividend by 22% to $0.2114/share. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:33:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ffb8d256",
+      "category": "macro",
+      "title": "Geomacro finds Eaton Vance Tax-Managed Buy-Write Income Fund raised monthly dividend by 13% to $0.1196/share",
+      "what_changed": "A monitored source feed reports: Eaton Vance Tax-Managed Buy-Write Income Fund raised monthly dividend by 13% to $0.1196/share. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:32:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-1be83aa5",
       "category": "macro",
@@ -151,6 +208,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-33903a73",
+      "category": "macro",
+      "title": "Geomacro finds Andrada reported N$775m contribution to economy, as Uis operations expand",
+      "what_changed": "A monitored source feed reports: Andrada reported N$775m contribution to economy, as Uis operations expand. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:33:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.namibian.com.na"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b7070efa",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised 2027 oil price forecast to US$ 88 per barrel - Egypt Independent",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised 2027 oil price forecast to US$ 88 per barrel - Egypt Independent. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:12:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-118048e3",
+      "category": "macro",
+      "title": "Geomacro finds YPF CEO said contracts for Argentina LNG are being signed in Europe, Asia - Reuters",
+      "what_changed": "A monitored source feed reports: YPF CEO said contracts for Argentina LNG are being signed in Europe, Asia - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:41:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8b431ef2",
+      "category": "macro",
+      "title": "Geomacro finds Anwar said MotoGP 2026 success boosts Malaysia’s global motorsports standing and local economy",
+      "what_changed": "A monitored source feed reports: Anwar said MotoGP 2026 success boosts Malaysia’s global motorsports standing and local economy. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:17:13.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.malaymail.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
