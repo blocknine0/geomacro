@@ -27,6 +27,7 @@ export async function getP0bIngestionStatus(env){
   const configured=env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
    Boolean(env.B2_KEY_ID)&&Boolean(env.B2_APPLICATION_KEY)&&
    Boolean(env.B2_SPOOL_ENCRYPTION_KEY)&&Boolean(env.B2_SPOOL_BUCKET)&&
+   typeof env.B2_SPOOL_PREFIX==='string'&&env.B2_SPOOL_PREFIX.endsWith('spool/')&&
    typeof env.INGEST_QUEUE?.send==='function';
   const checkedAt=new Date().toISOString();
   return resp({
