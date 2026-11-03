@@ -453,6 +453,78 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "fallback_url": "https://www.usgs.gov/programs/mineral-resources-program/news",
         "fallback_link_prefix": "/programs/mineral-resources-program/news/",
     },
+    {
+        # UK Crown-copyright official releases, normally reusable under OGL v3
+        # with attribution. This is NOT a Telegram channel or Telegram grant.
+        "source_id": "uk_fcdo_ogl_official_atom",
+        "name": "UK FCDO Official Activity (OGL)",
+        "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+        "event_type": "GEOPOLITICS_UK_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "required_title_keywords": [
+            "security council", "sanction", "sanctions", "ceasefire", "conflict",
+            "diplomatic", "treaty", "military", "foreign minister",
+            "international law", "ambassador", "invasion", "ukraine",
+            "russia", "iran", "taiwan", "gaza", "united nations",
+            "middle east", "peace talks", "border dispute",
+        ],
+    },
+    {
+        # UK OGL official economic-policy releases, NOT Telegram content.
+        "source_id": "uk_hmt_ogl_official_atom",
+        "name": "UK HM Treasury Official Activity (OGL)",
+        "url": "https://www.gov.uk/government/organisations/hm-treasury.atom",
+        "event_type": "MACRO_UK_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "required_title_keywords": [
+            "inflation", "interest rate", "monetary policy", "economic",
+            "fiscal", "budget", "government bond", "gilts",
+            "public debt", "exchange rate", "currency", "tax policy",
+            "financial stability", "international reserves", "gdp",
+            "trade deficit", "treasury bond",
+        ],
+    },
+    {
+        # Critical-mineral announcements may be infrequent; never redate old posts.
+        "source_id": "uk_dbt_ogl_minerals_atom",
+        "name": "UK Department for Business and Trade (Minerals-filtered OGL)",
+        "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+        "event_type": "CRITICAL_MINERALS_UK_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "required_title_keywords": [
+            "critical mineral", "critical minerals", "critical raw material",
+            "critical raw materials", "rare earth", "rare earths",
+            "lithium", "cobalt", "nickel", "graphite", "tungsten",
+            "gallium", "germanium", "mining", "mineral supply",
+            "magnet supply", "battery material",
+        ],
+    },
+    {
+        "source_id": "uk_desnz_ogl_minerals_atom",
+        "name": "UK Energy Security & Net Zero (Minerals-filtered OGL)",
+        "url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+        "event_type": "CRITICAL_MINERALS_UK_OFFICIAL_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "required_title_keywords": [
+            "critical mineral", "critical minerals", "critical raw material",
+            "critical raw materials", "rare earth", "rare earths",
+            "lithium", "cobalt", "nickel", "graphite", "tungsten",
+            "gallium", "germanium", "mining", "mineral supply",
+            "magnet supply", "battery material",
+        ],
+    },
 ]
 
 
@@ -1017,6 +1089,29 @@ def feed_entry_timestamp(entry: Any) -> str | None:
     return structured_time_to_iso(entry.get("published_parsed"))
 
 
+def feed_entry_matches_required_title(
+    entry: Any,
+    required_keywords: list[str],
+) -> bool:
+    """A strict, first-party category gate for broad government Atom feeds.
+
+    Operates on source TITLE, not publisher boilerplate in descriptions.
+    Word boundaries avoid matching misleading substrings such as "war" in
+    "award". An empty requirement is treated as a denied configuration.
+    """
+    title = " ".join(str(entry.get("title", "")).split()).lower()
+    if not title or not required_keywords:
+        return False
+    return any(
+        re.search(
+            r"(?<!\w)" + re.escape(word.strip().lower()) + r"(?!\w)",
+            title,
+        ) is not None
+        for word in required_keywords
+        if isinstance(word, str) and word.strip()
+    )
+
+
 def feed_entry_matches_priority(
     entry: Any,
     keywords: list[str],
@@ -1405,6 +1500,13 @@ async def process_feed(
 
     new_count = 0
     for entry in reversed(entries):
+        required_titles = feed.get("required_title_keywords")
+        if required_titles is not None and not feed_entry_matches_required_title(
+            entry, required_titles
+        ):
+            # Never store or admit unrelated general government announcements
+            # to a news domain solely because its publisher is on our registry.
+            continue
         identity = feed_entry_identity(entry, source_id)
         if identity in current["seen"]:
             continue

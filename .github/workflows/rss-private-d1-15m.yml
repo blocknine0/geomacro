@@ -9,6 +9,8 @@ on:
       - "scripts/ops/test-rss-category-lanes.py"
       - "workers/telegram-flash/worker.py"
       - "scripts/ops/test-rss-native-clock.py"
+      - "scripts/ops/test-official-ogl-atom-feeds.py"
+      - "config/official-ogl-atom-sources.json"
   push:
     branches: [main]
     paths:
@@ -19,6 +21,8 @@ on:
       - "scripts/ops/test-rss-native-clock.py"
       - "scripts/ops/plan-rss-category-lanes.py"
       - "scripts/ops/test-rss-category-lanes.py"
+      - "scripts/ops/test-official-ogl-atom-feeds.py"
+      - "config/official-ogl-atom-sources.json"
   schedule:
     - cron: "11,26,41,56 * * * *"
 
@@ -46,6 +50,8 @@ jobs:
         run: python scripts/ops/test-rss-category-lanes.py -v
       - name: Verify publisher-native publication precision without invented clock
         run: python scripts/ops/test-rss-native-clock.py
+      - name: Verify OGL publisher provenance, three-domain relevance and no Telegram collection
+        run: python scripts/ops/test-official-ogl-atom-feeds.py
 
   ingest:
     needs: contract
