@@ -96,6 +96,21 @@ describe("Geomacro central security route boundary", () => {
     }
   });
 
+  it("rejects a declared payment body larger than 8192 bytes before reading it", async () => {
+    delete process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE;
+    const decision = await enforceCentralRequestSecurity({
+      pathname: "/api/v1/payments/paypal/create-order",
+      method: "POST",
+      headers: new Headers({ "content-length": "8193" }),
+    });
+    expect(decision).toMatchObject({
+      allowed: false,
+      status: 413,
+      code: "CENTRAL_SECURITY_BODY_TOO_LARGE",
+      routeClass: "payment",
+    });
+  });
+
   it("preserves no-charge website discovery and pilot research when frozen", () => {
     process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "true";
     for (const [pathname, method] of [
