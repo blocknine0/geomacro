@@ -37,7 +37,9 @@ export async function runReliefWebPrivateD1({
   if(!Array.isArray(data?.data))throw Error("RELIEFWEB_PRIVATE_D1_DATA_INVALID");
   const {candidates,diagnostics}=reliefwebPrivateCandidates(data.data,now);
   const saved=await persist(candidates,{now,token,fetchImpl});
-  if(saved.d1_exact_readback_verified!==true||saved.proposed!==saved.persisted+saved.unchanged)
+  if(saved.d1_exact_readback_verified!==true||
+    saved.proposed!==saved.persisted+saved.unchanged+
+      saved.existing_identity_conflicts_quarantined)
     throw Error("RELIEFWEB_PRIVATE_D1_READBACK_FAILED");
   const report={
     schema:"geomacro.part2.reliefweb-private-d1.v1",
@@ -48,6 +50,7 @@ export async function runReliefWebPrivateD1({
     reports_not_native_dated_or_invalid:diagnostics.invalid,
     d1_records_written:saved.persisted,
     d1_records_unchanged:saved.unchanged,
+    d1_identity_conflicts_quarantined:saved.identity_conflicts_quarantined,
     d1_exact_readback_verified:true,
     source_body_stored:false,commercial_eligible:false,
     signed_gro:false,paid_delivery:false,
