@@ -41,11 +41,11 @@ test("D1 rejects nested copied article prose, oversized narrative and malformed 
  try{
   db.exec(base);db.exec(migration);
   const insert=db.prepare("INSERT INTO risk_observations VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)");
-  for(const unsafe of [
+  for(const [i,unsafe] of [
    {sources:[{article_body:"copyright"}]},
    {analysis:{metadata:{source_headline:"borrowed"}}},
    {sources:[{notes:"N".repeat(251)}]},
-  ])assert.throws(()=>insert.run(...row(unsafe,Math.random().toString(16).padEnd(64,"0").slice(0,64))),
+  ].entries())assert.throws(()=>insert.run(...row(unsafe,"b".repeat(63)+i)),
    /RISK_OBSERVATION_FACTS_ONLY_REQUIRED/);
   const valid={schema:"geomacro.risk-observation.v1",sources:[],
    private_osint_original_page_verified:false,provenance:"METADATA_ONLY_NO_ORIGINAL_ARTICLE_CONTENT"};
