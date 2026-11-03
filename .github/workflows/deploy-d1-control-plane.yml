@@ -471,6 +471,21 @@ jobs:
           printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_category_clock' || { echo "::error::RISK_COUNTRY_INDEX_REMOTE_MISSING"; exit 26; }
           printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_unindexed_recent' || { echo "::error::RISK_COUNTRY_BACKFILL_INDEX_REMOTE_MISSING"; exit 27; }
 
+      - name: Observe actual remote P0-B D1 registry and queue states
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "P0B_ACTIVATION_REQUESTED=${P0B_ACTIVATE:-0}"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT intended_category, COUNT(*) AS source_configs FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT state, COUNT(*) AS queue_items FROM ingestion_spool_queue GROUP BY state ORDER BY state;"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS admitted_metadata_rows FROM normalized_articles;"
+          echo "P0B_REMOTE_CENSUS_COLLECTED=true"
+          echo "P0B_GENUINE_B2_PARITY_REQUIRES_REAL_RECEIPT=true"
+
       - name: Derive domain-separated control-plane token
         # Optionally accept an existing purpose-scoped token issued by Predge.
         # The server-only secret is never sent to the PR, logs or operator UI.
