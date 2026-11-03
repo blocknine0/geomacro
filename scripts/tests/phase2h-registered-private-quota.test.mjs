@@ -56,7 +56,10 @@ test("production registered-source script actually uses guarded admission",()=>{
  const wf=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
  assert.match(pub,/planRegisteredPrivateOriginals\(phase2h.records/);
  assert.match(pub,/postPhase2hCollisionIsolated\(/);
- assert.match(pub,/records:phase2hQuota.records/);
+ assert.match(pub,/const originalRows=phase2hQuota.records.map/);
+ assert.match(pub,/records:originalRows/);
+ assert.match(pub,/stageB2FirstPrivateOriginals/);
+ assert.match(pub,/acknowledgeB2FirstD1/);
  assert.match(wf,/node --test scripts\/tests\/phase2h-registered-private-quota.test.mjs/);
  assert.match(wf,/cron: "4,19,34,49 \* \* \* \*"/);
 });
