@@ -9,6 +9,7 @@ import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
 import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bridge.mjs";
+import {readIndexedRiskCountryOriginals} from "./phase2h-risk-country-index.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
@@ -80,8 +81,15 @@ async function d1Observed(env,target,cat,now){
   }).map(x=>({id:x.candidate_id,source_id:x.source_id,url:x.article_url,
    title_hash:x.source_title_sha256,published_at:x.native_published_at,origin:"D1_NATIVE_METADATA"}));
  }
- const rows=(await env.DB.prepare("SELECT record_id,raw_sha256,raw_json,original_published_at FROM phase2h_private_raw_news WHERE category=? AND original_published_at>=? AND original_published_at<=? ORDER BY original_published_at DESC LIMIT 40")
-  .bind(spec.raw_category,since,until).all())?.results??[];
+ // Canonical 195-country queries filter by the exact country index
+ // BEFORE the per-country 40-original limit. A global latest-40 page was
+ // silently dropping valid originals when busy other countries displaced it.
+ const rows=target.id==="TWN"?
+  (await env.DB.prepare("SELECT record_id,raw_sha256,raw_json,original_published_at FROM phase2h_private_raw_news WHERE category=? AND original_published_at>=? AND original_published_at<=? ORDER BY original_published_at DESC LIMIT 40")
+   .bind(spec.raw_category,since,until).all())?.results??[]:
+  await readIndexedRiskCountryOriginals(env,{
+   countryId:target.id,category:spec.raw_category,since,until,
+  });
  const out=[];
  for(const x of rows){
   try{
@@ -246,7 +254,7 @@ export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}
  const cfg=supabaseCfg(env);
  if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
  try{
-  const rows=(await env.DB.prepare("SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 6").all())?.results??[];
+  const rows=(await env.DB.prepare("SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
   if(!rows.length)return {ok:true,synced:0};
   const payload=rows.map(x=>({entity_type:x.entity_type,entity_id:x.entity_id,day_utc:x.day_utc,
    snapshot:JSON.parse(x.snapshot_json),audit_proof:JSON.parse(x.audit_proof_json),
@@ -381,7 +389,7 @@ export const CANONICAL_UNIFIED_TARGETS=Object.freeze([
 const identity=x=>x.type+"|"+x.id;
 export function selectUnifiedRecoveryTarget(completed,attempts,now){
  const minute=new Date(now).getUTCHours()*60+new Date(now).getUTCMinutes();
- if(minute<512||minute>=1050)return null;
+ if(minute<512||minute>=1095)return null;
  const done=new Set(completed.map(x=>x.entity_type+"|"+x.entity_id));
  const byId=new Map(attempts.map(x=>[x.entity_type+"|"+x.entity_id,x]));
  const start=(minute-512)%CANONICAL_UNIFIED_TARGETS.length;
@@ -395,7 +403,7 @@ export function selectUnifiedRecoveryTarget(completed,attempts,now){
  }
  return null;
 }
-/** Primary minute slots plus one bounded catch-up target/minute until 17:30 UTC.
+/** Primary minute slots plus one bounded catch-up target/minute until 18:15 UTC.
  * The D1 attempt ledger prevents a failing upstream feed from looping forever.
  */
 export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
@@ -405,7 +413,7 @@ export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
   target=CANONICAL_UNIFIED_TARGETS[countryIdx];
  else if(minute>=500&&minute<512)
   target=CANONICAL_UNIFIED_TARGETS[195+minute-500];
- else if(minute>=512&&minute<1050){
+ else if(minute>=512&&minute<1095){
   if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_RECOVERY_D1_UNAVAILABLE"};
   try{
    const day=iso(now).slice(0,10);

@@ -38,6 +38,7 @@ import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-new
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived} from "./phase2h-private-raw-news.mjs";
+import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1304,12 +1305,20 @@ export default {
     // Successful generated snapshots are immutable per UTC day.
     if(env?.DB?.prepare){
       const minute=utc.getUTCHours()*60+utc.getUTCMinutes();
-      if(minute>=300&&minute<495||minute>=500&&minute<1050)
+      if(minute>=300&&minute<495||minute>=500&&minute<1095)
         ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
           .then(r=>{if(!r.ok)throw Error("UNIFIED_195X3_GENERATION_DEFERRED:"+r.error)}));
-      if(utc.getUTCMinutes()%15===10&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+      // Drain up to 12 real SHA-confirmed records every five minutes.
+      // Previous six per 15 minutes left genuine D1 originals unsynced.
+      if(utc.getUTCMinutes()%5===0&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
           .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_SYNC_DEFERRED:"+r.error)}));
+      // Reuse the existing one-minute Worker cron for a bounded, zero-fetch
+      // 40-original materialized-country backfill, not another scheduler.
+      // Partial D1 index makes the legacy NULL page cheap and resumable.
+      if(utc.getUTCMinutes()%2===1)
+        ctx.waitUntil(backfillRiskCountryIndex(env,{now:utc.getTime()})
+          .then(r=>{if(!r.ok)throw Error("RISK_COUNTRY_INDEX_BACKFILL_FAILED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
@@ -1574,6 +1583,21 @@ export default {
         const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
         const country_count=Number(countries?.entities??0),corridor_count=Number(corridors?.entities??0);
         const country_synced=Number(countries?.synced??0),corridor_synced=Number(corridors?.synced??0);
+        // Owner-only current-day diagnostics: distinguish genuine source
+        // generation misses from delayed Supabase SHA synchronisation.
+        const attempts=await env.DB.prepare(
+          "SELECT COUNT(*) AS attempted_targets, "+
+          "SUM(CASE WHEN a.attempt_count>=3 AND NOT EXISTS ("+
+          "SELECT 1 FROM unified_risk_snapshots s WHERE s.day_utc=a.day_utc "+
+          "AND s.entity_type=a.entity_type AND s.entity_id=a.entity_id) "+
+          "THEN 1 ELSE 0 END) AS exhausted_missing "+
+          "FROM unified_risk_generation_attempts a WHERE a.day_utc=?"
+        ).bind(day_utc).first();
+        const pendingIndex=await env.DB.prepare(
+          "SELECT COUNT(*) AS pending FROM phase2h_private_raw_news "+
+          "INDEXED BY idx_phase2h_risk_country_unindexed_recent "+
+          "WHERE risk_country_iso3 IS NULL AND first_ingested_at>=?"
+        ).bind(new Date(Date.now()-72*60*60*1000).toISOString()).first();
         const local_complete=country_count===195&&corridor_count===12&&
           country_synced===195&&corridor_synced===12;
         // Never turn yesterday's Supabase sync flag into today's green receipt.
@@ -1586,6 +1610,12 @@ export default {
           remote.remote_count===207&&remote.remote_hash_matches===207;
         return json({schema:"geomacro.unified-risk-census.v1",ok:true,day_utc,
           country_count,corridor_count,country_synced,corridor_synced,
+          d1_generation_missing:Math.max(0,207-country_count-corridor_count),
+          supabase_hash_sync_backlog:Math.max(0,
+            country_count+corridor_count-country_synced-corridor_synced),
+          attempted_targets:Number(attempts?.attempted_targets??0),
+          retry_budget_exhausted_missing:Number(attempts?.exhausted_missing??0),
+          recent_original_country_index_pending:Number(pendingIndex?.pending??0),
           expected:{country:195,corridor:12,total:207},
           supabase_live_readback_verified:complete,
           remote_count:remote.ok===true?remote.remote_count:0,

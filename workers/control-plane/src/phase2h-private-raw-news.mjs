@@ -9,6 +9,7 @@ import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
  from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {phase2hNewsCutoff,phase2hRawWithinRetention}
  from "../../../scripts/lib/phase2h-retention-72h.mjs";
+import {riskCountryFromOriginalTitle} from "./phase2h-risk-country-index.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const DATE=/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u;
@@ -132,7 +133,8 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    if(ids.has(row.record_id))fail("DUPLICATE_BATCH_ID");
    ids.add(row.record_id);
    items.push([row.record_id,row.category,row.original.original_published_at,
-    row.ingested_at,row.raw_sha256,json]);
+    row.ingested_at,row.raw_sha256,json,
+    riskCountryFromOriginalTitle(row.original.original_title)]);
   }
   const placeholders=items.map(()=>"?").join(",");
   const before=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
@@ -156,10 +158,11 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
     fail("IDENTITY_COLLISION");
   }
   const insert=await env.DB.prepare(
-   "INSERT INTO phase2h_private_raw_news(record_id,category,original_published_at,first_ingested_at,raw_sha256,raw_json) "+
+   "INSERT INTO phase2h_private_raw_news(record_id,category,original_published_at,first_ingested_at,raw_sha256,raw_json,risk_country_iso3) "+
    "SELECT json_extract(value,'$[0]'),json_extract(value,'$[1]'),json_extract(value,'$[2]'),"+
-   "json_extract(value,'$[3]'),json_extract(value,'$[4]'),json_extract(value,'$[5]') "+
-   "FROM json_each(?) WHERE 1 ON CONFLICT(record_id) DO NOTHING"
+   "json_extract(value,'$[3]'),json_extract(value,'$[4]'),json_extract(value,'$[5]'),"+
+   "json_extract(value,'$[6]') FROM json_each(?) WHERE 1 "+
+   "ON CONFLICT(record_id) DO NOTHING"
   ).bind(JSON.stringify(items)).run();
   if(insert?.success===false)fail("INSERT_FAILED");
   // Per-original authenticated live evidence: read *the persisted original

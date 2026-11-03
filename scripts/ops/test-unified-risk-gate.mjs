@@ -132,6 +132,8 @@ test("rotating recovery selects ungenerated canonical cells but never optional T
   entity_type:remaining.type,entity_id:remaining.id,attempt_count:1,
   next_retry_at:new Date(now-60000).toISOString()
  }],now),remaining);
+ assert.deepEqual(selectUnifiedRecoveryTarget(completed,[],Date.parse("2026-11-03T18:14:00Z")),remaining);
+ assert.equal(selectUnifiedRecoveryTarget(completed,[],Date.parse("2026-11-03T18:15:00Z")),null);
  assert.equal(selectUnifiedRecoveryTarget([],[],Date.parse("2026-11-03T19:00:00Z")),null);
 });
 test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
