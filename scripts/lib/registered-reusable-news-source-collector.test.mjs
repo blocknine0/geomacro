@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {registeredReusableNewsSources,selectRegisteredNewsSources,
  collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS,CURATED_US_MACRO_PAIR_FEEDS,
- SOURCE_FEED_HEADERS,SOURCE_FETCH_CONCURRENCY,SOURCE_FETCH_TIMEOUT_MS} from "./registered-reusable-news-source-collector.mjs";
+ SOURCE_FEED_HEADERS,SOURCE_FETCH_CONCURRENCY,SOURCE_FETCH_TIMEOUT_MS,
+ PINNED_NATIONAL_PRIMARY_NEWS_FEEDS} from "./registered-reusable-news-source-collector.mjs";
 
 const when=new Date("2026-10-25T00:00:00.000Z");
 const feed="<rss version=\"2.0\"><channel>"+
@@ -367,4 +368,44 @@ test("multiple RSS sources with the same original permalink spend only one D1 ca
  assert.equal(r.items.length,1);
  assert.equal(r.summary.duplicate_original_permalinks_filtered_in_memory,1);
  assert.equal(r.summary.raw_upstream_stored,false);
+});
+
+test("eight existing first-party national issuer URLs carry ISO3 routing hints only",()=>{
+ const registry=registeredReusableNewsSources();
+ assert.equal(PINNED_NATIONAL_PRIMARY_NEWS_FEEDS.length,8);
+ const expected=new Map([
+  ["rbi.org.in","IND"],["www.rba.gov.au","AUS"],
+  ["www.centralbank.go.ke","KEN"],["www.cochilco.cl","CHL"],
+ ]);
+ for(const [domain,iso3] of expected){
+  const source=registry.find(x=>new URL(x.url).hostname===domain);
+  assert.ok(source,"missing national first-party source "+domain);
+  assert.equal(source.publisher_country_iso3,iso3);
+  assert.equal(source.scope,"national_primary");
+  assert.equal(source.domestic_event_context,"PUBLISHER_DOMESTIC_SCOPE_UNVERIFIED_EVENT");
+ }
+});
+test("national primary macro issuer hint is not independent country/event proof",async()=>{
+ const source=registeredReusableNewsSources().find(x=>x.id==="india_rbi_policy");
+ assert.ok(source);
+ const rss="<rss><channel><item><title>Reserve Bank announces new monetary policy and interest rate framework</title>"+
+  "<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate></item></channel></rss>";
+ const out=await collectRegisteredReusableNews({now:when,registry:[source],
+  normalize:x=>({...normalize(x),country_iso3:x.country_iso3??null}),
+  resolveCountry:()=>null,fetchImpl:async()=>response(rss)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.items[0].country_iso3,"IND");
+ assert.equal(out.summary.issuer_context_country_fallbacks_not_independently_verified,1);
+ assert.equal(out.summary.paid_publication_authorized,false);
+});
+test("explicit foreign headline always wins over issuer jurisdiction context",async()=>{
+ const source=registeredReusableNewsSources().find(x=>x.id==="india_rbi_policy");
+ const rss="<rss><channel><item><title>Federal Reserve announces US monetary interest rate change</title>"+
+  "<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate></item></channel></rss>";
+ const out=await collectRegisteredReusableNews({now:when,registry:[source],
+  normalize:x=>({...normalize(x),country_iso3:x.country_iso3??null}),
+  resolveCountry:()=> "USA",fetchImpl:async()=>response(rss)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.items[0].country_iso3,"USA");
+ assert.equal(out.summary.issuer_context_country_fallbacks_not_independently_verified,0);
 });
