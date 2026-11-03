@@ -70,9 +70,9 @@ export const xmlValue=(xml,tag)=>{
   .replace(/\s+/gu," ").trim();
  return text.length<=350?text:null;
 };
-const ATOM_TITLE=/<title(?:\\s[^>]*)?>([\\s\\S]*?)<\\/title\\s*>/iu;
-const ATOM_PUBLISHED=/<published(?:\\s[^>]*)?>([\\s\\S]*?)<\\/published\\s*>/iu;
-const ATOM_LINK=/<link\\b[^>]*\\bhref=["']([^"']+)["'][^>]*\\/?\\s*>/iu;
+const ATOM_TITLE=/<title(?:\s[^>]*)?>([\s\S]*?)<\/title\s*>/iu;
+const ATOM_PUBLISHED=/<published(?:\s[^>]*)?>([\s\S]*?)<\/published\s*>/iu;
+const ATOM_LINK=/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*\/?\s*>/iu;
 const sha=async data=>[...new Uint8Array(await crypto.subtle.digest(
  "SHA-256",new TextEncoder().encode(data)))].map(b=>b.toString(16).padStart(2,"0")).join("");
 const channels=category=>category==="macro"?["rates_and_bonds","fx_and_payments"]:
