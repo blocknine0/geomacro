@@ -5,6 +5,7 @@
  */
 import {createHash} from "node:crypto";
 import {gzipSync,gunzipSync} from "node:zlib";
+import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
@@ -116,9 +117,66 @@ export function createPhase2hCanonicalD1({
    const safeCode=Number.isSafeInteger(upstream)&&upstream>=0&&upstream<=999999?
      upstream:"REDACTED";
    console.error("::warning::PHASE2H_RAW_D1_HTTP_"+response.status+"_CODE_"+safeCode);
-   fail("CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+   const error=Error("PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED");
+   error.provider_http_status=response.status;
+   error.provider_code=upstream;
+   throw error;
   }
   return doc.result[0];
+ };
+ // Existing production-owned private Worker is an independently verified
+ // D1 runtime adapter. This is only an emergency alternative to REST /query
+ // 400/7500; public, PREDGE, payments and provider permissions are unchanged.
+ const workerOrigin="https://geomacro-control-plane.daspallab202391.workers.dev";
+ const internal=async(path,init={})=>{
+  const protectedRoot=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"");
+  if(protectedRoot.length<32)fail("INTERNAL_FALLBACK_ROOT_UNAVAILABLE");
+  const bearer=deriveControlPlaneRootToken(protectedRoot);
+  const response=await fetchImpl(workerOrigin+path,{
+   method:init.method??"GET",redirect:"error",
+   headers:{Authorization:"Bearer "+bearer,
+    ...(init.body?{"Content-Type":"application/json"}:{})},
+   ...(init.body?{body:JSON.stringify(init.body)}:{}),
+   signal:AbortSignal.timeout(15000),
+  });
+  if(!response.ok)fail("INTERNAL_FALLBACK_D1_UNAVAILABLE");
+  let body;try{body=await response.json()}
+  catch{fail("INTERNAL_FALLBACK_RESPONSE_INVALID")}
+  if(body?.ok!==true)fail("INTERNAL_FALLBACK_RECEIPT_INVALID");
+  return body;
+ };
+ const workerRead=async(limit,cursorClock,cursorId)=>{
+  const q=new URLSearchParams({limit:String(limit)});
+  if(cursorClock!==null){
+   q.set("archive_cursor_clock",cursorClock);
+   q.set("archive_cursor_id",cursorId);
+  }
+  const result=await internal("/v1/internal/phase2h-raw-news?"+q);
+  if(result.schema!=="geomacro.phase2h.private-pending-archive.v1"||
+     result.paid_eligible!==false||result.raw_public_delivery!==false||
+     !Array.isArray(result.rows)||result.rows.length>limit)
+    fail("INTERNAL_FALLBACK_READBACK_UNVERIFIED");
+  return {results:result.rows.map(x=>({
+   record_id:x.record_id,first_ingested_at:x.ingested_at,
+   raw_json:JSON.stringify(x),
+  }))};
+ };
+ const workerAck=async(items,objectSha)=>{
+  let written=0;
+  for(let i=0;i<items.length;i+=100){
+   const batch=items.slice(i,i+100);
+   const answer=await internal("/v1/internal/phase2h-raw-news",{
+    method:"PUT",body:{schema:"geomacro.phase2h.b2-archive-ack.v1",
+     object_sha256:objectSha,
+     items:batch.map(r=>({record_id:r.record_id,raw_sha256:r.raw_sha256}))},
+   });
+   if(answer.archived!==batch.length||
+      answer.independent_d1_archive_ack_verified!==true||
+      answer.rights_verified!==false||answer.payments!==0)
+     fail("INTERNAL_FALLBACK_ACK_UNVERIFIED");
+   written+=batch.length;
+  }
+  return {archived:written,independent_d1_archive_ack_verified:true};
  };
  return {
   async readPending(now=new Date()){
@@ -131,25 +189,32 @@ export function createPhase2hCanonicalD1({
    // No OFFSET instability after concurrent ACKs. Never invent timestamps,
    // advance cursor on failure, or duplicate original article bodies.
    const rows=[];
-   let pageSize=25,maxRows=300,attempts=0;
+   let pageSize=25,maxRows=300,attempts=0,useInternal=false;
    let cursorClock=null,cursorId=null;
    while(rows.length<maxRows){
     if(++attempts>70)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
     let result;
     try{
      const hasCursor=cursorClock!==null;
-     result=await sql(
-      phase2hKeysetPendingPageSQL(
-       Math.min(pageSize,maxRows-rows.length),hasCursor),
-      hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
-     );
+     result=useInternal?
+      await workerRead(Math.min(pageSize,maxRows-rows.length),cursorClock,cursorId):
+      await sql(
+       phase2hKeysetPendingPageSQL(
+        Math.min(pageSize,maxRows-rows.length),hasCursor),
+       hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
+      );
     }catch(error){
-     if(error instanceof Error&&
-        error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"&&
-        (pageSize===25||pageSize===10)){
+     if(!useInternal&&error instanceof Error&&
+        error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
+      if(pageSize===25||pageSize===10){
        pageSize=pageSize===25?10:5;
        if(pageSize===5)maxRows=100;
        continue;
+      }
+      if(error.provider_http_status===400&&error.provider_code===7500){
+       useInternal=true;
+       continue;
+      }
      }
      throw error;
     }
@@ -182,7 +247,13 @@ export function createPhase2hCanonicalD1({
   async markArchived(items,objectSha,now){
    const ids=items.map(x=>x.record_id);
    const holders=ids.map(()=>"?").join(",");
-   const check=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids);
+   let check;
+   try{check=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids)}
+   catch(error){
+    if(error?.provider_http_status===400&&error?.provider_code===7500)
+     return workerAck(items,objectSha);
+    throw error;
+   }
    const before=new Map(check.results.map(x=>[x.record_id,x]));
    if(before.size!==ids.length||items.some(x=>
       before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
