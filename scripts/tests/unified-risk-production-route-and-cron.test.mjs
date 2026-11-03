@@ -30,6 +30,18 @@ test("owner-only production canary performs exact HMAC Supabase readback, not ol
   assert.match(source,/v1\/internal\/risk-gate\/unified-acceptance/);
 });
 
+test("owner-only 18-page SHA repair route is behind existing admin auth and covered by daily strict census",()=>{
+ const authAt=source.indexOf("const auth = authorized(request, env)");
+ const repairAt=source.indexOf('url.pathname==="/v1/internal/risk-gate/unified-reconcile-page"');
+ assert.ok(authAt>=0&&repairAt>authAt,"reconciliation must use owner admin guard");
+ assert.match(source,/scope:"CANONICAL_PAGE",page:body.page/);
+ assert.match(workflow,/node scripts\/ops\/reconcile-unified-risk-207-production\.mjs/);
+ const daily=readFileSync(new URL("../../.github/workflows/unified-risk-daily-production-census.yml",import.meta.url),"utf8");
+ assert.match(daily,/cron: "30 18 \* \* \*"/);
+ assert.match(daily,/node scripts\/ops\/reconcile-unified-risk-207-production\.mjs/);
+ assert.match(daily,/remote_hash_matches == 207/);
+});
+
 test("production deployment requires TLS authenticated domain census and anonymous evaluation refusal",()=>{
   assert.match(workflow,/https:\/\/api\.geomacro\.live\/v1\/internal\/risk-gate\/unified-census/);
   assert.match(workflow,/API_CUSTOM_DOMAIN_DNS_TLS_AUTH_OR_CENSUS_UNVERIFIED/);
