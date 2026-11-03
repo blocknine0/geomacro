@@ -19,6 +19,12 @@ const TITLE_TOPICS=Object.freeze([
   ["geopolitics",/\b(?:ceasefire|sanctions?|armed conflict|airstrikes?|military|border clashes?|coup|invasion|security council|peacekeeping|humanitarian crisis|displacement|missile strikes?|territorial dispute)\b/iu],
 ]);
 
+// Third-party mining RSS is broad (gold equities, general commodities, etc.).
+// Admission into the Critical Minerals lane needs a substantive named mineral,
+// materials-processing topic, or a known rare-earth producer in the headline.
+// This controls PRIVATE, UNSCORED intake only; it is not a rights grant.
+const MINING_INDUSTRY_MINERALS_TITLE =
+  /\b(?:critical minerals?|critical materials?|strategic minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|vanadium|niobium|tantalum|bauxite|alumina|potash|phosphate|tin|titanium|uranium|fluorspar|lynas|mp materials|mineral processing|ore processing|battery metals?|permanent magnets?|mineral offtake|copper mine)\b/iu;
 /** Regex is an intake topic hint only, never a numerical risk classifier. */
 export function privateTitleTopicHint(title) {
   if(typeof title!=="string")return null;
@@ -28,6 +34,11 @@ export function privateTitleTopicHint(title) {
 }
 
 export function rssSourceCategory(payload) {
+  // Never promote a generic gold-mine or mining-stock headline to
+  // critical-minerals evidence just because it came from MINING.com's feed.
+  if(payload?.source_id==="mining_com_critical_minerals_rss" &&
+     !MINING_INDUSTRY_MINERALS_TITLE.test(String(payload?.headline??"")))
+    return null;
   const type=String(payload?.event_type??"").toUpperCase();
   for(const [prefix,category] of CATEGORY_PREFIXES)
     if(type.startsWith(prefix+"_"))return {category,basis:"publisher_source_event_type"};
