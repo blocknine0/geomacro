@@ -155,9 +155,12 @@ export function resolveDerivedCommercialEligibility(source={}){
  const independentDatasets=evidence.filter(e=>
    e?.kind==="LICENSED_OPEN_DATASET");
  const hasOpenDatasetConsensus=independentDatasets.length>=2 &&
-   new Set(independentDatasets.map(e=>e.issuer.trim().toLowerCase())).size>=2 &&
-   new Set(independentDatasets.map(e=>e.url)).size>=2 &&
-   new Set(independentDatasets.map(e=>e.contentSha256)).size>=2;
+   new Set(independentDatasets.map(e=>
+     typeof e?.issuer==="string"?e.issuer.trim().toLowerCase():"")).size>=2 &&
+   new Set(independentDatasets.map(e=>
+     typeof e?.url==="string"?e.url:"")).size>=2 &&
+   new Set(independentDatasets.map(e=>
+     typeof e?.contentSha256==="string"?e.contentSha256:"")).size>=2;
  const independentFactsVerified=proof&&(hasPrimary||hasOpenDatasetConsensus)&&
    s.independentSameEventVerified===true&&
    typeof s.countryIso3==="string"&&FACT_COUNTRY.test(s.countryIso3)&&
