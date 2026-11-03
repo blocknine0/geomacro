@@ -100,40 +100,56 @@ export async function acknowledgeB2FirstD1({
  if(!Array.isArray(receipt.rows)||!Number.isSafeInteger(receipt.record_count)||
     receipt.record_count!==receipt.rows.length||receipt.record_count>SOURCE_MAX)
   safeFailure("ACK_INVALID_BATCH");
- if(postResult?.stored!==receipt.record_count||
-    postResult?.duplicate!==0||postResult?.rejected_conflicts!==0){
+ if(postResult?.readback_verified!==true||
+    postResult?.verified_originals!==receipt.record_count||
+    postResult?.stored+postResult?.duplicate!==receipt.record_count||
+    postResult?.rejected_conflicts!==0){
   return {status:"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY",
-    archived:0,storage_confirmed:true};
+    archived:0,deferred:receipt.record_count,storage_confirmed:true,
+    all_selected_originals_archived:false};
  }
  if(endpoint!=="https://geomacro-control-plane.daspallab202391.workers.dev"||
     typeof token!=="string"||token.length<32)
   safeFailure("ACK_AUTH_REQUIRED");
- const body={
-  schema:"geomacro.phase2h.b2-archive-ack.v1",
-  object_sha256:receipt.object_sha256,
-  items:receipt.rows.map(r=>({
-   record_id:r.record_id,raw_sha256:r.raw_sha256,
-  })),
- };
- let response,data;
- try{
-  response=await fetchImpl(endpoint+"/v1/internal/phase2h-raw-news",{
-   method:"PUT",redirect:"error",cache:"no-store",
-   headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-   body:JSON.stringify(body),signal:AbortSignal.timeout(15000),
-  });
-  data=await response.json();
- }catch{safeFailure("D1_ARCHIVE_ACK_UNAVAILABLE")}
- if(response.status!==200||data?.ok!==true||
-    data.archived!==receipt.record_count||
-    data.independent_d1_archive_ack_verified!==true||
-    data.rights_verified!==false||data.payments!==0)
-  safeFailure("D1_ARCHIVE_ACK_NOT_VERIFIED");
+ let archived=0,deferred=0;
+ // Every original was independently D1-readback-verified by the canonical
+ // writer. A prior duplicate may still have a different immutable projector
+ // hash or an existing B2 ACK. Isolate exactly that ID, never block the other
+ // freshly inserted originals in the same verified gzip object.
+ for(const row of receipt.rows){
+  const body={
+   schema:"geomacro.phase2h.b2-archive-ack.v1",
+   object_sha256:receipt.object_sha256,
+   items:[{record_id:row.record_id,raw_sha256:row.raw_sha256}],
+  };
+  let response,data;
+  try{
+   response=await fetchImpl(endpoint+"/v1/internal/phase2h-raw-news",{
+    method:"PUT",redirect:"error",cache:"no-store",
+    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+    body:JSON.stringify(body),signal:AbortSignal.timeout(15000),
+   });
+   data=await response.json();
+  }catch{
+   deferred++;continue;
+  }
+  if(response.status===200&&data?.ok===true&&
+     data.archived===1&&data.independent_d1_archive_ack_verified===true&&
+     data.rights_verified===false&&data.payments===0)
+    archived++;
+  else deferred++;
+ }
+ if(archived+deferred!==receipt.record_count)
+  safeFailure("D1_ARCHIVE_ACK_COUNT_MISMATCH");
  return {
   schema:"geomacro.phase2h.b2-first-d1-ack.v1",
-  status:"B2_FIRST_AND_CANONICAL_D1_FULL_READBACK_ACCEPTED",
-  archived:receipt.record_count,
-  b2_verified:true,d1_ack_verified:true,
+  status:archived===receipt.record_count?
+   "B2_FIRST_AND_CANONICAL_D1_FULL_READBACK_ACCEPTED":
+   archived>0?"B2_FIRST_PARTIAL_D1_ACK_VERIFIED":
+   "B2_FIRST_D1_ACK_ALL_DEFERRED_FOR_RECOVERY",
+  archived,deferred,
+  b2_verified:archived>0,d1_ack_verified:archived>0,
+  all_selected_originals_archived:deferred===0,
   paid_eligible:false,commercial_rights_verified:false,
  };
 }
