@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T08:28:14.174Z",
+  "checked_at": "2026-11-03T09:02:18.502Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -4143,25 +4143,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T09:44:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-bb081c6b",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent",
-      "what_changed": "A monitored source feed reports: United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T08:58:23.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

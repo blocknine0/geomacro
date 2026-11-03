@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T08:28:14.174Z",
+  "checked_at": "2026-11-03T09:02:18.502Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 245,
+  "item_count": 244,
   "counts": {
-    "geopolitics": 108,
+    "geopolitics": 107,
     "macro": 99,
     "rare_earth": 38
   },
-  "source_native_ids_sha256": "db2fb3d178d7052cee5ef708de781d1abb1e9c58a86e756175e307bee469bf5a",
+  "source_native_ids_sha256": "025b2e57a3e2402d025b208f3c3bb4590b82b2f1eedc2aaec297e09d6c1a1f2f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4656,25 +4656,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T09:44:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-bb081c6b",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent",
-      "what_changed": "A monitored source feed reports: United States approved $2.1 billion Patriot missile sale to Ukraine as Zelensky warns of years-long wait for deliveries - The Kyiv Independent. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T08:58:23.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
