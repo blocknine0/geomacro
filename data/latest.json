@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T10:18:05.271Z",
+  "checked_at": "2026-11-03T10:21:21.324Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-15e70dad",
+      "category": "macro",
+      "title": "Geomacro finds Iran warned about ‘new battlefield’ after reported US strike on Qeshm",
+      "what_changed": "A monitored source feed reports: Iran warned about ‘new battlefield’ after reported US strike on Qeshm. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:19:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-70a6807c",
       "category": "geopolitics",
@@ -68,6 +87,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-2722e12c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Rafael unveiled new weapon system at Cyprus military gathering",
+      "what_changed": "A monitored source feed reports: Rafael unveiled new weapon system at Cyprus military gathering. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:55:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d55a8e30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - The Straits Times",
+      "what_changed": "A monitored source feed reports: Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - The Straits Times. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-8d39e747",
       "category": "macro",
       "title": "Geomacro finds WGC cut Gold Investment Demand Growth Forecast Amid Slower Retail Buying By Kedia Advisory - Investing.com India",
@@ -81,6 +138,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a47063e4",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States launched limited defensive strikes on Iranian targets in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: United States launched limited defensive strikes on Iranian targets in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:51:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timeskuwait.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b56eb4e4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Kuwait raised oil production to highest level since Iran war began, say sources",
+      "what_changed": "A monitored source feed reports: Kuwait raised oil production to highest level since Iran war began, say sources. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:22:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timeskuwait.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -353,6 +448,63 @@
       "severity": null
     },
     {
+      "id": "macro-685b7a8d",
+      "category": "macro",
+      "title": "Geomacro finds Platts proposed to launch US Gulf Coast distillers corn oil assessment Jan. 4, 2027 - S&P Global",
+      "what_changed": "A monitored source feed reports: Platts proposed to launch US Gulf Coast distillers corn oil assessment Jan. 4, 2027 - S&P Global. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T22:30:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-749f4f30",
+      "category": "macro",
+      "title": "Geomacro finds IRGC said downed two US drones near Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: IRGC said downed two US drones near Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:53:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-68e9bc0d",
+      "category": "macro",
+      "title": "Geomacro finds Rollins signed MOU with NASA as corn growers complain about NASS correction - The Fence Post",
+      "what_changed": "A monitored source feed reports: Rollins signed MOU with NASA as corn growers complain about NASS correction - The Fence Post. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:42:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-d3ac63da",
       "category": "macro",
       "title": "Geomacro finds Trump said he won&#x2019;t strike Iran after U.S. midterms",
@@ -366,6 +518,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b69e062e",
+      "category": "macro",
+      "title": "Geomacro finds EU said fridge attacks 'deliberate attempt to disrupt' bloc's food supply",
+      "what_changed": "A monitored source feed reports: EU said fridge attacks 'deliberate attempt to disrupt' bloc's food supply. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:30:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.france24.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

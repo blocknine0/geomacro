@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T10:18:05.271Z",
+  "updated_at": "2026-11-03T10:21:21.324Z",
   "signals": [
+    {
+      "id": "macro-15e70dad",
+      "category": "macro",
+      "title": "Geomacro finds Iran warned about ‘new battlefield’ after reported US strike on Qeshm",
+      "what_changed": "A monitored source feed reports: Iran warned about ‘new battlefield’ after reported US strike on Qeshm. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:19:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.euronews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-2f6a3409",
       "category": "macro",
@@ -176,6 +195,63 @@
       "severity": null
     },
     {
+      "id": "macro-685b7a8d",
+      "category": "macro",
+      "title": "Geomacro finds Platts proposed to launch US Gulf Coast distillers corn oil assessment Jan. 4, 2027 - S&P Global",
+      "what_changed": "A monitored source feed reports: Platts proposed to launch US Gulf Coast distillers corn oil assessment Jan. 4, 2027 - S&P Global. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T22:30:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-749f4f30",
+      "category": "macro",
+      "title": "Geomacro finds IRGC said downed two US drones near Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: IRGC said downed two US drones near Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:53:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-68e9bc0d",
+      "category": "macro",
+      "title": "Geomacro finds Rollins signed MOU with NASA as corn growers complain about NASS correction - The Fence Post",
+      "what_changed": "A monitored source feed reports: Rollins signed MOU with NASA as corn growers complain about NASS correction - The Fence Post. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:42:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-d3ac63da",
       "category": "macro",
       "title": "Geomacro finds Trump said he won&#x2019;t strike Iran after U.S. midterms",
@@ -189,6 +265,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b69e062e",
+      "category": "macro",
+      "title": "Geomacro finds EU said fridge attacks 'deliberate attempt to disrupt' bloc's food supply",
+      "what_changed": "A monitored source feed reports: EU said fridge attacks 'deliberate attempt to disrupt' bloc's food supply. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:30:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.france24.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

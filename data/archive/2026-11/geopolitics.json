@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T10:18:05.271Z",
+  "updated_at": "2026-11-03T10:21:21.324Z",
   "signals": [
     {
       "id": "geopolitics-70a6807c",
@@ -37,6 +37,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.egyptindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2722e12c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Rafael unveiled new weapon system at Cyprus military gathering",
+      "what_changed": "A monitored source feed reports: Rafael unveiled new weapon system at Cyprus military gathering. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:55:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: cyprus-mail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d55a8e30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - The Straits Times",
+      "what_changed": "A monitored source feed reports: Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - The Straits Times. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a47063e4",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States launched limited defensive strikes on Iranian targets in Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: United States launched limited defensive strikes on Iranian targets in Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:51:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timeskuwait.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-b56eb4e4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Kuwait raised oil production to highest level since Iran war began, say sources",
+      "what_changed": "A monitored source feed reports: Kuwait raised oil production to highest level since Iran war began, say sources. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:22:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: timeskuwait.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
