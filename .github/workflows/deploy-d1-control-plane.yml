@@ -214,11 +214,12 @@ jobs:
       WRANGLER_VERSION: "4.136.3"
       PUBLIC_NEWS_R2_BUCKET: ${{ vars.GEOMACRO_PUBLIC_NEWS_R2_BUCKET }}
       PUBLIC_NEWS_KV_NAMESPACE_ID: ${{ vars.GEOMACRO_PUBLIC_NEWS_KV_NAMESPACE_ID }}
-      P0B_ACTIVATE: ${{ vars.GEOMACRO_P0B_ENABLE }}
-      P0B_B2_BUCKET: ${{ vars.GEOMACRO_P0B_B2_SPOOL_BUCKET }}
-      P0B_B2_KEY_ID: ${{ secrets.GEOMACRO_P0B_B2_KEY_ID }}
-      P0B_B2_APPLICATION_KEY: ${{ secrets.GEOMACRO_P0B_B2_APPLICATION_KEY }}
-      P0B_SPOOL_ENCRYPTION_KEY: ${{ secrets.GEOMACRO_P0B_SPOOL_ENCRYPTION_KEY }}
+      # Owner-requested permanent P0-B activation. Use already provisioned
+      # production B2 credentials and canonical private archive bucket.
+      P0B_ACTIVATE: "1"
+      P0B_B2_BUCKET: geomacro-private-archive
+      P0B_B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      P0B_B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
     steps:
       - name: Require explicit manual dispatch confirmation
         if: github.event_name == 'workflow_dispatch'
@@ -245,6 +246,18 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN is required"; exit 2; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID is required"; exit 2; }
           test "${#ROOT_LEDGER_TOKEN}" -ge 32 || { echo "GEOMACRO_COMMERCE_LEDGER_TOKEN must be at least 32 characters"; exit 2; }
+          # The archive bucket and credentials are already owned by this
+          # environment. Fail before migration, queue or Worker changes when
+          # unavailable. Do not create or log another B2 account key.
+          if test "${P0B_ACTIVATE:-}" = "1"; then
+            test "${#P0B_B2_KEY_ID}" -ge 5 || { echo "::error::P0B_EXISTING_B2_ACCESS_KEY_MISSING"; exit 2; }
+            test "${#P0B_B2_APPLICATION_KEY}" -ge 20 || { echo "::error::P0B_EXISTING_B2_SECRET_KEY_MISSING"; exit 2; }
+            P0B_SPOOL_ENCRYPTION_KEY="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-p0b-private-spool-aes-gcm-v1').digest('hex'))")"
+            test "${#P0B_SPOOL_ENCRYPTION_KEY}" -eq 64 || exit 2
+            echo "::add-mask::$P0B_SPOOL_ENCRYPTION_KEY"
+            echo "P0B_SPOOL_ENCRYPTION_KEY=$P0B_SPOOL_ENCRYPTION_KEY" >> "$GITHUB_ENV"
+            echo "P0B_EXISTING_PRODUCTION_B2_CONFIG_VERIFIED=true"
+          fi
 
       - name: Set up Node 24 for shared TypeScript signature verification
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
