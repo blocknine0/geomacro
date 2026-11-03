@@ -348,3 +348,23 @@ test("feed transport uses bounded 15-second timeout, ten-way ceiling and transpa
   normalize,networkConcurrency:11,registry:[],fetchImpl:async()=>response(feed)}),
   /REUSABLE_NEWS_COLLECTOR_INPUT_INVALID/u);
 });
+
+test("multiple RSS sources with the same original permalink spend only one D1 candidate",async()=>{
+ const shared="https://example.org/news/rate-change?utm_source=first";
+ const same="https://example.org/news/rate-change?utm_source=second";
+ const xml=url=>'<rss><channel><item><title>Central bank announces monetary interest rate policy change</title>'+
+  '<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate><link>'+url+
+  '</link></item></channel></rss>';
+ const registry=[
+  {id:"source_one",url:"https://alpha.example.org/rss",
+    categories:["macro"],supported:true,type:"rss"},
+  {id:"source_two",url:"https://beta.example.org/rss",
+    categories:["macro"],supported:true,type:"rss"},
+ ];
+ const r=await collectRegisteredReusableNews({now:when,registry,normalize,
+  fetchImpl:async url=>response(xml(url.includes("alpha")?shared:same))});
+ assert.equal(r.checks.length,2);
+ assert.equal(r.items.length,1);
+ assert.equal(r.summary.duplicate_original_permalinks_filtered_in_memory,1);
+ assert.equal(r.summary.raw_upstream_stored,false);
+});
