@@ -129,7 +129,7 @@ test("native-dated presidential actions are privately observed without requiring
  const xml="<rss><channel><item><title>"+documentTitle+"</title>"+
    "<pubDate>Tue, 27 Oct 2026 12:53:00 GMT</pubDate></item></channel></rss>";
  const out=await collectRegisteredReusableNews({now,registry:[{...wh,supported:true,type:"rss"}],
-   normalize,allowRdfNativeDates:true,fetchImpl:async()=>response(xml)});
+   normalize,fetchImpl:async()=>response(xml)});
  assert.equal(out.items.length,1);
  assert.equal(out.items[0].category,"geopolitics");
  assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
@@ -269,7 +269,7 @@ test("RDF Dublin Core item-native clock and bare XML ampersand are safe private 
  const out=await collectRegisteredReusableNews({now,
   registry:[{id:"example_rdf",url:"https://example.org/news.rdf",categories:["macro"],
     supported:true,type:"rdf"}],
-  normalize,fetchImpl:async()=>response(xml)});
+  normalize,allowRdfNativeDates:true,fetchImpl:async()=>response(xml)});
  assert.equal(out.items.length,1);
  assert.equal(out.checks[0].state,"OBSERVED");
  assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
