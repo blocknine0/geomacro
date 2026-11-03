@@ -106,3 +106,25 @@ test("private D1 uses exact canonical proof and never elevates commercial rights
     /PRIVATE_SOURCE_D1_EXACT_READBACK_UNVERIFIED/,
   );
 });
+
+test("one conflicting D1 identity cannot invalidate another original's readback",async()=>{
+  const rows=[
+    rss("official_a","MACRO_OFFICIAL_RELEASE","Central bank policy announcement",
+      "https://example.com/official/a","2026-11-03T09:00:00Z"),
+    rss("official_b","GEOPOLITICS_OFFICIAL_RELEASE","Border ceasefire announced",
+      "https://example.com/official/b","2026-11-03T10:00:00Z"),
+  ];
+  const {candidates}=rssSpoolPrivateCandidates(rows,now);
+  const saved=await persistUnscoredSourceCandidatesD1(candidates,{
+    now,token:"fixture",post:async ({records})=>{
+      assert.equal(records.length,2);
+      return {stored:1,duplicate:0,rejected_conflicts:1,
+        verified_originals:1,readback_verified:true,per_original_readback_verified:true};
+    },
+  });
+  assert.equal(saved.persisted,1);
+  assert.equal(saved.existing_identity_conflicts_quarantined,1);
+  assert.equal(saved.identity_conflicts_quarantined,1);
+  assert.equal(saved.d1_exact_readback_verified,true);
+  assert.equal(saved.paid_eligible,false);
+});
