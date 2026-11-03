@@ -44,6 +44,7 @@ export function privateOriginalMatchesPulse(article, hashes, now = Date.now(), e
       article.discoveryProvider !== "official_native_rss" ||
       article.nativePublishedAtVerified !== true ||
       !["publisher_rss_item_pubDate","publisher_atom_entry_published",
+        "publisher_rdf_item_dc_date",
         "publisher_original_article_datePublished"].includes(article.nativeTimeEvidence) ||
       article.privateOnly !== true ||
       article.rightsVerified !== false ||
