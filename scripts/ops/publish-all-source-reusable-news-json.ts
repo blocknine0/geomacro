@@ -10,6 +10,8 @@ import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model
 import {buildPhase2hPrivateRawRecords,postPhase2hCollisionIsolated} from "../lib/phase2h-raw-original-records.mjs";
 import {planRegisteredPrivateOriginals} from "../lib/phase2h-registered-private-quota.mjs";
 import {hydrateSelectedOriginalMetadata} from "../lib/phase2h-original-metadata.mjs";
+import {stageB2FirstPrivateOriginals,acknowledgeB2FirstD1}
+ from "./phase2h-b2-first-private-raw.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {countryMentionFromTitle} from "../lib/country-news-mentions-195.mjs";
 import {prepareReusableNewsBatches} from "../lib/prepare-reusable-news-batches.mjs";
@@ -92,13 +94,51 @@ console.log(JSON.stringify({
  not_first_party:metadata.not_first_party,
  source_full_article_stored:false,rights_verified:false,paid_eligible:false,
 }));
+const originalRows=phase2hQuota.records.map(r=>enhancedById.get(r.record_id));
+// B2-first is independent of the D1 original and factual-news journals. If
+// provider scope or shared B2 budget prevents a verified PUT+two GETs,
+// retain the original as D1-only pending for governed 6h archive recovery.
+let b2First=null,b2FirstStatus="B2_FIRST_NOT_PROVIDER_ADMITTED";
+if(process.env.PHASE2H_PROVIDER_MAINTENANCE==="true"&&originalRows.length){
+ try{
+  b2First=await stageB2FirstPrivateOriginals({rows:originalRows});
+  b2FirstStatus=b2First.status;
+ }catch(error){
+  const code=String(error?.message??"");
+  b2FirstStatus=/^PHASE2H_B2_FIRST_[A-Z_]+$/u.test(code)?
+   code:"B2_FIRST_UPSTREAM_UNVERIFIED";
+ }
+}
 const phase2hD1=await postPhase2hCollisionIsolated({
- records:phase2hQuota.records.map(r=>enhancedById.get(r.record_id)),
+ records:originalRows,
  controlPlaneRoot:endpoint,token,
  maxAttempts:phase2hQuota.max_collision_attempts,
 });
 if(phase2hD1.rejected_conflicts>0)
  console.warn("::warning::PHASE2H_REGISTERED_SOURCE_IMMUTABLE_ORIGINAL_QUARANTINED");
+let b2ArchiveAck=null;
+if(b2First?.storage_confirmed===true){
+ try{
+  b2ArchiveAck=await acknowledgeB2FirstD1({
+   receipt:b2First,postResult:phase2hD1,endpoint,token,
+  });
+  b2FirstStatus=b2ArchiveAck.status;
+ }catch(error){
+  const code=String(error?.message??"");
+  b2FirstStatus=/^PHASE2H_B2_FIRST_[A-Z_]+$/u.test(code)?
+   code:"B2_FIRST_D1_ACK_UNVERIFIED";
+ }
+}
+console.log(JSON.stringify({
+ schema:"geomacro.phase2h.b2-first-original-archive-receipt.v1",
+ source_origins_selected:originalRows.length,
+ state:b2FirstStatus,
+ archived_after_d1_readback:b2ArchiveAck?.archived??0,
+ b2_put_two_full_sha_gets_verified:b2First?.storage_confirmed===true,
+ canonical_d1_archive_ack_verified:b2ArchiveAck?.d1_ack_verified===true,
+ retained_d1_only_on_b2_failure:true,
+ source_original_urls_logged:false,rights_verified:false,paid_eligible:false,
+}));
 console.log(JSON.stringify({schema:"geomacro.phase2h.registered-source-originals.v1",
  by_category:phase2h.counts,admitted_by_category:phase2hQuota.selected_by_category,
  observed_unique:phase2hQuota.observed_unique,
@@ -111,7 +151,7 @@ console.log(JSON.stringify({schema:"geomacro.phase2h.registered-source-originals
  verified_originals:phase2hD1.verified_originals,
  excluded_invalid:phase2h.discarded_invalid,
  canonical_d1_readback_verified:phase2hD1.readback_verified,
- b2_verified:false,rights_verified:false,payments:0}));
+ b2_verified:b2ArchiveAck?.d1_ack_verified===true,rights_verified:false,payments:0}));
 const info=collected.summary;
 if(collected.checks.length===0)throw Error("REUSABLE_SOURCE_NEWS_NO_ATTEMPTS");
 const packing=prepareReusableNewsBatches({
