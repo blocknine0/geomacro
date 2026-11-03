@@ -5,7 +5,7 @@ import {canonicalJson,methodologyManifest,calculateGri,GRI_METHOD_VERSION,
  GRI_STORY_CORRELATION_VERSION,GRI_STORY_CORRELATION_PROMPT_VERSION}
  from "./gri-engine-v12.js";
 import {FACTS_GRI_PROOF_SCHEMA,VERIFIED_GRI_METHODOLOGY_SHA256,
- verifyPinnedFactsOnlyGriV12Proof} from "./facts-only-gri-v12-dual-attestation.mjs";
+ verifyPinnedFactsOnlyGriV12Proof,scoreEventsAreFactsOnly} from "./facts-only-gri-v12-dual-attestation.mjs";
 import {resolveDerivedCommercialEligibility}
  from "./official-original-issuer-rights.mjs";
 const sha=x=>createHash("sha256").update(x).digest("hex");
@@ -126,6 +126,23 @@ test("verified independent Facts and Rights signatures bind recomputed GRI v1.2 
   }
  }
 });
+test("reject nested source prose and oversized facts-text before GRI scoring",()=>{
+ const {source}=signedFixture();
+ const row=source.scoreProof.score_events[0];
+ assert.equal(scoreEventsAreFactsOnly([row]),true);
+ const bad=[
+  {...row,headline:"A third-party article heading"},
+  {...row,metadata:{article_body:"Publisher article text"}},
+  {...row,metadata:{source_headline:"Copyrighted title"}},
+  {...row,metadata:{details:{paragraph:"Publisher's copyrighted paragraph"}}},
+  {...row,metadata:{details:{note:"X".repeat(251)}}},
+  {...row,metadata:{details:{further:{too:{deep:"no"}}}}},
+ ];
+ for(const item of bad)assert.equal(scoreEventsAreFactsOnly([item]),false);
+ assert.equal(scoreEventsAreFactsOnly([]),false);
+ assert.equal(scoreEventsAreFactsOnly([null]),false);
+});
+
 test("reject score tamper, missing proof, copied article text and unpinned authority",()=>{
  const {source,config}=signedFixture();
  for(const p of [
