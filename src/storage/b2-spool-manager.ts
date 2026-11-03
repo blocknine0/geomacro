@@ -25,6 +25,7 @@ export interface B2SpoolEnv {
  B2_KEY_ID: string;
  B2_APPLICATION_KEY: string;
  B2_SPOOL_BUCKET: string;
+ B2_SPOOL_PREFIX?: string;
  B2_SPOOL_ENCRYPTION_KEY: string;
 }
 export type SpoolDependencies = {
@@ -56,15 +57,16 @@ async function hmac(key:Uint8Array,input:string){
  const k=await crypto.subtle.importKey('raw',toBytes(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  return new Uint8Array(await crypto.subtle.sign('HMAC',k,toBytes(input)));
 }
-function objectKey(sourceId:string,sha:string,day:string){
+function objectKey(sourceId:string,sha:string,day:string,prefix:string){
  if(!ID.test(sourceId)||!SHA.test(sha)||!/^\d{8}$/u.test(day))throw Error('P0B_SPOOL_ID_INVALID');
- return 'spool/'+day+'/'+sourceId+'/'+sha+'.json';
+ return prefix+day+'/'+sourceId+'/'+sha+'.json';
 }
-function safeKey(uri:string,sha:string,sourceId:string){
+function safeKey(uri:string,sha:string,sourceId:string,prefix:string){
  if(typeof uri!=='string'||!uri.startsWith('b2://'))throw Error('P0B_SPOOL_URI_INVALID');
  const key=uri.slice(5);
- if(!/^spool\/\d{8}\/[a-z0-9_.:-]{3,120}\/[a-f0-9]{64}\.json$/u.test(key)||
-    !key.endsWith('/'+sha+'.json')||!key.split('/')[2]||key.split('/')[2]!==sourceId)
+ const suffix=key.startsWith(prefix)?key.slice(prefix.length):'';
+ if(!/^\d{8}\/[a-z0-9_.:-]{3,120}\/[a-f0-9]{64}\.json$/u.test(suffix)||
+    !suffix.endsWith('/'+sha+'.json')||suffix.split('/')[1]!==sourceId)
   throw Error('P0B_SPOOL_URI_INVALID');
  return key;
 }
@@ -76,7 +78,13 @@ function validateEnv(env:B2SpoolEnv){
    env.B2_APPLICATION_KEY?.length<20||env.B2_SPOOL_ENCRYPTION_KEY?.length<32)
   throw Error('P0B_B2_CONFIGURATION_UNAVAILABLE');
  const region=endpoint.hostname.slice(3,-'.backblazeb2.com'.length);
- return {endpoint:endpoint.origin,region};
+ // Keep the original spool/ default while supporting B2 application keys
+ // restricted to an already-owned, approved private archive prefix.
+ const prefix=env.B2_SPOOL_PREFIX??'spool/';
+ if(prefix.length>220||!/^(?:[a-zA-Z0-9._+-]+\/)*spool\/$/u.test(prefix)||
+    prefix.includes('../')||prefix.includes('/./'))
+  throw Error('P0B_SPOOL_PREFIX_INVALID');
+ return {endpoint:endpoint.origin,region,prefix};
 }
 export class B2SpoolManager {
  private env:B2SpoolEnv;
@@ -85,9 +93,10 @@ export class B2SpoolManager {
  private now:()=>Date;
  private endpoint:string;
  private region:string;
+ private prefix:string;
  constructor(env:B2SpoolEnv,opts:SpoolDependencies={}){
-  const {endpoint,region}=validateEnv(env);
-  this.env=env;this.endpoint=endpoint;this.region=region;
+  const {endpoint,region,prefix}=validateEnv(env);
+  this.env=env;this.endpoint=endpoint;this.region=region;this.prefix=prefix;
   this.fetchImpl=opts.fetchImpl??fetch;
   this.now=opts.now??(()=>new Date());
   this.reserve=opts.reserve??(async kind=>{
@@ -182,7 +191,7 @@ export class B2SpoolManager {
     await p0bSha256(canonicalJson(payload.rawPayload))!==payload.candidateSha256)
    throw Error('P0B_CANDIDATE_IDENTITY_INVALID');
   const day=this.now().toISOString().slice(0,10).replace(/-/gu,'');
-  const key=objectKey(payload.sourceId,payload.candidateSha256,day);
+  const key=objectKey(payload.sourceId,payload.candidateSha256,day,this.prefix);
   const bytes=await this.seal(payload);
   await this.request('PUT',key,bytes);
   const restored=await this.request('GET',key);
@@ -193,7 +202,7 @@ export class B2SpoolManager {
    sha256:payload.candidateSha256,storedAt:this.now().toISOString()};
  }
  async readVerified(b2Uri:string,candidateSha256:string,sourceId:string){
-  const key=safeKey(b2Uri,candidateSha256,sourceId);
+  const key=safeKey(b2Uri,candidateSha256,sourceId,this.prefix);
   const bytes=await this.request('GET',key);
   return this.open(bytes,candidateSha256,sourceId);
  }
