@@ -5,6 +5,7 @@
  */
 import {normalizeP0aPayload,P0A_MAX_COMPRESSED_BYTES} from './p0a-source-format.mjs';
 import {processFetchedBatch} from '../../../src/workers/ingest-producer.ts';
+import {canonicalJson} from '../../../src/lib/canonical-json.ts';
 
 const PARSERS=new Set(['RSS_2','ATOM','RDF','JSON_REST','CSV_STREAM','HTML_BOUNDED']);
 const CATEGORIES=new Set(['GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS']);
@@ -204,7 +205,7 @@ async function pollOne(env,row,{fetchImpl,now}){
    const candidates=await Promise.all(result.records.map(async item=>{
     const raw={...item,intended_category:config.intended_category,
      country_iso3:config.country_iso3,rights_tier:config.rights_tier};
-    return {candidateSha256:await sha(JSON.stringify(raw)),
+    return {candidateSha256:await sha(canonicalJson(raw)),
      sourceId:config.source_id,raw};
    }));
    const receipt=await processFetchedBatch(candidates,env);
