@@ -204,6 +204,9 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
     original_identity_sha256:await sha(JSON.stringify(persisted.original)),
     persisted_five_part_sha256:await sha(JSON.stringify(persisted.analysis)),
     submitted_five_part_exact_readback:exactCurrentFivePart,
+    // Exact pre/post-D1 proof of a NEW immutable row. A retained historical
+    // projector version is never represented as a fresh B2 ACK candidate.
+    newly_inserted_after_d1_readback:previous===undefined,
     authenticated_d1_original_and_five_part_verified:true,
     b2_archived_verified:false,commercial_rights_verified:false,
     paid_eligible:false,
