@@ -9,7 +9,7 @@ import {validPrivateRawNews,phase2hPrivateRawPut,phase2hPrivateRawGet,
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore,
  runPhase2hGovernedRawB2,phase2hAuthorizedArchiveWindow,
- createPhase2hCanonicalD1,phase2hBoundedPendingPageSQL}
+ createPhase2hCanonicalD1,phase2hBoundedPendingPageSQL,phase2hKeysetPendingPageSQL}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "../ops/phase2h-verify-private-question-delivery.mjs";
 import {runPhase2hPermanentAcceptance} from "../ops/phase2h-permanent-production-acceptance.mjs";
@@ -755,8 +755,7 @@ test("PERMANENT FOUNDER LOCK: every admitted raw original yields five-part priva
 });
 
 
-test("Phase2H pending raw D1 reads stay bounded below provider response limits",async()=>{
- const reads=[];
+test("Phase2H index keyset reads all 300 rows exactly once without OFFSET",async()=>{
  const records=Array.from({length:300},(_,i)=>({
    record_id:i.toString(16).padStart(64,"0"),category:"macro",
    schema:"geomacro.phase2h.private-raw-observation.v1",
@@ -766,101 +765,93 @@ test("Phase2H pending raw D1 reads stay bounded below provider response limits",
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
+ const reads=[];
  const fetchImpl=async(_url,init)=>{
-   const request=JSON.parse(init.body);
-   assert.equal(init.method,"POST");
-   assert.match(request.sql,/first_ingested_at>\?/u);
-   assert.match(request.sql,/LIMIT [0-9]+ OFFSET [0-9]+/u);
-   assert.ok(request.params.every(x=>typeof x==="string"));
-   const [cutoff]=request.params;
-    assert.equal(request.params.length,1);
-    const [,lim,off]=request.sql.match(/LIMIT ([0-9]+) OFFSET ([0-9]+)/u);
-   assert.ok(Number.isFinite(Date.parse(cutoff)));
-   const [limit,offset]=[Number(lim),Number(off)];
-   assert.ok(limit<=25);
-   reads.push([limit,offset]);
-   return Response.json({success:true,result:[{success:true,
-     results:records.slice(offset,offset+limit).map(r=>({raw_json:JSON.stringify(r)}))}]});
+  const q=JSON.parse(init.body);
+  assert.doesNotMatch(q.sql,/OFFSET/);
+  assert.match(q.sql,/ORDER BY first_ingested_at,record_id LIMIT /);
+  assert.ok(q.params.every(x=>typeof x==="string"));
+  assert.ok(q.params.length===1||q.params.length===4);
+  const limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
+  const cursor=q.params.length===4?q.params[3]:null;
+  const offset=cursor===null?0:records.findIndex(r=>r.record_id>cursor);
+  reads.push([limit,cursor]);
+  const page=offset<0?[]:records.slice(offset,offset+limit);
+  return Response.json({success:true,result:[{success:true,results:page.map(r=>({
+    record_id:r.record_id,first_ingested_at:r.ingested_at,raw_json:JSON.stringify(r)
+  }))}]});
  };
- const d1=createPhase2hCanonicalD1({env,fetchImpl});
- const result=await d1.readPending();
+ const result=await createPhase2hCanonicalD1({env,fetchImpl}).readPending();
  assert.equal(result.length,300);
  assert.equal(reads.length,12);
- assert.deepEqual(reads[0],[25,0]);
- assert.deepEqual(reads.at(-1),[25,275]);
+ assert.equal(reads[0][0],25);
+ assert.equal(reads[0][1],null);
+ assert.equal(reads.at(-1)[1],records[274].record_id);
  assert.equal(new Set(result.map(x=>x.record_id)).size,300);
 });
-test("Phase2H D1 provider failure downgrades 25 to 10 to 5 then fails closed",async()=>{
+test("Phase2H provider fails 25 then 10 then uses 5-row keyset with bound cursor",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
  const observed=[];
  const fetchImpl=async(_url,init)=>{
-   const payload=JSON.parse(init.body);
-  assert.ok(payload.params.every(x=>typeof x==="string"));
-  assert.equal(payload.params.length,1);
-  const [,lim,off]=payload.sql.match(/LIMIT ([0-9]+) OFFSET ([0-9]+)/u);
-   const [limit,offset]=[Number(lim),Number(off)];
-   observed.push([limit,offset]);
-   if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
-   return Response.json({success:true,result:[{success:true,results:[]}]});
+  const q=JSON.parse(init.body);
+  const limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
+  observed.push(limit);
+  if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
+  return Response.json({success:true,result:[{success:true,results:[]}]});
  };
- const d1=createPhase2hCanonicalD1({env,fetchImpl});
- assert.deepEqual(await d1.readPending(),[]);
- assert.deepEqual(observed,[[25,0],[10,0]]);
- const limitPattern=[];
+ assert.deepEqual(await createPhase2hCanonicalD1({env,fetchImpl}).readPending(),[]);
+ assert.deepEqual(observed,[25,10]);
+ const pattern=[];
  const fiveFetch=async(_url,init)=>{
-  const payload=JSON.parse(init.body);
-  assert.ok(payload.params.every(x=>typeof x==="string"));
-  assert.equal(payload.params.length,1);
-  const [,lim,off]=payload.sql.match(/LIMIT ([0-9]+) OFFSET ([0-9]+)/u);
-   const [limit,offset]=[Number(lim),Number(off)];
-  limitPattern.push([limit,offset]);
+  const q=JSON.parse(init.body),limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
+  const offset=q.params.length===1?0:parseInt(q.params[3],10)+1;
+  pattern.push([limit,offset]);
   if(limit>5)return Response.json({success:false,result:[],errors:[{code:9000}]});
-  const remaining=100-offset;
-  return Response.json({success:true,result:[{success:true,results:
-   remaining>0?Array.from({length:Math.min(5,remaining)},(_,n)=>({
-    raw_json:JSON.stringify({record_id:String(offset+n).padStart(64,"0"),category:"macro"})
-   })):[]}]});
+  const page=Array.from({length:Math.min(5,Math.max(0,100-offset))},(_,n)=>{
+    const r={record_id:String(offset+n).padStart(64,"0"),category:"macro",
+      ingested_at:now.toISOString()};
+    return {record_id:r.record_id,first_ingested_at:r.ingested_at,
+      raw_json:JSON.stringify(r)};
+  });
+  return Response.json({success:true,result:[{success:true,results:page}]});
  };
- const recovered=await createPhase2hCanonicalD1({env,fetchImpl:fiveFetch}).readPending();
- assert.equal(recovered.length,100);
- assert.deepEqual(limitPattern.slice(0,3),[[25,0],[10,0],[5,0]]);
- assert.ok(limitPattern.length<=42);
- assert.deepEqual(limitPattern.at(-1),[5,95]);
-  const failFetch=async()=>Response.json({success:false,result:[]});
- await assert.rejects(()=>createPhase2hCanonicalD1({env,fetchImpl:failFetch}).readPending(),
-   /PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
+ const restored=await createPhase2hCanonicalD1({env,fetchImpl:fiveFetch}).readPending();
+ assert.equal(restored.length,100);
+ assert.deepEqual(pattern.slice(0,3),[[25,0],[10,0],[5,0]]);
+ assert.deepEqual(pattern.at(-1),[5,95]);
+ assert.ok(pattern.length<=42);
+ await assert.rejects(()=>createPhase2hCanonicalD1({
+  env,fetchImpl:async()=>Response.json({success:false,result:[]})
+ }).readPending(),/PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
 });
-
-test("Phase2H D1 REST binds only date and literal bounded page integers",async()=>{
+test("Phase2H D1 REST binds dates and keyset cursor without user-controlled SQL",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
  let seen=0;
  const fake=async(_url,init)=>{
-  const payload=JSON.parse(init.body);
-  assert.equal(payload.params.length,1);
-  assert.ok(Number.isFinite(Date.parse(payload.params[0])));
-  assert.deepEqual(payload.params.slice(1),[]);
-  assert.match(payload.sql,/WHERE b2_object_sha256 IS NULL AND first_ingested_at>\?/);
-  assert.match(payload.sql,/LIMIT 25 OFFSET 0/);
+  const q=JSON.parse(init.body);
+  assert.equal(q.params.length,1);
+  assert.ok(Number.isFinite(Date.parse(q.params[0])));
+  assert.match(q.sql,/first_ingested_at>\?/);
+  assert.match(q.sql,/LIMIT 25$/);
+  assert.doesNotMatch(q.sql,/OFFSET/);
   assert.equal(init.redirect,"error");
   seen++;
   return Response.json({success:true,result:[{success:true,results:[]}]});
  };
- const result=await createPhase2hCanonicalD1({env,fetchImpl:fake}).readPending();
- assert.deepEqual(result,[]);
+ assert.deepEqual(await createPhase2hCanonicalD1({env,fetchImpl:fake}).readPending(),[]);
  assert.equal(seen,1);
 });
-
-test("Phase2H bounded raw pagination rejects untrusted LIMIT/OFFSET injection",()=>{
- assert.match(phase2hBoundedPendingPageSQL(25,0),/LIMIT 25 OFFSET 0$/);
- assert.match(phase2hBoundedPendingPageSQL(5,295),/LIMIT 5 OFFSET 295$/);
- for(const [limit,offset] of [[0,0],[26,0],[25,-1],[25,276],
-    [1,300],[4.2,0],[5,NaN],["5",0],[5,"0"]])
-  assert.throws(()=>phase2hBoundedPendingPageSQL(limit,offset),
-   /PHASE2H_RAW_B2_D1_PAGE_BOUNDS_INVALID/);
+test("Phase2H keyset limits reject injection and legacy OFFSET helper is never production path",()=>{
+ assert.match(phase2hKeysetPendingPageSQL(25),/ORDER BY first_ingested_at,record_id LIMIT 25$/);
+ assert.match(phase2hKeysetPendingPageSQL(5,true),/record_id>\?/);
+ for(const limit of [0,26,-1,4.2,NaN,"25"])
+   assert.throws(()=>phase2hKeysetPendingPageSQL(limit),/D1_PAGE_BOUNDS_INVALID/);
+ assert.throws(()=>phase2hKeysetPendingPageSQL(25,"true"),/D1_PAGE_BOUNDS_INVALID/);
+ assert.match(phase2hBoundedPendingPageSQL(5,295),/OFFSET 295$/);
 });
 test("Phase2H raw B2 plan excludes the expired immutable first-ingested window",()=>{
  const planNow=new Date("2026-10-30T12:00:00Z");
