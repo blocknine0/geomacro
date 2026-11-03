@@ -10,6 +10,14 @@ on:
       - "workers/control-plane/src/central-security-policies.mjs"
       - "scripts/ops/verify-master-commerce-freeze-live.mjs"
       - ".github/workflows/master-commerce-freeze-live-acceptance.yml"
+  pull_request:
+    paths:
+      - "src/lib/central-security.server.ts"
+      - "src/lib/commercial-launch-gate.server.ts"
+      - "server/middleware/00-central-security.ts"
+      - "workers/control-plane/src/central-security-policies.mjs"
+      - "scripts/ops/verify-master-commerce-freeze-live.mjs"
+      - ".github/workflows/master-commerce-freeze-live-acceptance.yml"
   workflow_dispatch: {}
 
 permissions:
@@ -21,11 +29,17 @@ concurrency:
 
 jobs:
   frozen-live:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    # PR runs are strict no-funds diagnostics against the currently published
+    # base SHA; a failing response is evidence, never a green production claim.
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      (github.ref == 'refs/heads/main' ||
+       (github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ github.sha }}
+      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

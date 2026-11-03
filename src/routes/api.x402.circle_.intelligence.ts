@@ -38,7 +38,9 @@ import {
 import { allowPublicDemoRequest } from "../lib/public-demo-rate-limit.server";
 
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
-const MAX_BODY_BYTES = 32 * 1024;
+import { readBoundedCommercialBody, MAX_COMMERCIAL_REQUEST_BODY_BYTES } from "../lib/bounded-commercial-request-body.server";
+
+const MAX_BODY_BYTES = MAX_COMMERCIAL_REQUEST_BODY_BYTES;
 const MAX_PAYMENT_HEADER_BYTES = 64 * 1024;
 
 const corsHeaders = {
@@ -88,7 +90,7 @@ async function parseJsonBody(request: Request) {
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     throw new Response("Request body too large", { status: 413 });
   }
-  const raw = await request.text();
+  const raw = await readBoundedCommercialBody(request, MAX_BODY_BYTES);
   if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
     throw new Response("Request body too large", { status: 413 });
   }

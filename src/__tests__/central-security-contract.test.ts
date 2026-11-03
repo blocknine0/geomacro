@@ -335,6 +335,12 @@ describe("central security deployment contract", () => {
     expect(middleware).toContain("assertRealFundsDatabaseSecurityReady");
     expect(middleware).toContain("defineEventHandler");
     expect(middleware).toContain("X-Content-Type-Options");
+    // H3 error handling discards prepared event headers. Freeze/error paths
+    // must bind no-store and security headers to each createError directly.
+    expect(middleware).toContain('"Cache-Control": "no-store"');
+    expect(middleware).toContain('"X-Frame-Options": "DENY"');
+    expect(middleware).toContain('"Referrer-Policy": "strict-origin-when-cross-origin"');
+    expect(middleware.match(/headers: securityErrorHeaders/g)).toHaveLength(4);
     expect(middleware).toContain("Retry-After");
     expect(middleware).toContain("CENTRAL_SECURITY_VERSION");
     expect(centralSecurity).toContain(CENTRAL_SECURITY_VERSION);
