@@ -43,8 +43,8 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
         cls.match=staticmethod(gate)
         cls.by_id={x["source_id"]:x for x in cls.feeds}
         cls.policy=json.loads(EVIDENCE.read_text(encoding="utf-8"))
-    def test_30_feeds_and_no_registry_duplicate(self):
-        self.assertEqual(len(self.feeds),30)
+    def test_34_feeds_and_no_registry_duplicate(self):
+        self.assertEqual(len(self.feeds),34)
         self.assertEqual(len(self.by_id),len(self.feeds))
         self.assertEqual(set(EXPECTED)-set(self.by_id),set())
     def test_exact_license_provenance_and_no_telegram_impersonation(self):
