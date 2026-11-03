@@ -106,6 +106,13 @@ on:
       - "workers/telegram-flash/worker.py"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/lib/official-native-rss.mjs"
+      # Facts-only source rights and GRI score boundary are live policy
+      # dependencies. Every merged change must wake exact-main protected
+      # production deployment, not merely pass pull_request offline tests.
+      - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.mjs"
+      - "src/__tests__/official-original-issuer-rights.test.ts"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - "scripts/lib/private-unscored-source-d1.mjs"
       - "scripts/lib/reliefweb-private-d1.mjs"
       - "scripts/ingest-reliefweb-live.mjs"
