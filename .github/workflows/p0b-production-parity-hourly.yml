@@ -74,6 +74,22 @@ jobs:
             sources_polled_in_page:(.sources | map(select(.last_polled_at != null)) | length),
             failure_count_in_page:(.sources | map(select(.consecutive_failures > 0)) | length)
           }'
+          QUOTA="$(curl --fail-with-body -fsS --max-time 20 \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/b2-quota/status")"
+          printf '%s' "$QUOTA" | jq -c '{schema: "geomacro.p0b.private-quota-census.v1",used,limits}'
+          # Probe the same existing owner-only source poll (8 due sources),
+          # inspect ONLY safe code tallies, and never print source IDs or URLs.
+          POLL="$(curl --fail-with-body -fsS --max-time 65 -X POST \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/poll")"
+          printf '%s' "$POLL" | jq -c '{
+            schema: "geomacro.p0b.private-producer-diagnosis.v1",
+            due_selected,accepted_count:([.receipts[]?.accepted // 0] | add // 0),
+            producer_error_codes:([.receipts[]?.p0b_failure_codes |
+              to_entries[]?] | group_by(.key) |
+              map({key:.[0].key,value:(map(.value)|add)}) | from_entries),
+            polled_states:(.receipts | group_by(.state) |
+              map({key:.[0].state,value:length}) | from_entries)
+          }'
           PROOF="$(curl --fail-with-body -fsS --max-time 30 -X POST \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/verify-latest")"
           printf '%s' "$PROOF" | jq -e '
