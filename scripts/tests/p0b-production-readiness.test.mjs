@@ -130,3 +130,17 @@ test('P0-B real parity endpoint rejects no committed item and verifies exact D1 
   assert.equal((await bad.json()).verified,false);
  }finally{db.close()}
 });
+
+test('P0-B permanent activation reuses existing private archive credentials and dedicated domain key',()=>{
+ const deploy=text('.github/workflows/deploy-d1-control-plane.yml');
+ const parity=text('.github/workflows/p0b-production-parity-hourly.yml');
+ assert.match(deploy,/P0B_ACTIVATE: "1"/u);
+ assert.match(deploy,/P0B_B2_BUCKET: geomacro-private-archive/u);
+ assert.match(deploy,/P0B_B2_KEY_ID: \\$\\{\\{ secrets\\.B2_KEY_ID \\}\\}/u);
+ assert.match(deploy,/P0B_B2_APPLICATION_KEY: \\$\\{\\{ secrets\\.B2_APPLICATION_KEY \\}\\}/u);
+ assert.match(deploy,/geomacro-p0b-private-spool-aes-gcm-v1/u);
+ assert.match(deploy,/P0B_EXISTING_B2_ACCESS_KEY_MISSING/u);
+ assert.match(deploy,/P0B_EXISTING_B2_SECRET_KEY_MISSING/u);
+ assert.match(parity,/P0B_REAL_B2_D1_PARITY_VERIFIED/u);
+ assert.doesNotMatch(parity,/GEOMACRO_P0B_ENABLE/u);
+});
