@@ -26,6 +26,20 @@ def clock_detector():
     return namespace["feed_source_timestamp_has_clock"]
 
 
+def date_only_detector():
+    source = Path("workers/telegram-flash/worker.py").read_text(encoding="utf-8")
+    parsed = ast.parse(source, filename="workers/telegram-flash/worker.py")
+    funcs = [node for node in parsed.body
+             if isinstance(node, ast.FunctionDef)
+             and node.name == "native_publication_day"]
+    if len(funcs) != 1:
+        raise AssertionError("RSS_NATIVE_DATE_ONLY_DETECTOR_NOT_UNIQUE")
+    from datetime import datetime
+    ns = {"re": re, "Any": object, "datetime": datetime}
+    exec(compile(ast.Module(body=funcs, type_ignores=[]), "<native-date>", "exec"), ns)
+    return ns["native_publication_day"]
+
+
 class PublisherNativeClockTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -61,6 +75,34 @@ class PublisherNativeClockTests(unittest.TestCase):
     def test_out_of_range_minutes_is_not_a_clock(self):
         self.assertFalse(self.detect({"published": "2026-11-03T12:70:00Z"}))
 
+
+
+class PublisherNativeDateOnlyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.date = staticmethod(date_only_detector())
+
+    def test_precise_original_iso_date_preserved_without_invented_hour(self):
+        self.assertEqual(self.date({"published": "2026-11-03"}), "2026-11-03")
+
+    def test_official_date_only_rfc_published_is_preserved_as_date(self):
+        self.assertEqual(self.date({"published": "Tue, 03 Nov 2026"}), "2026-11-03")
+
+    def test_issuer_dc_date_precision_is_preserved(self):
+        self.assertEqual(self.date({"dc:date": "2026-11-03"}), "2026-11-03")
+
+    def test_no_last_modified_or_aggregation_clock_substitution(self):
+        self.assertIsNone(self.date({"updated": "2026-11-03", "created": "2026-11-03"}))
+
+    def test_no_calendar_invalid_or_narrative_date_or_fake_hour(self):
+        for entry in (
+            {"published": "2026-02-30"},
+            {"published": "2026-11-03T15:10:00Z"},
+            {"published": "Tuesday, November 3, 2026"},
+            {"headline": "Critical minerals update"},
+        ):
+            with self.subTest(entry=entry):
+                self.assertIsNone(self.date(entry))
 
 class GovernedSourceRegistryTests(unittest.TestCase):
     @classmethod
