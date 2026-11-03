@@ -221,6 +221,13 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "event_type": "GEOPOLITICS_EU_OFFICIAL_RELEASE",
         "source_reliability": 95.0,
         "max_entry_age_hours": 72,
+        "timeout_seconds": 35,
+        "retry_attempts": 3,
+        "retry_backoff_seconds": 2,
+        # Only first-party page discovery; HTML fallback never invents
+        # publisher-native publication timestamps.
+        "fallback_url": "https://www.consilium.europa.eu/en/press/press-releases/",
+        "fallback_link_prefix": "/en/press/press-releases/",
     },
     {
         "source_id": "ecb_press_rss",
@@ -396,6 +403,32 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
             "mineral"
         ],
         "priority_max_items": 10,
+    },
+    {
+        # Independent DOE first-party feed. Keep its issuer separate from
+        # USGS; an alternative cannot impersonate the inaccessible source.
+        "source_id": "doe_critical_materials_rss",
+        "name": "US DOE Critical Materials RSS",
+        "url": "https://www.energy.gov/rss/energygov/2193718",
+        "event_type": "CRITICAL_MINERALS_GOVERNMENT_RELEASE",
+        "source_reliability": 95.0,
+        "max_entry_age_hours": 168,
+        "timeout_seconds": 25,
+        "retry_attempts": 3,
+        "retry_backoff_seconds": 2,
+    },
+    {
+        # Discovery of publisher metadata only. MINING.com third-party
+        # articles are NOT commercially licensed by RSS availability.
+        "source_id": "mining_com_critical_minerals_rss",
+        "name": "MINING.com industry RSS (minerals-filtered)",
+        "url": "https://www.mining.com/feed/",
+        "event_type": "CRITICAL_MINERALS_INDUSTRY_REPORT",
+        "source_reliability": 65.0,
+        "max_entry_age_hours": 72,
+        "timeout_seconds": 25,
+        "retry_attempts": 2,
+        "retry_backoff_seconds": 2,
     },
     {
         "source_id": "usgs_minerals_news_rss",
