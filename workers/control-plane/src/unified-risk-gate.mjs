@@ -450,8 +450,17 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    independentScore.unifiedScore===null?
     "CURRENT_SIGNED_GRO_THREE_CATEGORY_INCOMPLETE":
     "CURRENT_ED25519_VERIFIED_THREE_CATEGORY_SCORE";
+  // Explicit acceptance semantics: missing qualified GRO is a truthful
+  // fail-closed neutral receipt, NEVER a verified score or paid decision.
+  // Native unified score is normalized 0..1, equivalent to 0..100 percent.
+  const scoreReady=gro!==null&&independentScore.unifiedScore!==null&&
+   Number.isFinite(independentScore.unifiedScore)&&
+   independentScore.unifiedScore>=0&&independentScore.unifiedScore<=1;
   const verifiedLiveScoring={
    status:signedLiveStatus,
+   advisory_state:scoreReady?"VERIFIED_SCORE_READY":"NOT_READY",
+   fail_closed:!scoreReady,
+   verified_score_0_100:scoreReady?Number((independentScore.unifiedScore*100).toFixed(2)):null,
    unified_risk_score:independentScore.unifiedScore,
    category_scores:Object.fromEntries(CATEGORIES.map(k=>[k,trustedScores[k]??null])),
    missing_categories:independentScore.missing_categories,
