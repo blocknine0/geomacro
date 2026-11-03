@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T12:16:15.782Z",
+  "updated_at": "2026-11-03T12:19:04.902Z",
   "signals": [
+    {
+      "id": "geopolitics-13c3f828",
+      "category": "geopolitics",
+      "title": "Geomacro finds Syria said foiled Hezbollah attack on Homs refinery",
+      "what_changed": "A monitored source feed reports: Syria said foiled Hezbollah attack on Homs refinery. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:46:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.naharnet.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-363d7ffe",
+      "category": "geopolitics",
+      "title": "Geomacro finds Africa CDC revised latest Ebola outbreak toll to over 5,300",
+      "what_changed": "A monitored source feed reports: Africa CDC revised latest Ebola outbreak toll to over 5,300. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:29:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.dailysabah.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-13ca00a3",
       "category": "geopolitics",

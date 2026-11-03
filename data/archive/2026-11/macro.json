@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T12:16:15.782Z",
+  "updated_at": "2026-11-03T12:19:04.902Z",
   "signals": [
+    {
+      "id": "macro-1be83aa5",
+      "category": "macro",
+      "title": "Geomacro finds Kenya Financial Sector Stability reported 2025",
+      "what_changed": "A monitored source feed reports: Kenya Financial Sector Stability reported 2025. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:09:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.centralbank.go.ke"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-813719f8",
+      "category": "macro",
+      "title": "Geomacro finds Aramco Profit Beats estimated After Refining Boom, Oil Surge - Bloomberg",
+      "what_changed": "A monitored source feed reports: Aramco Profit Beats estimated After Refining Boom, Oil Surge - Bloomberg. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:03:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-1e7b4651",
       "category": "macro",
