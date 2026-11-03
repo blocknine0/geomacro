@@ -50,7 +50,7 @@ test("same-publisher, no redirect, strict native clock and no paid authorization
  const sources=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS;
  const out=await collectDirectCorridorNativeNews({now:NOW,sources,
   fetchImpl:async url=>{
-   if(url.includes("wto.org"))return Response.redirect("https://example.org/invalid",302);
+   if(url===PINNED_CORRIDOR_OFFICIAL_FEED_URLS.wto_official_news) return Response.redirect("https://example.org/invalid",302);
    return new Response(rss("USGS updates critical mineral deposits",
     "https://evil.example/critical-mineral-report"));
   }
