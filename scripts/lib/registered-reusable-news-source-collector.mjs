@@ -5,6 +5,7 @@
  * paid provider, publisher text persistence, user URL input or redistribution.
  */
 import {createHash} from "node:crypto";
+import {normalizeNativeFeedXml,verifiedRdfItemClock} from "./native-feed-xml-normalizer.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
 import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
@@ -167,11 +168,11 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
       });
     }catch{return null}
   }
-  const root=body.trimStart().slice(0,350);
-  if(!/^<\?xml\b|^<(?:rss|feed|rdf:RDF)\b/iu.test(root))return null;
+  const normalized=normalizeNativeFeedXml(body,maxFeedBytes);
+  if(!normalized)return null;
   const pattern=/<(?:[a-z][a-z0-9._-]*:)?(item|entry)\b[^>]*>[\s\S]*?<\/(?:[a-z][a-z0-9._-]*:)?\1>/giu;
   const result=[];
-  for(const m of body.matchAll(pattern)){
+  for(const m of normalized.matchAll(pattern)){
     const entry=m[0];
     const title=xmlTag(entry,"title");
     if(!title||!substantiveHeadline(title)||
@@ -179,9 +180,7 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
     // Native item publication only: RSS pubDate or Atom published.
     // Feed updated/issue day and collection clock are never publication time.
     const native=xmlTag(entry,"pubDate")??xmlTag(entry,"published")??
-      (allowRdfNativeDates&&/<rdf:RDF\b/iu.test(body)&&
-       /xmlns:dc=["']http:\/\/purl\.org\/dc\/elements\/1\.1\/["']/iu.test(body)
-        ?entry.match(/<dc:date\b[^>]*>([^<]+)<\/dc:date>/iu)?.[1]?.trim():null);
+      (allowRdfNativeDates?verifiedRdfItemClock(normalized,entry):null);
     const rssLink=xmlTag(entry,"link");
     const atomLink=entry.match(/<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/iu)?.[1]??null;
     result.push({title,native,articleUrl:rssLink??atomLink});
@@ -241,6 +240,35 @@ export async function collectRegisteredReusableNews({
       ?fetchFeed(s,fetchImpl,maxFeedBytes)
       :Promise.resolve({state:"UNSUPPORTED_FORMAT",body:null}))));
   }
+  // Quarantine individual failures and use at most three ALREADY REGISTERED
+  // first-party fallback sources. Neither access nor rights are bypassed.
+  const failedCategories=new Set();
+  const failedStates=new Set(["UNSUPPORTED_FORMAT","MALFORMED","DENIED","UNAVAILABLE"]);
+  for(let n=0;n<active.length;n++){
+    const result=fetched[n];
+    const malformed=result.body!==null&&
+      feedBlocks(active[n],result.body,allowRdfNativeDates,maxFeedBytes)===null;
+    if(failedStates.has(result.state)||malformed)
+      for(const category of active[n].categories)failedCategories.add(category);
+  }
+  const fallbackByCategory={geopolitics:"un_press_global",macro:"govuk_global_economy",
+    rare_earth:"us_doe_minerals_global"};
+  const selectedUrls=new Set(active.map(x=>x.url));
+  const alternatives=[];
+  for(const category of CATEGORY){
+    if(!failedCategories.has(category))continue;
+    const source=registry.find(x=>x.id===fallbackByCategory[category]&&
+      x.supported&&x.categories.includes(category));
+    if(source&&!selectedUrls.has(source.url)){
+      alternatives.push({...source,categories:[category]});
+      selectedUrls.add(source.url);
+    }
+  }
+  const attempted=alternatives.slice(0,3);
+  const fallbackResponses=await Promise.all(attempted.map(x=>
+    fetchFeed(x,fetchImpl,maxFeedBytes)));
+  active.push(...attempted);
+  fetched.push(...fallbackResponses);
   for(let i=0;i<active.length;i++){
     const s=active[i],res=fetched[i];
     let state=res.state,blocks=null;
@@ -330,6 +358,7 @@ export async function collectRegisteredReusableNews({
   const registeredFeeds=Object.fromEntries(CATEGORY.map(category=>[
     category,registry.filter(s=>s.supported&&s.categories.includes(category)).length,
   ]));
+  const quarantined=checks.filter(x=>failedStates.has(x.state));
   return {
     schema:"geomacro.reusable-source-news-batch.v1",items,
     checks,
@@ -349,6 +378,11 @@ export async function collectRegisteredReusableNews({
       excluded_by_collector_capacity:capacitySkipped,
       all_matching_items_captured_within_scanned_feeds:capacitySkipped===0,
       source_states:checks.reduce((a,c)=>(a[c.state]=(a[c.state]??0)+1,a),{}),
+      degraded_quarantine:quarantined.map(x=>({
+        source_ref:x.source_ref,category:x.category,previous_state:x.state,
+        recovery_state:"DEGRADED_QUARANTINE"})),
+      alternative_source_attempts:attempted.length,
+      alternative_source_selected_without_rights_grant:true,
       original_issuer_page_verified:false,
       source_rights_commercial_authorized:false,paid_publication_authorized:false,
       raw_upstream_stored:false},

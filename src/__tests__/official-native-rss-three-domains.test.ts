@@ -379,3 +379,27 @@ describe("three official publishers' original-event RSS discovery", () => {
     expect(privateIngest).toContain("if (PRIVATE_B2_STAGE)");
   });
 });
+
+describe("hardened first-party XML variant admission",()=>{
+ it("parses true RDF per-item Dublin Core date without feed-level time",()=>{
+  const doc='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '+
+   'xmlns:dc="http://purl.org/dc/elements/1.1/">'+
+   '<item><title>Federal Reserve FOMC announces interest rate decision</title>'+
+   '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009a.htm</link>'+
+   '<dc:date>2026-10-09T11:30:00Z</dc:date></item></rdf:RDF>';
+  const items=parseOfficialNativeRss(doc,"macro",now);
+  expect(items).toHaveLength(1);
+  expect(items[0].nativeTimeEvidence).toBe("publisher_rdf_item_dc_date");
+  expect(items[0].privateOnly).toBe(true);
+  expect(items[0].commercialEligible).toBe(false);
+ });
+ it("repairs a bare ampersand but never infers a time from Atom updated",()=>{
+  const rdf=rss("Federal Reserve FOMC announces monetary & interest rate decision",
+    "https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009b.htm");
+  expect(parseOfficialNativeRss(rdf,"macro",now)).toHaveLength(1);
+  const updatedOnly='<feed><entry><title>Federal Reserve FOMC announces monetary policy</title>'+
+    '<link href="https://www.federalreserve.gov/newsevents/pressreleases/monetary20261009b.htm"/>'+
+    '<updated>2026-10-09T11:30:00Z</updated></entry></feed>';
+  expect(parseOfficialNativeRss(updatedOnly,"macro",now)).toHaveLength(0);
+ });
+});

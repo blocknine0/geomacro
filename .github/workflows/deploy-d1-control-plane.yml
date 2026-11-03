@@ -50,7 +50,7 @@ on:
       - "workers/control-plane/migrations/0111_phase2h_risk_country_materialization.sql"
       - "scripts/tests/phase2h-risk-country-index.test.mjs"
       - "scripts/tests/unified-risk-canary-supabase-sync.test.mjs"
-      - "scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs"
+      - "scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs scripts/tests/facts-only-risk-observation-migration.test.mjs scripts/lib/native-feed-xml-normalizer.test.mjs"
       - "scripts/ops/reconcile-unified-risk-207-production.mjs"
       - ".github/workflows/unified-risk-daily-production-census.yml"
       - "workers/control-plane/src/unified-risk-gate.mjs"
@@ -106,6 +106,8 @@ on:
       - "workers/telegram-flash/worker.py"
       - "scripts/run-rss-live-cycle.mjs"
       - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/native-feed-xml-normalizer.mjs"
+      - "scripts/lib/registered-reusable-news-source-collector.mjs"
       # Facts-only source rights and GRI score boundary are live policy
       # dependencies. Every merged change must wake exact-main protected
       # production deployment, not merely pass pull_request offline tests.

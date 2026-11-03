@@ -9,6 +9,7 @@
 export const PRIVATE_NATIVE_PUBLICATION_EVIDENCE = Object.freeze([
   "publisher_rss_item_pubDate",
   "publisher_atom_entry_published",
+        "publisher_rdf_item_dc_date",
   "publisher_original_article_datePublished",
 ]);
 

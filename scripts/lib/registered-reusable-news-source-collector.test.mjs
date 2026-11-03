@@ -258,3 +258,50 @@ test("two real pinned US macro original feeders join the existing rotating D1 co
  assert.equal(results.summary.source_rights_commercial_authorized,false);
  assert.equal(results.summary.paid_publication_authorized,false);
 });
+
+test("RDF Dublin Core item-native clock and bare XML ampersand are safe private discovery",async()=>{
+ const now=new Date("2026-10-25T00:00:00.000Z");
+ const xml='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '+
+  'xmlns:dc="http://purl.org/dc/elements/1.1/">'+
+  '<item><title>Central bank inflation & interest rate decisions</title>'+
+  '<link>https://example.org/facts?kind=macro&year=2026</link>'+
+  '<dc:date>2026-10-24T23:52:00Z</dc:date></item></rdf:RDF>';
+ const out=await collectRegisteredReusableNews({now,
+  registry:[{id:"example_rdf",url:"https://example.org/news.rdf",categories:["macro"],
+    supported:true,type:"rdf"}],
+  normalize,allowRdfNativeDates:true,fetchImpl:async()=>response(xml)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.checks[0].state,"OBSERVED");
+ assert.equal(out.items[0].usage_rights.commercial_reuse_authorized,false);
+ assert.equal(out.summary.alternative_source_attempts,0);
+ assert.equal(out.summary.degraded_quarantine.length,0);
+ assert.ok(!JSON.stringify(out).includes("Central bank inflation &"));
+});
+test("failed pinned publisher is quarantined and category-matched first-party alternative is fetched",async()=>{
+ const now=new Date("2026-10-25T00:00:00.000Z");
+ const registry=[
+ {id:"blocked_publisher",url:"https://blocked.example/rss",categories:["geopolitics"],
+  supported:true,type:"rss"},
+ {id:"un_press_global",url:"https://press.un.org/en/rss.xml",categories:["geopolitics"],
+  supported:true,type:"rss"},
+ ];
+ const current=Array.from({length:10},(_,i)=>new Date(now.getTime()+i*300000))
+  .find(clock=>selectRegisteredNewsSources(clock,registry,1)[0]?.id==="blocked_publisher");
+ assert.ok(current);
+ let fallbackRequests=0;
+ const out=await collectRegisteredReusableNews({now:current,perCategory:1,registry,normalize,
+  fetchImpl:async url=>{
+   if(String(url).includes("blocked.example"))return new Response("deny",{status:403});
+   fallbackRequests++;
+   return response('<rss><channel><item>'+
+     '<title>Security Council announces ceasefire after border conflict</title>'+
+     '<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate>'+
+     '</item></channel></rss>');
+  }});
+ assert.equal(fallbackRequests,1);
+ assert.equal(out.items.length,1);
+ assert.ok(out.checks.some(c=>c.state==="DENIED"));
+ assert.equal(out.summary.degraded_quarantine[0].recovery_state,"DEGRADED_QUARANTINE");
+ assert.equal(out.summary.alternative_source_attempts,1);
+ assert.equal(out.summary.paid_publication_authorized,false);
+});

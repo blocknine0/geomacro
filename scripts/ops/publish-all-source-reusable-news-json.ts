@@ -22,6 +22,8 @@ const phase2hOriginals=[];
 const phase2hKnown=new Set();
 const collected=await collectRegisteredReusableNews({
   normalize:normalizeReusableNewsJson,
+  // Publisher's own item-native RDF clock; private research discovery only.
+  allowRdfNativeDates:true,
   resolveCountry:title=>countryMentionFromTitle(title,COUNTRIES_195),
   onOriginalCandidate:raw=>{
     if(!raw||typeof raw.article_url!=="string"||
@@ -217,6 +219,9 @@ console.log(JSON.stringify({
     info.all_matching_items_captured_within_scanned_feeds&&capacityExcluded===0,
   rolling_database_retention_hours:25,
   source_states:info.source_states,
+  degraded_quarantine_count:info.degraded_quarantine?.length??0,
+  category_matched_alternative_fetch_attempts:info.alternative_source_attempts??0,
+  automatic_rights_granted:false,
   d1_private_write_readback:true,public_api_readback:true,
   public_items_page_count:publicBody.items.length,
   original_page_verified:false,source_rights_commercial_authorized:false,
