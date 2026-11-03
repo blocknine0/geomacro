@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T16:04:06.301Z",
+  "checked_at": "2026-11-03T17:06:29.037Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 334,
+  "item_count": 333,
   "counts": {
     "geopolitics": 150,
     "macro": 143,
-    "rare_earth": 41
+    "rare_earth": 40
   },
-  "source_native_ids_sha256": "c13ccdf1bdfef2aa2805a1bfdd9afd3e60089ecdc3d830f4f772dcd400d4082e",
+  "source_native_ids_sha256": "b61227ae074e1d50f3af67085fa8676e65c7e0446f77e1ec00381defb817f00e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6351,25 +6351,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thenationalnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-3db221eb",
-      "category": "rare_earth",
-      "title": "Geomacro finds Quad announced $85 million in AI assistance for Indo-Pacific, US pledges $10 million for critical minerals ... - Firstpost",
-      "what_changed": "A monitored source feed reports: Quad announced $85 million in AI assistance for Indo-Pacific, US pledges $10 million for critical minerals ... - Firstpost. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T16:34:40.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
