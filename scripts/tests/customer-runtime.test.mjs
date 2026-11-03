@@ -6,7 +6,7 @@ import {handleCustomerRuntime,customerHmac,CUSTOMER_KEY_GATE} from '../../worker
 
 function fixture(){
  const sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');
- for(const name of ['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql','0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql','0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql'])
+ for(const name of ['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql','0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql','0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql','0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql'])
   sql.exec(readFileSync('workers/control-plane/migrations/'+name,'utf8'));
  const prepare=q=>({bind(...args){return {q,args,first:async()=>sql.prepare(q).get(...args)??null,
   all:async()=>({results:sql.prepare(q).all(...args)}),run:async()=>({meta:{changes:Number(sql.prepare(q).run(...args).changes)}})};}});

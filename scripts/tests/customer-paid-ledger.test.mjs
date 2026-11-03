@@ -11,7 +11,8 @@ import {
 } from '../../workers/control-plane/src/customer-paid-ledger.mjs';
 const migrations=['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql',
  '0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql',
- '0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql'];
+ '0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql',
+ '0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql'];
 const pepper='a-verified-server-pepper-with-at-least-32-characters-and-no-fallback';
 const contract=CUSTOMER_CREDIT_CONTRACT;
 function fixture(){
@@ -167,6 +168,30 @@ test('immutable grant-scoped receipts and no wrong-tier capability/mis-scoped ke
  assert.throws(()=>f.sql.prepare('UPDATE customer_usage_receipts SET capability=?').run('gri_read'),/CUSTOMER_USAGE_IMMUTABLE/);
  const malformed=key.api_key.slice(0,-1)+'z';
  await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,malformed,'intelligence_query'),'CUSTOMER_PAID_API_KEY_DENIED');
+ f.sql.close();
+});
+
+test('verified prepaid credit packs are spendable only against their funded D1 grant',async()=>{
+ const f=fixture();f.user(alice,'alice@example.com');
+ f.fund(alice,{tier:'credits_100',credits:100});
+ const view=await readCanonicalCustomerPaidAccount(f.db,alice);
+ assert.equal(view.credits.tier,'credits_100');
+ assert.equal(view.credits.remaining,100);
+ const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
+ const proof=await authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'signed_risk_object');
+ assert.equal(proof.credit_cost,10);
+ await consumeCanonicalCustomerPaid(f.db,f.env,{
+   apiKey:key.api_key,capability:'signed_risk_object',requestId:'prepaid-credit-signed-0001',
+ });
+ assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits.remaining,90);
+ await errCode(consumeCanonicalCustomerPaid(f.db,f.env,{
+   apiKey:key.api_key,capability:'risk_gate_bundle',requestId:'prepaid-credit-risk-0001',
+ }),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
+ f.sql.prepare('INSERT INTO credit_ledger(event_id,user_id,event_type,delta_credits,receipt_id) VALUES(?,?,?,?,?)')
+  .run('prepaid-reversal-01',alice,'reversal',-100,'receipt-01');
+ assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits,null);
+ await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'intelligence_query'),
+  'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
  f.sql.close();
 });
 

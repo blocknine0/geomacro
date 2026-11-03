@@ -1,4 +1,5 @@
 import { commerceSha256, stableCommerceJson } from "./agent-commerce-delivery.server";
+import { assertPublicPaidOutputBoundary } from "./public-paid-output-boundary";
 
 /**
  * Immutable canonical UTF-8 HTTP response BODY, not a hash of a mutable JS object.
@@ -32,6 +33,9 @@ export function freezeCanonicalCapabilityHttpBody(payload: unknown): FrozenCapab
   if (payload === null || typeof payload !== "object" || Array.isArray(payload))
     throw Error("X402_FINAL_HTTP_BODY_INVALID");
   assertJson(payload);
+  // This is the final common capture/replay wire boundary for payable x402.
+  // Never prepare or settle a response containing original upstream material.
+  assertPublicPaidOutputBoundary(payload);
   const body=stableCommerceJson(payload);
   let parsed: unknown;
   try { parsed=JSON.parse(body); }
@@ -53,6 +57,12 @@ export function sendFrozenCapabilityHttpBody(
 ): Response {
   // Rehash immutable pre-settlement wire bytes and compare the actual
   // authenticated ledger's prepared response hash before returning HTTP 200.
+  // Historical immutable replays are re-validated before the HTTP write.
+  // A valid ledger hash by itself never grants permission to disclose sources.
+  let decoded: unknown;
+  try { decoded = JSON.parse(frozen.body); }
+  catch { throw Error("X402_FINAL_HTTP_BODY_NOT_JSON"); }
+  assertPublicPaidOutputBoundary(decoded);
   if (!SHA256_RE.test(ledgerResponseSha256) ||
       commerceSha256(frozen.body)!==frozen.sha256 ||
       frozen.sha256!==ledgerResponseSha256)

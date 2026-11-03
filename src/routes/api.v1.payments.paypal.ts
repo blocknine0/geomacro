@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { paypalPublicConnectionStatus } from "../lib/paypal-api.server";
+import { handleVerifiedPayPalReversalWebhook } from "../lib/paypal-refund-webhook.server";
 
 const SAFE_HEADERS = {
   "Cache-Control": "no-store",
@@ -20,10 +21,11 @@ export const Route = createFileRoute("/api/v1/payments/paypal")({
           });
         return Response.json(paypalPublicConnectionStatus(), { headers: SAFE_HEADERS });
       },
-      POST: async () => Response.json({
-        ok: false, chargeable: false, payment_authorized: false,
-        code: "PAYPAL_MERCHANT_AND_LEDGER_NOT_LIVE",
-      }, { status: 503, headers: SAFE_HEADERS }),
+      // PayPal signed webhook is strictly a reversal-only endpoint.
+      // It cannot create/capture orders or fund accounts, and must remain
+      // operational while the emergency commercial freeze is active.
+      POST: async ({request}:{request:Request})=>
+        handleVerifiedPayPalReversalWebhook(request),
     },
   },
 });

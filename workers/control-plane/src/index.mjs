@@ -1,4 +1,5 @@
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
 import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
 import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from './corridor-seven-day-cache.mjs';
 import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
@@ -1411,6 +1412,7 @@ export default {
       return relayTelegramFlashWebhook(request,env);
     // Independent customer authentication boundary; no inherited operator auth.
     if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
+    if(url.pathname==='/v1/internal/paypal-reversal')return handleCustomerPayPalRefundRuntime(request,env);
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,

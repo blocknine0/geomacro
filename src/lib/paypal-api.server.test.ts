@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   configuredPayPal, paypalPublicConnectionStatus, paypalAccessToken,
   verifyPayPalWebhook, GEOMACRO_PAYPAL_FUNDS_CAPTURE_ENABLED,
+  validateCompletedPayPalCapture, readVerifiedPayPalCapturedOrder,
 } from "./paypal-api.server";
 import { GEOMACRO_PAYPAL_PRODUCT_CATALOG, paypalCanCaptureFunds } from "./paypal-checkout-readiness";
 
@@ -143,5 +144,77 @@ describe("GeoMacro PayPal India cross-border readiness (NO FUNDS)", () => {
       id: "WH-123", event_type: "PAYMENT.CAPTURE.COMPLETED",
     }), headers, config: cfg, fetcher: fakeFetch, now: Date.parse("2026-10-31T10:00:00Z") }))
       .rejects.toThrow("PAYPAL_WEBHOOK_SIGNATURE_INVALID");
+  });
+});
+
+describe("PayPal live capture reconciliation proof (offline, no funds)", () => {
+  const expected = {
+    environment: "live" as const,
+    orderId: "8AB1234567891234C",
+    merchantId: "MERCHANT123456",
+    intentId: "gmintent_12345678",
+    amountMinorUnits: 500,
+  };
+  const completed = () => ({
+    id: expected.orderId, intent: "CAPTURE", status: "COMPLETED",
+    purchase_units: [{
+      custom_id: expected.intentId, invoice_id: expected.intentId,
+      payee: { merchant_id: expected.merchantId },
+      amount: { currency_code: "USD", value: "5.00" },
+      payments: { captures: [{
+        id: "9CF1234567891234D",status:"COMPLETED",
+        final_capture: true, amount: {currency_code:"USD",value:"5.00"},
+        update_time:"2026-11-03T12:00:00Z",
+      }] },
+    }],
+  });
+  it("accepts only a full provider readback, producing no funding or receipt mutation", () => {
+    const proof=validateCompletedPayPalCapture(completed(),expected);
+    expect(proof).toMatchObject({
+      environment:"live", provider:"paypal", orderId:expected.orderId,
+      captureId:"9CF1234567891234D",merchantId:expected.merchantId,
+      intentId:expected.intentId,amountMinorUnits:500,currency:"USD",
+    });
+    expect(proof.verificationSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(proof)).not.toContain("clientSecret");
+  });
+  it("refuses changes in PayPal order, merchant, server-owned intent, price and completion", () => {
+    const mutations=[
+      (v:any)=>{v.id="8XX1234567891234C";},
+      (v:any)=>{v.intent="AUTHORIZE";},
+      (v:any)=>{v.status="APPROVED";},
+      (v:any)=>{v.purchase_units[0].custom_id="gmintent_attacker123";},
+      (v:any)=>{v.purchase_units[0].invoice_id="gmintent_attacker123";},
+      (v:any)=>{v.purchase_units[0].payee.merchant_id="MALICIOUS123456";},
+      (v:any)=>{v.purchase_units[0].amount.value="4.99";},
+      (v:any)=>{v.purchase_units[0].payments.captures[0].amount.value="4.99";},
+      (v:any)=>{v.purchase_units[0].payments.captures[0].status="PENDING";},
+      (v:any)=>{v.purchase_units[0].payments.captures[0].final_capture=false;},
+      (v:any)=>{v.purchase_units[0].payments.refunds=[{id:"REFUND"}];},
+      (v:any)=>{v.purchase_units.push(v.purchase_units[0]);},
+      (v:any)=>{v.purchase_units[0].payments.captures.push(v.purchase_units[0].payments.captures[0]);},
+    ];
+    for(const mutate of mutations){
+      const v=completed();mutate(v);
+      expect(()=>validateCompletedPayPalCapture(v,expected)).toThrow(/^PAYPAL_/);
+    }
+  });
+  it("fetches fixed PayPal OAuth then GET order only, never capture POST", async () => {
+    const config={environment:"live" as const,baseUrl:"https://api-m.paypal.com",
+      clientId:"client-test",clientSecret:"opaque-secret",webhookId:"WH-1"};
+    const calls:string[]=[];
+    const mock=vi.fn(async (url:string,init?:RequestInit)=>{
+      calls.push(init?.method+" "+url);
+      if(url.endsWith("/oauth2/token"))
+        return Response.json({access_token:"opaque-access-token"});
+      return Response.json(completed());
+    }) as unknown as typeof fetch;
+    const proof=await readVerifiedPayPalCapturedOrder(config,expected,mock);
+    expect(proof.captureId).toBe("9CF1234567891234D");
+    expect(calls).toEqual([
+      "POST https://api-m.paypal.com/v1/oauth2/token",
+      "GET https://api-m.paypal.com/v2/checkout/orders/8AB1234567891234C",
+    ]);
+    expect(calls.join(" ")).not.toContain("/capture");
   });
 });
