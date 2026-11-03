@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {CORRIDOR_ONLY_SOURCE_IDS,assertDirectCorridorWebsiteSeparation,
  directGlobalCorridorRouteSources,directGlobalCorridorNewsFeeds}
  from "./direct-global-corridor-sources.mjs";
-import {collectDirectCorridorSourceIntake}
+import {collectDirectCorridorSourceIntake,probePinnedPortal,PINNED_CORRIDOR_PORTALS}
  from "./direct-global-corridor-ingestion.mjs";
 const DATE=new Date("2026-11-02T00:10:00Z");
 const customObservers={
@@ -100,4 +100,40 @@ test("provider denial is visible but never retried or bypassed",async()=>{
  assert.equal(result.source_checks.find(x=>x.id==="coindesk_rss").state,"DENIED_NO_RETRY");
  assert.equal(result.source_checks.find(x=>x.id==="freightos_fbx").state,"PROVIDER_ENTITLEMENT_DISABLED_NO_PAID_PROVIDER");
  assert.equal(result.website_intelligence_writes,0);
+});
+
+test("portal probes require exact HTTPS source URL before any network use",async()=>{
+ let called=0;
+ const fetchImpl=async()=>{called++;return new Response("<html>Official portal</html>",{
+  headers:{"Content-Type":"text/html; charset=UTF-8"}
+ })};
+ const original={id:"asean_customs",url:PINNED_CORRIDOR_PORTALS.asean_customs};
+ const accepted=await probePinnedPortal(original,fetchImpl);
+ assert.equal(accepted.state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
+ assert.equal(called,1);
+ for(const url of [
+  original.url+"subpage",
+  original.url+"?next=https://evil.example",
+  "https://asean.org.evil.example/our-communities/economic-community/asean-customs/",
+  original.url.replace("https://","http://"),
+  "https://asean.org@evil.example/our-communities/economic-community/asean-customs/"
+ ]){
+  assert.equal((await probePinnedPortal({...original,url},fetchImpl)).state,
+    "PORTAL_ENDPOINT_NOT_PINNED");
+ }
+ assert.equal(called,1,"unapproved endpoint must never trigger fetch");
+});
+
+test("portal probes reject URL redirect or content-type substring spoofing",async()=>{
+ const spec={id:"suez_navigation",url:PINNED_CORRIDOR_PORTALS.suez_navigation};
+ const spoofedMime=await probePinnedPortal(spec,async()=>
+  new Response("<html>Observed</html>",{
+   headers:{"Content-Type":"application/x-text/html-backup"}
+  }));
+ assert.equal(spoofedMime.state,"UNEXPECTED_MEDIA_TYPE");
+ const otherUrl=await probePinnedPortal(spec,async()=>({
+  status:200,url:"https://suezcanal.gov.eg.evil.example/",redirected:true,
+  headers:{get:()=> "text/html"}
+ }));
+ assert.equal(otherUrl.state,"PORTAL_REDIRECT_NOT_ALLOWED");
 });
