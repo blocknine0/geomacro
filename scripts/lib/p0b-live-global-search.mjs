@@ -32,10 +32,10 @@ const providerCode=error=>{
  const code=String(error?.message??"").replace(/^P0B_UPSTREAM_/u,"");
  return SAFE_PROVIDER_FAILURES.has(code)?code:"NETWORK_TIMEOUT_OR_EGRESS";
 };
-const getJson=async(url,fetchImpl)=>{
+const getJson=async(url,fetchImpl,timeoutMs=9000)=>{
  let res;
  try{res=await fetchImpl(url,{method:"GET",redirect:"manual",
-  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)})}
+  headers:{"Accept":"application/json"},signal:AbortSignal.timeout(timeoutMs)})}
  catch(error){providerFail(error?.name==="TimeoutError"||error?.name==="AbortError"?
   "UPSTREAM_TIMEOUT":"NETWORK_FETCH_FAILED")}
  // Cloudflare Workers does not implement Request.redirect="error": it throws
@@ -52,6 +52,19 @@ const getJson=async(url,fetchImpl)=>{
  try{raw=await res.text()}catch{providerFail("NETWORK_TIMEOUT_OR_EGRESS")}
  if(raw.length>240000)providerFail("OVERSIZE");
  try{return JSON.parse(raw)}catch{providerFail("INVALID_JSON")}
+};
+/**
+ * Two capped GDELT attempts share the OLD nine-second discovery budget.
+ * Only transient egress/timeouts/502/503 retry; 401/403/429 and bad formats
+ * remain quarantined. GDELT is never first-party or independent paid proof.
+ */
+export const getGdeltDiscoveryWithRecovery=async(url,fetchImpl)=>{
+ try{return await getJson(url,fetchImpl,5500)}
+ catch(error){
+  const transient=new Set(["UPSTREAM_TIMEOUT","NETWORK_FETCH_FAILED","HTTP_502","HTTP_503"]);
+  if(!transient.has(providerCode(error)))throw error;
+  return getJson(url,fetchImpl,3500);
+ }
 };
 const terms=(question,countryName)=>{
  const countryWords=new Set(countryName.toLowerCase().split(/\s+/u));
@@ -121,7 +134,7 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   format:"json",maxrecords:"10",sort:"datedesc",timespan:"72h"}))
   gdeltUrl.searchParams.set(k,v);
  const settled=await Promise.allSettled([
-  getJson(govUrl.href,fetchImpl),getJson(gdeltUrl.href,fetchImpl),
+  getJson(govUrl.href,fetchImpl),getGdeltDiscoveryWithRecovery(gdeltUrl.href,fetchImpl),
   p0bFirstPartyFeedNews({category,countryIso3,countryName:country.name,
    question,fetchImpl,now})
  ]);
