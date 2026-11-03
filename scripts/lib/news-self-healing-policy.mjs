@@ -61,9 +61,22 @@ export function planNewsSelfHeal({
   return outcome("BLOCKED","D1_BUNDLE_CONTRACT_INVALID");
  if(typeof classifyDisplay!=="function"||typeof isArchiveEligible!=="function")
   return outcome("BLOCKED","POLICY_MISSING");
- // Latest is an intentionally bounded 250-row preview; it is NOT evidence
- // that a D1 row beyond the preview is missing from immutable monthly shards.
- if(Number(coverage.free_displayable_outside_latest_preview)>0)
+ // The 250-row latest feed is only a preview. Current archive coverage is
+ // calculated from ALL immutable monthly/category shards, and may truthfully
+ // report more current unverified observations than fit in the preview.
+ // Do not call this ordinary capacity condition a failed or missing archive.
+ const outside=coverage.free_displayable_outside_latest_preview??0;
+ if(!Number.isSafeInteger(outside)||outside<0)
+  return outcome("BLOCKED","ARCHIVE_PREVIEW_CENSUS_INVALID");
+ if(outside>0 && (
+   !Number.isSafeInteger(coverage.eligible_outside_latest_preview)||
+   coverage.eligible_outside_latest_preview!==0||
+   !Number.isSafeInteger(coverage.free_displayable_findings_total)||
+   !Number.isSafeInteger(coverage.latest_preview_rows)||
+   coverage.latest_preview_rows!==latest.signals.length||
+   coverage.free_displayable_findings_total!==coverage.latest_preview_rows+outside||
+   !/^[a-f0-9]{64}$/u.test(String(coverage.eligible_ids_sha256??""))
+ ))
   return outcome("BLOCKED","ARCHIVE_PREVIEW_INCOMPLETE");
  const archived=new Map(),seen=new Set();
  for(const s of latest.signals){
@@ -81,7 +94,7 @@ export function planNewsSelfHeal({
   firstSeen.set(s.id,parse(t.first_seen_at));
  }
  const counts={geopolitics:0,macro:0,rare_earth:0};
- let ambiguous=0;
+ let ambiguous=0,unverifiedOutsidePreview=0;
  for(const s of d1.signals){
   const pub=parse(s.published_at);
   if(!Number.isFinite(pub)||pub>now||pub<now-WINDOW)continue;
@@ -94,6 +107,13 @@ export function planNewsSelfHeal({
   }
   if(classifyDisplay(s)!==null||!isArchiveEligible(s,now,{allowHistorical:false}))
    continue;
+  // With independently counted non-preview OSINT in month shards, absence
+  // from latest.json cannot prove this unverified D1 row needs republishing.
+  // Retain a truthful held/needs-shard-proof state rather than loop-dispatching
+  // the hourly publisher on ordinary 250-row preview truncation.
+  if(outside>0 && s.status==="osint_feed_observed_unverified"){
+   unverifiedOutsidePreview++;continue;
+  }
   const first=firstSeen.get(s.id);
   if(!Number.isFinite(first)||first>now+60_000){
    ambiguous++;continue;
@@ -107,6 +127,8 @@ export function planNewsSelfHeal({
    HOURLY_WORKFLOW,counts);
  if(websiteOk===false)return outcome("BLOCKED","WEBSITE_RENDER_UNAVAILABLE");
  if(ambiguous>0)return outcome("BLOCKED","D1_FIRST_INGEST_UNVERIFIED");
+ if(unverifiedOutsidePreview>0)
+  return outcome("HELD","SHARDED_OSINT_NOT_PROVEN_BY_BOUNDED_PREVIEW");
  return outcome("HEALTHY","STATIC_D1_SITE_CONSISTENT");
 }
 /** No endless runs: <=1 in-flight and no accepted dispatch in past 2h;
