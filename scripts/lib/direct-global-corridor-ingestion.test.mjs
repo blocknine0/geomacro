@@ -51,7 +51,7 @@ test("all entries are included in independent receipts without website or paid w
  assert.equal(result.supplemental_native_feed_checks.length,4);
  assert.ok(result.supplemental_native_feed_checks.every(s=>s.state==="NOT_A_NATIVE_FEED"));
  assert.equal(result.source_checks.find(s=>s.id==="asean_customs").state,"PORTAL_TRANSPORT_OBSERVED_NO_EVENT");
- assert.ok(seen.includes("https://asean.org/our-communities/economic-community/asean-customs/"));
+ assert.ok(seen.some(url=>url===PINNED_CORRIDOR_PORTALS.asean_customs));
  assert.equal(result.missing_link_placeholders,0);
  assert.equal(result.channel,"CORRIDOR_ONLY");
  assert.equal(result.website_intelligence_writes,0);
