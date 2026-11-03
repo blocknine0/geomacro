@@ -56,6 +56,7 @@
     "category-endpoint-live-acceptance.yml",
     "circle-x402-prelaunch-readiness.yml",
     "cloud-historical-gri-b2-restore.yml",
+    "codeql-alert-location-readback.yml",
     "codeql-security.yml",
     "coinbase-x402-base-sepolia.yml",
     "coinbase-x402-mainnet-readiness.yml",
