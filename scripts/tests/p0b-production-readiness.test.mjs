@@ -6,6 +6,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {getP0bIngestionStatus} from '../../workers/control-plane/src/p0b-ingestion-status.mjs';
+import {verifyLatestP0bCommitted} from '../../workers/control-plane/src/p0b-production-verifier.mjs';
 
 const text=path=>readFileSync(new URL('../../'+path,import.meta.url),'utf8');
 const manifest=JSON.parse(text('config/private-osint-working-sources.v1.json'));
@@ -83,4 +84,48 @@ test('supported Wrangler queue probe and protected route are in canonical deploy
  assert.match(deploy,/Seed pinned private source registry with exact D1 readback/u);
  assert.match(deploy,/P0B_PRODUCTION_READINESS_UNVERIFIED/u);
  assert.match(entry,/authorized\(request, env\);[\s\S]{0,250}\/v1\/internal\/p0b\/status/u);
+});
+
+test('P0-B real parity endpoint rejects no committed item and verifies exact D1 pointer',async()=>{
+ const {db,DB}=dbFixture();
+ const hash='a'.repeat(64),uri='b2://spool/20261104/p0b_test/'+hash+'.json';
+ try{
+  const env={DB,GEOMACRO_P0B_ADMISSION_ACTIVE:'1'};
+  const none=await verifyLatestP0bCommitted(env);
+  assert.equal(none.status,409);
+  assert.equal((await none.json()).verified,false);
+  db.prepare('INSERT INTO source_registry '+
+   '(source_id,canonical_endpoint,parser_type,intended_category,country_iso3,rights_tier,'+
+   'polling_interval_sec,rate_limit_backoff) VALUES (?,?,?,?,?,?,?,?)').run(
+    'p0b_test','https://example.org/rss','RSS_2','GEOPOLITICS','GLOBAL','RESEARCH_ONLY',
+    900,'{"max_retries":1,"base_delay_ms":500,"respect_retry_after":true}');
+  db.prepare('INSERT INTO ingestion_spool_queue '+
+   '(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,state,d1_committed_at,acked_at) '+
+   'VALUES (?,?,?,?,?,?,?,?)').run(
+    '00000000-0000-4000-8000-000000000000',hash,'p0b_test',uri,123,'D1_COMMITTED',
+    '2026-11-04T03:00:00Z','2026-11-04T03:00:00Z');
+  db.prepare('INSERT INTO normalized_articles '+
+   '(id,candidate_sha256,source_id,b2_archive_uri,status) VALUES (?,?,?,?,?)').run(
+    '00000000-0000-4000-8000-000000000001',hash,'p0b_test',uri,'ADMITTED');
+  let calls=0;
+  const response=await verifyLatestP0bCommitted(env,{manager:{
+   async readVerified(actualUri,sha,id){
+    calls++;
+    assert.equal(actualUri,uri);assert.equal(sha,hash);assert.equal(id,'p0b_test');
+    return {candidateSha256:hash,sourceId:'p0b_test'};
+   }
+  }});
+  assert.equal(response.status,200);
+  const receipt=await response.json();
+  assert.equal(receipt.verified,true);
+  assert.equal(receipt.original_article_page_verified,false);
+  assert.equal(receipt.source_rights_granted,false);
+  assert.equal(calls,1);
+  db.prepare("UPDATE normalized_articles SET b2_archive_uri='b2://other'").run();
+  const bad=await verifyLatestP0bCommitted(env,{manager:{
+   async readVerified(){throw Error('should never read if D1 pointer differs')}
+  }});
+  assert.equal(bad.status,503);
+  assert.equal((await bad.json()).verified,false);
+ }finally{db.close()}
 });
