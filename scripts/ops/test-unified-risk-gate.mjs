@@ -92,6 +92,11 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
  assert.equal(data.target_id,"TWN");
  assert.equal(data.tiers.core.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
  assert.equal(data.unified_risk_score,null);
+ assert.equal(data.verified_live_scoring.status,"CURRENT_SIGNED_GRO_UNAVAILABLE");
+ assert.equal(data.verified_live_scoring.unified_risk_score,null);
+ assert.equal(data.verified_live_scoring.trusted_signed_gro_verified,false);
+ assert.equal(data.verified_live_scoring.included_in_daily_snapshot_hmac,false);
+ assert.equal(data.policy_evaluation_has_complete_verified_score,false);
  assert.equal(data.categories.GEOPOLITICS.status,"OBSERVED_UNVERIFIED");
  assert.equal(data.categories.MACRO_FX.risk_score,null);
  assert.equal(data.categories.CRITICAL_MINERALS.risk_score,null);
