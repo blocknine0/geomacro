@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T14:21:17.980Z",
+  "checked_at": "2026-11-03T14:23:14.345Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,63 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-852aa61d",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched strikes on Iranian targets in Strait of Hormuz, officials say",
+      "what_changed": "A monitored source feed reports: U.S. launched strikes on Iranian targets in Strait of Hormuz, officials say. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:16:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4c6ea39e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky confirmed Ukrainian hackers breached Russia’s emergency alert app in retaliation for earlier attack on Ukraine’s warning system",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed Ukrainian hackers breached Russia’s emergency alert app in retaliation for earlier attack on Ukraine’s warning system. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:13:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f724afa0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US will halt $4B in aid to Israel as country shifts to buying military hardware instead",
+      "what_changed": "A monitored source feed reports: Trump said US will halt $4B in aid to Israel as country shifts to buying military hardware instead. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:09:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-85cc884a",
       "category": "macro",
@@ -486,6 +543,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-36b44fa6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia reported hacker attacks on emergency-alert systems - DW.com",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia reported hacker attacks on emergency-alert systems - DW.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:50:22.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-a4db1c9a",
       "category": "geopolitics",
       "title": "Geomacro finds Egypt-Sudan signed agreement to defend water security",
@@ -499,6 +575,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.egyptindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-8df4826c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Judge urged dropping terror charges for protesters who shot flares at PM's home - Haaretz",
+      "what_changed": "A monitored source feed reports: Judge urged dropping terror charges for protesters who shot flares at PM's home - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4523,101 +4618,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T14:41:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3d1a7806",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jakarta urged Moscow to halt military recruitment of Indonesians",
-      "what_changed": "A monitored source feed reports: Jakarta urged Moscow to halt military recruitment of Indonesians. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:39:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4495ae4b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia agreed to Halt Recruitment of Ghanaians for Ukraine War - Bloomberg",
-      "what_changed": "A monitored source feed reports: Russia agreed to Halt Recruitment of Ghanaians for Ukraine War - Bloomberg. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:27:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9509ea8a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia's FSB said Minor Detained Over Moscow Park Attack Threat After U.S. Tip-Off",
-      "what_changed": "A monitored source feed reports: Russia's FSB said Minor Detained Over Moscow Park Attack Threat After U.S. Tip-Off. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:18:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.themoscowtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-44fec99b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Sen. Dan Sullivan said he will accept election results of Alaska Senate race - CNN",
-      "what_changed": "A monitored source feed reports: Sen. Dan Sullivan said he will accept election results of Alaska Senate race - CNN. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:14:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7b4cc5c3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelensky confirmed attack on Russian rocket fuel factory, missile launcher system - The Kyiv Independent",
-      "what_changed": "A monitored source feed reports: Zelensky confirmed attack on Russian rocket fuel factory, missile launcher system - The Kyiv Independent. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:07:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

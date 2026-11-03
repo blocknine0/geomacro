@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T14:21:17.980Z",
+  "checked_at": "2026-11-03T14:23:14.345Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 299,
+  "item_count": 304,
   "counts": {
-    "geopolitics": 132,
+    "geopolitics": 137,
     "macro": 126,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "f43a66f51e502743c7c7b80a3232a20b29c10c8b1656b315c32b14d972835555",
+  "source_native_ids_sha256": "44458a98957739d54e2ea1ff584d244e669d25aa176f4b483bafe56295a440a9",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-852aa61d",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched strikes on Iranian targets in Strait of Hormuz, officials say",
+      "what_changed": "A monitored source feed reports: U.S. launched strikes on Iranian targets in Strait of Hormuz, officials say. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:16:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.cbsnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-4c6ea39e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky confirmed Ukrainian hackers breached Russia’s emergency alert app in retaliation for earlier attack on Ukraine’s warning system",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed Ukrainian hackers breached Russia’s emergency alert app in retaliation for earlier attack on Ukraine’s warning system. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:13:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-f724afa0",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US will halt $4B in aid to Israel as country shifts to buying military hardware instead",
+      "what_changed": "A monitored source feed reports: Trump said US will halt $4B in aid to Israel as country shifts to buying military hardware instead. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:09:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-85cc884a",
       "category": "macro",
@@ -524,6 +581,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-36b44fa6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine and Russia reported hacker attacks on emergency-alert systems - DW.com",
+      "what_changed": "A monitored source feed reports: Ukraine and Russia reported hacker attacks on emergency-alert systems - DW.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:50:22.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-a4db1c9a",
       "category": "geopolitics",
       "title": "Geomacro finds Egypt-Sudan signed agreement to defend water security",
@@ -537,6 +613,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.egyptindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-8df4826c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Judge urged dropping terror charges for protesters who shot flares at PM's home - Haaretz",
+      "what_changed": "A monitored source feed reports: Judge urged dropping terror charges for protesters who shot flares at PM's home - Haaretz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
