@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T14:36:16.643Z",
+  "updated_at": "2026-11-03T14:44:52.527Z",
   "signals": [
+    {
+      "id": "macro-df8a794f",
+      "category": "macro",
+      "title": "Geomacro finds Corn and Soybean Yields kept Rising, but Farmers Are Still Missing Out - AgroLatam",
+      "what_changed": "A monitored source feed reports: Corn and Soybean Yields kept Rising, but Farmers Are Still Missing Out - AgroLatam. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:30:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-85cc884a",
       "category": "macro",
@@ -455,6 +474,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c43d64ec",
+      "category": "macro",
+      "title": "Geomacro finds Chevron kept ADES’ 2007-built jack-up rig busy in Angolan waters for another year",
+      "what_changed": "A monitored source feed reports: Chevron kept ADES’ 2007-built jack-up rig busy in Angolan waters for another year. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.offshore-energy.biz"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

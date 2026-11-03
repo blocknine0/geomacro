@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T14:36:16.643Z",
+  "updated_at": "2026-11-03T14:44:52.527Z",
   "signals": [
     {
       "id": "geopolitics-5e5f5b30",
@@ -474,6 +474,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: timeskuwait.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-891c3da2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War - The Diplomat, Asia-Pacific Current Affairs Magazine",
+      "what_changed": "A monitored source feed reports: Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War - The Diplomat, Asia-Pacific Current Affairs Magazine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T04:51:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6f706697",
+      "category": "geopolitics",
+      "title": "Geomacro finds Kyrgyzstan announced plans to extend coal export ban for another six months",
+      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to extend coal export ban for another six months. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T03:54:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-baf2112f",
+      "category": "geopolitics",
+      "title": "Geomacro finds El-Sayed and Rogers held dueling rallies before election - CNN",
+      "what_changed": "A monitored source feed reports: El-Sayed and Rogers held dueling rallies before election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T03:45:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T14:36:16.643Z",
+  "checked_at": "2026-11-03T14:44:52.527Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 310,
+  "item_count": 315,
   "counts": {
-    "geopolitics": 140,
-    "macro": 129,
+    "geopolitics": 143,
+    "macro": 131,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "fc7175a8e68af07de9f5bfc36e682285594dcb514db779b734b272e8e39b93d6",
+  "source_native_ids_sha256": "9164dfb956ee8393caf4c035ad74bbe557929f8beb801e949bf0acf64e844a19",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-df8a794f",
+      "category": "macro",
+      "title": "Geomacro finds Corn and Soybean Yields kept Rising, but Farmers Are Still Missing Out - AgroLatam",
+      "what_changed": "A monitored source feed reports: Corn and Soybean Yields kept Rising, but Farmers Are Still Missing Out - AgroLatam. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:30:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-5e5f5b30",
       "category": "geopolitics",
@@ -904,6 +923,25 @@
       "severity": null
     },
     {
+      "id": "macro-c43d64ec",
+      "category": "macro",
+      "title": "Geomacro finds Chevron kept ADES’ 2007-built jack-up rig busy in Angolan waters for another year",
+      "what_changed": "A monitored source feed reports: Chevron kept ADES’ 2007-built jack-up rig busy in Angolan waters for another year. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.offshore-energy.biz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-d55a8e30",
       "category": "geopolitics",
       "title": "Geomacro finds Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - The Straits Times",
@@ -1094,6 +1132,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-891c3da2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War - The Diplomat, Asia-Pacific Current Affairs Magazine",
+      "what_changed": "A monitored source feed reports: Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War - The Diplomat, Asia-Pacific Current Affairs Magazine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T04:51:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6f706697",
+      "category": "geopolitics",
+      "title": "Geomacro finds Kyrgyzstan announced plans to extend coal export ban for another six months",
+      "what_changed": "A monitored source feed reports: Kyrgyzstan announced plans to extend coal export ban for another six months. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T03:54:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: 24.kg"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-1b69952b",
       "category": "rare_earth",
       "title": "Geomacro finds Platts proposed to include graphite and change an underlying component in the Platts Global Battery Metals Index - S&P Global",
@@ -1103,6 +1179,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T03:48:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-baf2112f",
+      "category": "geopolitics",
+      "title": "Geomacro finds El-Sayed and Rogers held dueling rallies before election - CNN",
+      "what_changed": "A monitored source feed reports: El-Sayed and Rogers held dueling rallies before election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T03:45:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
