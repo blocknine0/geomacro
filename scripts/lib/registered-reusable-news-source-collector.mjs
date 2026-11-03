@@ -22,7 +22,14 @@ const MAX_ITEMS_PER_RUN=480;
 // Rechecking each category's <=24 endpoints once every three intended 5m slots
 // is a NOMINAL source-discovery target; GitHub cron may be late or dropped.
 export const REGISTERED_NEWS_POLL_SLOT_MINUTES=5;
-const SOURCE_FETCH_CONCURRENCY=6;
+export const SOURCE_FETCH_CONCURRENCY=10;
+export const SOURCE_FETCH_TIMEOUT_MS=15000;
+// Identify this collector transparently; never circumvent a publisher denial.
+export const SOURCE_FEED_HEADERS=Object.freeze({
+  "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 (GeoMacro Research Bot; news-intake)",
+  "Accept":"application/rss+xml, application/rdf+xml, application/atom+xml, application/xml, text/xml, application/json;q=0.9",
+  "Accept-Language":"en-US,en;q=0.8",
+});
 // English and reviewed original-language headline tokens. These are keyword
 // discovery hints, not translation, an attributed country, or event proof.
 const TOPICS={
@@ -93,9 +100,9 @@ function normalizeCatalogueSource(r){
   const categories=r.categories??(r.category?[r.category]:r.domain?[r.domain]:[]);
   if(!Array.isArray(categories)||!categories.every(x=>CATEGORY.includes(x)))return null;
   const type=r.format??r.media;
-  const supported=["rss","atom","xml","rdf"].includes(type)||
-    (type==="json"&&url.hostname==="www.gov.uk"&&
-      url.pathname==="/api/search.json"&&r.id.startsWith("govuk_"));
+  // JSON is supported only for explicitly registered HTTPS sources, using
+  // bounded native per-item time metadata (no API-index clock promotion).
+  const supported=["rss","atom","xml","rdf","json"].includes(type);
   return {id:r.id,url:r.url,categories,type,supported,
     priority:r.priority===true,officialDocument:r.officialDocument===true};
 }
@@ -157,14 +164,26 @@ export function selectRegisteredNewsSources(now=new Date(),registry=registeredRe
 function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_BYTES){
   if(body.length>maxFeedBytes||/<!DOCTYPE|<!ENTITY/iu.test(body))return null;
   if(source.type==="json"){
-    if(!source.url.startsWith("https://www.gov.uk/api/search.json?"))return null;
     try{
       const data=JSON.parse(body);
-      if(!Array.isArray(data.results)||data.results.length>100)return null;
-      return data.results.slice(0,70).flatMap(x=>{
+      const rows=Array.isArray(data)?data:
+        Array.isArray(data?.results)?data.results:
+        Array.isArray(data?.items)?data.items:
+        Array.isArray(data?.articles)?data.articles:
+        Array.isArray(data?.data)?data.data:null;
+      if(!rows||rows.length>1000)return null;
+      const govuk=source.url.startsWith("https://www.gov.uk/api/search.json?");
+      return rows.slice(0,100).flatMap(x=>{
         const title=typeof x?.title==="string"?cleanText(x.title):"";
-        const native=typeof x?.public_timestamp==="string"?x.public_timestamp:null;
-        return substantiveHeadline(title)&&native?[{title,native,articleUrl:null}]:[];
+        const native=[x?.public_timestamp,x?.published_at,x?.publishedAt,
+          x?.pubDate,x?.isoDate,x?.date?.original,x?.date_published]
+          .find(v=>typeof v==="string")??null;
+        const rawLink=govuk?null:
+          [x?.url,x?.link,x?.canonical_url,x?.permalink]
+          .find(v=>typeof v==="string")??null;
+        // Index discovery must never manufacture publisher publication time.
+        return substantiveHeadline(title)&&native?
+          [{title,native,articleUrl:rawLink}]:[];
       });
     }catch{return null}
   }
@@ -191,8 +210,8 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
 async function fetchFeed(spec,fetchImpl,maxFeedBytes=MAX_FEED_BYTES){
   try{
     const r=await fetchImpl(spec.url,{method:"GET",redirect:"manual",
-      headers:{accept:"application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9"},
-      signal:AbortSignal.timeout(7000)});
+      headers:SOURCE_FEED_HEADERS,
+      signal:AbortSignal.timeout(SOURCE_FETCH_TIMEOUT_MS)});
     if([401,403,429].includes(r.status))return {state:"DENIED",body:null};
     if(r.status!==200||(r.url&&r.url!==spec.url))return {state:"UNAVAILABLE",body:null};
     if(Number(r.headers.get("content-length")||0)>maxFeedBytes||!r.body)
@@ -213,14 +232,14 @@ async function fetchFeed(spec,fetchImpl,maxFeedBytes=MAX_FEED_BYTES){
 }
 export async function collectRegisteredReusableNews({
   now=new Date(),fetchImpl=fetch,registry=registeredReusableNewsSources(),
-  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=6,
+  perCategory=8,normalize,resolveCountry=()=>null,networkConcurrency=SOURCE_FETCH_CONCURRENCY,
   topicPatterns=TOPICS,allowRdfNativeDates=false,
   maxFeedBytes=MAX_FEED_BYTES,
   deduplicateIndexItems=false,onOriginalCandidate=null,
 }={}){
   if(typeof normalize!=="function"||typeof resolveCountry!=="function"||
      !(now instanceof Date)||!Number.isFinite(now.getTime())||
-     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>6||
+     !Number.isSafeInteger(networkConcurrency)||networkConcurrency<1||networkConcurrency>SOURCE_FETCH_CONCURRENCY||
      typeof allowRdfNativeDates!=="boolean"||
      typeof deduplicateIndexItems!=="boolean"||
      !(onOriginalCandidate===null||typeof onOriginalCandidate==="function")||
@@ -230,7 +249,7 @@ export async function collectRegisteredReusableNews({
   const active=selectRegisteredNewsSources(now,registry,perCategory);
   const checks=[],items=[],seen=new Set();
   let capacitySkipped=0,nationalPrimaryFallbacks=0;
-  // A sequential 7s timeout for 24 pinned endpoints could exceed the target
+  // A sequential 15s timeout for 24 pinned endpoints could exceed the target
   // window by itself. Bounded parallelism preserves source ordering, limits
   // simultaneous requests, and never forwards raw feed bodies to D1.
   const fetched=[];
