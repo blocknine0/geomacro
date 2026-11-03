@@ -196,7 +196,7 @@ async function pollOne(env,row,{fetchImpl,now}){
  let result;
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
  catch{result={state:'UNAVAILABLE',status:null,records:[],used_fallback:false}}
- let state=result.state,accepted=0;
+ let state=result.state,accepted=0,p0b_failure_codes={};
  try{
   if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
    // P0-B source-first: every parsed item is B2 encrypted/readback verified,
@@ -209,6 +209,15 @@ async function pollOne(env,row,{fetchImpl,now}){
      sourceId:config.source_id,raw};
    }));
    const receipt=await processFetchedBatch(candidates,env);
+   // Only the existing bearer-authenticated admin poll returns safe
+   // enum-style failure codes; no B2 URIs, origins, article text or keys.
+   for(const item of receipt.receipts){
+    if(item.status==='FAILED_NOT_ACKNOWLEDGED'){
+     const code=/^P0B_[A-Z0-9_]{3,80}$/u.test(item.error_code??'')
+      ?item.error_code:'P0B_PRODUCER_FAILURE';
+     p0b_failure_codes[code]=(p0b_failure_codes[code]??0)+1;
+    }
+   }
    if(!receipt.all_durable||receipt.examined!==candidates.length)
     state='CAPACITY_DEFERRED';
    accepted=receipt.receipts.filter(x=>[
@@ -257,7 +266,8 @@ async function pollOne(env,row,{fetchImpl,now}){
    'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=? WHERE source_id=?')
     .bind(cursor,iso(now),iso(now+delay),state,result.status??null,failures,config.source_id).run();
   return {source_id:config.source_id,state,accepted,parsed:result.records?.length??0,
-    status:result.status??null,used_fallback:result.used_fallback===true};
+    status:result.status??null,used_fallback:result.used_fallback===true,
+    p0b_failure_codes};
  }catch{
   await env.DB.prepare('UPDATE source_registry SET next_poll_at=?,last_state=?,'+
    'consecutive_failures=consecutive_failures+1 WHERE source_id=?')
