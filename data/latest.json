@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T17:44:16.442Z",
+  "checked_at": "2026-11-03T17:49:34.478Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-a3966d8b",
+      "category": "macro",
+      "title": "Geomacro finds Ametek forecast 2026 EPS of $8.53-$8.57 as it targets mid-teens sales growth following Indicor close",
+      "what_changed": "A monitored source feed reports: Ametek forecast 2026 EPS of $8.53-$8.57 as it targets mid-teens sales growth following Indicor close. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-1e1c0be6",
       "category": "geopolitics",
@@ -81,6 +100,101 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5bada819",
+      "category": "macro",
+      "title": "Geomacro finds Starbucks Japan released now Tokyo Reserve Roastery Christmas drinkware collection [Photos] - SoraNews24",
+      "what_changed": "A monitored source feed reports: Starbucks Japan released now Tokyo Reserve Roastery Christmas drinkware collection [Photos] - SoraNews24. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-908bb75d",
+      "category": "macro",
+      "title": "Geomacro finds Energy Transfer approved $1.6B South Mississippi pipeline project (ET:TXSE) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Energy Transfer approved $1.6B South Mississippi pipeline project (ET:TXSE) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:59:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-18d982b8",
+      "category": "macro",
+      "title": "Geomacro finds Sierra Leone signed Statement of Intent to Join Commonwealth Creative Economy Partnership",
+      "what_changed": "A monitored source feed reports: Sierra Leone signed Statement of Intent to Join Commonwealth Creative Economy Partnership. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:56:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: sierraloaded.sl"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-76f28e15",
+      "category": "macro",
+      "title": "Geomacro finds Syria said it foiled Hezbollah plot to target Homs oil refinery",
+      "what_changed": "A monitored source feed reports: Syria said it foiled Hezbollah plot to target Homs oil refinery. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:47:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b59ea937",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine's Zelensky said dozens dead, missing in Russian strike days before US talks",
+      "what_changed": "A monitored source feed reports: Ukraine's Zelensky said dozens dead, missing in Russian strike days before US talks. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -1683,6 +1797,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-600efb40",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy warned about large scale Russian missile, drone attacks against Ukraine - Fox News",
+      "what_changed": "A monitored source feed reports: Zelenskyy warned about large scale Russian missile, drone attacks against Ukraine - Fox News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T01:20:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-adac3ec5",
       "category": "rare_earth",
       "title": "Geomacro finds Indonesia urged Nickel Producers to Cut Output as Global Prices Fall - Tempo.co English",
@@ -1772,6 +1905,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.haaretz.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d4371118",
+      "category": "geopolitics",
+      "title": "Geomacro finds Supreme Court rejected Trump request to segregate California ballots before midterm election - CNN",
+      "what_changed": "A monitored source feed reports: Supreme Court rejected Trump request to segregate California ballots before midterm election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:20:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4381,25 +4533,6 @@
       "severity": null
     },
     {
-      "id": "macro-799200cd",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제",
-      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T05:21:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-03aa4f70",
       "category": "geopolitics",
       "title": "Geomacro finds Russia said drone strikes hit Ukrainian cargo vessel - Breakingthenews.net",
@@ -4438,25 +4571,6 @@
       "severity": null
     },
     {
-      "id": "macro-81bd96f9",
-      "category": "macro",
-      "title": "Geomacro finds ECG announced power outage in parts of Ashanti Region on November 3",
-      "what_changed": "A monitored source feed reports: ECG announced power outage in parts of Ashanti Region on November 3. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T04:44:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-72ef2ab0",
       "category": "geopolitics",
       "title": "Geomacro finds China said Stealth Attack Drone Flew From Its Catapult-Equipped Assault Ship - SOFX",
@@ -4466,44 +4580,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T04:42:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-cbd45c73",
-      "category": "macro",
-      "title": "Geomacro finds VAST Ghana called for comprehensive excise tax reforms in 2027-2030 Budget Statement",
-      "what_changed": "A monitored source feed reports: VAST Ghana called for comprehensive excise tax reforms in 2027-2030 Budget Statement. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T04:39:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-180e009b",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs raised oil price forecasts, sees Brent upside at $140 a barrel - Zawya",
-      "what_changed": "A monitored source feed reports: Goldman Sachs raised oil price forecasts, sees Brent upside at $140 a barrel - Zawya. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T04:35:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4533,25 +4609,6 @@
       "severity": null
     },
     {
-      "id": "macro-b4359940",
-      "category": "macro",
-      "title": "Geomacro finds Central Bank of Egypt raised key rates by 100 bps in first hike since March 2024 - TradingView",
-      "what_changed": "A monitored source feed reports: Central Bank of Egypt raised key rates by 100 bps in first hike since March 2024 - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T04:17:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-9f67d680",
       "category": "geopolitics",
       "title": "Geomacro finds Netanyahu urged Trump to attack Iran as US pursues further negotiations before midterms - report",
@@ -4565,25 +4622,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.jpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b51a9b57",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs raised oil price forecasts, sees Brent upside at US$140 a barrel - NST Online",
-      "what_changed": "A monitored source feed reports: Goldman Sachs raised oil price forecasts, sees Brent upside at US$140 a barrel - NST Online. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T04:12:47.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4660,44 +4698,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d09d956d",
-      "category": "geopolitics",
-      "title": "Geomacro finds Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects",
-      "what_changed": "A monitored source feed reports: Police said internal gang conflict behind Dodrick Madrill murder; surveillance technology helped identify suspects. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T02:53:53.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.breakingbelizenews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6d4914a9",
-      "category": "geopolitics",
-      "title": "Geomacro finds France launched attempted murder investigation following bomb attack incidents",
-      "what_changed": "A monitored source feed reports: France launched attempted murder investigation following bomb attack incidents. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T02:37:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: jowhar.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

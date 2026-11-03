@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T17:41:55.815Z",
+  "updated_at": "2026-11-03T17:49:34.478Z",
   "signals": [
+    {
+      "id": "macro-a3966d8b",
+      "category": "macro",
+      "title": "Geomacro finds Ametek forecast 2026 EPS of $8.53-$8.57 as it targets mid-teens sales growth following Indicor close",
+      "what_changed": "A monitored source feed reports: Ametek forecast 2026 EPS of $8.53-$8.57 as it targets mid-teens sales growth following Indicor close. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:37:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-c4fe67c3",
       "category": "macro",
@@ -18,6 +37,101 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-5bada819",
+      "category": "macro",
+      "title": "Geomacro finds Starbucks Japan released now Tokyo Reserve Roastery Christmas drinkware collection [Photos] - SoraNews24",
+      "what_changed": "A monitored source feed reports: Starbucks Japan released now Tokyo Reserve Roastery Christmas drinkware collection [Photos] - SoraNews24. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-908bb75d",
+      "category": "macro",
+      "title": "Geomacro finds Energy Transfer approved $1.6B South Mississippi pipeline project (ET:TXSE) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Energy Transfer approved $1.6B South Mississippi pipeline project (ET:TXSE) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:59:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-18d982b8",
+      "category": "macro",
+      "title": "Geomacro finds Sierra Leone signed Statement of Intent to Join Commonwealth Creative Economy Partnership",
+      "what_changed": "A monitored source feed reports: Sierra Leone signed Statement of Intent to Join Commonwealth Creative Economy Partnership. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:56:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: sierraloaded.sl"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-76f28e15",
+      "category": "macro",
+      "title": "Geomacro finds Syria said it foiled Hezbollah plot to target Homs oil refinery",
+      "what_changed": "A monitored source feed reports: Syria said it foiled Hezbollah plot to target Homs oil refinery. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:47:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b59ea937",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine's Zelensky said dozens dead, missing in Russian strike days before US talks",
+      "what_changed": "A monitored source feed reports: Ukraine's Zelensky said dozens dead, missing in Russian strike days before US talks. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.khaleejtimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

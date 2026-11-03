@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T17:41:55.815Z",
+  "updated_at": "2026-11-03T17:49:34.478Z",
   "signals": [
     {
       "id": "geopolitics-1e1c0be6",
@@ -708,6 +708,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-600efb40",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy warned about large scale Russian missile, drone attacks against Ukraine - Fox News",
+      "what_changed": "A monitored source feed reports: Zelenskyy warned about large scale Russian missile, drone attacks against Ukraine - Fox News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T01:20:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-29033e4b",
       "category": "geopolitics",
       "title": "Geomacro finds United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS",
@@ -778,6 +797,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.haaretz.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-d4371118",
+      "category": "geopolitics",
+      "title": "Geomacro finds Supreme Court rejected Trump request to segregate California ballots before midterm election - CNN",
+      "what_changed": "A monitored source feed reports: Supreme Court rejected Trump request to segregate California ballots before midterm election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:20:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
