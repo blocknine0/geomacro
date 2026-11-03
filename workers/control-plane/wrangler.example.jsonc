@@ -6,7 +6,8 @@
   "vars": {
     "GEOMACRO_P0B_SOURCE_FIRST_ENABLED": "1",
     "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app",
-    "EMAIL_FROM_ADDRESS": "auth@geomacro.live"
+    "EMAIL_FROM_ADDRESS": "auth@geomacro.live",
+    "GEOMACRO_P0B_ADMISSION_ACTIVE": "0"
   },
   "triggers": {
     "crons": [
@@ -30,5 +31,23 @@
       "custom_domain": true,
       "zone_name": "geomacro.live"
     }
-  ]
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "INGEST_QUEUE",
+        "queue": "geomacro-ingestion-spool"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "geomacro-ingestion-spool",
+        "max_batch_size": 25,
+        "max_batch_timeout": 15,
+        "max_retries": 10,
+        "dead_letter_queue": "geomacro-ingestion-dead-letter",
+        "retry_delay": 60
+      }
+    ]
+  }
 }
