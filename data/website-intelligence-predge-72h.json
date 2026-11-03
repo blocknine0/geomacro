@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T11:44:05.352Z",
+  "checked_at": "2026-11-03T12:16:15.782Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 273,
+  "item_count": 274,
   "counts": {
     "geopolitics": 123,
     "macro": 110,
-    "rare_earth": 40
+    "rare_earth": 41
   },
-  "source_native_ids_sha256": "6d17b8d4cbabececc4bbf8c20d48343969b2dafcee2a7b44ec21a5e2d024dfc2",
+  "source_native_ids_sha256": "2651311fa69b19a3e5cb771ed5f8ab1937cd209319e5986d9ae2a4fb3528acf6",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -157,6 +157,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.channelstv.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-cf645480",
+      "category": "rare_earth",
+      "title": "Geomacro finds New Assessment confirmed Alberta’s Enormous Lithium Resources - EnergyNow",
+      "what_changed": "A monitored source feed reports: New Assessment confirmed Alberta’s Enormous Lithium Resources - EnergyNow. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
