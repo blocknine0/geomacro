@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T17:41:55.815Z",
+  "checked_at": "2026-11-03T17:44:16.442Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 339,
+  "item_count": 338,
   "counts": {
-    "geopolitics": 151,
+    "geopolitics": 150,
     "macro": 145,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "f7db5fa22d07bb58316d53164fc6789a4e4b993c75f94c92152862dc7c4d1367",
+  "source_native_ids_sha256": "1653676e3a390921db3e8a740238f9076357cb6ef7b2d88ac1aee0c90ed8059e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6446,25 +6446,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: haitiantimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-34942ac6",
-      "category": "geopolitics",
-      "title": "Geomacro finds Rubio said Trump set no timeframe for Iran talks but military option remains open",
-      "what_changed": "A monitored source feed reports: Rubio said Trump set no timeframe for Iran talks but military option remains open. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T17:42:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thenationalnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
