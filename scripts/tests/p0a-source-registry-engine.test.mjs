@@ -70,35 +70,35 @@ test('strict D1 registry config and SSRF exclusions',()=>{
 test('RSS 2 XML and native item time',async()=>{
  const rows=await normalizeP0aPayload('RSS_2',encode(news));
  assert.equal(rows.length,1);
- assert.equal(rows[0].native_published_at,'2026-11-04T01:00:00.000Z');
+ assert.equal(rows[0].native_published_at,'2026-10-04T01:00:00.000Z');
 });
 test('Atom and RDF native entry time; no feed-level time promotion',async()=>{
- const atom='<feed xmlns="http://www.w3.org/2005/Atom"><updated>2026-11-04T01:05:00Z</updated>'+
+ const atom='<feed xmlns="http://www.w3.org/2005/Atom"><updated>2026-10-04T01:05:00Z</updated>'+
   '<entry><title>Country announces new export controls</title>'+
-  '<published>2026-11-04T01:00:00Z</published>'+
+  '<published>2026-10-04T01:00:00Z</published>'+
   '<link href="https://gov.example.org/entry"/></entry></feed>';
  const a=await normalizeP0aPayload('ATOM',encode(atom));
- assert.equal(a[0].native_published_at,'2026-11-04T01:00:00.000Z');
+ assert.equal(a[0].native_published_at,'2026-10-04T01:00:00.000Z');
  const rdf='<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '+
   'xmlns:dc="http://purl.org/dc/elements/1.1/"><item><title>Country updates mineral export quota</title>'+
-  '<dc:date>2026-11-04T02:00:00Z</dc:date><link>https://gov.example.org/rdf</link></item></rdf:RDF>';
+  '<dc:date>2026-10-04T02:00:00Z</dc:date><link>https://gov.example.org/rdf</link></item></rdf:RDF>';
  const r=await normalizeP0aPayload('RDF',encode(rdf));
- assert.equal(r[0].native_published_at,'2026-11-04T02:00:00.000Z');
+ assert.equal(r[0].native_published_at,'2026-10-04T02:00:00.000Z');
  assert.equal((await normalizeP0aPayload('ATOM',encode(
-  '<feed><updated>2026-11-04T01:00:00Z</updated><entry><title>Undated policy update</title></entry></feed>')))[0].native_published_at,null);
+  '<feed><updated>2026-10-04T01:00:00Z</updated><entry><title>Undated policy update</title></entry></feed>')))[0].native_published_at,null);
 });
 test('JSON, quoted CSV, bounded HTML',async()=>{
  const json=await normalizeP0aPayload('JSON_REST',encode(JSON.stringify({results:[
-  {title:'Government proposes a tax reform',published_at:'2026-11-04T01:00:00Z',
+  {title:'Government proposes a tax reform',published_at:'2026-10-04T01:00:00Z',
    url:'https://gov.example.org/json'}]})));
  assert.equal(json[0].original_url,'https://gov.example.org/json');
  const csv=await normalizeP0aPayload('CSV_STREAM',encode(
-  'headline,published_at,url\n"Export control, new rule",2026-11-04T01:00:00Z,https://gov.example.org/csv\n'));
+  'headline,published_at,url\n"Export control, new rule",2026-10-04T01:00:00Z,https://gov.example.org/csv\n'));
  assert.equal(csv[0].title,'Export control, new rule');
  const html=await normalizeP0aPayload('HTML_BOUNDED',encode(
-  '<article><time datetime="2026-11-04T01:00:00Z"></time>'+
+  '<article><time datetime="2026-10-04T01:00:00Z"></time>'+
   '<a href="https://gov.example.org/html">Minister announces lithium policy</a></article>'));
- assert.equal(html[0].native_published_at,'2026-11-04T01:00:00.000Z');
+ assert.equal(html[0].native_published_at,'2026-10-04T01:00:00.000Z');
 });
 test('CSV_STREAM handles a CRC-checked deflated GDELT ZIP without date invention',async()=>{
  const fields=Array(58).fill('');fields[0]='12345';fields[1]='20261104';
@@ -107,7 +107,8 @@ test('CSV_STREAM handles a CRC-checked deflated GDELT ZIP without date invention
  assert.equal(parsed.length,1);
  assert.equal(parsed[0].source_record_id,'12345');
  assert.equal(parsed[0].native_published_at,null);
- const bad=zipOne('events.export.CSV',fields.join('\t')+'\n');bad[40]^=1;
+ const bad=zipOne('events.export.CSV',fields.join('\t')+'\n');
+ const offset=bad.length-22-46-encode('events.export.CSV').length;bad[offset+16]^=1;
  await assert.rejects(()=>normalizeP0aPayload('CSV_STREAM',bad),/P0A_ZIP_CHECKSUM_INVALID/);
 });
 test('429/403 never bypass denial through fallback and respect Retry-After',async()=>{
@@ -141,7 +142,7 @@ test('D1 upsert/readback, private staging, failure isolation and subsequent 304 
     canonical_endpoint:'https://blocked.example.org/rss'})]});
   assert.equal(init.status,200);
   const receipt=await init.json();assert.equal(receipt.readback_verified,true);
-  const tick=await pollP0aSources(env,{now:Date.parse('2026-11-04T02:00:00Z'),
+  const tick=await pollP0aSources(env,{now:Date.parse('2026-10-04T02:00:00Z'),
    fetchImpl:async url=>{
     calls++;return String(url).includes('blocked')?body(null,{status:403}):
       body(news,{headers:{etag:'"v2"'}});
@@ -152,7 +153,7 @@ test('D1 upsert/readback, private staging, failure isolation and subsequent 304 
   assert.equal(db.prepare('SELECT count(*) AS n FROM p0a_normalized_source_items').get().n,1);
   const row=db.prepare("SELECT last_cursor FROM source_registry WHERE source_id='src_healthy'").get();
   assert.equal(row.last_cursor,'etag:"v2"');
-  const second=await pollP0aSources(env,{now:Date.parse('2026-11-04T02:06:00Z'),
+  const second=await pollP0aSources(env,{now:Date.parse('2026-10-04T02:06:00Z'),
    fetchImpl:async()=>body(null,{status:304})});
   assert.equal(second.receipts.length,1);
   assert.equal(second.receipts[0].state,'UNCHANGED');
