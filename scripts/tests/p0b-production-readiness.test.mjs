@@ -1,8 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
-import {tmpdir} from 'node:os';
-import {join} from 'node:path';
+import {readFileSync,rmSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {getP0bIngestionStatus} from '../../workers/control-plane/src/p0b-ingestion-status.mjs';
@@ -25,11 +23,10 @@ function dbFixture(){
  return {db,DB:{prepare:sql}};
 }
 test('P0-B source registry is exactly pinned, idempotent and research only',()=>{
- const tmp=mkdtempSync(join(tmpdir(),'geomacro-p0b-pinned-'));
- const path=join(tmp,'seed.sql');
+ const path=new URL('../../workers/control-plane/p0b-seed.generated.sql',import.meta.url);
  const {db}=dbFixture();
  try{
-  const run=execFileSync('node',['scripts/ops/seed-p0b-pinned-registry.mjs','--output',path],
+  const run=execFileSync('node',['scripts/ops/seed-p0b-pinned-registry.mjs'],
    {encoding:'utf8',cwd:new URL('../../',import.meta.url).pathname});
   const receipt=JSON.parse(run);
   const seed=readFileSync(path,'utf8');
@@ -47,7 +44,7 @@ test('P0-B source registry is exactly pinned, idempotent and research only',()=>
   const present=db.prepare('SELECT DISTINCT intended_category FROM source_registry').all()
    .map(x=>x.intended_category).sort();
   assert.deepEqual(present,['CRITICAL_MINERALS','GEOPOLITICS','MACRO_FX']);
- }finally{db.close();rmSync(tmp,{recursive:true,force:true})}
+ }finally{db.close();rmSync(path,{force:true})}
 });
 test('P0-B admin readiness returns D1 state only and refuses empty registry',async()=>{
  const {db,DB}=dbFixture();
