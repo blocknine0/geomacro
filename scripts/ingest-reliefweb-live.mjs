@@ -1,12 +1,3 @@
-import {
-  buildObservation,
-  createDb,
-  loadCountryRegistry,
-  normalizeIso3,
-  requireEnv,
-  upsertObservations,
-} from "./lib-live-source-utils.mjs"
-
 import {runReliefWebPrivateD1} from "./lib/reliefweb-private-d1.mjs";
 
 // The scheduled canonical D1 mode does not instantiate the legacy Supabase
@@ -15,6 +6,12 @@ if (process.env.RELIEFWEB_TRANSPORT === "d1_private") {
   const receipt=await runReliefWebPrivateD1();
   console.log(JSON.stringify(receipt));
 } else {
+// Load the retired PostgreSQL/Supabase adapter only for explicit legacy runs.
+// Its top-level imports must never execute on the canonical D1 path.
+const {
+  buildObservation, createDb, loadCountryRegistry, normalizeIso3,
+  requireEnv, upsertObservations,
+} = await import("./lib-live-source-utils.mjs");
 const SOURCE_ID =
   "reliefweb"
 
