@@ -122,9 +122,14 @@ describe("commercial runtime security baseline", () => {
     expect(ingestRecovery).toContain("bun install --frozen-lockfile --ignore-scripts");
     expect(ingestRecovery).not.toContain("auto-create-markets");
 
-    expect(reliefWeb).toContain("assert-authoritative-supabase.mjs");
-    expect(reliefWeb).toContain("SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}");
-    expect(reliefWeb).toContain("bun install --frozen-lockfile --ignore-scripts");
+    // ReliefWeb's canonical private writer migrated to D1 in PR #3442.
+    // Reject stale Supabase-era preflights rather than failing a valid D1 release.
+    expect(reliefWeb).toContain("RELIEFWEB_TRANSPORT: d1_private");
+    expect(reliefWeb).toContain("GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}");
+    expect(reliefWeb).toContain("node --test scripts/lib/private-unscored-source-d1.test.mjs");
+    expect(reliefWeb).toContain("node scripts/ingest-reliefweb-live.mjs");
+    expect(reliefWeb).not.toContain("assert-authoritative-supabase.mjs");
+    expect(reliefWeb).not.toContain("SUPABASE_URL:");
   });
 
   it("keeps browser source free of privileged VITE credentials", () => {
