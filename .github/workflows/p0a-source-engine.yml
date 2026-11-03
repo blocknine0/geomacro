@@ -1,0 +1,35 @@
+name: P0-A Source Registry and Format Engine
+
+on:
+  pull_request:
+    paths:
+      - 'src/lib/p0a-source-config.ts'
+      - 'workers/control-plane/src/p0a-source-format.mjs'
+      - 'workers/control-plane/src/p0a-source-registry.mjs'
+      - 'workers/control-plane/src/index.mjs'
+      - 'workers/control-plane/migrations/0113_p0a_source_registry.sql'
+      - 'scripts/tests/p0a-source-registry-engine.test.mjs'
+      - '.github/workflows/p0a-source-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p0a-source-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check source engine syntax
+        run: |
+          node --check workers/control-plane/src/p0a-source-format.mjs
+          node --check workers/control-plane/src/p0a-source-registry.mjs
+          node --check workers/control-plane/src/index.mjs
+      - name: P0-A D1 migration and HTTP/format regression tests
+        run: node --test scripts/tests/p0a-source-registry-engine.test.mjs

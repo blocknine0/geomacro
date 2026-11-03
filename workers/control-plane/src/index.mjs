@@ -42,6 +42,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
+import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1302,6 +1303,12 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // P0-A: D1-authoritative per-source due polling; empty registry is inert.
+    // One source failure cannot poison the cron or unrelated risk publishers.
+    if(env?.DB?.prepare)
+      ctx.waitUntil(pollP0aSources(env,{now:utc.getTime()}).then(r=>{
+        if(!r.ok)console.error('P0A_SOURCE_POLL_UNAVAILABLE');
+      }).catch(()=>console.error('P0A_SOURCE_POLL_UNAVAILABLE')));
     // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
     // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
     // Successful generated snapshots are immutable per UTC day.
@@ -1585,6 +1592,7 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
 
     try {
       // Owner-only, strictly bounded current-day canonical reconciliation.
