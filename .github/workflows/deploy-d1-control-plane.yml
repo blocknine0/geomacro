@@ -423,17 +423,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          QUEUE_LIST="$(npx -y "wrangler@${WRANGLER_VERSION}" queues list --json)"
+          # Probe each queue with the supported pinned Wrangler 4 info command.
           for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter; do
-            if printf '%s' "$QUEUE_LIST" | node -e '
-              let s="";process.stdin.on("data",c=>s+=c).on("end",()=>{
-                const r=JSON.parse(s);const items=Array.isArray(r)?r:Array.isArray(r?.queues)?r.queues:[];
-                process.exit(items.some(x=>x.name===process.argv[1])?0:1)
-              })' "$queue"; then
+            if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
               echo "P0B_QUEUE_PRESENT:$queue"
             else
               npx -y "wrangler@${WRANGLER_VERSION}" queues create "$queue" >/dev/null
-              echo "P0B_QUEUE_CREATED:$queue"
+              npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null
+              echo "P0B_QUEUE_CREATED_AND_READBACK_VERIFIED:$queue"
             fi
           done
 
@@ -443,6 +440,24 @@ jobs:
         run: |
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
+
+      - name: Seed pinned private source registry with exact D1 readback
+        if: env.P0B_ACTIVATE == '1'
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          SQL_FILE="p0b-seed.generated.sql"
+          trap 'rm -f "$SQL_FILE"' EXIT
+          node ../../scripts/ops/seed-p0b-pinned-registry.mjs
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --file "$SQL_FILE" >/dev/null
+          CENSUS="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT intended_category,COUNT(*) AS n FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;")"
+          for category in CRITICAL_MINERALS GEOPOLITICS MACRO_FX; do
+            printf '%s' "$CENSUS" | grep -q "$category" || {
+              echo "::error::P0B_REGISTERED_CATEGORY_MISSING_$category"; exit 19;
+            }
+          done
+          echo "P0B_PINNED_SOURCE_REGISTRY_REMOTE_READBACK=true"
 
       - name: Verify D1 schema directly
         working-directory: workers/control-plane
@@ -455,6 +470,21 @@ jobs:
           RISK_INDEX="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_phase2h_risk_country_category_clock','idx_phase2h_risk_country_unindexed_recent') ORDER BY name;")"
           printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_category_clock' || { echo "::error::RISK_COUNTRY_INDEX_REMOTE_MISSING"; exit 26; }
           printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_unindexed_recent' || { echo "::error::RISK_COUNTRY_BACKFILL_INDEX_REMOTE_MISSING"; exit 27; }
+
+      - name: Observe actual remote P0-B D1 registry and queue states
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "P0B_ACTIVATION_REQUESTED=${P0B_ACTIVATE:-0}"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT intended_category, COUNT(*) AS source_configs FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT state, COUNT(*) AS queue_items FROM ingestion_spool_queue GROUP BY state ORDER BY state;"
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS admitted_metadata_rows FROM normalized_articles;"
+          echo "P0B_REMOTE_CENSUS_COLLECTED=true"
+          echo "P0B_GENUINE_B2_PARITY_REQUIRES_REAL_RECEIPT=true"
 
       - name: Derive domain-separated control-plane token
         # Optionally accept an existing purpose-scoped token issued by Predge.
@@ -767,6 +797,28 @@ jobs:
           done
           test "$CODE" = "200" || { echo "Authenticated control-plane write failed: HTTP $CODE"; cat /tmp/auth.json; exit 9; }
           grep -q '"ok":true' /tmp/auth.json || { echo "Authenticated response missing ok=true"; exit 9; }
+
+      - name: Require genuine P0-B queue source and credential readiness
+        if: env.P0B_ACTIVATE == '1'
+        env:
+          CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          RESULT="$(curl -fsS --retry 3 --retry-delay 2 --max-time 20 \
+            -H "authorization: Bearer $CONTROL_PLANE_TOKEN" \
+            "$CONTROL_PLANE_URL/v1/internal/p0b/status")"
+          printf '%s' "$RESULT" | jq -e '
+            .ok == true and
+            .activation_flag == true and
+            .worker_queue_binding_present == true and
+            .worker_b2_credentials_present == true and
+            .ready_for_real_acceptance == true and
+            .source_registry.enabled > 0 and
+            .source_registry.total >= .source_registry.enabled
+          ' >/dev/null || { echo "::error::P0B_PRODUCTION_READINESS_UNVERIFIED"; exit 31; }
+          echo "P0B_REMOTE_D1_AND_QUEUE_CONFIG_VERIFIED=true"
+          echo "P0B_REAL_B2_CANDIDATE_ACCEPTANCE=NOT_YET_PROVEN"
 
       - name: Prove GeoMacro-certified news severity HMAC and 3 category readback after deploy
         # Existing canonical main deployment; no added cron, payments or D1 writes.
