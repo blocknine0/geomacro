@@ -1,0 +1,23 @@
+{
+  "schema": "geomacro.official-india-pib-free-reuse-source.v1",
+  "source_id": "india_pib_licensed_minerals_rss",
+  "publisher": "Press Information Bureau, Government of India",
+  "category": "CRITICAL_MINERALS",
+  "country_iso3": "IND",
+  "ingest_transport": "FIRST_PARTY_RSS_NOT_TELEGRAM",
+  "feed_url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+  "feed_directory": "https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1",
+  "license_type": "PIB_FREE_REPRODUCTION_WITH_SOURCE_ATTRIBUTION_AND_NO_THIRD_PARTY",
+  "license_reference": "https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1",
+  "original_release_example": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2332152&lang=1&reg=3",
+  "license_constraints": [
+    "source_prominently_acknowledged",
+    "no_third_party_copyright_without_permission",
+    "do_not_use_in_derogatory_or_misleading_context",
+    "reproduce_accurately"
+  ],
+  "telegram_content_authorization": false,
+  "claim_of_genuine_source_freshness": false,
+  "verification_status": "UNVERIFIED_PRIVATE_RESEARCH_ONLY",
+  "commercial_GRO_auto_promotion": false
+}
