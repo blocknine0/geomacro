@@ -111,9 +111,9 @@ export function planSourceIntake(snapshot,now){
 // Budget units are physical D1 rows (not SQL statements). The extra is
 // reserved to UTC reset; no paid plan, unlimited research or signing rights.
 export const REGISTERED_ADAPTIVE_FREE_CAP=Object.freeze({
- max_originals_per_15m:20,
+ max_originals_per_15m:150,
  baseline_reserved_originals:MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows,
- worst_case_extra_rows_written_per_original:16,
+ worst_case_extra_rows_written_per_original:4,
  worst_case_extra_rows_read_per_original:64,
  additional_write_contingency:10_000,
  additional_read_contingency:100_000,
@@ -261,7 +261,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
   const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
-    now,criticalGranted:grants.critical===true&&sourceIntake,
+    now,criticalGranted:sourceIntake,
   });
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* one-run retention pass at the granted maximum.

@@ -2,7 +2,7 @@
  * Source-native publication clocks are never replaced by ingestion timestamps.
  */
 import {createHash} from "node:crypto";
-import {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
+import {p0bMetadataEvent} from "./p0b-event-grounded-projection.mjs";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
 /** Founder-locked three-domain contract: transform every admitted raw original
  * into GeoMacro-authored five-part analysis without a manual commerce review.
@@ -83,6 +83,12 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
     /Open Government Licence v3\.0/u.test(c.credit);
   // A source issuing only a calendar day MUST NOT acquire a fictitious UTC
   // hour from an upstream parser's midnight sentinel.
+  // Publisher feed description or bounded first-party page metadata remains
+  // private evidence, never an independently verified event or paid right.
+  const privateDescription=typeof c.description==="string"&&
+    c.description.trim().length>=45&&c.description.length<=360&&
+    !/[<>]|https?:\/\/|\b(?:ignore previous|system prompt|api keys?)\b/iu.test(c.description)?
+      c.description.trim():null;
   const nativeDay=c.datePrecision==="day"||/^20\d{2}-\d{2}-\d{2}$/u.test(c.publishedAt);
   const nativePublished=nativeDay
     ?c.publishedAt.slice(0,10):c.publishedAt;
@@ -91,9 +97,9 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
    original_published_at:nativePublished,
    date_precision:nativeDay?"day":"exact",
    original_title:c.title,
-   original_content:openLicense&&typeof c.description==="string"&&
-     c.description.length<=900&&!/[<>]/u.test(c.description)?c.description:null,
-   content_scope:openLicense?"OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT":"ORIGINAL_FEED_METADATA_ONLY",
+   original_content:privateDescription,
+   content_scope:openLicense?"OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT":
+     privateDescription?"PRIVATE_SOURCE_DESCRIPTION_ONLY":"ORIGINAL_FEED_METADATA_ONLY",
    full_article_html_collected:false,
    original_article_license_verified:false,
    source_credit:typeof c.credit==="string"&&c.credit.length<=250?c.credit:null,
@@ -110,7 +116,7 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   // A headline alone remains RAW_MONITOR when the old model found no event.
   const hasMetadata=typeof c.description==="string"&&
     c.description.trim().length>=45&&!/[<>]/u.test(c.description);
-  const headlineEvent=hasMetadata?p0bHeadlineEvent(c.title,c.category):null;
+  const headlineEvent=hasMetadata?p0bMetadataEvent(c.title,c.description,c.category):null;
   const topic=s?.topic??null;
   const analysis={
    schema:"geomacro.phase2h.private-five-part.v1",
@@ -173,8 +179,8 @@ export async function postPhase2hPrivateRawRecords({
    controlPlaneRoot!=="https://geomacro-control-plane.daspallab202391.workers.dev")
   throw Error("PHASE2H_PRIVATE_INTAKE_AUTH_REQUIRED");
  let stored=0,duplicates=0,exactFivePart=0,retainedFivePart=0;
- for(let i=0;i<records.length;i+=20){
-  const group=records.slice(i,i+20);
+ for(let i=0;i<records.length;i+=50){
+  const group=records.slice(i,i+50);
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/phase2h-raw-news",{
    method:"PUT",redirect:"error",cache:"no-store",
    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
@@ -245,10 +251,10 @@ export async function postPhase2hPrivateRawRecords({
  */
 export async function postPhase2hCollisionIsolated({
  records,controlPlaneRoot,token,fetchImpl=fetch,
- post=postPhase2hPrivateRawRecords,maxAttempts=128
+ post=postPhase2hPrivateRawRecords,maxAttempts=320
 }={}){
  if(!Array.isArray(records)||records.length>600||
-    !Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>128||
+    !Number.isSafeInteger(maxAttempts)||maxAttempts<1||maxAttempts>320||
     new Set(records.map(r=>r?.record_id)).size!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_ARGUMENTS_INVALID");
  let stored=0,duplicate=0,rejected=0,attempts=0;
@@ -280,8 +286,8 @@ export async function postPhase2hCollisionIsolated({
    await send(group.slice(middle));
   }
  };
- for(let i=0;i<records.length;i+=20)
-  await send(records.slice(i,i+20));
+ for(let i=0;i<records.length;i+=50)
+  await send(records.slice(i,i+50));
  if(stored+duplicate+rejected!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_RECONCILIATION_FAILED");
  return Object.freeze({

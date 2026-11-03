@@ -10,7 +10,7 @@ import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore}
  from "./phase2h-archive-private-raw-news.mjs";
 
-const SOURCE_MAX=20;
+const SOURCE_MAX=150;
 const PREFIX="geomacro-evidence/v1/private/phase2h-raw-news/";
 const safeFailure=code=>{throw Error("PHASE2H_B2_FIRST_"+code)};
 export function assertB2FirstSourceEnv(env=process.env){
@@ -123,29 +123,39 @@ export async function acknowledgeB2FirstD1({
  // writer. A prior duplicate may still have a different immutable projector
  // hash or an existing B2 ACK. Isolate exactly that ID, never block the other
  // freshly inserted originals in the same verified gzip object.
- for(const row of receipt.rows){
-  const body={
-   schema:"geomacro.phase2h.b2-archive-ack.v1",
-   object_sha256:receipt.object_sha256,
-   items:[{record_id:row.record_id,raw_sha256:row.raw_sha256}],
-  };
-  let response,data;
+ // The Worker accepts up to 100 IDs in one verified D1 UPDATE/readback.
+ // Reserve bounded isolation attempts for genuine immutable ACK conflicts.
+ // Success: 50 originals per HTTP/D1 batch rather than one request per row.
+ let attempts=0;
+ const send=async group=>{
+  if(++attempts>24){deferred+=group.length;return}
+  let response=null,data=null;
   try{
    response=await fetchImpl(endpoint+"/v1/internal/phase2h-raw-news",{
     method:"PUT",redirect:"error",cache:"no-store",
     headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
-    body:JSON.stringify(body),signal:AbortSignal.timeout(15000),
+    body:JSON.stringify({
+     schema:"geomacro.phase2h.b2-archive-ack.v1",
+     object_sha256:receipt.object_sha256,
+     items:group.map(row=>({record_id:row.record_id,raw_sha256:row.raw_sha256})),
+    }),signal:AbortSignal.timeout(15000),
    });
    data=await response.json();
-  }catch{
-   deferred++;continue;
+  }catch{/* retry only a smaller independently verified cohort */}
+  if(response?.status===200&&data?.ok===true&&
+     data.archived===group.length&&
+     data.independent_d1_archive_ack_verified===true&&
+     data.rights_verified===false&&data.payments===0){
+    archived+=group.length;return;
   }
-  if(response.status===200&&data?.ok===true&&
-     data.archived===1&&data.independent_d1_archive_ack_verified===true&&
-     data.rights_verified===false&&data.payments===0)
-    archived++;
-  else deferred++;
- }
+  if(group.length===1||response?.status===401||response?.status===403||
+     response?.status===429){deferred+=group.length;return;}
+  const middle=Math.floor(group.length/2);
+  await send(group.slice(0,middle));
+  await send(group.slice(middle));
+ };
+ for(let i=0;i<receipt.rows.length;i+=50)
+  await send(receipt.rows.slice(i,i+50));
  if(archived+deferred!==receipt.record_count)
   safeFailure("D1_ARCHIVE_ACK_COUNT_MISMATCH");
  return {

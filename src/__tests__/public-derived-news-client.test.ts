@@ -43,6 +43,32 @@ describe("browser public journal fallback",()=>{
     expect(f.mock.calls[0]?.[0]).toBe(GEOMACRO_PERMANENT_LATEST_URL);
     expect(rows).toEqual([signal]);
   });
+  it("production live-first mode reads the cached D1 edge without a website rebuild",async()=>{
+    const liveUrl=GEOMACRO_DERIVED_BUNDLE_URL;
+    const checked_at=new Date(NOW).toISOString();
+    const fresh={...doc([signal]),schema:"geomacro.website-derived-news-bundle.v1",
+      checked_at,complete:true,item_cap:600,returned_rows:1,
+      first_ingest:[{id:signal.id,first_seen_at:checked_at}]};
+    const f=vi.fn(async(input:RequestInfo|URL,init?:RequestInit)=>{
+      expect(String(input)).toBe(liveUrl);
+      expect(init?.cache).toBeUndefined();
+      return Response.json(fresh);
+    });
+    expect(await fetchDirectDerivedNews(f as typeof fetch,NOW,{preferLive:true})).toEqual([signal]);
+    expect(f).toHaveBeenCalledOnce();
+  });
+  it("production live cache failure reads static continuity without falsely claiming new data",async()=>{
+    const calls:string[]=[];
+    const f=vi.fn(async(input:RequestInfo|URL)=>{
+      calls.push(String(input));
+      return String(input)===GEOMACRO_DERIVED_BUNDLE_URL
+        ?new Response("unavailable",{status:503})
+        :Response.json(doc([signal]));
+    });
+    expect(await fetchDirectDerivedNews(f as typeof fetch,NOW,{preferLive:true})).toEqual([signal]);
+    expect(calls).toContain(GEOMACRO_PERMANENT_LATEST_URL);
+    expect(calls[0]).toBe(GEOMACRO_DERIVED_BUNDLE_URL);
+  });
   it("loads permanent month/category shards only from static assets, never D1",async()=>{
     const index={schema:"geomacro.permanent-derived-news-archive-index.v1",
       updated_at:new Date(NOW).toISOString(),months:["2026-10"],

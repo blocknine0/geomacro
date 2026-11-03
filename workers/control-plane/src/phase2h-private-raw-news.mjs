@@ -57,7 +57,7 @@ export async function validPrivateRawNews(row,now=Date.now(),requireRecent=true)
    o.date_precision!==(o.original_published_at.length===10?"day":"exact")||
    typeof o.original_title!=="string"||o.original_title.length<1||
    o.original_title.length>260||/[<>]/u.test(o.original_title)||
-   !["OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT","ORIGINAL_FEED_METADATA_ONLY"]
+   !["OPEN_LICENSE_FEED_DESCRIPTION_WHEN_PRESENT","ORIGINAL_FEED_METADATA_ONLY","PRIVATE_SOURCE_DESCRIPTION_ONLY"]
       .includes(o.content_scope)||
    o.full_article_html_collected!==false||o.original_article_license_verified!==false||
    !(o.original_content===null||typeof o.original_content==="string"&&
@@ -123,7 +123,7 @@ export async function validPrivateRawNews(row,now=Date.now(),requireRecent=true)
 }
 export async function phase2hPrivateRawPut(env,body,now=Date.now()){
  if(!env?.DB||!exact(body)||body.schema!=="geomacro.phase2h.private-raw-batch.v1"||
-  !Array.isArray(body.items)||body.items.length<1||body.items.length>20)
+  !Array.isArray(body.items)||body.items.length<1||body.items.length>50)
   return safeReply({ok:false,error:"PRIVATE_RAW_BATCH_INVALID"},400);
  try{
   const ids=new Set(),items=[];

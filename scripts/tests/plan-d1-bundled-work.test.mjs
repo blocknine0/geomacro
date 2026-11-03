@@ -357,16 +357,16 @@ test("Phase2H cleanup grant funds exactly one provider-budgeted daily pass",()=>
  }
 });
 
-test("registered producer conservatively admits up to 20 real D1 rows under verified Free headroom",()=>{
+test("registered producer adaptively admits up to 150 real D1 rows under verified Free headroom",()=>{
  const t=new Date("2026-10-27T12:00:00.000Z");
  const p=planD1BundledWork(quota(1_000_000,10_000),{now:t});
- assert.equal(REGISTERED_ADAPTIVE_FREE_CAP.max_originals_per_15m,20);
+ assert.equal(REGISTERED_ADAPTIVE_FREE_CAP.max_originals_per_15m,150);
  assert.ok(p.registered_private_max_new_rows>=5);
- assert.ok(p.registered_private_max_new_rows<=20);
+ assert.ok(p.registered_private_max_new_rows<=150);
  assert.equal(p.registered_private_adaptive_free_budgeted,true);
  const slots=p.source_intake_budget_to_utc_reset.remaining_source_slots;
  const extra=p.registered_private_max_new_rows-5;
- assert.equal(p.registered_private_extra_daily_write_reserve,slots*extra*16);
+ assert.equal(p.registered_private_extra_daily_write_reserve,slots*extra*4);
  assert.equal(p.registered_private_extra_daily_read_reserve,slots*extra*64);
  assert.ok(p.remaining_rows_written>
    23000+p.source_intake_budget_to_utc_reset.rows_written+
@@ -388,4 +388,14 @@ test("adaptive producer is closed on denial/stale or insufficient account-wide b
  assert.equal(planRegisteredAdaptiveFreeOriginals({remaining_rows_read:4_000_000,
   remaining_rows_written:100_000},{remaining_source_slots:48,rows_read:1000,rows_written:1000},{
    now:t,criticalGranted:false}).max_new_rows,0);
+});
+
+test("150-slot admission is permitted only with current provider-verified free headroom",()=>{
+ const at=new Date("2026-10-27T12:00:00.000Z");
+ const rich=planD1BundledWork(quota(100_000,2_000),{now:at});
+ assert.equal(rich.registered_private_max_new_rows,150);
+ assert.equal(rich.registered_private_extra_daily_write_reserve,
+   rich.source_intake_budget_to_utc_reset.remaining_source_slots*145*4);
+ const denied=planD1BundledWork(quota(4_700_000,30_000),{now:at});
+ assert.equal(denied.registered_private_max_new_rows,0);
 });

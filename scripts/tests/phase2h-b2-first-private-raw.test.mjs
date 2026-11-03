@@ -145,16 +145,17 @@ test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original 
   token:"a".repeat(64),
   fetchImpl:async(url,opts)=>{
    const body=JSON.parse(opts.body);
-   assert.equal(body.items.length,1);
+   calls.push(body.items.map(x=>x.record_id).join(","));
+   if(body.items.length>1)
+    return Response.json({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},{status:503});
    const id=body.items[0].record_id;
-   calls.push(id);
    return id===r2.record_id?
     Response.json({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},{status:503}):
     Response.json({ok:true,archived:1,independent_d1_archive_ack_verified:true,
      rights_verified:false,payments:0});
   },
  });
- assert.deepEqual(calls,selected.map(r=>r.record_id));
+ assert.deepEqual(calls,[selected.map(r=>r.record_id).join(","),...selected.map(r=>r.record_id)]);
  assert.equal(result.archived,1);
  assert.equal(result.deferred,1);
  assert.equal(result.status,"B2_FIRST_PARTIAL_D1_ACK_VERIFIED");
@@ -193,4 +194,27 @@ test("untrusted raw lifecycle error strings can never disclose provider details"
   rows,now,env,governorFactory,
   lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
  }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
+});
+
+test("B2-first 150-row D1 ACK uses only three 50-item verified requests",async()=>{
+ const ids=Array.from({length:150},(_,i)=>({
+   record_id:(i+1).toString(16).padStart(64,"0"),raw_sha256:"e".repeat(64),
+ }));
+ const sizes=[];
+ const receipt={storage_confirmed:true,rows:ids,record_count:150,object_sha256:"d".repeat(64)};
+ const result=await acknowledgeB2FirstD1({
+  receipt,postResult:{stored:150,duplicate:0,rejected_conflicts:0,
+    readback_verified:true,verified_originals:150},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async(_url,opts)=>{
+   const body=JSON.parse(opts.body);sizes.push(body.items.length);
+   return Response.json({ok:true,archived:body.items.length,
+    independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+  },
+ });
+ assert.deepEqual(sizes,[50,50,50]);
+ assert.equal(result.archived,150);
+ assert.equal(result.deferred,0);
+ assert.equal(result.all_selected_originals_archived,true);
 });

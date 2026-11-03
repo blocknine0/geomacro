@@ -69,7 +69,8 @@ test("actor-action original produces grounded five-part draft without independen
  assert.equal(x.analysis.why_it_matters.independently_verified,false);
  assert.equal(x.analysis.evidence_and_confidence.original_article_page_verified,false);
  assert.equal(x.analysis.evidence_and_confidence.paid_eligible,false);
- assert.equal(x.original.original_content,null);
+ assert.match(x.original.original_content,/central bank release confirmed/u);
+ assert.equal(x.original.content_scope,"PRIVATE_SOURCE_DESCRIPTION_ONLY");
 });
 test("vague or hedged title remains not independently verified and never fabricates a full fact",()=>{
  const row=buildPhase2hPrivateRawRecords([{
@@ -78,4 +79,17 @@ test("vague or hedged title remains not independently verified and never fabrica
  assert.equal(row.records.length,1);
  assert.equal(row.records[0].analysis.why_it_matters.text,null);
  assert.equal(row.records[0].analysis.evidence_and_confidence.paid_eligible,false);
+});
+
+test("meta description supplies a genuine event omitted from a descriptive headline",()=>{
+ const a=buildPhase2hPrivateRawRecords([{
+  ...original,title:"Domestic lending policy framework for the banking sector",
+  description:"Central Bank announced a policy interest rate reduction for domestic lending markets and the banking system."
+ }],{now:new Date("2026-11-03T12:00:00Z"),derive:()=>[]});
+ assert.equal(a.records.length,1);
+ const row=a.records[0];
+ assert.match(row.analysis.what_happened.text,/Central Bank announced/u);
+ assert.match(row.analysis.why_it_matters.text,/domestic lending markets/u);
+ assert.equal(row.analysis.evidence_and_confidence.independent_event_verified,false);
+ assert.equal(row.analysis.evidence_and_confidence.paid_eligible,false);
 });
