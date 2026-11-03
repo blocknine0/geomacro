@@ -409,3 +409,18 @@ test("explicit foreign headline always wins over issuer jurisdiction context",as
  assert.equal(out.items[0].country_iso3,"USA");
  assert.equal(out.summary.issuer_context_country_fallbacks_not_independently_verified,0);
 });
+
+test("generic oil refinery is not a Critical Minerals original; lithium processing is",async()=>{
+ const registry=[{id:"minerals_policy",url:"https://example.org/minerals/rss",
+  categories:["rare_earth"],supported:true,type:"rss"}];
+ const rss='<rss><channel>'+
+  '<item><title>India launches a new oil refinery processing project</title>'+
+  '<pubDate>Sat, 24 Oct 2026 23:50:00 GMT</pubDate></item>'+
+  '<item><title>India signs new lithium mineral processing supply agreement</title>'+
+  '<pubDate>Sat, 24 Oct 2026 23:55:00 GMT</pubDate></item>'+
+  '</channel></rss>';
+ const out=await collectRegisteredReusableNews({now:when,registry,normalize,
+  fetchImpl:async()=>response(rss)});
+ assert.equal(out.items.length,1);
+ assert.equal(out.summary.paid_publication_authorized,false);
+});
