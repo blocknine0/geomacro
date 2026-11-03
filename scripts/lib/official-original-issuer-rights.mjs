@@ -1,3 +1,4 @@
+import {verifyPinnedFactsOnlyGriV12Proof} from "./facts-only-gri-v12-dual-attestation.mjs";
 /**
  * #1827 per-ISSUER commercial-use policy. Published terms may authorize
  * *publisher-owned* content or factual use, but NEVER prove each article
@@ -163,9 +164,13 @@ export function resolveDerivedCommercialEligibility(source={}){
    s.originalArticleRedistributed!==true&&
    s.attributionRecorded===true;
  const allowMathematicalScore=rightsSafe&&independentFactsVerified===true;
+ // A SHA-shaped string or caller-supplied audit=true is not an audit.
+ // Require independently pinned Ed25519 Facts and Rights signatures over
+ // an actually recomputed, source-capped, 72-hour GRI v1.2 calculation.
  const commercialEligible=allowMathematicalScore&&
    s.independentScoreAuditVerified===true&&
-   s.scoreDerivedOnlyFromVerifiedFacts===true;
+   s.scoreDerivedOnlyFromVerifiedFacts===true&&
+   verifyPinnedFactsOnlyGriV12Proof(s);
  return Object.freeze({
    schema:DERIVED_FACTS_REUSE_POLICY_SCHEMA,sourceId,
    originalIssuerRightsBasis:originalRights,
