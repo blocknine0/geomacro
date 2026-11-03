@@ -80,6 +80,8 @@ class GovernedSourceRegistryTests(unittest.TestCase):
         mining = self.sources["mining_com_critical_minerals_rss"]
         self.assertEqual(doe["url"], "https://www.energy.gov/rss/energygov/2193718")
         self.assertEqual(mining["url"], "https://www.mining.com/feed/")
+        self.assertEqual(mining["timeout_seconds"], 8)
+        self.assertEqual(mining["retry_attempts"], 3)
         self.assertEqual(doe["event_type"], "CRITICAL_MINERALS_GOVERNMENT_RELEASE")
         self.assertEqual(mining["event_type"], "CRITICAL_MINERALS_INDUSTRY_REPORT")
         self.assertNotEqual(doe["source_id"], "usgs_minerals_news_rss")
