@@ -24,6 +24,7 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 jobs:
   p0b-durable-spool:
@@ -36,6 +37,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Inspect previous CodeQL check annotation for P0-B remediation
+        env:
+          GITHUB_READ_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          const url='https://api.github.com/repos/blocknine0/geomacro/check-runs/126257868360/annotations';
+          const response=await fetch(url,{headers:{
+            authorization:'Bearer '+process.env.GITHUB_READ_TOKEN,
+            accept:'application/vnd.github+json',
+            'user-agent':'GeoMacro-CodeQL-Fix'
+          }});
+          if(!response.ok){console.log('P0B_CODEQL_DIAGNOSTIC_HTTP_'+response.status);process.exit(0)}
+          const data=await response.json();
+          for(const row of data)console.log('P0B_CODEQL_ANNOTATION '+JSON.stringify({
+            path:row.path,line:row.start_line,level:row.annotation_level,
+            title:String(row.title??'').slice(0,160),
+            message:String(row.message??'').slice(0,400)
+          }));
+          NODE
       - name: Syntax and D1 spool acceptance
         run: |
           node --check workers/control-plane/src/index.mjs
