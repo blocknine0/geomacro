@@ -87,6 +87,14 @@ class GovernedSourceRegistryTests(unittest.TestCase):
         self.assertNotEqual(doe["source_id"], "usgs_minerals_news_rss")
         self.assertEqual(len(self.sources), 20)
 
+    def test_bis_media_original_issuer_rss_alternate_is_same_publisher(self):
+        source = self.sources["bis_rss_media_releases"]
+        self.assertEqual(source["retry_attempts"], 2)
+        self.assertEqual(source["timeout_seconds"], 8)
+        self.assertTrue(source["alternate_feed_url"].startswith("https://www.bis.org/doclist/all_pressrels.rss?"))
+        self.assertEqual(source["fallback_url"], "https://www.bis.org/media/news")
+        self.assertEqual(source["fallback_link_prefix"], "/media-releases/")
+
     def test_eu_official_rss_fallback_does_not_fabricate_date(self):
         source = self.sources["eu_council_press_rss"]
         self.assertEqual(source["retry_attempts"], 3)

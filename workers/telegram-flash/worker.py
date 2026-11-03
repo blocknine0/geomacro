@@ -369,9 +369,18 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "source_id": "bis_rss_media_releases",
         "name": "BIS Media Releases RSS",
         "url": "https://www.bis.org/doclist/all_pressrels.rss",
+        # Same first-party RSS with BIS's public media release filter. Keep
+        # publisher-native clock and article ID; never use a third-party RSS
+        # proxy to bypass server denial.
+        "alternate_feed_url": "https://www.bis.org/doclist/all_pressrels.rss?from=&till=&objid=pressrels&page=&paging_length=20&sort_list=date_desc&theme=simpledate_source&ml=false&mlurl=&emptylisttext=",
+        "fallback_url": "https://www.bis.org/media/news",
+        "fallback_link_prefix": "/media-releases/",
         "event_type": "MACRO_BIS_RELEASE",
         "source_reliability": 98.0,
         "max_entry_age_hours": 168,
+        "timeout_seconds": 8,
+        "retry_attempts": 2,
+        "retry_backoff_seconds": 1.0,
     },
     {
         "source_id": "bis_rss_central_banker_speeches",
@@ -1186,19 +1195,50 @@ async def process_feed(
             float(feed.get("retry_backoff_seconds", 1.0)),
         )
     except Exception as primary_error:
-        fallback_url = str(feed.get("fallback_url", "")).strip()
-        fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
-        if not fallback_url or not fallback_link_prefix:
-            raise
+        alternate_url = str(feed.get("alternate_feed_url", "")).strip()
+        # The alternate must be the SAME first-party HTTPS publisher. Never
+        # proxy via a new domain or let a denied source escape its publisher.
+        original_host = urlparse(url).hostname
+        alternate = urlparse(alternate_url)
+        if alternate_url and (
+            alternate.scheme != "https"
+            or alternate.hostname != original_host
+            or alternate.username is not None
+            or alternate.password is not None
+            or alternate.fragment
+        ):
+            raise RuntimeError("Official RSS alternate publisher domain invalid")
+        if alternate_url:
+            try:
+                status, raw, etag, modified = await asyncio.to_thread(
+                    fetch_feed_sync,
+                    alternate_url,
+                    None,
+                    None,
+                    int(feed.get("timeout_seconds", 20)),
+                    max(2, int(feed.get("retry_attempts", 2))),
+                    float(feed.get("retry_backoff_seconds", 1.0)),
+                )
+                url = alternate_url
+                # An ETag from the alternate RSS must not cause a future
+                # primary endpoint request to produce an unrelated 304.
+                etag, modified = None, None
+            except Exception:
+                alternate_url = ""
+        if not alternate_url:
+            fallback_url = str(feed.get("fallback_url", "")).strip()
+            fallback_link_prefix = str(feed.get("fallback_link_prefix", "")).strip()
+            if not fallback_url or not fallback_link_prefix:
+                raise
 
-        status, raw = await asyncio.to_thread(
-            fetch_web_page_sync,
-            fallback_url,
-            35,
-            2,
-            3.0,
-        )
-        transport = "official_page_fallback"
+            status, raw = await asyncio.to_thread(
+                fetch_web_page_sync,
+                fallback_url,
+                35,
+                2,
+                3.0,
+            )
+            transport = "official_page_fallback"
 
     if status == 304:
         print(
