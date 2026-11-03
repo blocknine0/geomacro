@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T10:21:21.324Z",
+  "updated_at": "2026-11-03T11:10:28.092Z",
   "signals": [
+    {
+      "id": "geopolitics-13ca00a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said deep strikes hit seven Russian defence industry sites and three military airfields in October - Defence Industry Europe",
+      "what_changed": "A monitored source feed reports: Ukraine said deep strikes hit seven Russian defence industry sites and three military airfields in October - Defence Industry Europe. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:52:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-70a6807c",
       "category": "geopolitics",
@@ -151,6 +170,82 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-204936a1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Hegseth announced pathway for troops to become military chaplains",
+      "what_changed": "A monitored source feed reports: Hegseth announced pathway for troops to become military chaplains. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T22:45:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.militarytimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-16420760",
+      "category": "geopolitics",
+      "title": "Geomacro finds IRGC said downed two US drones near Strait of Hormuz",
+      "what_changed": "A monitored source feed reports: IRGC said downed two US drones near Strait of Hormuz. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:53:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6e6f5170",
+      "category": "geopolitics",
+      "title": "Geomacro finds St. Petersburg cut military enlistment bonus to 400,000 rubles in second reduction in a month",
+      "what_changed": "A monitored source feed reports: St. Petersburg cut military enlistment bonus to 400,000 rubles in second reduction in a month. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:04:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7e1b1761",
+      "category": "geopolitics",
+      "title": "Geomacro finds How Indian Americans announced plans to Vote in the 2026 Midterms - Carnegie Endowment for International Peace",
+      "what_changed": "A monitored source feed reports: How Indian Americans announced plans to Vote in the 2026 Midterms - Carnegie Endowment for International Peace. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:49:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

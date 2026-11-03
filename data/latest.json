@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T11:08:21.336Z",
+  "checked_at": "2026-11-03T11:10:28.092Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-13ca00a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ukraine said deep strikes hit seven Russian defence industry sites and three military airfields in October - Defence Industry Europe",
+      "what_changed": "A monitored source feed reports: Ukraine said deep strikes hit seven Russian defence industry sites and three military airfields in October - Defence Industry Europe. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:52:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-15e70dad",
       "category": "macro",
@@ -448,6 +467,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-204936a1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Hegseth announced pathway for troops to become military chaplains",
+      "what_changed": "A monitored source feed reports: Hegseth announced pathway for troops to become military chaplains. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T22:45:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.militarytimes.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-685b7a8d",
       "category": "macro",
       "title": "Geomacro finds Platts proposed to launch US Gulf Coast distillers corn oil assessment Jan. 4, 2027 - S&P Global",
@@ -467,12 +505,12 @@
       "severity": null
     },
     {
-      "id": "macro-749f4f30",
-      "category": "macro",
+      "id": "geopolitics-16420760",
+      "category": "geopolitics",
       "title": "Geomacro finds IRGC said downed two US drones near Strait of Hormuz",
       "what_changed": "A monitored source feed reports: IRGC said downed two US drones near Strait of Hormuz. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T21:53:19.000Z",
@@ -495,6 +533,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T21:42:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-6e6f5170",
+      "category": "geopolitics",
+      "title": "Geomacro finds St. Petersburg cut military enlistment bonus to 400,000 rubles in second reduction in a month",
+      "what_changed": "A monitored source feed reports: St. Petersburg cut military enlistment bonus to 400,000 rubles in second reduction in a month. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:04:28.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-7e1b1761",
+      "category": "geopolitics",
+      "title": "Geomacro finds How Indian Americans announced plans to Vote in the 2026 Midterms - Carnegie Endowment for International Peace",
+      "what_changed": "A monitored source feed reports: How Indian Americans announced plans to Vote in the 2026 Midterms - Carnegie Endowment for International Peace. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T20:49:21.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
