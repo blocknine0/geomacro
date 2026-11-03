@@ -138,6 +138,8 @@ jobs:
       - name: Collect, publish and read back factual JSON
         if: steps.quota.outputs.critical == 'true'
         shell: bash
+        env:
+          GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS: ${{ steps.quota.outputs.registered_private_max_new_rows }}
         run: |
           set -euo pipefail
           bun scripts/ops/publish-all-source-reusable-news-json.ts

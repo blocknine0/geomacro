@@ -60,3 +60,24 @@ test("production registered-source script actually uses guarded admission",()=>{
  assert.match(wf,/node --test scripts\/tests\/phase2h-registered-private-quota.test.mjs/);
  assert.match(wf,/cron: "4,19,34,49 \* \* \* \*"/);
 });
+
+test("provider-budgeted cap accepts 20 genuine distinct originals fairly",()=>{
+ const records=Array.from({length:90},(_,i)=>row(i+1));
+ const batch=planRegisteredPrivateOriginals(records,{now:when,maxPerSlot:20});
+ assert.equal(batch.selected_count,20);
+ assert.deepEqual(batch.selected_by_category,{geopolitics:7,macro:7,rare_earth:6});
+ assert.equal(batch.deferred_reobserve,70);
+ assert.equal(batch.max_originals_per_slot,20);
+ assert.equal(batch.max_collision_attempts,41);
+ const second=planRegisteredPrivateOriginals(records,{now:new Date(when.getTime()+15*60_000),maxPerSlot:20});
+ assert.equal(new Set([...batch.records,...second.records].map(r=>r.record_id)).size,40);
+});
+test("registered cap cannot be missing, negative or above hard 20-row ceiling",()=>{
+ for(const cap of [0,-1,21,100,1.5,NaN])
+  assert.throws(()=>planRegisteredPrivateOriginals([row(1)],{now:when,maxPerSlot:cap}),
+   /REGISTERED_PRIVATE_ORIGINAL_ADMISSION_INVALID/u);
+ const src=readFileSync("scripts/ops/publish-all-source-reusable-news-json.ts","utf8");
+ const workflow=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
+ assert.match(src,/GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS/u);
+ assert.match(workflow,/GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS:/u);
+});

@@ -48,7 +48,15 @@ const phase2h=buildPhase2hPrivateRawRecords(phase2hOriginals,{
 // when a future already-scheduled source poll observes them again. A conflicting
 // immutable original is quarantined; an unrelated original still gets its
 // authenticated per-ID readback before the fact-only D1 projector proceeds.
-const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{now:new Date()});
+// This is the exact remaining-day, account-wide FREE D1 grant from the
+// verified provider quota plan. It is never supplied by untrusted publisher
+// metadata, search results, webhook payloads or user-facing requests.
+const quotaRaw=String(process.env.GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS??"");
+if(!/^(?:[1-9]|1[0-9]|20)$/u.test(quotaRaw))
+ throw Error("REGISTERED_PRIVATE_PROVIDER_ADMISSION_REQUIRED");
+const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{
+ now:new Date(),maxPerSlot:Number(quotaRaw),
+});
 const phase2hD1=await postPhase2hCollisionIsolated({
  records:phase2hQuota.records,controlPlaneRoot:endpoint,token,
  maxAttempts:phase2hQuota.max_collision_attempts,
