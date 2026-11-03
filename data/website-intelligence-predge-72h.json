@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T19:18:38.907Z",
+  "checked_at": "2026-11-03T20:06:25.383Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 344,
+  "item_count": 342,
   "counts": {
-    "geopolitics": 150,
-    "macro": 151,
+    "geopolitics": 149,
+    "macro": 150,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "cd720373711bbea25e6e5a076a5665455d1dd36ce34e2c7be2da2b02dba89b60",
+  "source_native_ids_sha256": "69155501efdd3673e940d0f670ac42dab6dfe56a8532b31a9932051e18c56ce2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6518,44 +6518,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T21:28:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c9befc7e",
-      "category": "geopolitics",
-      "title": "Geomacro finds UKMTO warned about possible piracy after fishing vessel incident - Iran International",
-      "what_changed": "A monitored source feed reports: UKMTO warned about possible piracy after fishing vessel incident - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T19:38:09.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-95cd0f68",
-      "category": "macro",
-      "title": "Geomacro finds UKMTO warned about possible piracy after fishing vessel incident - Iran International",
-      "what_changed": "A monitored source feed reports: UKMTO warned about possible piracy after fishing vessel incident - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T19:38:09.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
