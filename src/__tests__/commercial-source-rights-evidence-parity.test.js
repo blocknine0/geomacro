@@ -12,6 +12,7 @@ import {
 const rightsDoc = readFileSync("docs/COMMERCIAL_SOURCE_RIGHTS.md", "utf8");
 
 const EXPECTED_VERIFIED = [
+  "ecb_fx",
   "eurostat_government_finance",
   "gdelt_v2_events",
   "ucdp_candidate",
@@ -25,6 +26,7 @@ const EXPECTED_VERIFIED = [
 ];
 
 const EXPECTED_REVIEWED_ON = {
+  ecb_fx: "2026-11-03",
   eurostat_government_finance: "2026-09-15",
   gdelt_v2_events: "2026-09-15",
   ucdp_candidate: "2026-09-15",
@@ -75,7 +77,7 @@ describe("commercial source rights evidence parity", () => {
   });
 
   it("keeps every runtime VERIFIED source visible in the commercialization control document", () => {
-    expect(rightsDoc).toContain("**Last reviewed:** 2026-09-16");
+    expect(rightsDoc).toContain("**Last reviewed:** 2026-11-03");
     for (const sourceId of VERIFIED_COMMERCIAL_SOURCE_IDS) {
       expect(rightsDoc).toContain(`\`${sourceId}\``);
     }
