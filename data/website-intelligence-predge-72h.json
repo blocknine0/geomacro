@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T20:06:25.383Z",
+  "checked_at": "2026-11-03T23:13:15.199Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 342,
+  "item_count": 339,
   "counts": {
-    "geopolitics": 149,
-    "macro": 150,
-    "rare_earth": 43
+    "geopolitics": 148,
+    "macro": 149,
+    "rare_earth": 42
   },
-  "source_native_ids_sha256": "69155501efdd3673e940d0f670ac42dab6dfe56a8532b31a9932051e18c56ce2",
+  "source_native_ids_sha256": "26bfab586abe7ba91c00ef02c9d7dd2fd94f2abffe2bf7ffc3b0aa472348bc36",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6465,63 +6465,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-44642ace",
-      "category": "macro",
-      "title": "Geomacro finds Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: Chevron raised Exploration Spending By 50% - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T23:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9f348676",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı",
-      "what_changed": "A monitored source feed reports: Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T21:43:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-de39dd21",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos",
-      "what_changed": "A monitored source feed reports: Ukraine launched major drone attack again on Russia - ABC News - Breaking News, Latest News and Videos. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T21:28:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

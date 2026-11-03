@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T20:06:25.383Z",
+  "checked_at": "2026-11-03T23:13:15.199Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -4533,6 +4533,25 @@
       "severity": null
     },
     {
+      "id": "macro-799200cd",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제",
+      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T05:21:47.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-03aa4f70",
       "category": "geopolitics",
       "title": "Geomacro finds Russia said drone strikes hit Ukrainian cargo vessel - Breakingthenews.net",
@@ -4732,25 +4751,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T11:09:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9f348676",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı",
-      "what_changed": "A monitored source feed reports: Rubio said G20 focused on energy security, critical minerals, and supply chains - Anadolu Ajansı. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T21:43:25.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
