@@ -97,7 +97,7 @@ export function parseOfficialNativeRss(xml, category, now = new Date(), maxAgeMs
     // Reuse the ORIGINAL pulse's strict, already-reviewed resolver so URL
     // SHA and source-native timestamp match the separately readback D1 row.
     const rawLink=field(block,"link")||
-      block.match(/<link\\b[^>]*\\bhref\\s*=\\s*["']([^"']+)["'][^>]*\\/?\\s*>/iu)?.[1]||"";
+      block.match(/<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/iu)?.[1]||"";
     const canonical=category==="geopolitics"
       ?officialOriginalRssArticleUrl(block,{id:"un_news_security_original_rss_review"})
       :null;
