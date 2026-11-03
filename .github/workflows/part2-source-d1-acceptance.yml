@@ -9,6 +9,8 @@ on:
       - "scripts/lib/official-native-rss.mjs"
       - "scripts/lib/official-original-issuer-rights.mjs"
       - "scripts/run-rss-live-cycle.mjs"
+      - "workers/telegram-flash/worker.py"
+      - "scripts/ops/test-rss-native-clock.py"
       - "scripts/ingest-reliefweb-live.mjs"
       - "scripts/ingest-news.js"
       - ".github/workflows/ingest-reliefweb-live.yml"
@@ -48,6 +50,8 @@ jobs:
           node --check scripts/lib/private-unscored-source-d1.mjs
           node --check scripts/lib/reliefweb-private-d1.mjs
           node --check scripts/lib/official-original-issuer-rights.mjs
+      - name: Validate publisher-native RSS clock with negative cases
+        run: python3 scripts/ops/test-rss-native-clock.py
       - name: Execute unscored source D1 admission and readback contracts
         run: node --test scripts/lib/private-unscored-source-d1.test.mjs scripts/lib/classifier-provider-configuration.test.mjs
       - name: Install locked dependencies for existing invariants
