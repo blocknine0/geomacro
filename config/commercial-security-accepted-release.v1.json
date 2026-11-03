@@ -1,0 +1,24 @@
+{
+  "schema_version": "geomacro.commercial-security-accepted-release.v1",
+  "canonical_repository": "blocknine0/geomacro",
+  "approved_live_release_sha": "6b6d466fbc9f5b2234ac379e11679244be52d95e",
+  "acceptance_scope": "PART1_MASTER_COMMERCE_FREEZE_AND_PAID_OUTPUT_BOUNDARY",
+  "freeze_expected": true,
+  "body_limit_bytes": 8192,
+  "paid_write_probe_count": 14,
+  "real_funds_used": false,
+  "review_pr": 3445,
+  "security_source_paths": [
+    "src/lib/commercial-launch-gate.server.ts",
+    "src/lib/central-security.server.ts",
+    "server/middleware/00-central-security.ts",
+    "workers/control-plane/src/central-security-policies.mjs",
+    "src/lib/bounded-commercial-request-body.server.ts",
+    "src/lib/mainnet-intelligence-endpoint.server.ts",
+    "src/lib/category-intelligence-alias.server.ts",
+    "src/routes/api.x402.circle_.intelligence.ts",
+    "src/routes/api.x402.nevermined_.intelligence.ts",
+    "src/lib/public-paid-output-boundary.ts",
+    "src/lib/commercial-access-contract.ts"
+  ]
+}

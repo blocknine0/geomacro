@@ -9,6 +9,7 @@ on:
       - "server/middleware/00-central-security.ts"
       - "workers/control-plane/src/central-security-policies.mjs"
       - "scripts/ops/verify-master-commerce-freeze-live.mjs"
+      - "config/commercial-security-accepted-release.v1.json"
       - ".github/workflows/master-commerce-freeze-live-acceptance.yml"
   pull_request:
     paths:
@@ -17,6 +18,7 @@ on:
       - "server/middleware/00-central-security.ts"
       - "workers/control-plane/src/central-security-policies.mjs"
       - "scripts/ops/verify-master-commerce-freeze-live.mjs"
+      - "config/commercial-security-accepted-release.v1.json"
       - ".github/workflows/master-commerce-freeze-live-acceptance.yml"
   workflow_dispatch: {}
 
@@ -38,16 +40,15 @@ jobs:
         github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    env:
-      GEOMACRO_PRODUCTION_ACCEPTANCE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          fetch-depth: 0 # required to prove approved security ancestor and source parity
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22"
-      - name: Inspect deployed SHA and verify live global OFF (no funds)
+      - name: Verify pinned security release, 14 frozen routes and no-store (no funds)
         run: node scripts/ops/verify-master-commerce-freeze-live.mjs
       - name: Retain no-secrets acceptance receipt
         if: always()
