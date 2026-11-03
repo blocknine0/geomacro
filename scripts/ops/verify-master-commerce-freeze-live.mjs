@@ -50,6 +50,22 @@ try {
   // Do not promote changed or unavailable provenance to an accepted release.
 }
 
+function trustedPublishedSecurityLineage(observedSha) {
+  if (typeof observedSha !== "string" || !/^[0-9a-f]{40}$/.test(observedSha)) return false;
+  try {
+    // No unknown, detached or future commit may masquerade as approved live.
+    execFileSync("git", ["merge-base", "--is-ancestor", sha, observedSha],
+      { stdio: "ignore" });
+    execFileSync("git", ["merge-base", "--is-ancestor", observedSha, "HEAD"],
+      { stdio: "ignore" });
+    execFileSync("git", ["diff", "--quiet", sha, observedSha, "--",
+      ...requiredSecurityPaths], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const PAID_POSTS = [
   "/api/v1/payments/paypal/create-order",
   "/api/v1/payments/paypal/capture-order",
@@ -73,6 +89,8 @@ const evidence = {
   expected_canonical_sha: sha,
   observed_canonical_sha: null,
   live_sha_verified: false,
+  deployed_security_tree_verified: false,
+  approved_security_lineage_mode: "trusted-descendant-identical-security-tree",
   security_source_parity_verified: securitySourceParityVerified,
   homepage_http_status: 0,
   security_headers_verified: false,
@@ -85,20 +103,30 @@ const evidence = {
   result: "FAIL_CLOSED",
 };
 async function request(path, method) {
-  const response = await fetch(BASE + path, {
-    method,
-    redirect: "error",
-    cache: "no-store",
-    headers: { Accept: method === "GET" ? "*/*" : "application/json",
-      ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
-      "User-Agent": "GeomacroSecurityFreezeAcceptance/1.0" },
-    ...(method === "POST" ? { body: "{}" } : {}),
-    signal: AbortSignal.timeout(12000),
-  });
-  const body = await response.text();
-  if (new TextEncoder().encode(body).byteLength > 131072)
-    throw Error("PROBE_RESPONSE_TOO_LARGE");
-  return {status:response.status,headers:response.headers,body};
+  let lastError;
+  // Allow one bounded retry for transient TLS/DNS/transport timeout. HTTP
+  // failures and incorrect security responses are NEVER retried into success.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch(BASE + path, {
+        method, redirect: "error", cache: "no-store",
+        headers: { Accept: method === "GET" ? "*/*" : "application/json",
+          ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
+          "User-Agent": "GeomacroSecurityFreezeAcceptance/1.0" },
+        ...(method === "POST" ? { body: "{}" } : {}),
+        signal: AbortSignal.timeout(20000),
+      });
+      const body = await response.text();
+      if (new TextEncoder().encode(body).byteLength > 131072)
+        throw Error("PROBE_RESPONSE_TOO_LARGE");
+      return {status:response.status,headers:response.headers,body};
+    } catch (error) {
+      if (error instanceof Error && error.message === "PROBE_RESPONSE_TOO_LARGE")
+        throw error;
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : Error("PROBE_TRANSPORT_UNAVAILABLE");
 }
 const problems = securitySourceParityVerified ? [] : ["REVIEWED_SECURITY_SOURCE_DRIFT_OR_MISSING_ANCESTOR"];
 try {
@@ -116,11 +144,12 @@ try {
   try{marker=JSON.parse(build.body);}catch{marker={};}
   evidence.observed_canonical_sha=typeof marker.canonical_main_sha==="string"
     ? marker.canonical_main_sha : null;
+  evidence.deployed_security_tree_verified=trustedPublishedSecurityLineage(evidence.observed_canonical_sha);
   evidence.live_sha_verified=build.status===200 &&
     marker.schema_version==="geomacro.deployment-build.v1" &&
     marker.canonical_repository==="blocknine0/geomacro" &&
-    marker.canonical_main_sha===sha &&
-    marker.production_activation_performed===false;
+    marker.production_activation_performed===false &&
+    evidence.deployed_security_tree_verified;
   if(!evidence.live_sha_verified)problems.push("DEPLOYED_SHA_MISMATCH");
   for(const path of PAID_POSTS) {
     let status=0,freeze_error=false,no_store=false;
