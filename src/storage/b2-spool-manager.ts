@@ -37,7 +37,12 @@ const ID=/^[a-z0-9][a-z0-9_.:-]{2,119}$/;
 const BUCKET=/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
 const MAX_PLAIN_BYTES=256*1024,MAX_CIPHER_BYTES=1024*1024;
 const HEX=(bytes:Uint8Array)=>[...bytes].map(x=>x.toString(16).padStart(2,'0')).join('');
-const toBytes=(v:string|Uint8Array)=>typeof v==='string'?ENCODER.encode(v):v;
+const toBytes=(v:string|Uint8Array):ArrayBuffer=>{
+ const input=typeof v==='string'?ENCODER.encode(v):v;
+ const out=new ArrayBuffer(input.byteLength);
+ new Uint8Array(out).set(input);
+ return out;
+};
 export async function p0bSha256(v:string|Uint8Array){
  return HEX(new Uint8Array(await crypto.subtle.digest('SHA-256',toBytes(v))));
 }
@@ -47,7 +52,7 @@ function fromBase64(v:string){
  const value=atob(v);return Uint8Array.from(value,x=>x.charCodeAt(0));
 }
 async function hmac(key:Uint8Array,input:string){
- const k=await crypto.subtle.importKey('raw',key,{name:'HMAC',hash:'SHA-256'},false,['sign']);
+ const k=await crypto.subtle.importKey('raw',toBytes(key),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  return new Uint8Array(await crypto.subtle.sign('HMAC',k,toBytes(input)));
 }
 function objectKey(sourceId:string,sha:string,day:string){
@@ -100,9 +105,9 @@ export class B2SpoolManager {
   if(plain.length>MAX_PLAIN_BYTES)throw Error('P0B_SPOOL_PLAIN_TOO_LARGE');
   const nonce=crypto.getRandomValues(new Uint8Array(12));
   const cipher=new Uint8Array(await crypto.subtle.encrypt({
-   name:'AES-GCM',iv:nonce,
-   additionalData:ENCODER.encode(payload.sourceId+'|'+payload.candidateSha256)
-  },await this.aesKey(),plain));
+   name:'AES-GCM',iv:toBytes(nonce),
+   additionalData:toBytes(payload.sourceId+'|'+payload.candidateSha256)
+  },await this.aesKey(),toBytes(plain)));
   const envelope={
    schema:'geomacro.p0b-encrypted-spool.v1',algorithm:'AES-256-GCM',
    nonce:base64(nonce),ciphertext:base64(cipher),
@@ -121,9 +126,9 @@ export class B2SpoolManager {
    throw Error('P0B_SPOOL_CIPHER_INVALID');
   let plain:Uint8Array;
   try{plain=new Uint8Array(await crypto.subtle.decrypt({
-   name:'AES-GCM',iv:fromBase64(envelope.nonce),
-   additionalData:ENCODER.encode(sourceId+'|'+sha)
-  },await this.aesKey(),fromBase64(envelope.ciphertext)));}
+   name:'AES-GCM',iv:toBytes(fromBase64(envelope.nonce)),
+   additionalData:toBytes(sourceId+'|'+sha)
+  },await this.aesKey(),toBytes(fromBase64(envelope.ciphertext))));}
   catch{throw Error('P0B_SPOOL_AUTHENTICATION_FAILED')}
   if(plain.length>MAX_PLAIN_BYTES||await p0bSha256(plain)!==envelope.plaintext_sha256)
    throw Error('P0B_SPOOL_INTEGRITY_MISMATCH');
