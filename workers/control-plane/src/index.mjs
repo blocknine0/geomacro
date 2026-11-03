@@ -1623,6 +1623,22 @@ export default {
           "INDEXED BY idx_phase2h_risk_country_unindexed_recent "+
           "WHERE risk_country_iso3 IS NULL AND first_ingested_at>=?"
         ).bind(new Date(Date.now()-72*60*60*1000).toISOString()).first();
+        // Metadata-only readiness, not proof of Ed25519 signature validity.
+        // The per-target Risk Gate must separately verify the pinned signer,
+        // exact archive-qualified object hash, current age and all categories.
+        const nowIso=new Date().toISOString();
+        const [countryHot,corridorHot]=await Promise.all([
+          env.DB.prepare(
+            "SELECT COUNT(*) AS n FROM country_gro_verified_hot "+
+            "WHERE schema_version='gro-1.1' AND generated_at<=? "+
+            "AND expires_at>? AND archive_write_acknowledged=1"
+          ).bind(nowIso,nowIso).first(),
+          env.DB.prepare(
+            "SELECT COUNT(*) AS n FROM corridor_gro_verified_hot "+
+            "WHERE schema_version='gro-1.1' AND generated_at<=? "+
+            "AND expires_at>? AND archive_write_acknowledged=1"
+          ).bind(nowIso,nowIso).first(),
+        ]);
         const local_complete=country_count===195&&corridor_count===12&&
           country_synced===195&&corridor_synced===12;
         // Never turn yesterday's Supabase sync flag into today's green receipt.
@@ -1641,6 +1657,10 @@ export default {
           attempted_targets:Number(attempts?.attempted_targets??0),
           retry_budget_exhausted_missing:Number(attempts?.exhausted_missing??0),
           recent_original_country_index_pending:Number(pendingIndex?.pending??0),
+          current_hot_country_gro_candidate_count:Number(countryHot?.n??0),
+          current_hot_corridor_gro_candidate_count:Number(corridorHot?.n??0),
+          hot_gro_counts_are_crypto_verified:false,
+          scoring_requires_pinned_current_ed25519_gro:true,
           expected:{country:195,corridor:12,total:207},
           supabase_live_readback_verified:complete,
           remote_count:remote.ok===true?remote.remote_count:0,
