@@ -1,7 +1,8 @@
 /** Private-only first-party original intake. No provider calls or rights grants.
  * Source-native publication clocks are never replaced by ingestion timestamps.
  */
-import {createHash} from "node:crypto";\nimport {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
+import {createHash} from "node:crypto";
+import {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
 /** Founder-locked three-domain contract: transform every admitted raw original
  * into GeoMacro-authored five-part analysis without a manual commerce review.
