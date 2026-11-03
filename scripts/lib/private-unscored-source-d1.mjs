@@ -123,6 +123,7 @@ export async function persistUnscoredSourceCandidatesD1(candidates,{
     rejected_invalid:plan.discarded_invalid,
     identity_conflicts_quarantined:plan.identity_conflicts_quarantined+
       (receipt.rejected_conflicts??0),
+    existing_identity_conflicts_quarantined:receipt.rejected_conflicts??0,
     category_counts:plan.counts,
     d1_exact_readback_verified:true,
     per_original_readback_verified:receipt.per_original_readback_verified===true,
