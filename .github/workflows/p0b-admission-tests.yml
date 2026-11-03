@@ -35,3 +35,7 @@ jobs:
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/p0a-source-registry.mjs
           npm run test:p0-b
+      - name: Compile Cloudflare control-plane Worker without deploying
+        run: |
+          node -e "const fs=require('fs');const p='workers/control-plane/wrangler.example.jsonc';const c=JSON.parse(fs.readFileSync(p));c.d1_databases[0].database_id='00000000-0000-4000-8000-000000000000';fs.writeFileSync('workers/control-plane/wrangler.p0b-ci.jsonc',JSON.stringify(c))"
+          npx -y wrangler@4.136.3 deploy --dry-run --config workers/control-plane/wrangler.p0b-ci.jsonc --outdir /tmp/geomacro-p0b-worker-bundle
