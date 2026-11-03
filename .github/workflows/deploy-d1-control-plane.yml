@@ -19,6 +19,8 @@ on:
       - "src/lib/canonical-country-registry-195.ts"
       - "scripts/tests/news-product-factory.test.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
+      - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/lib/official-original-issuer-rights.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
@@ -52,6 +54,12 @@ on:
       - "workers/control-plane/src/public-free-d1-cache.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
+      # Source/provenance and B2 archive correctness can change without Worker
+      # source edits; wake the existing guarded main deployment and exact-SHA
+      # readback rather than leaving production on an old revision.
+      - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
       - "scripts/tests/materialized-public-news-pages.test.mjs"
       - "scripts/tests/website-derived-cap-compaction.test.mjs"
