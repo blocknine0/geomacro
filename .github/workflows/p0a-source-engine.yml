@@ -3,6 +3,7 @@ name: P0-A Source Registry and Format Engine
 on:
   pull_request:
     paths:
+      - 'src/lib/p0a-source-config.ts'
       - 'workers/control-plane/src/p0a-source-format.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
       - 'workers/control-plane/src/index.mjs'
