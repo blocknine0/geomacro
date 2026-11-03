@@ -93,7 +93,13 @@ describe("approved ReliefWeb live private observer",()=>{
     expect(daily).toContain('cron: "23 8 * * *"');
     expect(daily).toContain("bun scripts/ops/verify-live-on-demand-real-apis.ts");
     expect(flow).not.toContain("scripts/ingest-reliefweb-live.mjs");
-    expect(legacy).not.toContain("schedule:");
+    // Legacy Supabase writer remains separate; scheduled ingestion now uses
+    // the same private D1 metadata adapter and does not enable that writer.
+    expect(legacy).toContain('cron: "3,18,33,48 * * * *"');
+    expect(legacy).toContain("RELIEFWEB_TRANSPORT: d1_private");
+    expect(legacy).not.toContain("SUPABASE_URL:");
+    expect(legacy).not.toContain("SUPABASE_SERVICE_ROLE_KEY:");
+    expect(legacy).toContain("node scripts/ingest-reliefweb-live.mjs");
     expect(flow).toContain("read-only-country-matrix:");
   });
 });
