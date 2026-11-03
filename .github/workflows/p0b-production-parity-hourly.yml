@@ -84,8 +84,8 @@ jobs:
           printf '%s' "$POLL" | jq -c '{
             schema: "geomacro.p0b.private-producer-diagnosis.v1",
             due_selected,accepted_count:([.receipts[]?.accepted // 0] | add // 0),
-            producer_error_codes:([.receipts[]?.p0b_failure_codes |
-              to_entries[]?] | group_by(.key) |
+            producer_error_codes:([.receipts[]? | (.p0b_failure_codes // {}) |
+              to_entries[]] | group_by(.key) |
               map({key:.[0].key,value:(map(.value)|add)}) | from_entries),
             polled_states:(.receipts | group_by(.state) |
               map({key:.[0].state,value:length}) | from_entries)
