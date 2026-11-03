@@ -127,7 +127,7 @@ class GovernedSourceRegistryTests(unittest.TestCase):
         self.assertEqual(doe["event_type"], "CRITICAL_MINERALS_GOVERNMENT_RELEASE")
         self.assertEqual(mining["event_type"], "CRITICAL_MINERALS_INDUSTRY_REPORT")
         self.assertNotEqual(doe["source_id"], "usgs_minerals_news_rss")
-        self.assertEqual(len(self.sources), 30)
+        self.assertEqual(len(self.sources), 34)
 
     def test_bis_media_original_issuer_rss_alternate_is_same_publisher(self):
         source = self.sources["bis_rss_media_releases"]
