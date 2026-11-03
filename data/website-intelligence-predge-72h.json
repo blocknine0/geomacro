@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T03:02:28.285Z",
+  "checked_at": "2026-11-03T06:36:24.480Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -14,11 +14,11 @@
   "max_items": 600,
   "item_count": 248,
   "counts": {
-    "geopolitics": 112,
-    "macro": 99,
-    "rare_earth": 37
+    "geopolitics": 109,
+    "macro": 100,
+    "rare_earth": 39
   },
-  "source_native_ids_sha256": "2acb0f7e745b8a355868a725d60d069834bc701f00458ed5b3b496b76d79b09f",
+  "source_native_ids_sha256": "3f5718d8a77e96506fff47601b14aeed7536d4dc6015ce206039725eae86f25b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,82 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-cba3e18c",
+      "category": "macro",
+      "title": "Geomacro finds WGC lowered outlook for gold investment demand growth as bar buying slows - Reuters",
+      "what_changed": "A monitored source feed reports: WGC lowered outlook for gold investment demand growth as bar buying slows - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-7bfb0cf9",
+      "category": "macro",
+      "title": "Geomacro finds WGC lowered outlook for gold investment demand growth as bar buying slows - marketscreener.com",
+      "what_changed": "A monitored source feed reports: WGC lowered outlook for gold investment demand growth as bar buying slows - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:03:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9bbeb8af",
+      "category": "rare_earth",
+      "title": "Geomacro finds MMG extended long-stop date for Anglo American Brazil nickel deal to Dec 31",
+      "what_changed": "A monitored source feed reports: MMG extended long-stop date for Anglo American Brazil nickel deal to Dec 31. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T05:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d428dfb4",
+      "category": "rare_earth",
+      "title": "Geomacro finds MMG extended long-stop date for Anglo American Brazil nickel deal to Dec 31 - Mining Weekly",
+      "what_changed": "A monitored source feed reports: MMG extended long-stop date for Anglo American Brazil nickel deal to Dec 31 - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T05:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-46ec05af",
       "category": "geopolitics",
@@ -4660,82 +4736,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a59683d2",
-      "category": "macro",
-      "title": "Geomacro finds US Treasury said Iran's oil revenue, trade hit hard by pressure campaign - Iran International",
-      "what_changed": "A monitored source feed reports: US Treasury said Iran's oil revenue, trade hit hard by pressure campaign - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T05:38:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3ec7d940",
-      "category": "geopolitics",
-      "title": "Geomacro finds Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine",
-      "what_changed": "A monitored source feed reports: Poland called for Urgent Black Sea Ceasefire, Demands Fair Peace for Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T05:34:43.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e7592394",
-      "category": "geopolitics",
-      "title": "Geomacro finds EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in",
-      "what_changed": "A monitored source feed reports: EAM called for prioritising diplomacy over military solutions to resolve global conflicts at G20 meeting - Revoi.in. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T05:21:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-a69efd72",
-      "category": "geopolitics",
-      "title": "Geomacro finds Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%",
-      "what_changed": "A monitored source feed reports: Cloudflare reported 18.2 Million Network-Layer DDoS Attacks in Q3, Up 38%. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T04:56:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: feeds.feedburner.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
