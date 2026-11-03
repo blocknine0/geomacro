@@ -15,11 +15,28 @@ concurrency:
 jobs:
   verify-195x3-and-corridors:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 12
     env:
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       WORKER_URL: https://geomacro-control-plane.daspallab202391.workers.dev
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Reconcile exact 207 current-day D1 HMAC snapshots against private Supabase SHA (no funds)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#ROOT_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::RISK_207_OWNER_ROOT_SECRET_MISSING"; exit 2;
+          }
+          CONTROL_PLANE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          echo "::add-mask::$CONTROL_PLANE_TOKEN"
+          export CONTROL_PLANE_TOKEN
+          node scripts/ops/reconcile-unified-risk-207-production.mjs
       - name: Verify owner-only daily D1 and Supabase 207-snapshot receipts
         shell: bash
         run: |

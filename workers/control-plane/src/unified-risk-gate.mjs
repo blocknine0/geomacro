@@ -258,14 +258,23 @@ async function remote(cfg,path,{method="GET",body,headers={}}={},fetcher=fetch){
  * paths independently HMAC-verify stored bytes and exact remote hashes.
  */
 export async function syncUnifiedRiskSupabase(env,{
- now=Date.now(),fetcher=fetch,scope="BACKLOG",
+ now=Date.now(),fetcher=fetch,scope="BACKLOG",page=null,
 }={}){
  const cfg=supabaseCfg(env);
  if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
- if(!["BACKLOG","CANARY_EXACT"].includes(scope))
+ if(!["BACKLOG","CANARY_EXACT","CANONICAL_PAGE"].includes(scope))
   return {ok:false,error:"UNIFIED_SUPABASE_SYNC_SCOPE_INVALID"};
+ const canonicalPage=scope==="CANONICAL_PAGE";
+ if(canonicalPage&&(!Number.isInteger(page)||page<0||page>17))
+  return {ok:false,error:"UNIFIED_SUPABASE_CANONICAL_PAGE_INVALID"};
+ if(!canonicalPage&&page!==null)
+  return {ok:false,error:"UNIFIED_SUPABASE_PAGE_SCOPE_INVALID"};
  try{
   const canary=scope==="CANARY_EXACT",day=iso(now).slice(0,10);
+  const ordered=canonicalPage?[...CANONICAL_UNIFIED_TARGETS].sort((x,y)=>
+   x.type===y.type?(x.id<y.id?-1:x.id>y.id?1:0):
+    x.type<y.type?-1:1):null;
+  const pageTargets=canonicalPage?ordered.slice(page*12,page*12+12):null;
   const select="SELECT entity_type,entity_id,day_utc,snapshot_json,"+
    "audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots ";
   const rows=canary?
@@ -274,8 +283,19 @@ export async function syncUnifiedRiskSupabase(env,{
     "(entity_type='COUNTRY' AND entity_id IN ('TWN','CHN')) OR "+
     "(entity_type='CORRIDOR' AND entity_id='bab-el-mandeb')) "+
     "ORDER BY entity_type,entity_id LIMIT 3").bind(day).all())?.results??[]:
-   (await env.DB.prepare(select+
-    "WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
+   canonicalPage?
+    (await env.DB.prepare(select+
+     "WHERE day_utc=? AND (entity_type='CORRIDOR' OR "+
+     "(entity_type='COUNTRY' AND entity_id<>'TWN')) "+
+     "ORDER BY entity_type,entity_id LIMIT 12 OFFSET ?")
+     .bind(day,page*12).all())?.results??[]:
+    (await env.DB.prepare(select+
+     "WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
+  if(canonicalPage&&(
+   rows.length!==pageTargets.length||
+   rows.some((r,i)=>r.entity_type!==pageTargets[i].type||
+    r.entity_id!==pageTargets[i].id||r.day_utc!==day)))
+   return {ok:false,error:"UNIFIED_CANONICAL_PAGE_D1_SET_INCOMPLETE"};
   if(canary&&(
    rows.length!==3||
    !["COUNTRY|TWN","COUNTRY|CHN","CORRIDOR|bab-el-mandeb"]
@@ -298,12 +318,28 @@ export async function syncUnifiedRiskSupabase(env,{
     day_utc:x.day_utc,snapshot,audit_proof,
     content_sha256:x.content_sha256,generated_at:x.generated_at});
   }
-  await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?on_conflict=entity_type,entity_id,day_utc",{
-   method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
-   body:JSON.stringify(payload)},fetcher);
   const and=rows.map(x=>"and(entity_type.eq."+x.entity_type+",entity_id.eq."+
    encodeURIComponent(x.entity_id)+",day_utc.eq."+x.day_utc+")").join(",");
-  const read=await (await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,day_utc,content_sha256&or=("+and+")",{},fetcher)).json();
+  const readPath="/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,day_utc,content_sha256&or=("+and+")";
+  // Only the canonical-day repair first checks remote bytes. An already-
+  // healthy page is read-only; missing/mismatched exact immutable rows alone
+  // are re-upserted. This repairs even previously acknowledged missing rows.
+  let firstRead=null,needsWrite=payload;
+  if(canonicalPage){
+   firstRead=await (await remote(cfg,readPath,{},fetcher)).json();
+   if(!Array.isArray(firstRead)||firstRead.length>rows.length||
+    new Set(firstRead.map(y=>y.entity_type+"|"+y.entity_id+"|"+y.day_utc)).size!==firstRead.length)
+    return {ok:false,error:"UNIFIED_CANONICAL_PAGE_REMOTE_INVALID"};
+   needsWrite=payload.filter(x=>!firstRead.some(y=>
+    y.entity_type===x.entity_type&&y.entity_id===x.entity_id&&
+    y.day_utc===x.day_utc&&y.content_sha256===x.content_sha256));
+  }
+  if(needsWrite.length)
+   await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?on_conflict=entity_type,entity_id,day_utc",{
+    method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+    body:JSON.stringify(needsWrite)},fetcher);
+  const read=canonicalPage&&!needsWrite.length?firstRead:
+   await (await remote(cfg,readPath,{},fetcher)).json();
   if(!Array.isArray(read)||read.length!==rows.length||
    new Set(read.map(y=>y.entity_type+"|"+y.entity_id+"|"+y.day_utc)).size!==rows.length||
    rows.some(x=>!read.some(y=>y.entity_type===x.entity_type&&y.entity_id===x.entity_id&&
@@ -315,7 +351,10 @@ export async function syncUnifiedRiskSupabase(env,{
    if(receipt?.success===false)return {ok:false,error:"UNIFIED_SUPABASE_D1_RECEIPT_FAILED"};
   }
   return {ok:true,synced:rows.length,hash_readback_verified:true,
-   scope,exact_target_count:canary?3:null};
+   scope,exact_target_count:canary?3:null,
+   canonical_page:canonicalPage?page:null,
+   canonical_page_count:canonicalPage?rows.length:null,
+   remote_rows_repaired:canonicalPage?needsWrite.length:null};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_SYNC_FAILED"}}
 }
 /** One strictly bounded, fresh remote D1-to-Supabase daily hash census.
@@ -400,11 +439,29 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   // must be evaluated against a freshly verified Ed25519 GRO, not RSS counts.
   // Client-specific result is never misrepresented as part of the daily HMAC.
   const now=opts.now??Date.now();
-  const gro=payload.approved_thresholds?
-   await signedGro(env,target,now):null;
+  // Always re-evaluate the CURRENT pinned, Ed25519-verified and
+  // commercial-qualified GRO at query time. Never replace/re-sign an
+  // immutable daily observation because a GRO arrives later that day.
+  const gro=await signedGro(env,target,now);
   const trustedScores=validatedSignedCategoryScores(gro);
   const independentScore=calculateUnifiedRisk(Object.fromEntries(
    CATEGORIES.map(k=>[k,trustedScores[k]??null])));
+  const signedLiveStatus=!gro?"CURRENT_SIGNED_GRO_UNAVAILABLE":
+   independentScore.unifiedScore===null?
+    "CURRENT_SIGNED_GRO_THREE_CATEGORY_INCOMPLETE":
+    "CURRENT_ED25519_VERIFIED_THREE_CATEGORY_SCORE";
+  const verifiedLiveScoring={
+   status:signedLiveStatus,
+   unified_risk_score:independentScore.unifiedScore,
+   category_scores:Object.fromEntries(CATEGORIES.map(k=>[k,trustedScores[k]??null])),
+   missing_categories:independentScore.missing_categories,
+   signed_gro_object_id:gro?.object_id??null,
+   gro_generated_at:gro?.generated_at??null,
+   gro_expires_at:gro?.expires_at??null,
+   trusted_signed_gro_verified:gro!==null,
+   included_in_daily_snapshot_hmac:false,
+   commercial_action_authorized:false,
+  };
   const customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
    groVerified:!!gro,confidence:gro?.confidence??null,
    policy:payload.approved_thresholds
@@ -417,6 +474,9 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
    policy_evaluation_proof_scope:"NOT_INCLUDED_IN_DAILY_SNAPSHOT_HMAC",
    policy_evaluation_has_verified_gro:!!gro,
+   verified_live_scoring:verifiedLiveScoring,
+   policy_evaluation_has_complete_verified_score:
+    gro!==null&&independentScore.unifiedScore!==null,
    requested_lenient_override:lenient,
    override_acknowledged:payload.override_acknowledged===true,
    client_override_applied:lenient,execution_authorized:false};

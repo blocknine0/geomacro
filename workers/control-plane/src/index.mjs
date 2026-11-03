@@ -1575,6 +1575,31 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Owner-only, strictly bounded current-day canonical reconciliation.
+      // Page is the sole permitted input: 18 immutable ID-ordered pages
+      // of 12/last 3 real records. No arbitrary target, day, source fetch,
+      // payment, signed GRO promotion, private URLs, or HMAC key disclosure.
+      if(request.method==="POST"&&
+        url.pathname==="/v1/internal/risk-gate/unified-reconcile-page"&&!url.search){
+        let body;
+        try{
+          const raw=await request.text();
+          if(raw.length>96)throw Error("INVALID_SIZE");
+          body=JSON.parse(raw);
+        }catch{return json({ok:false,error:"UNIFIED_RECONCILE_INVALID_REQUEST"},400);}
+        if(!body||typeof body!=="object"||Array.isArray(body)||
+          Object.keys(body).length!==1||!Number.isInteger(body.page)||
+          body.page<0||body.page>17)
+          return json({ok:false,error:"UNIFIED_RECONCILE_INVALID_PAGE"},400);
+        const receipt=await syncUnifiedRiskSupabase(env,{scope:"CANONICAL_PAGE",page:body.page});
+        return json({schema:"geomacro.unified-risk-reconcile-page.v1",
+          ok:receipt.ok===true,page:body.page,
+          receipt_count:receipt.canonical_page_count??0,
+          remote_rows_repaired:receipt.remote_rows_repaired??0,
+          remote_hash_readback_verified:receipt.hash_readback_verified===true,
+          error:receipt.ok?null:receipt.error,
+          no_funds:true,commercial_activation:false},receipt.ok?200:503);
+      }
       // Owner-admin-only daily census; no article metadata or customer IDs.
       if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
         const day_utc=new Date().toISOString().slice(0,10);
@@ -1598,6 +1623,22 @@ export default {
           "INDEXED BY idx_phase2h_risk_country_unindexed_recent "+
           "WHERE risk_country_iso3 IS NULL AND first_ingested_at>=?"
         ).bind(new Date(Date.now()-72*60*60*1000).toISOString()).first();
+        // Metadata-only readiness, not proof of Ed25519 signature validity.
+        // The per-target Risk Gate must separately verify the pinned signer,
+        // exact archive-qualified object hash, current age and all categories.
+        const nowIso=new Date().toISOString();
+        const [countryHot,corridorHot]=await Promise.all([
+          env.DB.prepare(
+            "SELECT COUNT(*) AS n FROM country_gro_verified_hot "+
+            "WHERE schema_version='gro-1.1' AND generated_at<=? "+
+            "AND expires_at>? AND archive_write_acknowledged=1"
+          ).bind(nowIso,nowIso).first(),
+          env.DB.prepare(
+            "SELECT COUNT(*) AS n FROM corridor_gro_verified_hot "+
+            "WHERE schema_version='gro-1.1' AND generated_at<=? "+
+            "AND expires_at>? AND archive_write_acknowledged=1"
+          ).bind(nowIso,nowIso).first(),
+        ]);
         const local_complete=country_count===195&&corridor_count===12&&
           country_synced===195&&corridor_synced===12;
         // Never turn yesterday's Supabase sync flag into today's green receipt.
@@ -1616,6 +1657,10 @@ export default {
           attempted_targets:Number(attempts?.attempted_targets??0),
           retry_budget_exhausted_missing:Number(attempts?.exhausted_missing??0),
           recent_original_country_index_pending:Number(pendingIndex?.pending??0),
+          current_hot_country_gro_candidate_count:Number(countryHot?.n??0),
+          current_hot_corridor_gro_candidate_count:Number(corridorHot?.n??0),
+          hot_gro_counts_are_crypto_verified:false,
+          scoring_requires_pinned_current_ed25519_gro:true,
           expected:{country:195,corridor:12,total:207},
           supabase_live_readback_verified:complete,
           remote_count:remote.ok===true?remote.remote_count:0,
