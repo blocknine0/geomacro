@@ -4,6 +4,18 @@ on:
   schedule:
     - cron: '23 * * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/p0b-production-parity-hourly.yml'
+  workflow_run:
+    workflows:
+      - Deploy D1 Control Plane
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -14,7 +26,7 @@ concurrency:
 
 jobs:
   real-parity:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: production
@@ -39,6 +51,11 @@ jobs:
           echo "::add-mask::$TOKEN"
           STATUS="$(curl --fail-with-body -fsS --max-time 20 \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+          printf '%s' "$STATUS" | jq -c '{
+            schema,checked_at,activation_flag,
+            source_registry,queue_state,normalized_metadata_rows,
+            worker_b2_credentials_present,worker_queue_binding_present
+          }'
           printf '%s' "$STATUS" | jq -e '
             .ok==true and .ready_for_real_acceptance==true and
             .source_registry.enabled>0 and .worker_b2_credentials_present==true and
