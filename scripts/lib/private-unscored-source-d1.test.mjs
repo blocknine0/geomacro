@@ -36,6 +36,29 @@ test("title fallback classifies source candidates without inventing scores",()=>
     headline:"General meeting"}),{category:"geopolitics",basis:"publisher_source_event_type"});
 });
 
+test("independent minerals publishers remain private, with strict industry headline relevance",()=>{
+  assert.deepEqual(rssSourceCategory({
+    source_id:"doe_critical_materials_rss",
+    event_type:"CRITICAL_MINERALS_GOVERNMENT_RELEASE",
+    headline:"Critical materials supply chain assessment",
+  }),{category:"rare_earth",basis:"publisher_source_event_type"});
+  assert.equal(rssSourceCategory({
+    source_id:"mining_com_critical_minerals_rss",
+    event_type:"CRITICAL_MINERALS_INDUSTRY_REPORT",
+    headline:"Gold miner shares jump after earnings call",
+  }),null);
+  assert.deepEqual(rssSourceCategory({
+    source_id:"mining_com_critical_minerals_rss",
+    event_type:"CRITICAL_MINERALS_INDUSTRY_REPORT",
+    headline:"Lynas signs rare earth supply agreement",
+  }),{category:"rare_earth",basis:"publisher_source_event_type"});
+  assert.deepEqual(rssSourceCategory({
+    source_id:"mining_com_critical_minerals_rss",
+    event_type:"CRITICAL_MINERALS_INDUSTRY_REPORT",
+    headline:"Copper mine adds downstream processing capacity",
+  }),{category:"rare_earth",basis:"publisher_source_event_type"});
+});
+
 test("RSS private observation admission rejects unsafe and undated inputs",()=>{
   const rows=[
     rss("fed_press","MACRO_OFFICIAL_RELEASE","Federal Reserve monetary policy announcement",

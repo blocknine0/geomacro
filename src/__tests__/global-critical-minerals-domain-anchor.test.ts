@@ -24,6 +24,16 @@ describe("#1827 explicit multilingual critical minerals category anchor", () => 
   it.each(fixture)("canonical gate recognizes explicit named mineral in non-English governed discovery: %s", (headline) => {
     expect(hasExplicitCriticalMineralsDomainAnchor(headline)).toBe(true);
   });
+  it("admits additional explicitly named mineral materials, without generic supply-chain promotion",()=>{
+    for(const text of [
+      "Copper concentrate exports face new controls",
+      "Manganese processing capacity expansion confirmed",
+      "Vanadium battery materials production announced",
+      "New niobium and tantalum refining supply agreements",
+      "Fluorspar production restarts",
+      "Bauxite mining and alumina refining project opens",
+    ]) expect(hasExplicitCriticalMineralsDomainAnchor(text)).toBe(true);
+  });
   it("never treats generic industry, supply, export or AI buzzwords as mineral evidence", () => {
     for (const text of [
       "Major manufacturer discusses export restrictions affecting supply chains",
