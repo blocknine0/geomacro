@@ -101,6 +101,7 @@ describe("universal facts-only derived commercial candidate policy",()=>{
    const x=resolveDerivedCommercialEligibility({
      sourceId:"australia_industry_minister_original_rss_review",
      sourceAccessAuthorized:true,sourceTermsAllowThisProcessing:true,
+     attributionRecorded:true,
    });
    expect(x.storeRawText).toBe(false);
    expect(x.publishOriginalArticle).toBe(false);
