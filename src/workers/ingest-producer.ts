@@ -3,6 +3,7 @@
  * Never report an unspooled/undurable candidate as accepted.
  */
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
+import {canonicalJson} from '../lib/canonical-json.ts';
 import type {B2SpoolEnv} from '../storage/b2-spool-manager.ts';
 export type IngestCandidate={candidateSha256:string;sourceId:string;raw:unknown};
 export type ProducerEnv=B2SpoolEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
@@ -29,7 +30,7 @@ export async function processFetchedBatch(
   }
   once.add(c.candidateSha256);
   try{
-   const actual=await p0bSha256(JSON.stringify(c.raw));
+   const actual=await p0bSha256(canonicalJson(c.raw));
    if(actual!==c.candidateSha256)throw Error('P0B_CANDIDATE_IDENTITY_INVALID');
    let row=await env.DB.prepare(
     'SELECT source_id,state,b2_spool_uri,b2_byte_size FROM ingestion_spool_queue WHERE candidate_sha256=?'
