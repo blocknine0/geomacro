@@ -169,9 +169,12 @@ jobs:
           test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
           test -n "${B2_KEY_ID:-}" && test -n "${B2_APPLICATION_KEY:-}"
           node --input-type=module <<'NODE'
-          import {requireConfiguredClassifier} from './scripts/lib/classifier-provider-configuration.mjs';
-          requireConfiguredClassifier();
-          console.log('PRIVATE_SCORING_CLASSIFIER_CONFIGURATION_PRESENT');
+          import {configuredClassifierProviders} from './scripts/lib/classifier-provider-configuration.mjs';
+          const providers=configuredClassifierProviders();
+          // No credential is not a reason to stop collecting genuine originals.
+          // The canonical scorer keeps unscored regex hints out of paid output.
+          console.log(providers.length ? 'PRIVATE_SCORING_PROVIDER_AVAILABLE' :
+            'PRIVATE_SCORING_UNSCORED_SOURCE_DISCOVERY_ONLY');
           NODE
           LIST_JSON="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 list --json)"
           DB_ID="$(printf '%s' "$LIST_JSON" | node -e '
