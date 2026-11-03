@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T14:55:37.971Z",
+  "updated_at": "2026-11-03T15:27:41.576Z",
   "signals": [
+    {
+      "id": "geopolitics-952dcd18",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said he will end billions of dollars in military aid to Israel - Politico",
+      "what_changed": "A monitored source feed reports: Trump said he will end billions of dollars in military aid to Israel - Politico. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2b5c02e6",
+      "category": "geopolitics",
+      "title": "Geomacro finds SDPI held protest against attacks on mosques across Tamil Nadu",
+      "what_changed": "A monitored source feed reports: SDPI held protest against attacks on mosques across Tamil Nadu. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:13:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-97d0ac8f",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched new attacks on Iranian targets days after Netanyahu pressed Trump for more strikes",
+      "what_changed": "A monitored source feed reports: U.S. launched new attacks on Iranian targets days after Netanyahu pressed Trump for more strikes. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:07:24.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.pbs.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-497f6f7d",
       "category": "geopolitics",
