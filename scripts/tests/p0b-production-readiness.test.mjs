@@ -52,7 +52,7 @@ test('P0-B admin readiness returns D1 state only and refuses empty registry',asy
  try{
   const env={DB,GEOMACRO_P0B_ADMISSION_ACTIVE:'1',
    B2_KEY_ID:'not-a-secret',B2_APPLICATION_KEY:'not-a-secret',
-   B2_SPOOL_ENCRYPTION_KEY:'not-a-secret',B2_SPOOL_BUCKET:'test',
+   B2_SPOOL_ENCRYPTION_KEY:'not-a-secret',B2_SPOOL_BUCKET:'test',B2_SPOOL_PREFIX:'spool/',
    INGEST_QUEUE:{send:async()=>{}}};
   const before=await getP0bIngestionStatus(env);
   assert.equal(before.status,200);
