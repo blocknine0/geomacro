@@ -389,7 +389,7 @@ export const CANONICAL_UNIFIED_TARGETS=Object.freeze([
 const identity=x=>x.type+"|"+x.id;
 export function selectUnifiedRecoveryTarget(completed,attempts,now){
  const minute=new Date(now).getUTCHours()*60+new Date(now).getUTCMinutes();
- if(minute<512||minute>=1050)return null;
+ if(minute<512||minute>=1095)return null;
  const done=new Set(completed.map(x=>x.entity_type+"|"+x.entity_id));
  const byId=new Map(attempts.map(x=>[x.entity_type+"|"+x.entity_id,x]));
  const start=(minute-512)%CANONICAL_UNIFIED_TARGETS.length;
@@ -403,7 +403,7 @@ export function selectUnifiedRecoveryTarget(completed,attempts,now){
  }
  return null;
 }
-/** Primary minute slots plus one bounded catch-up target/minute until 17:30 UTC.
+/** Primary minute slots plus one bounded catch-up target/minute until 18:15 UTC.
  * The D1 attempt ledger prevents a failing upstream feed from looping forever.
  */
 export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
@@ -413,7 +413,7 @@ export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
   target=CANONICAL_UNIFIED_TARGETS[countryIdx];
  else if(minute>=500&&minute<512)
   target=CANONICAL_UNIFIED_TARGETS[195+minute-500];
- else if(minute>=512&&minute<1050){
+ else if(minute>=512&&minute<1095){
   if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_RECOVERY_D1_UNAVAILABLE"};
   try{
    const day=iso(now).slice(0,10);
