@@ -25,30 +25,6 @@
       "commercial_eligible": false,
       "original_publisher_native_time_required": true,
       "original_publisher_not_event_country": true
-    },
-    {
-      "source_id": "chile_cochilco_official_minerals_rss",
-      "category": "CRITICAL_MINERALS",
-      "publisher": "Comisión Chilena del Cobre (COCHILCO)",
-      "publisher_reference": "https://www.cochilco.cl/web/noticias/",
-      "feed_url": "https://www.cochilco.cl/web/noticias/feed/",
-      "reuse_policy": "RIGHTS_REVIEW_REQUIRED_METADATA_ONLY",
-      "reuse_reference": "https://www.cochilco.cl/",
-      "commercial_eligible": false,
-      "original_publisher_native_time_required": true,
-      "original_publisher_not_event_country": true
-    },
-    {
-      "source_id": "south_africa_dmpr_official_minerals_rss",
-      "category": "CRITICAL_MINERALS",
-      "publisher": "South African Department of Mineral and Petroleum Resources",
-      "publisher_reference": "https://www.dmpr.gov.za/Media-Centre/News",
-      "feed_url": "https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",
-      "reuse_policy": "RIGHTS_REVIEW_REQUIRED_METADATA_ONLY",
-      "reuse_reference": "https://www.dmpr.gov.za/",
-      "commercial_eligible": false,
-      "original_publisher_native_time_required": true,
-      "original_publisher_not_event_country": true
     }
   ]
 }
