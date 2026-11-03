@@ -139,7 +139,12 @@ export function createPhase2hCanonicalD1({
    ...(init.body?{body:JSON.stringify(init.body)}:{}),
    signal:AbortSignal.timeout(15000),
   });
-  if(!response.ok)fail("INTERNAL_FALLBACK_D1_UNAVAILABLE");
+  if(!response.ok){
+   const failure=Error("PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE");
+   // Numeric HTTP only, never private content or source identifiers.
+   failure.upstream_status=response.status;
+   throw failure;
+  }
   let body;try{body=await response.json()}
   catch{fail("INTERNAL_FALLBACK_RESPONSE_INVALID")}
   if(body?.ok!==true)fail("INTERNAL_FALLBACK_RECEIPT_INVALID");
@@ -204,6 +209,17 @@ export function createPhase2hCanonicalD1({
        hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
       );
     }catch(error){
+     // Private Worker can temporarily reject a 25-row verified JSON batch
+     // when a single Cloudflare isolate cannot complete the full readback.
+     // Retry the SAME immutable keyset cursor with smaller bounded pages;
+     // never advance a cursor or ACK an object on HTTP 429/503.
+     if(useInternal&&error instanceof Error&&
+        error.message==="PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE"&&
+        [429,503,504].includes(error.upstream_status)&&pageSize>1){
+       pageSize=pageSize===25?10:pageSize===10?5:1;
+       if(pageSize===1)maxRows=Math.min(maxRows,60);
+       continue;
+     }
      if(!useInternal&&error instanceof Error&&
         error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
       if(pageSize===25||pageSize===10){
