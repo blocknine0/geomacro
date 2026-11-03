@@ -780,7 +780,10 @@ test("PERMANENT FOUNDER LOCK: every admitted raw original yields five-part priva
  for(const r of rows){
   assert.equal(r.commercial_rights_verified,false);
   assert.equal(r.commercial_delivery_authorized,false);
-  assert.equal(r.original.original_content,null);
+  if(r.category==="rare_earth"){
+   assert.match(r.original.original_content,/processing grant/u);
+   assert.equal(r.original.content_scope,"PRIVATE_SOURCE_DESCRIPTION_ONLY");
+  }else assert.equal(r.original.original_content,null);
   assert.deepEqual(Object.keys(r.analysis).filter(k=>k!=="schema"),[...lock.five_part_fields]);
   assert.equal(r.analysis.what_happened.original_observation_id,r.record_id);
   assert.equal(r.analysis.evidence_and_confidence.original_observation_id,r.record_id);
