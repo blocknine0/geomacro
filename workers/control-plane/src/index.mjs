@@ -43,6 +43,7 @@ import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived}
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
+import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
 import {drainBacklog} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
@@ -1603,6 +1604,8 @@ export default {
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
     if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
+    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
+      return getP0bIngestionStatus(env);
 
     try {
       // Owner-only, strictly bounded current-day canonical reconciliation.
