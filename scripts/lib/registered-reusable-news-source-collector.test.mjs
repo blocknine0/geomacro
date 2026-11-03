@@ -374,7 +374,7 @@ test("eight existing first-party national issuer URLs carry ISO3 routing hints o
  const registry=registeredReusableNewsSources();
  assert.equal(PINNED_NATIONAL_PRIMARY_NEWS_FEEDS.length,8);
  const expected=new Map([
-  ["rbi.org.in","IND"],["www.rba.gov.au","AUS"],
+  ["www.rbi.org.in","IND"],["www.rba.gov.au","AUS"],
   ["www.centralbank.go.ke","KEN"],["www.cochilco.cl","CHL"],
  ]);
  for(const [domain,iso3] of expected){
