@@ -55,16 +55,49 @@ const getJson=async(url,fetchImpl,timeoutMs=9000)=>{
  try{return JSON.parse(raw)}catch{providerFail("INVALID_JSON")}
 };
 /**
- * Two capped GDELT attempts share the OLD nine-second discovery budget.
- * Only transient egress/timeouts/502/503 retry; 401/403/429 and bad formats
- * remain quarantined. GDELT is never first-party or independent paid proof.
+ * Worker-safe static GDELT manifest probe. Actual MD5-checked Event/GKG ZIP
+ * ingestion is handled by the existing governed 15-minute archive workflow.
+ * A manifest is DISCOVERY INFRASTRUCTURE, never an article verification.
  */
-export const getGdeltDiscoveryWithRecovery=async(url,fetchImpl)=>{
- try{return await getJson(url,fetchImpl,5500)}
+const GDELT_LASTUPDATE="https://data.gdeltproject.org/gdeltv2/lastupdate.txt";
+const staticManifest=async(fetchImpl,timeoutMs=5500,now=Date.now())=>{
+ let response;
+ try{
+  response=await fetchImpl(GDELT_LASTUPDATE,{
+   method:"GET",redirect:"manual",headers:{Accept:"text/plain"},
+   signal:AbortSignal.timeout(timeoutMs)
+  });
+ }catch(error){providerFail(error?.name==="TimeoutError"||error?.name==="AbortError"?
+  "UPSTREAM_TIMEOUT":"NETWORK_FETCH_FAILED")}
+ if(response.redirected||response.status>=300&&response.status<400)
+  providerFail("REDIRECT_DENIED");
+ if(response.status!==200)providerFail([401,403,404,429,500,502,503].includes(response.status)?
+  "HTTP_"+response.status:"HTTP_OTHER");
+ const raw=await response.text();
+ if(raw.length>4096)providerFail("OVERSIZE");
+ const lines=raw.trim().split(/\r?\n/u).filter(Boolean);
+ if(lines.length!==3)providerFail("INVALID_JSON");
+ const kinds=new Set();
+ for(const line of lines){
+  const m=/^(\d+)\s+([a-f0-9]{32})\s+https?:\/\/data\.gdeltproject\.org\/gdeltv2\/(\d{14})\.(export\.CSV|mentions\.CSV|gkg\.csv)\.zip$/iu.exec(line);
+  if(!m||Number(m[1])<=0)providerFail("INVALID_JSON");
+  const date=m[3],ms=Date.parse(date.slice(0,4)+"-"+date.slice(4,6)+"-"+
+   date.slice(6,8)+"T"+date.slice(8,10)+":"+date.slice(10,12)+":"+
+   date.slice(12,14)+"Z");
+  if(!Number.isFinite(ms)||ms>now+300000||now-ms>3*3600000)
+   providerFail("INVALID_JSON");
+  if(kinds.has(m[4]))providerFail("INVALID_JSON");
+  kinds.add(m[4]);
+ }
+ if(kinds.size!==3)providerFail("INVALID_JSON");
+ return Object.freeze({manifest_verified:true,archives:kinds.size});
+};
+export const getGdeltStaticManifestWithRecovery=async(fetchImpl,now=Date.now())=>{
+ try{return await staticManifest(fetchImpl,5500,now)}
  catch(error){
   const transient=new Set(["UPSTREAM_TIMEOUT","NETWORK_FETCH_FAILED","HTTP_502","HTTP_503"]);
   if(!transient.has(providerCode(error)))throw error;
-  return getJson(url,fetchImpl,3500);
+  return staticManifest(fetchImpl,3500,now);
  }
 };
 const terms=(question,countryName)=>{
@@ -129,13 +162,8 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
  const govUrl=new URL("https://www.gov.uk/api/search.json");
  for(const [k,v] of Object.entries({q:govQ,count:"8",
   order:"-public_timestamp",filter_format:"news_article"}))govUrl.searchParams.set(k,v);
- const gdeltQ=country.name+" "+topical.slice(0,3).join(" ");
- const gdeltUrl=new URL("https://api.gdeltproject.org/api/v2/doc/doc");
- for(const [k,v] of Object.entries({query:gdeltQ,mode:"artlist",
-  format:"json",maxrecords:"10",sort:"datedesc",timespan:"72h"}))
-  gdeltUrl.searchParams.set(k,v);
  const settled=await Promise.allSettled([
-  getJson(govUrl.href,fetchImpl),getGdeltDiscoveryWithRecovery(gdeltUrl.href,fetchImpl),
+  getJson(govUrl.href,fetchImpl),getGdeltStaticManifestWithRecovery(fetchImpl,now),
   p0bFirstPartyFeedNews({category,countryIso3,countryName:country.name,
    question,fetchImpl,now}),
   category==="geopolitics"?
@@ -149,15 +177,8 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   rss: settled[2].status==="fulfilled"?settled[2].value.status:"FEED_UNAVAILABLE",
   reliefweb: settled[3].status==="fulfilled"?settled[3].value.status:"RELIEFWEB_UNAVAILABLE",
  };
- let discovery=0;
- if(settled[1].status==="fulfilled"){
-  const rows=settled[1].value?.articles;
-  // Index titles, GDELT search hits and seen timestamps are NOT original
-  // publisher verification. Count only; do not deliver or persist raw items.
-  discovery=Array.isArray(rows)?Math.min(10,rows.filter(x=>
-   typeof x?.url==="string"&&x.url.startsWith("https://")&&
-   typeof x?.title==="string").length):0;
- }
+ // Static 15m archive availability is not a verified article count.
+ const discovery=0;
  const official=settled[2].status==="fulfilled"?[...settled[2].value.items]:[];
  if(settled[3].status==="fulfilled")for(const row of settled[3].value.items){
   if(official.length>=2)break;
