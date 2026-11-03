@@ -194,3 +194,39 @@ test("untrusted raw lifecycle error strings can never disclose provider details"
   lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
  }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
 });
+
+test("immutable collision is isolated and 2 independently readback-verified originals still get B2 ACK",async()=>{
+ const additional=buildPhase2hPrivateRawRecords([
+  {category:"geopolitics",title:"Government announces regional security border agreement",
+   sourceId:"gov",articleUrl:"https://gov.example.org/border",
+   publishedAt:"2026-11-03T19:31:00.000Z",credit:null},
+  {category:"rare_earth",title:"Government announces lithium mineral export control restrictions",
+   sourceId:"minerals",articleUrl:"https://minerals.example.org/export",
+   publishedAt:"2026-11-03T19:33:00.000Z",credit:null},
+ ],{now,derive:()=>[]}).records;
+ assert.equal(additional.length,2);
+ const selected=[...rows,...additional];
+ let submitted=0;
+ const result=await acknowledgeB2FirstD1({
+  receipt:{storage_confirmed:true,rows:selected,record_count:3,
+   object_sha256:"d".repeat(64)},
+  postResult:{stored:1,duplicate:1,rejected_conflicts:1,
+   verified_originals:2,readback_verified:true},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async(_url,opts)=>{
+   const b=JSON.parse(opts.body);
+   assert.equal(b.items.length,1);submitted++;
+   return b.items[0].record_id===additional[1].record_id?
+    Response.json({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},
+     {status:503}):
+    Response.json({ok:true,archived:1,
+     independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+  },
+ });
+ assert.equal(submitted,3);
+ assert.equal(result.archived,2);
+ assert.equal(result.deferred,1);
+ assert.equal(result.all_selected_originals_archived,false);
+ assert.equal(result.status,"B2_FIRST_PARTIAL_D1_ACK_VERIFIED");
+});
