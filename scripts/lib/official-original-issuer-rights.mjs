@@ -149,9 +149,15 @@ export function resolveDerivedCommercialEligibility(source={}){
  // mediated claims need two independent verified issuers. A GDELT CAMEO
  // event code alone never verifies an event or its severity.
  const hasPrimary=evidence.some(e=>e?.kind==="OFFICIAL_PRIMARY_DOCUMENT");
- const hasOpenDatasetConsensus=evidence.filter(e=>
-   e?.kind==="LICENSED_OPEN_DATASET").length>=2 &&
-   new Set(evidence.map(e=>e?.issuer)).size>=2;
+ // Distinct issuer labels are insufficient: two issuer aliases must not
+ // recycle one dataset document, URL or content digest as dual corroboration.
+ // These trusted assertions are upstream verification inputs, not RSS proofs.
+ const independentDatasets=evidence.filter(e=>
+   e?.kind==="LICENSED_OPEN_DATASET");
+ const hasOpenDatasetConsensus=independentDatasets.length>=2 &&
+   new Set(independentDatasets.map(e=>e.issuer.trim().toLowerCase())).size>=2 &&
+   new Set(independentDatasets.map(e=>e.url)).size>=2 &&
+   new Set(independentDatasets.map(e=>e.contentSha256)).size>=2;
  const independentFactsVerified=proof&&(hasPrimary||hasOpenDatasetConsensus)&&
    s.independentSameEventVerified===true&&
    typeof s.countryIso3==="string"&&FACT_COUNTRY.test(s.countryIso3)&&
