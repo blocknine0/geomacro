@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T01:34:13.163Z",
+  "checked_at": "2026-11-03T02:37:33.647Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 242,
+  "item_count": 241,
   "counts": {
-    "geopolitics": 111,
+    "geopolitics": 110,
     "macro": 97,
     "rare_earth": 34
   },
-  "source_native_ids_sha256": "153a857ea6323cc714f2e73bcbf70d4e4315d65da35658c8477748ab077fecfe",
+  "source_native_ids_sha256": "a87126c730089139df6f6f20968b54a4774c771dfa944610e932d5ae42e755ee",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4599,25 +4599,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T02:47:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-43f18eb3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’",
-      "what_changed": "A monitored source feed reports: Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T02:04:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

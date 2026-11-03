@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T01:34:13.163Z",
+  "checked_at": "2026-11-03T02:37:33.647Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -4105,25 +4105,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T02:47:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-43f18eb3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’",
-      "what_changed": "A monitored source feed reports: Pentagon said Ukraine’s Patriot Missile Production Request Requires ‘Further Review’. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T02:04:48.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
