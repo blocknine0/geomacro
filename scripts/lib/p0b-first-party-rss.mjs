@@ -9,7 +9,10 @@ import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
 const SOURCES=Object.freeze({
  geopolitics:[{url:"https://news.un.org/feed/subscribe/en/news/all/rss.xml",host:"news.un.org",
   path:/^\/en\/story\/20\d{2}\/\d{1,2}\/[a-z0-9-]+$/u}],
- macro:[{url:"https://www.bis.org/doclist/all_pressrels.rss",host:"www.bis.org",
+ macro:[{url:"https://www.federalreserve.gov/feeds/press_monetary.xml",host:"www.federalreserve.gov",
+  path:/^\/newsevents\/pressreleases\/monetary20\d{6}[a-z]?\.htm$/u,
+  issuer_country:"USA",issuer:"Federal Reserve Board"},
+  {url:"https://www.bis.org/doclist/all_pressrels.rss",host:"www.bis.org",
   path:/^\/press\/p\d{6}[a-z]?\.htm$/u},
   // Official US BLS release RSS: publisher's agency jurisdiction is USA;
   // the topic still must be present in the same first-party native title.
@@ -22,7 +25,10 @@ const SOURCES=Object.freeze({
   {url:"https://www.bls.gov/feed/eci.rss",host:"www.bls.gov",
    path:/^\/news\.release\/(?:eci\.nr\d|archives\/eci_\d{8})\.htm$/u,
    issuer_country:"USA",issuer:"US Bureau of Labor Statistics"}],
- rare_earth:[{url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
+ rare_earth:[{url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+  host:"www.canada.ca",path:/^\/en\/natural-resources-canada\/news\/20\d{2}\/\d{2}\/[a-z0-9-]+\.html$/u,
+  issuer_country:"CAN",issuer:"Natural Resources Canada",format:"atom"},
+  {url:"https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
   host:"news.gov.bc.ca",path:/^\/releases\/20\d{2}[A-Z]{2,6}\d{4}-\d{6}$/u,
   issuer_country:"CAN",issuer_level:"PROVINCIAL",issuer:"Province of British Columbia"}],
 });
@@ -30,10 +36,11 @@ const resultError=x=>({status:x,items:[],checked:1});
 const capped=async(url,fetchImpl)=>{
  let r;
  try{r=await fetchImpl(url,{method:"GET",redirect:"manual",
-  headers:{Accept:"application/rss+xml, application/xml;q=0.9"},
+  headers:{Accept:"application/atom+xml, application/rss+xml, application/xml;q=0.9",
+   "User-Agent":"GeoMacroSourceMonitor/1.0 (+https://geomacro.live)"},
   signal:AbortSignal.timeout(9000)})}
  catch{return null}
- if(r.status!==200||r.redirected||!/xml|rss/iu.test(r.headers?.get("content-type")??"")||
+ if(r.status!==200||r.redirected||!/xml|rss|atom/iu.test(r.headers?.get("content-type")??"")||
    Number(r.headers?.get("content-length")??"0")>330000)return null;
  try{const body=await r.text();return body.length<=330000&&!/<!DOCTYPE\b/iu.test(body)?body:null}
  catch{return null}
@@ -63,6 +70,8 @@ export const xmlValue=(xml,tag)=>{
   .replace(/\s+/gu," ").trim();
  return text.length<=350?text:null;
 };
+const ATOM_PUBLISHED=/<published(?:\s[^>]*)?>([\s\S]*?)<\/published\s*>/iu;
+const ATOM_LINK=/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*\/?\s*>/iu;
 const sha=async data=>[...new Uint8Array(await crypto.subtle.digest(
  "SHA-256",new TextEncoder().encode(data)))].map(b=>b.toString(16).padStart(2,"0")).join("");
 const channels=category=>category==="macro"?["rates_and_bonds","fx_and_payments"]:
@@ -95,12 +104,14 @@ export async function p0bFirstPartyFeedNews({
   if(!xml)return null;
   const items=[];
   let scanned=0;
-  const matches=xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item\s*>/giu);
+  const matches=source.format==="atom"?xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry\s*>/giu):
+   xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item\s*>/giu);
   for(const match of matches){
    if(++scanned>40||items.length>=2)break;
-   const part=match[1],title=xmlValue(part,"title");
-   const url=pinnedPermalink(xmlValue(part,"link"),source);
-   const time=officialItemNativePublicationMs(xmlValue(part,"pubDate"));
+   const part=match[1],isAtom=source.format==="atom";
+   const title=xmlValue(part,"title");
+   const url=pinnedPermalink(isAtom?ATOM_LINK.exec(part)?.[1]:xmlValue(part,"link"),source);
+   const time=officialItemNativePublicationMs(isAtom?ATOM_PUBLISHED.exec(part)?.[1]?.trim():xmlValue(part,"pubDate"));
    if(!title||title.length<12||title.length>260||/[<>]/u.test(title)||
     !url||!Number.isFinite(time)||time>now+60000||now-time>72*3600000)continue;
    const inTitle=phase2hHeadlineCountryCandidate(title);

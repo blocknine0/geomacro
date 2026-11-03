@@ -457,7 +457,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   let globalResult=null;
   if(countryScoped&&p0bEnabled&&!qualityProbe&&!hasGrounded){
    try{globalResult=await globalFallback({
-    question,countryIso3,category,now});}
+    question,countryIso3,category,now,
+    reliefwebAppname:env.RELIEFWEB_APPROVED_APPNAME??env.RELIEFWEB_APP_NAME??null});}
    catch{globalResult={status:"GLOBAL_PROVIDER_UNAVAILABLE",attempted:true,
     first_party_matches:[],gdelt_discovery_count:0,provider_errors:1,
     exhaustive_global_search:false,
@@ -488,7 +489,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    // canonical original; never force clients to select a null first result.
    question_matches:[...(globalResult?.first_party_matches??[]).map(item=>({
     ...item,country_iso3:countryIso3,source:item.first_party_feed_metadata_verified===true?
-     "FIRST_PARTY_OFFICIAL_RSS":"GOV_UK_FIRST_PARTY_CONTENT_API",
+     "FIRST_PARTY_OFFICIAL_RSS":item.reliefweb_catalogue_metadata_verified===true?
+     "RELIEFWEB_UKRAINE_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
     ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
    })),...matched.map(item=>{
     const missing=typeof item.analysis.what_happened?.text!=="string"||
@@ -519,7 +521,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
      env.GEOMACRO_P0B_SOURCE_FIRST_ENABLED==="1"&&
      requestedId===null&&!qualityProbe){
    try{
-    const live=await globalFallback({question,countryIso3,category,now});
+    const live=await globalFallback({question,countryIso3,category,now,
+    reliefwebAppname:env.RELIEFWEB_APPROVED_APPNAME??env.RELIEFWEB_APP_NAME??null});
     const proof=live.first_party_matches??[];
     return safeReply({ok:true,
      schema:"geomacro.phase2h.private-question-fivepart.v1",
@@ -537,7 +540,8 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
      question_matches:proof.map(item=>({
       ...item,country_iso3:countryIso3,
       source:item.first_party_feed_metadata_verified===true?
-       "FIRST_PARTY_OFFICIAL_RSS":"GOV_UK_FIRST_PARTY_CONTENT_API",
+       "FIRST_PARTY_OFFICIAL_RSS":item.reliefweb_catalogue_metadata_verified===true?
+     "RELIEFWEB_UKRAINE_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
       ...phase2hPrivateResearchDirectAnswer(question,item.five_part)})),
      private_research_only:true,chargeable:false,paid_eligible:false,
      raw_original_not_delivered:true});

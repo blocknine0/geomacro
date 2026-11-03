@@ -157,3 +157,44 @@ test("RSS XML metadata decodes only one layer of escaped entities",()=>{
  assert.equal(xmlValue("<link>https://news.un.org/en/story/2026/10/1234567</link>","link"),
   "https://news.un.org/en/story/2026/10/1234567");
 });
+
+test("Federal Reserve monetary-policy release is an official USA macro feed",async()=>{
+ const rss='<rss><channel><item><title>Federal Reserve announces monetary policy decision</title>'+
+ '<link>https://www.federalreserve.gov/newsevents/pressreleases/monetary20261030a.htm</link>'+
+ '<pubDate>Fri, 30 Oct 2026 08:00:00 GMT</pubDate></item></channel></rss>';
+ const fetchImpl=async url=>({status:200,redirected:false,
+  headers:{get:()=>"application/rss+xml"},
+  text:async()=>url.includes("press_monetary.xml")?rss:"<rss><channel></channel></rss>"});
+ const r=await p0bFirstPartyFeedNews({countryIso3:"USA",countryName:"United States",
+  category:"macro",question:"Latest United States macro news",now,fetchImpl});
+ assert.equal(r.items.length,1);
+ assert.equal(r.items[0].issuer_country_verified,"USA");
+ assert.equal(r.items[0].paid_eligible,false);
+});
+test("NRCan national Atom feed admits native Canadian mineral release",async()=>{
+ const atom='<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">'+
+ '<entry><title>Canada announces critical minerals investment</title>'+
+ '<link rel="alternate" href="https://www.canada.ca/en/natural-resources-canada/news/2026/10/canada-announces-critical-minerals-investment.html"/>'+
+ '<published>2026-10-30T08:00:00Z</published></entry></feed>';
+ const fetchImpl=async url=>({status:200,redirected:false,
+  headers:{get:()=>"application/atom+xml"},
+  text:async()=>url.includes("api.io.canada.ca")?atom:"<rss><channel></channel></rss>"});
+ const r=await p0bFirstPartyFeedNews({countryIso3:"CAN",countryName:"Canada",
+  category:"rare_earth",question:"Canada critical minerals",now,fetchImpl});
+ assert.equal(r.items.length,1);
+ assert.equal(r.items[0].issuer_country_verified,"CAN");
+ assert.equal(r.items[0].first_party_feed_metadata_verified,true);
+ assert.equal(r.items[0].paid_eligible,false);
+});
+
+test("Atom title with nested markup is not sanitized into accepted evidence",async()=>{
+ const atom='<feed><entry><title>Canada <script><script>announces critical minerals investment</script></script></title>'+
+ '<link href="https://www.canada.ca/en/natural-resources-canada/news/2026/10/critical-minerals.html"/>'+
+ '<published>2026-10-30T08:00:00Z</published></entry></feed>';
+ const fetchImpl=async url=>({status:200,redirected:false,
+  headers:{get:()=>"application/atom+xml"},
+  text:async()=>url.includes("api.io.canada.ca")?atom:"<rss><channel/></rss>"});
+ const r=await p0bFirstPartyFeedNews({countryIso3:"CAN",countryName:"Canada",
+  category:"rare_earth",question:"Canada critical minerals",now,fetchImpl});
+ assert.equal(r.items.length,0);
+});
