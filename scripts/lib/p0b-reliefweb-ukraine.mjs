@@ -46,7 +46,8 @@ export async function p0bReliefWebUkraine({appname,fetchImpl=fetch,now=Date.now(
    /[<>]/u.test(title)||!url)continue;
   // An original source publication clock is preferred to ReliefWeb's
   // catalogue creation clock; neither proves independent event truth.
-  const nativeMs=officialItemNativePublicationMs(f?.date?.original) ??
+  const originalMs=officialItemNativePublicationMs(f?.date?.original);
+  const nativeMs=Number.isFinite(originalMs)?originalMs:
     officialItemNativePublicationMs(f?.date?.created);
   if(!Number.isFinite(nativeMs)||nativeMs>now+60000||
     now-nativeMs>72*3600000)continue;
