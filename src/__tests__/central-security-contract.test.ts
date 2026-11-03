@@ -12,6 +12,7 @@ import {
   CENTRAL_SECURITY_VERSION,
   REAL_FUNDS_SECURITY_ACK,
   centralSecurityClientKey,
+  commercialEmergencyDecision,
   classifyCentralSecurityRoute,
   enforceCentralRequestSecurity,
   isCoinbaseTestnetLocalSecurityFallbackAllowed,
@@ -23,6 +24,8 @@ const ENV_KEYS = [
   "COINBASE_X402_ENVIRONMENT",
   "GOATX402_ENVIRONMENT",
   "GEOMACRO_CENTRAL_SECURITY_MODE",
+  "GEOMACRO_COMMERCE_EMERGENCY_FREEZE",
+  "GEOMACRO_COMMERCE_DISABLED_PROVIDERS",
   "GEOMACRO_REAL_FUNDS_SECURITY_ACK",
   "GEOMACRO_SECURITY_FINGERPRINT_PEPPER",
   "GEOMACRO_API_CREDENTIAL_PEPPER",
@@ -58,6 +61,73 @@ describe("Geomacro central security route boundary", () => {
     expect(classifyCentralSecurityRoute("/api/goat/pilot/order", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/goat/pilot/status", "POST")).toBe("payment");
     expect(classifyCentralSecurityRoute("/api/agent/risk", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/payments/paypal/create-order", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/payments/paypal/capture-order", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/payments/crypto/verify", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/intelligence/structured-answer", "POST")).toBe("payment");
+    expect(classifyCentralSecurityRoute("/api/v1/payments/paypal", "GET")).toBe("public_api");
+  });
+
+  it("freezes every paid checkout and intelligence entry point before database or settlement", async () => {
+    process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "true";
+    for (const pathname of [
+      "/api/v1/payments/paypal/create-order",
+      "/api/v1/payments/paypal/capture-order",
+      "/api/v1/payments/crypto/quote",
+      "/api/v1/payments/crypto/verify",
+      "/api/v1/intelligence/query",
+      "/api/v1/intelligence/structured-answer",
+      "/api/v1/intelligence/geopolitics",
+      "/api/v1/intelligence/macro-fx",
+      "/api/v1/intelligence/critical-minerals",
+      "/api/x402/intelligence",
+      "/api/x402/circle/intelligence",
+      "/api/x402/nevermined/intelligence",
+      "/api/risk-gate",
+      "/api/commercial/structural",
+    ]) {
+      const decision = await enforceCentralRequestSecurity({
+        pathname, method: "POST", headers: new Headers(),
+      });
+      expect(decision).toMatchObject({
+        allowed: false, status: 423,
+        code: "GEOMACRO_COMMERCE_EMERGENCY_FREEZE_ACTIVE",
+      });
+    }
+  });
+
+  it("preserves no-charge website discovery and pilot research when frozen", () => {
+    process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "true";
+    for (const [pathname, method] of [
+      ["/", "GET"],
+      ["/api/v1/intelligence/availability", "POST"],
+      ["/api/v1/payments/preflight", "POST"],
+      ["/api/x402/risk/availability", "POST"],
+      ["/api/v1/intelligence/query", "GET"],
+      ["/api/v1/payments/paypal", "GET"],
+      ["/v1/pilot/check", "POST"],
+    ]) {
+      expect(commercialEmergencyDecision(pathname, method)).toBeNull();
+    }
+  });
+
+  it("quarantines selected providers without freezing unrelated payment rails", () => {
+    process.env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS = "paypal,coinbase_x402";
+    expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")).toMatchObject({
+      allowed: false, status: 423, code: "PAYPAL_PRODUCTION_QUARANTINED",
+    });
+    expect(commercialEmergencyDecision("/api/x402/intelligence", "POST")).toMatchObject({
+      allowed: false, status: 423, code: "COINBASE_X402_PRODUCTION_QUARANTINED",
+    });
+    expect(commercialEmergencyDecision("/api/x402/circle/intelligence", "POST")).toBeNull();
+    expect(commercialEmergencyDecision("/api/x402/nevermined/intelligence", "POST")).toBeNull();
+  });
+
+  it("never trusts an unrecognized freeze value as an enabled switch", () => {
+    process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "yes";
+    expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")?.status).toBe(423);
+    process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "false";
+    expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")).toBeNull();
   });
 
   it("allows local degraded security only for Coinbase x402 testnet paths", () => {
