@@ -222,6 +222,8 @@ jobs:
 
       - name: Test all-news signed publication integrity and source-proof boundaries offline
         run: node --test scripts/tests/public-signed-news.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs
+      - name: Verify pinned independent Facts and Rights signature replay for GRI v1.2 (no live keys)
+        run: node --test scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
 
       - name: Test private source-handoff acceptance contracts without network
         run: node --test scripts/tests/verify-private-handoff-production.test.mjs
