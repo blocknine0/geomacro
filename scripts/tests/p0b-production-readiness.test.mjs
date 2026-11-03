@@ -136,8 +136,8 @@ test('P0-B permanent activation reuses existing private archive credentials and 
  const parity=text('.github/workflows/p0b-production-parity-hourly.yml');
  assert.match(deploy,/P0B_ACTIVATE: "1"/u);
  assert.match(deploy,/P0B_B2_BUCKET: geomacro-private-archive/u);
- assert.match(deploy,/P0B_B2_KEY_ID: \\$\\{\\{ secrets\\.B2_KEY_ID \\}\\}/u);
- assert.match(deploy,/P0B_B2_APPLICATION_KEY: \\$\\{\\{ secrets\\.B2_APPLICATION_KEY \\}\\}/u);
+ assert.ok(deploy.includes('P0B_B2_KEY_ID: ${{ secrets.B2_KEY_ID }}'));
+ assert.ok(deploy.includes('P0B_B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}'));
  assert.match(deploy,/geomacro-p0b-private-spool-aes-gcm-v1/u);
  assert.match(deploy,/P0B_EXISTING_B2_ACCESS_KEY_MISSING/u);
  assert.match(deploy,/P0B_EXISTING_B2_SECRET_KEY_MISSING/u);
