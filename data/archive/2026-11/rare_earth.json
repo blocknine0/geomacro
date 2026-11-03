@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-03T08:28:14.174Z",
+  "updated_at": "2026-11-03T10:10:10.849Z",
   "signals": [
     {
       "id": "rare_earth-9bbeb8af",
@@ -33,6 +33,63 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T05:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-99ca3f1b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au",
+      "what_changed": "A monitored source feed reports: Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T04:55:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-1b69952b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Platts proposed to include graphite and change an underlying component in the Platts Global Battery Metals Index - S&P Global",
+      "what_changed": "A monitored source feed reports: Platts proposed to include graphite and change an underlying component in the Platts Global Battery Metals Index - S&P Global. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T03:48:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3f74d123",
+      "category": "rare_earth",
+      "title": "Geomacro finds Drought Forces Indonesia Nickel cut as ENC Output Falls to 30% - Discovery Alert",
+      "what_changed": "A monitored source feed reports: Drought Forces Indonesia Nickel cut as ENC Output Falls to 30% - Discovery Alert. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T02:25:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -489,6 +546,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T08:14:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4dc4348c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut Lithium Forecasts on Worsening Battery Demand Outlook - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Citi cut Lithium Forecasts on Worsening Battery Demand Outlook - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T04:03:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
