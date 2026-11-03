@@ -250,15 +250,54 @@ async function remote(cfg,path,{method="GET",body,headers={}}={},fetcher=fetch){
  if(!r.ok||r.status>=300)throw Error("UNIFIED_SUPABASE_HTTP_FAILED");
  return r;
 }
-export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}={}){
+/** Bounded D1-to-Supabase immutable snapshot delivery.
+ * BACKLOG is scheduled and strictly oldest-first (12 rows per run).
+ * CANARY_EXACT is owner-only production acceptance: re-post EXACTLY its
+ * 3 known current-day snapshots, independent of an unrelated 200-row
+ * backlog, including already-synced rows (remote loss repair). Both
+ * paths independently HMAC-verify stored bytes and exact remote hashes.
+ */
+export async function syncUnifiedRiskSupabase(env,{
+ now=Date.now(),fetcher=fetch,scope="BACKLOG",
+}={}){
  const cfg=supabaseCfg(env);
  if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
+ if(!["BACKLOG","CANARY_EXACT"].includes(scope))
+  return {ok:false,error:"UNIFIED_SUPABASE_SYNC_SCOPE_INVALID"};
  try{
-  const rows=(await env.DB.prepare("SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
+  const canary=scope==="CANARY_EXACT",day=iso(now).slice(0,10);
+  const select="SELECT entity_type,entity_id,day_utc,snapshot_json,"+
+   "audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots ";
+  const rows=canary?
+   (await env.DB.prepare(select+
+    "WHERE day_utc=? AND ("+
+    "(entity_type='COUNTRY' AND entity_id IN ('TWN','CHN')) OR "+
+    "(entity_type='CORRIDOR' AND entity_id='bab-el-mandeb')) "+
+    "ORDER BY entity_type,entity_id LIMIT 3").bind(day).all())?.results??[]:
+   (await env.DB.prepare(select+
+    "WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
+  if(canary&&(
+   rows.length!==3||
+   !["COUNTRY|TWN","COUNTRY|CHN","CORRIDOR|bab-el-mandeb"]
+    .every(k=>rows.some(r=>r.entity_type+"|"+r.entity_id===k&&r.day_utc===day))))
+   return {ok:false,error:"UNIFIED_CANARY_EXACT_D1_SET_INCOMPLETE"};
+  if(!Array.isArray(rows)||rows.length>12)
+   return {ok:false,error:"UNIFIED_SUPABASE_SYNC_SOURCE_INVALID"};
   if(!rows.length)return {ok:true,synced:0};
-  const payload=rows.map(x=>({entity_type:x.entity_type,entity_id:x.entity_id,day_utc:x.day_utc,
-   snapshot:JSON.parse(x.snapshot_json),audit_proof:JSON.parse(x.audit_proof_json),
-   content_sha256:x.content_sha256,generated_at:x.generated_at}));
+  const payload=[];
+  for(const x of rows){
+   const snapshot=JSON.parse(x.snapshot_json),audit_proof=JSON.parse(x.audit_proof_json);
+   if(!hex.test(String(x.content_sha256??""))||
+      audit_proof?.content_sha256!==x.content_sha256||
+      snapshot?.target_type!==x.entity_type||
+      snapshot?.target_id!==x.entity_id||
+      snapshot?.day_utc!==x.day_utc||
+      !await verifySnapshot(snapshot,audit_proof,env))
+    return {ok:false,error:"UNIFIED_SUPABASE_LOCAL_HMAC_OR_ID_INVALID"};
+   payload.push({entity_type:x.entity_type,entity_id:x.entity_id,
+    day_utc:x.day_utc,snapshot,audit_proof,
+    content_sha256:x.content_sha256,generated_at:x.generated_at});
+  }
   await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?on_conflict=entity_type,entity_id,day_utc",{
    method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
    body:JSON.stringify(payload)},fetcher);
@@ -266,12 +305,17 @@ export async function syncUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fetch}
    encodeURIComponent(x.entity_id)+",day_utc.eq."+x.day_utc+")").join(",");
   const read=await (await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,day_utc,content_sha256&or=("+and+")",{},fetcher)).json();
   if(!Array.isArray(read)||read.length!==rows.length||
+   new Set(read.map(y=>y.entity_type+"|"+y.entity_id+"|"+y.day_utc)).size!==rows.length||
    rows.some(x=>!read.some(y=>y.entity_type===x.entity_type&&y.entity_id===x.entity_id&&
     y.day_utc===x.day_utc&&y.content_sha256===x.content_sha256)))
    return {ok:false,error:"UNIFIED_SUPABASE_HASH_MISMATCH"};
-  for(const row of rows)await env.DB.prepare("UPDATE unified_risk_snapshots SET supabase_synced_at=? WHERE entity_type=? AND entity_id=? AND day_utc=? AND content_sha256=? AND supabase_synced_at IS NULL")
+  for(const row of rows){
+   const receipt=await env.DB.prepare("UPDATE unified_risk_snapshots SET supabase_synced_at=? WHERE entity_type=? AND entity_id=? AND day_utc=? AND content_sha256=? AND supabase_synced_at IS NULL")
     .bind(iso(now),row.entity_type,row.entity_id,row.day_utc,row.content_sha256).run();
-  return {ok:true,synced:rows.length,hash_readback_verified:true};
+   if(receipt?.success===false)return {ok:false,error:"UNIFIED_SUPABASE_D1_RECEIPT_FAILED"};
+  }
+  return {ok:true,synced:rows.length,hash_readback_verified:true,
+   scope,exact_target_count:canary?3:null};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_SYNC_FAILED"}}
 }
 /** One strictly bounded, fresh remote D1-to-Supabase daily hash census.
