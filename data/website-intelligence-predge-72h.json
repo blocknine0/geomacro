@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T14:44:52.527Z",
+  "checked_at": "2026-11-03T14:52:23.864Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 315,
+  "item_count": 318,
   "counts": {
-    "geopolitics": 143,
-    "macro": 131,
+    "geopolitics": 145,
+    "macro": 132,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "9164dfb956ee8393caf4c035ad74bbe557929f8beb801e949bf0acf64e844a19",
+  "source_native_ids_sha256": "7abd68b225c1b973afc00d1a7638dfa436155b1f70a01980894a6465b8ea2145",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1692,6 +1692,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T19:54:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f29b5677",
+      "category": "macro",
+      "title": "Geomacro finds Trump said Iran wants deal, predicts further drop in oil prices - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said Iran wants deal, predicts further drop in oil prices - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:36:03.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4742,6 +4761,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-78952a80",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:54:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-fdaa7380",
       "category": "macro",
       "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
@@ -5344,6 +5382,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: kyivindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a3c395a4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Coalition said it targeted Houthi resources used to attack civilians - Arab News",
+      "what_changed": "A monitored source feed reports: Coalition said it targeted Houthi resources used to attack civilians - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T13:48:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

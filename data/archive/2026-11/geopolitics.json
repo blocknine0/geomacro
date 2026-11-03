@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T14:44:52.527Z",
+  "updated_at": "2026-11-03T14:52:23.864Z",
   "signals": [
     {
       "id": "geopolitics-5e5f5b30",
@@ -2095,6 +2095,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-78952a80",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T22:54:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-e12b2ecd",
       "category": "geopolitics",
       "title": "Geomacro finds QRCS launched shelter project for refugees in Bangladesh",
@@ -2412,6 +2431,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: kyivindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a3c395a4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Coalition said it targeted Houthi resources used to attack civilians - Arab News",
+      "what_changed": "A monitored source feed reports: Coalition said it targeted Houthi resources used to attack civilians - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T13:48:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

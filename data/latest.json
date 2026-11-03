@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T14:44:52.527Z",
+  "checked_at": "2026-11-03T14:52:23.864Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -1597,6 +1597,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T19:54:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f29b5677",
+      "category": "macro",
+      "title": "Geomacro finds Trump said Iran wants deal, predicts further drop in oil prices - Iran International",
+      "what_changed": "A monitored source feed reports: Trump said Iran wants deal, predicts further drop in oil prices - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:36:03.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4400,12 +4419,12 @@
       "severity": null
     },
     {
-      "id": "macro-fdaa7380",
-      "category": "macro",
+      "id": "geopolitics-78952a80",
+      "category": "geopolitics",
       "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
       "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T22:54:16.000Z",
@@ -4580,25 +4599,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T19:07:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-85d30945",
-      "category": "geopolitics",
-      "title": "Geomacro finds Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS)",
-      "what_changed": "A monitored source feed reports: Bangladesh urged increased Turkish investment, stresses removal of tariff barriers - Bangladesh Sangbad Sangstha (BSS). This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T19:07:17.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

@@ -1,6 +1,6 @@
 {
   "schema": "geomacro.permanent-derived-news-archive-index.v1",
-  "updated_at": "2026-11-03T14:44:52.527Z",
+  "updated_at": "2026-11-03T14:52:23.864Z",
   "months": [
     "2026-11",
     "2026-10"
@@ -11,5 +11,5 @@
     "rare_earth"
   ],
   "seed_complete": true,
-  "total_signals": 1568
+  "total_signals": 1571
 }
