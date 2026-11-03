@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T01:31:43.956Z",
+  "checked_at": "2026-11-03T01:34:13.163Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -96,6 +96,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T19:20:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-321e942e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au",
+      "what_changed": "A monitored source feed reports: Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:16:24.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

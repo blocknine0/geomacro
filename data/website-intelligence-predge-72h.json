@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T01:31:43.956Z",
+  "checked_at": "2026-11-03T01:34:13.163Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 241,
+  "item_count": 242,
   "counts": {
     "geopolitics": 111,
     "macro": 97,
-    "rare_earth": 33
+    "rare_earth": 34
   },
-  "source_native_ids_sha256": "f9beb93cfbe72075cb2b63ebd76b7f993c3be4546823da851a307db4602874dc",
+  "source_native_ids_sha256": "153a857ea6323cc714f2e73bcbf70d4e4315d65da35658c8477748ab077fecfe",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -115,6 +115,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T19:20:57.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-321e942e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au",
+      "what_changed": "A monitored source feed reports: Citi cut lithium price forecasts as battery demand concerns grow - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:16:24.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
