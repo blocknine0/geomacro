@@ -493,7 +493,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    question_matches:[...(globalResult?.first_party_matches??[]).map(item=>({
     ...item,country_iso3:countryIso3,source:item.first_party_feed_metadata_verified===true?
      "FIRST_PARTY_OFFICIAL_RSS":item.reliefweb_catalogue_metadata_verified===true?
-     "RELIEFWEB_UKRAINE_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
+     "RELIEFWEB_GLOBAL_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
     ...phase2hPrivateResearchDirectAnswer(question,item.five_part),
    })),...matched.map(item=>{
     const missing=typeof item.analysis.what_happened?.text!=="string"||
@@ -547,7 +547,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
       ...item,country_iso3:countryIso3,
       source:item.first_party_feed_metadata_verified===true?
        "FIRST_PARTY_OFFICIAL_RSS":item.reliefweb_catalogue_metadata_verified===true?
-     "RELIEFWEB_UKRAINE_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
+     "RELIEFWEB_GLOBAL_CATALOGUE":"GOV_UK_FIRST_PARTY_CONTENT_API",
       ...phase2hPrivateResearchDirectAnswer(question,item.five_part)})),
      private_research_only:true,chargeable:false,paid_eligible:false,
      raw_original_not_delivered:true});
