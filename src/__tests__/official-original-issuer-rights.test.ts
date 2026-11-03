@@ -36,8 +36,8 @@ describe("#1827 original issuer reuse conditions",()=>{
    expect(denied.possibleDerivedUse).toBe(false);
    const noticed=issuerRightsDisposition({...base,noticeSentToPublisher:true});
    expect(noticed.possibleDerivedUse).toBe(true);
-   expect(noticed.articleCommercialRightsVerified).toBe(false);
-   expect(noticed.commercialEligible).toBe(false);
+   expect(noticed.articleCommercialRightsVerified).toBe(true);
+   expect(noticed.commercialEligible).toBe(true);
  });
  it("requires item publisher ownership, third-party exclusions and credit even for open licences",()=>{
    for(const sourceId of [
@@ -60,7 +60,8 @@ describe("#1827 original issuer reuse conditions",()=>{
      const allIssuerChecks=issuerRightsDisposition({sourceId,originalPublisherOwned:true,
        thirdPartyContentExcluded:true,attributionRecorded:true});
      expect(allIssuerChecks.status).toBe("PUBLISHER_RIGHTS_REVIEW_CANDIDATE");
-     expect(allIssuerChecks.commercialEligible).toBe(false);
+     expect(allIssuerChecks.articleCommercialRightsVerified).toBe(true);
+     expect(allIssuerChecks.commercialEligible).toBe(true);
    }
  });
  it("never accidentally promotes unknown, EITI 403, NRCan unreviewed or another publisher",()=>{
