@@ -7,7 +7,7 @@ import {phase2hCountry,phase2hHeadlineCountryCandidate} from
  "./phase2h-country-originals-195.mjs";
 import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
 import {p0bFirstPartyFeedNews} from "./p0b-first-party-rss.mjs";
-import {p0bReliefWebUkraine} from "./p0b-reliefweb-ukraine.mjs";
+import {p0bReliefWebCountry} from "./p0b-reliefweb-ukraine.mjs";
 import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const SKIP=new Set(["what","why","when","which","does","did","will","latest",
@@ -138,8 +138,8 @@ export async function p0bGlobalNewsFallback({question,countryIso3,category,
   getJson(govUrl.href,fetchImpl),getGdeltDiscoveryWithRecovery(gdeltUrl.href,fetchImpl),
   p0bFirstPartyFeedNews({category,countryIso3,countryName:country.name,
    question,fetchImpl,now}),
-  category==="geopolitics"&&countryIso3==="UKR"?
-   p0bReliefWebUkraine({appname:reliefwebAppname,fetchImpl,now}):
+  category==="geopolitics"?
+   p0bReliefWebCountry({appname:reliefwebAppname,countryIso3,fetchImpl,now}):
    Promise.resolve({status:"NOT_APPLICABLE",items:[],attempted:false})
  ]);
  let providerErrors=settled.filter(x=>x.status==="rejected").length;
