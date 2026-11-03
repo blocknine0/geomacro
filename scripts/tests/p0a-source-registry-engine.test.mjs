@@ -18,7 +18,7 @@ const source=(id,parser_type='RSS_2',overrides={})=>({
 });
 const news='<rss><channel><item><title>Central bank raises policy interest rates</title>'+
  '<link>https://gov.example.org/article/1</link>'+
- '<pubDate>Wed, 04 Nov 2026 01:00:00 GMT</pubDate></item></channel></rss>';
+ '<pubDate>Sun, 04 Oct 2026 01:00:00 GMT</pubDate></item></channel></rss>';
 
 function dbMock(){
  const db=new DatabaseSync(':memory:');
@@ -36,7 +36,7 @@ function dbMock(){
   try{
    for(const item of statements)output.push({meta:{changes:db.prepare(item.sql).run(...item.args).changes}});
    db.exec('COMMIT');return output;
-  }catch(err){db.exec('ROLLBACK');throw err}
+  }catch(err){console.error('P0A_SQLITE_TEST_ERROR',err.message);db.exec('ROLLBACK');throw err}
  }}}};
 }
 function zipOne(name,payload,method=8){
