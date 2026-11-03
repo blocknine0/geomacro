@@ -170,6 +170,10 @@ describe("universal facts-only derived commercial candidate policy",()=>{
      // Different URLs that yield the same document bytes are not independent.
      [a,{...a,issuer:"Open Issuer Beta",
        url:"https://dataset.example.net/issuer-b/copy"}],
+     // Missing issuer is a HOLD state, never a fatal runtime exception.
+     [a,{...a,issuer:undefined,
+       url:"https://dataset.example.net/issuer-b/no-issuer",
+       contentSha256:"c".repeat(64)}],
      // Two URLs with different digests still need distinct actual issuers.
      [a,{...a,issuer:"  OPEN ISSUER ALPHA  ",
        url:"https://dataset.example.net/issuer-b/other",
