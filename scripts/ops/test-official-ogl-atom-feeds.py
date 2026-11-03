@@ -18,6 +18,11 @@ EXPECTED={
     "uk_hmt_ogl_official_atom":"MACRO",
     "uk_dbt_ogl_minerals_atom":"CRITICAL_MINERALS",
     "uk_desnz_ogl_minerals_atom":"CRITICAL_MINERALS",
+    "uk_mod_ogl_security_atom":"GEOPOLITICS",
+    "uk_cabinet_ogl_security_atom":"GEOPOLITICS",
+    "uk_obr_ogl_macro_atom":"MACRO",
+    "uk_dft_ogl_shipping_macro_atom":"MACRO",
+    "uk_bist_ogl_minerals_atom":"CRITICAL_MINERALS",
 }
 def get_sources_and_gate():
     tree=ast.parse(WORKER.read_text(encoding="utf-8"))
@@ -38,8 +43,8 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
         cls.match=staticmethod(gate)
         cls.by_id={x["source_id"]:x for x in cls.feeds}
         cls.policy=json.loads(EVIDENCE.read_text(encoding="utf-8"))
-    def test_25_feeds_and_no_registry_duplicate(self):
-        self.assertEqual(len(self.feeds),25)
+    def test_30_feeds_and_no_registry_duplicate(self):
+        self.assertEqual(len(self.feeds),30)
         self.assertEqual(len(self.by_id),len(self.feeds))
         self.assertEqual(set(EXPECTED)-set(self.by_id),set())
     def test_exact_license_provenance_and_no_telegram_impersonation(self):
