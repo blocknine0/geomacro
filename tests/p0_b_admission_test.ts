@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {B2SpoolManager,p0bSha256} from '../src/storage/b2-spool-manager.ts';
+import {canonicalJson} from '../src/lib/canonical-json.ts';
 import {processFetchedBatch} from '../src/workers/ingest-producer.ts';
 import {handleQueueBatch} from '../src/workers/ingest-consumer.ts';
 import {drainBacklog} from '../src/workers/backlog-drain-cron.ts';
@@ -66,7 +67,7 @@ function fixture(){
 async function candidate(index:number){
  const raw={title:'Unique publisher article '+index,
   native_published_at:'2026-11-04T02:10:00.000Z',rights_tier:'RESEARCH_ONLY'};
- return {candidateSha256:await p0bSha256(JSON.stringify(raw)),sourceId:'src_probe',raw};
+ return {candidateSha256:await p0bSha256(canonicalJson(raw)),sourceId:'src_probe',raw};
 }
 function messages(sent:any[]){
  const records=sent.map(item=>({
