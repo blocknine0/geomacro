@@ -182,8 +182,13 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
           [x?.url,x?.link,x?.canonical_url,x?.permalink]
           .find(v=>typeof v==="string")??null;
         // Index discovery must never manufacture publisher publication time.
+        // Catalogue text is a transient research hint, not an original article
+        // or independent event proof. No upstream body is sent to public D1.
+        const excerpt=typeof x?.description==="string"?x.description:
+          typeof x?.summary==="string"?x.summary:null;
         return substantiveHeadline(title)&&native?
-          [{title,native,articleUrl:rawLink}]:[];
+          [{title,native,articleUrl:rawLink,
+            description:typeof excerpt==="string"?cleanText(excerpt).slice(0,360):null}]:[];
       });
     }catch{return null}
   }
@@ -202,7 +207,9 @@ function feedBlocks(source,body,allowRdfNativeDates=false,maxFeedBytes=MAX_FEED_
       (allowRdfNativeDates?verifiedRdfItemClock(normalized,entry):null);
     const rssLink=xmlTag(entry,"link");
     const atomLink=entry.match(/<link\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*\/?\s*>/iu)?.[1]??null;
-    result.push({title,native,articleUrl:rssLink??atomLink});
+    const excerpt=xmlTag(entry,"description")??xmlTag(entry,"summary");
+    result.push({title,native,articleUrl:rssLink??atomLink,
+      description:excerpt?excerpt.slice(0,360):null});
     if(result.length>=100)break;
   }
   return result;
@@ -315,6 +322,7 @@ export async function collectRegisteredReusableNews({
         for(const category of activeCategories)
           onOriginalCandidate({news_id:null,source_url:s.url,category,
             title:item.title,article_url:item.articleUrl,published_at:websiteClock,
+            ...(item.description?{description:item.description}:{}),
             ...(issuerHint?{issuer_context_country_iso3:issuerHint}:{})});
       }
       const at=originalClock(item.native,now.getTime());
