@@ -105,7 +105,7 @@ RSS_BOOTSTRAP_MAX_ITEMS = max(
 
 USER_AGENT = os.environ.get(
     "BREAKING_FEED_USER_AGENT",
-    "Geomacro/1.0 (+https://geomacro.live; contact=contact@geomacro.live)",
+    "GeoMacro-Research-Bot/1.0 (+https://geomacro.live)",
 ).strip()
 
 HIGH_CONFIDENCE_HEADLINE_COUNTRIES: list[tuple[str, str]] = [
