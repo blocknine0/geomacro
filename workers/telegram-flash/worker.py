@@ -426,8 +426,10 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "event_type": "CRITICAL_MINERALS_INDUSTRY_REPORT",
         "source_reliability": 65.0,
         "max_entry_age_hours": 72,
-        "timeout_seconds": 25,
-        "retry_attempts": 2,
+        # Four bounded attempts total. HTTP 403 remains a genuine access
+        # restriction: fetch_feed_sync must not evade a publisher's denial.
+        "timeout_seconds": 8,
+        "retry_attempts": 3,
         "retry_backoff_seconds": 2,
     },
     {
