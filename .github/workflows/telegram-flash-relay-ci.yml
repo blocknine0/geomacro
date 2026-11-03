@@ -1,0 +1,37 @@
+name: Telegram Flash Control Plane Relay CI
+
+on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/telegram-flash-relay.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "scripts/tests/telegram-flash-relay.test.mjs"
+      - ".github/workflows/telegram-flash-relay-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "workers/control-plane/src/telegram-flash-relay.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "scripts/tests/telegram-flash-relay.test.mjs"
+      - ".github/workflows/telegram-flash-relay-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test-relay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Check exact production ingress syntax
+        run: |
+          node --check workers/control-plane/src/telegram-flash-relay.mjs
+          node --check workers/control-plane/src/index.mjs
+      - name: Verify signed-secret relay, source isolation, bounded payload and retry
+        run: node --test scripts/tests/telegram-flash-relay.test.mjs
