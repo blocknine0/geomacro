@@ -111,7 +111,7 @@ export function planSourceIntake(snapshot,now){
 // Budget units are physical D1 rows (not SQL statements). The extra is
 // reserved to UTC reset; no paid plan, unlimited research or signing rights.
 export const REGISTERED_ADAPTIVE_FREE_CAP=Object.freeze({
- max_originals_per_15m:20,
+ max_originals_per_15m:150,
  baseline_reserved_originals:MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows,
  worst_case_extra_rows_written_per_original:16,
  worst_case_extra_rows_read_per_original:64,
