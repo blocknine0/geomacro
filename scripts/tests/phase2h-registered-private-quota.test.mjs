@@ -81,3 +81,11 @@ test("registered cap cannot be missing, negative or above hard 20-row ceiling",(
  assert.match(src,/GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS/u);
  assert.match(workflow,/GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS:/u);
 });
+
+test("critical-only without a source budget continues discovery, not a failing D1 publication",()=>{
+ const wf=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
+ const match=wf.matchAll(/if: steps\.quota\.outputs\.critical == 'true' && steps\.quota\.outputs\.registered_private_max_new_rows != '0'/gu);
+ assert.equal([...match].length,2);
+ const zero=wf.matchAll(/if: steps\.quota\.outputs\.critical != 'true' \|\| steps\.quota\.outputs\.registered_private_max_new_rows == '0'/gu);
+ assert.equal([...zero].length,2);
+});

@@ -128,15 +128,15 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: bun scripts/ops/plan-d1-bundled-work.mjs
       - name: Report held source intake without claiming a new news cycle
-        if: steps.quota.outputs.critical != 'true'
+        if: steps.quota.outputs.critical != 'true' || steps.quota.outputs.registered_private_max_new_rows == '0'
         env:
           QUOTA_STATE: ${{ steps.quota.outputs.state }}
         run: echo "::notice::D1_FACTUAL_INTAKE_HELD_${QUOTA_STATE}; source fetch and D1 write intentionally not executed."
       - name: Keep registered-source discovery alive without D1 writes during holds
-        if: steps.quota.outputs.critical != 'true'
+        if: steps.quota.outputs.critical != 'true' || steps.quota.outputs.registered_private_max_new_rows == '0'
         run: bun scripts/ops/collect-registered-source-health-only.mjs
       - name: Collect, publish and read back factual JSON
-        if: steps.quota.outputs.critical == 'true'
+        if: steps.quota.outputs.critical == 'true' && steps.quota.outputs.registered_private_max_new_rows != '0'
         shell: bash
         env:
           GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS: ${{ steps.quota.outputs.registered_private_max_new_rows }}
@@ -144,7 +144,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/publish-all-source-reusable-news-json.ts
       - name: Upload verified bounded all-source factual JSON
-        if: steps.quota.outputs.critical == 'true'
+        if: steps.quota.outputs.critical == 'true' && steps.quota.outputs.registered_private_max_new_rows != '0'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-all-source-reusable-json
