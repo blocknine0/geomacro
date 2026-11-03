@@ -1642,7 +1642,11 @@ export default {
             receipts.push({target,ok:false,error:"UNIFIED_CANARY_TARGET_FAILED"});
           }
         }
-        const sync=await syncUnifiedRiskSupabase(env);
+        // Protect acceptance against a large unrelated daily D1 backlog:
+        // upsert and independently remote-SHA-verify THESE 3 real HMAC
+        // snapshots, even if the D1 synced flag already exists. General
+        // backlog stays bounded in the regular five-minute sync lane.
+        const sync=await syncUnifiedRiskSupabase(env,{scope:"CANARY_EXACT"});
         // Re-read the exact target rows after remote hash verification.
         // No source fetch occurs on an existing valid daily snapshot.
         for(const row of receipts.filter(x=>x.ok)){
