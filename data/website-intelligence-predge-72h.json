@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T12:19:04.902Z",
+  "checked_at": "2026-11-03T12:39:01.972Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 278,
+  "item_count": 277,
   "counts": {
-    "geopolitics": 125,
+    "geopolitics": 124,
     "macro": 112,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "71fe7ea1ce4ff8ed1b163f5a93cae87616fa4cd6cf43a28308b45d0e725ec2b7",
+  "source_native_ids_sha256": "ffe799adee503184c7d7c80ab9d337c55c721b3f5ad500ed5850abecf151a1cb",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -5287,25 +5287,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-eff61167",
-      "category": "geopolitics",
-      "title": "Geomacro finds United States approved Patriot missiles sale to Ukraine",
-      "what_changed": "A monitored source feed reports: United States approved Patriot missiles sale to Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T12:29:21.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rt-english.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
