@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS,
- assertDirectCorridorSupplementalNativeFeeds}
+ assertDirectCorridorSupplementalNativeFeeds,PINNED_CORRIDOR_OFFICIAL_FEED_URLS}
  from "./direct-corridor-official-news-feeds.mjs";
 import {DIRECT_GLOBAL_CORRIDOR_SOURCES} from "./direct-global-corridor-sources.mjs";
 import {collectDirectCorridorNativeNews} from "./direct-corridor-native-news.mjs";
@@ -105,4 +105,28 @@ test("DOE original source is an independent fallback, never a fictitious USGS co
      "Critical minerals export restrictions announced",
      "https://usgs.gov/news/critical-minerals"))});
  assert.equal(wrongDomain.candidate_count,0);
+});
+
+test("official source URL contracts reject same-host path/query, prefix hosts and obfuscated suffixes",()=>{
+ const checked=assertDirectCorridorSupplementalNativeFeeds();
+ assert.equal(checked,true);
+ for(const s of DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS)
+   assert.equal(s.url,PINNED_CORRIDOR_OFFICIAL_FEED_URLS[s.id]);
+ const tamper=(id,url)=>DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.map(s=>
+  s.id===id?{...s,url}:s);
+ const wto="wto_official_news",rbi="rbi_official_press_releases";
+ for(const url of [
+  "https://www.wto.org/library/rss/latest_news_e.xml/evil",
+  "https://www.wto.org/library/rss/latest_news_e.xml?next=https://evil.example",
+  "https://www.wto.org.evil.example/library/rss/latest_news_e.xml",
+  "https://www.wto.org/library/rss/%6catest_news_e.xml",
+  "https://www.wto.org@evil.example/library/rss/latest_news_e.xml",
+  "http://www.wto.org/library/rss/latest_news_e.xml"
+ ]){
+  assert.throws(()=>assertDirectCorridorSupplementalNativeFeeds(tamper(wto,url)),
+   /CORRIDOR_SUPPLEMENT_PUBLISHER_INVALID/);
+ }
+ assert.throws(()=>assertDirectCorridorSupplementalNativeFeeds(
+  tamper(rbi,"https://www.rbi.org.in/pressreleases_rss.xml?feed=other")),
+ /CORRIDOR_SUPPLEMENT_PUBLISHER_INVALID/);
 });
