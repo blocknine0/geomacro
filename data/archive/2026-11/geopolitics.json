@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T01:34:13.163Z",
+  "updated_at": "2026-11-03T03:02:28.285Z",
   "signals": [
+    {
+      "id": "geopolitics-46ec05af",
+      "category": "geopolitics",
+      "title": "Geomacro finds Beijing launched diplomatic flurry amid threat of renewed U.S. war with Iran - The Washington Post",
+      "what_changed": "A monitored source feed reports: Beijing launched diplomatic flurry amid threat of renewed U.S. war with Iran - The Washington Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T02:32:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9f96723f",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelensky said He Repeatedly Asked Trump to Lift Starshield Restrictions to Stop Russian Ballistic Attacks",
+      "what_changed": "A monitored source feed reports: Zelensky said He Repeatedly Asked Trump to Lift Starshield Restrictions to Stop Russian Ballistic Attacks. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T01:54:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-37a9dd40",
       "category": "geopolitics",
