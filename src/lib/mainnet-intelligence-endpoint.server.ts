@@ -77,7 +77,9 @@ import { buildSourceGroundedResearchAnswer, buildStructuredEvidenceGap,
 import type { BgsMineralHistory } from "./bgs-world-mineral-statistics.server";
 import {fetchOfficialMineralStatisticalObservations} from "./mineral-statistical-official.server";
 
-const MAX_BODY_BYTES = 32 * 1024;
+import { readBoundedCommercialBody, MAX_COMMERCIAL_REQUEST_BODY_BYTES } from "./bounded-commercial-request-body.server";
+
+const MAX_BODY_BYTES = MAX_COMMERCIAL_REQUEST_BODY_BYTES;
 const PRODUCT_ID = "geomacro_adaptive_risk_intelligence_v1";
 export const CANONICAL_MAINNET_INTELLIGENCE_PATH = "/api/v1/intelligence/query" as const;
 export const LEGACY_X402_INTELLIGENCE_PATH = "/api/x402/intelligence" as const;
@@ -111,7 +113,7 @@ async function parseJsonBody(request: Request) {
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     throw new Response("Request body too large", { status: 413 });
   }
-  const raw = await request.text();
+  const raw = await readBoundedCommercialBody(request, MAX_BODY_BYTES);
   if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
     throw new Response("Request body too large", { status: 413 });
   }
