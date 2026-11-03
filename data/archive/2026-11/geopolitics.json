@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T11:41:33.224Z",
+  "updated_at": "2026-11-03T11:44:05.352Z",
   "signals": [
     {
       "id": "geopolitics-13ca00a3",
@@ -56,6 +56,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.egyptindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9d02d63e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched Major Strikes on Ukraine After Ceasefire Expires",
+      "what_changed": "A monitored source feed reports: Russia launched Major Strikes on Ukraine After Ceasefire Expires. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:11:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: jowhar.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3779ad42",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy said Russia launched 17 ballistic missiles against Ukraine overnight - Українська правда",
+      "what_changed": "A monitored source feed reports: Zelenskyy said Russia launched 17 ballistic missiles against Ukraine overnight - Українська правда. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e627f4ea",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched 289 drones and dozens of missiles in massive attack on Ukraine - The New Voice of Ukraine",
+      "what_changed": "A monitored source feed reports: Russia launched 289 drones and dozens of missiles in massive attack on Ukraine - The New Voice of Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

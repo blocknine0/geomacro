@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T11:41:33.224Z",
+  "checked_at": "2026-11-03T11:44:05.352Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-5514fa55",
+      "category": "macro",
+      "title": "Geomacro finds Dynatrace raised FY2027 revenue and ARR outlook, trims EPS guidance",
+      "what_changed": "A monitored source feed reports: Dynatrace raised FY2027 revenue and ARR outlook, trims EPS guidance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:37:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-45ab05c1",
       "category": "macro",
@@ -138,6 +157,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.egyptindependent.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9d02d63e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched Major Strikes on Ukraine After Ceasefire Expires",
+      "what_changed": "A monitored source feed reports: Russia launched Major Strikes on Ukraine After Ceasefire Expires. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:11:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: jowhar.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-3779ad42",
+      "category": "geopolitics",
+      "title": "Geomacro finds Zelenskyy said Russia launched 17 ballistic missiles against Ukraine overnight - Українська правда",
+      "what_changed": "A monitored source feed reports: Zelenskyy said Russia launched 17 ballistic missiles against Ukraine overnight - Українська правда. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:44:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e627f4ea",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia launched 289 drones and dozens of missiles in massive attack on Ukraine - The New Voice of Ukraine",
+      "what_changed": "A monitored source feed reports: Russia launched 289 drones and dozens of missiles in massive attack on Ukraine - The New Voice of Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -723,6 +799,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T19:54:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-88c0266b",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine said 18 killed, 27 missing in Russian aerial strike-Xinhua - 新华网",
+      "what_changed": "A monitored source feed reports: Ukraine said 18 killed, 27 missing in Russian aerial strike-Xinhua - 新华网. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T19:24:30.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
