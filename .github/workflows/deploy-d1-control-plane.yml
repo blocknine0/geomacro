@@ -31,6 +31,7 @@ on:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/lib/p0b-first-party-rss.mjs"
+      - "scripts/lib/p0b-reliefweb-ukraine.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
@@ -98,6 +99,7 @@ on:
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/lib/p0b-first-party-rss.mjs"
+      - "scripts/lib/p0b-reliefweb-ukraine.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
@@ -198,6 +200,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
       RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
@@ -492,6 +495,16 @@ jobs:
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
+          # Install an approved ReliefWeb appname only if provisioned.
+          # Never silently substitute an unapproved catalogue identifier.
+          if test -n "${RELIEFWEB_APPROVED_APPNAME:-}"; then
+            [[ "$RELIEFWEB_APPROVED_APPNAME" =~ ^[A-Za-z][A-Za-z0-9_.-]{7,100}$ ]] || {
+              echo "::error::RELIEFWEB_APPROVED_APPNAME_INVALID"; exit 5;
+            }
+            printf '%s' "$RELIEFWEB_APPROVED_APPNAME" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RELIEFWEB_APPROVED_APPNAME --config wrangler.runtime.jsonc >/dev/null
+          else
+            echo "::warning::RELIEFWEB_APPROVED_APPNAME missing: Ukraine ReliefWeb lane remains fail-closed"
+          fi
           # Protected credentials and trust keys are installed only when
           # configured. No private tokens are ever emitted to logs.
           if test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true"; then
