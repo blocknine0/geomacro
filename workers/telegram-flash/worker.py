@@ -465,7 +465,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "timeout_seconds": 25,
         "retry_attempts": 2,
         "required_title_keywords": [
-            "security council", "sanction", "ceasefire", "conflict",
+            "security council", "sanction", "sanctions", "ceasefire", "conflict",
             "diplomatic", "treaty", "military", "foreign minister",
             "international law", "ambassador", "invasion", "ukraine",
             "russia", "iran", "taiwan", "gaza", "united nations",
@@ -501,7 +501,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "timeout_seconds": 25,
         "retry_attempts": 2,
         "required_title_keywords": [
-            "critical mineral", "critical raw material", "rare earth",
+            "critical mineral", "critical minerals", "critical raw material",
+            "critical raw materials", "rare earth", "rare earths",
             "lithium", "cobalt", "nickel", "graphite", "tungsten",
             "gallium", "germanium", "mining", "mineral supply",
             "magnet supply", "battery material",
@@ -517,7 +518,8 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
         "timeout_seconds": 25,
         "retry_attempts": 2,
         "required_title_keywords": [
-            "critical mineral", "critical raw material", "rare earth",
+            "critical mineral", "critical minerals", "critical raw material",
+            "critical raw materials", "rare earth", "rare earths",
             "lithium", "cobalt", "nickel", "graphite", "tungsten",
             "gallium", "germanium", "mining", "mineral supply",
             "magnet supply", "battery material",
