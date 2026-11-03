@@ -93,3 +93,92 @@ export function issuerRightsDisposition({sourceId,originalPublisherOwned=false,
     commercialEligible:candidate,
   });
 }
+
+
+/**
+ * GeoMacro-wide facts-only commercial-reuse CANDIDATE policy.
+ * Original publisher prose/selection/database may be protected even when
+ * independently established facts are not copyrighted. A restricted article
+ * can only trigger lawful discovery; commercial facts must be verified using
+ * a DIFFERENT source whose own rights/terms permit the relevant use.
+ *
+ * Input proof flags MUST come from trusted server-side evidence validators,
+ * never customer-controlled request parameters. This does not authorize GRO,
+ * customer delivery, scoring without evidence or an article copyright license.
+ */
+export const DERIVED_FACTS_REUSE_POLICY_SCHEMA =
+  "geomacro.facts-only-independent-commercial-review.v1";
+const FACT_EVIDENCE_KINDS=new Set([
+  "OFFICIAL_PRIMARY_DOCUMENT",
+  "LICENSED_OPEN_DATASET",
+]);
+const FACTS_SHA=/^[a-f0-9]{64}$/u;
+const FACT_EVENT=/^[A-Z][A-Z0-9_]{3,79}$/u;
+const FACT_COUNTRY=/^[A-Z]{3}$/u;
+const safeOfficialUrl=value=>{
+ try{
+  const u=new URL(value);
+  return u.protocol==="https:"&&!u.username&&!u.password&&!u.hash &&
+    !u.port && !/[\u0000-\u001f]/u.test(value);
+ }catch{return false}
+};
+/**
+ * All sources, including third-party news, Telegram, GDELT, official feeds:
+ * apply one decision contract without automatic commercial-rights promotion.
+ * @param {object} source Trusted provenance, rights and scoring assertions.
+ */
+export function resolveDerivedCommercialEligibility(source={}){
+ const s=source&&typeof source==="object"&&!Array.isArray(source)?source:{};
+ const sourceId=typeof s.sourceId==="string"?s.sourceId:"";
+ const originalRights=ORIGINAL_ISSUER_USE[sourceId]?.rights??"UNREVIEWED_OR_THIRD_PARTY";
+ const originalRightsRestricted=originalRights==="NONCOMMERCIAL_REPRODUCTION_ONLY"||
+   originalRights==="UNREVIEWED_OR_THIRD_PARTY"||
+   originalRights==="NEWS_REUSE_NOTICE_REQUIRED";
+ const evidence=Array.isArray(s.independentEvidence)?s.independentEvidence:[];
+ const proof=evidence.length>=1&&evidence.length<=4&&evidence.every(e=>
+   e&&typeof e==="object"&&!Array.isArray(e)&&
+   FACT_EVIDENCE_KINDS.has(e.kind)&&safeOfficialUrl(e.url)&&
+   FACTS_SHA.test(e.contentSha256)&&
+   typeof e.issuer==="string"&&e.issuer.trim().length>=3&&
+   e.independentlyFetched===true&&e.issuerVerified===true&&
+   e.sameEventVerified===true&&e.factVerified===true&&
+   e.licenceOrPublicDomainVerified===true&&
+   e.thirdPartyMaterialExcluded===true);
+ // One verified official primary fact may support a candidate. Dataset
+ // mediated claims need two independent verified issuers. A GDELT CAMEO
+ // event code alone never verifies an event or its severity.
+ const hasPrimary=evidence.some(e=>e?.kind==="OFFICIAL_PRIMARY_DOCUMENT");
+ const hasOpenDatasetConsensus=evidence.filter(e=>
+   e?.kind==="LICENSED_OPEN_DATASET").length>=2 &&
+   new Set(evidence.map(e=>e?.issuer)).size>=2;
+ const independentFactsVerified=proof&&(hasPrimary||hasOpenDatasetConsensus)&&
+   s.independentSameEventVerified===true&&
+   typeof s.countryIso3==="string"&&FACT_COUNTRY.test(s.countryIso3)&&
+   typeof s.eventType==="string"&&FACT_EVENT.test(s.eventType)&&
+   s.sourceNativeTimeVerified===true&&
+   FACTS_SHA.test(s.factualRecordSha256);
+ const rightsSafe=s.sourceAccessAuthorized===true&&
+   s.sourceTermsAllowThisProcessing===true&&
+   s.publisherExpressionReused!==true&&s.rawArticleTextStored!==true&&
+   s.originalArticleRedistributed!==true&&
+   s.attributionRecorded===true;
+ const allowMathematicalScore=rightsSafe&&independentFactsVerified===true;
+ const commercialEligible=allowMathematicalScore&&
+   s.independentScoreAuditVerified===true&&
+   s.scoreDerivedOnlyFromVerifiedFacts===true;
+ return Object.freeze({
+   schema:DERIVED_FACTS_REUSE_POLICY_SCHEMA,sourceId,
+   originalIssuerRightsBasis:originalRights,
+   originalSourceSignalOnly:originalRightsRestricted,
+   storeRawText:false,publishOriginalArticle:false,
+   commercialOriginalArticleReuseAuthorized:false,
+   independentFactsVerified:Boolean(independentFactsVerified),
+   allowMathematicalScore:Boolean(allowMathematicalScore),
+   commercialEligible:Boolean(commercialEligible),
+   paidDeliveryAuthorized:false,signedGroAuthorized:false,
+   status:!rightsSafe?"HOLD_SOURCE_ACCESS_OR_EXPRESSION":
+      !independentFactsVerified?"PENDING_INDEPENDENT_FACT_VERIFICATION":
+      !commercialEligible?"PENDING_INDEPENDENT_SCORE_AUDIT":
+      "DERIVED_FACTS_COMMERCIAL_CANDIDATE",
+ });
+}
