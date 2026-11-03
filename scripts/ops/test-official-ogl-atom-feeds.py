@@ -99,6 +99,35 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
             {"title":"Ministry of Coal recognition awards"},
             source["required_title_keywords"]))
 
+    def test_global_first_party_metadata_only_rights_and_category_filters(self):
+        rights = json.loads((ROOT / "config/global-first-party-rss-rights.v1.json").read_text(encoding="utf-8"))
+        self.assertEqual(rights["schema"], "geomacro.first-party-global-rss-rights-and-scope.v1")
+        self.assertEqual(len(rights["sources"]), 4)
+        for row in rights["sources"]:
+            source = self.by_id[row["source_id"]]
+            self.assertEqual(source["url"], row["feed_url"])
+            self.assertTrue(source["event_type"].startswith(row["category"] + "_"))
+            self.assertTrue(row["feed_url"].startswith("https://"))
+            self.assertFalse(row["commercial_eligible"])
+            self.assertTrue(row["original_publisher_native_time_required"])
+            self.assertTrue(row["original_publisher_not_event_country"])
+            self.assertGreaterEqual(len(source["required_title_keywords"]), 10)
+        self.assertTrue(self.match(
+            {"title": "Security Council demands ceasefire in region"},
+            self.by_id["un_hq_official_press_rss"]["required_title_keywords"]))
+        self.assertTrue(self.match(
+            {"title": "New world trade tariffs in dispute"},
+            self.by_id["wto_global_trade_rss"]["required_title_keywords"]))
+        self.assertTrue(self.match(
+            {"title": "Precio del cobre y del litio"},
+            self.by_id["chile_cochilco_official_minerals_rss"]["required_title_keywords"]))
+        self.assertTrue(self.match(
+            {"title": "Critical minerals mining beneficiation initiative"},
+            self.by_id["south_africa_dmpr_official_minerals_rss"]["required_title_keywords"]))
+        for source_id in ("chile_cochilco_official_minerals_rss", "south_africa_dmpr_official_minerals_rss"):
+            self.assertFalse(self.match({"title": "Generic government workshop"},
+                                        self.by_id[source_id]["required_title_keywords"]))
+
     def test_no_partial_word_match_or_missing_rule(self):
         self.assertFalse(self.match({"title":"Award ceremony"},["war"]))
         self.assertFalse(self.match({"title":"Central bankers speak"},[]))
