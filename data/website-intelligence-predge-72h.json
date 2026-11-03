@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T15:58:32.268Z",
+  "checked_at": "2026-11-03T16:04:06.301Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 335,
+  "item_count": 334,
   "counts": {
-    "geopolitics": 151,
+    "geopolitics": 150,
     "macro": 143,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "e0bd3ff40299bb3ea9a003f4ba65168d1927e3fec09fe4ee2c250145b9254fa4",
+  "source_native_ids_sha256": "c13ccdf1bdfef2aa2805a1bfdd9afd3e60089ecdc3d830f4f772dcd400d4082e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6366,25 +6366,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T16:34:40.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4ffe8291",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Iran's military 'gone,' vows to finish campaign - Iran International",
-      "what_changed": "A monitored source feed reports: Trump said Iran's military 'gone,' vows to finish campaign - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T16:02:19.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
