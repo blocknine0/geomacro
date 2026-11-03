@@ -1102,7 +1102,7 @@ def feed_entry_matches_required_title(
         return False
     return any(
         re.search(
-            r"(?<!\\w)" + re.escape(word.strip().lower()) + r"(?!\\w)",
+            r"(?<!\w)" + re.escape(word.strip().lower()) + r"(?!\w)",
             title,
         ) is not None
         for word in required_keywords
