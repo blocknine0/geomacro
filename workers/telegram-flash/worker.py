@@ -976,9 +976,44 @@ def feed_source_timestamp_has_clock(entry: Any) -> bool:
     )
 
 
+def native_publication_day(entry: Any) -> str | None:
+    """Preserve a publisher's exact date-only precision, never assign an hour.
+
+    The canonical private D1 adapter accepts YYYY-MM-DD as a publication date,
+    then applies its independent 72-hour bound. An 'updated' or 'checked' date
+    does NOT establish the original publication date and is never used.
+    """
+    for key in ("published", "dc:date"):
+        raw = entry.get(key)
+        if not isinstance(raw, str):
+            continue
+        value = raw.strip()
+        if re.fullmatch(r"20\d{2}-\d{2}-\d{2}", value):
+            try:
+                datetime.strptime(value, "%Y-%m-%d")
+                return value
+            except ValueError:
+                continue
+        # Publisher RFC822-style date without a clock is still date precision.
+        if re.fullmatch(
+            r"(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+\d{1,2}\s+"
+            r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+20\d{2}",
+            value, flags=re.IGNORECASE,
+        ):
+            normalized = re.sub(
+                r"^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s+",
+                "", value, flags=re.IGNORECASE,
+            )
+            try:
+                return datetime.strptime(normalized.title(), "%d %b %Y").date().isoformat()
+            except ValueError:
+                continue
+    return None
+
+
 def feed_entry_timestamp(entry: Any) -> str | None:
     if not feed_source_timestamp_has_clock(entry):
-        return None
+        return native_publication_day(entry)
     return structured_time_to_iso(entry.get("published_parsed"))
 
 
