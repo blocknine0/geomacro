@@ -10,6 +10,7 @@ import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model
 import {buildPhase2hPrivateRawRecords,postPhase2hCollisionIsolated} from "../lib/phase2h-raw-original-records.mjs";
 import {planRegisteredPrivateOriginals} from "../lib/phase2h-registered-private-quota.mjs";
 import {hydrateSelectedOriginalMetadata} from "../lib/phase2h-original-metadata.mjs";
+import {p0aAuditBatch} from "../lib/p0a-evidence-quality.mjs";
 import {stageB2FirstPrivateOriginals,acknowledgeB2FirstD1}
  from "./phase2h-b2-first-private-raw.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
@@ -95,6 +96,19 @@ console.log(JSON.stringify({
  source_full_article_stored:false,rights_verified:false,paid_eligible:false,
 }));
 const originalRows=phase2hQuota.records.map(r=>enhancedById.get(r.record_id));
+const factualQuality=p0aAuditBatch(originalRows);
+console.log(JSON.stringify({
+ schema:"geomacro.registered-source-five-part-qualification.v1",
+ checked_at:new Date().toISOString(),
+ source_selected:originalRows.length,
+ by_category:factualQuality.counts,
+ pass_count:Object.values(factualQuality.counts).reduce((n,v)=>n+v.pass,0),
+ evidence_limited_count:Object.values(factualQuality.counts).reduce((n,v)=>n+v.limited,0),
+ rejected_count:Object.values(factualQuality.counts).reduce((n,v)=>n+v.reject,0),
+ independent_event_verified:false,paid_product_eligible:false,
+ quality_status_is_not_production_source_freshness_proof:true
+}));
+
 // B2-first is independent of the D1 original and factual-news journals. If
 // provider scope or shared B2 budget prevents a verified PUT+two GETs,
 // retain the original as D1-only pending for governed 6h archive recovery.
