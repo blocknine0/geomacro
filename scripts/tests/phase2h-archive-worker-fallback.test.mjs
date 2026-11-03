@@ -8,7 +8,7 @@ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
  D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
  CLOUDFLARE_API_TOKEN:"token".repeat(8),
  GEOMACRO_COMMERCE_LEDGER_TOKEN:root};
-const original=Array.from({length:13},(_,i)=>({
+const original=Array.from({length:51},(_,i)=>({
  schema:"geomacro.phase2h.private-raw-observation.v1",
  record_id:i.toString(16).padStart(64,"0"),raw_sha256:"f".repeat(64),
  ingested_at:now.toISOString(),category:"macro",
@@ -33,7 +33,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
   if(init.method==="PUT"){
    const body=JSON.parse(init.body);
    assert.equal(body.schema,"geomacro.phase2h.b2-archive-ack.v1");
-   assert.equal(body.items.length,13);
+   assert.equal(body.items.length,51);
    workerAcks.push(body);
    return Response.json({ok:true,archived:body.items.length,
     independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
@@ -51,12 +51,12 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
  };
  const d1=createPhase2hCanonicalD1({env,fetchImpl});
  const rows=await d1.readPending(now);
- assert.equal(rows.length,13);
+ assert.equal(rows.length,51);
  assert.equal(new Set(rows.map(x=>x.record_id)).size,13);
  assert.equal(api.length,3);
- assert.deepEqual(workerReads.map(x=>x.cursor),[null]);
+ assert.deepEqual(workerReads.map(x=>x.cursor),[null,original[24].record_id,original[49].record_id]);
  const ack=await d1.markArchived(rows,"e".repeat(64),now);
- assert.equal(ack.archived,13);
+ assert.equal(ack.archived,51);
  assert.equal(ack.independent_d1_archive_ack_verified,true);
  assert.equal(workerAcks.length,1);
 });
