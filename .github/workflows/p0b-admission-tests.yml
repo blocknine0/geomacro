@@ -1,0 +1,37 @@
+name: P0-B Durable B2 Spool Queue
+
+on:
+  pull_request:
+    paths:
+      - 'workers/control-plane/migrations/0114_p0_b_spool_queue.sql'
+      - 'workers/control-plane/src/p0a-source-registry.mjs'
+      - 'workers/control-plane/src/index.mjs'
+      - 'workers/control-plane/wrangler.example.jsonc'
+      - 'src/storage/b2-spool-manager.ts'
+      - 'src/workers/ingest-producer.ts'
+      - 'src/workers/ingest-consumer.ts'
+      - 'src/workers/backlog-drain-cron.ts'
+      - 'tests/p0_b_admission_test.ts'
+      - 'package.json'
+      - '.github/workflows/p0b-admission-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  p0b-durable-spool:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax and D1 spool acceptance
+        run: |
+          node --check workers/control-plane/src/index.mjs
+          node --check workers/control-plane/src/p0a-source-registry.mjs
+          npm run test:p0-b
