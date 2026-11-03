@@ -18,17 +18,39 @@ import {riskGateSuppliedSourceCensus} from "./risk-gate-supplied-source-rules.mj
 const TRANSPORT_ONLY=new Set(["asean_customs","ukmto_advisories","suez_navigation","panama_canal",
   "nyfed_gscpi","imb_piracy"]);
 const MAX_BYTES=128*1024;
-async function probePinnedPortal(spec,fetchImpl){
+// Only these exact six previously registered official portal URLs may be
+// probed; matching a host, partial URL or an attacker-controlled prefix is
+// insufficient. Keep this separate from the RSS and dataset adapter paths.
+export const PINNED_CORRIDOR_PORTALS=Object.freeze({
+ asean_customs:"https://asean.org/our-communities/economic-community/asean-customs/",
+ ukmto_advisories:"https://www.ukmto.org/ukmto-products",
+ suez_navigation:"https://www.suezcanal.gov.eg/English/Navigation/NavigationCirculars/Pages/default.aspx",
+ panama_canal:"https://pancanal.com/en/advisories-to-shipping/",
+ nyfed_gscpi:"https://www.newyorkfed.org/research/policy/gscpi",
+ imb_piracy:"https://www.icc-ccs.org/piracy-reporting-centre",
+});
+export async function probePinnedPortal(spec,fetchImpl){
+ const pinned=PINNED_CORRIDOR_PORTALS[spec?.id];
+ let endpoint;
+ try{endpoint=new URL(spec?.url)}catch{return {state:"PORTAL_ENDPOINT_NOT_PINNED"}}
+ if(!pinned||typeof fetchImpl!=="function"||
+   endpoint.protocol!=="https:"||endpoint.username||endpoint.password||
+   endpoint.port||endpoint.search||endpoint.hash||
+   endpoint.href!==pinned||spec.url!==pinned)
+   return {state:"PORTAL_ENDPOINT_NOT_PINNED"};
  let res;
  try{
-   res=await fetchImpl(spec.url,{method:"GET",redirect:"error",
+   res=await fetchImpl(pinned,{method:"GET",redirect:"error",
      headers:{accept:"text/html,application/xhtml+xml;q=0.9"},
      signal:AbortSignal.timeout(8000)});
  }catch{return {state:"NETWORK_UNAVAILABLE"};}
  if([401,403,429].includes(res.status))return {state:"DENIED_NO_RETRY"};
  if(res.status!==200)return {state:"HTTP_UNAVAILABLE"};
- const mime=(res.headers?.get?.("content-type")??"").toLowerCase();
- if(!mime.includes("text/html")&&!mime.includes("application/xhtml+xml"))
+ if(res.redirected===true||(res.url&&res.url!==pinned))
+   return {state:"PORTAL_REDIRECT_NOT_ALLOWED"};
+ const mime=String(res.headers?.get?.("content-type")??"")
+   .split(";",1)[0].trim().toLowerCase();
+ if(mime!=="text/html"&&mime!=="application/xhtml+xml")
    return {state:"UNEXPECTED_MEDIA_TYPE"};
  if(Number(res.headers?.get?.("content-length")??0)>MAX_BYTES)
    return {state:"BODY_OVERSIZED"};

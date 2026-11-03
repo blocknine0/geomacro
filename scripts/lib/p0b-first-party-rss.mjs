@@ -45,16 +45,22 @@ const RSS_ITEM_TAGS=Object.freeze({
  link:/<link(?:\s[^>]*)?>([\s\S]*?)<\/link\s*>/iu,
  pubDate:/<pubDate(?:\s[^>]*)?>([\s\S]*?)<\/pubDate\s*>/iu,
 });
-const xmlValue=(xml,tag)=>{
+export const xmlValue=(xml,tag)=>{
  const re=RSS_ITEM_TAGS[tag];
  if(!re)return null;
  let text=re.exec(xml)?.[1]?.trim()??null;
  if(!text)return null;
  const cdata=/^<!\[CDATA\[([\s\S]*?)\]\]>$/u.exec(text);
  if(cdata)text=cdata[1];
- text=text.replace(/&amp;/gu,"&").replace(/&quot;/gu,'"')
-  .replace(/&apos;|&#39;/gu,"'").replace(/&lt;/gu,"<")
-  .replace(/&gt;/gu,">").replace(/\s+/gu," ").trim();
+ // Single-pass, exact XML entities only. Sequential replacements decoded
+ // &amp;lt; into a literal '<' and could interpret double-escaped publisher
+ // metadata as markup. Never recursively unescape entity-derived '&'.
+ const XML_ENTITIES=Object.freeze({
+  amp:"&",quot:'"',apos:"'",lt:"<",gt:">","#39":"'",
+ });
+ text=text.replace(/&(amp|quot|apos|lt|gt|#39);/gu,
+  (full,entity)=>XML_ENTITIES[entity]??full)
+  .replace(/\s+/gu," ").trim();
  return text.length<=350?text:null;
 };
 const sha=async data=>[...new Uint8Array(await crypto.subtle.digest(

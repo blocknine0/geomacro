@@ -55,27 +55,35 @@ export const DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS=Object.freeze([
   event_verified:false,commercial_eligible:false
  })
 ]);
-export function assertDirectCorridorSupplementalNativeFeeds(){
+// Complete publisher URL contracts, not a substring or hostname-only check.
+// A same-host malicious path, query string or URL-encoded suffix is NOT a
+// different source licensed/authorized by the operator's pinned registry.
+export const PINNED_CORRIDOR_OFFICIAL_FEED_URLS=Object.freeze({
+ wto_official_news:"https://www.wto.org/library/rss/latest_news_e.xml",
+ usgs_official_minerals_news:"https://www.usgs.gov/news/minerals/feed",
+ doe_official_critical_materials_news:"https://www.energy.gov/rss/energygov/2193718",
+ rbi_official_press_releases:"https://www.rbi.org.in/pressreleases_rss.xml",
+});
+export function assertDirectCorridorSupplementalNativeFeeds(
+ feeds=DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS
+){
  const originals=new Map(DIRECT_GLOBAL_CORRIDOR_SOURCES.map(s=>[s.id,s]));
- if(DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS.length!==4)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
+ if(!Array.isArray(feeds)||feeds.length!==4)throw Error("CORRIDOR_SUPPLEMENT_FEED_COUNT");
  const seen=new Set();
- for(const s of DIRECT_CORRIDOR_SUPPLEMENTAL_NATIVE_FEEDS){
+ for(const s of feeds){
   const original=originals.get(s.original_registry_source_id);
   if(!original||!s.categories.every(c=>original.categories.includes(c))||
      seen.has(s.id)||originals.has(s.id)||s.event_verified!==false||
      s.channel!=="CORRIDOR_ONLY"||s.website_intelligence_enabled!==false||
      s.commercial_eligible!==false||s.format!=="rss"||
      s.state!=="POLL_DIRECT_FEED")throw Error("CORRIDOR_SUPPLEMENT_REGISTRY_INVALID");
-  const u=new URL(s.url);
-  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash)
-   throw Error("CORRIDOR_SUPPLEMENT_URL_INVALID");
-  // Four pinned original official publisher endpoints; no mirrors.
-  if((s.id==="wto_official_news"&&u.hostname!=="www.wto.org")||
-     (s.id==="usgs_official_minerals_news"&&u.hostname!=="www.usgs.gov")||
+  let u;
+  try{u=new URL(s.url)}catch{throw Error("CORRIDOR_SUPPLEMENT_URL_INVALID")}
+  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
+     u.search||u.href!==PINNED_CORRIDOR_OFFICIAL_FEED_URLS[s.id]||
+     s.url!==PINNED_CORRIDOR_OFFICIAL_FEED_URLS[s.id]||
      (s.id==="doe_official_critical_materials_news"&&
-      (u.href!=="https://www.energy.gov/rss/energygov/2193718"||
-       s.independent_alternative_for!=="usgs_official_minerals_news"))||
-     (s.id==="rbi_official_press_releases"&&u.hostname!=="www.rbi.org.in"))
+      s.independent_alternative_for!=="usgs_official_minerals_news"))
    throw Error("CORRIDOR_SUPPLEMENT_PUBLISHER_INVALID");
   seen.add(s.id);
  }
