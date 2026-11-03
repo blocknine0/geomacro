@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T14:23:14.345Z",
+  "updated_at": "2026-11-03T14:36:16.643Z",
   "signals": [
     {
       "id": "macro-85cc884a",
@@ -176,6 +176,25 @@
       "severity": null
     },
     {
+      "id": "macro-2a56a30e",
+      "category": "macro",
+      "title": "Geomacro finds Sindh cut wheat support price to Rs4,500 per maund - Abb Takk News",
+      "what_changed": "A monitored source feed reports: Sindh cut wheat support price to Rs4,500 per maund - Abb Takk News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:18:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-1be83aa5",
       "category": "macro",
       "title": "Geomacro finds Kenya Financial Sector Stability reported 2025",
@@ -204,6 +223,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T12:03:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d235c301",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine said Russia attacked energy infrastructure overnight with roughly 300 drones-Xinhua - 新华网",
+      "what_changed": "A monitored source feed reports: Ukraine said Russia attacked energy infrastructure overnight with roughly 300 drones-Xinhua - 新华网. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:42:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -284,6 +322,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c32c25c8",
+      "category": "macro",
+      "title": "Geomacro finds IMF proposed emergency tax measures to address revenue shortfall in Pakistan - Daily Ausaf",
+      "what_changed": "A monitored source feed reports: IMF proposed emergency tax measures to address revenue shortfall in Pakistan - Daily Ausaf. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:51:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

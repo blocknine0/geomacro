@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T14:23:14.345Z",
+  "updated_at": "2026-11-03T14:36:16.643Z",
   "signals": [
+    {
+      "id": "geopolitics-5e5f5b30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US will end $4bn in annual military aid to Israel",
+      "what_changed": "A monitored source feed reports: Trump said US will end $4bn in annual military aid to Israel. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:22:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1efc2a07",
+      "category": "geopolitics",
+      "title": "Geomacro finds Lavrov rejected Ukraine Ceasefire Proposals, Claims Kyiv Wants Time to Rearm",
+      "what_changed": "A monitored source feed reports: Lavrov rejected Ukraine Ceasefire Proposals, Claims Kyiv Wants Time to Rearm. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:20:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ca03dd3e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said U.S. will stop $4B in military aid to Israel at end of 2026",
+      "what_changed": "A monitored source feed reports: Trump said U.S. will stop $4B in military aid to Israel at end of 2026. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:18:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.nbcnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-852aa61d",
       "category": "geopolitics",

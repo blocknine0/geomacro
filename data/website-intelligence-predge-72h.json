@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T14:23:14.345Z",
+  "checked_at": "2026-11-03T14:36:16.643Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 304,
+  "item_count": 310,
   "counts": {
-    "geopolitics": 137,
-    "macro": 126,
+    "geopolitics": 140,
+    "macro": 129,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "44458a98957739d54e2ea1ff584d244e669d25aa176f4b483bafe56295a440a9",
+  "source_native_ids_sha256": "fc7175a8e68af07de9f5bfc36e682285594dcb514db779b734b272e8e39b93d6",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-5e5f5b30",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US will end $4bn in annual military aid to Israel",
+      "what_changed": "A monitored source feed reports: Trump said US will end $4bn in annual military aid to Israel. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:22:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thenationalnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-1efc2a07",
+      "category": "geopolitics",
+      "title": "Geomacro finds Lavrov rejected Ukraine Ceasefire Proposals, Claims Kyiv Wants Time to Rearm",
+      "what_changed": "A monitored source feed reports: Lavrov rejected Ukraine Ceasefire Proposals, Claims Kyiv Wants Time to Rearm. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:20:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ca03dd3e",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said U.S. will stop $4B in military aid to Israel at end of 2026",
+      "what_changed": "A monitored source feed reports: Trump said U.S. will stop $4B in military aid to Israel at end of 2026. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:18:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: feeds.nbcnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-852aa61d",
       "category": "geopolitics",
@@ -334,6 +391,25 @@
       "severity": null
     },
     {
+      "id": "macro-2a56a30e",
+      "category": "macro",
+      "title": "Geomacro finds Sindh cut wheat support price to Rs4,500 per maund - Abb Takk News",
+      "what_changed": "A monitored source feed reports: Sindh cut wheat support price to Rs4,500 per maund - Abb Takk News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:18:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-1be83aa5",
       "category": "macro",
       "title": "Geomacro finds Kenya Financial Sector Stability reported 2025",
@@ -385,6 +461,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.naharnet.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d235c301",
+      "category": "macro",
+      "title": "Geomacro finds Ukraine said Russia attacked energy infrastructure overnight with roughly 300 drones-Xinhua - 新华网",
+      "what_changed": "A monitored source feed reports: Ukraine said Russia attacked energy infrastructure overnight with roughly 300 drones-Xinhua - 新华网. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:42:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -495,6 +590,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T10:52:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-c32c25c8",
+      "category": "macro",
+      "title": "Geomacro finds IMF proposed emergency tax measures to address revenue shortfall in Pakistan - Daily Ausaf",
+      "what_changed": "A monitored source feed reports: IMF proposed emergency tax measures to address revenue shortfall in Pakistan - Daily Ausaf. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:51:33.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
