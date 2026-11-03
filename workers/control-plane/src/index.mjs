@@ -38,6 +38,7 @@ import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-new
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived} from "./phase2h-private-raw-news.mjs";
+import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
@@ -1307,9 +1308,17 @@ export default {
       if(minute>=300&&minute<495||minute>=500&&minute<1050)
         ctx.waitUntil(scheduledUnifiedRisk(env,utc.getTime())
           .then(r=>{if(!r.ok)throw Error("UNIFIED_195X3_GENERATION_DEFERRED:"+r.error)}));
-      if(utc.getUTCMinutes()%15===10&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+      // Drain up to 12 real SHA-confirmed records every five minutes.
+      // Previous six per 15 minutes left genuine D1 originals unsynced.
+      if(utc.getUTCMinutes()%5===0&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(syncUnifiedRiskSupabase(env,{now:utc.getTime()})
           .then(r=>{if(!r.ok)throw Error("UNIFIED_SUPABASE_SYNC_DEFERRED:"+r.error)}));
+      // Reuse the existing one-minute Worker cron for a bounded, zero-fetch
+      // 40-original materialized-country backfill, not another scheduler.
+      // Partial D1 index makes the legacy NULL page cheap and resumable.
+      if(utc.getUTCMinutes()%2===1)
+        ctx.waitUntil(backfillRiskCountryIndex(env,{now:utc.getTime()})
+          .then(r=>{if(!r.ok)throw Error("RISK_COUNTRY_INDEX_BACKFILL_FAILED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
