@@ -17,7 +17,7 @@ test("GDELT 61-column static Event stream is source-indexed, not falsely ISO3-at
  assert.equal(summary.distinct_gdelt_fips_geo_codes,1);
  assert.equal(summary.publisher_original_date_verified,false);
  assert.equal(summary.iso3_event_country_verified,false);
- assert.equal(JSON.stringify(summary).includes("example.org"),false);
+ assert.doesNotMatch(JSON.stringify(summary),/https?:\/\//u);
 });
 test("manifest-verified static Events + GKG replace DOC without emitting publisher text",async()=>{
  const gkg=new Array(27).fill("");
