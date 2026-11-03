@@ -173,6 +173,7 @@ export async function postPhase2hPrivateRawRecords({
    controlPlaneRoot!=="https://geomacro-control-plane.daspallab202391.workers.dev")
   throw Error("PHASE2H_PRIVATE_INTAKE_AUTH_REQUIRED");
  let stored=0,duplicates=0,exactFivePart=0,retainedFivePart=0;
+ const newlyStoredIds=[];let archiveProofAvailable=true;
  for(let i=0;i<records.length;i+=20){
   const group=records.slice(i,i+20);
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/phase2h-raw-news",{
@@ -224,18 +225,30 @@ export async function postPhase2hPrivateRawRecords({
    if(proof.submitted_five_part_exact_readback!==current||
       (current&&proof.persisted_raw_sha256!==row.raw_sha256))
      throw Error("PHASE2H_PRIVATE_FIVE_PART_VERSION_RECEIPT_MISMATCH");
+   // The Worker used the same D1 before/after snapshots to prove whether
+   // this exact original was newly inserted. Never infer that from aggregate
+   // counts, as an immutable historical projector may have different SHA.
+   const inserted=proof.newly_inserted_after_d1_readback;
+   if(inserted===undefined)archiveProofAvailable=false; // older Worker
+   else if(typeof inserted!=="boolean"||
+      (inserted&&(proof.persisted_raw_sha256!==row.raw_sha256||!current)))
+     throw Error("PHASE2H_PRIVATE_NEW_ROW_PROOF_INVALID");
+   else if(inserted)newlyStoredIds.push(row.record_id);
    if(current)exactFivePart++;else {retainedFivePart++;groupRetained++;}
    seen.add(row.record_id);
   }
   if(seen.size!==group.length||
-     receipt.all_submitted_five_parts_exact!==(groupRetained===0))
+     receipt.all_submitted_five_parts_exact!==(groupRetained===0)||
+     (archiveProofAvailable&&newlyStoredIds.length!==stored+receipt.accepted))
     throw Error("PHASE2H_PRIVATE_BATCH_EVIDENCE_INCOMPLETE");
   stored+=receipt.accepted;duplicates+=receipt.unchanged;
  }
  return {stored,duplicate:duplicates,readback_verified:true,
   per_original_readback_verified:true,verified_originals:stored+duplicates,
   submitted_five_part_exact_count:exactFivePart,
-  retained_immutable_five_part_count:retainedFivePart};
+  retained_immutable_five_part_count:retainedFivePart,
+  archive_proof_available:archiveProofAvailable,
+  newly_stored_immutable_record_ids:archiveProofAvailable?newlyStoredIds:[]};
 }
 
 /**
@@ -252,6 +265,7 @@ export async function postPhase2hCollisionIsolated({
     new Set(records.map(r=>r?.record_id)).size!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_ARGUMENTS_INVALID");
  let stored=0,duplicate=0,rejected=0,attempts=0;
+ const newlyStoredIds=new Set();let archiveProofAvailable=true;
  const rejectedByCategory={geopolitics:0,macro:0,rare_earth:0};
  const send=async group=>{
   if(++attempts>maxAttempts)
@@ -266,6 +280,15 @@ export async function postPhase2hCollisionIsolated({
       result.stored<0||result.duplicate<0||
       result.stored+result.duplicate!==group.length)
     throw Error("PHASE2H_PRIVATE_D1_READBACK_MISMATCH");
+   if(result.archive_proof_available===true){
+     const ids=result.newly_stored_immutable_record_ids;
+     const allowed=new Set(group.map(row=>row.record_id));
+     if(!Array.isArray(ids)||ids.length!==result.stored||
+        ids.some(id=>!allowed.has(id)||newlyStoredIds.has(id))||
+        new Set(ids).size!==ids.length)
+       throw Error("PHASE2H_PRIVATE_NEW_ROW_PROOF_INVALID");
+     for(const id of ids)newlyStoredIds.add(id);
+   }else archiveProofAvailable=false;
    stored+=result.stored;duplicate+=result.duplicate;
   }catch(error){
    if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")throw error;
@@ -291,6 +314,8 @@ export async function postPhase2hCollisionIsolated({
   readback_verified:stored+duplicate>0,
   per_original_readback_verified:stored+duplicate>0,
   attempts,paid_eligible:false,commercial_rights_verified:false,
-  b2_verified:false,payments:0
+  b2_verified:false,payments:0,
+  archive_proof_available:archiveProofAvailable&&newlyStoredIds.size===stored,
+  newly_stored_immutable_record_ids:archiveProofAvailable?[...newlyStoredIds]:[],
  });
 }
