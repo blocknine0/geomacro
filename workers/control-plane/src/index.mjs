@@ -1575,6 +1575,31 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
 
     try {
+      // Owner-only, strictly bounded current-day canonical reconciliation.
+      // Page is the sole permitted input: 18 immutable ID-ordered pages
+      // of 12/last 3 real records. No arbitrary target, day, source fetch,
+      // payment, signed GRO promotion, private URLs, or HMAC key disclosure.
+      if(request.method==="POST"&&
+        url.pathname==="/v1/internal/risk-gate/unified-reconcile-page"&&!url.search){
+        let body;
+        try{
+          const raw=await request.text();
+          if(raw.length>96)throw Error("INVALID_SIZE");
+          body=JSON.parse(raw);
+        }catch{return json({ok:false,error:"UNIFIED_RECONCILE_INVALID_REQUEST"},400);}
+        if(!body||typeof body!=="object"||Array.isArray(body)||
+          Object.keys(body).length!==1||!Number.isInteger(body.page)||
+          body.page<0||body.page>17)
+          return json({ok:false,error:"UNIFIED_RECONCILE_INVALID_PAGE"},400);
+        const receipt=await syncUnifiedRiskSupabase(env,{scope:"CANONICAL_PAGE",page:body.page});
+        return json({schema:"geomacro.unified-risk-reconcile-page.v1",
+          ok:receipt.ok===true,page:body.page,
+          receipt_count:receipt.canonical_page_count??0,
+          remote_rows_repaired:receipt.remote_rows_repaired??0,
+          remote_hash_readback_verified:receipt.hash_readback_verified===true,
+          error:receipt.ok?null:receipt.error,
+          no_funds:true,commercial_activation:false},receipt.ok?200:503);
+      }
       // Owner-admin-only daily census; no article metadata or customer IDs.
       if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
         const day_utc=new Date().toISOString().slice(0,10);
