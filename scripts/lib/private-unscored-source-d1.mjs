@@ -2,7 +2,8 @@
  * An absent LLM must never prevent original-source intake. This helper does
  * not score, certify copyright, corroborate or publish any paid intelligence.
  */
-import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords} from "./phase2h-raw-original-records.mjs";
+import {buildPhase2hPrivateRawRecords,postPhase2hPrivateRawRecords,
+  postPhase2hCollisionIsolated} from "./phase2h-raw-original-records.mjs";
 
 export const PRIVATE_SOURCE_D1_ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
 const HOURS_72=72*60*60*1000;
@@ -103,22 +104,25 @@ export function reliefwebPrivateCandidates(reports,now=new Date()) {
 
 export async function persistUnscoredSourceCandidatesD1(candidates,{
   now=new Date(),token=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN,
-  fetchImpl=fetch,post=postPhase2hPrivateRawRecords,
+  fetchImpl=fetch,post=postPhase2hCollisionIsolated,
 }={}) {
   const plan=buildPhase2hPrivateRawRecords(candidates,{now,derive:()=>[]});
-  const receipt=await post({
+  // Existing canonical collision isolator quarantines conflicting IDs
+  // without withholding unrelated original observations from D1.
+  const receipt=await (plan.records.length?post:postPhase2hPrivateRawRecords)({
     records:plan.records,controlPlaneRoot:PRIVATE_SOURCE_D1_ROOT,token,fetchImpl,
   });
   if(receipt.readback_verified!==true||
      receipt.per_original_readback_verified!==true||
-     receipt.verified_originals!==plan.records.length)
+     receipt.verified_originals+(receipt.rejected_conflicts??0)!==plan.records.length)
     throw Error("PRIVATE_SOURCE_D1_EXACT_READBACK_UNVERIFIED");
   return Object.freeze({
     schema:"geomacro.part2.source-private-d1-receipt.v1",
     proposed:plan.records.length,
     persisted:receipt.stored,unchanged:receipt.duplicate,
     rejected_invalid:plan.discarded_invalid,
-    identity_conflicts_quarantined:plan.identity_conflicts_quarantined,
+    identity_conflicts_quarantined:plan.identity_conflicts_quarantined+
+      (receipt.rejected_conflicts??0),
     category_counts:plan.counts,
     d1_exact_readback_verified:true,
     per_original_readback_verified:receipt.per_original_readback_verified===true,
