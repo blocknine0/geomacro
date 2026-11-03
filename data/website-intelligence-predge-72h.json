@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T12:49:28.794Z",
+  "checked_at": "2026-11-03T12:58:07.607Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 291,
+  "item_count": 290,
   "counts": {
-    "geopolitics": 128,
+    "geopolitics": 127,
     "macro": 122,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "ae644d7458c5febd5f858a45c2481713e39dadfd7beec0895992ce61bab6fba5",
+  "source_native_ids_sha256": "3999e35170cbd431ce49db5c470506cf27f75b2d531a9b6ec8c1cf960915377f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -5530,25 +5530,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T13:08:06.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-27db675e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Saudi Arabia called for Restoring Peace and Stability - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Saudi Arabia called for Restoring Peace and Stability - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T12:57:59.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
