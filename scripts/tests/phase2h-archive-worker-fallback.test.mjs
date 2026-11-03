@@ -87,3 +87,37 @@ test("bad admin response never produces B2 or D1 proof",async()=>{
   /PHASE2H_RAW_B2_INTERNAL_FALLBACK_READBACK_UNVERIFIED/u);
  assert.equal(workerCalls,1);
 });
+
+test("Worker 503 at 25 originals reuses the exact keyset cursor at 10 rows",async()=>{
+ const first=original.slice(0,23),limits=[],cursors=[];
+ const fetchImpl=async(url)=>{
+  const u=new URL(url);
+  if(u.hostname==="api.cloudflare.com")return denial(400,7500);
+  const limit=Number(u.searchParams.get("limit"));
+  const cursor=u.searchParams.get("archive_cursor_id");
+  limits.push(limit);cursors.push(cursor);
+  if(limit===25)return Response.json({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},{status:503});
+  const start=cursor===null?0:first.findIndex(x=>x.record_id>cursor);
+  const page=start<0?[]:first.slice(start,start+limit);
+  return Response.json({ok:true,schema:"geomacro.phase2h.private-pending-archive.v1",
+   rows:page,complete:page.length<limit,paid_eligible:false,raw_public_delivery:false});
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ const actual=await d1.readPending(now);
+ assert.equal(actual.length,23);
+ assert.deepEqual(limits.slice(0,2),[25,10]);
+ assert.equal(cursors[0],null);assert.equal(cursors[1],null);
+ assert.equal(new Set(actual.map(x=>x.record_id)).size,23);
+});
+test("Worker persistent HTTP 503 all way down to one cannot invent B2 receipt",async()=>{
+ const limits=[];
+ const fetchImpl=async url=>{
+  const u=new URL(url);
+  if(u.hostname==="api.cloudflare.com")return denial(400,7500);
+  limits.push(Number(u.searchParams.get("limit")));
+  return Response.json({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},{status:503});
+ };
+ await assert.rejects(createPhase2hCanonicalD1({env,fetchImpl}).readPending(now),
+  /PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE/u);
+ assert.deepEqual(limits,[25,10,5,1]);
+});
