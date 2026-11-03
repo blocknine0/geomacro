@@ -925,7 +925,7 @@ def feed_source_timestamp_has_clock(entry: Any) -> bool:
         return False
     return bool(
         re.search(
-            r"(?:T|\\s)\\d{1,2}:?\\d{2}(?::?\\d{2}(?:\\.\\d+)?)?",
+            r"(?:T|\s)\d{1,2}:?\d{2}(?::?\d{2}(?:\.\d+)?)?",
             raw,
             flags=re.IGNORECASE,
         )
