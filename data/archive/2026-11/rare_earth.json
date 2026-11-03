@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-03T15:58:32.268Z",
+  "updated_at": "2026-11-03T17:36:39.712Z",
   "signals": [
+    {
+      "id": "rare_earth-7a5142b1",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nickel Workers called for Reforms as Deaths and Injuries Add Up - Earthworks",
+      "what_changed": "A monitored source feed reports: Nickel Workers called for Reforms as Deaths and Injuries Add Up - Earthworks. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:51:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-cf645480",
       "category": "rare_earth",
