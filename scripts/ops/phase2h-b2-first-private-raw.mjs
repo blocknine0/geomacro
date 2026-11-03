@@ -10,7 +10,7 @@ import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
 import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore}
  from "./phase2h-archive-private-raw-news.mjs";
 
-const SOURCE_MAX=20;
+const SOURCE_MAX=150;
 const PREFIX="geomacro-evidence/v1/private/phase2h-raw-news/";
 const safeFailure=code=>{throw Error("PHASE2H_B2_FIRST_"+code)};
 export function assertB2FirstSourceEnv(env=process.env){
