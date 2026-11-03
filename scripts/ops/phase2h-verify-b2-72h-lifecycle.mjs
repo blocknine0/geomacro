@@ -58,7 +58,8 @@ async function readPrivateB2LifecycleRules({
     env.GITHUB_REF!=="refs/heads/main"||
     env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
     env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
-    env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="derived_news_backup"||
+    !["derived_news_backup","registered_original_archive"].includes(
+      env.B2_ACCOUNT_QUOTA_WORKFLOW_ID)||
     typeof env.B2_KEY_ID!=="string"||env.B2_KEY_ID.length<12||
     typeof env.B2_APPLICATION_KEY!=="string"||env.B2_APPLICATION_KEY.length<16)
   fail("PROTECTED_GOVERNED_MAIN_REQUIRED");
