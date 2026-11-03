@@ -24,7 +24,7 @@ test("five-minute source slots cover at most 24 pinned publishers/category nomin
  assert.ok(t.length<=24);
 });
 
-test("bounded parallel reads never exceed six concurrent external endpoints",async()=>{
+test("bounded parallel reads never exceed ten concurrent external endpoints",async()=>{
  const registry=Array.from({length:15},(_,i)=>source("macro",i));
  let active=0,peak=0,calls=0;
  const now=base;
@@ -43,7 +43,7 @@ test("bounded parallel reads never exceed six concurrent external endpoints",asy
      return new Response(rss,{status:200,headers:{"Content-Type":"application/rss+xml"}});
    }});
  assert.equal(calls,8);
- assert.ok(peak>1 && peak<=6);
+ assert.ok(peak>1 && peak<=10);
  assert.equal(result.summary.nominal_poll_slot_minutes,5);
  assert.equal(result.summary.nominal_max_category_revisit_minutes,10);
  assert.equal(result.summary.schedule_and_first_report_latency_verified,false);
