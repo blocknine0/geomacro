@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T06:36:24.480Z",
+  "checked_at": "2026-11-03T08:28:14.174Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-8d39e747",
+      "category": "macro",
+      "title": "Geomacro finds WGC cut Gold Investment Demand Growth Forecast Amid Slower Retail Buying By Kedia Advisory - Investing.com India",
+      "what_changed": "A monitored source feed reports: WGC cut Gold Investment Demand Growth Forecast Amid Slower Retail Buying By Kedia Advisory - Investing.com India. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:54:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-cba3e18c",
       "category": "macro",
@@ -4143,63 +4162,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-10-31T08:58:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-84bf866a",
-      "category": "macro",
-      "title": "Geomacro finds Ethiopian Deposit Insurance Fund recorded ETB2.6Bln in Q1 Premiums",
-      "what_changed": "A monitored source feed reports: Ethiopian Deposit Insurance Fund recorded ETB2.6Bln in Q1 Premiums. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T08:05:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thereporterethiopia.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-0ce42b89",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International",
-      "what_changed": "A monitored source feed reports: United Kingdom said it has deployed air defenses to Saudi Arabia after renewed Houthi attacks - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T07:51:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-2e6116a3",
-      "category": "rare_earth",
-      "title": "Geomacro finds China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance",
-      "what_changed": "A monitored source feed reports: China reported sharp increase in gold, nickel and strategic minerals - Xinhua - Yahoo Finance. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T07:09:04.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
