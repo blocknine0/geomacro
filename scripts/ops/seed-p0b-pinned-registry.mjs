@@ -6,7 +6,6 @@
  * No network and no source creation from unverifiable third parties.
  */
 import {readFileSync,writeFileSync} from 'node:fs';
-import {resolve} from 'node:path';
 
 const ROOT=new URL('../../',import.meta.url);
 const parse=p=>JSON.parse(readFileSync(new URL(p,ROOT),'utf8'));
@@ -67,10 +66,9 @@ for(const s of records){
  [s.id,s.endpoint,s.parser,s.category,s.country,s.rights].map(quote).join(',')+
  ',900,'+quote(stamp)+',NULL,NULL,1) ON CONFLICT(source_id) DO NOTHING;\n';
 }
-const args=process.argv.slice(2);
-if(args.length!==2||args[0]!=='--output'||!args[1]||args[1]==='-')
- throw Error('P0B_SEED_OUTPUT_PATH_REQUIRED');
-const output=resolve(args[1]);
+if(process.argv.length!==2)throw Error('P0B_SEED_EXTRA_ARGS_FORBIDDEN');
+// Fixed same-repository output, never write to an arbitrary runner/CLI path.
+const output=new URL('../../workers/control-plane/p0b-seed.generated.sql',import.meta.url);
 writeFileSync(output,sql,{mode:0o600,flag:'wx'});
 const byCategory={GEOPOLITICS:0,MACRO_FX:0,CRITICAL_MINERALS:0};
 for(const s of records)byCategory[s.category]++;
