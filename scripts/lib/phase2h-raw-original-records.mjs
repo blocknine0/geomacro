@@ -173,8 +173,8 @@ export async function postPhase2hPrivateRawRecords({
    controlPlaneRoot!=="https://geomacro-control-plane.daspallab202391.workers.dev")
   throw Error("PHASE2H_PRIVATE_INTAKE_AUTH_REQUIRED");
  let stored=0,duplicates=0,exactFivePart=0,retainedFivePart=0;
- for(let i=0;i<records.length;i+=20){
-  const group=records.slice(i,i+20);
+ for(let i=0;i<records.length;i+=50){
+  const group=records.slice(i,i+50);
   const response=await fetchImpl(controlPlaneRoot+"/v1/internal/phase2h-raw-news",{
    method:"PUT",redirect:"error",cache:"no-store",
    headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
@@ -280,8 +280,8 @@ export async function postPhase2hCollisionIsolated({
    await send(group.slice(middle));
   }
  };
- for(let i=0;i<records.length;i+=20)
-  await send(records.slice(i,i+20));
+ for(let i=0;i<records.length;i+=50)
+  await send(records.slice(i,i+50));
  if(stored+duplicate+rejected!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_RECONCILIATION_FAILED");
  return Object.freeze({

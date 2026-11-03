@@ -357,12 +357,12 @@ test("Phase2H cleanup grant funds exactly one provider-budgeted daily pass",()=>
  }
 });
 
-test("registered producer conservatively admits up to 20 real D1 rows under verified Free headroom",()=>{
+test("registered producer plans a 150-record adaptive ceiling but preserves real Free provider headroom",()=>{
  const t=new Date("2026-10-27T12:00:00.000Z");
  const p=planD1BundledWork(quota(1_000_000,10_000),{now:t});
- assert.equal(REGISTERED_ADAPTIVE_FREE_CAP.max_originals_per_15m,20);
+ assert.equal(REGISTERED_ADAPTIVE_FREE_CAP.max_originals_per_15m,150);
  assert.ok(p.registered_private_max_new_rows>=5);
- assert.ok(p.registered_private_max_new_rows<=20);
+ assert.ok(p.registered_private_max_new_rows<=150);
  assert.equal(p.registered_private_adaptive_free_budgeted,true);
  const slots=p.source_intake_budget_to_utc_reset.remaining_source_slots;
  const extra=p.registered_private_max_new_rows-5;

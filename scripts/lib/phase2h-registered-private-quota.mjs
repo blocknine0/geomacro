@@ -4,7 +4,7 @@
  * Every attempt re-observes native evidence; nothing is called durably queued.
  */
 export const REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT=3;
-export const REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP=20;
+export const REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP=150;
 export const REGISTERED_SOURCE_SLOT_MINUTES=15;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const MS=60_000;
@@ -58,7 +58,7 @@ export function planRegisteredPrivateOriginals(records,{now=new Date(),maxPerSlo
   selected_by_category:Object.fromEntries(CATEGORIES.map((c,i)=>[c,counts[i]])),
   source_poll_interval_minutes:REGISTERED_SOURCE_SLOT_MINUTES,
   max_originals_per_slot:maxPerSlot,
-  max_collision_attempts:selected.length*2+1,
+  max_collision_attempts:Math.min(128,selected.length*2+1),
   next_slot_requires_fresh_source_and_quota:true,
   no_future_publication_guarantee:true,predge_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0

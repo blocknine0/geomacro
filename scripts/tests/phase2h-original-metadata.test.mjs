@@ -48,6 +48,18 @@ test("range-bounded metadata read keeps original identity and never creates paid
  assert.equal(result.independent_event_verified,false);
  assert.equal(result.paid_eligible,false);
 });
+test("metadata hydrator admits a 150-original batch but not 151",async()=>{
+ const selected=Array.from({length:150},(_,i)=>({...original,
+  articleUrl:original.articleUrl+"/"+i}));
+ const out=await hydrateSelectedOriginalMetadata(selected,{
+  concurrency:10,fetchImpl:async()=>new Response(valid,{status:206,
+   headers:{"Content-Type":"text/html"}}),
+ });
+ assert.equal(out.candidates.length,150);
+ assert.equal(out.metadata_summaries_observed,150);
+ await assert.rejects(hydrateSelectedOriginalMetadata([...selected,original]),
+  /PHASE2H_METADATA_BOUNDED_INPUT_INVALID/);
+});
 test("denied and cross-origin pages degrade only their own original; never fail whole slot",async()=>{
  const out=await hydrateSelectedOriginalMetadata([original,
   {...original,articleUrl:"https://foreign.example.net/news/one"}],{

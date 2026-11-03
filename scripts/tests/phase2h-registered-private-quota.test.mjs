@@ -75,8 +75,8 @@ test("provider-budgeted cap accepts 20 genuine distinct originals fairly",()=>{
  const second=planRegisteredPrivateOriginals(records,{now:new Date(when.getTime()+15*60_000),maxPerSlot:20});
  assert.equal(new Set([...batch.records,...second.records].map(r=>r.record_id)).size,40);
 });
-test("registered cap cannot be missing, negative or above hard 20-row ceiling",()=>{
- for(const cap of [0,-1,21,100,1.5,NaN])
+test("registered cap cannot be missing, negative or above hard 150-row ceiling",()=>{
+ for(const cap of [0,-1,151,1000,1.5,NaN])
   assert.throws(()=>planRegisteredPrivateOriginals([row(1)],{now:when,maxPerSlot:cap}),
    /REGISTERED_PRIVATE_ORIGINAL_ADMISSION_INVALID/u);
  const src=readFileSync("scripts/ops/publish-all-source-reusable-news-json.ts","utf8");
@@ -85,6 +85,14 @@ test("registered cap cannot be missing, negative or above hard 20-row ceiling",(
  assert.match(workflow,/GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS:/u);
 });
 
+test("150 genuinely distinct originals can be selected fairly when the provider budgets them",()=>{
+ const records=Array.from({length:210},(_,i)=>row(i+1));
+ const batch=planRegisteredPrivateOriginals(records,{now:when,maxPerSlot:150});
+ assert.equal(batch.selected_count,150);
+ assert.deepEqual(batch.selected_by_category,{geopolitics:50,macro:50,rare_earth:50});
+ assert.equal(batch.deferred_reobserve,60);
+ assert.equal(batch.max_collision_attempts,128);
+});
 test("critical-only without a source budget continues discovery, not a failing D1 publication",()=>{
  const wf=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
  const match=wf.matchAll(/if: steps\.quota\.outputs\.critical == 'true' && steps\.quota\.outputs\.registered_private_max_new_rows != '0'/gu);

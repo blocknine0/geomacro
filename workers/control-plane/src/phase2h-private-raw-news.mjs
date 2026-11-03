@@ -123,7 +123,7 @@ export async function validPrivateRawNews(row,now=Date.now(),requireRecent=true)
 }
 export async function phase2hPrivateRawPut(env,body,now=Date.now()){
  if(!env?.DB||!exact(body)||body.schema!=="geomacro.phase2h.private-raw-batch.v1"||
-  !Array.isArray(body.items)||body.items.length<1||body.items.length>20)
+  !Array.isArray(body.items)||body.items.length<1||body.items.length>50)
   return safeReply({ok:false,error:"PRIVATE_RAW_BATCH_INVALID"},400);
  try{
   const ids=new Set(),items=[];
