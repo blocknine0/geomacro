@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T14:52:23.864Z",
+  "checked_at": "2026-11-03T14:55:37.971Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,44 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-9c6bab8b",
+      "category": "macro",
+      "title": "Geomacro finds Vijay launched ₹1,110-crore bank credit linkages for 9,000 SHGs in Erode",
+      "what_changed": "A monitored source feed reports: Vijay launched ₹1,110-crore bank credit linkages for 9,000 SHGs in Erode. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:53:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-497f6f7d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran rejected diplomacy that is based on imposition, blackmail",
+      "what_changed": "A monitored source feed reports: Iran rejected diplomacy that is based on imposition, blackmail. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-df8a794f",
       "category": "macro",
@@ -1303,6 +1341,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-29033e4b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS",
+      "what_changed": "A monitored source feed reports: United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:51:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2d7a339d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War",
+      "what_changed": "A monitored source feed reports: Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: thediplomat.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-5f451aff",
       "category": "geopolitics",
       "title": "Geomacro finds Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions",
@@ -1464,6 +1540,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T21:42:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-397720b7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov)",
+      "what_changed": "A monitored source feed reports: Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:09:02.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4419,25 +4514,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-78952a80",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
-      "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:54:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "macro-431f0823",
       "category": "macro",
       "title": "Geomacro finds Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027",
@@ -4485,63 +4561,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T21:02:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e12b2ecd",
-      "category": "geopolitics",
-      "title": "Geomacro finds QRCS launched shelter project for refugees in Bangladesh",
-      "what_changed": "A monitored source feed reports: QRCS launched shelter project for refugees in Bangladesh. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T21:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.gulf-times.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-05373168",
-      "category": "geopolitics",
-      "title": "Geomacro finds UAE said hoping for breakthrough yet ‘braced for the worst’ in Iran-US war - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: UAE said hoping for breakthrough yet ‘braced for the worst’ in Iran-US war - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T20:37:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-60a65d09",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump held call with Netanyahu over state of Iran war: report",
-      "what_changed": "A monitored source feed reports: Trump held call with Netanyahu over state of Iran war: report. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T20:35:58.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4675,25 +4694,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T16:27:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a8b986d2",
-      "category": "macro",
-      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
-      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:19:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

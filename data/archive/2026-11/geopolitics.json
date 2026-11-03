@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-03T14:52:23.864Z",
+  "updated_at": "2026-11-03T14:55:37.971Z",
   "signals": [
+    {
+      "id": "geopolitics-497f6f7d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran rejected diplomacy that is based on imposition, blackmail",
+      "what_changed": "A monitored source feed reports: Iran rejected diplomacy that is based on imposition, blackmail. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-5e5f5b30",
       "category": "geopolitics",
@@ -613,6 +632,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-29033e4b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS",
+      "what_changed": "A monitored source feed reports: United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:51:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2d7a339d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War",
+      "what_changed": "A monitored source feed reports: Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: thediplomat.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-5f451aff",
       "category": "geopolitics",
       "title": "Geomacro finds Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions",
@@ -702,6 +759,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-397720b7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov)",
+      "what_changed": "A monitored source feed reports: Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:09:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

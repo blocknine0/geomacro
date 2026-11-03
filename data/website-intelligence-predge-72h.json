@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T14:52:23.864Z",
+  "checked_at": "2026-11-03T14:55:37.971Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 318,
+  "item_count": 323,
   "counts": {
-    "geopolitics": 145,
-    "macro": 132,
+    "geopolitics": 149,
+    "macro": 133,
     "rare_earth": 41
   },
-  "source_native_ids_sha256": "7abd68b225c1b973afc00d1a7638dfa436155b1f70a01980894a6465b8ea2145",
+  "source_native_ids_sha256": "2cf9b9c57ea438a169ccf0d465e7de4534121e2a1d864d2462f5277a3598a79f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-9c6bab8b",
+      "category": "macro",
+      "title": "Geomacro finds Vijay launched ₹1,110-crore bank credit linkages for 9,000 SHGs in Erode",
+      "what_changed": "A monitored source feed reports: Vijay launched ₹1,110-crore bank credit linkages for 9,000 SHGs in Erode. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:53:29.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-497f6f7d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran rejected diplomacy that is based on imposition, blackmail",
+      "what_changed": "A monitored source feed reports: Iran rejected diplomacy that is based on imposition, blackmail. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-df8a794f",
       "category": "macro",
@@ -1379,6 +1417,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-29033e4b",
+      "category": "geopolitics",
+      "title": "Geomacro finds United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS",
+      "what_changed": "A monitored source feed reports: United States announced New Russia-Ukraine Peace Talks As NATO Boosts Military Support For Kyiv - i24NEWS. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:51:04.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2d7a339d",
+      "category": "geopolitics",
+      "title": "Geomacro finds Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War",
+      "what_changed": "A monitored source feed reports: Indonesia urged Russia to Stop Recruiting Its Citizens Into Ukraine War. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T23:50:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: thediplomat.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-5f451aff",
       "category": "geopolitics",
       "title": "Geomacro finds Russia signed Military Cooperation Deal With Azerbaijan, Eyes New Arms Sales Amid Turkey Tensions",
@@ -1559,6 +1635,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T21:42:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-397720b7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov)",
+      "what_changed": "A monitored source feed reports: Justice Department announced Charges Involving 63 Individuals for Election-Related Crimes - Department of Justice (.gov). This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:09:02.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
