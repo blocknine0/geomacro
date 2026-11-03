@@ -15,6 +15,7 @@ function dbFixture(){
  const db=new DatabaseSync(':memory:');
  db.exec(text('workers/control-plane/migrations/0113_p0a_source_registry.sql'));
  db.exec(text('workers/control-plane/migrations/0114_p0_b_spool_queue.sql'));
+ db.exec(text('workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'));
  const sql=(statement,values=[])=>({
   bind(...args){return sql(statement,args)},
   async first(){return db.prepare(statement).get(...values)??null},
@@ -143,4 +144,14 @@ test('P0-B permanent activation reuses existing private archive credentials and 
  assert.match(deploy,/P0B_EXISTING_B2_SECRET_KEY_MISSING/u);
  assert.match(parity,/P0B_REAL_B2_D1_PARITY_VERIFIED/u);
  assert.doesNotMatch(parity,/GEOMACRO_P0B_ENABLE/u);
+});
+
+test('Production activation requires real B2 key capability preflight and exact spool prefix',()=>{
+ const deployment=text('.github/workflows/deploy-d1-control-plane.yml');
+ assert.match(deployment,/Verify actual B2 key scope and derive allowed private spool prefix/u);
+ assert.match(deployment,/scripts\/ops\/p0b-b2-scope-preflight\.mjs/u);
+ assert.match(deployment,/B2_SPOOL_PREFIX=prefix/u);
+ assert.match(deployment,/P0B_VERIFIED_B2_STORAGE_SCOPE_REQUIRED/u);
+ const monitor=text('.github/workflows/p0b-production-parity-hourly.yml');
+ assert.match(monitor,/b2_storage_guard/u);
 });
