@@ -2,6 +2,12 @@ name: RSS canonical private D1 originals every 15 minutes
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/rss-private-d1-15m.yml"
+      - "scripts/run-rss-live-cycle.mjs"
+      - "scripts/lib/private-unscored-source-d1.mjs"
   schedule:
     - cron: "11,26,41,56 * * * *"
 
