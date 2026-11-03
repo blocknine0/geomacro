@@ -22,6 +22,8 @@ const phase2hOriginals=[];
 const phase2hKnown=new Set();
 const collected=await collectRegisteredReusableNews({
   normalize:normalizeReusableNewsJson,
+  // Publisher's own item-native RDF clock; private research discovery only.
+  allowRdfNativeDates:true,
   resolveCountry:title=>countryMentionFromTitle(title,COUNTRIES_195),
   onOriginalCandidate:raw=>{
     if(!raw||typeof raw.article_url!=="string"||
