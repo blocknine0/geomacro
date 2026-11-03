@@ -642,6 +642,7 @@ test("re-observed immutable original survives deployed event-analysis wording up
  assert.equal(receipt.all_submitted_five_parts_exact,false);
  assert.equal(receipt.per_original_evidence[0].authenticated_d1_original_and_five_part_verified,true);
  assert.equal(receipt.per_original_evidence[0].submitted_five_part_exact_readback,false);
+ assert.equal(receipt.per_original_evidence[0].newly_inserted_after_d1_readback,false);
  assert.equal(insertCalls,1);assert.equal(afterReads,2);
  const changed=structuredClone(updated);
  changed.original.original_title="A publisher revision of the same original URL and date";
@@ -683,6 +684,7 @@ test("authenticated per-original readback hashes persisted native source and fiv
  assert.equal(b.per_original_evidence[0].persisted_five_part_sha256,
   createHash("sha256").update(JSON.stringify(first.analysis)).digest("hex"));
  assert.equal(b.per_original_evidence[0].b2_archived_verified,false);
+ assert.equal(b.per_original_evidence[0].newly_inserted_after_d1_readback,true);
  assert.equal(insert,1);assert.equal(reads,2);
 });
 test("D1 readback rejects swapped same-ID analysis even if metadata hash columns look plausible",async()=>{
