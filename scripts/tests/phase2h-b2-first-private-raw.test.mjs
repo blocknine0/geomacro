@@ -162,3 +162,19 @@ test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original 
  assert.equal(result.all_selected_originals_archived,false);
 });
 
+
+test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{
+ let puts=0;
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED");},
+  b2Factory:()=>{puts++;throw Error("UNREACHABLE");},
+ }),/PHASE2H_B2_FIRST_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ assert.equal(puts,0);
+});
+test("untrusted raw lifecycle error strings can never disclose provider details",async()=>{
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
+ }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
+});
