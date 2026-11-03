@@ -98,10 +98,10 @@ export function p0bMetadataEvent(title,description,category){
     title.length<18||title.length>260||description.length<45||
     description.length>360||unsafe(title)||unsafe(description)||
     conditional(title))return null;
- const titleTerms=new Set((title.toLowerCase().match(/[\\p{L}\\p{N}]{4,}/gu)??[]));
- const descriptionTerms=new Set(description.toLowerCase().match(/[\\p{L}\\p{N}]{4,}/gu)??[]);
+ const titleTerms=new Set((title.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)??[]));
+ const descriptionTerms=new Set(description.toLowerCase().match(/[\p{L}\p{N}]{4,}/gu)??[]);
  if([...titleTerms].filter(word=>descriptionTerms.has(word)).length<2)return null;
- const first=tidy(description.split(/(?:[.!?]\\s+|[.!?]$)/u)[0]??"");
+ const first=tidy(description.split(/(?:[.!?]\s+|[.!?]$)/u)[0]??"");
  if(first.length<18||first.length>260)return null;
  const action=p0bHeadlineEvent(first,category);
  if(!action)return null;
