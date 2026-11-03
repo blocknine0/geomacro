@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {extractOriginalMetadata,firstPartyOriginalUrl,hydrateSelectedOriginalMetadata}
  from "../lib/phase2h-original-metadata.mjs";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
+import {p0aAuditOriginal} from "../lib/p0a-evidence-quality.mjs";
 
 const original={
  title:"Central bank announces interest rate reduction for domestic lending markets",
@@ -82,6 +83,19 @@ test("actor-action original produces grounded five-part draft without independen
  assert.equal(x.analysis.evidence_and_confidence.original_article_page_verified,false);
  assert.equal(x.analysis.evidence_and_confidence.paid_eligible,false);
  assert.equal(x.original.original_content,null);
+});
+test("actor-action original OG excerpt can complete a noun-phrase title without market or rights inventions",()=>{
+ const rows=buildPhase2hPrivateRawRecords([{
+   ...original,title:"India central bank interest rate policy announcement",
+   description:"India central bank announces an interest rate policy decision for commercial lending markets in a new bulletin.",
+  }],{now:new Date("2026-11-03T12:00:00Z"),derive:()=>[]});
+ assert.equal(rows.records.length,1);
+ const row=rows.records[0];
+ assert.match(row.analysis.what_happened.text,/India central bank announced/);
+ assert.equal(p0aAuditOriginal(row).status,"PASS");
+ assert.equal(row.analysis.evidence_and_confidence.independent_event_verified,false);
+ assert.equal(row.analysis.evidence_and_confidence.paid_eligible,false);
+ assert.equal(row.original.original_content,null);
 });
 test("vague or hedged title remains not independently verified and never fabricates a full fact",()=>{
  const row=buildPhase2hPrivateRawRecords([{

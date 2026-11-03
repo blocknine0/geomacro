@@ -2,7 +2,7 @@
  * Source-native publication clocks are never replaced by ingestion timestamps.
  */
 import {createHash} from "node:crypto";
-import {p0bHeadlineEvent} from "./p0b-event-grounded-projection.mjs";
+import {p0bHeadlineEvent,p0bMetadataEvent} from "./p0b-event-grounded-projection.mjs";
 export const RAW2H_SCHEMA="geomacro.phase2h.private-raw-observation.v1";
 /** Founder-locked three-domain contract: transform every admitted raw original
  * into GeoMacro-authored five-part analysis without a manual commerce review.
@@ -110,7 +110,9 @@ export function buildPhase2hPrivateRawRecords(candidates,{now=new Date(),derive}
   // A headline alone remains RAW_MONITOR when the old model found no event.
   const hasMetadata=typeof c.description==="string"&&
     c.description.trim().length>=45&&!/[<>]/u.test(c.description);
-  const headlineEvent=hasMetadata?p0bHeadlineEvent(c.title,c.category):null;
+  const headlineEvent=hasMetadata?
+    p0bHeadlineEvent(c.title,c.category)??
+    p0bMetadataEvent(c.title,c.description,c.category):null;
   const topic=s?.topic??null;
   const analysis={
    schema:"geomacro.phase2h.private-five-part.v1",

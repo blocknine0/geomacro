@@ -88,6 +88,28 @@ export function p0bHeadlineEvent(title,category){
  }
  return null;
 }
+/** A first-party OG/JSON-LD excerpt can identify an actor/action when a
+ * noun-phrase feed title cannot. This is still only a source-grounded PRIVATE
+ * research draft, not corroboration, licensing or an independently verified
+ * incident. Two actual title tokens must occur in the excerpt.
+ */
+export function p0bMetadataEvent(title,description,category){
+ if(typeof title!=="string"||typeof description!=="string"||
+    title.length<18||title.length>260||description.length<45||
+    description.length>360||unsafe(title)||unsafe(description)||
+    conditional(title))return null;
+ const titleTerms=new Set((title.toLowerCase().match(/[\\p{L}\\p{N}]{4,}/gu)??[]));
+ const descriptionTerms=new Set(description.toLowerCase().match(/[\\p{L}\\p{N}]{4,}/gu)??[]);
+ if([...titleTerms].filter(word=>descriptionTerms.has(word)).length<2)return null;
+ const first=tidy(description.split(/(?:[.!?]\\s+|[.!?]$)/u)[0]??"");
+ if(first.length<18||first.length>260)return null;
+ const action=p0bHeadlineEvent(first,category);
+ if(!action)return null;
+ const why="The "+action.actor+" development is relevant: "+action.why;
+ if(why.length>1200)return null;
+ return Object.freeze({...action,why});
+}
+
 export function p0bProjectEvidenceBounded(item){
  if(!item?.analysis||!item?.original||!item.record_id)return null;
  const originalAudit=p0aAuditOriginal(item);
