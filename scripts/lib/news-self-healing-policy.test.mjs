@@ -68,6 +68,31 @@ test("immutable ID mismatch, truncated preview, bogus cohort fail closed",()=>{
  const mismatched=sample();mismatched.archive.daily.generated_at=new Date(NOW-2*3600_000).toISOString();
  assert.equal(planNewsSelfHeal(mismatched).workflow,"deploy-permanent-public-finds-archive.yml");
 });
+test("truthful 250-row preview truncation passes with exact public shard ID census",()=>{
+ const s=sample();
+ const outside=row("rare_earth","b7ac15e2");
+ s.archive.coverage.free_displayable_outside_latest_preview=1;
+ s.archive.coverage.eligible_outside_latest_preview=0;
+ s.archive.coverage.free_displayable_findings_total=4;
+ s.archive.coverage.latest_preview_rows=3;
+ s.archive.coverage.eligible_ids_sha256="a".repeat(64);
+ s.archiveRows=[...s.archive.latest.signals,outside];
+ const d=planNewsSelfHeal(s);
+ assert.equal(d.status,"HEALTHY");
+ assert.equal(d.reason,"STATIC_D1_SITE_CONSISTENT");
+});
+test("shard mismatch or missing shard proof fails closed, never triggers fake recovery",()=>{
+ const s=sample();
+ s.archive.coverage.free_displayable_outside_latest_preview=1;
+ s.archive.coverage.eligible_outside_latest_preview=0;
+ s.archive.coverage.free_displayable_findings_total=4;
+ s.archive.coverage.latest_preview_rows=3;
+ s.archive.coverage.eligible_ids_sha256="a".repeat(64);
+ assert.equal(planNewsSelfHeal(s).reason,"ARCHIVE_SHARD_READBACK_REQUIRED");
+ s.archiveRows=[...s.archive.latest.signals,row("rare_earth","b7ac15e2")];
+ s.archiveRows[0]={...s.archiveRows[0],published_at:new Date(NOW-7*3600_000).toISOString()};
+ assert.equal(planNewsSelfHeal(s).reason,"ARCHIVE_SHARD_PREVIEW_MISMATCH");
+});
 test("unknown D1 status and isolated website failure never mutate infrastructure",()=>{
  const s=sample();s.d1Available=false;assert.equal(planNewsSelfHeal(s).status,"BLOCKED");
  const site=sample();site.websiteOk=false;

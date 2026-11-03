@@ -182,7 +182,7 @@ function preferDuplicateCandidate(candidate,current){
  * then round-robin real current rows so one high-volume domain cannot starve
  * macro or critical minerals. Permanent historical shards remain untouched.
  */
-function distinctHeadlineArchiveRows(signals){
+export function distinctHeadlineArchiveRows(signals){
   if(!Array.isArray(signals))
     throw Error("PERMANENT_ARCHIVE_LATEST_INPUT_INVALID");
   const ids=new Set();

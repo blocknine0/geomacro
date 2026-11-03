@@ -17,7 +17,7 @@ const outcome=(status,reason,workflow=null,counts=null)=>Object.freeze({
 });
 const parse=stamp=>Date.parse(typeof stamp==="string"?stamp:"");
 export function planNewsSelfHeal({
- archive=null,archiveAvailable=false,d1=null,d1Available=false,
+ archive=null,archiveAvailable=false,archiveRows=null,d1=null,d1Available=false,
  websiteOk=null,researchAllowed=false,now=Date.now(),
  classifyDisplay=()=>null,isArchiveEligible=()=>false
 }={}){
@@ -61,17 +61,43 @@ export function planNewsSelfHeal({
   return outcome("BLOCKED","D1_BUNDLE_CONTRACT_INVALID");
  if(typeof classifyDisplay!=="function"||typeof isArchiveEligible!=="function")
   return outcome("BLOCKED","POLICY_MISSING");
- // Latest is an intentionally bounded 250-row preview; it is NOT evidence
- // that a D1 row beyond the preview is missing from immutable monthly shards.
- if(Number(coverage.free_displayable_outside_latest_preview)>0)
+ // The 250-row latest feed is only a preview. Current archive coverage is
+ // calculated from ALL immutable monthly/category shards, and may truthfully
+ // report more current unverified observations than fit in the preview.
+ // Do not call this ordinary capacity condition a failed or missing archive.
+ const outside=coverage.free_displayable_outside_latest_preview??0;
+ if(!Number.isSafeInteger(outside)||outside<0)
+  return outcome("BLOCKED","ARCHIVE_PREVIEW_CENSUS_INVALID");
+ if(outside>0 && (
+   !Number.isSafeInteger(coverage.eligible_outside_latest_preview)||
+   coverage.eligible_outside_latest_preview!==0||
+   !Number.isSafeInteger(coverage.free_displayable_findings_total)||
+   !Number.isSafeInteger(coverage.latest_preview_rows)||
+   coverage.latest_preview_rows!==latest.signals.length||
+   coverage.free_displayable_findings_total!==coverage.latest_preview_rows+outside||
+   !/^[a-f0-9]{64}$/u.test(String(coverage.eligible_ids_sha256??""))
+ ))
   return outcome("BLOCKED","ARCHIVE_PREVIEW_INCOMPLETE");
+ // For a truncated public preview, the caller must independently read
+ // the immutable public month/category shards and cross-check the actual
+ // full 72-hour distinct corpus. An incomplete preview is never itself
+ // evidence of a missing record.
+ if(outside>0 && (!Array.isArray(archiveRows)||
+    archiveRows.length!==latest.signals.length+outside))
+  return outcome("BLOCKED","ARCHIVE_SHARD_READBACK_REQUIRED");
  const archived=new Map(),seen=new Set();
- for(const s of latest.signals){
+ for(const s of outside>0?archiveRows:latest.signals){
   if(!CATEGORIES.includes(s?.category)||typeof s.id!=="string"||
       seen.has(s.id)||!Number.isFinite(parse(s.published_at)))
    return outcome("BLOCKED","STATIC_ROW_INVALID");
   archived.set(s.id,s);seen.add(s.id);
  }
+ if(outside>0 && latest.signals.some(s=>{
+    const row=archived.get(s.id);
+    return !row||row.category!==s.category||
+      row.published_at!==s.published_at||row.status!==s.status||
+      row.date_precision!==s.date_precision;
+  }))return outcome("BLOCKED","ARCHIVE_SHARD_PREVIEW_MISMATCH");
  const firstSeen=new Map();
  for(let i=0;i<d1.signals.length;i++){
   const s=d1.signals[i],t=d1.first_ingest[i];
