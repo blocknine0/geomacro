@@ -55,6 +55,12 @@ class PublisherNativeClockTests(unittest.TestCase):
     def test_narrative_text_not_assigned_clock(self):
         self.assertFalse(self.detect({"published": "Tuesday, November 3, 2026"}))
 
+    def test_compact_year_is_not_a_publication_time(self):
+        self.assertFalse(self.detect({"published": "2026-11-03 2026"}))
+
+    def test_out_of_range_minutes_is_not_a_clock(self):
+        self.assertFalse(self.detect({"published": "2026-11-03T12:70:00Z"}))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
