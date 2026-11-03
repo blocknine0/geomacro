@@ -4,14 +4,14 @@
  * exposed to the public, or treated as independent event/rights verification.
  * The actual issuer native publication timestamp remains the RSS/Atom date.
  */
-const MAX_HTML_BYTES=48*1024;
+const MAX_HTML_BYTES=10*1024;
 const MAX_DESCRIPTION=360;
-const MAX_SELECTED=20;
+const MAX_SELECTED=150;
 const SAFE_HOST=/^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/u;
 const FETCH_HEADERS=Object.freeze({
  "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36 (GeoMacro Research Bot; news-intake)",
  "Accept":"text/html,application/xhtml+xml;q=0.9",
- "Range":"bytes=0-49151",
+ "Range":"bytes=0-10239",
 });
 const decode=x=>String(x)
  .replace(/&#x([0-9a-f]{1,6});/giu,(_,v)=>String.fromCodePoint(parseInt(v,16)))
