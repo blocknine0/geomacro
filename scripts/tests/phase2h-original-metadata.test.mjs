@@ -59,7 +59,7 @@ test("denied and cross-origin pages degrade only their own original; never fail 
  assert.equal(out.candidates.length,2);
 });
 test("actor-action original produces grounded five-part draft without independent verification",()=>{
- const row=buildPhase2hPrivateRawRecords([original],{
+ const row=buildPhase2hPrivateRawRecords([{...original,description:"An official central bank release confirmed the policy rate adjustment to support domestic lending across the banking system."}],{
   now:new Date("2026-11-03T12:00:00Z"),derive:()=>[],
  });
  assert.equal(row.records.length,1);
