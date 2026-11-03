@@ -64,15 +64,22 @@ export function verifyPhase2hRawB2Restore(bytes,plan){
  * Use those instead of expanding the root commerce/control-plane secret to
  * another production job. SQL is fixed and params bound, never caller SQL.
  */
-/** D1 REST provider rejects bound string LIMIT/OFFSET (7500).
- * Integer literals are trusted only after strict fixed numeric range checks.
- * The private source timestamp remains a bound query parameter.
+/** Keyset reader selects bounded raw JSON using indexed immutable cursor.
+ * The limit is code-validated (never client SQL); cursor is bound data.
  */
+export function phase2hKeysetPendingPageSQL(limit,hasCursor=false){
+ if(!Number.isSafeInteger(limit)||limit<1||limit>25||
+    typeof hasCursor!=="boolean")fail("D1_PAGE_BOUNDS_INVALID");
+ return "SELECT record_id,first_ingested_at,raw_json FROM phase2h_private_raw_news "+
+  "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  (hasCursor?"AND (first_ingested_at>? OR (first_ingested_at=? AND record_id>?)) ":"")+
+  "ORDER BY first_ingested_at,record_id LIMIT "+limit;
+}
+// Legacy helper retained for regression compatibility; production uses keyset.
 export function phase2hBoundedPendingPageSQL(limit,offset){
  if(!Number.isSafeInteger(limit)||limit<1||limit>25||
     !Number.isSafeInteger(offset)||offset<0||offset>299||
-    offset+limit>300)
-  fail("D1_PAGE_BOUNDS_INVALID");
+    offset+limit>300)fail("D1_PAGE_BOUNDS_INVALID");
  return "SELECT raw_json FROM phase2h_private_raw_news WHERE "+
   "b2_object_sha256 IS NULL AND first_ingested_at>? "+
   "ORDER BY first_ingested_at,record_id LIMIT "+limit+" OFFSET "+offset;
@@ -120,44 +127,53 @@ export function createPhase2hCanonicalD1({
    if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     fail("CANONICAL_D1_ARCHIVE_CLOCK_INVALID");
    const cutoff=new Date(now.getTime()-72*60*60_000).toISOString();
-   // A single 300-row raw_json D1 API response can exceed Cloudflare provider
-   // response-size limits even when the preceding COUNT(*) census succeeds.
-   // Read at most 300 pending originals in bounded, index-ordered pages.
-   // OFFSET stays stable here: no metadata mutation occurs until ALL rows are
-   // read and independently verified by B2. Never double-read a raw body.
+   // 25-row bounded indexed keyset (same provider quota and 300-row cap).
+   // No OFFSET instability after concurrent ACKs. Never invent timestamps,
+   // advance cursor on failure, or duplicate original article bodies.
    const rows=[];
    let pageSize=25,maxRows=300,attempts=0;
+   let cursorClock=null,cursorId=null;
    while(rows.length<maxRows){
-    if(++attempts>42)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
+    if(++attempts>70)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
     let result;
     try{
+     const hasCursor=cursorClock!==null;
      result=await sql(
-      phase2hBoundedPendingPageSQL(Math.min(pageSize,maxRows-rows.length),rows.length),
-      [cutoff]
+      phase2hKeysetPendingPageSQL(
+       Math.min(pageSize,maxRows-rows.length),hasCursor),
+      hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
      );
     }catch(error){
-     // At most one downgrade to 10 rows. The unchanged quota governor still
-     // controls the archive; this never overrides provider admission.
      if(error instanceof Error&&
         error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"&&
         (pageSize===25||pageSize===10)){
-      // A provider returning a response-size limit to BOTH 25- and 10-row
-      // raw JSON batches gets a final 5-row option. Restrict the whole B2
-      // batch to 100 originals so the fixed 42 D1-query budget holds.
-      // No additional B2 PUT, permission change, raw copy or paid action.
-      pageSize=pageSize===25?10:5;
-      if(pageSize===5)maxRows=100;
-      continue;
+       pageSize=pageSize===25?10:5;
+       if(pageSize===5)maxRows=100;
+       continue;
      }
      throw error;
     }
     const page=result.results;
     if(page.length>pageSize)fail("D1_PAGE_SIZE_INVALID");
     for(const item of page){
-     if(typeof item.raw_json!=="string"||item.raw_json.length>12000)
-      fail("D1_ROW_INVALID");
-     try{rows.push(JSON.parse(item.raw_json))}
-     catch{fail("D1_JSON_INVALID")}
+     if(typeof item.record_id!=="string"||
+        !/^[a-f0-9]{64}$/u.test(item.record_id)||
+        typeof item.first_ingested_at!=="string"||
+        !Number.isFinite(Date.parse(item.first_ingested_at))||
+        typeof item.raw_json!=="string"||item.raw_json.length>12000)
+       fail("D1_ROW_INVALID");
+     if(cursorClock!==null&&
+        (item.first_ingested_at<cursorClock||
+         item.first_ingested_at===cursorClock&&item.record_id<=cursorId))
+       fail("D1_KEYSET_CURSOR_NOT_INCREASING");
+     let original;
+     try{original=JSON.parse(item.raw_json)}catch{fail("D1_JSON_INVALID")}
+     if(original.record_id!==item.record_id||
+        original.ingested_at!==item.first_ingested_at)
+       fail("D1_INDEX_RAW_IDENTITY_MISMATCH");
+     rows.push(original);
+     cursorClock=item.first_ingested_at;
+     cursorId=item.record_id;
     }
     if(page.length<pageSize)break;
    }
