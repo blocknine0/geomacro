@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/rss-private-d1-15m.yml"
+      - "scripts/run-rss-live-cycle.mjs"
       - "scripts/ops/plan-rss-category-lanes.py"
       - "scripts/ops/test-rss-category-lanes.py"
       - "workers/telegram-flash/worker.py"
@@ -48,6 +49,8 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: "3.12"
+      - name: Verify private D1 source-level diagnostic source parses without secret access
+        run: node --check scripts/run-rss-live-cycle.mjs
       - name: Verify every configured RSS source maps to exactly one category
         run: python scripts/ops/test-rss-category-lanes.py -v
       - name: Verify publisher-native publication precision without invented clock
