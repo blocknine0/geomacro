@@ -261,7 +261,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
   const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
-    now,criticalGranted:grants.critical===true&&sourceIntake,
+    now,criticalGranted:sourceIntake,
   });
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* one-run retention pass at the granted maximum.
