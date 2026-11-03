@@ -90,7 +90,8 @@ export function reliefwebPrivateCandidates(reports,now=new Date()) {
     const field=row?.fields??{};
     const title=safeHeadline(field.title);
     const publishedAt=nativeSourceClock(field?.date?.original,now);
-    const articleUrl=originalHttps(field.url_alias??field.url,"reliefweb.int");
+    const articleUrl=originalHttps(field.url_alias,"reliefweb.int")??
+      originalHttps(field.url,"reliefweb.int");
     const id=String(row?.id??"").trim();
     if(!title||!publishedAt||!articleUrl||!id){diagnostics.invalid++;continue;}
     result.push({category:"geopolitics",sourceId:"reliefweb_v2_report_metadata",
