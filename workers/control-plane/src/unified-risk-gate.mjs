@@ -124,12 +124,15 @@ function compactEvidence(items){
  for(const v of items){
   const url=String(v.url??""),pub=String(v.published_at??"");
   const host=safeHost(url);
-  if(!host||!Number.isFinite(Date.parse(pub))||!hex.test(String(v.title_hash??"")))continue;
+  // Preserve a complete first-party URL or omit the unverified candidate.
+  // Truncating URLs produced neither a functional link nor valid provenance.
+  if(!host||url.length>250||!Number.isFinite(Date.parse(pub))||
+     !hex.test(String(v.title_hash??"")))continue;
   const id=String(v.id??"");
   if(!id||seen.has(v.title_hash))continue;
   seen.add(v.title_hash);
   out.push({id:id.slice(0,64),source_id:String(v.source_id??"").slice(0,70),
-   url:url.slice(0,500),publisher_host:String(v.publisher_host??host).slice(0,120),
+   url,publisher_host:String(v.publisher_host??host).slice(0,120),
    title_hash:v.title_hash,published_at:pub,origin:v.origin});
   if(out.length>=20)break;
  }
