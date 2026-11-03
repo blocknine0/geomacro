@@ -38,8 +38,8 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
         cls.match=staticmethod(gate)
         cls.by_id={x["source_id"]:x for x in cls.feeds}
         cls.policy=json.loads(EVIDENCE.read_text(encoding="utf-8"))
-    def test_24_feeds_and_no_registry_duplicate(self):
-        self.assertEqual(len(self.feeds),24)
+    def test_25_feeds_and_no_registry_duplicate(self):
+        self.assertEqual(len(self.feeds),25)
         self.assertEqual(len(self.by_id),len(self.feeds))
         self.assertEqual(set(EXPECTED)-set(self.by_id),set())
     def test_exact_license_provenance_and_no_telegram_impersonation(self):
@@ -75,6 +75,25 @@ class OpenLicensedOfficialFeedTests(unittest.TestCase):
             self.assertFalse(self.match({"title":"Tariff-free whisky exports"},words))
             self.assertFalse(self.match({"title":"Generic press release",
                                          "summary":"Lithium mining"},words))
+    def test_india_pib_official_free_reuse_mineral_source_and_native_provenance(self):
+        rights=json.loads((ROOT/"config/india-pib-official-reuse-rights.json").read_text(encoding="utf-8"))
+        source=self.by_id["india_pib_licensed_minerals_rss"]
+        self.assertEqual(rights["schema"],"geomacro.official-india-pib-free-reuse-source.v1")
+        self.assertEqual(rights["feed_url"],source["url"])
+        self.assertEqual(source["event_type"],"CRITICAL_MINERALS_INDIA_OFFICIAL_RELEASE")
+        self.assertEqual(source["country_iso3"],"IND")
+        self.assertFalse(rights["telegram_content_authorization"])
+        self.assertFalse(rights["commercial_GRO_auto_promotion"])
+        self.assertEqual(rights["ingest_transport"],"FIRST_PARTY_RSS_NOT_TELEGRAM")
+        self.assertIn("pib.gov.in",rights["license_reference"])
+        self.assertIn("source_prominently_acknowledged",rights["license_constraints"])
+        self.assertTrue(self.match(
+            {"title":"NITI Aayog and TEXMiN strengthen India's Critical Minerals ecosystem"},
+            source["required_title_keywords"]))
+        self.assertFalse(self.match(
+            {"title":"Ministry of Coal recognition awards"},
+            source["required_title_keywords"]))
+
     def test_no_partial_word_match_or_missing_rule(self):
         self.assertFalse(self.match({"title":"Award ceremony"},["war"]))
         self.assertFalse(self.match({"title":"Central bankers speak"},[]))
