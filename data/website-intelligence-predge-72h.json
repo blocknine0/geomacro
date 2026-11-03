@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T17:52:06.243Z",
+  "checked_at": "2026-11-03T19:18:38.907Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 347,
+  "item_count": 344,
   "counts": {
-    "geopolitics": 152,
-    "macro": 152,
+    "geopolitics": 150,
+    "macro": 151,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "98aedbf32e643ccd7c2e55aa5c1a60c5bcfa57f0d9b69d36d27356015b7eab24",
+  "source_native_ids_sha256": "cd720373711bbea25e6e5a076a5665455d1dd36ce34e2c7be2da2b02dba89b60",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6560,63 +6560,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c94ddf4f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov)",
-      "what_changed": "A monitored source feed reports: Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov). This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T18:21:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-98d3465c",
-      "category": "macro",
-      "title": "Geomacro finds Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov)",
-      "what_changed": "A monitored source feed reports: Quad Joint Press released on Economic Prosperity and Security - U.S. Department of State (.gov). This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T18:21:28.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3c8bda9e",
-      "category": "geopolitics",
-      "title": "Geomacro finds Epicenter NYC launched Election Text and WhatsApp Chatbot",
-      "what_changed": "A monitored source feed reports: Epicenter NYC launched Election Text and WhatsApp Chatbot. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T18:20:02.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: haitiantimes.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
