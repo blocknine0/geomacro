@@ -159,6 +159,8 @@ const approvedPricing = [
   config.approved_remove_home_finds_20261101,
   config.approved_homepage_fresh_unverified_lane_20261102,
   config.approved_permanent_home_finds_removal_20261102,
+  // Founder-scoped, exact blobs: R2-only Intelligence data read, no UI unlock.
+  config.approved_r2_latest_json_intelligence_20261104,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
