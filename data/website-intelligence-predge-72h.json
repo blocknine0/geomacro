@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-03T02:37:33.647Z",
+  "checked_at": "2026-11-03T03:00:47.450Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 241,
+  "item_count": 240,
   "counts": {
     "geopolitics": 110,
-    "macro": 97,
+    "macro": 96,
     "rare_earth": 34
   },
-  "source_native_ids_sha256": "a87126c730089139df6f6f20968b54a4774c771dfa944610e932d5ae42e755ee",
+  "source_native_ids_sha256": "c61e754ef467ddedc586bb6930f291d0ea3a87f000057a7f89ce0e4b615b6a80",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -4584,25 +4584,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: feeds.feedburner.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d179e77b",
-      "category": "macro",
-      "title": "Geomacro finds Russian Strike left Large Parts of Kyiv Without Water as Crews Race to Restore Services",
-      "what_changed": "A monitored source feed reports: Russian Strike left Large Parts of Kyiv Without Water as Crews Race to Restore Services. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-10-31T02:47:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
