@@ -25,6 +25,11 @@ test("unified generation, D1-to-Supabase sync and seven-day cleanup fail visibly
   }
 });
 
+test("owner-only production canary performs exact HMAC Supabase readback, not oldest backlog",()=>{
+  assert.match(source,/syncUnifiedRiskSupabase\(env,\{scope:"CANARY_EXACT"\}\)/);
+  assert.match(source,/v1\/internal\/risk-gate\/unified-acceptance/);
+});
+
 test("production deployment requires TLS authenticated domain census and anonymous evaluation refusal",()=>{
   assert.match(workflow,/https:\/\/api\.geomacro\.live\/v1\/internal\/risk-gate\/unified-census/);
   assert.match(workflow,/API_CUSTOM_DOMAIN_DNS_TLS_AUTH_OR_CENSUS_UNVERIFIED/);
