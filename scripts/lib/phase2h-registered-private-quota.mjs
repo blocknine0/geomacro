@@ -4,11 +4,14 @@
  * Every attempt re-observes native evidence; nothing is called durably queued.
  */
 export const REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT=3;
+export const REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP=20;
 export const REGISTERED_SOURCE_SLOT_MINUTES=15;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const MS=60_000;
-export function planRegisteredPrivateOriginals(records,{now=new Date()}={}){
+export function planRegisteredPrivateOriginals(records,{now=new Date(),maxPerSlot=REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
+    !Number.isSafeInteger(maxPerSlot)||maxPerSlot<1||
+    maxPerSlot>REGISTERED_SOURCE_ADAPTIVE_FREE_HARD_CAP||
     !Array.isArray(records)||records.length>5000)
   throw Error("REGISTERED_PRIVATE_ORIGINAL_ADMISSION_INVALID");
  const fresh=[],seen=new Set();
@@ -30,16 +33,16 @@ export function planRegisteredPrivateOriginals(records,{now=new Date()}={}){
  const cycle=Math.floor(now.getTime()/(REGISTERED_SOURCE_SLOT_MINUTES*MS));
  const counts=[0,0,0],offsets=lanes.map(rows=>rows.length?cycle%rows.length:0);
  const selected=[];
- while(selected.length<REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT){
+ while(selected.length<maxPerSlot){
   let advanced=false;
-  for(let i=0;i<lanes.length&&selected.length<REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT;i++){
+  for(let i=0;i<lanes.length&&selected.length<maxPerSlot;i++){
    if(counts[i]>=lanes[i].length)continue;
    selected.push(lanes[i][(offsets[i]+counts[i])%lanes[i].length]);
    counts[i]++;advanced=true;
   }
   if(!advanced)break;
  }
- if(selected.length>REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT||
+ if(selected.length>maxPerSlot||
     selected.length>fresh.length)throw Error("REGISTERED_PRIVATE_ORIGINAL_ADMISSION_MISMATCH");
  return Object.freeze({
   schema:"geomacro.phase2h.registered-source-quota-admission.v1",
@@ -48,7 +51,7 @@ export function planRegisteredPrivateOriginals(records,{now=new Date()}={}){
   invalid_or_stale,
   selected_by_category:Object.fromEntries(CATEGORIES.map((c,i)=>[c,counts[i]])),
   source_poll_interval_minutes:REGISTERED_SOURCE_SLOT_MINUTES,
-  max_originals_per_slot:REGISTERED_SOURCE_MAX_ORIGINALS_PER_SLOT,
+  max_originals_per_slot:maxPerSlot,
   max_collision_attempts:selected.length*2+1,
   next_slot_requires_fresh_source_and_quota:true,
   no_future_publication_guarantee:true,predge_unchanged:true,
