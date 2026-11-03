@@ -15,7 +15,7 @@ const ogl=parse('config/official-ogl-atom-sources.json');
 if(manifest.schema!=='geomacro.private-osint-working-sources.v1'||
  !Array.isArray(manifest.sources)||manifest.sources.length!==369||
  manifest.accepted_endpoint_count!==manifest.sources.length||
- ogl.schema!=='geomacro.official-ogl-atom-sources.v1'||!Array.isArray(ogl.sources))
+ ogl.schema!=='geomacro.official-free-atom-license-registry.v1'||!Array.isArray(ogl.sources))
  throw Error('P0B_PINNED_SEED_MANIFEST_INVALID');
 const validId=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const cats={geopolitics:'GEOPOLITICS',macro:'MACRO_FX',rare_earth:'CRITICAL_MINERALS',
