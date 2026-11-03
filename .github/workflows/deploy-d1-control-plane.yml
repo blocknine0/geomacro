@@ -423,7 +423,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # The pinned Wrangler 4 CLI has queues info, not queues list --json.
+          # Probe each queue with the supported pinned Wrangler 4 info command.
           for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter; do
             if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
               echo "P0B_QUEUE_PRESENT:$queue"
