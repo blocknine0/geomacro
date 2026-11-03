@@ -213,6 +213,11 @@ export function createPhase2hCanonicalD1({
       }
       if(error.provider_http_status===400&&error.provider_code===7500){
        useInternal=true;
+       // Internal privileged D1 binding does not have the REST /query
+       // response error; keep the same 25-row safety cap and full 300-row
+       // archive batch instead of reducing throughput for every future slot.
+       pageSize=25;
+       maxRows=300;
        continue;
       }
      }
