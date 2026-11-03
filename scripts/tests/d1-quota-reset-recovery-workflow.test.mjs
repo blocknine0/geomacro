@@ -103,3 +103,20 @@ test("free/no-new-spend deployment recovery requires no R2 checkout, Workers Pai
  assert.match(recovery,/Wake the existing quota-guarded source publisher after UTC reset/);
  assert.match(recovery,/actions\/workflows\/five-minute-original-news-fastlane\.yml\/dispatches/);
 });
+
+test("main push of facts-only commercial rights or GRI proof wakes guarded Worker deployment",()=>{
+ const main=deploy.indexOf("\n  push:");
+ const next=deploy.indexOf("\npermissions:",main);
+ assert.ok(main>0&&next>main);
+ const push=deploy.slice(main,next);
+ for(const path of [
+   "scripts/lib/official-original-issuer-rights.mjs",
+   "scripts/lib/facts-only-gri-v12-dual-attestation.mjs",
+   "src/__tests__/official-original-issuer-rights.test.ts",
+   "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs",
+   ".github/workflows/deploy-d1-control-plane.yml",
+ ]){
+   assert.ok(push.includes('"' + path + '"'),"missing exact-main push path "+path);
+ }
+ assert.match(deploy,/DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS/u);
+});
