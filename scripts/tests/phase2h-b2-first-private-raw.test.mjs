@@ -125,3 +125,19 @@ test("false Worker ACK cannot be counted as B2-first D1 parity",async()=>{
     independent_d1_archive_ack_verified:false,rights_verified:false,payments:0}),
   }),/PHASE2H_B2_FIRST_D1_ARCHIVE_ACK_NOT_VERIFIED/u);
 });
+
+test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{
+ let puts=0;
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED");},
+  b2Factory:()=>{puts++;throw Error("UNREACHABLE");},
+ }),/PHASE2H_B2_FIRST_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ assert.equal(puts,0);
+});
+test("untrusted raw lifecycle error strings can never disclose provider details",async()=>{
+ await assert.rejects(stageB2FirstPrivateOriginals({
+  rows,now,env,governorFactory,
+  lifecycleVerifier:async()=>{throw Error("SECRET native raw HTTP bearer");},
+ }),/^Error: PHASE2H_B2_FIRST_PROVIDER_LIFECYCLE_UNVERIFIED$/u);
+});
