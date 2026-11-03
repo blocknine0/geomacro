@@ -122,10 +122,16 @@ const enabled=env=>env?.PUBLIC_NEWS_OFFLOAD_ENABLED==="1"&&
   env.PUBLIC_NEWS_R2&&typeof env.PUBLIC_NEWS_R2.get==="function";
 
 export async function readPublicNewsR2Snapshot(request,env,now=Date.now()){
-  if(!enabled(env)||!eligiblePublicFreeD1CacheRequest(request))return null;
   const url=new URL(request.url);
+  // This JSON alias uses verified R2 only; never query D1 when R2 is absent.
+  const snapshotOnly=request.method==="GET"&&
+    url.pathname==="/v1/public/latest-feed.json"&&!url.search;
+  if(!enabled(env)||!snapshotOnly&&
+     !eligiblePublicFreeD1CacheRequest(request))return null;
   let key=null,category=null;
-  if(url.pathname==="/v1/public/website-derived-news-immediate"){
+  if(snapshotOnly){
+    key="0";
+  }else if(url.pathname==="/v1/public/website-derived-news-immediate"){
     key=url.search?url.search.slice(8):"0";
     if(!OFFSETS.includes(key))return null;
   }else if(url.pathname==="/v1/public/derived-structural-72h"){

@@ -1418,6 +1418,13 @@ export default {
     const parts = url.pathname.split("/").filter(Boolean);
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
+    // R2-only public latest-feed. Return a real degraded status rather than
+    // running an unbudgeted D1 query or rebuilding the website.
+    if(request.method==="GET"&&url.pathname==="/v1/public/latest-feed.json"&&!url.search){
+      return await readPublicNewsR2Snapshot(request,env) ??
+        json({ok:false,error:"PUBLIC_NEWS_R2_SNAPSHOT_UNAVAILABLE",
+          free_website_only:true,chargeable:false},503);
+    }
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
     if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return publicReadCache(()=>getSourceRuntimeStatus(env));

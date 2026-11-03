@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews, fetchEdgeLatestDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -239,9 +239,8 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Historical findings come from the append-only static archive. The rolling
-  // static snapshot adds new findings between archive publications. No website
-  // read has a D1 or server-function fallback.
+  // Historical findings come from the static archive. The R2-only latest JSON
+  // adds source-derived new items without a website rebuild or D1 browser reads.
   useEffect(() => {
     let alive = true;
     let pending = false;
@@ -283,7 +282,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           }
         }
         try {
-          const recent = await fetchDirectDerivedNews();
+          const recent = await fetchEdgeLatestDerivedNews().catch(()=>fetchDirectDerivedNews());
           if (!alive) return;
           setJournal(previous => mergeUnseen(previous, recent));
           if (archiveLoaded) setJournalUnavailable(false);
