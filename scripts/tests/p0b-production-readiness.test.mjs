@@ -84,6 +84,10 @@ test('supported Wrangler queue probe and protected route are in canonical deploy
  assert.match(deploy,/Seed pinned private source registry with exact D1 readback/u);
  assert.match(deploy,/P0B_PRODUCTION_READINESS_UNVERIFIED/u);
  assert.match(entry,/authorized\(request, env\);[\s\S]{0,250}\/v1\/internal\/p0b\/status/u);
+ assert.match(entry,/\/v1\/internal\/p0b\/verify-latest/u);
+ const monitor=text('.github/workflows/p0b-production-parity-hourly.yml');
+ assert.match(monitor,/P0B_REAL_B2_D1_PARITY_VERIFIED/u);
+ assert.match(monitor,/source_rights_granted==false/u);
 });
 
 test('P0-B real parity endpoint rejects no committed item and verifies exact D1 pointer',async()=>{
