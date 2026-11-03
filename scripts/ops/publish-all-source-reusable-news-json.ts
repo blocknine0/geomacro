@@ -57,7 +57,7 @@ const phase2h=buildPhase2hPrivateRawRecords(phase2hOriginals,{
 // verified provider quota plan. It is never supplied by untrusted publisher
 // metadata, search results, webhook payloads or user-facing requests.
 const quotaRaw=String(process.env.GEOMACRO_REGISTERED_PRIVATE_MAX_NEW_ROWS??"");
-if(!/^(?:[1-9]|1[0-9]|20)$/u.test(quotaRaw))
+if(!/^[1-9]\d{0,2}$/u.test(quotaRaw)||Number(quotaRaw)>150)
  throw Error("REGISTERED_PRIVATE_PROVIDER_ADMISSION_REQUIRED");
 const phase2hQuota=planRegisteredPrivateOriginals(phase2h.records,{
  now:new Date(),maxPerSlot:Number(quotaRaw),
