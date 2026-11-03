@@ -158,6 +158,33 @@ describe("universal facts-only derived commercial candidate policy",()=>{
    expect(x.commercialEligible).toBe(false);
    expect(x.paidDeliveryAuthorized).toBe(false);
  });
+ it("never treats the same open dataset as two independent witnesses",()=>{
+   const a={...independentlyReviewedPrimary,
+     kind:"LICENSED_OPEN_DATASET",issuer:"Open Issuer Alpha",
+     url:"https://data.example.org/issuer-a/observation",
+     contentSha256:"b".repeat(64)};
+   const base={...strictDerivedAttestation,sourceId:"gdelt_project_event_metadata"};
+   const checks=[
+     // A different organization label does not change an identical document.
+     [a,{...a,issuer:"Open Issuer Beta"}],
+     // Different URLs that yield the same document bytes are not independent.
+     [a,{...a,issuer:"Open Issuer Beta",
+       url:"https://dataset.example.net/issuer-b/copy"}],
+     // Two URLs with different digests still need distinct actual issuers.
+     [a,{...a,issuer:"  OPEN ISSUER ALPHA  ",
+       url:"https://dataset.example.net/issuer-b/other",
+       contentSha256:"c".repeat(64)}],
+   ];
+   for(const independentEvidence of checks){
+     const result=resolveDerivedCommercialEligibility({
+       ...base,independentEvidence,
+     });
+     expect(result.independentFactsVerified).toBe(false);
+     expect(result.commercialEligible).toBe(false);
+     expect(result.status).toBe("PENDING_INDEPENDENT_FACT_VERIFICATION");
+   }
+ });
+
  it("invalid evidence provenance, country and event identity cannot manufacture a verified score",()=>{
    for(const patch of [
      {countryIso3:"UNKNOWN"},{eventType:""},{factualRecordSha256:"dummy"},
