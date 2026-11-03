@@ -7,6 +7,12 @@ on:
       - "scripts/lib/private-unscored-source-d1*"
       - "scripts/lib/reliefweb-private-d1.mjs"
       - "scripts/lib/official-native-rss.mjs"
+      - "scripts/lib/native-feed-xml-normalizer.mjs"
+      - "scripts/lib/native-feed-xml-normalizer.test.mjs"
+      - "scripts/lib/registered-reusable-news-source-collector.mjs"
+      - "scripts/lib/registered-reusable-news-source-collector.test.mjs"
+      - "workers/control-plane/migrations/0112_facts_only_risk_observation_text_guard.sql"
+      - "scripts/tests/facts-only-risk-observation-migration.test.mjs"
       - "scripts/lib/official-original-issuer-rights.mjs"
       - "scripts/lib/facts-only-gri-v12-dual-attestation.mjs"
       - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
@@ -56,6 +62,8 @@ jobs:
           node --check scripts/lib/reliefweb-private-d1.mjs
           node --check scripts/lib/official-original-issuer-rights.mjs
           node --test scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
+      - name: Verify native XML normalization and D1 facts-only migration (no funds)
+        run: node --test scripts/lib/native-feed-xml-normalizer.test.mjs scripts/tests/facts-only-risk-observation-migration.test.mjs
       - name: Validate publisher-native RSS clock with negative cases
         run: python3 scripts/ops/test-rss-native-clock.py
       - name: Execute unscored source D1 admission and readback contracts
