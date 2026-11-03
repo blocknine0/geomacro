@@ -64,12 +64,12 @@ jobs:
           import {readFileSync,writeFileSync} from 'node:fs';
           const rows=JSON.parse(readFileSync('/tmp/geomacro-d1-databases.json','utf8'));
           const id=rows.filter(x=>x.name==='geomacro-control-plane');
-          if(id.length!==1||! /^[0-9a-f-]{32,36}$/i.test(String(id[0].uuid??'')))
+          if(id.length!==1||! /^[0-9a-f-]{32,36}$/i.test(String(id[0].uuid??id[0].id??'')))
             throw Error('CANONICAL_PRODUCTION_D1_UNAVAILABLE');
           const account=process.env.CLOUDFLARE_ACCOUNT_ID;
           writeFileSync('/tmp/wrangler-coverage-audit.json',JSON.stringify({
             name:'geomacro-coverage-audit-read-only',account_id:account,
-            d1_databases:[{binding:'DB',database_name:'geomacro-control-plane',database_id:id[0].uuid}],
+            d1_databases:[{binding:'DB',database_name:'geomacro-control-plane',database_id:id[0].uuid??id[0].id}],
           }));
           JAVASCRIPT
       - name: Read one 72-hour country-category aggregated D1 query
