@@ -42,7 +42,7 @@ export const scoreEventsAreFactsOnly=events=>{
   if(value===null||typeof value==="boolean")return true;
   if(typeof value==="number")return Number.isFinite(value);
   if(typeof value==="string")
-   return value.length<=250&&!/\\n\\s*\\n/u.test(value);
+   return value.length<=250&&!/\n\s*\n/u.test(value);
   if(Array.isArray(value))
    return value.length<=250&&value.every(x=>clean(x,depth+1));
   if(typeof value!=="object")return false;
