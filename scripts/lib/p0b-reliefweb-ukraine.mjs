@@ -1,8 +1,9 @@
-/** Ukraine-only ReliefWeb V2 metadata read-through for authenticated P0-B research.
+/** 195-country ReliefWeb V2 metadata read-through for authenticated P0-B research.
  * Report catalogue publication is not independently verified article/event proof.
  * No report body, excerpt, partner redistribution, or paid promotion.
  */
 import {p0bProjectEvidenceBounded} from "./p0b-event-grounded-projection.mjs";
+import {phase2hCountry} from "./phase2h-country-originals-195.mjs";
 import {officialItemNativePublicationMs} from "./official-native-item-publication-date.mjs";
 
 const digest=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",
@@ -14,15 +15,17 @@ const validUrl=u=>{
    !v.username&&!v.password&&!v.port&&!v.hash&&v.pathname.length<900?v.href:null;
  }catch{return null}
 };
-export async function p0bReliefWebUkraine({appname,fetchImpl=fetch,now=Date.now()}={}){
+export async function p0bReliefWebCountry({appname,countryIso3,fetchImpl=fetch,now=Date.now()}={}){
+ if(!phase2hCountry(countryIso3))
+  return {status:"RELIEFWEB_INVALID_COUNTRY",items:[],attempted:false};
  if(typeof appname!=="string"||!/^[A-Za-z][A-Za-z0-9_.-]{7,100}$/u.test(appname))
   return {status:"RELIEFWEB_APPNAME_UNAVAILABLE",items:[],attempted:false};
  const url=new URL("https://api.reliefweb.int/v2/reports");
  url.searchParams.set("appname",appname);
  const query={preset:"latest",profile:"list",limit:5,
-  filter:{field:"country.iso3",value:"UKR"},
+  filter:{field:"primary_country.iso3",value:countryIso3},
   sort:["date.created:desc"],
-  fields:{include:["title","url","date.created","date.original","country.iso3"]}};
+  fields:{include:["title","url","date.created","date.original","country.iso3","primary_country.iso3"]}};
  let data;
  try{
   const r=await fetchImpl(url.href,{method:"POST",redirect:"manual",
@@ -40,7 +43,13 @@ export async function p0bReliefWebUkraine({appname,fetchImpl=fetch,now=Date.now(
  const items=[];
  for(const row of data.data.slice(0,5)){
   const f=row?.fields;
-  if(!Array.isArray(f?.country)||!f.country.some(c=>c?.iso3==="UKR"))continue;
+  // Exact API primary country is authoritative for the returned country's
+  // scope. Older list profiles can omit primary_country but include country;
+  // accept those only when no conflicting primary country was supplied.
+  const primary=f?.primary_country?.iso3??null;
+  const member=Array.isArray(f?.country)&&
+    f.country.some(c=>c?.iso3===countryIso3);
+  if(primary!==countryIso3&&!(primary===null&&member))continue;
   const title=f?.title,url=validUrl(f?.url);
   if(typeof title!=="string"||title.length<18||title.length>260||
    /[<>]/u.test(title)||!url)continue;
@@ -54,7 +63,7 @@ export async function p0bReliefWebUkraine({appname,fetchImpl=fetch,now=Date.now(
   const native=new Date(nativeMs).toISOString();
   const category="geopolitics";
   const record_id=await digest(category+"\\n"+url+"\\n"+native);
-  const fact_hash=await digest("UKR"+"geopolitics"+String(f?.date?.created??"")+title);
+  const fact_hash=await digest(countryIso3+"geopolitics"+String(f?.date?.created??"")+title);
   const base={schema:"geomacro.phase2h.private-five-part.v1",
    what_happened:{text:null,original_observation_id:record_id},
    why_it_matters:{text:null,independently_verified:false},
@@ -83,4 +92,9 @@ export async function p0bReliefWebUkraine({appname,fetchImpl=fetch,now=Date.now(
  }
  return {status:items.length?"RELIEFWEB_CATALOGUE_METADATA_GROUNDED":"RELIEFWEB_NO_MATCH",
   items,attempted:true};
+}
+
+/** Backward-compatible Ukraine-only research adapter used by existing tests. */
+export async function p0bReliefWebUkraine(options={}){
+ return p0bReliefWebCountry({...options,countryIso3:"UKR"});
 }
