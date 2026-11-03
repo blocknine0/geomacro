@@ -14,6 +14,7 @@ function fixture(){
  const db=new DatabaseSync(':memory:');
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0113_p0a_source_registry.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0114_p0_b_spool_queue.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");
  db.prepare(
   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
@@ -62,7 +63,7 @@ function fixture(){
   throw Error('UNEXPECTED_METHOD');
  };
  const manager=new B2SpoolManager(env,{fetchImpl,now:NOW_DATE,reserve:async()=>{}});
- return {db,env,objects,requests,manager,close:()=>db.close()};
+ return {db,env,objects,requests,fetchImpl,manager,close:()=>db.close()};
 }
 async function candidate(index:number){
  const raw={title:'Unique publisher article '+index,
@@ -186,5 +187,47 @@ test('a failed Queue send preserves B2 + D1 for backlog replay',async()=>{
   assert.equal(receipt.all_durable,true);
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue').get().state,'PENDING');
   assert.equal(f.objects.size,1);
+ }finally{f.close()}
+});
+
+test('P0-B scoped private archive prefix preserves ciphertext readback and original identity',async()=>{
+ const f=fixture();
+ try{
+  f.env.B2_SPOOL_PREFIX='geomacro-evidence/v1/private/spool/';
+  const manager=new B2SpoolManager(f.env,{
+   fetchImpl:f.fetchImpl,now:NOW_DATE,reserve:async()=>{}
+  });
+  const c=await candidate(821);
+  const receipt=await manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,rawPayload:c.raw,
+   headers:{},discoveredAt:at
+  });
+  assert.match(receipt.b2Uri,
+   /^b2:\/\/geomacro-evidence\/v1\/private\/spool\/20261104\/src_probe\//u);
+  const verified=await manager.readVerified(receipt.b2Uri,c.candidateSha256,c.sourceId);
+  assert.deepEqual(verified.rawPayload,c.raw);
+  assert.equal(f.requests.length,3);
+ }finally{f.close()}
+});
+test('P0-B global circuit halts repeated 403 B2 requests across independent source polls',async()=>{
+ const f=fixture();
+ try{
+  const batch=await Promise.all([candidate(900),candidate(901),candidate(902)]);
+  let requests=0;
+  const bad={async spoolAndVerify(){requests++;throw Error('P0B_B2_PUT_HTTP_403')}};
+  const result=await processFetchedBatch(batch,f.env,{manager:bad,now:NOW_DATE});
+  assert.equal(result.all_durable,false);
+  assert.equal(result.receipts.length,3);
+  assert.equal(requests,1);
+  const hold=f.db.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit').get();
+  assert.equal(hold.last_error_code,'P0B_B2_PUT_HTTP_403');
+  assert.ok(hold.hold_until>at);
+  const again=await processFetchedBatch([await candidate(903)],f.env,{
+   manager:bad,now:NOW_DATE
+  });
+  assert.equal(again.all_durable,false);
+  assert.equal(again.receipts[0].error_code,'P0B_STORAGE_CIRCUIT_HELD');
+  assert.equal(requests,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,0);
  }finally{f.close()}
 });
