@@ -83,8 +83,10 @@ export async function upsertP0aSourceRegistry(env,body){
     'intended_category=excluded.intended_category,country_iso3=excluded.country_iso3,'+
     'rights_tier=excluded.rights_tier,polling_interval_sec=excluded.polling_interval_sec,'+
     'rate_limit_backoff=excluded.rate_limit_backoff,fallback_endpoint=excluded.fallback_endpoint,'+
-    // A config refresh must never reset the production ETag / Last-Modified cursor.
-    'updated_at=CURRENT_TIMESTAMP')
+    // Changing the origin/format invalidates its old conditional-fetch cursor.
+    'last_cursor=CASE WHEN source_registry.canonical_endpoint<>excluded.canonical_endpoint OR '+
+    'source_registry.parser_type<>excluded.parser_type THEN excluded.last_cursor '+
+    'ELSE source_registry.last_cursor END,updated_at=CURRENT_TIMESTAMP')
     .bind(s.source_id,s.canonical_endpoint,s.parser_type,s.intended_category,
      s.country_iso3,s.rights_tier,s.polling_interval_sec,JSON.stringify(s.rate_limit_backoff),
      s.fallback_endpoint,s.last_cursor));
@@ -145,7 +147,7 @@ async function fetchEndpoint(url,config,fetchImpl,now){
   }catch(error){
    last={state:'UNAVAILABLE',status:null,delay:null};
    if(attempt<config.rate_limit_backoff.max_retries){
-    await sleep(Math.min(1500,config.rate_limit_backoff.base_delay_ms*2**attempt));continue;
+    await sleep(Math.min(10000,config.rate_limit_backoff.base_delay_ms*2**attempt));continue;
    }
    break;
   }
@@ -160,14 +162,16 @@ async function fetchEndpoint(url,config,fetchImpl,now){
     const bytes=await responseBytes(response);
     const records=await normalizeP0aPayload(config.parser_type,bytes);
     const etag=response.headers.get('etag'),modified=response.headers.get('last-modified');
+    const firstId=records.find(x=>typeof x.source_record_id==='string'&&x.source_record_id.length)?.source_record_id;
     const cursor=etag&&etag.length<=1000?'etag:'+etag:
-      modified&&modified.length<=1000?'modified:'+modified:config.last_cursor;
+      modified&&modified.length<=1000?'modified:'+modified:
+      firstId?'id:'+firstId:config.last_cursor;
     return {state:records.length?'OBSERVED':'EMPTY',status,cursor,records};
    }catch{return {state:'MALFORMED',status,records:[]}}
   }
   last={state:'UNAVAILABLE',status,records:[]};
   if(![408,500,502,503,504].includes(status)||attempt===config.rate_limit_backoff.max_retries)break;
-  await sleep(Math.min(1500,config.rate_limit_backoff.base_delay_ms*2**attempt));
+  await sleep(Math.min(10000,config.rate_limit_backoff.base_delay_ms*2**attempt));
  }
  return last??{state:'UNAVAILABLE',status:null,records:[]};
 }
