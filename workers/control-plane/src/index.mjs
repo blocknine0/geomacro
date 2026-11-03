@@ -43,6 +43,8 @@ import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived}
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
+import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
+import {drainBacklog} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1303,6 +1305,11 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // P0-B: leverage the EXISTING one-minute Worker cron, no extra trigger.
+    if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&utc.getUTCMinutes()%10===0&&env?.DB?.prepare&&env?.INGEST_QUEUE?.send)
+      ctx.waitUntil(drainBacklog(env,{now:utc.getTime()}).then(r=>{
+        if(!['DRAINED_BATCH','DRAIN_CLEAN'].includes(r.status))console.error('P0B_DRAIN_DEFERRED',r.status);
+      }).catch(()=>console.error('P0B_DRAIN_UNAVAILABLE')));
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
     if(env?.DB?.prepare)
@@ -1412,6 +1419,9 @@ export default {
       ).bind(utc.toISOString()).run().catch(()=>
         console.error("PREDGE_PILOT_EXPIRED_SAMPLE_PURGE_UNAVAILABLE")));
     }
+  },
+  async queue(batch,env,ctx){
+    await handleQueueBatch(batch,env);
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);

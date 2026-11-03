@@ -4,6 +4,8 @@
  * Neither private staged headlines nor source configuration are publicly served.
  */
 import {normalizeP0aPayload,P0A_MAX_COMPRESSED_BYTES} from './p0a-source-format.mjs';
+import {processFetchedBatch} from '../../../src/workers/ingest-producer.ts';
+import {canonicalJson} from '../../../src/lib/canonical-json.ts';
 
 const PARSERS=new Set(['RSS_2','ATOM','RDF','JSON_REST','CSV_STREAM','HTML_BOUNDED']);
 const CATEGORIES=new Set(['GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS']);
@@ -196,7 +198,23 @@ async function pollOne(env,row,{fetchImpl,now}){
  catch{result={state:'UNAVAILABLE',status:null,records:[],used_fallback:false}}
  let state=result.state,accepted=0;
  try{
-  if(state==='OBSERVED'){
+  if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
+   // P0-B source-first: every parsed item is B2 encrypted/readback verified,
+   // registered in D1 and queued; no 20-item cap or premature cursor advance.
+   // An unacknowledged item keeps the source cursor for replay.
+   const candidates=await Promise.all(result.records.map(async item=>{
+    const raw={...item,intended_category:config.intended_category,
+     country_iso3:config.country_iso3,rights_tier:config.rights_tier};
+    return {candidateSha256:await sha(canonicalJson(raw)),
+     sourceId:config.source_id,raw};
+   }));
+   const receipt=await processFetchedBatch(candidates,env);
+   if(!receipt.all_durable||receipt.examined!==candidates.length)
+    state='CAPACITY_DEFERRED';
+   accepted=receipt.receipts.filter(x=>[
+    'QUEUED','DURABLE_PENDING_REDISPATCH','ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
+   ].includes(x.status)).length;
+  }else if(state==='OBSERVED'){
    // Never claim full capture if this durable per-source page budget is exceeded.
    const candidates=result.records;
    if(candidates.length>MAX_NEW_ITEMS_PER_SOURCE)state='CAPACITY_DEFERRED';

@@ -42,7 +42,8 @@
     "test:p0-adapters": "node scripts/test-p0-adapters.mjs",
     "test:p0-registry-alignment": "node scripts/test-p0-registry-alignment.mjs",
     "test:p0-adapter-certification": "node scripts/test-p0-adapter-certification.mjs",
-    "test:p0-live-schema": "node scripts/test-p0-live-schema-certification.mjs"
+    "test:p0-live-schema": "node scripts/test-p0-live-schema-certification.mjs",
+    "test:p0-b": "node --experimental-strip-types --test tests/p0_b_admission_test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "2.0.75",
