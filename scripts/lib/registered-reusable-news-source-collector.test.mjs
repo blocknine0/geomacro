@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {registeredReusableNewsSources,selectRegisteredNewsSources,
- collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS,CURATED_US_MACRO_PAIR_FEEDS} from "./registered-reusable-news-source-collector.mjs";
+ collectRegisteredReusableNews,PRESIDENTIAL_ACTION_SOURCE_FEEDS,CURATED_US_MACRO_PAIR_FEEDS,
+ SOURCE_FEED_HEADERS,SOURCE_FETCH_CONCURRENCY,SOURCE_FETCH_TIMEOUT_MS} from "./registered-reusable-news-source-collector.mjs";
 
 const when=new Date("2026-10-25T00:00:00.000Z");
 const feed="<rss version=\"2.0\"><channel>"+
@@ -304,4 +305,46 @@ test("failed pinned publisher is quarantined and category-matched first-party al
  assert.equal(out.summary.degraded_quarantine[0].recovery_state,"DEGRADED_QUARANTINE");
  assert.equal(out.summary.alternative_source_attempts,1);
  assert.equal(out.summary.paid_publication_authorized,false);
+});
+
+
+test("registered native JSON items keep original publication clock and no publisher text",async()=>{
+ const registry=[{id:"official_json_feed",url:"https://example.org/official.json",
+   categories:["macro"],type:"json",supported:true}];
+ const body={items:[
+  {title:"Central bank announces inflation policy and interest rate reduction",
+   publishedAt:"2026-10-24T23:50:00Z",url:"https://example.org/article/1"},
+  {title:"Central bank updates economic bulletin without original publication time",
+   updated:"2026-10-24T23:50:00Z",url:"https://example.org/article/2"}
+ ]};
+ const out=await collectRegisteredReusableNews({now:when,registry,normalize,
+   fetchImpl:async()=>response(JSON.stringify(body))});
+ assert.equal(out.items.length,1);
+ assert.equal(out.checks[0].state,"OBSERVED");
+ assert.equal(out.summary.raw_upstream_stored,false);
+ assert.equal(out.summary.paid_publication_authorized,false);
+ assert(!JSON.stringify(out).includes("example.org/article/1"));
+});
+test("feed transport uses bounded 15-second timeout, ten-way ceiling and transparent headers",async()=>{
+ assert.equal(SOURCE_FETCH_TIMEOUT_MS,15000);
+ assert.equal(SOURCE_FETCH_CONCURRENCY,10);
+ assert.match(SOURCE_FEED_HEADERS["User-Agent"],/GeoMacro Research Bot/u);
+ assert.match(SOURCE_FEED_HEADERS.Accept,/application\/json/u);
+ let count=0;
+ const out=await collectRegisteredReusableNews({
+  now:when,normalize,
+  registry:[{id:"only_feed",url:"https://example.org/rss",
+    categories:["macro"],supported:true,type:"rss"}],
+  fetchImpl:async(url,opts)=>{
+   count++;assert.equal(opts.headers["User-Agent"],SOURCE_FEED_HEADERS["User-Agent"]);
+   assert.equal(opts.headers["Accept-Language"],"en-US,en;q=0.8");
+   assert.equal(opts.signal.aborted,false);
+   return response(feed);
+  },
+ });
+ assert.equal(count,1);
+ assert.ok(out.items.length>=1);
+ await assert.rejects(()=>collectRegisteredReusableNews({now:when,
+  normalize,networkConcurrency:11,registry:[],fetchImpl:async()=>response(feed)}),
+  /REUSABLE_NEWS_COLLECTOR_INPUT_INVALID/u);
 });
