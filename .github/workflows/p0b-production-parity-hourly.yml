@@ -1,0 +1,56 @@
+name: P0-B Real B2 D1 Production Parity
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0b-live-production-parity
+  cancel-in-progress: false
+
+jobs:
+  real-parity:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && vars.GEOMACRO_P0B_ENABLE == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      WORKER_ROOT: https://geomacro-control-plane.daspallab202391.workers.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Independently verify real encrypted B2 object against committed D1 record
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${#ROOT_LEDGER_TOKEN}" -ge 32 || {
+            echo "::error::P0B_PRODUCTION_ADMIN_CREDENTIAL_MISSING"; exit 2;
+          }
+          TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
+          echo "::add-mask::$TOKEN"
+          STATUS="$(curl --fail-with-body -fsS --max-time 20 \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+          printf '%s' "$STATUS" | jq -e '
+            .ok==true and .ready_for_real_acceptance==true and
+            .source_registry.enabled>0 and .worker_b2_credentials_present==true and
+            .worker_queue_binding_present==true
+          ' >/dev/null || { echo "::error::P0B_REAL_QUEUE_NOT_ACTIVE"; exit 3; }
+          PROOF="$(curl --fail-with-body -fsS --max-time 30 -X POST \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/verify-latest")"
+          printf '%s' "$PROOF" | jq -e '
+            .ok==true and .verified==true and
+            .b2_remote_get_and_decryption_verified==true and
+            .canonical_payload_sha256_verified==true and
+            .d1_normalized_metadata_readback_verified==true and
+            .d1_ack_state_verified==true and .source_rights_granted==false
+          ' >/dev/null || { echo "::error::P0B_REAL_B2_D1_PARITY_MISSING"; exit 4; }
+          echo "P0B_REAL_B2_D1_PARITY_VERIFIED=true"
