@@ -8,7 +8,7 @@ import {createHash} from "node:crypto";
 import {normalizeNativeFeedXml,verifiedRdfItemClock} from "./native-feed-xml-normalizer.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
-import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
+import {sourceIsPinnedNationalPrimary,qualifyPrivateNationalPrimaryScope,pinnedNationalPrimaryPublisherCountry} from "./private-osint-national-primary-scope.mjs";
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
 import {EXPANDED_OFFICIAL_SOURCES} from "../ops/probe-expanded-official-source-mesh.mjs";
 import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.mjs";
@@ -35,7 +35,7 @@ export const SOURCE_FEED_HEADERS=Object.freeze({
 const TOPICS={
   geopolitics:/(?:\b(?:war|warfare|conflict|hostilities|invasion|sanctions?|trade disputes?|tariffs?|trade barriers?|export controls?|export bans?|ceasefire|airstrikes?|missiles?|drone strikes?|artillery|shelling|treaty|military|security|diploma\w*|peace|geopolitics?|refugees?|elections?|embargo|troop movements?|armed clashes?|border clashes?)\b|战争|停火|制裁|军事|袭击|حرب|وقف إطلاق النار|عقوبات|الهجوم|যুদ্ধ|নিষেধাজ্ঞা|युद्ध|प्रतिबंध|войн\w*|санкци\w*|перемири\w*|\bguerra\b|\balto el fuego\b)/iu,
   macro:/(?:\b(?:inflation|deflation|monetary|central bank|interest rates?|policy rates?|rate cuts?|rate hikes?|fx|foreign exchange|GDP|currency|tariffs?|economic|financial stability|liquidity|bond yields?|fiscal|unemployment|trade|trade deficit|exchange rates?|consumer prices?|employment cost index|wage costs?|CPI|sovereign debt|gross domestic product)\b|通胀|通脹|利率|汇率|匯率|经济|經濟|التضخم|سعر الصرف|মুদ্রাস্ফীতি|বিনিময় হার|मुद्रास्फीति|महंगाई|инфляци\w*|\binflación\b|\binflação\b)/iu,
-  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|uranium|mineral supply|refiner(?:y|ies)|mineral processing|permanent magnets?|neodymium|dysprosium)\b|稀土|关键矿产|關鍵礦產|锂|鋰|钴|鈷|التعدين|المعادن الحرجة|লিথিয়াম|বিরল মৃত্তিকা|लिथियम|दुर्लभ मृदा|литий|редкозем\w*|\bminerales críticos\b|\bminerais críticos\b)/iu,
+  rare_earth:/(?:\b(?:critical minerals?|critical raw materials?|rare[- ]earths?|mineral mining|critical mineral mining|cobalt|lithium|nickel|graphite|copper|gallium|germanium|tungsten|antimony|manganese|uranium|mineral supply|mineral refining|mineral processing|permanent magnets?|neodymium|dysprosium)\b|稀土|关键矿产|關鍵礦產|锂|鋰|钴|鈷|التعدين|المعادن الحرجة|লিথিয়াম|বিরল মৃত্তিকা|लिथियम|दुर्लभ मृदा|литий|редкозем\w*|\bminerales críticos\b|\bminerais críticos\b)/iu,
 };
 
 // Existing protected inventory already recognizes the White House RSS; add
@@ -62,6 +62,19 @@ export const CURATED_US_MACRO_PAIR_FEEDS=Object.freeze([
   url:"https://www.federalreserve.gov/feeds/press_monetary.xml",
   categories:["macro"],format:"rss",priority:true,officialDocument:false}),
 ]);
+/** Eight existing first-party private-OSINT feeds with exact vetted issuer
+ * jurisdiction. This is NOT independent proof of a news event or country risk.
+ */
+export const PINNED_NATIONAL_PRIMARY_NEWS_FEEDS=Object.freeze([
+ {id:"rba_national_policy",url:"https://www.rba.gov.au/rss/rss-cb-media-releases.xml",categories:["macro"],format:"rss"},
+ {id:"sarb_national_policy",url:"https://www.resbank.co.za/bin/sarb/solr/publications/rss",categories:["macro"],format:"rss"},
+ {id:"statssa_national_macro",url:"https://www.statssa.gov.za/?feed=rss2",categories:["macro"],format:"rss"},
+ {id:"kenya_central_bank_macro",url:"https://www.centralbank.go.ke/feed/",categories:["macro"],format:"rss"},
+ {id:"canada_nrcan_critical_minerals",url:"https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",categories:["rare_earth"],format:"atom"},
+ {id:"india_rbi_policy",url:"https://www.rbi.org.in/pressreleases_rss.xml",categories:["macro"],format:"rss"},
+ {id:"chile_cochilco_minerals",url:"https://www.cochilco.cl/web/noticias/feed/",categories:["rare_earth"],format:"rss"},
+ {id:"south_africa_dmpr_minerals",url:"https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",categories:["rare_earth"],format:"rss"},
+].map(x=>Object.freeze(x)));
 const hex=x=>createHash("sha256").update(x).digest("hex");
 const scalar=x=>typeof x==="string"?x:"";
 // For CJK scripts 14 native characters can communicate a complete headline;
@@ -103,8 +116,12 @@ function normalizeCatalogueSource(r){
   // JSON is supported only for explicitly registered HTTPS sources, using
   // bounded native per-item time metadata (no API-index clock promotion).
   const supported=["rss","atom","xml","rdf","json"].includes(type);
-  return {id:r.id,url:r.url,categories,type,supported,
-    priority:r.priority===true,officialDocument:r.officialDocument===true};
+  const country=pinnedNationalPrimaryPublisherCountry(r.url);
+  return qualifyPrivateNationalPrimaryScope({
+    id:r.id,url:r.url,categories,type,supported,
+    priority:r.priority===true,officialDocument:r.officialDocument===true,
+    ...(country?{publisher_country_iso3:country}:{}),
+  });
 }
 export function registeredReusableNewsSources(){
   const inputs=[
@@ -113,6 +130,7 @@ export function registeredReusableNewsSources(){
     ...PUBLIC_FEED_ROTATION.map(x=>({...x,categories:CATEGORY})),
     ...PRESIDENTIAL_ACTION_SOURCE_FEEDS,
     ...CURATED_US_MACRO_PAIR_FEEDS,
+    ...PINNED_NATIONAL_PRIMARY_NEWS_FEEDS,
   ];
   const map=new Map();
   for(const item of inputs){

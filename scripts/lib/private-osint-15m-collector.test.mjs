@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {collectPrivateOsint15m,privateOsintRetryAllowance} from "./private-osint-15m-collector.mjs";
-import {registeredReusableNewsSources} from "./registered-reusable-news-source-collector.mjs";
+import {registeredReusableNewsSources,SOURCE_FEED_HEADERS} from "./registered-reusable-news-source-collector.mjs";
 const now=new Date("2026-10-25T12:00:00.000Z");
 const titles=[
  "India central bank announces inflation monetary policy change",
@@ -180,7 +180,7 @@ test("same-publisher HTTPS RSS redirects are followed with bounded hops and rema
  assert.equal(requests.length,2);
  assert.equal(requests[0].url,"https://www.publisher.example.org/rss");
  assert.equal(requests[1].url,"https://publisher.example.org/rss/native");
- assert.equal(requests[0].headers.get("user-agent"),"GeomacroOSINT/1.0 (+https://geomacro.live)");
+ assert.equal(requests[0].headers.get("user-agent"),SOURCE_FEED_HEADERS["User-Agent"]);
  assert.equal(result.checks.length,1);
  assert.equal(result.checks[0].state,"OBSERVED");
  assert.equal(result.summary.working_source_endpoints,1);
