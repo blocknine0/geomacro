@@ -264,6 +264,11 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Verify actual B2 key scope and derive allowed private spool prefix
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: node scripts/ops/p0b-b2-scope-preflight.mjs
+
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
@@ -341,8 +346,14 @@ jobs:
               String(process.env.P0B_B2_APPLICATION_KEY||'').length<20||
               String(process.env.P0B_SPOOL_ENCRYPTION_KEY||'').length<32)
               throw Error('P0B_PRIVATE_B2_CONFIGURATION_REQUIRED');
+            const prefix=String(process.env.P0B_SPOOL_PREFIX||'');
+            const endpoint=String(process.env.P0B_S3_ENDPOINT||'');
+            if(!/^(?:[a-zA-Z0-9._+-]+\/)*spool\/$/u.test(prefix)||
+               !/^https:\/\/s3\.[a-z0-9-]+\.backblazeb2\.com$/u.test(endpoint))
+              throw Error('P0B_VERIFIED_B2_STORAGE_SCOPE_REQUIRED');
             config.vars.GEOMACRO_P0B_ADMISSION_ACTIVE='1';
-            config.vars.B2_S3_ENDPOINT='https://s3.us-east-005.backblazeb2.com';
+            config.vars.B2_S3_ENDPOINT=endpoint;
+            config.vars.B2_SPOOL_PREFIX=prefix;
             config.vars.B2_SPOOL_BUCKET=bucket;
           }else{
             delete config.queues;

@@ -53,7 +53,7 @@ jobs:
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
           printf '%s' "$STATUS" | jq -c '{
             schema,checked_at,activation_flag,
-            source_registry,queue_state,normalized_metadata_rows,
+            source_registry,queue_state,normalized_metadata_rows,b2_storage_guard,
             worker_b2_credentials_present,worker_queue_binding_present
           }'
           printf '%s' "$STATUS" | jq -e '
@@ -77,19 +77,25 @@ jobs:
           QUOTA="$(curl --fail-with-body -fsS --max-time 20 \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/b2-quota/status")"
           printf '%s' "$QUOTA" | jq -c '{schema: "geomacro.p0b.private-quota-census.v1",used,limits}'
-          # Probe the same existing owner-only source poll (8 due sources),
-          # inspect ONLY safe code tallies, and never print source IDs or URLs.
-          POLL="$(curl --fail-with-body -fsS --max-time 65 -X POST \
-            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/poll")"
-          printf '%s' "$POLL" | jq -c '{
-            schema: "geomacro.p0b.private-producer-diagnosis.v1",
-            due_selected,accepted_count:([.receipts[]?.accepted // 0] | add // 0),
-            producer_error_codes:([.receipts[]?.p0b_failure_codes |
-              to_entries[]?] | group_by(.key) |
-              map({key:.[0].key,value:(map(.value)|add)}) | from_entries),
-            polled_states:(.receipts | group_by(.state) |
-              map({key:.[0].state,value:length}) | from_entries)
-          }'
+          # Do not spend another PUT ticket when the account-wide governor
+          # is exhausted or the shared storage circuit is already open.
+          if printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.total < .limits.total' >/dev/null &&
+             printf '%s' "$STATUS" | jq -e '.b2_storage_guard.open != true' >/dev/null; then
+            POLL="$(curl --fail-with-body -fsS --max-time 65 -X POST \
+              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/poll")"
+            printf '%s' "$POLL" | jq -c '{
+              schema: "geomacro.p0b.private-producer-diagnosis.v1",
+              due_selected,
+              accepted_count:([.receipts[]? | (.accepted // 0)] | add // 0),
+              producer_error_codes:([.receipts[]? | (.p0b_failure_codes // {}) |
+                to_entries[]?] | group_by(.key) |
+                map({key:.[0].key,value:(map(.value)|add)}) | from_entries),
+              polled_states:([.receipts[]?] | group_by(.state) |
+                map({key:.[0].state,value:length}) | from_entries)
+            }'
+          else
+            echo "P0B_PRODUCER_PROBE_SKIPPED_STORAGE_GUARD_OR_QUOTA=true"
+          fi
           PROOF="$(curl --fail-with-body -fsS --max-time 30 -X POST \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/verify-latest")"
           printf '%s' "$PROOF" | jq -e '

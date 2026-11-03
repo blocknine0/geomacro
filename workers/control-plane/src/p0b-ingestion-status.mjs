@@ -9,12 +9,13 @@ const resp=(value,status=200)=>Response.json(value,{status,headers:{
 export async function getP0bIngestionStatus(env){
  if(!env?.DB?.prepare)return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
  try{
-  const [sources,states,admitted]=await Promise.all([
+  const [sources,states,admitted,guard]=await Promise.all([
    env.DB.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) AS enabled, '+
     'SUM(CASE WHEN last_polled_at IS NOT NULL THEN 1 ELSE 0 END) AS ever_polled '+
     'FROM source_registry').first(),
    env.DB.prepare('SELECT state,COUNT(*) AS n FROM ingestion_spool_queue GROUP BY state').all(),
    env.DB.prepare('SELECT COUNT(*) AS n FROM normalized_articles').first(),
+   env.DB.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit WHERE singleton=1').first(),
   ]);
   const queueState={PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
    RETRY:0,QUARANTINED:0,DEAD_LETTER:0};
@@ -26,6 +27,7 @@ export async function getP0bIngestionStatus(env){
   const configured=env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
    Boolean(env.B2_KEY_ID)&&Boolean(env.B2_APPLICATION_KEY)&&
    Boolean(env.B2_SPOOL_ENCRYPTION_KEY)&&Boolean(env.B2_SPOOL_BUCKET)&&
+   typeof env.B2_SPOOL_PREFIX==='string'&&env.B2_SPOOL_PREFIX.endsWith('spool/')&&
    typeof env.INGEST_QUEUE?.send==='function';
   const checkedAt=new Date().toISOString();
   return resp({
@@ -34,6 +36,9 @@ export async function getP0bIngestionStatus(env){
    source_registry:{total:sources?.total??0,enabled:sources?.enabled??0,
     ever_polled:sources?.ever_polled??0},
    queue_state:queueState,normalized_metadata_rows:admitted?.n??0,
+   b2_storage_guard:{open:Boolean(guard?.hold_until&&guard.hold_until>checkedAt),
+    last_error_code:guard?.last_error_code??null,
+    hold_until:guard?.hold_until??null},
    worker_b2_credentials_present:Boolean(env.B2_KEY_ID)&&
     Boolean(env.B2_APPLICATION_KEY)&&Boolean(env.B2_SPOOL_ENCRYPTION_KEY),
    worker_queue_binding_present:typeof env.INGEST_QUEUE?.send==='function',

@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - 'workers/control-plane/migrations/0114_p0_b_spool_queue.sql'
+      - 'workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'
+      - 'scripts/ops/p0b-b2-scope-preflight.mjs'
+      - 'scripts/tests/p0b-b2-scope-preflight.test.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
       - 'workers/control-plane/src/index.mjs'
       - 'workers/control-plane/wrangler.example.jsonc'
