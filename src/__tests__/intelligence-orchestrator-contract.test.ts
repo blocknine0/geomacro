@@ -104,7 +104,6 @@ describe("permanent intelligence orchestration contract", () => {
       ".github/workflows/source-evidence-graph-auto-promotion.yml",
       ".github/workflows/federico-seven-day-risk-refresh.yml",
       ".github/workflows/open-realtime-source-mesh.yml",
-      ".github/workflows/ingest-reliefweb-live.yml",
       ".github/workflows/global-realtime-source-proof.yml",
       ".github/workflows/production-intelligence-readiness.yml",
       ".github/workflows/intelligence-current-scoring-fastlane.yml",
@@ -114,6 +113,14 @@ describe("permanent intelligence orchestration contract", () => {
       expect(source, path).not.toContain("schedule:");
       expect(source, path).not.toContain("workflow_run:");
     }
+  });
+
+  it("keeps approved ReliefWeb metadata on the 15-minute canonical private D1 cadence", () => {
+    const workflow = read(".github/workflows/ingest-reliefweb-live.yml");
+    expect(workflow).toContain('cron: "3,18,33,48 * * * *"');
+    expect(workflow).toContain("RELIEFWEB_TRANSPORT: d1_private");
+    expect(workflow).toContain("node scripts/ingest-reliefweb-live.mjs");
+    expect(workflow).not.toContain("APP_SUPABASE_URL");
   });
 
   it("permits only the governed B2+D1 GDELT replacement without reviving legacy Supabase", () => {
