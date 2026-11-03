@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T11:10:28.092Z",
+  "updated_at": "2026-11-03T11:41:33.224Z",
   "signals": [
+    {
+      "id": "macro-45ab05c1",
+      "category": "macro",
+      "title": "Geomacro finds GECF Secretary General estimated LNG market losses at 45 mln tons in 2026",
+      "what_changed": "A monitored source feed reports: GECF Secretary General estimated LNG market losses at 45 mln tons in 2026. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:37:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-51f4ff8c",
+      "category": "macro",
+      "title": "Geomacro finds Zelensky confirmed resumption of strikes on Russian oil refineries",
+      "what_changed": "A monitored source feed reports: Zelensky confirmed resumption of strikes on Russian oil refineries. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T11:21:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-15e70dad",
       "category": "macro",
