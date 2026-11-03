@@ -63,7 +63,8 @@ test("genuine gzip object has two GET/SHA proofs before D1 write/ack",async()=>{
  assert.equal(receipt.paid_eligible,false);
  let calls=0;
  const ack=await acknowledgeB2FirstD1({
-  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0},
+  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0,
+   archive_proof_available:true,newly_stored_immutable_record_ids:[rows[0].record_id]},
   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
   token:"a".repeat(64),
   fetchImpl:async(url,opts)=>{
@@ -113,6 +114,43 @@ test("historic immutable duplicates do not get bogus B2 archived metadata",async
  assert.equal(result.archived,0);
  assert.equal(calls,0);
  assert.equal(result.status,"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY");
+});
+test("mixed B2 batch ACKs newly inserted D1 rows while historic projector stays pending",async()=>{
+ const historic={...rows[0],record_id:"f".repeat(64),raw_sha256:"c".repeat(64)};
+ const plan=[rows[0],historic],calls=[];
+ const result=await acknowledgeB2FirstD1({
+  receipt:{storage_confirmed:true,rows:plan,record_count:2,object_sha256:"e".repeat(64)},
+  postResult:{stored:1,duplicate:1,rejected_conflicts:0,
+   archive_proof_available:true,newly_stored_immutable_record_ids:[rows[0].record_id]},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async(url,options)=>{
+   const body=JSON.parse(options.body);calls.push(body);
+   assert.equal(body.items.length,1);
+   assert.equal(body.items[0].record_id,rows[0].record_id);
+   assert.equal(body.items[0].raw_sha256,rows[0].raw_sha256);
+   return Response.json({ok:true,archived:1,independent_d1_archive_ack_verified:true,
+    rights_verified:false,payments:0});
+  }
+ });
+ assert.equal(calls.length,1);
+ assert.equal(result.status,"B2_FIRST_PARTIAL_CANONICAL_D1_ACK_HISTORIC_PENDING");
+ assert.equal(result.archived,1);
+ assert.equal(result.historical_rows_pending,1);
+ assert.equal(result.d1_ack_verified,true);
+ assert.equal(result.paid_eligible,false);
+});
+test("mixed historical row cannot receive archive ACK without exact per-original insertion proof",async()=>{
+ let requests=0;
+ const result=await acknowledgeB2FirstD1({
+  receipt:{storage_confirmed:true,rows,record_count:1,object_sha256:"e".repeat(64)},
+  postResult:{stored:1,duplicate:0,rejected_conflicts:0,
+   archive_proof_available:false,newly_stored_immutable_record_ids:[rows[0].record_id]},
+  fetchImpl:async()=>{requests++;throw Error("NO_ACK_WITHOUT_PROOF");},
+ });
+ assert.equal(requests,0);
+ assert.equal(result.archived,0);
+ assert.equal(result.d1_ack_verified,undefined);
 });
 test("false Worker ACK cannot be counted as B2-first D1 parity",async()=>{
  await assert.rejects(
