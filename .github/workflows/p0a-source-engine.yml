@@ -10,6 +10,10 @@ on:
       - 'workers/control-plane/src/p1-source-fanout.mjs'
       - 'workers/control-plane/migrations/0119_p1_source_fanout_585.sql'
       - 'scripts/tests/p1-source-fanout.test.mjs'
+      - 'scripts/ops/seed-p1-1077-source-registry.mjs'
+      - 'scripts/tests/p1-source-registry-seed.test.mjs'
+      - 'config/private-osint-working-sources.v1.json'
+      - 'config/official-ogl-atom-sources.json'
       - 'workers/control-plane/migrations/0113_p0a_source_registry.sql'
       - 'scripts/tests/p0a-source-registry-engine.test.mjs'
       - '.github/workflows/p0a-source-engine.yml'
@@ -36,4 +40,4 @@ jobs:
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/p1-source-fanout.mjs
       - name: P0-A D1 migration and HTTP/format regression tests
-        run: node --test scripts/tests/p0a-source-registry-engine.test.mjs scripts/tests/p1-source-fanout.test.mjs
+        run: node --test scripts/tests/p0a-source-registry-engine.test.mjs scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs
