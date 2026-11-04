@@ -175,5 +175,6 @@ export function nominalPrivateCountryIndexCycleMinutes(registry){
  // Category-focused Hot-50 adds 150 logical queries to 145 combined
  // remaining-country queries when >=25 index GETs are available per tick.
  // Below that quota, the existing 195-country country sweep remains intact.
- return indices>0?15*Math.ceil(indices>=25?295/indices:195/indices):null;
+ const combinedSlots=indices>=8&&indices<25?indices-1:indices;
+ return indices>0?15*Math.ceil(indices>=25?295/indices:195/combinedSlots):null;
 }
