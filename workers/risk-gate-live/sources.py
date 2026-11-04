@@ -82,6 +82,25 @@ async def poll_rss(name: str, feeds: list[dict], publish: Publish, poll_seconds:
                     log.error("source=%s feed=%s error=%s", name, feed.get("url"), type(exc).__name__)
             await asyncio.sleep(max(20, poll_seconds))
 
+def gazette_original_timestamp(node, feed: dict) -> str | None:
+    """Parse a publisher-provided item timestamp; NEVER infer one from fetch time."""
+    selector = feed.get("date_selector")
+    stamp = node.select_one(str(selector)) if selector else node.find("time")
+    if stamp is None:
+        return None
+    native = stamp.get("datetime") or stamp.get("content") or stamp.get_text(" ", strip=True)
+    if not isinstance(native, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(native.strip().replace("Z", "+00:00"))
+        return dt.astimezone(timezone.utc).isoformat() if dt.tzinfo else None
+    except ValueError:
+        try:
+            dt = parsedate_to_datetime(native.strip())
+            return dt.astimezone(timezone.utc).isoformat() if dt.tzinfo else None
+        except (TypeError, ValueError, IndexError):
+            return None
+
 async def poll_gazettes(feeds: list[dict], publish: Publish) -> None:
     if not feeds:
         return
@@ -108,7 +127,7 @@ async def poll_gazettes(feeds: list[dict], publish: Publish) -> None:
                         await publish("government_gazettes", {
                             "id": absolute, "headline": title[:1500],
                             "url": absolute, "country_iso3": feed.get("country_iso3"),
-                            "published_at": None,
+                            "published_at": gazette_original_timestamp(node, feed),
                         })
                 except Exception as exc:
                     log.error("source=government_gazettes error=%s", type(exc).__name__)
@@ -171,7 +190,7 @@ async def poll_liveuamap(publish: Publish) -> None:
                         await publish("liveuamap", record)
             except Exception as exc:
                 log.error("source=liveuamap error=%s", type(exc).__name__)
-            await asyncio.sleep(60)
+            await asyncio.sleep(max(60, int(os.getenv("LIVEUAMAP_POLL_SECONDS", "600"))))
 
 async def stream_ais(publish: Publish) -> None:
     key = os.getenv("AISSTREAM_API_KEY", "").strip()

@@ -24,13 +24,13 @@ Use a real secret manager and secure host for production; compose alone is not a
 
 CENTRAL_BANK_RSS_JSON and IMF_DISPATCH_RSS_JSON accept arrays of objects with fields url, country_iso3, approved=true. Each feed is polled about every 60 seconds. Treat the approved flag as a rights decision, not a shortcut around one.
 
-GOVERNMENT_GAZETTES_JSON accepts url, selector, country_iso3, approved=true. Only permitted pages are scraped. No page has an invented item-publication timestamp; without one it remains a lead, not a trigger.
+GOVERNMENT_GAZETTES_JSON accepts url, selector, country_iso3, approved=true. Only permitted pages are scraped. Specify date_selector on each approved gazette entry when the item contains a real datetime or RFC 5322 published stamp; the worker extracts and normalizes it to UTC. No page has an invented publication timestamp; without one it remains a lead, not a trigger.
 
 Trading Economics /calendar/updates is queried only with an approved licensed key. Its event Date is **not** source original publication time. No calendar date is silently used as news-publication proof.
 
 AIS requires AISSTREAM_API_KEY and AIS_BOUNDING_BOXES_JSON (official API subscription) plus AIS_LICENSE_APPROVED=true. Only safety broadcast text is treated as an event lead; vessel position alone does not prove war or affected country.
 
-Liveuamap requires a separately licensed LIVEUAMAP_API_URL and key. Provider response mapping must be checked against the actual agreement before setting LIVEUAMAP_LICENSE_APPROVED=true.
+Liveuamap polling defaults to 600 seconds (LIVEUAMAP_POLL_SECONDS is configurable) to avoid assuming an unlimited licensed request quota. Liveuamap requires a separately licensed LIVEUAMAP_API_URL and key. Provider response mapping must be checked against the actual agreement before setting LIVEUAMAP_LICENSE_APPROVED=true.
 
 Public Telegram MTProto harvesting is disabled under GeoMacro's existing production governance. A new Telethon listener is present only as a permission-bound integration for independently approved publisher channels, explicitly requiring rights_approved=true for every configured channel. It has not been authorized for production by this change.
 

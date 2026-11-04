@@ -24,7 +24,7 @@ jobs:
       - name: Run streaming contract tests
         working-directory: workers/risk-gate-live
         run: |
-          python -m unittest -v test_core.py
+          python -m unittest -v test_core.py test_sources.py
           python -m compileall -q .
       - name: Build worker image
         run: docker build -t geomacro-risk-gate-stream:ci workers/risk-gate-live
