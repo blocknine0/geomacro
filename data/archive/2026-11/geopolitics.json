@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T00:22:23.237Z",
+  "updated_at": "2026-11-04T00:25:41.344Z",
   "signals": [
     {
       "id": "geopolitics-1e1c0be6",
@@ -930,6 +930,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9db206d0",
+      "category": "geopolitics",
+      "title": "Geomacro finds CRA launched updated Qatar Domains Registry policies to strengthen digital security and trust",
+      "what_changed": "A monitored source feed reports: CRA launched updated Qatar Domains Registry policies to strengthen digital security and trust. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.gulf-times.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

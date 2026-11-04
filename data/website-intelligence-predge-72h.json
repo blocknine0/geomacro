@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T00:22:23.237Z",
+  "checked_at": "2026-11-04T00:25:41.344Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 343,
+  "item_count": 344,
   "counts": {
-    "geopolitics": 149,
+    "geopolitics": 150,
     "macro": 152,
     "rare_earth": 42
   },
-  "source_native_ids_sha256": "0e86ad7d711f331dded5fad6c7ac865a4a956172085605f7cb39802f5958a783",
+  "source_native_ids_sha256": "3cad2b26096af3a8861b6879b9b9fa22ed5844e43ce4004dcf3dea5777cdf122",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -2285,6 +2285,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-9db206d0",
+      "category": "geopolitics",
+      "title": "Geomacro finds CRA launched updated Qatar Domains Registry policies to strengthen digital security and trust",
+      "what_changed": "A monitored source feed reports: CRA launched updated Qatar Domains Registry policies to strengthen digital security and trust. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-02T21:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.gulf-times.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
