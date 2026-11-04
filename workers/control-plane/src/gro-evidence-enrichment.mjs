@@ -251,3 +251,24 @@ export async function groEvidenceStatus(env,now=Date.now()){
  }catch{return Response.json({ok:false,error:"GRO_STATUS_D1_UNAVAILABLE"},
   {status:503,headers:{"Cache-Control":"no-store"}});}
 }
+
+
+/** Reclaim 72h D1 hot-only GRO job metadata without touching B2 originals. */
+export async function pruneExpiredGroEvidence(env,now=Date.now()){
+ if(!env?.DB?.prepare||!Number.isFinite(now))
+  fail("PRUNE_DB_UNAVAILABLE");
+ const cutoff=iso(now-STALE_MS);
+ const pending=await env.DB.prepare(
+  "DELETE FROM gro_evidence_jobs WHERE archived_at<?"
+ ).bind(cutoff).run();
+ if(pending?.success===false)fail("JOB_PRUNE_WRITE_FAILED");
+ // Raw D1 journal's original retention remains canonical. Its FK CASCADE
+ // evicts associated hot GRO evidence when the immutable original is removed.
+ const after=await env.DB.prepare(
+  "SELECT EXISTS(SELECT 1 FROM gro_evidence_jobs "+
+  "WHERE archived_at<? LIMIT 1) AS stale"
+ ).bind(cutoff).first();
+ if(Number(after?.stale)!==0)fail("JOB_PRUNE_READBACK_FAILED");
+ return {schema:GRO_ENRICHMENT_SCHEMA,ok:true,
+  expired_job_metadata_remaining:0,raw_archive_mutations:0,b2_requests:0};
+}
