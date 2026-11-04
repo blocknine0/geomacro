@@ -73,9 +73,13 @@ export function atomOriginalResearchCandidates(xml,source,now=new Date()){
  const category=CATS[source.category],seen=new Set(),out=[];
  for(const m of [...normalized.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/giu)].slice(0,40)){
   const entry=m[1],title=field(entry,"title"),published=field(entry,"published");
-  const time=officialItemNativePublicationMs(published);
-  if(!Number.isFinite(time)||time>now.getTime()||
-     now.getTime()-time>MAX_EVENT_AGE)continue;
+  const hasPublished=published.length>0;
+  // GOV.UK organisation Atom can omit <published>. Entry <updated> may only
+  // select a candidate for a fresh independent first-party Content API read,
+  // and NEVER becomes the original publication timestamp or scoring clock.
+  const hinted=officialItemNativePublicationMs(hasPublished?published:field(entry,"updated"));
+  if(!Number.isFinite(hinted)||hinted>now.getTime()||
+     now.getTime()-hinted>MAX_EVENT_AGE)continue;
   const link=entry.match(/<link\b[^>]*\brel=["']alternate["'][^>]*\bhref=["']([^"']+)["']/iu)?.[1]??
     entry.match(/<link\b[^>]*\bhref=["']([^"']+)["'][^>]*\brel=["']alternate["']/iu)?.[1]??
     entry.match(/<link\b[^>]*\bhref=["']([^"']+)["']/iu)?.[1];
@@ -85,7 +89,10 @@ export function atomOriginalResearchCandidates(xml,source,now=new Date()){
   const country=privateOsintCountryMention(title,COUNTRIES_195);
   if(severity===null||!country)continue; // never equate issuer country with event country
   seen.add(articleUrl);
-  out.push({title,articleUrl,publishedAt:new Date(time).toISOString(),
+  out.push({title,articleUrl,
+   // An absent <published> is explicitly unknown until the HTML/API proof.
+   publishedAt:hasPublished?new Date(hinted).toISOString():null,
+   original_clock_requires_page_proof:true,
    country_code:country,category,severity});
  }
  return out;
@@ -147,14 +154,19 @@ export async function runOfficialResearch20m({sources,now=new Date(),
      articleUrl:c.articleUrl,html,contentJson:json,articleTitle:c.title,
      now,maxAgeMs:MAX_EVENT_AGE,
     });
-    if(!originalAt||Math.abs(Date.parse(originalAt)-Date.parse(c.publishedAt))>60_000)
+    if(!originalAt||
+       (c.publishedAt!==null&&
+        Math.abs(Date.parse(originalAt)-Date.parse(c.publishedAt))>60_000))
      continue;
     verifiedPages++;
     categoryCounters[c.category]++;
+    // Durable idempotency binds the independently verified ORIGINAL clock.
+    // Never bind an Atom updated hint to the evidence identity or risk score.
+    const proofIdentity=h(c.category+"\n"+c.articleUrl+"\n"+originalAt);
     const event={
      country_code:c.country_code,severity:c.severity,
      confidence:60,category:c.category,
-     evidence_sha256:key,original_published_at:originalAt,
+     evidence_sha256:proofIdentity,original_published_at:originalAt,
      independent_originals:1,trusted_native_originals_verified:true,
      research_use_permitted:true,commercial_eligible:false
     };
