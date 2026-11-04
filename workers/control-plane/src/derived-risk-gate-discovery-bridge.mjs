@@ -1,6 +1,8 @@
+import {websiteRiskRawPage,websiteRiskRawAck,websiteRiskRawRead,
+ WEBSITE_RISK_RAW_LANE} from "./derived-risk-gate-website-raw.mjs";
 /**
  * Restricted-source, ALL-INGESTED D1 discovery intake for GeoMacro Risk Gates.
- * Four existing ingestion lanes, no provider pulls and no original expression
+ * Five existing ingestion lanes, no provider pulls and no original expression
  * leaves the Worker. This is NOT same-event verification or paid eligibility.
  * The existing root-admin auth must be checked in index.mjs BEFORE this handler.
  *
@@ -32,7 +34,7 @@ const LANES=Object.freeze({
  }),
 });
 export const DERIVED_DISCOVERY_BRIDGE_SCHEMA="geomacro.derived-risk-discovery-bridge.v1";
-export const DERIVED_DISCOVERY_LANES=Object.freeze(Object.keys(LANES));
+export const DERIVED_DISCOVERY_LANES=Object.freeze([...Object.keys(LANES),WEBSITE_RISK_RAW_LANE]);
 const CATS=new Set(["geopolitics","macro","rare_earth"]);
 const SHA=/^[a-f0-9]{64}$/u;
 const UTC=/^20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/u;
@@ -196,7 +198,7 @@ async function pendingQueue(env,query,now){
   const data=await env.DB.prepare(
    "SELECT signal_id,lane,category,country_iso3,source_clock_at,"+
    "first_seen_at,source_sha256,rights_state,review_status "+
-   "FROM derived_risk_gate_discovery_signals "+
+   "FROM derived_risk_gate_all_discovery_signals "+
    "WHERE first_seen_at>=? ORDER BY first_seen_at DESC,signal_id DESC "+
    "LIMIT 101 OFFSET ?"
   ).bind(dateIso(now-72*3600000),offset).all();
@@ -215,8 +217,12 @@ async function pruneExpiredSignals(env,now){
    "DELETE FROM derived_risk_gate_discovery_signals WHERE first_seen_at<?"
   ).bind(cutoff).run();
   if(result?.success===false)throw Error("DISCOVERY_PRUNE_FAILED");
+  const websiteRemoved=await env.DB.prepare(
+   "DELETE FROM derived_risk_gate_website_raw_signals WHERE first_seen_at<?"
+  ).bind(cutoff).run();
+  if(websiteRemoved?.success===false)throw Error("DISCOVERY_WEBSITE_PRUNE_FAILED");
   const existing=await env.DB.prepare(
-   "SELECT EXISTS(SELECT 1 FROM derived_risk_gate_discovery_signals "+
+   "SELECT EXISTS(SELECT 1 FROM derived_risk_gate_all_discovery_signals "+
    "WHERE first_seen_at<? LIMIT 1) AS stale"
   ).bind(cutoff).first();
   if(Number(existing?.stale)!==0)throw Error("DISCOVERY_PRUNE_READBACK_FAILED");
@@ -231,12 +237,20 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
  const url=new URL(request.url);
  if(request.method==="GET"&&url.searchParams.get("view")==="pending")
   return pendingQueue(env,url.searchParams,now);
+ // Root-admin-only raw GeoMacro-created Website Intelligence reference reader.
+ // This never grants rights to the underlying press/source material.
+ if(request.method==="GET"&&url.searchParams.get("view")==="website_raw")
+  return websiteRiskRawRead(env,url.searchParams,now);
  if(request.method==="GET"){
   if(url.searchParams.size!==1||
      url.searchParams.getAll("lane").length!==1||
-     !Object.hasOwn(LANES,url.searchParams.get("lane")))
+     !DERIVED_DISCOVERY_LANES.includes(url.searchParams.get("lane")))
    return response({ok:false,error:"DISCOVERY_LANE_INVALID"},400);
-  try{return response(await readPage(env,url.searchParams.get("lane"),now));}
+  try{
+   if(url.searchParams.get("lane")===WEBSITE_RISK_RAW_LANE)
+    return response(await websiteRiskRawPage(env,now));
+   return response(await readPage(env,url.searchParams.get("lane"),now));
+  }
   catch{return response({ok:false,error:"DISCOVERY_D1_READ_UNAVAILABLE"},503);}
  }
  if(request.method==="POST"&&!url.search){
@@ -248,6 +262,8 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
       body.schema===DERIVED_DISCOVERY_BRIDGE_SCHEMA&&
       body.operation==="PRUNE_DISCOVERY_72H")
      return pruneExpiredSignals(env,now);
+   if(body?.lane===WEBSITE_RISK_RAW_LANE)
+    return websiteRiskRawAck(env,body,now);
    return commitPage(env,body,now);
   }catch{return response({ok:false,error:"DISCOVERY_ACK_INVALID"},400);}
  }
