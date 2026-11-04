@@ -12,6 +12,7 @@ import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.
 import {HOT50_COUNTRY_ISO3,HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const HOT50_DIRECT_20M_FREQUENCY_MINUTES=20;
+export const HOT50_RETIRED_REPROBES_PER_SLOT=5;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const TYPES=new Set(["rss","rdf","atom","xml","json"]);
 const safeUrl=link=>{
@@ -20,7 +21,9 @@ const safeUrl=link=>{
    !u.hostname.endsWith(".internal")&&!u.hostname.endsWith(".local")&&
    u.hostname.includes(".")&&u.href.length<=2000;
 };
-export function hot50Direct20mPublisherRegistry(){
+export function hot50Direct20mPublisherRegistry(now=new Date()){
+ if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+  throw Error("HOT50_DIRECT20M_REPROBE_CLOCK_INVALID");
  const {snapshot}=hot50FourLaneSourceCrosswalk();
  const ids=new Set(),merged=new Map(),retired=[];
  for(const country of snapshot.countries){
@@ -50,7 +53,7 @@ export function hot50Direct20mPublisherRegistry(){
     rights_verified:false,
     commercial_eligible:false,publicly_deliverable:false,
    });
-   if(isRetiredPrivateOsintSource(source)){retired.push(pin.id);continue}
+   if(isRetiredPrivateOsintSource(source)){retired.push(source);continue}
    const prev=merged.get(pin.url);
    if(prev){
     // Two catalogues can point at the same publisher endpoint. Preserve one
@@ -62,6 +65,25 @@ export function hot50Direct20mPublisherRegistry(){
    }else merged.set(pin.url,source);
   }
  }
+ // Previously failed endpoints are never silently promoted to healthy.
+ // Retry up to five distinct pins per 20-minute slot inside the EXISTING
+ // 512-GET cap. Across three delivered slots every one of the 14 currently
+ // retired Hot-50 pins gets a real HTTP/native-date probe. Success still
+ // requires the collector\u0027s actual check; failures remain visible as failures.
+ const nonretiredCount=merged.size;
+ const n=retired.length;
+ const count=Math.min(HOT50_RETIRED_REPROBES_PER_SLOT,n);
+ const slot=Math.floor(now.getTime()/(HOT50_DIRECT_20M_FREQUENCY_MINUTES*60_000));
+ const selected=n?Array.from({length:count},(_,i)=>retired[(slot*count+i)%n]):[];
+ const reprobed=[];
+ for(const s of selected){
+  if(merged.has(s.url))continue; // One publisher URL, one fetch identity.
+  merged.set(s.url,Object.freeze({...s,
+   private_hot50_retired_reprobe:true,
+   activation_state:"RETIRED_TRANSPORT_REPROBE_ONLY",
+  }));
+  reprobed.push(s.id);
+ }
  if(snapshot.countries.length!==50||ids.size!==124||
     merged.size===0||merged.size>512)
   throw Error("HOT50_DIRECT20M_SOURCE_COUNT_DRIFT");
@@ -71,9 +93,16 @@ export function hot50Direct20mPublisherRegistry(){
    hot50_countries_configured:HOT50_COUNTRY_ISO3.length,
    categories_configured:CATEGORIES,
    direct_pinned_country_entries:124,
-   distinct_nonretired_direct_endpoints:merged.size,
-   previously_retired_excluded:retired.length,
-   retired_source_ids:Object.freeze(retired),
+   distinct_nonretired_direct_endpoints:nonretiredCount,
+   previously_retired_excluded:retired.length-reprobed.length,
+   retired_source_ids:Object.freeze(retired.map(s=>s.id)),
+   retired_reprobe_ids_this_tick:Object.freeze(reprobed),
+   retired_reprobes_this_tick:reprobed.length,
+   retired_reprobe_frequency_minutes:HOT50_DIRECT_20M_FREQUENCY_MINUTES,
+   retired_reprobe_full_cycle_nominal_minutes:n?
+    HOT50_DIRECT_20M_FREQUENCY_MINUTES*Math.ceil(n/count):null,
+   retired_reprobe_is_transport_only:true,
+   retired_reprobe_does_not_prove_recovery:true,
    google_news_index_included:false,
    telegram_ingestion_included:false,
    original_article_or_rights_verified_by_catalogue:false,
