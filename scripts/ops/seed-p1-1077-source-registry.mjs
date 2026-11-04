@@ -55,11 +55,11 @@ export function buildP1SourceRegistration(){
  const observedLanes=rows.length;
  if(observedLanes!==1069)fail("PRIVATE_1069_LANES_DRIFTED");
  for(const s of ogl.sources){
-  if(!KEY.test(s.source_id)||!["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].includes(s.category)||
+  if(!KEY.test(s.source_id)||!["GEOPOLITICS","MACRO","CRITICAL_MINERALS"].includes(s.category)||
      s.private_research_only!==true||s.ingest_transport!=="DIRECT_OFFICIAL_ATOM")
    fail("OGL_SOURCE_SCOPE_INVALID");
   rows.push(row(s.source_id,s.feed_url,"ATOM",
-   s.category,s.owner_country_iso3));
+   s.category==="MACRO"?"MACRO_FX":s.category,s.owner_country_iso3));
  }
  if(rows.length!==1077||new Set(rows.map(s=>s.source_id)).size!==1077)
   fail("SOURCE_1077_COUNT_OR_ID_DRIFT");
