@@ -9,8 +9,8 @@ import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
-import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning}
- from "../lib/phase2h-atomic-bulk-archive-ack.mjs";
+import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning,
+ MAX_D1_BULK_ARCHIVE_ACK} from "../lib/phase2h-atomic-bulk-archive-ack.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve,isAbsolute} from "node:path";
 import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
@@ -217,8 +217,8 @@ export function createPhase2hCanonicalD1({
  };
  const workerAck=async(items,objectSha)=>{
   let written=0;
-  for(let i=0;i<items.length;i+=100){
-   const batch=items.slice(i,i+100);
+  for(let i=0;i<items.length;i+=MAX_D1_BULK_ARCHIVE_ACK){
+   const batch=items.slice(i,i+MAX_D1_BULK_ARCHIVE_ACK);
    const answer=await internal("/v1/internal/phase2h-raw-news",{
     method:"PUT",body:{schema:"geomacro.phase2h.b2-archive-ack.v1",
      object_sha256:objectSha,
@@ -233,7 +233,7 @@ export function createPhase2hCanonicalD1({
   }
   return {archived:written,independent_d1_archive_ack_verified:true,
    d1_atomic_one_statement_returning_verified:true,
-   d1_write_statements:Math.ceil(items.length/100)};
+   d1_write_statements:Math.ceil(items.length/MAX_D1_BULK_ARCHIVE_ACK)};
  };
  return {
   async readPending(now=new Date()){
@@ -360,12 +360,12 @@ export function createPhase2hCanonicalD1({
   async markArchived(items,objectSha,now){
    if(env.PHASE2H_BULK_WORKER_ARCHIVE_V2==="1")
     return workerAck(items,objectSha);
-   // One atomic D1 UPDATE/RETURNING per up-to-100 record batch, never
+   // One atomic D1 UPDATE/RETURNING per up-to-48 record batch, never
    // per-original reads/writes. Protected Worker is the recovery channel
    // only on the exact provider HTTP400/7500 statement failure.
    let archived=0;
-   for(let offset=0;offset<items.length;offset+=100){
-    const rows=items.slice(offset,offset+100);
+   for(let offset=0;offset<items.length;offset+=MAX_D1_BULK_ARCHIVE_ACK){
+    const rows=items.slice(offset,offset+MAX_D1_BULK_ARCHIVE_ACK);
     const plan=phase2hAtomicBulkArchiveAck(rows,objectSha,now);
     try{
      const result=await sql(plan.sql,plan.params);
@@ -383,7 +383,7 @@ export function createPhase2hCanonicalD1({
    if(archived!==items.length)fail("D1_ARCHIVE_BATCH_ACK_INCOMPLETE");
    return {archived,independent_d1_archive_ack_verified:true,
     d1_atomic_one_statement_returning_verified:true,
-    d1_write_statements:Math.ceil(items.length/100)};
+    d1_write_statements:Math.ceil(items.length/MAX_D1_BULK_ARCHIVE_ACK)};
   }
  };
 }
