@@ -262,14 +262,15 @@ test('CFTC original release-number heading does not mask verified publisher head
 test('Disabled CFTC RSS and denied CME investor route use pinned first-party HTML index recovery',async()=>{
  const cftc=MACRO_NEWS_SOURCES.find(s=>s.id==='cftc_news');
  const cme=MACRO_NEWS_SOURCES.find(s=>s.id==='cme_news');
- assert.equal(cftc.media,'html');assert.equal(cme.media,'html');
+ assert.equal(cftc.media,'html');assert.equal(cme.media,'rss');
  assert.equal(cftc.url,'https://www.cftc.gov/PressRoom/PressReleases');
- assert.equal(cme.url,'https://www.cmegroup.com/media-room/press-releases.html');
+ assert.equal(cme.url,'https://cmegroupinc.gcs-web.com/rss/news-releases.xml');
  const {macroIndexLeads}=await import('../lib/macro-fastlane-collector.mjs');
  const source='<a href="/PressRoom/PressReleases/9320-26">CFTC futures and commodity market announcement</a>';
  assert.equal(macroIndexLeads(source,cftc).length,1);
  assert.equal(macroIndexLeads(source.replace('/PressRoom/PressReleases/9320-26','https://attacker.invalid/PressRoom/PressReleases/9320-26'),cftc).length,0);
- assert.equal(macroIndexLeads('<a href="/media-room/press-releases/2026/11/03/futures_clearing.html">CME Group announces new FX futures clearing program</a>',cme).length,1);
+ assert.equal(parseMacroFeed(rss('CME Group Reports Record October ADV of 30 Million Contracts','https://investor.cmegroup.com/news-releases/news-release-details/cme-group-reports-record-october-adv'),cme,now).length,1);
+ assert.equal(parseMacroFeed(rss('CME Group Reports Record October ADV of 30 Million Contracts','https://evil.test/news-releases/news-release-details/cme-group-reports-record-october-adv'),cme,now).length,0);
 });
 
 
