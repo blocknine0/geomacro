@@ -472,12 +472,15 @@ export async function publishPermanentDerivedNewsArchive({
     // workflow_run events. Persist only a safe clock checkpoint in the
     // archive branch so D1 is read no more than once in any 55-minute window.
     // An invalid checkpoint never suppresses the recovery attempt.
+    // v3 invalidates v2 checkpoints: a previous "success" could have read
+    // an R2/public cache, which is not proof of canonical D1 origin. Force
+    // exactly one new authenticated origin read after upgrading, then pace.
     const checkpointPath=join(dataDir,"canonical-catchup-checkpoint.json");
     let lastSuccessfulRead=NaN;
     try{
       const checkpoint=readJsonIfPresent(checkpointPath,
         "PERMANENT_ARCHIVE_CATCHUP_CHECKPOINT_INVALID");
-      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v2"){
+      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v3"){
         const at=Date.parse(checkpoint.last_success_at);
         if(Number.isFinite(at)&&at<=now)lastSuccessfulRead=at;
       }
@@ -495,7 +498,7 @@ export async function publishPermanentDerivedNewsArchive({
         seedRows=await readRecoverableD1CanonicalBundle(fetchImpl,now,canonicalOriginToken);
         canonicalCatchupCompleted=true;
         writeFileSync(checkpointPath,JSON.stringify({
-          schema:"geomacro.canonical-archive-catchup-checkpoint.v2",
+          schema:"geomacro.canonical-archive-catchup-checkpoint.v3",
           last_success_at:new Date(now).toISOString()
         })+"\n",{encoding:"utf8",mode:0o644});
       }catch{
