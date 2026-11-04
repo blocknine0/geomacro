@@ -656,6 +656,29 @@
       "country_iso3": "CAN",
       "direct_news_osint_feeds": [
         {
+          "id": "private_hot50_can_gac_statements",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_can_gac_newsreleases",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+news+releases&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=newsreleases",
+          "categories": [
+            "geopolitics",
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
           "id": "private_bc_minerals_global",
           "url": "https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
           "categories": [
