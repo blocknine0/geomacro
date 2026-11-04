@@ -23,11 +23,13 @@ export function parseMacroFeed(xml,spec,now){
  return rows;
 }
 export function macroIndexLeads(html,spec){
- if(typeof html!=='string'||html.length>384*1024||/<!ENTITY/i.test(html))return [];
+ if(typeof html!=='string'||html.length>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(html))return [];
  const leads=[],seen=new Set();
  for(const [,link,title]of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
   const articleUrl=pinnedMacroArticle(link,spec),name=clean(title);
-  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)))continue;
+  const issuerTopic=spec.id==='cftc_news'&&/\b(?:CFTC|commodity|futures|swaps?|traders?|derivatives?|market|clearing|FX|forex|positioning)\b/i.test(name)||
+   spec.id==='cme_news'&&/\b(?:CME|futures|rates?|clearing|FX|forex|metals?|derivatives?|treasur(?:y|ies))\b/i.test(name);
+  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)||issuerTopic))continue;
   seen.add(articleUrl);leads.push({articleUrl,title:name});if(leads.length===2)break;
  }
  return leads;
@@ -44,13 +46,13 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
   // windows can retry denied transport once per five minutes, never each second.
   if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return;}
   try{
-   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag});
+   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag,maxBytes:spec.media==='html'?1024*1024:384*1024});
    if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return;}
    let rows=[];
    if(spec.media==='html'){
     for(const lead of macroIndexLeads(data.text,spec)){
      try{
-      const page=await get(lead.articleUrl,{accept:'text/html'});
+      const page=await get(lead.articleUrl,{accept:'text/html',maxBytes:1024*1024});
       const h1=clean(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.text)?.[1]);
       const date=verifiedPublisherPageDate(page.text,new Date(now),null,{maxAgeMs:72*3600000});
       if(date&&h1===lead.title)rows.push({...lead,publishedAt:date,sourceId:spec.id,category:'macro',credit:spec.credit});
