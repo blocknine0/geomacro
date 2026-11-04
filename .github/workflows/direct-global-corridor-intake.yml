@@ -12,6 +12,9 @@ on:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
       - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "config/four-lane-free-source-rights.v1.json"
+      - "scripts/lib/four-lane-free-source-rights.mjs"
+      - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
       - "scripts/lib/risk-gate-supplied-source-rules.mjs"
@@ -66,6 +69,9 @@ on:
     paths:
       - ".github/workflows/direct-global-corridor-intake.yml"
       - "scripts/lib/direct-global-corridor-sources.mjs"
+      - "config/four-lane-free-source-rights.v1.json"
+      - "scripts/lib/four-lane-free-source-rights.mjs"
+      - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "config/global-corridor-supplied-links.v1.json"
       - "scripts/lib/direct-global-corridor-sources.test.mjs"
       - "scripts/lib/direct-global-corridor-ingestion.mjs"
@@ -166,6 +172,7 @@ jobs:
           node --check scripts/ops/publish-private-corridor-native-news.mjs
           node --check workers/control-plane/src/corridor-native-news.mjs
           node --test scripts/lib/direct-global-corridor-sources.test.mjs
+          node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/lib/direct-global-corridor-ingestion.test.mjs
           node --test scripts/lib/risk-gate-supplied-source-rules.test.mjs
           node --test scripts/lib/risk-gate-source-pack.test.mjs
