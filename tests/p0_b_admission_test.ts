@@ -7,6 +7,7 @@ import {canonicalJson} from '../src/lib/canonical-json.ts';
 import {processFetchedBatch} from '../src/workers/ingest-producer.ts';
 import {handleQueueBatch} from '../src/workers/ingest-consumer.ts';
 import {drainBacklog} from '../src/workers/backlog-drain-cron.ts';
+import {pollP0aSources} from '../workers/control-plane/src/p0a-source-registry.mjs';
 
 const at='2026-11-04T03:00:00.000Z',NOW=Date.parse(at);
 const NOW_DATE=()=>new Date(NOW);
@@ -296,5 +297,44 @@ test('per-bundle send failure is recovered via one FIFO dispatch',async()=>{
   assert.equal(done.bundles?.committed,1);
   assert.equal(records[0].ackCount,1);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,35);
+ }finally{f.close()}
+});
+
+
+test('same-window three-source P0-A poll uses one mixed B2 bundle before cursor advancement',async()=>{
+ const f=fixture();
+ try{
+  const add=f.db.prepare(
+   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
+   'country_iso3,rights_tier,polling_interval_sec,rate_limit_backoff) VALUES (?,?,?,?,?,?,?,?)');
+  for(const [id,href] of [['src_second','https://example.org/second'],
+                            ['src_third','https://example.org/third']]){
+   add.run(id,href,'RSS_2','GEOPOLITICS','GLOBAL','RESEARCH_ONLY',
+    300,'{"max_retries":1,"base_delay_ms":100,"respect_retry_after":true}');
+  }
+  f.env.GEOMACRO_P0B_ADMISSION_ACTIVE='1';
+  const fetchImpl=async url=>{
+   const title=String(url).includes('second')?'Second country report':
+    String(url).includes('third')?'Third minerals policy':'First macro policy';
+   const raw='<rss><channel><item><title>'+title+'</title>'+
+    '<link>https://example.org/story/'+title.replaceAll(' ','-')+'</link>'+
+    '<pubDate>Wed, 04 Nov 2026 02:00:00 GMT</pubDate></item></channel></rss>';
+   return new Response(raw,{status:200,headers:{etag:'"batch-v1"'}});
+  };
+  const results=await pollP0aSources(f.env,{fetchImpl,now:NOW,limit:3,producerManager:f.manager});
+  assert.equal(results.due_selected,3);
+  assert.ok(results.receipts.every(x=>x.state==='OBSERVED'));
+  assert.equal(f.objects.size,1);
+  assert.equal(f.requests.filter(x=>x.method==='PUT').length,1);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,1);
+  assert.match(f.env.INGEST_QUEUE.sent[0].b2Uri,/\/mixed\/bundle_/u);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,3);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM source_registry WHERE last_cursor=?')
+   .get('etag:"batch-v1"').n,3);
+  const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
+  const consumed=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(consumed.bundles?.committed,1);
+  assert.equal(records[0].ackCount,1);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM normalized_articles").get().n,3);
  }finally{f.close()}
 });
