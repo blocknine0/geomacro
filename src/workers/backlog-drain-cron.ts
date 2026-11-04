@@ -3,6 +3,10 @@
  * Re-dispatches old PENDING / RETRY and expired PROCESSING locks. Never deletes
  * an unacked B2 object; duplicates are absorbed by the D1 consumer state lock.
  */
+import {restoreP0bR2Fallback} from "../storage/p0b-r2-fallback.ts";
+import type {R2FallbackEnv} from "../storage/p0b-r2-fallback.ts";
+import {processFetchedBatch} from "./ingest-producer.ts";
+
 export interface DrainEnv {
  DB:any;
  INGEST_QUEUE:{send:(v:unknown)=>Promise<void>};
@@ -62,4 +66,68 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
  }
  return {status:failed?'DRAIN_PARTIAL':'DRAINED_BATCH',count:sent,failed,
   selected:rows.length+bundles.length,bundles_selected:bundles.length,no_pending_deletions:true};
+}
+
+/** Existing ten-minute cron: bounded R2 ciphertext -> verified B2 replay.
+ * R2 is NOT an accepted B2 object, and its pending index is never deleted
+ * on failure. The same shared account-wide B2 ticketing applies to redrive.
+ */
+export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
+ now=Date.now(),limit=2
+}={}){
+ if(!env?.P0B_PRIVATE_FALLBACK_R2||!env.DB?.prepare||
+    !Number.isSafeInteger(limit)||limit<1||limit>2)
+  return {status:"R2_FALLBACK_NOT_CONFIGURED",selected:0,verified:0};
+ const clock=new Date(now).toISOString();
+ let guard:any;
+ try{
+  guard=await env.DB.prepare(
+   "SELECT hold_until FROM p0b_storage_circuit WHERE singleton=1").first();
+ }catch{return {status:"R2_FALLBACK_CIRCUIT_READ_UNAVAILABLE",selected:0,verified:0}}
+ if(guard?.hold_until>clock)
+  return {status:"R2_FALLBACK_B2_CIRCUIT_HELD",selected:0,verified:0};
+ let rows:any[];
+ try{
+  const result=await env.DB.prepare(
+   "SELECT batch_id,object_key,cipher_sha256,item_count,attempt_count "+
+   "FROM p0b_private_r2_fallback WHERE state='PENDING_B2' AND next_retry_at<=? "+
+   "ORDER BY created_at,batch_id LIMIT ?").bind(clock,limit).all();
+  rows=result.results??[];
+ }catch{return {status:"R2_FALLBACK_INDEX_UNAVAILABLE",selected:0,verified:0}}
+ let verified=0,failed=0;
+ for(const row of rows){
+  try{
+   const payloads=await restoreP0bR2Fallback(env,row);
+   const result=await processFetchedBatch(payloads.map(p=>({
+    candidateSha256:p.candidateSha256,sourceId:p.sourceId,raw:p.rawPayload
+   })),env,{now:()=>new Date(now)});
+   const genuine=new Set(["QUEUED","ALREADY_COMMITTED",
+    "DURABLE_PENDING_REDISPATCH","DUPLICATE_IN_BATCH"]);
+   if(result.all_durable!==true||result.receipts.length!==payloads.length||
+      result.receipts.some(r=>!genuine.has(r.status)))
+    throw Error("P0B_R2_REPLAY_NOT_B2_VERIFIED");
+   await env.DB.prepare(
+    "UPDATE p0b_private_r2_fallback SET state='B2_VERIFIED',"+
+    "b2_verified_at=?,last_error_code=NULL WHERE batch_id=? AND state='PENDING_B2'"
+   ).bind(clock,row.batch_id).run();
+   const proof=await env.DB.prepare(
+    "SELECT state,b2_verified_at FROM p0b_private_r2_fallback WHERE batch_id=?"
+   ).bind(row.batch_id).first();
+   if(proof?.state!=="B2_VERIFIED"||proof.b2_verified_at!==clock)
+    throw Error("P0B_R2_REPLAY_D1_ACK_UNVERIFIED");
+   verified++;
+  }catch{
+   failed++;
+   const nextMs=Math.min(3600_000,60_000*2**Math.min(row.attempt_count+1,6));
+   try{await env.DB.prepare(
+    "UPDATE p0b_private_r2_fallback SET attempt_count=attempt_count+1,"+
+    "next_retry_at=?,last_error_code='P0B_R2_REPLAY_NOT_B2_VERIFIED' "+
+    "WHERE batch_id=? AND state='PENDING_B2'"
+   ).bind(new Date(now+nextMs).toISOString(),row.batch_id).run();}
+   catch{/* R2 object and earlier D1 index remain durable for later retry. */}
+  }
+ }
+ return {status:failed?"R2_FALLBACK_REPLAY_PARTIAL":"R2_FALLBACK_REPLAY_OK",
+  selected:rows.length,verified,failed,r2_pending_is_not_b2_success:true,
+  source_news_logged:false,objects_deleted:0};
 }

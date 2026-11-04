@@ -5,9 +5,10 @@
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
 import {canonicalJson} from '../lib/canonical-json.ts';
 import {stageP0bR2Fallback} from '../storage/p0b-r2-fallback.ts';
-import type {B2SpoolEnv,SpoolPayload} from '../storage/b2-spool-manager.ts';
+import type {SpoolPayload} from '../storage/b2-spool-manager.ts';
+import type {R2FallbackEnv} from '../storage/p0b-r2-fallback.ts';
 export type IngestCandidate={candidateSha256:string;sourceId:string;raw:unknown};
-export type ProducerEnv=B2SpoolEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
+export type ProducerEnv=R2FallbackEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
 type ProducerOptions={manager?:Pick<B2SpoolManager,'spoolBundleAndVerify'>;now?:()=>Date};
 const SHA=/^[a-f0-9]{64}$/u,SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const LIMIT=100,MAX_BYTES=320*1024,MAX_ITEM_BYTES=256*1024;
@@ -104,7 +105,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
   }catch(error){status(c,'FAILED_NOT_ACKNOWLEDGED',failureCode(error));}
  }
  let bundles_created=0,objects_requested=0,r2_fallback_chunks_readback_verified=0;
- const fallback=async (chunk:Pending[],reason:string)=>{
+ const fallback=async (chunk:Pending[])=>{
   try{
    const proof=await stageP0bR2Fallback(env,chunk.map(x=>x.payload),now());
    if(proof?.verified!==true||proof.itemCount!==chunk.length)
@@ -125,7 +126,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    chunk.push(pending[cursor++]);bytes+=chunk[chunk.length-1].bytes;
   }
   if(stopCode){
-   if(env.P0B_PRIVATE_FALLBACK_R2)await fallback(chunk,stopCode);
+   if(env.P0B_PRIVATE_FALLBACK_R2)await fallback(chunk);
    else for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',stopCode);
    continue;
   }
@@ -176,7 +177,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
   }catch(error){
    const code=failureCode(error);
    if(env.P0B_PRIVATE_FALLBACK_R2&&code.startsWith('P0B_B2_'))
-    await fallback(chunk,code);
+    await fallback(chunk);
    else for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',code);
    const millis=holdMillis(code,now());
    if(millis){

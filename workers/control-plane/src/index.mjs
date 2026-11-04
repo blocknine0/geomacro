@@ -46,7 +46,7 @@ import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
-import {drainBacklog} from '../../../src/workers/backlog-drain-cron.ts';
+import {drainBacklog,drainR2Fallback} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1312,6 +1312,12 @@ export default {
       ctx.waitUntil(drainBacklog(env,{now:utc.getTime()}).then(r=>{
         if(!['DRAINED_BATCH','DRAIN_CLEAN'].includes(r.status))console.error('P0B_DRAIN_DEFERRED',r.status);
       }).catch(()=>console.error('P0B_DRAIN_UNAVAILABLE')));
+    if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
+       utc.getUTCMinutes()%10===0&&env?.P0B_PRIVATE_FALLBACK_R2)
+      ctx.waitUntil(drainR2Fallback(env,{now:utc.getTime()}).then(r=>{
+        if(!['R2_FALLBACK_REPLAY_OK'].includes(r.status))
+          console.error('P0B_R2_PENDING_REPLAY',r.status);
+      }).catch(()=>console.error('P0B_R2_REPLAY_UNAVAILABLE')));
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
     if(env?.DB?.prepare)
