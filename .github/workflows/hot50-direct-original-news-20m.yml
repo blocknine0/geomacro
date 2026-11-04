@@ -74,6 +74,7 @@ jobs:
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
           node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
+          node --input-type=module -e 'import {threeDomainGlobal20mPublisherRegistry} from "./scripts/lib/three-domain-global-direct-20m-sources.mjs"; console.log(JSON.stringify({schema:"geomacro.global-three-domain-20m-source-census.v1",...threeDomainGlobal20mPublisherRegistry(new Date()).summary}))'
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs
           node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
@@ -189,10 +190,13 @@ jobs:
     name: Poll three-domain direct news even when D1 quota is held, protect eligible news in AES-GCM replay
     needs: [source-contract, quota-admission]
     if: >-
+      always() &&
+      needs.source-contract.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name == 'schedule' &&
-      needs.quota-admission.result == 'success' &&
+      (needs.quota-admission.result == 'success' ||
+       needs.quota-admission.result == 'failure') &&
       needs.quota-admission.outputs.source_intake != 'true'
     concurrency:
       group: geomacro-private-osint-held-publisher-fetch
