@@ -2922,6 +2922,7 @@
     },
     {
       "url": "https://www.mining-technology.com/feed/",
+      "canonical_url": "https://www.mining-technology.com/news/feed/",
       "state": "ALREADY_REGISTERED",
       "repositories": [
         "nk10nikhil/global-watch"
