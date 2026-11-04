@@ -1,0 +1,9 @@
+aio-pika==9.5.7
+beautifulsoup4==4.13.4
+fastapi==0.115.12
+feedparser==6.0.12
+httpx==0.28.1
+pycountry==24.6.1
+telethon==1.44.0
+uvicorn==0.34.2
+websockets==15.0.1
