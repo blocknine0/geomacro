@@ -9,6 +9,8 @@ import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
+import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning}
+ from "../lib/phase2h-atomic-bulk-archive-ack.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve,isAbsolute} from "node:path";
 import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
@@ -179,6 +181,7 @@ export function createPhase2hCanonicalD1({
    });
    if(answer.archived!==batch.length||
       answer.independent_d1_archive_ack_verified!==true||
+      answer.d1_atomic_one_statement_returning_verified!==true||
       answer.rights_verified!==false||answer.payments!==0)
      fail("INTERNAL_FALLBACK_ACK_UNVERIFIED");
    written+=batch.length;
@@ -274,31 +277,31 @@ export function createPhase2hCanonicalD1({
    return rows;
   },
   async markArchived(items,objectSha,now){
-   const ids=items.map(x=>x.record_id);
-   const holders=ids.map(()=>"?").join(",");
-   let check;
-   try{check=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids)}
-   catch(error){
-    if(error?.provider_http_status===400&&error?.provider_code===7500)
-     return workerAck(items,objectSha);
-    throw error;
+   // One atomic D1 UPDATE/RETURNING per up-to-100 record batch, never
+   // per-original reads/writes. Protected Worker is the recovery channel
+   // only on the exact provider HTTP400/7500 statement failure.
+   let archived=0;
+   for(let offset=0;offset<items.length;offset+=100){
+    const rows=items.slice(offset,offset+100);
+    const plan=phase2hAtomicBulkArchiveAck(rows,objectSha,now);
+    try{
+     const result=await sql(plan.sql,plan.params);
+     assertPhase2hBulkArchiveAckReturning(result,rows,objectSha);
+    }catch(error){
+     if(error?.provider_http_status===400&&error?.provider_code===7500){
+      const receipt=await workerAck(rows,objectSha);
+      if(receipt.archived!==rows.length||
+         receipt.d1_atomic_one_statement_returning_verified!==true)
+       fail("WORKER_ATOMIC_ACK_UNVERIFIED");
+     }else throw error;
+    }
+    archived+=rows.length;
    }
-   const before=new Map(check.results.map(x=>[x.record_id,x]));
-   if(before.size!==ids.length||items.some(x=>
-      before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
-      before.get(x.record_id)?.b2_object_sha256!==null))
-    fail("D1_PRE_ARCHIVE_RECORD_DIVERGED");
-   const updated=await sql("UPDATE phase2h_private_raw_news SET b2_object_sha256=?,b2_archived_at=? WHERE b2_object_sha256 IS NULL AND record_id IN ("+holders+")",
-     [objectSha,now.toISOString(),...ids]);
-   if(updated.meta?.changes!==ids.length)
-    fail("D1_ARCHIVE_METADATA_WRITE_NOT_EXACT");
-   const verified=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids);
-   if(verified.results.length!==ids.length||verified.results.some(x=>
-    before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
-    x.b2_object_sha256!==objectSha))
-    fail("D1_POST_ARCHIVE_METADATA_READBACK_MISMATCH");
-   return {archived:ids.length,independent_d1_archive_ack_verified:true};
-  },
+   if(archived!==items.length)fail("D1_ARCHIVE_BATCH_ACK_INCOMPLETE");
+   return {archived,independent_d1_archive_ack_verified:true,
+    d1_atomic_one_statement_returning_verified:true,
+    d1_write_statements:Math.ceil(items.length/100)};
+  }
  };
 }
 /** Only four canonical six-hour GitHub cron events; no manual/push bypass.
