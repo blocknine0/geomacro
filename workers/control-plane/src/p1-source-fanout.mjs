@@ -215,3 +215,46 @@ export async function p1SourceCoverageHealth(env,{now=Date.now()}={}){
    matrix,commercial_rights_promoted:false});
  }catch{return response({ok:false,error:"P1_COVERAGE_QUERY_UNVERIFIED"},503)}
 }
+
+/** Admin-approved explicit mapping; never duplicate a GLOBAL feed into 195
+ * countries by inference. A future report can mark missing source ranks.
+ */
+export async function p1UpsertSourceCellMap(env,body){
+ if(!Array.isArray(body?.links)||body.links.length<1||
+   body.links.length>50||Object.keys(body).join(",")!=="links")
+  return response({ok:false,error:"P1_CELL_MAPPING_INVALID"},400);
+ const keys=new Set(),stmts=[];
+ for(const x of body.links){
+  if(!x||Object.keys(x).sort().join(",")!=="category,country_iso3,rank,source_id"||
+    !SOURCE.test(x.source_id??"")||!ISO3.test(x.country_iso3??"")||
+    !CATEGORIES.has(x.category)||![1,2,3].includes(x.rank))
+   return response({ok:false,error:"P1_CELL_MAPPING_INVALID"},400);
+  const key=x.source_id+"|"+x.country_iso3+"|"+x.category;
+  if(keys.has(key))return response({ok:false,error:"P1_CELL_MAPPING_DUPLICATE"},400);
+  keys.add(key);
+  // Protect against invented entity coverage or category leakage. A
+  // GLOBAL source must be configured through a separate verified
+  // country/topic feed registry, never automatically in this endpoint.
+  const src=await env.DB.prepare("SELECT country_iso3,intended_category "+
+   "FROM source_registry WHERE source_id=? AND enabled=1"
+  ).bind(x.source_id).first();
+  if(src?.country_iso3!==x.country_iso3||
+     src?.intended_category!==x.category)
+   return response({ok:false,error:"P1_SOURCE_CELL_NATIVE_SCOPE_MISMATCH"},400);
+  stmts.push(env.DB.prepare(
+   "INSERT INTO p1_source_to_cell(source_id,country_iso3,primary_category,rank) "+
+   "VALUES (?,?,?,?) ON CONFLICT(source_id,country_iso3,primary_category) "+
+   "DO UPDATE SET rank=excluded.rank"
+  ).bind(x.source_id,x.country_iso3,x.category,x.rank));
+ }
+ try{
+  await env.DB.batch(stmts);
+  const found=await env.DB.prepare(
+   "SELECT COUNT(*) AS count FROM p1_source_to_cell WHERE "+
+   "source_id IN (SELECT value FROM json_each(?))"
+  ).bind(JSON.stringify(body.links.map(x=>x.source_id))).first();
+  if((found?.count??0)<keys.size)throw Error("P1_CELL_MAPPING_READBACK_INCOMPLETE");
+  return response({ok:true,registered:keys.size,readback_verified:true,
+   rights_promoted:false,global_coverage_invented:false});
+ }catch{return response({ok:false,error:"P1_CELL_MAPPING_D1_UNAVAILABLE"},503)}
+}

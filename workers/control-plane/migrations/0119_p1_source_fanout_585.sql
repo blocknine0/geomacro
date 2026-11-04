@@ -8,6 +8,14 @@ ALTER TABLE source_registry ADD COLUMN poll_last_modified TEXT;
 ALTER TABLE source_registry ADD COLUMN polling_interval_minutes INTEGER GENERATED ALWAYS AS (polling_interval_sec / 60) VIRTUAL;
 CREATE INDEX IF NOT EXISTS idx_p1_dispatch_due
  ON source_registry(enabled,next_poll_at,poll_dispatch_lease_until,source_id);
+ALTER TABLE p0a_normalized_source_items ADD COLUMN observed_at TEXT;
+ALTER TABLE p0a_normalized_source_items ADD COLUMN clock_provenance TEXT
+ CHECK(clock_provenance IS NULL OR clock_provenance IN
+ ('SOURCE_NATIVE','HTTP_LAST_MODIFIED','INGESTION_OBSERVED'));
+ALTER TABLE p0a_normalized_source_items ADD COLUMN content_sha256 TEXT
+ CHECK(content_sha256 IS NULL OR length(content_sha256)=64);
+CREATE INDEX IF NOT EXISTS idx_p1_content_dedup
+ ON p0a_normalized_source_items(source_id,content_sha256);
 CREATE TABLE IF NOT EXISTS p1_source_domain_backoff (
  hostname TEXT PRIMARY KEY NOT NULL,
  consecutive_failures INTEGER NOT NULL DEFAULT 0 CHECK(consecutive_failures>=0),

@@ -44,7 +44,7 @@ import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
-import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth}
+import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth,p1UpsertSourceCellMap}
  from './p1-source-fanout.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
@@ -1648,6 +1648,13 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
     if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
       return p1SourceCoverageHealth(env);
+    if(url.pathname==='/v1/internal/p1/source-cell-map'&&request.method==='PUT'){
+      try{
+        const text=await request.text();
+        if(text.length>16000)return json({ok:false,error:"P1_MAPPING_TOO_LARGE"},413);
+        return p1UpsertSourceCellMap(env,JSON.parse(text));
+      }catch{return json({ok:false,error:"P1_MAPPING_REQUEST_INVALID"},400)}
+    }
     if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
       return getP0bIngestionStatus(env);
