@@ -76,12 +76,12 @@ const PRODUCTS: Record<
     pilot: true,
   },
   risk_gate_bundle: {
-    title: "Risk Gate — three tiers",
-    description: "Basic observed alerts, Standard independently corroborated risk, or Complex Ed25519 GRO and seven-day corridor history.",
+    title: "Risk Gate bundle",
+    description: "Risk context for a customer-controlled preflight decision.",
     includes: [
-      "Basic / Focused: indicative 0–100 score, LOW / PROVISIONAL, fast alerts",
-      "Standard: three category fact-sheets, MEDIUM / VERIFIED, source references",
-      "Complex / Full: institutional signed GRO score, HIGH / CRYPTO_SIGNED, seven-day friction trend and B2 archive reference",
+      "Bounded advisory result",
+      "Signed Risk Object included once",
+      "Customer retains control of every action",
     ],
     pilot: true,
   },
@@ -168,10 +168,7 @@ export function CapabilityPriceSchedule({ compact = false }: { compact?: boolean
                     className="flex flex-wrap items-center justify-between gap-2 py-3"
                   >
                     <dt className="text-xs text-muted-foreground">
-                      {capability==="risk_gate_bundle"?
-                        (variant==="existing_proof_preflight"?"Basic / Focused":
-                         variant==="standard"?"Standard":"Complex / Full"):
-                       (VARIANTS[variant] ?? variant.replaceAll("_", " "))}
+                      {VARIANTS[variant] ?? variant.replaceAll("_", " ")}
                     </dt>
                     <dd className="font-mono text-lg font-medium">
                       {amount} <span className="text-[10px] text-muted-foreground">USDC</span>
