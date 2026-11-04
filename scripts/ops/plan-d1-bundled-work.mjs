@@ -178,14 +178,17 @@ export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered
 }={}){
  const baseline=MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows;
  const held=Object.freeze({max_new_rows:baseline,adaptive:false,
-  additional_slot_rows_reserved:0});
+  additional_slot_rows_reserved:0,extra_write_reserved:0,extra_read_reserved:0});
  if(!criticalGranted||!intakeBudget||!snapshot||
     !(now instanceof Date)||!Number.isFinite(now.getTime())||
     !Number.isSafeInteger(snapshot.remaining_rows_read)||
     !Number.isSafeInteger(snapshot.remaining_rows_written))return held;
- const slots=intakeBudget.remaining_source_slots+
-   intakeBudget.additional_hot50_direct_20m_slots_reserved;
- if(!Number.isSafeInteger(slots)||slots<1)return held;
+ // Every future 15/20-minute BASELINE slot is already fully reserved by
+ // planSourceIntake(). Only this one serialized slot may spend an additional
+ // burst, never an unbounded daily promise. The next tick must re-prove
+ // provider quota from scratch and cannot reuse this approval.
+ if(!Number.isSafeInteger(intakeBudget.remaining_source_slots)||
+    intakeBudget.remaining_source_slots<1)return held;
  const archiveSlots=[0,6,12,18].filter(h=>h>=now.getUTCHours()).length||1;
  const writeAvailable=Math.max(0,snapshot.remaining_rows_written-
    D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-
@@ -194,11 +197,12 @@ export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered
    D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
    (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
  const extra=Math.max(0,Math.min(95,
-   Math.floor(writeAvailable/(slots*16)),
-   Math.floor(readAvailable/(slots*64))));
+   Math.floor(writeAvailable/16),
+   Math.floor(readAvailable/64)));
  const max_new_rows=baseline+extra;
  return Object.freeze({max_new_rows,adaptive:max_new_rows>baseline,
-   additional_slot_rows_reserved:extra*slots});
+   additional_slot_rows_reserved:extra,
+   extra_write_reserved:extra*16,extra_read_reserved:extra*64});
 }
 
 const held=(reason,now)=>Object.freeze({
@@ -310,11 +314,17 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const utcHour=now.getUTCHours();
   const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
-  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
+  const phase2iAdaptive=planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,
+    null,{now,criticalGranted:grants.critical===true&&sourceIntake});
+  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals({
+    ...snapshot,
+    remaining_rows_written:Math.max(0,snapshot.remaining_rows_written-
+      phase2iAdaptive.extra_write_reserved),
+    remaining_rows_read:Math.max(0,snapshot.remaining_rows_read-
+      phase2iAdaptive.extra_read_reserved),
+  },intakeBudget,{
     now,criticalGranted:grants.critical===true&&sourceIntake,
   });
-  const phase2iAdaptive=planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,
-    registeredAdaptive,{now,criticalGranted:grants.critical===true&&sourceIntake});
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* one-run retention pass at the granted maximum.
   // Do not admit a 1000-row writer behind the old 25-row/hour budget.
@@ -324,7 +334,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const rawWriteRoom=sourceIntake?
     snapshot.remaining_rows_written-
       D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150-
-      registeredAdaptive.extra_write_reserved:0;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved:0;
   const archiveWriteReserve=remainingArchiveSlots*750;
   const preserveArchive=rawWriteRoom>archiveWriteReserve+
     remainingHourSlots*25;
@@ -336,7 +346,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingHourSlots*2500+10000+
-      registeredAdaptive.extra_read_reserved;
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved;
   const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
     Math.min(1000,safeRowsPerHour):0;
   const retentionCleanup=retentionCleanupMaxRows>0;
@@ -353,11 +363,11 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingArchiveSlots*20_000+10_000+
-      registeredAdaptive.extra_read_reserved&&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
       remainingArchiveSlots*750+150+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -368,20 +378,20 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const governedMeasurement=sourceIntake &&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
       250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved &&
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
       D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
@@ -395,10 +405,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
       250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
@@ -407,8 +417,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     reason:state==="HELD"?(sourceIntake?"DISCRETIONARY_PACING_HELD_SOURCE_ADMITTED":"D1_FREE_RESERVE_REACHED"):"ACCOUNT_WIDE_HEADROOM_OBSERVED",
     ...grants,source_intake:sourceIntake,
     registered_private_max_new_rows:registeredAdaptive.max_new_rows,
-    registered_private_extra_daily_read_reserve:registeredAdaptive.extra_read_reserved,
-    registered_private_extra_daily_write_reserve:registeredAdaptive.extra_write_reserved,
+    registered_private_extra_daily_read_reserve:registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved,
+    registered_private_extra_daily_write_reserve:registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved,
     registered_private_adaptive_free_budgeted:registeredAdaptive.fully_account_budgeted,
     phase2h_raw_archive:phase2hRawArchive,
     phase2h_raw_archive_does_not_admit_general_maintenance:true,
@@ -435,6 +445,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     source_intake_max_new_rows:sourceIntake?phase2iAdaptive.max_new_rows:0,
     source_intake_phase2i_adaptive:phase2iAdaptive.adaptive,
     source_intake_phase2i_extra_slot_rows_reserved:phase2iAdaptive.additional_slot_rows_reserved,
+    source_intake_phase2i_extra_write_reserved:phase2iAdaptive.extra_write_reserved,
+    source_intake_phase2i_extra_read_reserved:phase2iAdaptive.extra_read_reserved,
     minimum_daily_bundled_source_policy:MINIMUM_DAILY_BUNDLED_SOURCE,
     minimum_daily_bundled_source_admitted:sourceIntake,
     snapshot_refresh:snapshotRefresh,
