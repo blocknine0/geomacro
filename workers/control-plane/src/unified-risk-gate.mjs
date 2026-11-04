@@ -278,7 +278,6 @@ async function remote(cfg,path,{method="GET",body,headers={}}={},fetcher=fetch){
 const COUNTRY_SIGNAL_DOMAIN=Object.freeze({GEOPOLITICS:"geopolitics",
  MACRO_FX:"macro_fx",CRITICAL_MINERALS:"critical_minerals"});
 const finiteScore=value=>typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=1;
-const numberId=hexValue=>BigInt("0x"+hexValue.slice(0,15)).toString();
 function snapshotCategoryScore(snapshot,category){
  const verified=snapshot?.categories?.[category];
  if(finiteScore(verified?.risk_score)){
