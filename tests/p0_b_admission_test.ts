@@ -288,6 +288,10 @@ test('per-bundle send failure is recovered via one FIFO dispatch',async()=>{
   assert.equal(receipt.all_durable,true);
   assert.equal(receipt.bundles_created,1);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_bundles').get().n,1);
+  // SQLite DEFAULT CURRENT_TIMESTAMP follows the real CI wall clock; the
+  // FIFO redrive test must pin a genuine 12-minute-old pending bundle
+  // relative to its own fixed NOW fixture, not rely on runner start time.
+  f.db.prepare('UPDATE ingestion_spool_bundles SET created_at=?').run(at);
   f.env.INGEST_QUEUE.send=async body=>f.env.INGEST_QUEUE.sent.push(body);
   const redrive=await drainBacklog(f.env,{now:NOW+12*60000});
   assert.equal(redrive.count,1);
