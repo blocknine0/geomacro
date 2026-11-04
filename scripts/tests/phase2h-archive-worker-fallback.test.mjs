@@ -53,7 +53,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
  const rows=await d1.readPending(now);
  assert.equal(rows.length,51);
  assert.equal(new Set(rows.map(x=>x.record_id)).size,51);
- assert.equal(api.length,3);
+ assert.equal(api.length,5);
  assert.deepEqual(workerReads.map(x=>x.cursor),[null,original[24].record_id,original[49].record_id]);
  const ack=await d1.markArchived(rows,"e".repeat(64),now);
  assert.equal(ack.archived,51);
@@ -120,4 +120,31 @@ test("Worker persistent HTTP 503 all way down to one cannot invent B2 receipt",a
  await assert.rejects(createPhase2hCanonicalD1({env,fetchImpl}).readPending(now),
   /PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE/u);
  assert.deepEqual(limits,[25,10,5,1]);
+});
+
+test("single-row REST recovery can archive real pending rows when D1 multirow SELECT returns 7500",async()=>{
+ const wanted=original.slice(0,4),limits=[],worker=[];
+ const fetchImpl=async(url,init)=>{
+  if(new URL(url).hostname!=="api.cloudflare.com"){
+   worker.push(url);
+   throw Error("internal fallback should not be needed for single-row REST");
+  }
+  const body=JSON.parse(init.body),match=body.sql.match(/LIMIT (\\d+)$/u);
+  const limit=Number(match?.[1]);
+  limits.push(limit);
+  if(limit>1)return denial(400,7500);
+  const cursor=body.params.length===4?body.params[3]:null;
+  const idx=cursor===null?0:wanted.findIndex(row=>row.record_id>cursor);
+  const found=idx<0?[]:wanted.slice(idx,idx+1).map(row=>({
+   record_id:row.record_id,first_ingested_at:row.ingested_at,
+   raw_json:JSON.stringify(row)
+  }));
+  return Response.json({success:true,result:[{success:true,results:found}]});
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ const actual=await d1.readPending(now);
+ assert.equal(actual.length,4);
+ assert.deepEqual(actual.map(x=>x.record_id),wanted.map(x=>x.record_id));
+ assert.deepEqual(limits.slice(0,5),[25,10,5,2,1]);
+ assert.equal(worker.length,0);
 });
