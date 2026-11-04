@@ -62,7 +62,13 @@ on:
       - "scripts/tests/phase2i-idle-source-drain-contract.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
+      - "scripts/lib/phase2i-durable-queue-client.mjs"
+      - "scripts/tests/phase2i-durable-queue.test.mjs"
+      - "workers/phase2i-durable-queue/worker.mjs"
       - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
+      - "scripts/lib/phase2i-durable-queue-client.mjs"
+      - "scripts/tests/phase2i-durable-queue.test.mjs"
+      - "workers/phase2i-durable-queue/worker.mjs"
       - "scripts/lib/source-only-website-handoff.mjs"
       - "scripts/ops/publish-source-only-website-derived.ts"
       - "scripts/tests/source-only-website-handoff.test.mjs"
@@ -193,7 +199,13 @@ on:
       - "scripts/tests/phase2i-idle-source-drain-contract.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
+      - "scripts/lib/phase2i-durable-queue-client.mjs"
+      - "scripts/tests/phase2i-durable-queue.test.mjs"
+      - "workers/phase2i-durable-queue/worker.mjs"
       - "scripts/tests/phase2i-encrypted-source-backlog.test.mjs"
+      - "scripts/lib/phase2i-durable-queue-client.mjs"
+      - "scripts/tests/phase2i-durable-queue.test.mjs"
+      - "workers/phase2i-durable-queue/worker.mjs"
       - "scripts/tests/phase2i-source-only-governor.test.mjs"
       - "scripts/lib/phase2i-single-sweep-original-index.mjs"
       - "scripts/tests/phase2i-single-sweep-original-index.test.mjs"
@@ -285,6 +297,8 @@ jobs:
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
           node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/hot50-fresh-priority-d1.test.mjs
           node --test scripts/tests/phase2i-encrypted-source-backlog.test.mjs
+          node --test scripts/tests/phase2i-durable-queue.test.mjs
+          node --check workers/phase2i-durable-queue/worker.mjs
           node --test scripts/tests/phase2i-idle-source-drain-contract.test.mjs
           node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
           node --check scripts/lib/private-osint-15m-collector.mjs
@@ -575,6 +589,8 @@ jobs:
           GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
           GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
           GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT: ${{ runner.temp }}/phase2i-ciphertext/queue.json
+          GEOMACRO_PHASE2I_DURABLE_URL: ${{ vars.GEOMACRO_PHASE2I_DURABLE_URL }}
+          GEOMACRO_PHASE2I_DURABLE_TOKEN: ${{ secrets.GEOMACRO_PHASE2I_DURABLE_TOKEN }}
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
           PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
@@ -593,6 +609,7 @@ jobs:
           retention-days: 2
           if-no-files-found: warn
       - name: Persist only AES-GCM ciphertext for the next admitted source cycle
+        if: vars.GEOMACRO_PHASE2I_DURABLE_URL == ''
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-private-phase2i-72h-ciphertext
@@ -849,6 +866,8 @@ jobs:
       - name: Admit next pending originals within the already reserved replay writer
         if: env.PHASE2I_HELD_SPOOL_EMPTY_VERIFIED == '1'
         env:
+          GEOMACRO_PHASE2I_DURABLE_URL: ${{ vars.GEOMACRO_PHASE2I_DURABLE_URL }}
+          GEOMACRO_PHASE2I_DURABLE_TOKEN: ${{ secrets.GEOMACRO_PHASE2I_DURABLE_TOKEN }}
           GH_TOKEN: ${{ github.token }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
