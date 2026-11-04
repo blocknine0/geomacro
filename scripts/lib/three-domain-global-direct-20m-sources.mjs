@@ -11,6 +11,7 @@
  */
 import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {hot50Direct20mPublisherRegistry} from "./hot-50-direct-20m-sources.mjs";
+import {hot50RetiredBackupSources} from "./hot-50-retired-backup-sources.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
@@ -59,6 +60,7 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  if(!Array.isArray(raw)||raw.length<1||raw.length>512||
     !Array.isArray(first)||first.length<1||first.length>512)
   throw Error("THREE_DOMAIN_20M_SOURCE_ARRAY_INVALID");
+ const backups=hot50RetiredBackupSources();
  const merged=new Map(),hotUrls=new Set();
  const add=(s,priority)=>{
   if(!directSource(s)){
@@ -72,12 +74,25 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
       old.publisher_country_iso3!==s.publisher_country_iso3)
     throw Error("THREE_DOMAIN_20M_PUBLISHER_COUNTRY_DRIFT");
    merged.set(s.url,safeDirect({...old,categories:cats,
+     backup_for_retired_ids:[...new Set([...(old.backup_for_retired_ids??[]),
+       ...(s.backup_for_retired_ids??[])])],
+     private_hot50_backup:old.private_hot50_backup===true||s.private_hot50_backup===true,
      private_hot50_direct_20m:old.private_hot50_direct_20m||priority}));
   }else merged.set(s.url,safeDirect(s));
   if(priority)hotUrls.add(s.url);
  };
  for(const s of first)add(s,true);
+ const oldPinnedCount=hotUrls.size;
+ // Guarantee a source-specific replacement for all 14 retired Hot-50 IDs.
+ // Existing publisher URLs are merged into one GET and promoted to priority;
+ // distinct replacement feeds are fetched ahead of rotating global feeds.
+ for(const s of backups.registry)add(s,true);
  for(const s of raw)add(s,false);
+ const backed=new Set([...merged.values()].flatMap(source=>
+  source.backup_for_retired_ids??[]));
+ if(backed.size!==14||
+    backups.summary.backed_retired_source_ids.some(id=>!backed.has(id)))
+  throw Error("THREE_DOMAIN_20M_HOT50_BACKUP_COVERAGE_DRIFT");
  if(hotUrls.size<1||hotUrls.size>requestCeiling)throw Error("THREE_DOMAIN_20M_HOT_PIN_OVERCAP");
  const priority=[...merged.values()].filter(s=>hotUrls.has(s.url));
  const other=[...merged.values()].filter(s=>!hotUrls.has(s.url));
@@ -93,7 +108,13 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
   throw Error("THREE_DOMAIN_20M_REAL_SOURCE_SCOPE_INVALID");
  return Object.freeze({registry,summary:Object.freeze({
   publisher_feed_candidates_configured:merged.size,
-  hot50_distinct_direct_feeds_pinned:priority.length,
+  hot50_distinct_direct_feeds_pinned:oldPinnedCount,
+  hot50_priority_direct_feeds_including_backups:priority.length,
+  hot50_retired_backup_mapping_count:backed.size,
+  hot50_retired_backup_unique_urls_pinned:backups.registry.length,
+  hot50_retired_backup_unique_urls_in_current_tick:priority.filter(s=>
+   (s.backup_for_retired_ids??[]).length>0).length,
+  hot50_retired_backup_live_healthy_not_inferred:true,
   hot50_retired_transport_reprobes_this_tick:priority.filter(s=>
    s.private_hot50_retired_reprobe===true).length,
   hot50_retired_reprobe_does_not_prove_http_success:true,
