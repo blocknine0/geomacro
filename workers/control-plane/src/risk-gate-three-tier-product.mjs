@@ -31,7 +31,7 @@ const boundedScore=n=>Number.isFinite(n)&&n>=0&&n<=100?Number(n.toFixed(2)):null
 const dayDate=(now,offset)=>new Date(now-offset*86400000).toISOString().slice(0,10);
 
 /** Single source = a metadata observation, not a verified event. */
-function observedByCategory(snapshot,rows){
+function observedByCategory(snapshot,rows,now){
  const found=new Map();
  for(const r of rows??[]){
   if(!CATEGORIES.includes(r?.category)||found.has(r.category))continue;
@@ -42,6 +42,7 @@ function observedByCategory(snapshot,rows){
     payload.sources.length>40)continue;
   const alerts=payload.sources.slice(0,6).filter(s=>
     typeof s.published_at==="string"&&Number.isFinite(Date.parse(s.published_at))&&
+    Date.parse(s.published_at)>=now-86400000&&Date.parse(s.published_at)<=now+60000&&
     HEX.test(String(s.title_hash??""))).map(s=>({
     title_sha256:s.title_hash,
     observed_at:s.published_at,
@@ -146,7 +147,7 @@ export function composeRiskGateThreeTierResponse({
   throw Error("RISK_GATE_THREE_TIER_INPUT_INVALID");
  const product=RISK_GATE_PRODUCT_TIERS[tier];
  const subject={type:snapshot.target_type,id:snapshot.target_id};
- const categoryRows=observedByCategory(snapshot,observations);
+ const categoryRows=observedByCategory(snapshot,observations,now);
  const base={
   schema:RISK_GATE_PRODUCT_SCHEMA,product:"risk_gate_bundle",
   tier:product.tier,product_variant:product.legacy_variant,
