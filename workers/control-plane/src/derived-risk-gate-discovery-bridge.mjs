@@ -208,6 +208,23 @@ async function pendingQueue(env,query){
    next_offset:data.results.length>100?offset+100:null});
  }catch{return response({ok:false,error:"DISCOVERY_QUEUE_UNAVAILABLE"},503);}
 }
+async function pruneExpiredSignals(env,now){
+ try{
+  const cutoff=dateIso(now-72*3600000);
+  const result=await env.DB.prepare(
+   "DELETE FROM derived_risk_gate_discovery_signals WHERE first_seen_at<?"
+  ).bind(cutoff).run();
+  if(result?.success===false)throw Error("DISCOVERY_PRUNE_FAILED");
+  const existing=await env.DB.prepare(
+   "SELECT EXISTS(SELECT 1 FROM derived_risk_gate_discovery_signals "+
+   "WHERE first_seen_at<? LIMIT 1) AS stale"
+  ).bind(cutoff).first();
+  if(Number(existing?.stale)!==0)throw Error("DISCOVERY_PRUNE_READBACK_FAILED");
+  return response({ok:true,schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA,
+   pruned_retention_hours:72,expired_rows_remaining:0,
+   raw_archives_modified:false,commercialEligible:false});
+ }catch{return response({ok:false,error:"DISCOVERY_PRUNE_UNVERIFIED"},503);}
+}
 export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now()){
  if(!env?.DB?.prepare||!Number.isFinite(now))
   return response({ok:false,error:"DISCOVERY_D1_UNAVAILABLE"},503);
@@ -226,7 +243,12 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
   try{
    const raw=await request.text();
    if(raw.length>17000)return response({ok:false,error:"DISCOVERY_ACK_TOO_LARGE"},400);
-   return commitPage(env,JSON.parse(raw),now);
+   const body=JSON.parse(raw);
+   if(own(body,["schema","operation"])&&
+      body.schema===DERIVED_DISCOVERY_BRIDGE_SCHEMA&&
+      body.operation==="PRUNE_DISCOVERY_72H")
+     return pruneExpiredSignals(env,now);
+   return commitPage(env,body,now);
   }catch{return response({ok:false,error:"DISCOVERY_ACK_INVALID"},400);}
  }
  return response({ok:false,error:"DISCOVERY_METHOD_NOT_ALLOWED"},405);
