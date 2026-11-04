@@ -943,3 +943,83 @@ test("Phase2H raw B2 plan excludes the expired immutable first-ingested window",
   ...valid,ingested_at:"2026-10-27T11:59:59.999Z"
  }],planNow),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/);
 });
+
+test("raw-only nullable five-part is archived with immutable provenance but never falsely question-qualified",async()=>{
+ const candidate={category:"geopolitics",sourceId:"source_raw_only",
+  title:"Official agency publishes a scheduled bulletin",
+  publishedAt:"2026-10-30T04:00:00.000Z",
+  articleUrl:"https://example.gov.test/bulletin/empty-review",credit:null};
+ const record=buildPhase2hPrivateRawRecords([candidate],{
+  now,derive:()=>[]}).records[0];
+ assert.equal(record.analysis.what_happened.text,null);
+ assert.equal(record.analysis.why_it_matters.text,null);
+ assert.equal(await validPrivateRawNews(record,now.getTime(),false),JSON.stringify(record));
+ const sha="c".repeat(64);
+ const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+  status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
+  storage_confirmed:true,rows_archived:1,
+  category_counts:{geopolitics:1,macro:0,rare_earth:0},
+  b2_first_get_verified:true,b2_second_get_performed:false,
+  post_archive_d1_verified:true,
+  d1_atomic_one_statement_returning_verified:true,object_sha256:sha};
+ const env={GITHUB_REPOSITORY:"blocknine0/geomacro",GITHUB_REF:"refs/heads/main",
+  GITHUB_ACTIONS:"true",CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"d".repeat(36),CLOUDFLARE_API_TOKEN:"token".repeat(10),
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:"root".repeat(12)};
+ let reads=0;
+ const fetchImpl=async(url,init)=>{
+  assert.equal(new URL(url).origin,"https://api.cloudflare.com");
+  reads++;
+  const sql=JSON.parse(init.body).sql;
+  const results=sql.startsWith("SELECT record_id")?
+   [{record_id:record.record_id,category:record.category,raw_sha256:record.raw_sha256,
+    b2_object_sha256:sha,b2_archived_at:now.toISOString()}]:[{has_pending:1}];
+  return Response.json({success:true,result:[{success:true,results}]});
+ };
+ const proof=await verifyPhase2hProductionQuestionChain({env,now:now.getTime(),
+  receipt,fetchImpl,expectedArchivedRows:[record]});
+ assert.equal(reads,2);
+ assert.equal(proof.same_b2_object_and_d1_original,true);
+ assert.equal(proof.raw_archive_integrity_verified,true);
+ assert.equal(proof.verified_b2_batch_rows,1);
+ assert.equal(proof.raw_only_unqualified_count,1);
+ assert.equal(proof.five_part_qualified_count,0);
+ assert.equal(proof.per_record_five_part_exact,false);
+ assert.equal(proof.deployed_authenticated_http_200,false);
+ assert.equal(proof.question_variants_verified,0);
+ assert.equal(proof.entire_admitted_raw_backlog_verified,false);
+});
+test("raw B2-only acceptance never claims exact-question PASS despite valid D1 ACK",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",GITHUB_RUN_ID:"12345",GITHUB_SHA:"1".repeat(40),
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_REQUEST_BUDGET:"12",PHASE2H_PROVIDER_MAINTENANCE:"true",
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  D1_DATABASE_ID:"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  CLOUDFLARE_API_TOKEN:"a".repeat(40),GEOMACRO_COMMERCE_LEDGER_TOKEN:"b".repeat(40)};
+ const result=await runPhase2hPermanentAcceptance({env,now,
+  archive:async()=>({schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
+   storage_confirmed:true,rows_archived:1,
+   category_counts:{geopolitics:1,macro:0,rare_earth:0},
+   object_sha256:"c".repeat(64),
+   b2_first_get_verified:true,b2_second_get_performed:false,
+   d1_atomic_one_statement_returning_verified:true,post_archive_d1_verified:true}),
+  verify:async()=>({same_b2_object_and_d1_original:true,
+   raw_archive_integrity_verified:true,per_record_five_part_exact:false,
+   deployed_authenticated_http_200:false,
+   b2_one_get_sha_verified_in_preceding_step:true,
+   five_part_qualified_count:0,raw_only_unqualified_count:1,
+   verified_b2_batch_rows:1,production_question_readback_categories:0,
+   unarchived_backlog_present:false,entire_admitted_raw_backlog_verified:true}),
+  readCensus:async()=>({staged_total:2,archived_total:1,pending_total:1,
+   category_counts:{geopolitics:{staged:2,archived:1,pending:1},
+    macro:{staged:0,archived:0,pending:0},
+    rare_earth:{staged:0,archived:0,pending:0}}})});
+ assert.equal(result.status,"VERIFIED_INCREMENTAL_RAW_B2_WITH_BACKLOG_QUESTION_GATED");
+ assert.equal(result.raw_archive_incremental_proof_pass,true);
+ assert.equal(result.incremental_batch_proof_pass,false);
+ assert.equal(result.raw_only_unqualified_rows_this_run,1);
+ assert.equal(result.five_part_qualified_rows_this_run,0);
+ assert.equal(result.entire_admitted_raw_backlog_verified,false);
+});

@@ -83,7 +83,8 @@ export async function verifyPhase2hProductionQuestionChain({
  }
  const categories=["geopolitics","macro","rare_earth"];
  const counts=Object.fromEntries(categories.map(c=>[c,0]));
- const originals=[],seen=new Set();
+ const originals=[],questionEligible=[],seen=new Set();
+ let rawOnlyCount=0;
  for(const record of rows){
   if(!HEX.test(record.record_id)||seen.has(record.record_id)||
     record.b2_object_sha256!==receipt.object_sha256||
@@ -96,11 +97,15 @@ export async function verifyPhase2hProductionQuestionChain({
     !categories.includes(row.category)||row.category!==record.category)
    fail("CANONICAL_D1_IMMUTABLE_ID_MISMATCH");
   await validPrivateRawNews(row,now,false);
-  if(typeof row.analysis?.what_happened?.text!=="string"||
-     !row.analysis.what_happened.text.trim()||
-     typeof row.analysis?.why_it_matters?.text!=="string"||
-     !row.analysis.why_it_matters.text.trim())
-   fail("PER_NEWS_FIVE_PART_ANALYSIS_MISSING");
+  // Canonical raw observations may legitimately have null editorial text.
+  // Preserve their immutable B2/D1 proof, but do not offer them for an exact
+  // five-part question or claim a paid/verified derived answer.
+  const what=row.analysis?.what_happened?.text;
+  const why=row.analysis?.why_it_matters?.text;
+  if(typeof what==="string"&&what.trim()&&
+     typeof why==="string"&&why.trim()&&what!==why)
+   questionEligible.push(row);
+  else rawOnlyCount++;
   counts[row.category]++;
   originals.push(row);
  }
@@ -115,7 +120,7 @@ export async function verifyPhase2hProductionQuestionChain({
  };
  // Distinct event topics cannot reuse an identical category boilerplate.
  for(const category of categories){
-  const group=originals.filter(row=>row.category===category);
+  const group=questionEligible.filter(row=>row.category===category);
   const differentEventFacts=new Set(group.map(row=>row.analysis.what_happened.text).filter(Boolean));
   if(differentEventFacts.size>1){
    if(new Set(group.map(row=>row.analysis.why_it_matters.text)).size<2||
@@ -127,7 +132,7 @@ export async function verifyPhase2hProductionQuestionChain({
   .update("geomacro-control-plane-v1").digest("hex");
  let questionReadbacks=0,questionVariantsVerified=0;
  for(const category of categories){
-  const row=originals.find(x=>x.category===category);
+  const row=questionEligible.find(x=>x.category===category);
   if(!row)continue;
   if(row.analysis.what_happened.text===row.analysis.why_it_matters.text)
    fail("GENERIC_SAME_EVENT_WHAT_WHY_ANALYSIS");
@@ -163,8 +168,11 @@ export async function verifyPhase2hProductionQuestionChain({
   }
   questionReadbacks++;
  }
- if(questionReadbacks!==categories.filter(c=>counts[c]>0).length)
-  fail("THREE_CATEGORY_QUESTION_READBACK_INCOMPLETE");
+ // Only categories with an actually answerable, evidence-grounded original
+ // require question readback. Raw-only categories still receive B2/D1 proof.
+ if(questionReadbacks!==categories.filter(c=>
+    questionEligible.some(x=>x.category===c)).length)
+  fail("QUESTION_ELIGIBLE_CATEGORY_READBACK_INCOMPLETE");
  const pending=await query("SELECT EXISTS(SELECT 1 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL LIMIT 1) AS has_pending");
  if(pending.length!==1||![0,1].includes(Number(pending[0].has_pending)))
   fail("ARCHIVE_BACKLOG_NOT_VERIFIABLE");
@@ -175,13 +183,18 @@ export async function verifyPhase2hProductionQuestionChain({
   d1_atomic_one_statement_returning_verified:
    receipt.d1_atomic_one_statement_returning_verified===true,
   original_native_clock_preserved:true,
-  per_record_five_part_exact:true,
+  // A structurally valid raw original is NOT necessarily an answerable GRO.
+  // Full per-record five-part PASS stays false if even one original is raw-only.
+  raw_archive_integrity_verified:true,
+  per_record_five_part_exact:rawOnlyCount===0&&questionReadbacks>0,
   verified_b2_batch_rows:originals.length,
+  five_part_qualified_count:questionEligible.length,
+  raw_only_unqualified_count:rawOnlyCount,
   verified_category_counts:counts,
   production_question_readback_categories:questionReadbacks,
   question_variants_verified:questionVariantsVerified,
-  what_and_why_change_with_question:true,
-  deployed_authenticated_http_200:true,
+  what_and_why_change_with_question:questionVariantsVerified>0,
+  deployed_authenticated_http_200:questionReadbacks>0,
   raw_source_not_delivered:true,
   unarchived_backlog_present:Boolean(Number(pending[0].has_pending)),
   entire_admitted_raw_backlog_verified:!Number(pending[0].has_pending),
