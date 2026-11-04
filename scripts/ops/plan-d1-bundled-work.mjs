@@ -173,7 +173,7 @@ const held=(reason,now)=>Object.freeze({
   reason,critical:false,research:false,maintenance:false,phase2h_raw_archive:false,source_intake:false,
   retention_cleanup:false,retention_cleanup_max_rows:0,
   registered_private_max_new_rows:0,
-  governed_measurement:false,
+  governed_measurement:false,historical_recovery:false,historical_recovery_max_rows:0,
   predge_account_headroom_guard_enabled:true,
   predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
   predge_account_headroom_is_hard_partition:false,
@@ -223,7 +223,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:false,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:false,governed_measurement:false,source_intake_interval_minutes:null,
+      source_intake:false,governed_measurement:false,historical_recovery:false,
+      historical_recovery_max_rows:0,source_intake_interval_minutes:null,
       registered_private_max_new_rows:0,
       source_intake_max_new_rows:0,snapshot_refresh:false,
       structural_snapshot:false,
@@ -322,6 +323,16 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
       remainingArchiveSlots*750+150+
       registeredAdaptive.extra_write_reserved;
+  // Low-priority historical archive, scanned by original D1 ingest state
+  // (never article publication age). Existing Free quota/PREDGE/future news
+  // reserves win before each 10-minute, <=200-original recovery slot.
+  const historicalRecovery=phase2hRawArchive&&
+    snapshot.remaining_rows_written>
+      D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
+      registeredAdaptive.extra_write_reserved+remainingArchiveSlots*750+750&&
+    snapshot.remaining_rows_read>
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
+      registeredAdaptive.extra_read_reserved+remainingArchiveSlots*20_000+25_000;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -375,6 +386,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     registered_private_extra_daily_write_reserve:registeredAdaptive.extra_write_reserved,
     registered_private_adaptive_free_budgeted:registeredAdaptive.fully_account_budgeted,
     phase2h_raw_archive:phase2hRawArchive,
+    historical_recovery:historicalRecovery,
+    historical_recovery_max_rows:historicalRecovery?200:0,
     phase2h_raw_archive_does_not_admit_general_maintenance:true,
     phase2h_raw_archive_requires_atomic_b2_quota:true,
     phase2h_raw_archive_max_rows_per_slot:300,
@@ -520,10 +533,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   console.log(JSON.stringify(receipt));
   console.log(JSON.stringify(phase2fQuotaDiagnostic(result)));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","phase2h_raw_archive","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
+    for(const key of ["critical","research","maintenance","phase2h_raw_archive","historical_recovery","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
-    for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows","registered_private_max_new_rows"])
+    for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows","registered_private_max_new_rows","historical_recovery_max_rows"])
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
