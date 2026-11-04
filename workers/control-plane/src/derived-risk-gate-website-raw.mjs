@@ -58,6 +58,7 @@ const signalIdFor=id=>hash(WEBSITE_RISK_RAW_LANE+"\n"+id);
 async function sourceRow(row,now){
  checkedOriginal(row,now);
  return {original_ref:await signalIdFor(row.id),
+  website_story_id:row.id,
   source_sha:await hash(row.story_json),
   first_seen_at:row.first_seen_at,observed_clock:row.published_at,
   category:row.category,country_iso3:null};
@@ -138,18 +139,21 @@ export async function websiteRiskRawAck(env,body,now=Date.now()){
     return answer({ok:false,error:"WEBSITE_RISK_RAW_RIGHTS_HOLD_REQUIRED"},400);
    ids.add(row.original_ref);
   }
-  // The page's first-seen/id keyset identity was verified using a single D1
-  // reread before this write. Fetch ONLY the 100 immutable website IDs needed
-  // to bind private pointers, not publisher content or a second website scan.
+  // The authenticated page already carries the GeoMacro-owned story ID,
+  // not a publisher identifier. One indexed exact-ID SELECT restores only
+  // this batch (<=100) without a 600-row scan or external request.
+  const storyIds=page.records.map(r=>r.website_story_id);
+  if(storyIds.some(id=>!STORY_ID.test(id))||
+     new Set(storyIds).size!==storyIds.length)
+   throw Error("WEBSITE_RISK_RAW_BAD_STORY_IDENTITIES");
   const websiteRows=await env.DB.prepare(
    "SELECT id,category,published_at,first_seen_at,story_json,date_precision "+
-   "FROM website_derived_intelligence WHERE first_seen_at>=? "+
-   "AND first_seen_at<=? ORDER BY first_seen_at ASC,id ASC LIMIT 601"
-  ).bind(cutoffAt(when),new Date(when).toISOString()).all();
-  // NEVER infer stable IDs from lossy hash reversal. Repeated 600-row scans
-  // are bounded by the site's actual hard 600-row compaction contract.
-  if(!Array.isArray(websiteRows?.results)||websiteRows.results.length>600)
-   throw Error("WEBSITE_RISK_RAW_BOUNDED_LOOKUP_INVALID");
+   "FROM website_derived_intelligence WHERE id IN "+
+   "(SELECT value FROM json_each(?))"
+  ).bind(JSON.stringify(storyIds)).all();
+  if(!Array.isArray(websiteRows?.results)||
+     websiteRows.results.length!==storyIds.length)
+   throw Error("WEBSITE_RISK_RAW_EXACT_ID_LOOKUP_INVALID");
   const sourceByHash=new Map();
   for(const source of websiteRows.results){
    const id=await signalIdFor(source.id);
