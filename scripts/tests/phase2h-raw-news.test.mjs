@@ -826,7 +826,7 @@ test("Phase2H index keyset reads all 300 rows exactly once without OFFSET",async
  assert.equal(reads.at(-1)[1],records[274].record_id);
  assert.equal(new Set(result.map(x=>x.record_id)).size,300);
 });
-test("Phase2H provider fails 25 then 10 then uses 5-row keyset with bound cursor",async()=>{
+test("Phase2H 400/7500 provider failures reduce 25 then 10 then use safe 5-row keyset",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
@@ -835,7 +835,7 @@ test("Phase2H provider fails 25 then 10 then uses 5-row keyset with bound cursor
   const q=JSON.parse(init.body);
   const limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
   observed.push(limit);
-  if(limit===25)return Response.json({success:false,result:[],errors:[{code:9000}]});
+  if(limit===25)return Response.json({success:false,result:[],errors:[{code:7500}]},{status:400});
   return Response.json({success:true,result:[{success:true,results:[]}]});
  };
  assert.deepEqual(await createPhase2hCanonicalD1({env,fetchImpl}).readPending(),[]);
@@ -845,7 +845,7 @@ test("Phase2H provider fails 25 then 10 then uses 5-row keyset with bound cursor
   const q=JSON.parse(init.body),limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
   const offset=q.params.length===1?0:parseInt(q.params[3],10)+1;
   pattern.push([limit,offset]);
-  if(limit>5)return Response.json({success:false,result:[],errors:[{code:9000}]});
+  if(limit>5)return Response.json({success:false,result:[],errors:[{code:7500}]},{status:400});
   const page=Array.from({length:Math.min(5,Math.max(0,100-offset))},(_,n)=>{
     const r={record_id:String(offset+n).padStart(64,"0"),category:"macro",
       ingested_at:now.toISOString()};
