@@ -12,6 +12,7 @@
 import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {hot50Direct20mPublisherRegistry} from "./hot-50-direct-20m-sources.mjs";
 import {hot50RetiredBackupSources} from "./hot-50-retired-backup-sources.mjs";
+import {geopoliticsContinuitySources} from "./geopolitics-continuity-sources.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
@@ -87,7 +88,26 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  // Existing publisher URLs are merged into one GET and promoted to priority;
  // distinct replacement feeds are fetched ahead of rotating global feeds.
  for(const s of backups.registry)add(s,true);
+ const hot50PriorityWithBackups=hotUrls.size;
  for(const s of raw)add(s,false);
+ // Geopolitics only: prefer existing source IDs for already registered URLs,
+ // so a priority promotion cannot invalidate native-origin dedupe identities.
+ // Sources that remain 403/denied stay failed; these are independent alternate
+ // publishers, not a transport bypass or a verified same-event confirmation.
+ const geoContinuity=geopoliticsContinuitySources();
+ let geopoliticsNewDirectUrls=0;
+ for(const s of geoContinuity){
+   const old=merged.get(s.url);
+   if(old){
+     merged.set(s.url,safeDirect({...old,
+       categories:[...new Set([...old.categories,"geopolitics"])],
+       private_geopolitics_continuity:true}));
+     hotUrls.add(s.url);
+   }else{
+     add(s,true);geopoliticsNewDirectUrls++;
+   }
+ }
+
  const backed=new Set([...merged.values()].flatMap(source=>
   source.backup_for_retired_ids??[]));
  if(backed.size!==14||
@@ -109,7 +129,11 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  return Object.freeze({registry,summary:Object.freeze({
   publisher_feed_candidates_configured:merged.size,
   hot50_distinct_direct_feeds_pinned:oldPinnedCount,
-  hot50_priority_direct_feeds_including_backups:priority.length,
+  hot50_priority_direct_feeds_including_backups:hot50PriorityWithBackups,
+  all_priority_direct_feeds:priority.length,
+  geopolitics_continuity_sources_pinned:geoContinuity.length,
+  geopolitics_new_direct_urls:geopoliticsNewDirectUrls,
+  geopolitics_continuity_transport_verified_by_registration:false,
   hot50_retired_backup_mapping_count:backed.size,
   hot50_retired_backup_unique_urls_pinned:backups.registry.length,
   hot50_retired_backup_unique_urls_in_current_tick:priority.filter(s=>
