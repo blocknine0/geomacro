@@ -328,7 +328,7 @@ async function finishP0bSource(env,plan,now,admissions){
   used_fallback:result.used_fallback===true,p0b_failure_codes};
 }
 export async function pollP0aSources(env,{
- fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL,sourceIds=null
+ fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL,sourceIds=null,producerManager=null
 }={}){
  if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
   (sourceIds!==null&&(!Array.isArray(sourceIds)||sourceIds.length<1||
@@ -353,7 +353,8 @@ export async function pollP0aSources(env,{
  if(plans.length){
   const all=plans.flatMap(p=>p.candidates);
   let admission;
-  try{admission=await processFetchedBatch(all,env)}
+  try{admission=await processFetchedBatch(all,env,{
+   ...(producerManager?{manager:producerManager}:{}),now:()=>new Date(now)})}
   catch{admission=null}
   const mapped=new Map();
   for(const rec of admission?.receipts??[]){
