@@ -294,6 +294,15 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
+      - name: Retain source-wise transport states from quota-held publisher sweep (D1 acknowledgements unknown)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-direct20m-source-health-${{ github.run_id }}
+          path: ${{ runner.temp }}/geomacro-direct20m-source-proof.json
+          if-no-files-found: warn
+          retention-days: 1
+          compression-level: 6
       - name: Keep only encrypted eligible native-dated source observations for automated existing replay
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
