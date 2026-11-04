@@ -110,8 +110,16 @@ server's private environment):
      --data '{"origin_country":"UKR","destination_country":"USA","policy_threshold":70}'
 
 An unsigned or expired state intentionally returns HTTP 503/PAUSE.
-The old geomacro.live Nitro route has separate environment requirements;
-deploying these isolated functions does NOT silently set secrets on Lovable.
+After the corresponding GitHub main revision and public website deploy,
+https://geomacro.live/api/research-risk-gate proxies directly to the
+fixed isolated Supabase private research gate. The caller must supply the
+same 256-bit Vault client READ token in Authorization: Bearer. The website
+stores NO service-role key or Ed25519 private signing key.
+An explicit environment GEOMACRO_RESEARCH_RISK_GATE_ENABLE=0 remains a
+hard kill switch. A separately provisioned legacy server-side profile
+(ENABLE=1 with full private credentials) retains the old local verified
+read implementation. Invalid native Edge responses, redirections and
+commercial/execution claims fail closed. No public token disclosure.
 
 A global under-10ms network p95, 24/7 uninterrupted uptime, 195-country
 event coverage, RabbitMQ decommissioning and B2 source-backlog clearance
