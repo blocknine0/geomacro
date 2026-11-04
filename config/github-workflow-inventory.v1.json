@@ -109,6 +109,7 @@
     "deploy-intelligence-edge.yml",
     "deploy-live-structure-intelligence.yml",
     "deploy-permanent-public-finds-archive.yml",
+    "deploy-phase2i-durable-queue.yml",
     "deploy-public-early-warning-edge.yml",
     "deploy-public-risk-indices-edge.yml",
     "deploy-risk-indices-edge.yml",
