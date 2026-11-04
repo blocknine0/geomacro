@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {spawnSync} from "node:child_process";
 
 const workflow=readFileSync(new URL(
- "../.github/workflows/p0b-production-parity-hourly.yml",import.meta.url),"utf8");
+ "../../.github/workflows/p0b-production-parity-hourly.yml",import.meta.url),"utf8");
 const m=/printf '%s' "\$CANARY" \| jq -c '([\s\S]*?)'\n\s*printf '%s' "\$CANARY" \| jq -e/u.exec(workflow);
 const extract=source=>{
  assert.ok(m,"pinned actual production canary jq receipt must exist");
