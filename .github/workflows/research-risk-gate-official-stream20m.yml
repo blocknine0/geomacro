@@ -14,6 +14,7 @@ on:
       - "src/lib/risk-gate/stream-ingest.ts"
       - "src/__tests__/research-risk-state.test.ts"
       - "config/official-ogl-atom-sources.json"
+      - "scripts/tests/research-supabase-stream20m-security.test.mjs"
       - "supabase/functions/gm-research-stream20m/index.ts"
       - "supabase/functions/gm-research-risk-gate/index.ts"
       - "supabase/migrations/20261104121000_research_stream20m_supabase_native_cron.sql"
@@ -25,6 +26,7 @@ on:
       - "scripts/lib/research-gate-official-20m.test.mjs"
       - "scripts/ops/run-research-risk-gate-official-20m.ts"
       - "src/lib/risk-gate/stream-ingest.ts"
+      - "scripts/tests/research-supabase-stream20m-security.test.mjs"
       - "supabase/functions/gm-research-stream20m/index.ts"
       - "supabase/functions/gm-research-risk-gate/index.ts"
       - "supabase/migrations/20261104121000_research_stream20m_supabase_native_cron.sql"
@@ -54,3 +56,4 @@ jobs:
           node --check scripts/lib/research-gate-official-20m.mjs
           bun test scripts/lib/research-gate-official-20m.test.mjs
           bun x vitest run src/__tests__/research-risk-state.test.ts
+          node --test scripts/tests/research-supabase-stream20m-security.test.mjs
