@@ -300,6 +300,7 @@ jobs:
           # the existing quota planner independently admits snapshot headroom.
           # D1 source writes, PREDGE, B2 and private originals remain off.
           GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
