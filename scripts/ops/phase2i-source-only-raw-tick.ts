@@ -104,6 +104,11 @@ const priorKnownKeys=new Set(prior.candidates.map(candidateIdentity));
 // because the source was polled on this tick; preserve that distinction.
 const observedThisTickKeys=new Set(indexed.candidates.filter(c=>
  !priorKnownKeys.has(candidateIdentity(c))).map(candidateIdentity));
+// Queue pressure is a real reliability threat, not a reason to silently
+// truncate news or pretend 100% coverage. The canonical AEAD queue fails
+// closed at 8,000 records until provider-approved B2 capacity is proven.
+if(queue.available>=7200)
+ console.log("::warning::PRIVATE_NEWS_72H_QUEUE_AT_OR_ABOVE_90_PERCENT_CAPACITY; queued news remain encrypted but complete universal ingestion not verified");
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
  maxRows:admittedRows,returnVerifiedRecordIds:true,
@@ -208,6 +213,10 @@ console.log(JSON.stringify({
     indexed.candidates.filter(c=>c.category===cat).length])),
   native_dated_within_20m_by_category:native20mCounts,
   runtime_source_health_by_state:result.summary.source_states,
+  source_queue_capacity_max_candidates:8000,
+  source_queue_current_candidates:queue.available,
+  source_queue_near_capacity_warning:queue.available>=7200,
+  queued_candidates_not_all_d1_verified:queue.candidates.some(c=>c.d1Acknowledged!==true),
   hot50_direct_feed_urls_configured:hotFeedUrls.size,
   hot50_direct_feeds_http_healthy:hotFeedHealthy,
   hot50_native_dated_originals_by_category:hotNativeByCategory,
