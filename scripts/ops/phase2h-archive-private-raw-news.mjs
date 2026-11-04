@@ -312,16 +312,30 @@ export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(env.GITHUB_EVENT_NAME!=="schedule"||
-    env.GITHUB_WORKFLOW_REF!==
-      "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
+ if(env.GITHUB_WORKFLOW_REF!==
+      "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"||
+    !["schedule","workflow_run"].includes(env.GITHUB_EVENT_NAME))
    return false;
  const path=String(env.GITHUB_EVENT_PATH??"");
  if(!isAbsolute(path)||!path.endsWith("/event.json")||path.length>512)
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="29 0,6,12,18 * * *";
+  if(env.GITHUB_EVENT_NAME==="schedule")
+   return event?.schedule==="29 0,6,12,18 * * *";
+  // Exact-main, successful D1 Worker production deployment is a second
+  // admission opportunity after archive-code releases. The provider D1/B2
+  // quota gates still run first. PR, manual, fork or outdated SHA cannot
+  // invoke this production archival writer.
+  const deployed=event?.workflow_run;
+  return event?.action==="completed"&&
+   event?.repository?.full_name==="blocknine0/geomacro"&&
+   deployed?.name==="Deploy D1 Control Plane"&&
+   deployed?.event==="push"&&deployed?.conclusion==="success"&&
+   deployed?.head_branch==="main"&&
+   deployed?.head_repository?.full_name==="blocknine0/geomacro"&&
+   /^[a-f0-9]{40}$/u.test(env.GITHUB_SHA??"")&&
+   deployed?.head_sha===env.GITHUB_SHA;
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
