@@ -450,7 +450,7 @@ test('P0-B transport outage activates a durable five-minute source-batch circuit
   assert.equal(bad.calls,1);
   const row=f.db.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit WHERE singleton=1').get();
   assert.equal(row.last_error_code,'P0B_B2_PUT_TRANSPORT_UNAVAILABLE');
-  assert.ok(Date.parse(row.hold_until)>=NOW.getTime()+300000);
+  assert.ok(Date.parse(row.hold_until)>=NOW+300000);
   const second=await processFetchedBatch([await candidate(9802)],f.env,{manager:bad,now:NOW_DATE});
   assert.equal(second.receipts[0].error_code,'P0B_STORAGE_CIRCUIT_HELD');
   assert.equal(bad.calls,1);
