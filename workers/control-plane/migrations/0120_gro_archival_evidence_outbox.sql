@@ -51,6 +51,14 @@ CREATE TABLE IF NOT EXISTS gro_evidence (
 CREATE INDEX IF NOT EXISTS idx_gro_evidence_verified_category
  ON gro_evidence(is_gro_verified,category,original_published_at DESC);
 
+-- Bounded resumable catch-up for B2 ACKs predating this migration.
+-- No migration-time full-table insertion or extra archive/B2 reads.
+CREATE TABLE IF NOT EXISTS gro_evidence_backfill_state (
+ singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+ last_record_id TEXT NOT NULL,
+ updated_at TEXT NOT NULL
+);
+
 -- One original B2 ACK produces one immutable retryable outbox event, all in
 -- the archive UPDATE's SQLite transaction. Duplicate ACKs cannot enqueue.
 CREATE TRIGGER IF NOT EXISTS trg_phase2h_b2_archive_gro_enqueue
