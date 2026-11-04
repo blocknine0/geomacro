@@ -281,8 +281,7 @@ describe("permanent derived-only website archive",()=>{
   ];
   let canonicalReads=0;
   const fetchImpl=async url=>{
-   if(!url.includes("/v1/public/website-derived-news-bundle"))
-     return new Response("",{status:404});
+   assert.equal(new URL(url).pathname,"/v1/internal/website-derived-news-bundle");
    canonicalReads++;
    return Response.json({
     ok:true,schema:"geomacro.website-derived-news-bundle.v1",
@@ -291,10 +290,10 @@ describe("permanent derived-only website archive",()=>{
     delivery_scope:"free_website_only",complete:true,item_cap:600,
     returned_rows:originals.length,signals:originals,
     scored:false,chargeable:false,supabase_dependency:false
-   });
+   },{headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}});
   };
   const first=await publishPermanentDerivedNewsArchive({
-   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true,canonicalOriginToken:"a".repeat(64)
   });
   assert.equal(canonicalReads,1);
   assert.equal(first.canonical_d1_catchup_requested,true);
@@ -309,7 +308,7 @@ describe("permanent derived-only website archive",()=>{
   assert.deepEqual(new Set(live.signals.map(x=>x.published_at)),
    new Set(originals.map(x=>x.published_at)));
   const again=await publishPermanentDerivedNewsArchive({
-   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true,canonicalOriginToken:"a".repeat(64)
   });
   assert.equal(again.new_signals_added,0);
   assert.equal(again.canonical_d1_new_originals,null);
@@ -337,7 +336,7 @@ describe("permanent derived-only website archive",()=>{
   assert.equal(held.new_signals_added,1);
   assert.equal(held.total_signals,1);
   const attempted=await publishPermanentDerivedNewsArchive({
-   ...p,fetchImpl,now:NOW,canonicalCatchup:true
+   ...p,fetchImpl,now:NOW,canonicalCatchup:true,canonicalOriginToken:"a".repeat(64)
   });
   assert.equal(d1Calls,1);
   assert.equal(attempted.canonical_d1_catchup_requested,true);
@@ -375,4 +374,23 @@ describe("permanent derived-only website archive",()=>{
   assert.match(publisher,/canonical_d1_catchup_completed:canonicalCatchupCompleted/u);
  });
 
+});
+
+
+describe("owner-only canonical archive read boundary",()=>{
+ it("rejects a public R2 snapshot even when fields appear canonical",async()=>{
+  const {readRecoverableD1CanonicalBundle}=await import("./publish-permanent-derived-news-archive.mjs");
+  await assert.rejects(()=>readRecoverableD1CanonicalBundle(async()=>Response.json({
+   ok:true,schema:"geomacro.website-derived-news-bundle.v1",checked_at:new Date(NOW).toISOString(),
+   original_release_delay_minutes:0,retention_days:3,retention_hours:72,
+   delivery_scope:"free_website_only",complete:true,item_cap:600,
+   returned_rows:0,signals:[],scored:false,chargeable:false,supabase_dependency:false
+  }),NOW,"a".repeat(64)),/CANONICAL_ORIGIN_PROOF_MISSING/u);
+ });
+ it("rejects missing origin auth before making any request",async()=>{
+  const {readRecoverableD1CanonicalBundle}=await import("./publish-permanent-derived-news-archive.mjs");
+  let requests=0;
+  await assert.rejects(()=>readRecoverableD1CanonicalBundle(async()=>{requests++;throw Error("NO");},NOW,null),/CANONICAL_ORIGIN_AUTH_REQUIRED/u);
+  assert.equal(requests,0);
+ });
 });
