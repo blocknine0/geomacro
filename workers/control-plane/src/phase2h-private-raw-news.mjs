@@ -582,7 +582,7 @@ export async function phase2hPrivateRawArchiveExportV2(
  if(!Number.isSafeInteger(limit)||limit<1||limit>25||
     (clock===null)!==(id===null)||
     (clock!==null&&(
-      !/^20\\d{2}-\\d\\d-\\d\\dT\\d\\d:\\d\\d:\\d\\d\\.\\d{3}Z$/u.test(clock)||
+      !/^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$/u.test(clock)||
       !Number.isFinite(Date.parse(clock))||!HEX.test(id))))
   return bad("PHASE2H_ARCHIVE_EXPORT_CURSOR_INVALID");
  const cutoff=phase2hNewsCutoff(now);
