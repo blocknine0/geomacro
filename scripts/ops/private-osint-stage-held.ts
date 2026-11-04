@@ -41,7 +41,9 @@ if(result.summary.source_endpoints_attempted!==sources.length||
  throw Error("OSINT_SPOOL_SOURCE_COVERAGE_INVALID");
 const prepared=selectEligiblePrivateOsintSpoolItems(result.items,Date.now());
 const envelope=sealPrivateOsintSpool({items:prepared.items,root,now:Date.now()});
-if(threeDomain20m){
+// Emit a real per-publisher status receipt for both the global default
+// 506-endpoint private collector and the dedicated direct 20-minute lane.
+{
  const proof=buildDirect20mSourceHealthProof({registry:sources,checks:result.checks,
   observedCandidates:null,retainedCandidates:null,
   d1ReadbackVerified:false,b2ReadbackVerified:false,now:now.getTime()});
@@ -51,6 +53,7 @@ if(threeDomain20m){
   source_endpoints_configured:proof.source_endpoints_configured,
   category_checks_with_runtime_state:proof.category_checks_with_runtime_state,
   quota_held:true,d1_writes:0,b2_operations:0,
+  poll_lane:threeDomain20m?'THREE_DOMAIN_DIRECT_20M':'PRIVATE_HELD_DEFAULT',
   native_candidate_attribution_not_measured:true}));
 }
 if(envelope){
