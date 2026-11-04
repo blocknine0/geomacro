@@ -271,3 +271,23 @@ test('Disabled CFTC RSS and denied CME investor route use pinned first-party HTM
  assert.equal(macroIndexLeads(source.replace('/PressRoom/PressReleases/9320-26','https://attacker.invalid/PressRoom/PressReleases/9320-26'),cftc).length,0);
  assert.equal(macroIndexLeads('<a href="/media-room/press-releases/2026/11/03/futures_clearing.html">CME Group announces new FX futures clearing program</a>',cme).length,1);
 });
+
+
+test('Macro publisher fetch identifies GeoMacro consistently with observed backup probe and never retries a denial',async()=>{
+ const {boundedMacroGet}=await import('../lib/macro-fx-metals.mjs');
+ let checked=false;
+ const response=await boundedMacroGet('https://www.bls.gov/feed/cpi.rss',{
+  fetchImpl:async(url,opts)=>{
+   checked=true;
+   assert.equal(url,'https://www.bls.gov/feed/cpi.rss');
+   assert.equal(opts.headers['User-Agent'],'GeomacroOSINT/1.0 (+https://geomacro.live)');
+   assert.equal(opts.headers['Accept-Language'],'en-US,en;q=0.8');
+   assert.equal(opts.redirect,'error');
+   return new Response('<rss><channel></channel></rss>',{status:200});
+  }
+ });
+ assert.ok(checked);assert.ok(response.text.includes('<rss>'));
+ await assert.rejects(()=>boundedMacroGet('https://www.bls.gov/feed/ppi.rss',{
+  fetchImpl:async()=>new Response('',{status:403})
+ }),/ACCESS_DENIED/);
+});
