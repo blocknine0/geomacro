@@ -102,13 +102,56 @@ jobs:
           bun-version: "1.4.2"
       - name: Install exact locked Zod v4 dependency for historical schema validation
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Independent original D1 census before archive attempt
+        run: |
+          set -euo pipefail
+          node scripts/ops/phase2h-canonical-census-receipt.mjs
+          cp artifacts/derived-news/phase2h-canonical-census-receipt.json \
+            artifacts/derived-news/phase2h-historical-census-before.json
       - name: Archive at most 200 oldest unarchived D1 originals regardless of publication age
         run: node scripts/ops/phase2h-archive-private-raw-news.mjs
+      - name: Independent original D1 census and remaining backlog acceptance
+        run: |
+          set -euo pipefail
+          node scripts/ops/phase2h-canonical-census-receipt.mjs
+          node --input-type=module <<'NODE'
+          import {readFileSync,appendFileSync} from "node:fs";
+          const before=JSON.parse(readFileSync("artifacts/derived-news/phase2h-historical-census-before.json"));
+          const after=JSON.parse(readFileSync("artifacts/derived-news/phase2h-canonical-census-receipt.json"));
+          if(before.schema!=="geomacro.phase2h.production-canonical-census-receipt.v1"||
+             after.schema!==before.schema||
+             !Number.isSafeInteger(before.pending_total)||
+             !Number.isSafeInteger(after.pending_total)||
+             !Number.isSafeInteger(after.pending_expired_72h_total))
+            throw Error("HISTORICAL_CENSUS_BEFORE_AFTER_INVALID");
+          const delta=before.pending_total-after.pending_total;
+          const fullyDrained=after.pending_total===0&&after.pending_expired_72h_total===0;
+          const report={
+            schema:"geomacro.phase2h.historical-10m-backlog-acceptance.v1",
+            initial_pending:before.pending_total,
+            final_pending:after.pending_total,
+            archival_pending_reduction_observed:delta,
+            historical_unarchived_remaining:after.pending_expired_72h_total,
+            full_zero_backlog_accepted:fullyDrained,
+            real_remote_object_proof_in_separate_archive_receipt:true
+          };
+          console.log(JSON.stringify(report));
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            "Historical pending before: "+before.pending_total+
+            ", after: "+after.pending_total+
+            ", older than 72h remaining: "+after.pending_expired_72h_total+
+            ", zero backlog: "+fullyDrained+"\n");
+          if(!fullyDrained)
+            console.log("::warning::PHASE2H_HISTORICAL_BACKLOG_NOT_YET_ZERO");
+          NODE
       - name: Preserve metadata-only B2 and D1 ACK receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: phase2h-historical-drain-${{ github.run_id }}
-          path: artifacts/derived-news/phase2h-private-raw-b2-verified.json
+          path: |
+            artifacts/derived-news/phase2h-private-raw-b2-verified.json
+            artifacts/derived-news/phase2h-historical-census-before.json
+            artifacts/derived-news/phase2h-canonical-census-receipt.json
           if-no-files-found: warn
           retention-days: 30
