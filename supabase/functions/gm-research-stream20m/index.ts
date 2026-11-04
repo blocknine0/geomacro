@@ -177,7 +177,8 @@ function severity(title,cat){
 }
 function parseAtom(xml,source,now){
  if(xml.length>320000||/<!DOCTYPE|<!ENTITY/iu.test(xml)||
-  !/<feed(?:\s|>)/iu.test(xml))return [];
+  !/<feed(?:\s|>)/iu.test(xml)||!/<\/feed\s*>/iu.test(xml))
+   throw Error("RESEARCH_OFFICIAL_ATOM_MALFORMED");
  const out=[],seen=new Set(),cat=CATEGORY[source.category];
  for(const [,entry] of [...xml.matchAll(/<entry(?:\s[^>]*)?>([\s\S]*?)<\/entry>/giu)].slice(0,40)){
   const title=tag(entry,"title"),published=tag(entry,"published");
@@ -271,8 +272,9 @@ async function productionTick(){
  const sources=await Promise.all(SOURCES.map(async s=>{
   try{
    const xml=await getBounded(s.url,"application/atom+xml",320*1024);
-   healthy++;
-   return parseAtom(xml,s,Date.now());
+   const observed=parseAtom(xml,s,Date.now());
+   healthy++; // Only a valid Atom root counts as a source-health proof.
+   return observed;
   }catch{failed++;return []}
  }));
  const seen=new Set();
