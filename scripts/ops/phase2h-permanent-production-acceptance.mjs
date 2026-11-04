@@ -174,7 +174,8 @@ export async function runPhase2hPermanentAcceptance({
      receipt.d1_atomic_one_statement_returning_verified!==true||
      receipt.post_archive_d1_verified!==true)
    fail("B2_POSITIVE_RECEIPT_INCOMPLETE");
-  const proof=await verify({env,now:now.getTime(),receipt});
+  const proof=await verify({env,now:now.getTime(),receipt,
+   expectedArchivedRows:receipt.verified_original_records??null});
   if(proof.same_b2_object_and_d1_original!==true||
      proof.per_record_five_part_exact!==true||
      proof.deployed_authenticated_http_200!==true)
