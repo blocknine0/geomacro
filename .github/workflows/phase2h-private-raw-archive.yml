@@ -22,6 +22,7 @@ on:
       - "scripts/tests/phase2h-live-proof-guard.test.mjs"
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/tests/phase2h-bulk-worker-archive.test.mjs"
       - "scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs"
       - "scripts/lib/phase2h-atomic-bulk-archive-ack.mjs"
       - "scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs"
@@ -76,6 +77,7 @@ jobs:
         run: |
           node --test scripts/tests/phase2h-original-metadata.test.mjs
           node --test scripts/tests/phase2h-archive-worker-fallback.test.mjs scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs
+          node --test scripts/tests/phase2h-bulk-worker-archive.test.mjs
           node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2i-one-put-one-get.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
@@ -181,6 +183,7 @@ jobs:
       # Its value is the new archive-only governor grant, NOT the general
       # maintenance lane. Other workflows still receive the original grant.
       PHASE2H_PROVIDER_MAINTENANCE: ${{ needs.quota-admission.outputs.raw_archive }}
+      PHASE2H_BULK_WORKER_ARCHIVE_V2: "1"
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: derived_news_backup
       B2_REQUEST_BUDGET: "12"
