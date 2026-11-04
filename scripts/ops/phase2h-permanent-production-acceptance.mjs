@@ -41,9 +41,16 @@ export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetc
  protectedEnv(env);
  const endpoint="https://api.cloudflare.com/client/v4/accounts/"+
   env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query";
+ // One fixed SQL SELECT counts archived, eligible pending and expired pending.
+ // UTC SQLite clocks avoid the Cloudflare REST 400/7500 date bind regression.
+ const cutoff="strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours')";
  const sql="SELECT category,COUNT(*) AS staged,"+
   "SUM(CASE WHEN b2_object_sha256 IS NULL THEN 1 ELSE 0 END) AS pending,"+
-  "SUM(CASE WHEN b2_object_sha256 IS NOT NULL THEN 1 ELSE 0 END) AS archived "+
+  "SUM(CASE WHEN b2_object_sha256 IS NOT NULL THEN 1 ELSE 0 END) AS archived,"+
+  "SUM(CASE WHEN b2_object_sha256 IS NULL AND first_ingested_at>"+cutoff+
+  " THEN 1 ELSE 0 END) AS pending_eligible_72h,"+
+  "SUM(CASE WHEN b2_object_sha256 IS NULL AND first_ingested_at<="+cutoff+
+  " THEN 1 ELSE 0 END) AS pending_expired_72h "+
   "FROM phase2h_private_raw_news GROUP BY category";
  const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
   headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
@@ -53,21 +60,26 @@ export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetc
  if(!response.ok||data?.success!==true||!Array.isArray(rows)||
     rows.length>3||data.result?.[0]?.success===false)
   fail("CANONICAL_D1_CENSUS_UNAVAILABLE");
- const counts={geopolitics:{staged:0,archived:0,pending:0},
-  macro:{staged:0,archived:0,pending:0},
-  rare_earth:{staged:0,archived:0,pending:0}};
+ const empty=()=>({staged:0,archived:0,pending:0,
+  pending_eligible_72h:0,pending_expired_72h:0});
+ const counts={geopolitics:empty(),macro:empty(),rare_earth:empty()};
  const seen=new Set();
  for(const row of rows){
   if(!Object.hasOwn(counts,row.category)||seen.has(row.category)||
-    !["staged","archived","pending"].every(k=>Number.isSafeInteger(row[k])&&row[k]>=0)||
-    row.staged!==row.archived+row.pending)
+    !["staged","archived","pending","pending_eligible_72h","pending_expired_72h"].every(k=>Number.isSafeInteger(row[k])&&row[k]>=0)||
+    row.staged!==row.archived+row.pending||
+    row.pending!==row.pending_eligible_72h+row.pending_expired_72h)
    fail("CANONICAL_D1_CENSUS_INVALID");
   seen.add(row.category);
-  counts[row.category]={staged:row.staged,archived:row.archived,pending:row.pending};
+  counts[row.category]={staged:row.staged,archived:row.archived,pending:row.pending,
+   pending_eligible_72h:row.pending_eligible_72h,
+   pending_expired_72h:row.pending_expired_72h};
  }
  const sum=k=>Object.values(counts).reduce((n,r)=>n+r[k],0);
  return {category_counts:counts,staged_total:sum("staged"),
-  archived_total:sum("archived"),pending_total:sum("pending")};
+  archived_total:sum("archived"),pending_total:sum("pending"),
+  pending_eligible_72h_total:sum("pending_eligible_72h"),
+  pending_expired_72h_total:sum("pending_expired_72h")};
 }
 
 // Optional independent deep verification, NOT used by idle incremental
