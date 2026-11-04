@@ -100,7 +100,10 @@ export function measuredPriceReaction(eventAt,before,after){
 }
 export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/xml,text/xml,application/rss+xml',etag=null,maxBytes=384*1024}={}){
  if(!Number.isSafeInteger(maxBytes)||maxBytes<1024||maxBytes>1024*1024)throw Error('MACRO_FETCH_LIMIT_INVALID');
- const headers={Accept:accept};if(etag)headers['If-None-Match']=etag;
+ // Disclose our collector identity consistently with the already-observed
+ // successful Hot-50 backup probe; never spoof browsers or circumvent 403.
+ const headers={Accept:accept,'User-Agent':'GeomacroOSINT/1.0 (+https://geomacro.live)','Accept-Language':'en-US,en;q=0.8'};
+ if(etag)headers['If-None-Match']=etag;
  const res=await fetchImpl(url,{redirect:'error',headers,signal:AbortSignal.timeout(8000)});
  if(res.redirected)throw Error('REDIRECT');
  if(res.status===304)return {notModified:true,etag,text:null};

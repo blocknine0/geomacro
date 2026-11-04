@@ -36,6 +36,7 @@ on:
       - "scripts/lib/critical-minerals-registry.mjs"
       - "scripts/lib/macro-fx-metals.mjs"
       - "scripts/lib/macro-fastlane-collector.mjs"
+      - "scripts/ops/probe-macro-minerals-fastlane-readonly.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/macro-release-calendar.mjs"
       - "workers/control-plane/src/macro-fastlane.mjs"
@@ -109,6 +110,7 @@ on:
       - "scripts/lib/critical-minerals-registry.mjs"
       - "scripts/lib/macro-fx-metals.mjs"
       - "scripts/lib/macro-fastlane-collector.mjs"
+      - "scripts/ops/probe-macro-minerals-fastlane-readonly.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/macro-release-calendar.mjs"
       - "workers/control-plane/src/macro-fastlane.mjs"
@@ -305,6 +307,9 @@ jobs:
           node --test scripts/tests/actor-action-news.test.mjs
           node --test scripts/tests/gri-news-wakeup.test.mjs
           bun run vitest run src/__tests__/release-news-observation.test.ts
+      - name: Observe live Macro and Minerals origin transport on trusted PR only (no writes)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == 'blocknine0/geomacro'
+        run: bun scripts/ops/probe-macro-minerals-fastlane-readonly.mjs
 
   original-five-minute-derived-news:
     permissions:

@@ -17,7 +17,7 @@ const mineralNative=/(?:\b(?:litio|cobalto|cobre|n[ií]quel|grafito|tierras rara
 const clean=s=>String(s??'').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,'$1').replace(/<[^>]*>/g,' ').replace(/&(?:amp|quot|apos|#39);/g,e=>({'&amp;':'&','&quot;':'"','&apos;':"'",'&#39;':"'"})[e]).replace(/\s+/g,' ').trim();
 const tag=(s,t)=>new RegExp('<(?:[a-z]+:)?'+t+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:[a-z]+:)?'+t+'>','i').exec(s)?.[1]??'';
 export function parseSectorFeed(xml,spec,now){
- if(typeof xml!=='string'||xml.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)||!/<(?:rss|feed)(?:\s|>)/i.test(xml))throw Error('SECTOR_FEED_INVALID');
+ if(typeof xml!=='string'||new TextEncoder().encode(xml).byteLength>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(xml)||!/<(?:rss|feed)(?:\s|>)/i.test(xml))throw Error('SECTOR_FEED_INVALID');
  const result=[],seen=new Set();
  for(const [,chunk]of [...xml.matchAll(/<(?:[a-z]+:)?(?:item|entry)(?:\s[^>]*)?>([\s\S]*?)<\/(?:[a-z]+:)?(?:item|entry)>/gi)].slice(0,75)){
   const title=clean(tag(chunk,'title'));if(title.length<25||title.length>250||/[<>]/.test(title))continue;
@@ -51,7 +51,7 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
    const old=cursors[spec.id];
    if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return {healthy:false,recent:false};}
    try{
-    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag});
+    requests++;const data=await boundedMacroGet(spec.url,{fetchImpl,etag:old?.etag,maxBytes:1024*1024});
     if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return {healthy:true,recent:false};}
     const rows=parseSectorFeed(data.text,spec,now);signals.push(...rows);
     cursors[spec.id]={etag:data.etag,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
