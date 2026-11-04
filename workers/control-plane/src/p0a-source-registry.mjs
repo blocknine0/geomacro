@@ -13,7 +13,7 @@ const RIGHTS=new Set(['COMMERCIAL_APPROVED','RESEARCH_ONLY','PENDING_AUDIT']);
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const ISO3=/^[A-Z]{3}$/u;
 const STATES=new Set(['OBSERVED','UNCHANGED','EMPTY','DENIED','RATE_LIMITED','UNAVAILABLE','MALFORMED','CAPACITY_DEFERRED']);
-const MAX_SOURCES_PER_POLL=8,MAX_NEW_ITEMS_PER_SOURCE=20;
+const MAX_SOURCES_PER_POLL=15,MAX_NEW_ITEMS_PER_SOURCE=100;
 const iso=ms=>new Date(ms).toISOString();
 const json=(value,status=200)=>Response.json(value,{status,headers:{
  'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex,nofollow'}});
@@ -60,13 +60,24 @@ function fromRow(row){
   fallback_endpoint:row.fallback_endpoint,last_cursor:row.last_cursor,
  });
 }
-export async function listP0aSourceRegistry(env){
+export async function listP0aSourceRegistry(env,params=new URLSearchParams()){
  try{
-  const response=await env.DB.prepare('SELECT * FROM source_registry ORDER BY source_id LIMIT 1024').all();
+  if([...params.keys()].some(k=>!["after","limit"].includes(k))||
+     params.getAll("after").length>1||params.getAll("limit").length>1)
+   return json({ok:false,error:"P1_REGISTRY_PAGE_INVALID"},400);
+  const after=params.get("after")??"",limit=Number(params.get("limit")??"250");
+  if((after&&!SOURCE.test(after))||!Number.isSafeInteger(limit)||limit<1||limit>250)
+   return json({ok:false,error:"P1_REGISTRY_PAGE_INVALID"},400);
+  const response=await env.DB.prepare(
+   "SELECT * FROM source_registry WHERE source_id>? "+
+   "ORDER BY source_id LIMIT ?").bind(after,limit+1).all();
+  const rows=(response.results??[]).slice(0,limit),hasMore=(response.results??[]).length>limit;
   return json({schema:'geomacro.p0a.source-registry.v1',ok:true,
-   sources:(response.results??[]).map(row=>({...fromRow(row),
+   sources:rows.map(row=>({...fromRow(row),
     enabled:row.enabled===1,next_poll_at:row.next_poll_at,last_state:row.last_state,
-    last_polled_at:row.last_polled_at,consecutive_failures:row.consecutive_failures}))});
+    last_polled_at:row.last_polled_at,consecutive_failures:row.consecutive_failures,
+    polling_interval_minutes:row.polling_interval_minutes??row.polling_interval_sec/60})),
+   limit,has_more:hasMore,next_after:hasMore?rows.at(-1).source_id:null});
  }catch{return json({ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'},503)}
 }
 export async function upsertP0aSourceRegistry(env,body){
@@ -333,7 +344,7 @@ export async function pollP0aSources(env,{
 }={}){
  if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
   (sourceIds!==null&&(!Array.isArray(sourceIds)||sourceIds.length<1||
-    sourceIds.length>5||sourceIds.some(x=>!SOURCE.test(x))||
+    sourceIds.length>MAX_SOURCES_PER_POLL||sourceIds.some(x=>!SOURCE.test(x))||
     new Set(sourceIds).size!==sourceIds.length)))
   return {ok:false,error:'P0A_POLL_ARGUMENT_INVALID'};
  let rows;
@@ -380,9 +391,10 @@ export async function pollP0aSources(env,{
 }
 export async function handleP0aAdmin(request,env){
  const u=new URL(request.url);
- if(u.search)return json({ok:false,error:'P0A_QUERY_NOT_ALLOWED'},400);
+ if(u.search&&!(u.pathname==='/v1/internal/p0a/source-registry'&&request.method==='GET'))
+  return json({ok:false,error:'P0A_QUERY_NOT_ALLOWED'},400);
  if(u.pathname==='/v1/internal/p0a/source-registry'){
-  if(request.method==='GET')return listP0aSourceRegistry(env);
+  if(request.method==='GET')return listP0aSourceRegistry(env,u.searchParams);
   if(request.method==='PUT'){
    try{
     const raw=await request.text();
