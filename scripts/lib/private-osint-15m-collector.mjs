@@ -9,6 +9,9 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {hot50GoogleSourceCadence} from "./hot-50-google-news-category.mjs";
+import {orderHot50PrivateFetchJobs} from "./hot-50-private-fetch-priority.mjs";
+import {observedHot50FourLaneSourceState} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {HOT50_COUNTRY_SET,hot50NominalIndexCadence} from "./hot-50-country-watch.mjs";
 import {privateOsintRuntimeSources,nominalPrivateCountryIndexCycleMinutes} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
@@ -112,7 +115,7 @@ export async function collectPrivateOsint15m({
   // Check every accepted endpoint, with eight global and two per-host slots.
   // A large news-index catalogue must not block unrelated original publishers.
   const responses=Array(registry.length),running=new Set(),hosts=new Map();
-  const pending=registry.map((source,index)=>({source,index,host:new URL(source.url).hostname}));
+  const pending=orderHot50PrivateFetchJobs(registry.map((source,index)=>({source,index,host:new URL(source.url).hostname})));
   // A finite spare-request pool permits ONE recovery for genuinely transient
   // original-feed failures without exceeding the existing 512-source GET
   // budget. Never retry 401/403/404/429, index scrapes or malformed bodies.
@@ -213,6 +216,18 @@ export async function collectPrivateOsint15m({
       rotating_country_index_nominal_full_cycle_minutes:
         nominalPrivateCountryIndexCycleMinutes(registry),
       hot50_watch_countries_configured:HOT50_COUNTRY_SET.size,
+      hot50_four_lane_source_state:observedHot50FourLaneSourceState(
+        registry,[...checks.values()],selected),
+      hot50_google_news_category_index:hot50GoogleSourceCadence(
+        registry.filter(s=>s.private_discovery_index_only===true&&
+          /^[A-Z]{3}$/u.test(s.discovery_country_iso3??"")).length),
+      hot50_google_news_focused_probes_this_tick:registry.filter(s=>
+        s.google_news_category_specific===true).length,
+      hot50_google_news_focused_by_category:Object.fromEntries(
+        DOMAINS.map(domain=>[domain,registry.filter(s=>
+          s.index_query_focus_category===domain).length])),
+      hot50_google_news_index_originals_verified:false,
+      fetch_queue_prioritizes_hot50_originals_without_dropping_existing:true,
       hot50_watch_categories_configured:3,
       hot50_index_nominal_cadence:hot50NominalIndexCadence(
         registry.filter(s=>s.private_discovery_index_only===true&&

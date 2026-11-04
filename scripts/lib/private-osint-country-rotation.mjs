@@ -1,6 +1,7 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
-import {selectHot50CountryDiscoveryBatch} from "./hot-50-country-watch.mjs";
+import {hot50CountryCategoryDiscoveryUnits,hot50GoogleCategorySource} from "./hot-50-google-news-category.mjs";
 import {hot50OfficialOriginalFeeds} from "./hot-50-official-original-feeds.mjs";
+import {hot50NewOfficialOriginalFeeds} from "./hot-50-new-official-original-feeds.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
@@ -64,23 +65,28 @@ export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=
    throw Error("PRIVATE_OSINT_COUNTRY_INDEX_REGISTRY_INVALID");
  const slot=Math.floor(now.getTime()/STEP_MS)%Math.ceil(countries.length/perTick);
  const selected=hot50Priority?
-  selectHot50CountryDiscoveryBatch(now,countries,perTick):
-  countries.slice(slot*perTick,(slot+1)*perTick);
- return Object.freeze(selected.map(country=>{
+  hot50CountryCategoryDiscoveryUnits(now,countries,perTick):
+  countries.slice(slot*perTick,(slot+1)*perTick).map(country=>({country,category:null}));
+ return Object.freeze(selected.map(({country,category})=>{
   // Known canonical aliases catch terms such as DRC, Ivory Coast and Burma.
   // These remain SEARCH HINTS only; no country is attributed from a query.
   const names=[country.name,...(Array.isArray(country.aliases)?country.aliases:[])].slice(0,3)
    .map(name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"');
+  const specific=category?hot50GoogleCategorySource(country,category,TERMS):null;
   const query="("+names.join(" OR ")+") "+TERMS+" when:1d";
-  const url=new URL("https://news.google.com/rss/search");
-  url.searchParams.set("q",query);
-  url.searchParams.set("hl","en-US");
-  url.searchParams.set("gl","US");
-  url.searchParams.set("ceid","US:en");
+  const url=new URL(specific?.url??"https://news.google.com/rss/search");
+  if(!specific){
+   url.searchParams.set("q",query);
+   url.searchParams.set("hl","en-US");
+   url.searchParams.set("gl","US");
+   url.searchParams.set("ceid","US:en");
+  }
   return Object.freeze({
-   id:"private_country_index_"+country.iso3.toLowerCase(),
+   id:specific?.id??"private_country_index_"+country.iso3.toLowerCase(),
    url:url.toString(),continent:"global",publisher_country_iso3:null,
    discovery_country_iso3:country.iso3,
+   ...(specific?{index_query_focus_category:category,
+    google_news_category_specific:true}:{}),
    categories:CATEGORIES,type:"rss",supported:true,
    private_discovery_index_only:true,
    index_timestamp_not_original_page_clock:true,
@@ -107,7 +113,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
     (!includeLocalGapLane&&activeBase.length+normalIndex>512))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  const hotOfficial=activeBase.length>=300?
-  hot50OfficialOriginalFeeds().filter(source=>!urls.has(source.url)&&
+  [...hot50OfficialOriginalFeeds(),...hot50NewOfficialOriginalFeeds()].filter(source=>!urls.has(source.url)&&
    !isRetiredPrivateOsintSource(source)):[];
  const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
@@ -135,7 +141,12 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  // the existing 512 global fetch ceiling.
  const retrySpare=includeLocalGapLane&&activeBase.length>=300?
    Math.min(8,Math.max(0,availableForLocalAndIndex-1)):0;
- const slots=availableForLocalAndIndex-retrySpare;
+ // Two new first-party Canada origins reuse two existing spare transient
+ // retry positions, not any country-index or native local-publisher slot.
+ // The collector still caps total actual GETs (including retries) at 512.
+ const canNewOrigins=hotOfficial.filter(s=>s.id.startsWith("private_hot50_can_gac_")).length;
+ const effectiveRetrySpare=Math.max(0,retrySpare-canNewOrigins);
+ const slots=availableForLocalAndIndex-effectiveRetrySpare;
  const local=includeLocalGapLane?
    budgetedPrivateLocalPublisherSources(now,Math.min(96,Math.max(0,slots-1))):[];
  const indexPerTick=Math.min(normalIndex,slots-local.length);
@@ -161,5 +172,9 @@ export function nominalPrivateCountryIndexCycleMinutes(registry){
  const indices=registry.filter(source=>
    source?.private_discovery_index_only===true&&
    /^[A-Z]{3}$/u.test(source.discovery_country_iso3??"")).length;
- return indices>0?15*Math.ceil(195/indices):null;
+ // Category-focused Hot-50 adds 150 logical queries to 145 combined
+ // remaining-country queries when >=25 index GETs are available per tick.
+ // Below that quota, the existing 195-country country sweep remains intact.
+ const combinedSlots=indices>=8&&indices<25?indices-1:indices;
+ return indices>0?15*Math.ceil(indices>=25?295/indices:195/combinedSlots):null;
 }

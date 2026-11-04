@@ -1,0 +1,3302 @@
+{
+  "schema": "geomacro.hot50.source-lane-crosswalk.v1",
+  "as_of": "2026-11-04",
+  "scope": "PRIVATE_DISCOVERY_ONLY",
+  "country_count": 50,
+  "categories": [
+    "geopolitics",
+    "macro",
+    "rare_earth"
+  ],
+  "sources_recorded_from": "existing pinned GeoMacro source manifests + independent Telegram discovery repository registry",
+  "run_status_note": "Pinned registry is not proof of current HTTP success, same-event independence, country-event attribution, Telegram permission, D1/B2 storage or verified publication.",
+  "google_news": "See scripts/lib/hot-50-google-news-category.mjs for 150 query variants, rotated inside existing 512-source budget.",
+  "gdelt_shared": "Existing 15-minute GDELT discovery index only, not originating publication time.",
+  "telegram_policy": "All candidates remain DISABLED unless independent explicit channel content authorization/consent exists; never scrape/activate from discovery metadata.",
+  "countries": [
+    {
+      "country_iso3": "USA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_us_usgs_minerals_news",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_fed_monetary",
+          "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_federal_reserve",
+          "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+          "categories": [
+            "macro",
+            "geopolitics",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_sec",
+          "url": "https://www.sec.gov/news/pressreleases.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_white_house",
+          "url": "https://www.whitehouse.gov/briefings-statements/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_white_house_actions",
+          "url": "https://www.whitehouse.gov/presidential-actions/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_repo8_us_bea_release",
+          "url": "https://www.bea.gov/rss/news_releases.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_repo8_us_bls_release",
+          "url": "https://www.bls.gov/feed/news_release/rss.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_us_bls",
+          "url": "https://www.bls.gov/feed/bls_latest.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_cbs_news",
+          "url": "https://www.cbsnews.com/latest/rss/main",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_fox_news",
+          "url": "https://moxie.foxnews.com/google-publisher/us.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_nbc_news",
+          "url": "https://feeds.nbcnews.com/nbcnews/public/news",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_npr_news",
+          "url": "https://feeds.npr.org/1001/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_pbs_newshour",
+          "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "CHN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_state_globaltimes",
+          "url": "https://www.globaltimes.cn/rss/outbrain.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "IND",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_priority_ind_rbi_press",
+          "url": "https://www.rbi.org.in/pressreleases_rss.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_ind_tax_press",
+          "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_aaj_tak",
+          "url": "https://www.aajtak.in/rssfeeds/?id=home",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_amar_ujala",
+          "url": "https://www.amarujala.com/rss/national.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_indian_express",
+          "url": "https://indianexpress.com/section/india/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_the_hindu",
+          "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_times_of_india",
+          "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [
+        {
+          "candidate_key": "discovered-inbministry",
+          "category": "GEOPOLITICS",
+          "username": "inbministry",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mib_hindi",
+          "category": "GEOPOLITICS",
+          "username": "mib_hindi",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mib_india",
+          "category": "GEOPOLITICS",
+          "username": "mib_india",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        }
+      ],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "RUS",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_ru_cbr_en_news",
+          "url": "https://www.cbr.ru/rss/EngRssNews",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_ru_cbr_en_press",
+          "url": "https://www.cbr.ru/rss/EngRssPress",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_ru_cbr_ru_press",
+          "url": "https://www.cbr.ru/rss/RssPress",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "GBR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_boe",
+          "url": "https://www.bankofengland.co.uk/rss/news",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_uk_bgs_news",
+          "url": "https://www.bgs.ac.uk/feed/",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_uk_dbt_atom",
+          "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+          "categories": [
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_uk_fcdo_atom",
+          "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_repo8_gbr_export_finance_original",
+          "url": "https://www.gov.uk/government/organisations/uk-export-finance.atom",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_repo8_gbr_transport_original",
+          "url": "https://www.gov.uk/government/organisations/department-for-transport.atom",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_railjournal_trade",
+          "url": "https://www.railjournal.com/feed/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "DEU",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_der_spiegel",
+          "url": "https://www.spiegel.de/schlagzeilen/tops/index.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_welt",
+          "url": "https://www.welt.de/feeds/latest.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "FRA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_rfi_afrique",
+          "url": "https://www.rfi.fr/en/africa/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "JPN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_boj_press_global",
+          "url": "https://www.boj.or.jp/en/rss/whatsnew.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_asahi_shimbun",
+          "url": "https://www.asahi.com/rss/asahi/newsheadlines.rdf",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rdf",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "KOR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_kr_msit_press",
+          "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_yonhap_news",
+          "url": "https://www.yonhapnewstv.co.kr/browse/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "BEL",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_bel_2",
+          "url": "https://www.vrt.be/vrtnieuws/en.rss.articles.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "CAN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_hot50_can_gac_statements",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_can_gac_newsreleases",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+news+releases&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=newsreleases",
+          "categories": [
+            "geopolitics",
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_bc_minerals_global",
+          "url": "https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_boc_press_global",
+          "url": "https://www.bankofcanada.ca/content_type/press-releases/feed/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rdf",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_nrcan_atom",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+          "categories": [
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_statcan_business_atom",
+          "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/33-eng.atom",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_statcan_trade_atom",
+          "url": "https://www150.statcan.gc.ca/n1/rss/dai-quo/12-eng.atom",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_priority_can_nrcan_news",
+          "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+          "categories": [
+            "rare_earth",
+            "macro"
+          ],
+          "feed_format": "atom",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_repo8_can_boc_release",
+          "url": "https://www.bankofcanada.ca/feeds/media-releases/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_global_news",
+          "url": "https://globalnews.ca/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_the_narwhal",
+          "url": "https://thenarwhal.ca/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_the_tyee",
+          "url": "https://thetyee.ca/rss2.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "AUS",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_au_industry_news",
+          "url": "https://www.industry.gov.au/news.xml",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_priority_aus_ga_news",
+          "url": "https://www.ga.gov.au/news-events/news/rss",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_rba",
+          "url": "https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rdf",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_australian_mining",
+          "url": "https://www.australianmining.com.au/feed/",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_abc_news_australia",
+          "url": "https://www.abc.net.au/news/feed/2942460/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "BRA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_brazil_all",
+          "url": "https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_brazil_economy",
+          "url": "https://agenciabrasil.ebc.com.br/rss/economia/feed.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_brazil_world",
+          "url": "https://agenciabrasil.ebc.com.br/rss/internacional/feed.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "MEX",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_mexico_news_daily",
+          "url": "https://mexiconewsdaily.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ITA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_ansa",
+          "url": "https://www.ansa.it/sito/notizie/topnews/topnews_rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_repubblica",
+          "url": "https://www.repubblica.it/rss/homepage/rss2.0.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ESP",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_el_mundo",
+          "url": "https://e00-elmundo.uecdn.es/elmundo/rss/portada.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "NLD",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_offshore_energy",
+          "url": "https://www.offshore-energy.biz/feed/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_rotterdam_port_news",
+          "url": "https://www.portofrotterdam.com/en/news-and-press-releases/rss.xml",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_nos_nieuws",
+          "url": "https://feeds.nos.nl/nosnieuwsalgemeen",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_nrc",
+          "url": "https://www.nrc.nl/rss/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "CHE",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_che_snb_monetary",
+          "url": "https://www.snb.ch/public/rss/en/mopo",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rdf",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_che_snb_press",
+          "url": "https://www.snb.ch/public/rss/en/pressrel",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rdf",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "NOR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_nor_norges_press",
+          "url": "https://www.norges-bank.no/en/rss-feeds/Press-releases---Norges-Bank/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_aftenposten",
+          "url": "https://www.aftenposten.no/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "SWE",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_swe_riksbank_press",
+          "url": "https://www.riksbank.se/sv/rss/pressmeddelanden/",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_dagens_nyheter",
+          "url": "https://www.dn.se/rss/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_svenska_dagbladet",
+          "url": "https://www.svd.se/feed/articles.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "POL",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_polsat_news",
+          "url": "https://www.polsatnews.pl/rss/wszystkie.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "UKR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_ukr_presidential_official_original",
+          "url": "https://www.president.gov.ua/en/rss/news/all.rss",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_gap_ukr_cabinet",
+          "url": "https://www.kmu.gov.ua/api/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_gap_ukr_pravda_en",
+          "url": "https://www.pravda.com.ua/eng/rss/view_news/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [
+        {
+          "candidate_key": "ua-environment-natural-resources",
+          "category": "CRITICAL_MINERALS",
+          "username": "mindovkillia",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-strategic-industries",
+          "category": "CRITICAL_MINERALS",
+          "username": "zalizni_zminy",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-stratcom",
+          "category": "GEOPOLITICS",
+          "username": "afustratcom",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-akovalenko1989",
+          "category": "GEOPOLITICS",
+          "username": "akovalenko1989",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-amcugovua",
+          "category": "GEOPOLITICS",
+          "username": "amcugovua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-arma_gov",
+          "category": "GEOPOLITICS",
+          "username": "arma_gov",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-armyofukraine",
+          "category": "GEOPOLITICS",
+          "username": "armyofukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-counter-disinformation",
+          "category": "GEOPOLITICS",
+          "username": "centercounteringdisinformation",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-cherkaskaoda",
+          "category": "GEOPOLITICS",
+          "username": "cherkaskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-chernigivskaoda",
+          "category": "GEOPOLITICS",
+          "username": "chernigivskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-chernivetskaoda",
+          "category": "GEOPOLITICS",
+          "username": "chernivetskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-intelligence-chief",
+          "category": "GEOPOLITICS",
+          "username": "chiefukrdiu",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-comafua",
+          "category": "GEOPOLITICS",
+          "username": "comafua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-cyberpolua",
+          "category": "GEOPOLITICS",
+          "username": "cyberpolua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dargme",
+          "category": "GEOPOLITICS",
+          "username": "dargme",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dartukraine",
+          "category": "GEOPOLITICS",
+          "username": "dartukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-davr_telegram",
+          "category": "GEOPOLITICS",
+          "username": "davr_telegram",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dbrgovua",
+          "category": "GEOPOLITICS",
+          "username": "dbrgovua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-deionline",
+          "category": "GEOPOLITICS",
+          "username": "deionline",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-denys_smyhal",
+          "category": "GEOPOLITICS",
+          "username": "denys_smyhal",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-diia_gov",
+          "category": "GEOPOLITICS",
+          "username": "diia_gov",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-defense-intelligence",
+          "category": "GEOPOLITICS",
+          "username": "diukraine",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dmytro_lubinetzs",
+          "category": "GEOPOLITICS",
+          "username": "dmytro_lubinetzs",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dnipropetrovskaoda",
+          "category": "GEOPOLITICS",
+          "username": "dnipropetrovskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-donetskaoda",
+          "category": "GEOPOLITICS",
+          "username": "donetskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dpssgovua",
+          "category": "GEOPOLITICS",
+          "username": "dpssgovua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-border-guard",
+          "category": "GEOPOLITICS",
+          "username": "dpsukr",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-drs_news",
+          "category": "GEOPOLITICS",
+          "username": "drs_news",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-emergency-service",
+          "category": "GEOPOLITICS",
+          "username": "dsns_telegram",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-dsszzi_official",
+          "category": "GEOPOLITICS",
+          "username": "dsszzi_official",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-energoatom_ua",
+          "category": "GEOPOLITICS",
+          "username": "energoatom_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-energyofukraine",
+          "category": "GEOPOLITICS",
+          "username": "energyofukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ermaka2022",
+          "category": "GEOPOLITICS",
+          "username": "ermaka2022",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-esbu_gov_ua",
+          "category": "GEOPOLITICS",
+          "username": "esbu_gov_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-firstladyofukraine",
+          "category": "GEOPOLITICS",
+          "username": "firstladyofukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-general-staff",
+          "category": "GEOPOLITICS",
+          "username": "generalstaffzsu",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-hcacofficial",
+          "category": "GEOPOLITICS",
+          "username": "hcacofficial",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ivan_fedorov_zp",
+          "category": "GEOPOLITICS",
+          "username": "ivan_fedorov_zp",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-khersonskaoda",
+          "category": "GEOPOLITICS",
+          "username": "khersonskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-khmelnytskaoda",
+          "category": "GEOPOLITICS",
+          "username": "khmelnytskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-kirovogradskaoda",
+          "category": "GEOPOLITICS",
+          "username": "kirovogradskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-klymenko_mvs",
+          "category": "GEOPOLITICS",
+          "username": "klymenko_mvs",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-kos_zsu",
+          "category": "GEOPOLITICS",
+          "username": "kos_zsu",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-kozytskyy_maksym_official",
+          "category": "GEOPOLITICS",
+          "username": "kozytskyy_maksym_official",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-air-force",
+          "category": "GEOPOLITICS",
+          "username": "kpszsu",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-kyivcityofficial",
+          "category": "GEOPOLITICS",
+          "username": "kyivcityofficial",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-kyivoda",
+          "category": "GEOPOLITICS",
+          "username": "kyivoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-landforcesofukraine",
+          "category": "GEOPOLITICS",
+          "username": "landforcesofukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-luhanskavtsa",
+          "category": "GEOPOLITICS",
+          "username": "luhanskavtsa",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mapfu2022",
+          "category": "GEOPOLITICS",
+          "username": "mapfu2022",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-defense-ministry",
+          "category": "GEOPOLITICS",
+          "username": "ministry_of_defense_ua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-minjustofficial",
+          "category": "GEOPOLITICS",
+          "username": "minjustofficial",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-minmolodsport",
+          "category": "GEOPOLITICS",
+          "username": "minmolodsport",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-minre_ua",
+          "category": "GEOPOLITICS",
+          "username": "minre_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-minregion_news",
+          "category": "GEOPOLITICS",
+          "username": "minregion_news",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-minsocua",
+          "category": "GEOPOLITICS",
+          "username": "minsocua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mintsyfra",
+          "category": "GEOPOLITICS",
+          "username": "mintsyfra",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-miukraune",
+          "category": "GEOPOLITICS",
+          "username": "miukraune",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mkipu",
+          "category": "GEOPOLITICS",
+          "username": "mkipu",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mova_standard",
+          "category": "GEOPOLITICS",
+          "username": "mova_standard",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mozofficial",
+          "category": "GEOPOLITICS",
+          "username": "mozofficial",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mva_ukraine",
+          "category": "GEOPOLITICS",
+          "username": "mva_ukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-interior-ministry",
+          "category": "GEOPOLITICS",
+          "username": "mvs_ukraine",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-mykolaivskaoda",
+          "category": "GEOPOLITICS",
+          "username": "mykolaivskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-nab_ukraine",
+          "category": "GEOPOLITICS",
+          "username": "nab_ukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-nads_ukr",
+          "category": "GEOPOLITICS",
+          "username": "nads_ukr",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-nazk_gov_ua",
+          "category": "GEOPOLITICS",
+          "username": "nazk_gov_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-nemchinovoleh",
+          "category": "GEOPOLITICS",
+          "username": "nemchinovoleh",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ngu_war_for_peace",
+          "category": "GEOPOLITICS",
+          "username": "ngu_war_for_peace",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-nszu_gov",
+          "category": "GEOPOLITICS",
+          "username": "nszu_gov",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-oda_rv",
+          "category": "GEOPOLITICS",
+          "username": "oda_rv",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-odeskaoda",
+          "category": "GEOPOLITICS",
+          "username": "odeskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ok_pivnich1",
+          "category": "GEOPOLITICS",
+          "username": "ok_pivnich1",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-oleksiykuleba",
+          "category": "GEOPOLITICS",
+          "username": "oleksiykuleba",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-onyshchuksvitlana",
+          "category": "GEOPOLITICS",
+          "username": "onyshchuksvitlana",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-presidential-office",
+          "category": "GEOPOLITICS",
+          "username": "op_ua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-operationalcommandwest",
+          "category": "GEOPOLITICS",
+          "username": "operationalcommandwest",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-osirskiy",
+          "category": "GEOPOLITICS",
+          "username": "osirskiy",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-patrolpolice_ua",
+          "category": "GEOPOLITICS",
+          "username": "patrolpolice_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-pavliuk_ksv",
+          "category": "GEOPOLITICS",
+          "username": "pavliuk_ksv",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-pavlokyrylenko_amcu",
+          "category": "GEOPOLITICS",
+          "username": "pavlokyrylenko_amcu",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-pensfund",
+          "category": "GEOPOLITICS",
+          "username": "pensfund",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-people_of_action",
+          "category": "GEOPOLITICS",
+          "username": "people_of_action",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-pgo_gov_ua",
+          "category": "GEOPOLITICS",
+          "username": "pgo_gov_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-pivnenko_ngu",
+          "category": "GEOPOLITICS",
+          "username": "pivnenko_ngu",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-poltavskaova",
+          "category": "GEOPOLITICS",
+          "username": "poltavskaova",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ppuark",
+          "category": "GEOPOLITICS",
+          "username": "ppuark",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-security-service",
+          "category": "GEOPOLITICS",
+          "username": "sbukr",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-siesgovua",
+          "category": "GEOPOLITICS",
+          "username": "siesgovua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-sjtf_odes",
+          "category": "GEOPOLITICS",
+          "username": "sjtf_odes",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-snriugovua",
+          "category": "GEOPOLITICS",
+          "username": "snriugovua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-socialfund",
+          "category": "GEOPOLITICS",
+          "username": "socialfund",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-spravdi",
+          "category": "GEOPOLITICS",
+          "username": "spravdi",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-sprotyvg7ua",
+          "category": "GEOPOLITICS",
+          "username": "sprotyvg7ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-stateauditserviceofukraine",
+          "category": "GEOPOLITICS",
+          "username": "stateauditserviceofukraine",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-sumy_news_oda",
+          "category": "GEOPOLITICS",
+          "username": "sumy_news_oda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-supremecourtua",
+          "category": "GEOPOLITICS",
+          "username": "supremecourtua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-suspilnenews",
+          "category": "GEOPOLITICS",
+          "username": "suspilnenews",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-synegubov",
+          "category": "GEOPOLITICS",
+          "username": "synegubov",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ternopilskaoda",
+          "category": "GEOPOLITICS",
+          "username": "ternopilskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-u24_gov_ua",
+          "category": "GEOPOLITICS",
+          "username": "u24_gov_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ua_dshv",
+          "category": "GEOPOLITICS",
+          "username": "ua_dshv",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ua_national_police",
+          "category": "GEOPOLITICS",
+          "username": "ua_national_police",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-uamonogram",
+          "category": "GEOPOLITICS",
+          "username": "uamonogram",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-uinp_gov",
+          "category": "GEOPOLITICS",
+          "username": "uinp_gov",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ukr_sof",
+          "category": "GEOPOLITICS",
+          "username": "ukr_sof",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-foreign-ministry",
+          "category": "GEOPOLITICS",
+          "username": "ukraine_mfa",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-navy",
+          "category": "GEOPOLITICS",
+          "username": "ukrainian_navy",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ukravtodornews",
+          "category": "GEOPOLITICS",
+          "username": "ukravtodornews",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ukrinform_news",
+          "category": "GEOPOLITICS",
+          "username": "ukrinform_news",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ukrtransbezpeka",
+          "category": "GEOPOLITICS",
+          "username": "ukrtransbezpeka",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-ukrzalinfo",
+          "category": "GEOPOLITICS",
+          "username": "ukrzalinfo",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-president",
+          "category": "GEOPOLITICS",
+          "username": "v_zelenskiy_official",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-vadimfilashkin_donoda",
+          "category": "GEOPOLITICS",
+          "username": "vadimfilashkin_donoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-vereshchuk_iryna",
+          "category": "GEOPOLITICS",
+          "username": "vereshchuk_iryna",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-parliament",
+          "category": "GEOPOLITICS",
+          "username": "verkhovnaradaukrainy",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-vinnytskaoda",
+          "category": "GEOPOLITICS",
+          "username": "vinnytskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-vitalykoval8",
+          "category": "GEOPOLITICS",
+          "username": "vitalykoval8",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-volynskaoda",
+          "category": "GEOPOLITICS",
+          "username": "volynskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-zakarpatskaoda",
+          "category": "GEOPOLITICS",
+          "username": "zakarpatskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-zedigital",
+          "category": "GEOPOLITICS",
+          "username": "zedigital",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-zhytomyrskaoda",
+          "category": "GEOPOLITICS",
+          "username": "zhytomyrskaoda",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-zoda_gov_ua",
+          "category": "GEOPOLITICS",
+          "username": "zoda_gov_ua",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-financial-intelligence",
+          "category": "MACRO",
+          "username": "fiu_ukraine",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-economy-ministry",
+          "category": "MACRO",
+          "username": "mineconomdevua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-finance-ministry",
+          "category": "MACRO",
+          "username": "mof_ua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-central-bank",
+          "category": "MACRO",
+          "username": "nbu_ua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-securities-commission",
+          "category": "MACRO",
+          "username": "nssmc_ukraine",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-tax-service",
+          "category": "MACRO",
+          "username": "tax_gov_ua",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "ua-customs",
+          "category": "MACRO",
+          "username": "ukrainecustoms",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        }
+      ],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "TUR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_hurriyet",
+          "url": "https://www.hurriyet.com.tr/rss/anasayfa",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "SAU",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gap_sau_arabnews",
+          "url": "https://www.arabnews.com/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ARE",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_are_22",
+          "url": "https://www.khaleejtimes.com/feeds",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "IRN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_irna",
+          "url": "https://en.irna.ir/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_mehr_news",
+          "url": "https://en.mehrnews.com/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ISR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_ynetnews",
+          "url": "https://www.ynetnews.com/Integration/StoryRss3089.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [
+        {
+          "candidate_key": "discovered-idf_telegram",
+          "category": "GEOPOLITICS",
+          "username": "idf_telegram",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "discovered-share",
+          "category": "GEOPOLITICS",
+          "username": "share",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        }
+      ],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "EGY",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_egypt_independent",
+          "url": "https://www.egyptindependent.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "QAT",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gap_qat_gulftimes",
+          "url": "https://www.gulf-times.com/rssFeed/8",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "OMN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_oman_observer",
+          "url": "https://www.omanobserver.om/rssFeed/1",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "IRQ",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_irq_supplement",
+          "url": "https://shafaq.com/en/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ZAF",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_za_dsti_news",
+          "url": "https://www.dsti.gov.za/rss.xml",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_za_sars_news",
+          "url": "https://www.sars.gov.za/feed/?post_type=latest_news",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mineral_zaf_dmpr_media",
+          "url": "https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",
+          "categories": [
+            "rare_earth",
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_sa_news",
+          "url": "https://www.sanews.gov.za/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_sa_stats",
+          "url": "https://www.statssa.gov.za/?feed=rss2",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_sarb",
+          "url": "https://www.resbank.co.za/bin/sarb/solr/publications/rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_miningweekly_africa",
+          "url": "https://www.miningweekly.com/page/latest-news/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_expansion_za_engineering_mining",
+          "url": "https://www.engineeringnews.co.za/page/mining-news/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "NGA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_ng_fmino_rss",
+          "url": "https://fmino.gov.ng/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_channels_tv",
+          "url": "https://www.channelstv.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_daily_trust",
+          "url": "https://dailytrust.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_premium_times",
+          "url": "https://www.premiumtimesng.com/feed",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_vanguard_nigeria",
+          "url": "https://www.vanguardngr.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "COD",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_actualite_cd",
+          "url": "https://actualite.cd/feed",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_radio_okapi",
+          "url": "https://www.radiookapi.net/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ZMB",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_local_candidate_zm_lusakatimes",
+          "url": "https://www.lusakatimes.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "CHL",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mineral_chl_cochilco_news",
+          "url": "https://www.cochilco.cl/web/noticias/feed/",
+          "categories": [
+            "rare_earth",
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_gap_chl_ciper",
+          "url": "https://www.ciperchile.cl/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_gap_chl_cooperativa",
+          "url": "https://www.cooperativa.cl/noticias/site/tax/port/all/rss____1.xml",
+          "categories": [
+            "geopolitics",
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "PER",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_local_candidate_pe_andina",
+          "url": "https://andina.pe/agencia/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "ARG",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_clar_n",
+          "url": "https://www.clarin.com/rss/lo-ultimo/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_infobae_americas",
+          "url": "https://www.infobae.com/arc/outboundfeeds/rss/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "BOL",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_bol_14",
+          "url": "https://www.opinion.com.bo/rss/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "IDN",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_local_candidate_id_antara",
+          "url": "https://www.antaranews.com/en/rss/news",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "VNM",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_vnexpress",
+          "url": "https://vnexpress.net/rss/tin-moi-nhat.rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "THA",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_th_mdes_news",
+          "url": "https://mdes.go.th/news/rss/3",
+          "categories": [
+            "macro",
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "MYS",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gap_mys_malaymail",
+          "url": "https://www.malaymail.com/feed/rss/malaysia",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "SGP",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_cna",
+          "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "PHL",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_expansion_ph_pna_news",
+          "url": "https://www.pna.gov.ph/latest.rss",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        },
+        {
+          "id": "private_mesh_rappler",
+          "url": "https://www.rappler.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "PAK",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_dawn",
+          "url": "https://www.dawn.com/feeds/home/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "BGD",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_local_candidate_bd_dailystar",
+          "url": "https://www.thedailystar.net/rss.xml",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "KAZ",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_mesh_the_astana_times",
+          "url": "https://astanatimes.com/feed/",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": true,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [
+        {
+          "candidate_key": "discovered-eondiris",
+          "category": "CRITICAL_MINERALS",
+          "username": "eondiris",
+          "identity_state": "DISCOVERED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "kz-minerals-platform",
+          "category": "CRITICAL_MINERALS",
+          "username": "mineralsgovkz",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "kz-energy-official",
+          "category": "MACRO",
+          "username": "energo_official",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        },
+        {
+          "candidate_key": "kz-energy-ministry",
+          "category": "MACRO",
+          "username": "minenergokz",
+          "identity_state": "IDENTITY_VERIFIED",
+          "activation_status": "DISABLED",
+          "publisher_authorized": false
+        }
+      ],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "MNG",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_mng_25",
+          "url": "https://ikon.mn/rss",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    },
+    {
+      "country_iso3": "MMR",
+      "direct_news_osint_feeds": [
+        {
+          "id": "private_gaplane_mmr_17",
+          "url": "https://www.irrawaddy.com/feed",
+          "categories": [
+            "geopolitics",
+            "macro",
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "historical_probe_accepted": false,
+          "current_transport_verified": false
+        }
+      ],
+      "telegram_discovery_candidates": [],
+      "google_news_category_watches": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "on_demand_gdelt_shared": true,
+      "no_event_or_rights_certification": true
+    }
+  ]
+}
