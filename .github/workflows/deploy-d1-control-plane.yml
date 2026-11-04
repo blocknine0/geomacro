@@ -496,6 +496,39 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
 
+      - name: Generate deterministic P1 1077 source-category registry SQL
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/seed-p1-1077-source-registry.mjs
+          test -s workers/control-plane/generated/p1-1077-seed.sql
+      - name: Seed P1 actual research source/category lanes into canonical D1
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
+            --config workers/control-plane/wrangler.runtime.jsonc \
+            --file workers/control-plane/generated/p1-1077-seed.sql >/dev/null
+          echo "P1_SOURCE_CATEGORY_SEED_APPLIED=true"
+      - name: Require exact P1 source manifest remote D1 readback
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config workers/control-plane/wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS n FROM p1_source_seed_manifest;")"
+          printf '%s' "$RAW" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const j=JSON.parse(s);
+              const data=Array.isArray(j)?j:[j];
+              const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
+              if(n!==1077)throw Error("P1_REMOTE_1077_REGISTRY_UNVERIFIED:"+n);
+              console.log("P1_REMOTE_1077_SOURCE_LANES_CONFIGURED=true");
+            });'
       - name: Seed pinned private source registry with exact D1 readback
         if: env.P0B_ACTIVATE == '1'
         working-directory: workers/control-plane
