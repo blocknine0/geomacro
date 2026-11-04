@@ -176,10 +176,12 @@ export async function runPhase2hPermanentAcceptance({
    fail("B2_POSITIVE_RECEIPT_INCOMPLETE");
   const proof=await verify({env,now:now.getTime(),receipt,
    expectedArchivedRows:receipt.verified_original_records??null});
+  // Raw archival must remain available when the original source cannot
+  // support an evidence-grounded five-part answer. Only D1/B2 provenance
+  // and immutable ID/hash checks are mandatory for the raw archive lane.
   if(proof.same_b2_object_and_d1_original!==true||
-     proof.per_record_five_part_exact!==true||
-     proof.deployed_authenticated_http_200!==true)
-   fail("EXACT_QUESTION_UNVERIFIED");
+     proof.b2_one_get_sha_verified_in_preceding_step!==true)
+   fail("RAW_ARCHIVE_INTEGRITY_UNVERIFIED");
   receipts.push(receipt);proofs.push(proof);
   if(proof.unarchived_backlog_present===false)break;
  }
@@ -219,11 +221,21 @@ export async function runPhase2hPermanentAcceptance({
   entireStagedSetIndependentlyVerified&&
   proofs.every(x=>x.b2_one_get_sha_verified_in_preceding_step===true&&
     x.deployed_authenticated_http_200===true&&x.per_record_five_part_exact===true);
+ const rawArchiveIncrementalProof=receipts.length>0&&
+  proofs.every(x=>x.same_b2_object_and_d1_original===true&&
+    x.b2_one_get_sha_verified_in_preceding_step===true);
+ const allQuestionQualified=proofs.every(x=>
+  x.per_record_five_part_exact===true&&
+  x.deployed_authenticated_http_200===true);
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
   status:complete?"PASS_REAL_B2_TO_EXACT_QUESTION":
-   census.pending_total>0?"VERIFIED_INCREMENTAL_B2_WITH_BACKLOG":
-   "VERIFIED_INCREMENTAL_B2_CORPUS_NOT_EXHAUSTIVELY_RECHECKED",
+   census.pending_total>0?
+    allQuestionQualified?"VERIFIED_INCREMENTAL_B2_WITH_BACKLOG":
+      "VERIFIED_INCREMENTAL_RAW_B2_WITH_BACKLOG_QUESTION_GATED":
+    allQuestionQualified?"VERIFIED_INCREMENTAL_B2_CORPUS_NOT_EXHAUSTIVELY_RECHECKED":
+      "VERIFIED_RAW_B2_CORPUS_NOT_QUESTION_QUALIFIED",
+  raw_archive_incremental_proof_pass:rawArchiveIncrementalProof,
   incremental_batch_proof_pass:receipts.length>0&&
    proofs.every(x=>x.same_b2_object_and_d1_original===true&&
      x.b2_one_get_sha_verified_in_preceding_step===true&&
@@ -238,6 +250,10 @@ export async function runPhase2hPermanentAcceptance({
    .filter(x=>x.existing_archived_object_one_get_restored===true)
    .map(x=>x.existing_object_sha256),
   verified_category_counts:verifiedCategoryCounts,
+  five_part_qualified_rows_this_run:proofs.reduce((n,p)=>
+   n+(Number.isSafeInteger(p.five_part_qualified_count)?p.five_part_qualified_count:p.verified_b2_batch_rows??0),0),
+  raw_only_unqualified_rows_this_run:proofs.reduce((n,p)=>
+   n+(p.raw_only_unqualified_count??0),0),
   canonical_d1_category_census:census.category_counts,
   canonical_d1_staged_total:census.staged_total,
   canonical_d1_archived_total:census.archived_total,
@@ -259,8 +275,11 @@ export async function runPhase2hPermanentAcceptance({
   commercial_rights_verified:false,payments:0,
  };
  writeSummary(summary);
- if(!summary.incremental_batch_proof_pass)
-  fail("INCREMENTAL_B2_OR_QUESTION_PROOF_UNAVAILABLE");
+ // Do not turn a fully verified immutable raw backup into a failed B2
+ // archival receipt solely because source evidence lacks derived sentences.
+ // The five-part/question flag remains explicitly false in that case.
+ if(!summary.raw_archive_incremental_proof_pass)
+  fail("INCREMENTAL_B2_OR_CANONICAL_ORIGINAL_PROOF_UNAVAILABLE");
  return summary;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
