@@ -1,4 +1,6 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
+import {selectHot50CountryDiscoveryBatch} from "./hot-50-country-watch.mjs";
+import {hot50OfficialOriginalFeeds} from "./hot-50-official-original-feeds.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
@@ -51,16 +53,19 @@ const TERMS='('+['election','sanctions','security','conflict','border','war',
  ...COUNTRY_MACRO_DISCOVERY_TERMS,'currency',...COUNTRY_MINERAL_DISCOVERY_TERMS].join(' OR ')+')';
 const STEP_MS=15*60000;
 
-export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK){
+export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=COUNTRIES_195,perTick=COUNTRY_DISCOVERY_PER_TICK,{hot50Priority=false}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     (!Number.isSafeInteger(perTick)||perTick<1||perTick>COUNTRY_DISCOVERY_PER_TICK)||
     !Array.isArray(countries)||countries.length!==195||
     new Set(countries.map(c=>c?.iso3)).size!==195||
+    typeof hot50Priority!=="boolean"||
     countries.some(c=>!/^[A-Z]{3}$/u.test(c?.iso3??"")||
       typeof c?.name!=="string"||!c.name.trim()||c.name.length>90))
    throw Error("PRIVATE_OSINT_COUNTRY_INDEX_REGISTRY_INVALID");
  const slot=Math.floor(now.getTime()/STEP_MS)%Math.ceil(countries.length/perTick);
- const selected=countries.slice(slot*perTick,(slot+1)*perTick);
+ const selected=hot50Priority?
+  selectHot50CountryDiscoveryBatch(now,countries,perTick):
+  countries.slice(slot*perTick,(slot+1)*perTick);
  return Object.freeze(selected.map(country=>{
   // Known canonical aliases catch terms such as DRC, Ivory Coast and Burma.
   // These remain SEARCH HINTS only; no country is attributed from a query.
@@ -101,19 +106,24 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  if(activeBase.length+1>512||
     (!includeLocalGapLane&&activeBase.length+normalIndex>512))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
+ const hotOfficial=activeBase.length>=300?
+  hot50OfficialOriginalFeeds().filter(source=>!urls.has(source.url)&&
+   !isRetiredPrivateOsintSource(source)):[];
  const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
  // A missed index query is discovery-only, not a missing registered publisher.
  // Retiring repeatedly failed sources restores the full 25/49 index budget.
  const priority=activeBase.length>=300?
   privateOsintOfficialPrioritySources().filter(source=>!urls.has(source.url)&&
-    !isRetiredPrivateOsintSource(source)&&!hubs.some(hub=>hub.url===source.url)):[];
+    !isRetiredPrivateOsintSource(source)&&!hubs.some(hub=>hub.url===source.url)&&
+    !hotOfficial.some(o=>o.url===source.url)):[];
  const newMineral=activeBase.length>=300?
   privateMineralNationalRssSources().filter(source=>!urls.has(source.url)&&
     !isRetiredPrivateOsintSource(source)&&!priority.some(p=>p.url===source.url)&&
-    !hubs.some(hub=>hub.url===source.url)):[];
+    !hubs.some(hub=>hub.url===source.url)&&
+    !hotOfficial.some(o=>o.url===source.url)):[];
  const availableForLocalAndIndex=512-activeBase.length-hubs.length-
-    priority.length-newMineral.length;
+    hotOfficial.length-priority.length-newMineral.length;
  if(availableForLocalAndIndex<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
  // Spend the free positions on first-party country-local RSS, not discovery
@@ -131,15 +141,15 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  const indexPerTick=Math.min(normalIndex,slots-local.length);
  if(indexPerTick<1)
   throw Error("PRIVATE_OSINT_GLOBAL_HUB_SOURCE_CEILING");
- const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick);
+ const countryIndex=rotatingPrivateCountryDiscoverySources(now,countries,indexPerTick,{hot50Priority:true});
  const fresh=[];
- for(const source of [...hubs,...priority,...newMineral,...local,...countryIndex]){
+ for(const source of [...hubs,...hotOfficial,...priority,...newMineral,...local,...countryIndex]){
   if(urls.has(source.url))continue;
   urls.add(source.url);fresh.push(source);
  }
  if(activeBase.length+fresh.length>512||
     (includeLocalGapLane&&fresh.length>
-      local.length+indexPerTick+hubs.length+priority.length+newMineral.length))
+      local.length+indexPerTick+hubs.length+hotOfficial.length+priority.length+newMineral.length))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  return launchPriorityWatchSources([...activeBase,...fresh]).map(qualifyPrivateNationalPrimaryScope);
 }
