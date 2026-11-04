@@ -193,17 +193,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - name: Verify optional private P0B R2 fallback bucket before deploy
-        if: env.P0B_PRIVATE_R2_BUCKET != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$P0B_PRIVATE_R2_BUCKET" != "${PUBLIC_NEWS_R2_BUCKET:-}" || {
-            echo "::error::P0B_FALLBACK_CANNOT_USE_PUBLIC_R2"; exit 3;
-          }
-          npx -y "wrangler@${WRANGLER_VERSION}" r2 bucket info "$P0B_PRIVATE_R2_BUCKET" >/dev/null
-          echo "PRIVATE_P0B_R2_EXISTENCE_VERIFIED"
-
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
@@ -291,6 +280,17 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+
+      - name: Verify optional private P0B R2 fallback bucket before deploy
+        if: env.P0B_PRIVATE_R2_BUCKET != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$P0B_PRIVATE_R2_BUCKET" != "${PUBLIC_NEWS_R2_BUCKET:-}" || {
+            echo "::error::P0B_FALLBACK_CANNOT_USE_PUBLIC_R2"; exit 3;
+          }
+          npx -y "wrangler@${WRANGLER_VERSION}" r2 bucket info "$P0B_PRIVATE_R2_BUCKET" >/dev/null
+          echo "PRIVATE_P0B_R2_EXISTENCE_VERIFIED"
 
       - name: Verify actual B2 key scope and derive allowed private spool prefix
         if: env.P0B_ACTIVATE == '1'
