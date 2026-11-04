@@ -563,8 +563,9 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
  * question API. Never promotes publisher statements or returns originals
  * to a public caller; index.mjs enforces the existing control-plane bearer.
  *
- * One bounded D1 SELECT (1..25 raw rows) per request. A corrupt, stale or
- * unqualified original is omitted from the B2 payload but STILL advances the
+ * One bounded D1 SELECT (1..25 raw rows) per request including retained
+ * old originals for protected archival only. A corrupt or unqualified record
+ * is omitted from the B2 payload but STILL advances the
  * scan cursor. A malformed old record can no longer permanently trap every
  * scheduled archival tick at the same first record.
  */
@@ -585,14 +586,14 @@ export async function phase2hPrivateRawArchiveExportV2(
       !/^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$/u.test(clock)||
       !Number.isFinite(Date.parse(clock))||!HEX.test(id))))
   return bad("PHASE2H_ARCHIVE_EXPORT_CURSOR_INVALID");
- const cutoff=phase2hNewsCutoff(now);
+
  const select="SELECT record_id,first_ingested_at,raw_sha256,raw_json "+
   "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_unarchived "+
-  "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  "WHERE b2_object_sha256 IS NULL "+
   (clock===null?"":"AND (first_ingested_at>? OR "+
    "(first_ingested_at=? AND record_id>?)) ")+
   "ORDER BY first_ingested_at,record_id LIMIT ?";
- const bindings=clock===null?[cutoff,limit]:[cutoff,clock,clock,id,limit];
+ const bindings=clock===null?[limit]:[clock,clock,id,limit];
  let found;
  try{found=await env.DB.prepare(select).bind(...bindings).all();}
  catch{
@@ -624,7 +625,7 @@ export async function phase2hPrivateRawArchiveExportV2(
    if(record?.record_id!==entry.record_id||
       record?.raw_sha256!==entry.raw_sha256||
       record?.ingested_at!==entry.first_ingested_at||
-      !phase2hRawWithinRetention(record,now)||
+
       await validPrivateRawNews(record,now,false)!==entry.raw_json)
     throw Error("INVALID");
    rows.push(record);
