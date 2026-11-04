@@ -30,7 +30,7 @@ export function buildDirect20mSourceHealthProof({
    const address=JSON.stringify([c.sourceUrl,c.category]);
    const old=byUrlCategory.get(address)??{current_sweep:0,queued_72h:0,d1_acknowledged_72h:0,last_native_published_at:null};
    old[key]++;
-   old.last_native_published_at=newer(old.last_native_published_at,c.publishedAt);
+   if(key==='queued_72h')old.last_native_published_at=newer(old.last_native_published_at,c.publishedAt);
    byUrlCategory.set(address,old);
   }
  };
