@@ -124,11 +124,11 @@ export async function verifyPhase2hExistingArchive({
     !doc.category_counts)
   fail("EXISTING_RESTORED_B2_OBJECT_INVALID");
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
+   status:"B2_HISTORICAL_ONE_GET_SHA_D1_ACK_REVERIFIED",
    storage_confirmed:true,rows_archived:doc.record_count,
    category_counts:doc.category_counts,object_sha256:last.b2_object_sha256,
    b2_first_get_verified:true,b2_second_get_performed:false,
-   d1_atomic_one_statement_returning_verified:true,
+   d1_atomic_one_statement_returning_verified:false,
    post_archive_d1_verified:true};
  const proof=await questionVerifier({env,fetchImpl,now:now.getTime(),receipt,
    expectedArchivedRows:doc.rows});
