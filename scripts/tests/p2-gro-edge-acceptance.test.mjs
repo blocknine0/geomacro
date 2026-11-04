@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus}
+import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence}
  from "../../workers/control-plane/src/gro-evidence-enrichment.mjs";
 import {readIncrementalWebsiteCategoryFeed}
  from "../../workers/control-plane/src/website-incremental-feed.mjs";
@@ -142,4 +142,27 @@ test("invalid category is rejected and cannot amplify D1 reads",async()=>{
  const env={DB:{prepare(){calls++;throw Error()}}};
  const r=await readIncrementalWebsiteCategoryFeed(env,"../../private",NOW);
  assert.equal(r.status,400);assert.equal(calls,0);
+});
+
+test("hot GRO job TTL preserves raw originals and B2",async()=>{
+ let cutoffs=[],calls=0;
+ const env={DB:{prepare(sql){
+  return {
+   bind(cutoff){cutoffs.push(cutoff);return this},
+   async run(){
+    assert(sql.includes("DELETE FROM gro_evidence_jobs"));
+    return {success:true};
+   },
+   async first(){
+    assert(sql.includes("FROM gro_evidence_jobs"));
+    return {stale:0};
+   },
+  };
+ }}};
+ const result=await pruneExpiredGroEvidence(env,NOW);
+ assert.equal(result.ok,true);
+ assert.equal(result.b2_requests,0);
+ assert.equal(result.raw_archive_mutations,0);
+ assert.equal(result.expired_job_metadata_remaining,0);
+ assert.equal(cutoffs.length,2);
 });
