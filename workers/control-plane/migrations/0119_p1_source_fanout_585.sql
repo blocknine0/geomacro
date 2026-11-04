@@ -615,6 +615,11 @@ INSERT OR IGNORE INTO p1_country_category_cells(country_iso3,primary_category) V
 ('ZWE','GEOPOLITICS'),
 ('ZWE','MACRO_FX'),
 ('ZWE','CRITICAL_MINERALS');
+CREATE TABLE IF NOT EXISTS p1_source_seed_manifest (
+ source_id TEXT PRIMARY KEY REFERENCES source_registry(source_id),
+ seed_sha256 TEXT NOT NULL CHECK(length(seed_sha256)=64),
+ seeded_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS p1_source_to_cell (
  source_id TEXT NOT NULL REFERENCES source_registry(source_id),
  country_iso3 TEXT NOT NULL,
