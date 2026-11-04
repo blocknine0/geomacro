@@ -19,6 +19,10 @@ on:
       - ".github/workflows/private-global-osint-15m.yml"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/hot-50-country-watch.mjs"
+      - "scripts/lib/hot-50-country-watch.test.mjs"
+      - "scripts/lib/hot-50-official-original-feeds.mjs"
+      - "config/hot-50-three-domain-watch.v1.json"
       - "scripts/lib/launch-priority-watch-sources.mjs"
       - "scripts/tests/launch-news-coverage.test.mjs"
       - "src/lib/launch-news-coverage.ts"
@@ -151,6 +155,10 @@ on:
       - "src/lib/stateless-intelligence-model.ts"
       - "scripts/lib/private-osint-15m-collector.mjs"
       - "scripts/lib/private-osint-country-rotation.mjs"
+      - "scripts/lib/hot-50-country-watch.mjs"
+      - "scripts/lib/hot-50-country-watch.test.mjs"
+      - "scripts/lib/hot-50-official-original-feeds.mjs"
+      - "config/hot-50-three-domain-watch.v1.json"
       - "scripts/lib/launch-priority-watch-sources.mjs"
       - "scripts/tests/launch-news-coverage.test.mjs"
       - "src/lib/launch-news-coverage.ts"
@@ -277,6 +285,7 @@ jobs:
           node --check scripts/lib/private-osint-country-rotation.mjs
           node --check scripts/lib/private-osint-local-publisher-rotation.mjs
           node --test scripts/lib/private-osint-country-rotation.test.mjs scripts/tests/launch-news-coverage.test.mjs
+          node --test scripts/lib/hot-50-country-watch.test.mjs
           node --test scripts/lib/private-osint-encrypted-spool.test.mjs
           node --test scripts/lib/private-osint-shared-read-contract.test.mjs
           node --check scripts/lib/private-osint-free-r2-guard.mjs
