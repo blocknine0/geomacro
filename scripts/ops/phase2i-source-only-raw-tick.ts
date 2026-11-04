@@ -73,6 +73,14 @@ if(result.summary.configured_country_routes!==195||
  result.summary.source_endpoints_attempted!==result.summary.registered_source_endpoints)
  throw Error("PHASE2I_SOURCE_ONLY_195X3_SOURCE_SWEEP_UNVERIFIED");
 const indexed=singleSweep.finish();
+// Count publisher-native timely observations without exposing original
+// titles/URLs, never confuse article publication time with occurrence time.
+const native20mFloor=now.getTime()-20*60_000;
+const native20mCounts=Object.fromEntries(["geopolitics","macro","rare_earth"]
+ .map(cat=>[cat,indexed.candidates.filter(c=>c.category===cat&&
+  Number.isFinite(Date.parse(c.publishedAt))&&
+  Date.parse(c.publishedAt)>=native20mFloor&&
+  Date.parse(c.publishedAt)<=now.getTime()).length]));
 // The preceding trusted runner-only preloader restores the latest encrypted
 // historical candidate queue. NEVER accept untrusted plaintext from a URL,
 // env value or pull-request artifact. No additional publisher fetches.
@@ -171,6 +179,14 @@ console.log(JSON.stringify({
   actual_country_coverage_verified:false,
   real_original_news_freshness_checked:true,
   complete_fresh_eligible_original_persistence_not_proven:true,
+  native_dated_candidate_count_by_category:Object.fromEntries(
+   ["geopolitics","macro","rare_earth"].map(cat=>[cat,
+    indexed.candidates.filter(c=>c.category===cat).length])),
+  native_dated_within_20m_by_category:native20mCounts,
+  runtime_source_health_by_state:result.summary.source_states,
+  actual_native_news_d1_ack_count:stage.selected_count>0&&stage.d1_readback_verified===true?
+   stage.d1_inserted:0,
+  actual_all_new_native_items_durable_verified:false,
   all_selected_direct_endpoints_checked:result.summary.source_endpoints_attempted===registry.length,
  }:{}),
  ...indexed.summary,
