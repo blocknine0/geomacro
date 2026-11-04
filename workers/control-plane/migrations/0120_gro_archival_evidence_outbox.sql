@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS gro_evidence_jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_gro_evidence_jobs_state_clock
  ON gro_evidence_jobs(state,enqueued_at,record_id);
+CREATE INDEX IF NOT EXISTS idx_gro_evidence_jobs_archive_slo
+ ON gro_evidence_jobs(archived_at,record_id);
 
 CREATE TABLE IF NOT EXISTS gro_evidence (
  record_id TEXT PRIMARY KEY CHECK(length(record_id)=64),
