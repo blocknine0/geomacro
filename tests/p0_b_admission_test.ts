@@ -51,11 +51,12 @@ function fixture(){
  };
  const objects=new Map(),requests=[];
  const fetchImpl=async (url,opts)=>{
+  assert.equal(opts.redirect,'manual'); // origin never changes after SigV4
   assert.match(opts.headers.Authorization,/^AWS4-HMAC-SHA256 Credential=/u);
   const key=new URL(url).pathname;
   requests.push({method:opts.method,key});
   if(opts.method==='PUT'){
-   objects.set(key,Uint8Array.from(opts.body));
+   objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
    return new Response(null,{status:200});
   }
   if(opts.method==='GET'){
@@ -352,7 +353,7 @@ test('transient B2 transport failure retries EXACT same encrypted PUT once with 
    now:NOW_DATE,reserve:async()=>{f.requests.push({method:'QUOTA',key:'reserved'});},
    fetchImpl:async(url,opts)=>{
     if(opts.method==='PUT'){
-     tries++;urls.push(url);bytes.push(Uint8Array.from(opts.body));
+     tries++;urls.push(url);bytes.push(opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
      if(tries===1)throw new TypeError('temporary connection closed');
     }
     return f.fetchImpl(url,opts);
@@ -366,6 +367,7 @@ test('transient B2 transport failure retries EXACT same encrypted PUT once with 
   assert.equal(tries,2);
   assert.deepEqual(urls,[urls[0],urls[0]]);
   assert.deepEqual(bytes[0],bytes[1]);
+  assert.equal(bytes[0].length>0,true);
   assert.equal(f.objects.size,1);
   assert.equal(f.requests.filter(x=>x.method==='QUOTA').length,3);
   assert.equal(receipt.sha256,c.candidateSha256);
@@ -408,5 +410,29 @@ test('two failed B2 transport attempts never fabricate a successful PUT or D1 po
   assert.equal(reservations,2);
   assert.equal(f.objects.size,0);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
+ }finally{f.close()}
+});
+
+test('backblaze HTTP 307 never follows arbitrary redirect or retries signed B2 PUT',async()=>{
+ const f=fixture();
+ try{
+  let attempts=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},
+   fetchImpl:async(_url,opts)=>{
+    attempts++;
+    assert.equal(opts.redirect,'manual');
+    return new Response(null,{status:307,
+     headers:{location:'https://untrusted.example.net/steal-upload'}});
+   },
+  });
+  const c=await candidate(3004);
+  await assert.rejects(manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}
+  }),/P0B_B2_PUT_HTTP_307/u);
+  assert.equal(attempts,1);
+  assert.equal(reservations,1);
+  assert.equal(f.objects.size,0);
  }finally{f.close()}
 });

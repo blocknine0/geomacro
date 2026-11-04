@@ -205,7 +205,10 @@ export class B2SpoolManager {
     response=await this.fetchImpl(request.url,{method,headers:{
      ...request.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?
       'application/gzip':'application/json'}:{})
-    },body:method==='PUT'?body:undefined,redirect:'error',
+    },body:method==='PUT'?(attempt===0?body:toBytes(body)):undefined,
+    // A cross-host S3 redirect invalidates the signed Host header. Diagnose
+    // 3xx as exact HTTP status but never follow or proxy upstream secrets.
+    redirect:'manual',
     signal:AbortSignal.timeout(attempt===0?10000:16000)});
    }catch(error){
     if(attempt===0)continue;
