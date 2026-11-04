@@ -22,12 +22,69 @@ function authorized(request:Request,secret:string):boolean{
  * Separate private RESEARCH-only endpoint. Never touch /api/risk-gate,
  * /v1/partner/predge/risk-gate, x402, purchases or execution adaptors.
  */
+
+/**
+ * The isolated Supabase Edge production gate is the only source of verified
+ * research readback when host-private credentials have not been provisioned.
+ * The CLIENT supplies its own private Vault read token. No Supabase service
+ * key or signing private key is copied to Nitro, GitHub or the browser.
+ * An explicit research kill switch (ENABLE=0) still blocks this route.
+ */
+export async function proxyIsolatedResearchRiskGate(
+ request:Request,fetchImpl:typeof fetch=fetch
+):Promise<Response>{
+ const authorization=request.headers.get("authorization")??"";
+ if(!/^Bearer [a-f0-9]{64}$/u.test(authorization))
+  return pause("RESEARCH_AUTH_REQUIRED",401);
+ if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
+  return pause("UNSUPPORTED_MEDIA_TYPE",415);
+ let body:string;
+ try{
+  body=await request.text();
+  if(Buffer.byteLength(body,"utf8")>8192)return pause("RESEARCH_REQUEST_TOO_LARGE",413);
+ }catch{return pause("RESEARCH_INVALID_REQUEST",400)}
+ let reply:Response;
+ try{
+  reply=await fetchImpl(
+   "https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-risk-gate",{
+   method:"POST",redirect:"error",cache:"no-store",headers:{
+    Authorization:authorization,"Content-Type":"application/json",Accept:"application/json"
+   },body,signal:AbortSignal.timeout(9000)
+  });
+ }catch{return pause("RESEARCH_STORE_UNAVAILABLE")}
+ if(reply.redirected||![200,400,401,405,413,415,503].includes(reply.status))
+  return pause("RESEARCH_STORE_UNAVAILABLE");
+ let result:Record<string,unknown>;
+ try{
+  const text=await reply.text();
+  if(text.length>4800)throw Error("OVERSIZE");
+  const data=JSON.parse(text);
+  if(!data||typeof data!=="object"||Array.isArray(data))throw Error("SHAPE");
+  result=data;
+ }catch{return pause("RESEARCH_STORE_UNAVAILABLE")}
+ if(result.schema!=="geomacro.research-corridor-gate.v1"||
+    result.execution_authorized!==false||
+    result.commercial_eligible!==false||result.research_only!==true||
+    !["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(
+     String(result.decision??""))||
+    (reply.status===200?(result.ok!==true||
+       result.verification_status!=="PROVISIONAL_RESEARCH_ONLY"):
+     (result.ok!==false||result.decision!=="PAUSE")))
+  return pause("RESEARCH_STORE_UNAVAILABLE");
+ return Response.json(result,{status:reply.status,headers:HEADERS});
+}
+
 export async function evaluateResearchRiskGate(
  request:Request,opts:{
  env?:NodeJS.ProcessEnv;fetchImpl?:typeof fetch;now?:Date
  }={}
 ):Promise<Response>{
  const env=opts.env??process.env,now=opts.now??new Date();
+ if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE==="0")
+  return pause("RESEARCH_RISK_GATE_NOT_ACTIVATED");
+ if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE===undefined||
+    env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE==="")
+  return proxyIsolatedResearchRiskGate(request,opts.fetchImpl);
  if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE!=="1")
   return pause("RESEARCH_RISK_GATE_NOT_ACTIVATED");
  if(!authorized(request,String(env.GEOMACRO_RESEARCH_RISK_GATE_READ_TOKEN??"")))
