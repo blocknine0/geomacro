@@ -140,8 +140,10 @@ export function createPhase2hCanonicalD1({
    signal:AbortSignal.timeout(15000),
   });
   if(!response.ok){
+   // Exact numeric HTTP status is safe for production diagnostics; never log
+   // private page bodies, query arguments, secrets or original headlines.
+   console.error("::warning::PHASE2H_RAW_B2_INTERNAL_HTTP_"+response.status);
    const failure=Error("PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE");
-   // Numeric HTTP only, never private content or source identifiers.
    failure.upstream_status=response.status;
    throw failure;
   }
@@ -215,23 +217,28 @@ export function createPhase2hCanonicalD1({
      // never advance a cursor or ACK an object on HTTP 429/503.
      if(useInternal&&error instanceof Error&&
         error.message==="PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE"&&
-        [429,503,504].includes(error.upstream_status)&&pageSize>1){
+        [429,500,502,503,504].includes(error.upstream_status)&&pageSize>1){
        pageSize=pageSize===25?10:pageSize===10?5:1;
        if(pageSize===1)maxRows=Math.min(maxRows,60);
        continue;
      }
      if(!useInternal&&error instanceof Error&&
         error.message==="PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED"){
-      if(pageSize===25||pageSize===10){
-       pageSize=pageSize===25?10:5;
-       if(pageSize===5)maxRows=100;
-       continue;
-      }
+      // Cloudflare D1 code 7500 at 25/10/5 rows can be a bound
+      // response-size/SQLite statement issue. First retry 2 and then 1
+      // WITHOUT changing the keyset cursor or spending a B2 request.
+      // An actual authentication denial or other provider code is never
+      // treated as a recoverable size constraint.
       if(error.provider_http_status===400&&error.provider_code===7500){
+       if(pageSize>1){
+        pageSize=pageSize===25?10:pageSize===10?5:
+         pageSize===5?2:1;
+        if(pageSize<=2)maxRows=Math.min(maxRows,60);
+        continue;
+       }
        useInternal=true;
-       // Internal privileged D1 binding does not have the REST /query
-       // response error; keep the same 25-row safety cap and full 300-row
-       // archive batch instead of reducing throughput for every future slot.
+       // Exact admin-only D1 binding remains last-resort fallback. Original
+       // data and idempotent cursor stay unchanged on every failed attempt.
        pageSize=25;
        maxRows=300;
        continue;
