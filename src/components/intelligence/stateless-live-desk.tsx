@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchDirectDerivedNews, fetchEdgeLatestDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchCurrentCanonicalWebsiteNews, fetchDirectDerivedNews, fetchEdgeLatestDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -19,8 +19,8 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Poll the small static rolling snapshot every two minutes. Historical shards
-// are loaded from the permanent static archive once per desk visit; neither path uses D1.
+// Poll the one-minute-cached canonical D1 feed every two minutes. Historical
+// shards load from the static archive once; no browser-driven D1 writes.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -282,7 +282,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
           }
         }
         try {
-          const recent = await fetchEdgeLatestDerivedNews().catch(()=>fetchDirectDerivedNews());
+          const recent = await fetchCurrentCanonicalWebsiteNews().catch(()=>fetchEdgeLatestDerivedNews().catch(()=>fetchDirectDerivedNews()));
           if (!alive) return;
           setJournal(previous => mergeUnseen(previous, recent));
           if (archiveLoaded) setJournalUnavailable(false);
