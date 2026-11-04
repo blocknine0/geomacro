@@ -300,6 +300,10 @@ export function createPhase2hCanonicalD1({
      }
      throw error;
     }
+    // Keep the incoming keyset cursor separate from the last valid row.
+    // V2's next cursor is the last SCANNED row, which may equal the last
+    // accepted row; equality there is normal and must not be rejected.
+    const priorCursorClock=cursorClock,priorCursorId=cursorId;
     const page=result.results;
     if(page.length>pageSize)fail("D1_PAGE_SIZE_INVALID");
     for(const item of page){
@@ -326,11 +330,18 @@ export function createPhase2hCanonicalD1({
      // Advance by LAST SCANNED D1 ID, including quarantined invalid rows.
      // A blank valid page must never stick at the same unarchiveable row.
      if(result.scanned_count>0){
+      if(priorCursorClock!==null&&(
+        result.next_cursor_clock<priorCursorClock||
+        result.next_cursor_clock===priorCursorClock&&
+        result.next_cursor_id<=priorCursorId))
+       fail("BULK_WORKER_V2_NONADVANCING_CURSOR");
+      // Last scanned may be the last valid row (equal cursor) or a later
+      // quarantined row. It must never precede the last accepted original.
       if(cursorClock!==null&&(
         result.next_cursor_clock<cursorClock||
         result.next_cursor_clock===cursorClock&&
-        result.next_cursor_id<=cursorId))
-       fail("BULK_WORKER_V2_NONADVANCING_CURSOR");
+        result.next_cursor_id<cursorId))
+       fail("BULK_WORKER_V2_CURSOR_BEFORE_VALID_ROW");
       cursorClock=result.next_cursor_clock;
       cursorId=result.next_cursor_id;
      }
