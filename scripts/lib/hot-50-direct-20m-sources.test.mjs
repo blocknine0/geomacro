@@ -44,7 +44,7 @@ test("20m workflow has 3 cron offsets per hour, production guard, canonical D1 w
  assert.match(file,/scripts\/ops\/plan-d1-bundled-work\.mjs/);
  assert.match(file,/scripts\/ops\/preload-phase2i-encrypted-backlog\.mjs/);
  assert.match(file,/scripts\/ops\/phase2i-source-only-raw-tick\.ts/);
- assert.match(file,/GEOMACRO_SOURCE_REGISTRY_MODE:\s*HOT50_DIRECT_20M/);
+ assert.match(file,/GEOMACRO_SOURCE_REGISTRY_MODE:\s*THREE_DOMAIN_DIRECT_20M/);
  assert.match(file,/geomacro-private-phase2i-72h-ciphertext/);
  assert.match(file,/github\.event_name == 'schedule'/);
  assert.doesNotMatch(file,/private-osint-15m-tick\.ts/);
