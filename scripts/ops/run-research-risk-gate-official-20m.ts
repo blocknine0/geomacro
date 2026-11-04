@@ -13,7 +13,7 @@ function runtimeRequired(env){
  if(env.GITHUB_ACTIONS!=="true"||
     env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
     env.GITHUB_REF!=="refs/heads/main"||
-    !["schedule","workflow_dispatch","workflow_run"].includes(env.GITHUB_EVENT_NAME??"")||
+    !["schedule","push","workflow_dispatch","workflow_run"].includes(env.GITHUB_EVENT_NAME??"")||
     env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE!=="1")
   throw Error("RESEARCH_20M_PRODUCTION_CONTEXT_OR_SWITCH_INVALID");
  const project=riskProjectConfig(env);
