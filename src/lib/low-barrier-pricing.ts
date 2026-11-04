@@ -17,7 +17,7 @@ export const GEOMACRO_ONE_TIME_PACKS = [
   { id:"growth_pack", name:"Growth", price_usd:30, credits:1500 },
 ] as const;
 export const GEOMACRO_AGENT_MICROPAYMENT = {
-  network:"eip155:8453", asset:"USDC", minimum_usdc:"0.02", maximum_usdc:"0.05",
+  network:"eip155:8453", asset:"USDC", minimum_usdc:"0.02", maximum_usdc:"0.25",
   pricing:"Per eligible successful delivery; actual exact price resolved by capability and variant",
 } as const;
 /** Catalog != live sale: recurring billing and top-ups require verified checkout + idempotent credit funding. */

@@ -147,7 +147,7 @@ export class Phase2iDurableQueueDO {
   const {chunk_id,lease_id,verified_ids}=body??{};
   if(!HEX.test(chunk_id??"")||
     typeof lease_id!=="string"||lease_id.length>100||
-    !Array.isArray(verified_ids)||verified_ids.length>5||
+    !Array.isArray(verified_ids)||verified_ids.length>100||
     new Set(verified_ids).size!==verified_ids.length||
     !verified_ids.every(x=>HEX.test(x)))
    return fail("ACK_CONTRACT_INVALID",400);

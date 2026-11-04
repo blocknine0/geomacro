@@ -5,6 +5,7 @@ import {GEOMACRO_LOW_BARRIER_VERSION,GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PA
 import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
   publicCapabilityPricingCatalog,
+  publicRiskGateThreeTierProducts,
 } from "./capability-pricing-catalog";
 import {GEOMACRO_USDC_NETWORKS} from "./geomacro-multichain-usdc.server";
 import {GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,geomacroPricedStructuredOutput}
@@ -67,6 +68,9 @@ export function publicGeomacroPaidPricingManifest(){
     currency:"USDC" as const,
     usdc_decimals:6 as const,
     pricing_model:"MONTHLY_CREDITS_ONE_TIME_PACKS_AND_CAPABILITY_X402" as const,
+    // Part 1: public exact per-call Risk Gate offers, priced off the same
+    // canonical capability schedule; product discovery never bills a call.
+    risk_gate_three_tiers:publicRiskGateThreeTierProducts(),
     capability_count:capabilities.length,
     price_variant_count:capabilities.reduce((n,cap)=>n+cap.variants.length,0),
     structured_output_contract_version:GEOMACRO_STRUCTURED_OUTPUT_CONTRACT_VERSION,

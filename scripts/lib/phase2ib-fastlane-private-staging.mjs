@@ -71,15 +71,18 @@ export function planPhase2iFastlanePrivateStage(candidates,{
  * Callers cap input to five rows, so retries are tightly bounded.
  */
 export async function postPhase2iCollisionIsolated({
- records,controlPlaneRoot,token,fetchImpl=fetch,post=postPhase2hPrivateRawRecords
+ records,controlPlaneRoot,token,fetchImpl=fetch,post=postPhase2hPrivateRawRecords,
+ maxRows=5
 }={}){
- if(!Array.isArray(records)||records.length>5)
+ if(!Array.isArray(records)||!Number.isSafeInteger(maxRows)||
+    maxRows<3||maxRows>100||records.length>maxRows)
   throw Error("PHASE2IB_FASTLANE_COLLISION_BATCH_CAP");
  let stored=0,duplicate=0,rejected=0,requests=0;
+ const MAX_ATTEMPTS=201;
  const verifiedRecordIds=[];
  const rejectedByCategory=count([]);
  const emit=async group=>{
-  requests++;
+  if(++requests>MAX_ATTEMPTS)throw Error("PHASE2IB_FASTLANE_COLLISION_ATTEMPT_CAP");
   try{
    const reply=await post({records:group,controlPlaneRoot,token,fetchImpl});
    if(reply?.readback_verified!==true||
@@ -102,7 +105,9 @@ export async function postPhase2iCollisionIsolated({
    await emit(group.slice(mid));
   }
  };
- if(records.length)await emit(records);
+ // The authenticated D1 endpoint accepts 50 originals per json_each(?)
+ // insert; two provider-granted 50-row windows run serially.
+ for(let i=0;i<records.length;i+=50)await emit(records.slice(i,i+50));
  if(stored+duplicate+rejected!==records.length)
   throw Error("PHASE2IB_FASTLANE_COLLISION_RECONCILIATION_FAILED");
  return Object.freeze({stored,duplicate,rejected_conflicts:rejected,

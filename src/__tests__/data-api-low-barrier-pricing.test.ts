@@ -32,7 +32,7 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
   it("quotes only approved evidence-gated Base USDC x402 variants", () => {
     expect(GEOMACRO_AGENT_MICROPAYMENT).toMatchObject({
       network: "eip155:8453", asset: "USDC",
-      minimum_usdc: "0.02", maximum_usdc: "0.05",
+      minimum_usdc: "0.02", maximum_usdc: "0.25",
     });
     expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc");
     expect(page).not.toContain("GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc");
@@ -42,7 +42,7 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     const rows = publicCapabilityPricingCatalog();
     expect(rows.every((row) => row.capability !== "gri_read")).toBe(true);
     expect(rows.every((row) => row.variants.every((v) =>
-      Number(v.amount_usdc) >= 0.02 && Number(v.amount_usdc) <= 0.05,
+      Number(v.amount_usdc) >= 0.02 && Number(v.amount_usdc) <= (row.capability==="risk_gate_bundle"?0.25:0.05),
     ))).toBe(true);
     expect(rows.find((r) => r.capability === "risk_gate_bundle")?.launch_status)
       .toBe("COMING_SOON");

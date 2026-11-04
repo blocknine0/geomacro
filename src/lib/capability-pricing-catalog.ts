@@ -18,7 +18,9 @@ export const GEOMACRO_CAPABILITY_PRICES={
     existing_valid_signed:"0.03",newly_qualified_signed:"0.05",
   },
   risk_gate_bundle:{
-    existing_proof_preflight:"0.03",standard:"0.05",complex_multi_source:"0.05",
+    // External tiers: Basic / Focused ($0.10), Standard ($0.15),
+    // Complex / Full ($0.25). Legacy variant keys preserve frozen receipts.
+    existing_proof_preflight:"0.10",standard:"0.15",complex_multi_source:"0.25",
   },
 } as const satisfies Record<GeomacroCreditCapability,Record<string,string>>;
 
@@ -55,7 +57,7 @@ export function usdcDecimalToAtomic(value:string):string{
     throw Error("USDC_DECIMAL_PRECISION_INVALID");
   const [whole,fraction=""]=value.split(".");
   const amount=BigInt(whole)*1_000_000n+BigInt(fraction.padEnd(6,"0"));
-  if(amount<=0n||amount>50_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
+  if(amount<=0n||amount>250_000n)throw Error("USDC_FOUNDER_MAX_PRICE_EXCEEDED");
   return amount.toString();
 }
 export type CapabilityPrice=Readonly<{
@@ -74,6 +76,9 @@ export function resolveGeomacroCapabilityPrice(capability:string,variant:string)
   const options=GEOMACRO_CAPABILITY_PRICES[capability as PricedCapability] as Record<string,string>;
   if(!Object.hasOwn(options,variant))throw Error("CAPABILITY_PRICE_VARIANT_NOT_APPROVED");
   const amount_usdc=options[variant];
+  // Restrict every unrelated capability to its existing <=$0.05 schedule.
+  if(capability!=="risk_gate_bundle"&&BigInt(usdcDecimalToAtomic(amount_usdc))>50_000n)
+    throw Error("CAPABILITY_NON_RISK_GATE_MAX_PRICE_EXCEEDED");
   return Object.freeze({
     version:GEOMACRO_CAPABILITY_PRICING_VERSION,
     capability:capability as PricedCapability,variant,
@@ -83,6 +88,31 @@ export function resolveGeomacroCapabilityPrice(capability:string,variant:string)
     included_signed_object_charge:capability==="risk_gate_bundle"?
       "INCLUDED_NO_DOUBLE_CHARGE" as const:"NOT_APPLICABLE" as const,
   });
+}
+
+/** Stable public tier IDs mapped onto the existing immutable Risk Gate variants. */
+export const GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS=[
+  {id:"basic_focused",name:"Basic / Focused",variant:"existing_proof_preflight",
+   score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
+   confidence:"LOW / PROVISIONAL",
+   deliverables:["Indicative Risk Score (0–100)","Fast signal alerts"]},
+  {id:"standard",name:"Standard",variant:"standard",
+   score_kind:"CORROBORATED_RISK_SCORE",confidence:"MEDIUM / VERIFIED",
+   deliverables:["Corroborated Risk Score","Three-category fact sheets","Source references"]},
+  {id:"complex_full",name:"Complex / Full",variant:"complex_multi_source",
+   score_kind:"PROPRIETARY_INSTITUTIONAL_SIGNED_SCORE",
+   confidence:"HIGH / CRYPTO_SIGNED",
+   deliverables:["Institutional Risk Score","Ed25519 signature",
+     "7-day corridor friction history","B2 archive reference","Evidence chain"]},
+] as const;
+export function publicRiskGateThreeTierProducts(){
+ return GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS.map(tier=>{
+  const price=resolveGeomacroCapabilityPrice("risk_gate_bundle",tier.variant);
+  return {...tier,usd_per_call:price.amount_usdc,
+   usdc_atomic:price.amount_atomic,
+   currency:"USD" as const,billing_unit:"PER_SUCCESSFUL_DELIVERY" as const,
+   response_schema:"geomacro.risk-gate-commercial-three-tier.v1" as const};
+ });
 }
 
 export function capabilityPricingCatalog(){

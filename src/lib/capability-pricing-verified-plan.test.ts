@@ -31,13 +31,31 @@ describe("capability prices selected only from verified canonical plans (NO FUND
     const gate=plan({topics:["risk_gate"],intent:"risk_gate",
       risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"}});
     expect(resolveVerifiedPublishedPlanPrice(gate,proof)).toMatchObject({
-      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"30000",
+      capability:"risk_gate_bundle",variant:"existing_proof_preflight",amount_atomic:"100000",
       included_signed_object_charge:"INCLUDED_NO_DOUBLE_CHARGE"});
     expect(resolveVerifiedPublishedPlanPrice(gate,{...proof,signed_object_lifecycle:"new"})).toMatchObject({
-      variant:"standard",amount_atomic:"50000"});
+      variant:"standard",amount_atomic:"150000"});
     expect(resolveVerifiedPublishedPlanPrice(plan({topics:["risk_gate","macro_risk","conflict_geopolitics","critical_minerals"],
       intent:"risk_gate", risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
-      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"50000"});
+      detail:"full"}),proof)).toMatchObject({capability:"risk_gate_bundle",variant:"complex_multi_source",amount_atomic:"250000"});
+  });
+  it("prices Basic observed-source Risk Gate without falsely requiring Ed25519",()=>{
+    const basic=plan({topics:["risk_gate"],intent:"risk_gate",
+      risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
+      product:{capability:"risk_gate_bundle",variant:"existing_proof_preflight"}});
+    const observed={...proof,signing_verified:false,
+      signed_object_lifecycle:"none" as const};
+    expect(resolveVerifiedPublishedPlanPrice(basic,observed)).toMatchObject({
+      capability:"risk_gate_bundle",variant:"existing_proof_preflight",
+      amount_atomic:"100000",amount_usdc:"0.10",
+    });
+    expect(()=>resolveVerifiedPublishedPlanPrice(plan({
+      topics:["risk_gate"],intent:"risk_gate",
+      risk_gate_context:{action_type:"agent_payment",policy_preset:"balanced"},
+      product:{capability:"risk_gate_bundle",variant:"standard"},
+    }),observed)).toThrow();
+    expect(()=>resolveVerifiedPublishedPlanPrice(basic,{...observed,evidence_verified:false}))
+      .toThrow("CAPABILITY_PRICE_ELIGIBILITY_UNVERIFIED_NO_CHARGE");
   });
   it("cannot pretend GRI change attribution or structural rights",()=>{
     const gri=plan({topics:["gri_context"]});

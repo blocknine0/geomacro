@@ -1,8 +1,8 @@
-name: Recover D1 daily-row quota deployment after reset
+name: Recover D1 or B2 quota-gated deployment after UTC reset
 
 on:
   schedule:
-    # Cloudflare D1 daily row counters reset at 00:00 UTC; wait ten minutes.
+    # Cloudflare D1 and GeoMacro's atomic B2 daily counters reset at UTC day boundary.
     - cron: "10 0 * * *"
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Detect only a confirmed D1 daily row-read quota deployment failure
+      - name: Detect exact D1 row-read 7500 or B2 native-auth 429 protected deployment failure
         id: diagnose
         env:
           GH_TOKEN: ${{ github.token }}
@@ -117,8 +117,9 @@ jobs:
           job_id="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].id // empty' "$jobs_file")"
           migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           schema_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify D1 schema directly") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" ]]; then
-            echo "Latest deployment did not fail at a D1 migration/schema step; no automatic retry."
+          b2_scope_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify actual B2 key scope and derive allowed private spool prefix") | .conclusion' "$jobs_file" 2>/dev/null || true)"
+          if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" && "$b2_scope_conclusion" != "failure" ]]; then
+            echo "Latest deployment did not fail at protected D1 migration/schema or B2 key-scope steps; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -148,12 +149,20 @@ jobs:
             exit 0
           fi
 
-          if grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
+          if [[ "$migration_conclusion" == "failure" || "$schema_conclusion" == "failure" ]] &&
+             grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
              grep -aFq "code: 7500" "$log_text"; then
-            echo "Confirmed D1 daily row-read quota exhaustion on the latest canonical deploy; eligible for one post-reset retry."
+            echo "Confirmed D1 daily row-read quota exhaustion on latest canonical deploy; eligible for one post-reset retry."
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${b2_scope_conclusion:-}" == "failure" ]] &&
+               grep -aFq "P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429" "$log_text"; then
+            # The existing B2 D1-atomic admission can reject the day's shared
+            # 40 native-auth reservations. Do NOT retry immediately or bypass
+            # the quota ledger; let the next scheduled UTC-day reset gate retry.
+            echo "Confirmed atomic B2 NATIVE_AUTH reservation exhaustion; eligible for one post-reset protected deploy."
             echo "retry=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Latest D1 deploy failure is not the specific daily row-read quota class; no automatic retry."
+            echo "Latest deployment failure is not the exact D1 7500 or B2 NATIVE_AUTH 429 quota class; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
           fi
 

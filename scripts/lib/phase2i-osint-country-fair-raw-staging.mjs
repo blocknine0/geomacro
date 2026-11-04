@@ -11,7 +11,7 @@ import {qualifyPrivateNationalPrimaryScope,sourceIsPinnedNationalPrimary} from "
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 const CATS=["geopolitics","macro","rare_earth"];
-const MAX=5;
+const MAX=100;
 const counts=rows=>Object.fromEntries(CATS.map(category=>[
  category,rows.filter(row=>row.category===category).length,
 ]));
@@ -211,7 +211,7 @@ export async function stagePhase2iOsintFairRaw({
   ...(returnVerifiedRecordIds?{verified_record_ids:[]}:{}),
  });
  const receipt=await postPhase2iCollisionIsolated({
-  records,controlPlaneRoot,token,fetchImpl,...(post?{post}:{})
+  records,maxRows,controlPlaneRoot,token,fetchImpl,...(post?{post}:{})
  });
  return Object.freeze({
   schema:"geomacro.phase2i.osint-fair-phase2h-stage.v1",...safe,

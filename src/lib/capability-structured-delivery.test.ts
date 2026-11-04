@@ -19,7 +19,21 @@ function fixture(){return {
   signed_risk_objects:[{subject,object:{risk_object_id:"test",schema_version:"test",
     risk:{score:0},confidence:0,attribution:[],verification:{status:"VERIFIED"},
     methodology_version:"test",generated_at:date,expires_at:date,integrity:{hash:"d".repeat(64)}}}],
-  risk_gate:[{subject,result:{execution_authorized:false}}],
+  risk_gate:[{subject,result:{execution_authorized:false},
+    tiered_product:{
+      indicative_risk_score_0_100:10,
+      corroborated_risk_score_0_100:25.25,
+      proprietary_institutional_score_0_100:72,
+      signal_alerts:[{category:"GEOPOLITICS",observed_at:date}],
+      confidence:{level:"LOW",verification:"PROVISIONAL"},
+      category_fact_sheets:[{category:"GEOPOLITICS",verified_category_score_0_100:35}],
+      source_references:[{event_reference:"case-1",content_sha256:["d".repeat(64)]}],
+      gro_signature:{signature:"sign",payload_sha256:"d".repeat(64)},
+      seven_day_corridor_friction_history:{points:[{day_utc:"2026-10-23"}]},
+      raw_evidence_chain:{gro_object_id:"proof"},
+      b2_archive:{b2_archive_link:"b2://geomacro-private-archive/evidence.json"},
+    },
+  }],
 };}
 
 describe("actual per-price structured delivery completeness",()=>{
@@ -63,12 +77,18 @@ describe("actual per-price structured delivery completeness",()=>{
     expect(()=>assertPricedStructuredDelivery(cached,"gri_read","verified_change_attribution"))
       .toThrow("gri_context.previous_score");
   });
-  it("cannot substitute a generic digest for an included signed Risk Gate bundle",()=>{
+  it("rejects missing tier deliverables and permits Basic without a signed GRO",()=>{
     const payload=fixture();payload.signed_risk_objects=[];
     expect(()=>assertPricedStructuredDelivery(payload,"structural_country_digest","standard")).not.toThrow();
-    for(const variant of ["existing_proof_preflight","standard","complex_multi_source"])
-      expect(()=>assertPricedStructuredDelivery(payload,"risk_gate_bundle",variant))
-        .toThrow("signed_risk_objects[*]");
+    expect(()=>assertPricedStructuredDelivery(payload,"risk_gate_bundle","existing_proof_preflight")).not.toThrow();
+    const noScore=fixture();delete (noScore.risk_gate[0].tiered_product as
+      Partial<typeof noScore.risk_gate[0]["tiered_product"]>).corroborated_risk_score_0_100;
+    expect(()=>assertPricedStructuredDelivery(noScore,"risk_gate_bundle","standard"))
+      .toThrow("corroborated_risk_score_0_100");
+    const noArchive=fixture();delete (noArchive.risk_gate[0].tiered_product.b2_archive as
+      Partial<typeof noArchive.risk_gate[0]["tiered_product"]["b2_archive"]>).b2_archive_link;
+    expect(()=>assertPricedStructuredDelivery(noArchive,"risk_gate_bundle","complex_multi_source"))
+      .toThrow("b2_archive_link");
     expect(()=>assertPricedStructuredDelivery({...fixture(),execution_authorized:true},"intelligence_query","focused"))
       .toThrow("BOUNDARY_INVALID");
     expect(()=>assertPricedStructuredDelivery(fixture(),"intelligence_query","premium")).toThrow();

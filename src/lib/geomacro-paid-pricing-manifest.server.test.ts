@@ -21,9 +21,9 @@ const LOCKED=[
   ["intelligence_query","complex_multi_source","0.05","50000"],
   ["signed_risk_object","existing_valid_signed","0.03","30000"],
   ["signed_risk_object","newly_qualified_signed","0.05","50000"],
-  ["risk_gate_bundle","existing_proof_preflight","0.03","30000"],
-  ["risk_gate_bundle","standard","0.05","50000"],
-  ["risk_gate_bundle","complex_multi_source","0.05","50000"],
+  ["risk_gate_bundle","existing_proof_preflight","0.10","100000"],
+  ["risk_gate_bundle","standard","0.15","150000"],
+  ["risk_gate_bundle","complex_multi_source","0.25","250000"],
 ] as const;
 
 describe("exact founder prices in one API + AI Agent on Base/Arc/Polygon (NO FUNDS)",()=>{
