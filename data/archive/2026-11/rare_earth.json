@@ -2,8 +2,25 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-04T08:48:16.043Z",
+  "updated_at": "2026-11-04T14:20:06.468Z",
   "signals": [
+    {
+      "id": "rare_earth-0da8c86b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cabinet: approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing · India",
+      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
+      "what_changed": "Cabinet approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing. Country or region mentioned: India.",
+      "geography": "India",
+      "development_type": "approval",
+      "topic": "critical-mineral inputs",
+      "published_at": "2026-11-04T10:11:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-57a98de7",
       "category": "rare_earth",
