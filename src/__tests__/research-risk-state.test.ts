@@ -68,8 +68,16 @@ test("newly qualified high-severity original immediately persists and signs exac
  const fetchImpl=async(url:unknown,opts:any)=>{
   calls++;
   const target=String(url);
-  assert.ok(target.includes("/rest/v1/rpc/"));
   assert.match(String(opts.headers.authorization),/^Bearer test_/);
+  if(target.includes("/rest/v1/country_risk_state?")){
+   assert.ok(attached);
+   return response([{country_code:"IND",version:1,signed_version:1,
+    signed_snapshot:attached.p_snapshot,
+    signed_snapshot_sha256:attached.p_snapshot_sha256,
+    signed_signature_b64:attached.p_signature_b64,
+    signed_signing_key_id:attached.p_signing_key_id}]);
+  }
+  assert.ok(target.includes("/rest/v1/rpc/"));
   const payload=JSON.parse(opts.body);
   if(target.endsWith("/update_country_realtime_score")){
    assert.equal(payload.p_country_code,"IND");
@@ -93,7 +101,7 @@ test("newly qualified high-severity original immediately persists and signs exac
  assert.equal(out.status,"RESEARCH_SIGNED_STATE_UPDATED");
  assert.equal(out.signed,true);
  assert.equal(out.execution_authorized,false);
- assert.equal(calls,2);
+ assert.equal(calls,3);
  assert.equal(attached.p_snapshot.commercial_eligible,false);
  assert.match(out.snapshot_sha256,/^[a-f0-9]{64}$/);
 });

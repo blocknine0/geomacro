@@ -1,0 +1,87 @@
+name: Research Risk Gate Official Stream-to-State 20m (Noncommercial)
+
+# Direct first-party original-page evidence to isolated Supabase state; no
+# RabbitMQ, no candidate backlog, no payments, no commercial GRO promotion.
+# GitHub scheduled workflows are best-effort, NOT a guaranteed 20m SLA.
+on:
+  schedule:
+    - cron: "7,27,47 * * * *"
+  workflow_run:
+    workflows: ["Hot-50 Direct Original News (20-Minute Cron)"]
+    types: [completed]
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/research-risk-gate-official-stream20m.yml"
+      - "scripts/lib/research-gate-official-20m.mjs"
+      - "scripts/lib/research-gate-official-20m.test.mjs"
+      - "scripts/ops/run-research-risk-gate-official-20m.ts"
+      - "src/lib/risk-gate/stream-ingest.ts"
+      - "src/__tests__/research-risk-state.test.ts"
+      - "config/official-ogl-atom-sources.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/research-risk-gate-official-stream20m.yml"
+      - "scripts/lib/research-gate-official-20m.mjs"
+      - "scripts/lib/research-gate-official-20m.test.mjs"
+      - "scripts/ops/run-research-risk-gate-official-20m.ts"
+      - "src/lib/risk-gate/stream-ingest.ts"
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-research-stream20m-noncommercial
+  cancel-in-progress: false
+
+jobs:
+  verify-source-state-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Install repo-pinned dependencies for Vitest (no unpinned network fallback)
+        run: bun install --frozen-lockfile
+      - name: Verify original-page first, three categories, zero queue, and rejected tampering
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/research-gate-official-20m.mjs
+          bun test scripts/lib/research-gate-official-20m.test.mjs
+          bun x vitest run src/__tests__/research-risk-state.test.ts
+
+  produce-private-research-state:
+    needs: verify-source-state-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'push' ||
+       github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'workflow_run')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Run direct first-party 20m research-only source-to-signed-state
+        env:
+          GEOMACRO_RESEARCH_RISK_GATE_ENABLE: "1"
+          GEOMACRO_RESEARCH_SUPABASE_URL: "https://ymjuwuvbialsevfawvvq.supabase.co"
+          GEOMACRO_RESEARCH_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.GEOMACRO_RESEARCH_SUPABASE_SERVICE_ROLE_KEY }}
+          GEOMACRO_RESEARCH_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_RESEARCH_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+          GEOMACRO_RESEARCH_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_RESEARCH_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+          GEOMACRO_RESEARCH_SIGNING_KEY_ID: "geomacro-research-2026-11"
+        run: |
+          set -euo pipefail
+          bun scripts/ops/run-research-risk-gate-official-20m.ts
