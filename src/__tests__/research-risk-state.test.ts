@@ -14,10 +14,10 @@ const env={
  GEOMACRO_RESEARCH_SUPABASE_SERVICE_ROLE_KEY:"test_".repeat(18),
  GEOMACRO_RESEARCH_RISK_GATE_ENABLE:"1",
  GEOMACRO_RESEARCH_RISK_GATE_READ_TOKEN:"r".repeat(64),
- RISK_OBJECT_SIGNING_KEY_ID:"geomacro-test-research-ed25519",
- RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64:key.privateKey.export({
+ GEOMACRO_RESEARCH_SIGNING_KEY_ID:"geomacro-test-research-ed25519",
+ GEOMACRO_RESEARCH_SIGNING_PRIVATE_KEY_PKCS8_B64:key.privateKey.export({
   format:"der",type:"pkcs8"}).toString("base64"),
- RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64:key.publicKey.export({
+ GEOMACRO_RESEARCH_SIGNING_PUBLIC_KEY_SPKI_B64:key.publicKey.export({
   format:"der",type:"spki"}).toString("base64")
 } as unknown as NodeJS.ProcessEnv;
 const event=(severity=75,overrides={})=>({
