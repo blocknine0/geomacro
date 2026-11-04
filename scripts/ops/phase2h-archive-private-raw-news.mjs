@@ -347,7 +347,7 @@ export async function runPhase2hGovernedRawB2({
  const governor=governorFactory({env,fetchImpl});
  const q=await governor.status(),u=q?.used,l=q?.limits;
  if(q?.ok!==true||!u||!l)fail("PROVIDER_GOVERNOR_UNAVAILABLE");
- if(u.total>l.total-13||u.GET>l.GET-7||u.PUT>l.PUT-6||
+ if(u.total>l.total-11||u.GET>l.GET-5||u.PUT>l.PUT-6||
     u.NATIVE_AUTH>l.NATIVE_AUTH-2)
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
@@ -359,7 +359,7 @@ export async function runPhase2hGovernedRawB2({
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
  // Enforce provider lifecycle on EVERY caller, not only on a single workflow.
- // Two native read-only operations use the SAME global atomic B2 governor.
+ // Lifecycle metadata reads plus one full-body GET use the SAME atomic B2 quota governor.
  // No B2 original-news PUT while provider-side automatic deletion remains enabled.
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
@@ -380,8 +380,6 @@ export async function runPhase2hGovernedRawB2({
  if(first?.full_body_readback_verified!==true||
    first.sha256!==plan.compressed_sha256||first.bytes!==plan.compressed.length)
    fail("FIRST_GET_OR_PUT_UNVERIFIED");
- const independentSecond=await b2.get(plan.key);
- verifyPhase2hRawB2Restore(Buffer.from(independentSecond),plan);
  // Read original raw_json exactly once per batch. The following D1
  // acknowledgement checks record_id/raw_sha256 before and after the
  // metadata write, without loading the source payload again.
@@ -390,14 +388,18 @@ export async function runPhase2hGovernedRawB2({
     ack.independent_d1_archive_ack_verified!==true)
   fail("ARCHIVE_ACK_NOT_CANONICAL");
  return {schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-  status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+  status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
   storage_confirmed:true,rows_archived:plan.record_count,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
   b2_automatic_deletion_paused_provider_verified:true,
-  b2_first_get_verified:true,b2_second_independent_get_verified:true,
-  post_archive_d1_verified:true,original_clocks_unchanged:true,
+  b2_first_get_verified:true,b2_second_get_performed:false,
+  post_archive_d1_verified:true,
+  d1_atomic_one_statement_returning_verified:ack.d1_atomic_one_statement_returning_verified===true,
+  d1_archive_ack_write_statements:ack.d1_write_statements,
+  b2_gets_per_bulk_object:1,b2_puts_per_bulk_object:1,
+  original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
