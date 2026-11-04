@@ -97,8 +97,16 @@ describe("all active Store creation contracts on the canonical mainnet engine (o
       ...(id==="signed_new"?{issued_after:"2026-10-24T12:59:00.000Z"}:{})},{
         check:plan=>checkAgentQueryDeliverability(plan,{now:NOW,sourceEligibilityChecker:rights,externalModuleChecker:async()=>true}),
       });
-    expect(result.status).toBe("QUALIFIED_CONTEXT_PREPARED");
-    expect(result).toHaveProperty("prepared_context");
+    // The old generic Store assembler does not yet provide the new
+    // product_tier JSON required for any of the three Risk Gate variants.
+    // It must not label an unqualified/unpopulated paid payload prepared.
+    if(id.startsWith("gate_")){
+      expect(result.status).toBe("CONTEXT_PREPARATION_BLOCKED");
+      expect(result).not.toHaveProperty("prepared_context");
+    }else{
+      expect(result.status).toBe("QUALIFIED_CONTEXT_PREPARED");
+      expect(result).toHaveProperty("prepared_context");
+    }
     expect(result.payment_authorized).toBe(false);
     expect(result.news_extraction_verified).toBe(false);
     expect(mocks.freeze).not.toHaveBeenCalled();
@@ -133,13 +141,21 @@ describe("all active Store creation contracts on the canonical mainnet engine (o
     }
     expect(publishedResponse.properties.payment.properties.provider.enum).toContain(intelligence.payment.provider);
   });
-  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("prepares %s with no durable quote write", async id => {
+  it.each(Object.keys(GEOMACRO_STORE_REQUEST_EXAMPLES).filter(id=>!id.startsWith("gate_")) as Array<keyof typeof GEOMACRO_STORE_REQUEST_EXAMPLES>)("prepares %s with no durable quote write", async id => {
     const {plan,availability}=await admitted(request(id));
     const {price,prepared}=await assembleVerifiedCapabilityProduct({plan,availability,clientRequestId:null});
     expect(price.capability).toBe(plan.product!.capability);
     expect(price.variant).toBe(plan.product!.variant);
     expect(prepared.delivered_product_hash).toMatch(/^[a-f0-9]{64}$/);
     expect(prepared).not.toHaveProperty("payment");
+    expect(mocks.freeze).not.toHaveBeenCalled();
+  });
+  it.each(["gate_existing","gate_standard","gate_complex"] as const)(
+    "refuses unprepared %s rather than settling the new 10c/15c/25c product",async id=>{
+    const {plan,availability}=await admitted(request(id));
+    expect(availability.deliverable).toBe(true);
+    await expect(assembleVerifiedCapabilityProduct({plan,availability,clientRequestId:null}))
+      .rejects.toThrow("CAPABILITY_STRUCTURED_DELIVERY_REQUIRED_FIELD_MISSING");
     expect(mocks.freeze).not.toHaveBeenCalled();
   });
   it("rejects origin-only corridor data even when the overall module timestamp is fresh", async () => {

@@ -14,7 +14,8 @@ function fixture(){
  const db=new DatabaseSync(":memory:");
  for(const name of ["0113_p0a_source_registry.sql",
  "0114_p0_b_spool_queue.sql","0115_p0_b_storage_circuit.sql",
- "0116_p0b_microbatch_spool.sql","0117_p0b_private_r2_fallback.sql"])
+ "0116_p0b_microbatch_spool.sql","0118_p0b_archive_outbox.sql",
+ "0122_p0b_private_r2_fallback.sql"])
   db.exec(readFileSync(new URL("../workers/control-plane/migrations/"+name,
    import.meta.url),"utf8"));
  const prep=(sql:string,params:any[]=[]):any=>({

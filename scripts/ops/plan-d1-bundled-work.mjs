@@ -167,51 +167,13 @@ export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
  });
 }
 
-/** Quota-backed Phase2I burst budget. Unlike the permanent 5-row safety
- * reserve, additional 50/100 row writer slots are granted only when there
- * is genuinely unused account-wide capacity AFTER all future publisher,
- * registered-source, raw-archive, emergency and PREDGE reservations.
- * Provider GraphQL is non-atomic; serialization remains mandatory.
- */
-export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered,{
- now=new Date(),criticalGranted=false,
-}={}){
- const baseline=MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows;
- const held=Object.freeze({max_new_rows:baseline,adaptive:false,
-  additional_slot_rows_reserved:0,extra_write_reserved:0,extra_read_reserved:0});
- if(!criticalGranted||!intakeBudget||!snapshot||
-    !(now instanceof Date)||!Number.isFinite(now.getTime())||
-    !Number.isSafeInteger(snapshot.remaining_rows_read)||
-    !Number.isSafeInteger(snapshot.remaining_rows_written))return held;
- // Every future 15/20-minute BASELINE slot is already fully reserved by
- // planSourceIntake(). Only this one serialized slot may spend an additional
- // burst, never an unbounded daily promise. The next tick must re-prove
- // provider quota from scratch and cannot reuse this approval.
- if(!Number.isSafeInteger(intakeBudget.remaining_source_slots)||
-    intakeBudget.remaining_source_slots<1)return held;
- const archiveSlots=[0,6,12,18].filter(h=>h>=now.getUTCHours()).length||1;
- const writeAvailable=Math.max(0,snapshot.remaining_rows_written-
-   D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-
-   (registered?.extra_write_reserved??0)-archiveSlots*750-10_000);
- const readAvailable=Math.max(0,snapshot.remaining_rows_read-
-   D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
-   (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
- const extra=Math.max(0,Math.min(95,
-   Math.floor(writeAvailable/16),
-   Math.floor(readAvailable/64)));
- const max_new_rows=baseline+extra;
- return Object.freeze({max_new_rows,adaptive:max_new_rows>baseline,
-   additional_slot_rows_reserved:extra,
-   extra_write_reserved:extra*16,extra_read_reserved:extra*64});
-}
-
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
   reason,critical:false,research:false,maintenance:false,phase2h_raw_archive:false,source_intake:false,
   retention_cleanup:false,retention_cleanup_max_rows:0,
   registered_private_max_new_rows:0,
-  governed_measurement:false,
+  governed_measurement:false,historical_recovery:false,historical_recovery_max_rows:0,
   predge_account_headroom_guard_enabled:true,
   predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
   predge_account_headroom_is_hard_partition:false,
@@ -261,7 +223,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:false,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:false,governed_measurement:false,source_intake_interval_minutes:null,
+      source_intake:false,governed_measurement:false,historical_recovery:false,
+      historical_recovery_max_rows:0,source_intake_interval_minutes:null,
       registered_private_max_new_rows:0,
       source_intake_max_new_rows:0,snapshot_refresh:false,
       structural_snapshot:false,
@@ -314,15 +277,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const utcHour=now.getUTCHours();
   const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
-  const phase2iAdaptive=planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,
-    null,{now,criticalGranted:grants.critical===true&&sourceIntake});
-  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals({
-    ...snapshot,
-    remaining_rows_written:Math.max(0,snapshot.remaining_rows_written-
-      phase2iAdaptive.extra_write_reserved),
-    remaining_rows_read:Math.max(0,snapshot.remaining_rows_read-
-      phase2iAdaptive.extra_read_reserved),
-  },intakeBudget,{
+  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
     now,criticalGranted:grants.critical===true&&sourceIntake,
   });
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
@@ -334,7 +289,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const rawWriteRoom=sourceIntake?
     snapshot.remaining_rows_written-
       D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150-
-      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved:0;
+      registeredAdaptive.extra_write_reserved:0;
   const archiveWriteReserve=remainingArchiveSlots*750;
   const preserveArchive=rawWriteRoom>archiveWriteReserve+
     remainingHourSlots*25;
@@ -346,7 +301,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingHourSlots*2500+10000+
-      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved;
+      registeredAdaptive.extra_read_reserved;
   const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
     Math.min(1000,safeRowsPerHour):0;
   const retentionCleanup=retentionCleanupMaxRows>0;
@@ -363,11 +318,21 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingArchiveSlots*20_000+10_000+
-      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved&&
+      registeredAdaptive.extra_read_reserved&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
       remainingArchiveSlots*750+150+
-      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved;
+  // Low-priority historical archive, scanned by original D1 ingest state
+  // (never article publication age). Existing Free quota/PREDGE/future news
+  // reserves win before each 10-minute, <=200-original recovery slot.
+  const historicalRecovery=phase2hRawArchive&&
+    snapshot.remaining_rows_written>
+      D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
+      registeredAdaptive.extra_write_reserved+remainingArchiveSlots*750+750&&
+    snapshot.remaining_rows_read>
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
+      registeredAdaptive.extra_read_reserved+remainingArchiveSlots*20_000+25_000;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -378,20 +343,20 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const governedMeasurement=sourceIntake &&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000+
-      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500+
-      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
       250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved &&
+      registeredAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
       D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
@@ -405,10 +370,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
       250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
@@ -421,6 +386,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     registered_private_extra_daily_write_reserve:registeredAdaptive.extra_write_reserved,
     registered_private_adaptive_free_budgeted:registeredAdaptive.fully_account_budgeted,
     phase2h_raw_archive:phase2hRawArchive,
+    historical_recovery:historicalRecovery,
+    historical_recovery_max_rows:historicalRecovery?200:0,
     phase2h_raw_archive_does_not_admit_general_maintenance:true,
     phase2h_raw_archive_requires_atomic_b2_quota:true,
     phase2h_raw_archive_max_rows_per_slot:300,
@@ -442,11 +409,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     predge_protected_write_headroom_observed:
       snapshot.remaining_rows_written>PREDGE_D1_FREE_HEADROOM.rows_written,
     source_intake_interval_minutes:intakeBudget?.interval_minutes??null,
-    source_intake_max_new_rows:sourceIntake?phase2iAdaptive.max_new_rows:0,
-    source_intake_phase2i_adaptive:phase2iAdaptive.adaptive,
-    source_intake_phase2i_extra_slot_rows_reserved:phase2iAdaptive.additional_slot_rows_reserved,
-    source_intake_phase2i_extra_write_reserved:phase2iAdaptive.extra_write_reserved,
-    source_intake_phase2i_extra_read_reserved:phase2iAdaptive.extra_read_reserved,
+    source_intake_max_new_rows:intakeBudget?.max_new_rows??0,
     minimum_daily_bundled_source_policy:MINIMUM_DAILY_BUNDLED_SOURCE,
     minimum_daily_bundled_source_admitted:sourceIntake,
     snapshot_refresh:snapshotRefresh,
@@ -570,10 +533,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   console.log(JSON.stringify(receipt));
   console.log(JSON.stringify(phase2fQuotaDiagnostic(result)));
   if(process.env.GITHUB_OUTPUT){
-    for(const key of ["critical","research","maintenance","phase2h_raw_archive","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
+    for(const key of ["critical","research","maintenance","phase2h_raw_archive","historical_recovery","source_intake","retention_cleanup","governed_measurement","snapshot_refresh","structural_snapshot"]){
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key])+"\n");
     }
-    for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows","registered_private_max_new_rows"])
+    for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows","registered_private_max_new_rows","historical_recovery_max_rows"])
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");

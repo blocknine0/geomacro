@@ -20,6 +20,22 @@ const EXTRA=Object.freeze([
  ["uk_ukri","uk-research-and-innovation","rare_earth"],
 ]);
 
+// Independent first-party alternatives for sources with blocked, oversized or
+// unreliable fastlane transports. These are *distinct publishers*, not mirrors
+// of BLS/CFTC/LBMA, and publisher reachability is proved only by the 20m runner.
+// Pin exact issuer-controlled RSS endpoints documented by their publishers.
+const NATIVE_OFFICIAL=Object.freeze([
+ // These issuer-controlled feeds have already produced accepted RSS/Atom
+ // parser states in prior fastlane or protected read-only CI observations.
+ // Reuse URL-level source dedupe if another native collector pins the same URL.
+ ["us_fed_monetary","https://www.federalreserve.gov/feeds/press_monetary.xml","USA","macro"],
+ ["can_boc_press","https://www.bankofcanada.ca/content_type/press/feed/","CAN","macro"],
+ ["us_bea_release","https://apps.bea.gov/rss/rss.xml","USA","macro"],
+ ["jpn_boj_press","https://www.boj.or.jp/en/rss/whatsnew.xml","JPN","macro"],
+ ["us_usgs_minerals","https://www.usgs.gov/news/minerals/feed","USA","rare_earth"],
+ ["can_bc_minerals","https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed","CAN","rare_earth"],
+]);
+
 export function macroMineralsContinuitySources(){
  const manifest=JSON.parse(readFileSync(MANIFEST,"utf8"));
  if(manifest.schema!=="geomacro.official-free-atom-license-registry.v1"||
@@ -62,7 +78,25 @@ export function macroMineralsContinuitySources(){
   provider_rights_verified:false,commercial_eligible:false,
   publicly_deliverable:false,private_only:true
  }));
- const selected=[...fromManifest,...additional];
+ const official=NATIVE_OFFICIAL.map(([suffix,url,country,category])=>{
+  const parsed=new URL(url);
+  if(parsed.protocol!=="https:"||parsed.username||parsed.password||
+     parsed.port||parsed.hash||parsed.search||!["USA","CAN","JPN"].includes(country)||
+     !["macro","rare_earth"].includes(category))
+   throw Error("MACRO_MINERALS_NATIVE_OFFICIAL_SOURCE_INVALID");
+  return Object.freeze({
+   id:"private_macro_minerals_continuity_"+suffix,url,type:"rss",
+   continent:country==="JPN"?"asia":"north_america",
+   publisher_country_iso3:country,publisher_kind:"official",
+   categories:Object.freeze([category]),supported:true,
+   private_macro_minerals_continuity:true,
+   publisher_native_dates_required:true,
+   transport_verified_at_registration:false,
+   original_article_verified:false,provider_rights_verified:false,
+   commercial_eligible:false,publicly_deliverable:false,private_only:true,
+  });
+ });
+ const selected=[...fromManifest,...additional,...official];
  if(new Set(selected.map(s=>s.url)).size!==selected.length||
     new Set(selected.map(s=>s.id)).size!==selected.length)
   throw Error("MACRO_MINERALS_OFFICIAL_DUPLICATE_URL_OR_ID");

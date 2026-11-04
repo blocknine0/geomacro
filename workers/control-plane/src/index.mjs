@@ -41,12 +41,15 @@ import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
+import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
+import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth,p1UpsertSourceCellMap}
+ from './p1-source-fanout.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
-import {drainBacklog,drainR2Fallback} from '../../../src/workers/backlog-drain-cron.ts';
+import {drainBacklog,drainP0bArchiveOutbox,drainR2Fallback} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1313,14 +1316,27 @@ export default {
         if(!['DRAINED_BATCH','DRAIN_CLEAN'].includes(r.status))console.error('P0B_DRAIN_DEFERRED',r.status);
       }).catch(()=>console.error('P0B_DRAIN_UNAVAILABLE')));
     if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
+       utc.getUTCMinutes()%10===0&&env?.DB?.prepare)
+      ctx.waitUntil(drainP0bArchiveOutbox(env,{now:utc.getTime()}).then(receipt=>{
+        if(!['P0B_OUTBOX_REPLAY_OK','P0B_OUTBOX_B2_CIRCUIT_HELD'].includes(receipt.status))
+          console.error('P0B_OUTBOX_REPLAY_UNVERIFIED',receipt.status);
+      }).catch(()=>console.error('P0B_OUTBOX_DRAIN_UNAVAILABLE')));
+    if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
        utc.getUTCMinutes()%10===0&&env?.P0B_PRIVATE_FALLBACK_R2)
-      ctx.waitUntil(drainR2Fallback(env,{now:utc.getTime()}).then(r=>{
-        if(!['R2_FALLBACK_REPLAY_OK'].includes(r.status))
-          console.error('P0B_R2_PENDING_REPLAY',r.status);
+      ctx.waitUntil(drainR2Fallback(env,{now:utc.getTime()}).then(receipt=>{
+        if(!['R2_FALLBACK_REPLAY_OK'].includes(receipt.status))
+          console.error('P0B_R2_PENDING_REPLAY',receipt.status);
       }).catch(()=>console.error('P0B_R2_REPLAY_UNAVAILABLE')));
+    // Independent 108-source/minute D1-leased fanout. Queue workers have
+    // their own throughput and failure isolation from the B2 spool queue.
+    if(env?.GEOMACRO_P1_FANOUT_ENABLED==='1'&&env?.DB?.prepare)
+      ctx.waitUntil(dispatchP1DueSources(env,{now:utc.getTime()}).then(r=>{
+        if(!['P1_DISPATCH_IDLE','P1_DISPATCH_QUEUED'].includes(r.status))
+          console.error('P1_FANOUT_DEFERRED',r.status);
+      }).catch(()=>console.error('P1_FANOUT_DISPATCH_UNAVAILABLE')));
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
-    if(env?.DB?.prepare)
+    if(env?.GEOMACRO_P1_FANOUT_ENABLED!=='1'&&env?.DB?.prepare)
       ctx.waitUntil((async()=>{
         if(env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
           // First after each 00:00 UTC quota reset: admin-controlled 3–5
@@ -1450,6 +1466,11 @@ export default {
     }
   },
   async queue(batch,env,ctx){
+    if(batch?.queue==='geomacro-source-poll')
+      return consumeP1SourcePollBatch(batch,env);
+    // Unknown future queue types never receive a P0B durable ACK.
+    if(batch?.queue&&batch.queue!=='geomacro-ingestion-spool')
+      throw Error('P1_UNKNOWN_QUEUE_BINDING');
     await handleQueueBatch(batch,env);
   },
   async fetch(request, env, ctx) {
@@ -1631,6 +1652,15 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
+      return p1SourceCoverageHealth(env);
+    if(url.pathname==='/v1/internal/p1/source-cell-map'&&request.method==='PUT'){
+      try{
+        const text=await request.text();
+        if(text.length>16000)return json({ok:false,error:"P1_MAPPING_TOO_LARGE"},413);
+        return p1UpsertSourceCellMap(env,JSON.parse(text));
+      }catch{return json({ok:false,error:"P1_MAPPING_REQUEST_INVALID"},400)}
+    }
     if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
       return getP0bIngestionStatus(env);
@@ -1638,6 +1668,10 @@ export default {
       return verifyLatestP0bCommitted(env);
 
     try {
+      // Root-admin-only, noncommercial metadata discovery. Never customer,
+      // PREDGE or paid delivery. All lanes come from existing ingested D1 rows.
+      if(url.pathname==="/v1/internal/risk-gate/derived-discovery")
+        return handleDerivedRiskGateDiscovery(request,env);
       // Owner-only, strictly bounded current-day canonical reconciliation.
       // Page is the sole permitted input: 18 immutable ID-ordered pages
       // of 12/last 3 real records. No arbitrary target, day, source fetch,

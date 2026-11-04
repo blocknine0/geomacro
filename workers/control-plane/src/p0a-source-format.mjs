@@ -21,6 +21,9 @@ const link=value=>{
 };
 const date=value=>{
  if(typeof value!=='string'||value.length>100||/^\d{4}-\d{2}-\d{2}$/u.test(value))return null;
+ // No timezone means no reliable original UTC clock. Retain native null,
+ // and track HTTP Last-Modified or ingestion OBSERVATION separately.
+ if(!/(?:Z|[+-]\d{2}:?\d{2}|GMT|UTC)$/iu.test(value.trim()))return null;
  const t=Date.parse(value);
  return Number.isFinite(t)&&t<=Date.now()+300000?new Date(t).toISOString():null;
 };

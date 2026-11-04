@@ -13,7 +13,7 @@ const RIGHTS=new Set(['COMMERCIAL_APPROVED','RESEARCH_ONLY','PENDING_AUDIT']);
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const ISO3=/^[A-Z]{3}$/u;
 const STATES=new Set(['OBSERVED','UNCHANGED','EMPTY','DENIED','RATE_LIMITED','UNAVAILABLE','MALFORMED','CAPACITY_DEFERRED']);
-const MAX_SOURCES_PER_POLL=8,MAX_NEW_ITEMS_PER_SOURCE=20;
+const MAX_SOURCES_PER_POLL=15,MAX_NEW_ITEMS_PER_SOURCE=100;
 const iso=ms=>new Date(ms).toISOString();
 const json=(value,status=200)=>Response.json(value,{status,headers:{
  'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex,nofollow'}});
@@ -60,13 +60,24 @@ function fromRow(row){
   fallback_endpoint:row.fallback_endpoint,last_cursor:row.last_cursor,
  });
 }
-export async function listP0aSourceRegistry(env){
+export async function listP0aSourceRegistry(env,params=new URLSearchParams()){
  try{
-  const response=await env.DB.prepare('SELECT * FROM source_registry ORDER BY source_id LIMIT 1024').all();
+  if([...params.keys()].some(k=>!["after","limit"].includes(k))||
+     params.getAll("after").length>1||params.getAll("limit").length>1)
+   return json({ok:false,error:"P1_REGISTRY_PAGE_INVALID"},400);
+  const after=params.get("after")??"",limit=Number(params.get("limit")??"250");
+  if((after&&!SOURCE.test(after))||!Number.isSafeInteger(limit)||limit<1||limit>250)
+   return json({ok:false,error:"P1_REGISTRY_PAGE_INVALID"},400);
+  const response=await env.DB.prepare(
+   "SELECT * FROM source_registry WHERE source_id>? "+
+   "ORDER BY source_id LIMIT ?").bind(after,limit+1).all();
+  const rows=(response.results??[]).slice(0,limit),hasMore=(response.results??[]).length>limit;
   return json({schema:'geomacro.p0a.source-registry.v1',ok:true,
-   sources:(response.results??[]).map(row=>({...fromRow(row),
+   sources:rows.map(row=>({...fromRow(row),
     enabled:row.enabled===1,next_poll_at:row.next_poll_at,last_state:row.last_state,
-    last_polled_at:row.last_polled_at,consecutive_failures:row.consecutive_failures}))});
+    last_polled_at:row.last_polled_at,consecutive_failures:row.consecutive_failures,
+    polling_interval_minutes:row.polling_interval_minutes??row.polling_interval_sec/60})),
+   limit,has_more:hasMore,next_after:hasMore?rows.at(-1).source_id:null});
  }catch{return json({ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'},503)}
 }
 export async function upsertP0aSourceRegistry(env,body){
@@ -141,9 +152,13 @@ async function fetchEndpoint(url,config,fetchImpl,now){
   let response;
   try{
    const headers={'Accept':'application/rss+xml, application/atom+xml, application/rdf+xml, application/json, text/csv, text/html, application/zip, */*;q=0.2',
-    'User-Agent':'GeoMacro/1.0 (+https://geomacro.live; source-normalization)'};
-   if(config.last_cursor?.startsWith('etag:'))headers['If-None-Match']=config.last_cursor.slice(5);
-   if(config.last_cursor?.startsWith('modified:'))headers['If-Modified-Since']=config.last_cursor.slice(9);
+    'User-Agent':'GeoMacroSourceCollector/1.0 (+https://geomacro.live; private-research; contact: admin@geomacro.live)'};
+   if(config.poll_etag)headers['If-None-Match']=config.poll_etag;
+   else if(config.last_cursor?.startsWith('etag:'))
+    headers['If-None-Match']=config.last_cursor.slice(5);
+   if(config.poll_last_modified)headers['If-Modified-Since']=config.poll_last_modified;
+   else if(config.last_cursor?.startsWith('modified:'))
+    headers['If-Modified-Since']=config.last_cursor.slice(9);
    response=await fetchImpl(url,{method:'GET',redirect:'manual',headers,
     signal:AbortSignal.timeout(10000)});
   }catch(error){
@@ -154,7 +169,8 @@ async function fetchEndpoint(url,config,fetchImpl,now){
    break;
   }
   const status=response.status;
-  if(status===304)return {state:'UNCHANGED',status,cursor:config.last_cursor,records:[]};
+  if(status===304)return {state:'UNCHANGED',status,cursor:config.last_cursor,
+   etag:config.poll_etag??null,modified:config.poll_last_modified??null,records:[]};
   if(status===403||status===401)return {state:'DENIED',status,delay:3600000,records:[]};
   if(status===429)return {state:'RATE_LIMITED',status,
    delay:config.rate_limit_backoff.respect_retry_after?
@@ -162,13 +178,34 @@ async function fetchEndpoint(url,config,fetchImpl,now){
   if(status===200){
    try{
     const bytes=await responseBytes(response);
+    const head=new TextDecoder().decode(bytes.slice(0,1200)).trimStart();
+    const contentType=(response.headers.get('content-type')??'').toLowerCase();
+    if(config.parser_type!=='HTML_BOUNDED'&&
+       (contentType.startsWith('text/html')||
+        /^<!doctype\s+html\b|^<html\b/iu.test(head)))
+      return {state:'MALFORMED',status,records:[],
+       error_code:'P1_FEED_RETURNED_HTML'};
+    if(config.parser_type!=='HTML_BOUNDED'&&
+       /<title>\s*(?:404|not found|page not found|access denied)\b/iu.test(head))
+      return {state:'MALFORMED',status,records:[],
+       error_code:'P1_SOFT_404_BLOCK_PAGE'};
     const records=await normalizeP0aPayload(config.parser_type,bytes);
     const etag=response.headers.get('etag'),modified=response.headers.get('last-modified');
+    const observedAt=modified&&Number.isFinite(Date.parse(modified))?
+     new Date(Date.parse(modified)).toISOString():iso(now);
+    const provenance=modified&&Number.isFinite(Date.parse(modified))?
+     'HTTP_LAST_MODIFIED':'INGESTION_OBSERVED';
+    for(const item of records){
+      item.observed_at=item.native_published_at??observedAt;
+      item.clock_provenance=item.native_published_at?'SOURCE_NATIVE':provenance;
+    }
     const firstId=records.find(x=>typeof x.source_record_id==='string'&&x.source_record_id.length)?.source_record_id;
     const cursor=etag&&etag.length<=1000?'etag:'+etag:
       modified&&modified.length<=1000?'modified:'+modified:
       firstId?'id:'+firstId:config.last_cursor;
-    return {state:records.length?'OBSERVED':'EMPTY',status,cursor,records};
+    return {state:records.length?'OBSERVED':'EMPTY',status,cursor,records,
+     etag:etag??config.poll_etag??null,
+     modified:modified??config.poll_last_modified??null};
    }catch{return {state:'MALFORMED',status,records:[]}}
   }
   last={state:'UNAVAILABLE',status,records:[]};
@@ -186,9 +223,67 @@ export async function fetchP0aSource(config,{fetchImpl=fetch,now=Date.now()}={})
    used_fallback:true};
  return {...primary,used_fallback:false};
 }
+
+/** Single-domain failure isolation, backed by private D1 across invocations. */
+async function p1DomainAdmit(env,hostname,now){
+ if(env.GEOMACRO_P1_FANOUT_ENABLED!=='1')return {admitted:true};
+ const r=await env.DB.prepare(
+  "SELECT next_allowed_at,consecutive_failures FROM p1_source_domain_backoff "+
+  "WHERE hostname=?").bind(hostname).first();
+ return {admitted:!r||r.next_allowed_at<=iso(now),until:r?.next_allowed_at??null,
+  failures:r?.consecutive_failures??0};
+}
+async function p1DomainRecord(env,hostname,state,now,delay){
+ if(env.GEOMACRO_P1_FANOUT_ENABLED!=='1')return;
+ if(['OBSERVED','EMPTY','UNCHANGED'].includes(state))return;
+ if(!['UNAVAILABLE','DENIED','RATE_LIMITED','MALFORMED'].includes(state))return;
+ const row=await env.DB.prepare(
+  "SELECT consecutive_failures FROM p1_source_domain_backoff "+
+  "WHERE hostname=?").bind(hostname).first();
+ const failures=Math.min(100,(row?.consecutive_failures??0)+1);
+ const duration=state==='DENIED'?3600000:
+  state==='RATE_LIMITED'?Math.max(300000,delay??300000):
+  [300000,900000,3600000][Math.min(2,failures-1)];
+ const until=iso(now+duration);
+ await env.DB.prepare(
+  "INSERT INTO p1_source_domain_backoff"+
+  "(hostname,consecutive_failures,next_allowed_at,last_failure_state,updated_at) "+
+  "VALUES (?,?,?,?,?) ON CONFLICT(hostname) DO UPDATE SET "+
+  "consecutive_failures=excluded.consecutive_failures,"+
+  "next_allowed_at=CASE WHEN p1_source_domain_backoff.next_allowed_at>"+
+  "excluded.next_allowed_at THEN p1_source_domain_backoff.next_allowed_at "+
+  "ELSE excluded.next_allowed_at END,"+
+  "last_failure_state=excluded.last_failure_state,updated_at=excluded.updated_at"
+ ).bind(hostname,failures,until,state,iso(now)).run();
+}
+/** Fingerprint title+canonical URL, not mutable feed GUID or fetch clock. */
+export function p1SourceContentFingerprintFields(row){
+ const title=typeof row?.title==='string'?row.title.trim().toLowerCase().replace(/\s+/gu,' '):"";
+ let url="";
+ try{
+  const u=new URL(row?.original_url??"");
+  u.hash="";
+  for(const k of [...u.searchParams.keys()])
+   if(/^utm_/iu.test(k)||["fbclid","gclid","mc_cid","mc_eid"].includes(k.toLowerCase()))
+    u.searchParams.delete(k);
+  url=u.href;
+ }catch{}
+ return title&&url?title+"\n"+url:null;
+}
+
 async function pollOne(env,row,{fetchImpl,now}){
- const config=fromRow(row);
+ const config={...fromRow(row),poll_etag:row.poll_etag??null,
+  poll_last_modified:row.poll_last_modified??null};
  const lockedUntil=iso(now+120000);
+ const hostname=new URL(config.canonical_endpoint).hostname.toLowerCase();
+ // A domain under exponential backoff does not consume an HTTP request or
+ // masquerade as a successful attempted poll in one-hour coverage.
+ const gate=await p1DomainAdmit(env,hostname,now);
+ if(!gate.admitted){
+  await env.DB.prepare("UPDATE source_registry SET next_poll_at=? WHERE source_id=? "+
+   "AND next_poll_at<=?").bind(gate.until,config.source_id,iso(now)).run();
+  return {source_id:config.source_id,state:"DOMAIN_BACKOFF",accepted:0};
+ }
  const lock=await env.DB.prepare(
   'UPDATE source_registry SET next_poll_at=? WHERE source_id=? AND next_poll_at=? AND enabled=1'
  ).bind(lockedUntil,row.source_id,row.next_poll_at).run();
@@ -197,6 +292,8 @@ async function pollOne(env,row,{fetchImpl,now}){
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
  catch{result={state:'UNAVAILABLE',status:null,records:[],used_fallback:false}}
  let state=result.state,accepted=0,p0b_failure_codes={};
+ try{await p1DomainRecord(env,hostname,state,now,result.delay)}
+ catch{/* domain journal unavailable must not fabricate a good source result */}
  // Defer P0-B admission until ALL fetched sources from this poll window are
  // combined. Do not commit source cursor before the shared B2 bundle is durable.
  if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
@@ -211,8 +308,9 @@ async function pollOne(env,row,{fetchImpl,now}){
     row,config,result,candidates};
   }catch{
    await env.DB.prepare(
-    "UPDATE source_registry SET next_poll_at=?,last_state='CAPACITY_DEFERRED' "+
-    'WHERE source_id=?').bind(iso(now+60000),config.source_id).run().catch(()=>{});
+    "UPDATE source_registry SET next_poll_at=?,last_state='CAPACITY_DEFERRED',"+
+    "last_polled_at=?,consecutive_failures=consecutive_failures+1 "+
+    'WHERE source_id=?').bind(iso(now+60000),iso(now),config.source_id).run().catch(()=>{});
    return {source_id:config.source_id,state:'CAPACITY_DEFERRED',accepted:0,
     p0b_failure_codes:{P0B_CANDIDATE_PREPARATION_FAILED:1}};
   }
@@ -251,10 +349,24 @@ async function pollOne(env,row,{fetchImpl,now}){
    const staged=candidates.slice(0,MAX_NEW_ITEMS_PER_SOURCE),statements=[];
    const timestamp=iso(now),hashes=[];
    for(const item of staged){
-    const identity=await sha([config.source_id,item.source_record_id??item.original_url??item.title??'',
-     item.native_published_at??''].join('\n'));
+    const content=p1SourceContentFingerprintFields(item);
+    const fingerprint=content?await sha(content):null;
+    const identity=await sha([config.source_id,
+      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\n'));
     hashes.push(identity);
-    statements.push(env.DB.prepare(
+    if(env.GEOMACRO_P1_FANOUT_ENABLED==='1')
+     statements.push(env.DB.prepare(
+      'INSERT INTO p0a_normalized_source_items '+
+      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
+      'source_record_id,native_published_at,first_seen_at,last_seen_at,'+
+      'observed_at,clock_provenance,content_sha256) '+
+      'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET '+
+      'last_seen_at=excluded.last_seen_at'
+     ).bind(identity,config.source_id,config.intended_category,config.country_iso3,
+      config.rights_tier,item.title,item.original_url,item.source_record_id,
+      item.native_published_at,timestamp,timestamp,item.observed_at??timestamp,
+      item.clock_provenance??'INGESTION_OBSERVED',fingerprint));
+    else statements.push(env.DB.prepare(
      'INSERT INTO p0a_normalized_source_items '+
      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
      'source_record_id,native_published_at,first_seen_at,last_seen_at) '+
@@ -278,12 +390,22 @@ async function pollOne(env,row,{fetchImpl,now}){
   const interval=config.polling_interval_sec*1000;
   const delay=state==='DENIED'?Math.max(3600000,interval):
    state==='RATE_LIMITED'?Math.max(interval,result.delay??interval):
-   failures?Math.min(3600000,config.rate_limit_backoff.base_delay_ms*2**Math.min(failures,12)):interval;
+   state==='UNAVAILABLE'?[300000,900000,3600000][Math.min(failures-1,2)]:
+   failures?Math.min(3600000,Math.max(60000,
+    config.rate_limit_backoff.base_delay_ms*2**Math.min(failures,12))):interval;
   // Only a complete parse may advance the cache cursor. Fallback responses
   // never replace the canonical endpoint's cursor.
   const cursor=(state==='OBSERVED'||state==='EMPTY'||state==='UNCHANGED')&&
     !result.used_fallback?result.cursor??config.last_cursor:config.last_cursor;
-  await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
+  if(env.GEOMACRO_P1_FANOUT_ENABLED==='1'){
+   await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
+    'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=?,'+
+    'poll_etag=?,poll_last_modified=? WHERE source_id=?')
+    .bind(cursor,iso(now),iso(now+delay),state,result.status??null,failures,
+     !result.used_fallback?result.etag??config.poll_etag:config.poll_etag,
+     !result.used_fallback?result.modified??config.poll_last_modified:config.poll_last_modified,
+     config.source_id).run();
+  }else await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
    'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=? WHERE source_id=?')
     .bind(cursor,iso(now),iso(now+delay),state,result.status??null,failures,config.source_id).run();
   return {source_id:config.source_id,state,accepted,parsed:result.records?.length??0,
@@ -335,7 +457,7 @@ export async function pollP0aSources(env,{
 }={}){
  if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
   (sourceIds!==null&&(!Array.isArray(sourceIds)||sourceIds.length<1||
-    sourceIds.length>5||sourceIds.some(x=>!SOURCE.test(x))||
+    sourceIds.length>MAX_SOURCES_PER_POLL||sourceIds.some(x=>!SOURCE.test(x))||
     new Set(sourceIds).size!==sourceIds.length)))
   return {ok:false,error:'P0A_POLL_ARGUMENT_INVALID'};
  let rows;
@@ -382,9 +504,10 @@ export async function pollP0aSources(env,{
 }
 export async function handleP0aAdmin(request,env){
  const u=new URL(request.url);
- if(u.search)return json({ok:false,error:'P0A_QUERY_NOT_ALLOWED'},400);
+ if(u.search&&!(u.pathname==='/v1/internal/p0a/source-registry'&&request.method==='GET'))
+  return json({ok:false,error:'P0A_QUERY_NOT_ALLOWED'},400);
  if(u.pathname==='/v1/internal/p0a/source-registry'){
-  if(request.method==='GET')return listP0aSourceRegistry(env);
+  if(request.method==='GET')return listP0aSourceRegistry(env,u.searchParams);
   if(request.method==='PUT'){
    try{
     const raw=await request.text();

@@ -15,7 +15,7 @@
 
 ## Private production provisioning
 
-Use a **private** R2 bucket different from `GEOMACRO_PUBLIC_NEWS_R2_BUCKET` and any publicly-served website bucket. No bucket is created or billed by this PR. Set GitHub `production` environment variable `GEOMACRO_P0B_PRIVATE_R2_BUCKET` to the exact pre-existing bucket name. After offline CI passes, merge to `main` and run the existing protected `Deploy D1 Control Plane` workflow. It checks bucket existence and binds `P0B_PRIVATE_FALLBACK_R2` (only when configured), applies migration `0117_p0b_private_r2_fallback.sql`, and preserves B2 S3 credentials. The admin-only `/v1/internal/p0b/status` reports `r2_fallback_outbox.pending_b2` separately from `live_bundle_parity`.
+Use a **private** R2 bucket different from `GEOMACRO_PUBLIC_NEWS_R2_BUCKET` and any publicly-served website bucket. No bucket is created or billed by this PR. Set GitHub `production` environment variable `GEOMACRO_P0B_PRIVATE_R2_BUCKET` to the exact pre-existing bucket name. After offline CI passes, merge to `main` and run the existing protected `Deploy D1 Control Plane` workflow. It checks bucket existence and binds `P0B_PRIVATE_FALLBACK_R2` (only when configured), applies migration `0122_p0b_private_r2_fallback.sql`, and preserves B2 S3 credentials. The admin-only `/v1/internal/p0b/status` reports `r2_fallback_outbox.pending_b2` separately from `live_bundle_parity`.
 
 ## Acceptance — not yet claimed
 

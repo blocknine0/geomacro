@@ -7,6 +7,7 @@ const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
+const NATIVE_AUTH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_REQUEST_BUDGET = 64;
 const MAX_REQUEST_BUDGET = 500;
 const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
@@ -156,7 +157,10 @@ export function createB2Client({
 
   async function authorizeNativeRead(credential) {
     const fingerprint = nativeCredentialFingerprint(credential);
-    if (nativeReadAuthCache.has(fingerprint)) return nativeReadAuthCache.get(fingerprint);
+    const now = Date.now();
+    const cached = nativeReadAuthCache.get(fingerprint);
+    if (cached && cached.expiresAt > now) return cached.promise;
+    if (cached) nativeReadAuthCache.delete(fingerprint);
 
     const promise = (async () => {
       const authHeader = Buffer.from(`${credential.accessKey}:${credential.secretKey}`, "utf8").toString("base64");
@@ -223,7 +227,10 @@ export function createB2Client({
       };
     })();
 
-    nativeReadAuthCache.set(fingerprint, promise);
+    nativeReadAuthCache.set(fingerprint, {
+      expiresAt: now + NATIVE_AUTH_CACHE_TTL_MS,
+      promise,
+    });
     try {
       return await promise;
     } catch (error) {

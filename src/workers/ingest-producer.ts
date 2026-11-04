@@ -5,11 +5,14 @@
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
 import {canonicalJson} from '../lib/canonical-json.ts';
 import {stageP0bR2Fallback} from '../storage/p0b-r2-fallback.ts';
-import type {SpoolPayload} from '../storage/b2-spool-manager.ts';
 import type {R2FallbackEnv} from '../storage/p0b-r2-fallback.ts';
+import {openP0bArchiveOutbox,p0bOutboxCommitStatement,verifyP0bOutboxCommitted}
+ from './p0b-transactional-outbox.ts';
+import type {B2SpoolEnv,SpoolPayload} from '../storage/b2-spool-manager.ts';
 export type IngestCandidate={candidateSha256:string;sourceId:string;raw:unknown};
-export type ProducerEnv=R2FallbackEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
-type ProducerOptions={manager?:Pick<B2SpoolManager,'spoolBundleAndVerify'>;now?:()=>Date};
+export type ProducerEnv=B2SpoolEnv&R2FallbackEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
+type ProducerOptions={manager?:Pick<B2SpoolManager,'spoolBundleAndVerify'>;
+ now?:()=>Date;replayLeaseId?:string};
 const SHA=/^[a-f0-9]{64}$/u,SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const LIMIT=100,MAX_BYTES=320*1024,MAX_ITEM_BYTES=256*1024;
 const encoder=new TextEncoder();
@@ -63,7 +66,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     seenSource===c.sourceId?undefined:'P0B_DUPLICATE_SHA_SOURCE_CONFLICT');continue;
   }
   seen.set(c.candidateSha256,c.sourceId);
-  if(stopCode&&!env.P0B_PRIVATE_FALLBACK_R2){status(c,'FAILED_NOT_ACKNOWLEDGED',stopCode);continue;}
+  if(stopCode){status(c,'FAILED_NOT_ACKNOWLEDGED',stopCode);continue;}
   try{
    if(await p0bSha256(canonicalJson(c.raw))!==c.candidateSha256)
     throw Error('P0B_CANDIDATE_IDENTITY_INVALID');
@@ -111,8 +114,8 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    if(proof?.verified!==true||proof.itemCount!==chunk.length)
     throw Error('P0B_R2_FALLBACK_DURABILITY_UNVERIFIED');
    r2_fallback_chunks_readback_verified++;
-   for(const p of chunk)
-    status(p.candidate,proof.pendingB2?'R2_DURABLE_PENDING_B2':'ALREADY_COMMITTED');
+   for(const p of chunk)status(p.candidate,
+    proof.pendingB2?'R2_DURABLE_PENDING_B2':'ALREADY_COMMITTED');
   }catch{
    for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',
     'P0B_R2_FALLBACK_UNAVAILABLE');
@@ -131,8 +134,15 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    continue;
   }
   try{
+   // D1-before-B2: persist the encrypted, hash-addressed candidate list
+   // BEFORE attempting the S3 PUT. A failed B2 request leaves a repairable
+   // PENDING_ARCHIVE row without advancing any source cursor.
+   const opened=await openP0bArchiveOutbox(env.DB,chunk.map(x=>x.payload),
+    now(),env.B2_SPOOL_ENCRYPTION_KEY,opts.replayLeaseId??null);
    objects_requested++;
-   const verified=await manager.spoolBundleAndVerify(chunk.map(x=>x.payload));
+   const verified=await manager.spoolBundleAndVerify(opened.payloads,{
+    keyTime:new Date(opened.first_seen_at)
+   });
    if(verified.items.length!==chunk.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
    const registeredAt=now().toISOString();
    const commands=[env.DB.prepare(
@@ -148,8 +158,11 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     ).bind(crypto.randomUUID(),item.candidateSha256,item.sourceId,
      verified.b2Uri,verified.byteSize,item.byteOffset,item.byteLength));
    }
-   // A partial D1 batch or cross-source identity conflict never counts as durable.
+   // D1 journal + B2 outbox ARCHIVED update are one atomic db.batch.
+   // A B2 PUT success alone MUST NOT become an ARCHIVED receipt.
+   commands.push(p0bOutboxCommitStatement(env.DB,opened,verified,now()));
    await env.DB.batch(commands);
+   await verifyP0bOutboxCommitted(env.DB,opened,verified);
    const registered=await env.DB.prepare(
     'SELECT bundle_sha256,item_count,state,b2_byte_size FROM ingestion_spool_bundles '+
     'WHERE b2_spool_uri=?').bind(verified.b2Uri).first();
@@ -191,8 +204,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
   x.status==='INVALID_CANDIDATE'||x.status==='HELD_FOR_REVIEW').length;
  return {schema:'geomacro.p0b.producer-microbatch.v1',
   examined:candidates.length,receipts,unaccepted,all_durable:unaccepted===0,
-  bundles_created,objects_requested,
-  r2_fallback_chunks_readback_verified,
+  bundles_created,objects_requested,r2_fallback_chunks_readback_verified,
   b2_success_not_inferred_from_r2:true,no_news_silently_dropped:true,
   paid_published:false};
 }

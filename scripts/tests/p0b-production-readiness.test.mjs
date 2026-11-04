@@ -17,7 +17,7 @@ function dbFixture(){
  db.exec(text('workers/control-plane/migrations/0114_p0_b_spool_queue.sql'));
  db.exec(text('workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'));
  db.exec(text('workers/control-plane/migrations/0116_p0b_microbatch_spool.sql'));
- db.exec(text('workers/control-plane/migrations/0117_p0b_private_r2_fallback.sql'));
+ db.exec(text('workers/control-plane/migrations/0118_p0b_archive_outbox.sql'));
  const sql=(statement,values=[])=>({
   bind(...args){return sql(statement,args)},
   async first(){return db.prepare(statement).get(...values)??null},
@@ -83,7 +83,7 @@ test('supported Wrangler queue probe and protected route are in canonical deploy
  assert.doesNotMatch(deploy,/queues list --json/u);
  assert.match(deploy,/Seed pinned private source registry with exact D1 readback/u);
  assert.match(deploy,/P0B_PRODUCTION_READINESS_UNVERIFIED/u);
- assert.match(entry,/authorized\(request, env\);[\s\S]{0,250}\/v1\/internal\/p0b\/status/u);
+ assert.match(entry,/authorized\(request, env\);[\s\S]{0,1000}\/v1\/internal\/p0b\/status/u);
  assert.match(entry,/\/v1\/internal\/p0b\/verify-latest/u);
  const monitor=text('.github/workflows/p0b-production-parity-hourly.yml');
  assert.match(monitor,/P0B_REAL_B2_D1_PARITY_VERIFIED/u);
@@ -156,4 +156,30 @@ test('Production activation requires real B2 key capability preflight and exact 
  assert.match(deployment,/P0B_VERIFIED_B2_STORAGE_SCOPE_REQUIRED/u);
  const monitor=text('.github/workflows/p0b-production-parity-hourly.yml');
  assert.match(monitor,/b2_storage_guard/u);
+});
+
+test('transactional outbox parity forbids ARCHIVED without a corresponding real committed bundle journal',async()=>{
+ const {db,DB}=dbFixture();
+ try{
+  const env={DB,GEOMACRO_P0B_ADMISSION_ACTIVE:'1',
+    B2_KEY_ID:'fake-test',B2_APPLICATION_KEY:'fake-test',
+    B2_SPOOL_ENCRYPTION_KEY:'fake-test',B2_SPOOL_BUCKET:'fake-test',
+    B2_SPOOL_PREFIX:'spool/',INGEST_QUEUE:{send:async()=>{}}};
+  const id='c'.repeat(64),sha='d'.repeat(64);
+  db.prepare("INSERT INTO p0b_archive_outbox "+
+   "(batch_id,candidate_fingerprint,item_count,state,first_seen_at,"+
+   "b2_uri,b2_object_sha256,archived_at) "+
+   "VALUES (?,?,1,'ARCHIVED',?,?,?,?)"
+  ).run(id,id,'2026-11-04T03:00:00.000Z','b2://spool/missing',sha,
+   '2026-11-04T03:00:01.000Z');
+  const response=await getP0bIngestionStatus(env);
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.equal(body.transactional_outbox_parity.archived_verified_bundles,1);
+  assert.equal(body.transactional_outbox_parity.archived_without_b2_pointer,0);
+  assert.equal(body.transactional_outbox_parity.archived_without_exact_bundle_journal,1);
+  assert.equal(body.transactional_outbox_parity.archived_item_count_mismatch,1);
+  assert.equal(body.transactional_outbox_parity.integrity_zero_mismatch,false);
+  assert.equal(body.live_bundle_parity.assertion_passed,false);
+ }finally{db.close()}
 });

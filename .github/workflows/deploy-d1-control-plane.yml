@@ -36,6 +36,9 @@ on:
       # canonical Worker; otherwise green source tests leave old code live.
       - "src/storage/b2-spool-manager.ts"
       - "tests/p0_b_admission_test.ts"
+      - "workers/control-plane/migrations/0122_p0b_private_r2_fallback.sql"
+      - "src/lib/b2-private-archive-read.server.ts"
+      - "scripts/ops/b2-s3-client.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
@@ -61,8 +64,17 @@ on:
       - "workers/control-plane/src/unified-risk-gate.mjs"
       - "workers/control-plane/src/unified-risk-private-osint-bridge.mjs"
       - "workers/control-plane/migrations/0110_unified_private_osint_evidence_index.sql"
+      - "workers/control-plane/migrations/0119_p1_source_fanout_585.sql"
+      - "workers/control-plane/src/p1-source-fanout.mjs"
+      - "scripts/tests/p1-source-fanout.test.mjs"
+      - "scripts/ops/seed-p1-1077-source-registry.mjs"
+      - "scripts/tests/p1-source-registry-seed.test.mjs"
       - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
       - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs"
+      - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
+      - "workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql"
+      - "scripts/tests/derived-risk-gate-website-raw.test.mjs"
       - "workers/control-plane/src/three-domain-structured-delivery.mjs"
       - "src/__tests__/three-domain-structured-delivery.test.ts"
       - "workers/control-plane/src/geomacro-news-severity-gri.mjs"
@@ -196,6 +208,8 @@ jobs:
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
+      - name: Verify P1 1077 source fanout and exact 585-cell D1 health offline
+        run: node --test scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs
       - name: Verify Telegram Bot webhook relay preserves secret and no-leak ACK
         run: node --test scripts/tests/telegram-flash-relay.test.mjs
 
@@ -230,11 +244,11 @@ jobs:
       WRANGLER_VERSION: "4.136.3"
       PUBLIC_NEWS_R2_BUCKET: ${{ vars.GEOMACRO_PUBLIC_NEWS_R2_BUCKET }}
       PUBLIC_NEWS_KV_NAMESPACE_ID: ${{ vars.GEOMACRO_PUBLIC_NEWS_KV_NAMESPACE_ID }}
+      P0B_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_P0B_PRIVATE_R2_BUCKET }}
       # Owner-requested permanent P0-B activation. Use already provisioned
       # production B2 credentials and canonical private archive bucket.
       P0B_ACTIVATE: "1"
       P0B_B2_BUCKET: geomacro-private-archive
-      P0B_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_P0B_PRIVATE_R2_BUCKET }}
       P0B_B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       P0B_B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
     steps:
@@ -280,17 +294,6 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-
-      - name: Verify optional private P0B R2 fallback bucket before deploy
-        if: env.P0B_PRIVATE_R2_BUCKET != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$P0B_PRIVATE_R2_BUCKET" != "${PUBLIC_NEWS_R2_BUCKET:-}" || {
-            echo "::error::P0B_FALLBACK_CANNOT_USE_PUBLIC_R2"; exit 3;
-          }
-          npx -y "wrangler@${WRANGLER_VERSION}" r2 bucket info "$P0B_PRIVATE_R2_BUCKET" >/dev/null
-          echo "PRIVATE_P0B_R2_EXISTENCE_VERIFIED"
 
       - name: Verify actual B2 key scope and derive allowed private spool prefix
         if: env.P0B_ACTIVATE == '1'
@@ -383,18 +386,27 @@ jobs:
             config.vars.B2_S3_ENDPOINT=endpoint;
             config.vars.B2_SPOOL_PREFIX=prefix;
             config.vars.B2_SPOOL_BUCKET=bucket;
-            const fallback=String(process.env.P0B_PRIVATE_R2_BUCKET||'').trim();
-            if(fallback){
-              if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(fallback)||
-                 fallback===String(process.env.PUBLIC_NEWS_R2_BUCKET||''))
-                throw Error('P0B_PRIVATE_R2_FALLBACK_BUCKET_INVALID');
+            const privateR2=String(process.env.P0B_PRIVATE_R2_BUCKET||'').trim();
+            if(privateR2){
+              if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(privateR2)||
+                 privateR2===String(process.env.PUBLIC_NEWS_R2_BUCKET||''))
+                throw Error('P0B_PRIVATE_R2_BUCKET_INVALID');
               config.r2_buckets=[...(config.r2_buckets??[]),
-                {binding:'P0B_PRIVATE_FALLBACK_R2',bucket_name:fallback}];
-              config.vars.GEOMACRO_P0B_PRIVATE_R2_FALLBACK_ACTIVE='1';
+                {binding:'P0B_PRIVATE_FALLBACK_R2',bucket_name:privateR2}];
             }
+            // Source polling is an independent queue with separate
+            // dead-letter and max 15-source consumer batches.
+            const hasPollProducer=config.queues?.producers?.some(x=>
+              x.binding==='SOURCE_POLL_QUEUE'&&x.queue==='geomacro-source-poll');
+            const hasPollConsumer=config.queues?.consumers?.some(x=>
+              x.queue==='geomacro-source-poll'&&x.max_batch_size===15);
+            if(!hasPollProducer||!hasPollConsumer)
+              throw Error('P1_SOURCE_POLL_QUEUE_CONFIG_UNVERIFIED');
+            config.vars.GEOMACRO_P1_FANOUT_ENABLED='1';
           }else{
             delete config.queues;
             config.vars.GEOMACRO_P0B_ADMISSION_ACTIVE='0';
+            config.vars.GEOMACRO_P1_FANOUT_ENABLED='0';
           }
           // Public verification material ONLY. No private signer reaches the Worker.
           const keys=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
@@ -485,7 +497,7 @@ jobs:
         run: |
           set -euo pipefail
           # Probe each queue with the supported pinned Wrangler 4 info command.
-          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter; do
+          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter geomacro-source-poll geomacro-source-poll-dlq; do
             if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
               echo "P0B_QUEUE_PRESENT:$queue"
             else
@@ -502,6 +514,39 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
 
+      - name: Generate deterministic P1 1077 source-category registry SQL
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/seed-p1-1077-source-registry.mjs
+          test -s workers/control-plane/generated/p1-1077-seed.sql
+      - name: Seed P1 actual research source/category lanes into canonical D1
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
+            --config workers/control-plane/wrangler.runtime.jsonc \
+            --file workers/control-plane/generated/p1-1077-seed.sql >/dev/null
+          echo "P1_SOURCE_CATEGORY_SEED_APPLIED=true"
+      - name: Require exact P1 source manifest remote D1 readback
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config workers/control-plane/wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS n FROM p1_source_seed_manifest;")"
+          printf '%s' "$RAW" | node -e '
+            let s="";process.stdin.on("data",d=>s+=d);
+            process.stdin.on("end",()=>{
+              const j=JSON.parse(s);
+              const data=Array.isArray(j)?j:[j];
+              const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
+              if(n!==1077)throw Error("P1_REMOTE_1077_REGISTRY_UNVERIFIED:"+n);
+              console.log("P1_REMOTE_1077_SOURCE_LANES_CONFIGURED=true");
+            });'
       - name: Seed pinned private source registry with exact D1 readback
         if: env.P0B_ACTIVATE == '1'
         working-directory: workers/control-plane

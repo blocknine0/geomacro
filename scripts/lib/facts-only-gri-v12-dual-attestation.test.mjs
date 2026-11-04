@@ -6,7 +6,8 @@ import {canonicalJson,methodologyManifest,calculateGri,GRI_METHOD_VERSION,
  from "./gri-engine-v12.js";
 import {FACTS_GRI_PROOF_SCHEMA,VERIFIED_GRI_METHODOLOGY_SHA256,
  verifyPinnedFactsOnlyGriV12Proof,scoreEventsAreFactsOnly} from "./facts-only-gri-v12-dual-attestation.mjs";
-import {resolveDerivedCommercialEligibility}
+import {resolveDerivedCommercialEligibility,advanceDerivedRiskGateReview,
+ reviewDerivedRiskGateBatch}
  from "./official-original-issuer-rights.mjs";
 const sha=x=>createHash("sha256").update(x).digest("hex");
 const fakeKeys=()=>{
@@ -120,6 +121,24 @@ test("verified independent Facts and Rights signatures bind recomputed GRI v1.2 
   assert.equal(result.status,"DERIVED_FACTS_COMMERCIAL_CANDIDATE");
   assert.equal(result.paidDeliveryAuthorized,false);
   assert.equal(result.signedGroAuthorized,false);
+  const review=advanceDerivedRiskGateReview({
+    ...source,rawArticleText:"DO_NOT_COPY_PUBLISHER_BODY",
+    publisherHeadline:"DO_NOT_COPY_PUBLISHER_HEADLINE",
+  });
+  assert.equal(review.status,"DERIVED_FACTS_READY_FOR_DELIVERY_REVIEW");
+  assert.equal(review.commercialEligible,true);
+  assert.equal(review.paidDeliveryAuthorized,false);
+  assert.equal(review.signedGroAuthorized,false);
+  assert.equal(review.candidate.country_iso3,"AUS");
+  assert.equal(review.candidate.domain,"rare_earth");
+  assert.equal(review.candidate.event_type,"MINERAL_EXPORT_RESTRICTION");
+  assert.equal(review.candidate.severity_impact,75);
+  assert.equal(review.candidate.recorded_fact,"MINERAL_EXPORT_RESTRICTION");
+  assert.equal(review.candidate.risk_score_0_100,calc.displayScore);
+  assert.equal(JSON.stringify(review).includes("DO_NOT_COPY"),false);
+  const batch=reviewDerivedRiskGateBatch([source,source]);
+  assert.equal(batch.deduplicated,1);
+  assert.equal(batch.candidates.length,1);
  }finally{
   for(const [k,v] of Object.entries(old)){
    if(v===undefined)delete process.env[k];else process.env[k]=v;

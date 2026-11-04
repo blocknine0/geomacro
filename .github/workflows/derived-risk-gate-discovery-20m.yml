@@ -1,0 +1,49 @@
+name: Derived Risk Gate Discovery 20m
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-derived-risk-gate-discovery-single-consumer
+  cancel-in-progress: false
+
+jobs:
+  protected-five-lane-intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    environment: production
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22"
+      - name: Test rights and ingestion bridge before processing
+        run: |
+          node --test scripts/lib/derived-risk-gate-review-loop.test.mjs \
+            scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs \
+            scripts/tests/derived-risk-gate-discovery-bridge.test.mjs \
+            scripts/tests/derived-risk-gate-website-raw.test.mjs
+      - name: Read existing D1 lanes, hold noncommercial signals, readback-ack
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_DERIVED_DISCOVERY_SUMMARY_PATH: artifacts/derived-risk-gate-discovery/latest.json
+        run: node scripts/ops/ingest-derived-risk-gate-discovery.mjs
+      - name: Upload aggregate metadata receipt only
+        if: success()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: derived-risk-gate-discovery-counts
+          path: artifacts/derived-risk-gate-discovery/latest.json
+          if-no-files-found: error
+          retention-days: 7

@@ -25,7 +25,12 @@ type NativeAuthorization = {
   namePrefix: string;
 };
 
-const nativeAuthorizationCache = new Map<string, Promise<NativeAuthorization>>();
+const NATIVE_AUTH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+type CachedNativeAuthorization = {
+  expiresAt: number;
+  promise: Promise<NativeAuthorization>;
+};
+const nativeAuthorizationCache = new Map<string, CachedNativeAuthorization>();
 
 function readCredentials(): ReadCredential[] {
   const dedicatedAccess = String(process.env.B2_ARCHIVE_READ_KEY_ID ?? "").trim();
@@ -104,8 +109,10 @@ async function authorizeNativeRead(
   timeoutMs: number,
 ): Promise<NativeAuthorization> {
   const fingerprint = `${credential.accessKey}\u0000${credential.secretKey}`;
+  const now = Date.now();
   const cached = nativeAuthorizationCache.get(fingerprint);
-  if (cached) return cached;
+  if (cached && cached.expiresAt > now) return cached.promise;
+  if (cached) nativeAuthorizationCache.delete(fingerprint);
 
   const promise = (async () => {
     const basic = Buffer.from(
@@ -160,7 +167,10 @@ async function authorizeNativeRead(
     return { token, downloadUrl: parsed.origin, namePrefix };
   })();
 
-  nativeAuthorizationCache.set(fingerprint, promise);
+  nativeAuthorizationCache.set(fingerprint, {
+    expiresAt: now + NATIVE_AUTH_CACHE_TTL_MS,
+    promise,
+  });
   try {
     return await promise;
   } catch (error) {

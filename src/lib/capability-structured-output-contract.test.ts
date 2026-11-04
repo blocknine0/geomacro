@@ -24,9 +24,9 @@ const LOCKED=[
   ["intelligence_query","complex_multi_source","0.05"],
   ["signed_risk_object","existing_valid_signed","0.03"],
   ["signed_risk_object","newly_qualified_signed","0.05"],
-  ["risk_gate_bundle","existing_proof_preflight","0.03"],
-  ["risk_gate_bundle","standard","0.05"],
-  ["risk_gate_bundle","complex_multi_source","0.05"],
+  ["risk_gate_bundle","existing_proof_preflight","0.10"],
+  ["risk_gate_bundle","standard","0.15"],
+  ["risk_gate_bundle","complex_multi_source","0.25"],
 ] as const;
 
 describe("founder-locked USD prices: precise output fields per product",()=>{
@@ -84,18 +84,25 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
     expect(geomacroPricedStructuredOutput("structural_corridor_profile","standard").subject_scope)
       .toBe("directional_corridor");
   });
-  it("includes GRO exactly once inside every risk-gate bundle",()=>{
-    for(const variant of ["existing_proof_preflight","standard","complex_multi_source"]){
-      const result=geomacroPricedStructuredOutput("risk_gate_bundle",variant);
+  it("enforces three distinct risk-gate paid data tiers",()=>{
+    const basic=geomacroPricedStructuredOutput("risk_gate_bundle","existing_proof_preflight");
+    const standard=geomacroPricedStructuredOutput("risk_gate_bundle","standard");
+    const complex=geomacroPricedStructuredOutput("risk_gate_bundle","complex_multi_source");
+    expect(basic.customer_receives).toContain("risk_gate[*].tiered_product.indicative_risk_score_0_100");
+    expect(basic.customer_receives).toContain("risk_gate[*].tiered_product.signal_alerts");
+    expect(basic.customer_receives).not.toContain("signed_risk_objects[*].object.integrity");
+    expect(standard.customer_receives).toContain("risk_gate[*].tiered_product.corroborated_risk_score_0_100");
+    expect(standard.customer_receives).toContain("risk_gate[*].tiered_product.category_fact_sheets");
+    expect(standard.customer_receives).toContain("risk_gate[*].tiered_product.source_references");
+    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.gro_signature.signature");
+    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.seven_day_corridor_friction_history");
+    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.b2_archive.b2_archive_link");
+    for(const result of [basic,standard,complex]){
       expect(result.included_signed_gro_fee).toBe("INCLUDED_NO_DOUBLE_CHARGE");
-      expect(result.customer_receives).toContain("risk_gate[*].result");
-      expect(result.customer_receives).toContain("signed_risk_objects[*].object.integrity");
       expect(result.execution_authorized).toBe(false);
     }
     const signed=geomacroPricedStructuredOutput("signed_risk_object","existing_valid_signed");
-    expect(signed.customer_receives).toContain("signed_risk_objects[*].object.risk_object_id");
     expect(signed.customer_receives).toContain("signed_risk_objects[*].object.integrity");
-    expect(signed.customer_receives).toContain("signed_risk_objects[*].object.expires_at");
   });
   it("discovery offers one exact structured output contract per USDC variant across 3 chains",()=>{
     const pricing=publicGeomacroPaidPricingManifest();
