@@ -185,7 +185,7 @@ async function commitPage(env,body,now){
   return response({ok:false,error:"DISCOVERY_D1_WRITE_OR_READBACK_UNAVAILABLE"},503);
  }
 }
-async function pendingQueue(env,query){
+async function pendingQueue(env,query,now){
  const offsetRaw=query.get("offset")??"0";
  const offset=Number(offsetRaw);
  if([...query.keys()].some(k=>!["view","offset"].includes(k))||
@@ -199,7 +199,7 @@ async function pendingQueue(env,query){
    "FROM derived_risk_gate_discovery_signals "+
    "WHERE first_seen_at>=? ORDER BY first_seen_at DESC,signal_id DESC "+
    "LIMIT 101 OFFSET ?"
-  ).bind(dateIso(Date.now()-72*3600000),offset).all();
+  ).bind(dateIso(now-72*3600000),offset).all();
   if(!Array.isArray(data?.results))throw Error("DISCOVERY_QUEUE_BAD_READ");
   return response({ok:true,schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA,
    scope:"PROTECTED_UNVERIFIED_DISCOVERY_ONLY",
@@ -230,7 +230,7 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
   return response({ok:false,error:"DISCOVERY_D1_UNAVAILABLE"},503);
  const url=new URL(request.url);
  if(request.method==="GET"&&url.searchParams.get("view")==="pending")
-  return pendingQueue(env,url.searchParams);
+  return pendingQueue(env,url.searchParams,now);
  if(request.method==="GET"){
   if(url.searchParams.size!==1||
      url.searchParams.getAll("lane").length!==1||
