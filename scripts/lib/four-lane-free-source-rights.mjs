@@ -29,7 +29,8 @@ export function fourLaneOpenSourceRightsInventory(){
     data.allow_paid_data_sources!==false||
     data.rights_review_does_not_verify_actual_fetch!==true||
     data.event_coverage_not_certified!==true||
-    data.existing_scheduled_collectors_unchanged!==true)
+    data.existing_15m_and_corridor_cron_schedules_unchanged!==true||
+    data.hot50_20m_cron_expanded_to_global_three_domain_direct_feeds!==true)
    throw Error("FOUR_LANE_SOURCE_RIGHTS_POLICY_INVALID");
  const ids=new Set(),laneCounts=Object.fromEntries(LANES.map(x=>[x,0]));
  const statuses=Object.fromEntries([...STATES].map(x=>[x,0]));
