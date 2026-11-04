@@ -1,0 +1,194 @@
+{
+  "schema": "geomacro.hot50.retired-direct-feed-backups.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "as_of": "2026-11-04",
+  "activation_policy": "REGISTER_AS_DIRECT_SOURCE_WITH_REAL_RUNTIME_HEALTH_PROBE",
+  "event_verification_inferred": false,
+  "commercial_rights_inferred": false,
+  "sources": [
+    {
+      "retired_source_id": "private_repo8_us_bea_release",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://apps.bea.gov/rss/rss.xml",
+      "type": "rss",
+      "description": "BEA first-party official developer RSS",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_repo8_us_bls_release",
+      "publisher_country_iso3": "USA",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://www.bls.gov/feed/empsit.rss",
+      "type": "rss",
+      "description": "BLS official Employment Situation RSS",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_ind_tax_press",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://www.thehindu.com/business/Economy/feeder/default.rss",
+      "type": "rss",
+      "description": "The Hindu Economy RSS; tax/fiscal topic discovery, not tax authority",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_mesh_indian_express",
+      "publisher_country_iso3": "IND",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+      "type": "rss",
+      "description": "Existing independent national editorial RSS, private factual discovery only",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_railjournal_trade",
+      "publisher_country_iso3": "GBR",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://www.gov.uk/government/organisations/department-for-transport.atom",
+      "type": "atom",
+      "description": "Existing GOV.UK Department for Transport official Atom",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_kr_msit_press",
+      "publisher_country_iso3": "KOR",
+      "categories": [
+        "rare_earth"
+      ],
+      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=65",
+      "type": "rss",
+      "description": "MSIT official R&D and science policy RSS; same publisher host",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_repo8_can_boc_release",
+      "publisher_country_iso3": "CAN",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://www.bankofcanada.ca/content_type/press/feed/",
+      "type": "rss",
+      "description": "Bank of Canada official aggregate press RSS",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_au_industry_news",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "url": "https://www.miningmonthly.com/feed/rss",
+      "type": "rss",
+      "description": "Australia Mining Monthly RSS, Australia mining sector alternative",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_priority_aus_ga_news",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "url": "https://stockhead.com.au/resources/feed/",
+      "type": "rss",
+      "description": "Stockhead Australia resources-mining editorial feed candidate, not Geoscience Australia",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_australian_mining",
+      "publisher_country_iso3": "AUS",
+      "categories": [
+        "rare_earth"
+      ],
+      "url": "https://stockhead.com.au/feed/",
+      "type": "rss",
+      "description": "Stockhead broader latest Australian business/mining editorial feed candidate; ABC feed reportedly stopped updating",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_rotterdam_port_news",
+      "publisher_country_iso3": "NLD",
+      "categories": [
+        "macro"
+      ],
+      "url": "https://www.offshore-energy.biz/feed/",
+      "type": "rss",
+      "description": "Existing Netherlands maritime/energy editorial source; not the port authority",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_ukr_presidential_official_original",
+      "publisher_country_iso3": "UKR",
+      "categories": [
+        "geopolitics"
+      ],
+      "url": "https://www.pravda.com.ua/eng/rss/view_news/",
+      "type": "rss",
+      "description": "Ukrayinska Pravda English live news RSS; editorial alternative, not presidency",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_za_engineering_mining",
+      "publisher_country_iso3": "ZAF",
+      "categories": [
+        "rare_earth"
+      ],
+      "url": "https://africanminingmarket.com/feed/",
+      "type": "rss",
+      "description": "African Mining Market RSS, mining-sector South Africa candidate; not original publisher equivalent",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "retired_source_id": "private_expansion_ph_pna_news",
+      "publisher_country_iso3": "PHL",
+      "categories": [
+        "geopolitics"
+      ],
+      "url": "https://www.philstar.com/rss/nation",
+      "type": "rss",
+      "description": "Philstar Philippines nation/politics RSS; editorial alternative, not PNA",
+      "transport_verified_at_registration": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
