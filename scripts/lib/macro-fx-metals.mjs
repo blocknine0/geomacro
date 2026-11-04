@@ -38,8 +38,8 @@ export const MACRO_NEWS_SOURCES=Object.freeze([
  s('rbi_press','https://www.rbi.org.in/pressreleases_rss.xml','www.rbi.org.in',/^\/Scripts\/BS_PressReleaseDisplay\.aspx$/iu,{credit:'Reserve Bank of India',rbi:true}),
  s('wgc_research','https://www.gold.org/goldhub/gold-focus','www.gold.org',/^\/goldhub\/(?:gold-focus\/20\d{2}\/\d{2}\/[a-z0-9-]+|research\/[a-z0-9/-]+)$/u,{media:'html',credit:'World Gold Council',periodic:true}),
  s('lbma_news','https://www.lbma.org.uk/articles','www.lbma.org.uk',/^\/articles\/[a-z0-9-]+$/u,{media:'html',credit:'LBMA',periodic:true}),
- s('cftc_news','https://www.cftc.gov/PressRoom/PressReleases/rss.xml','www.cftc.gov',/^\/PressRoom\/PressReleases\/[0-9-]+$/u,{credit:'Commodity Futures Trading Commission',periodic:true}),
- s('cme_news','https://investor.cmegroup.com/rss/news-releases.xml','investor.cmegroup.com',/^\/news-releases\/news-release-details\/[a-z0-9-]+$/u,{credit:'CME Group',periodic:true}),
+ s('cftc_news','https://www.cftc.gov/PressRoom/PressReleases','www.cftc.gov',/^\/PressRoom\/PressReleases\/[0-9-]+$/u,{media:'html',credit:'Commodity Futures Trading Commission',periodic:true}),
+ s('cme_news','https://www.cmegroup.com/media-room/press-releases.html','www.cmegroup.com',/^\/media-room\/press-releases\/20\d{2}\/\d{1,2}\/\d{1,2}\/[a-z0-9_-]+\.html$/u,{media:'html',credit:'CME Group',periodic:true}),
  s('silver_institute','https://silverinstitute.org/feed/','silverinstitute.org',/^\/[a-z0-9]+(?:-[a-z0-9]+){2,}\/$/u,{credit:'The Silver Institute',periodic:true}),
 ]);
 // Five-minute primary pool shares Fed/ECB reads with the existing collector.
@@ -98,13 +98,14 @@ export function measuredPriceReaction(eventAt,before,after){
  if(!Number.isFinite(event)||!Number.isFinite(a)||!Number.isFinite(b)||before.instrument!==after.instrument||before.quote_kind!==after.quote_kind||before.currency!==after.currency||before.unit!==after.unit||a>event||b<event||b<=a||event-a>PRICE_MAX_AGE_MS||b-event>PRICE_MAX_AGE_MS||!Number.isFinite(before.value)||before.value<=0||!Number.isFinite(after.value)||after.value<=0)return null;
  return {instrument:after.instrument,before_at:before.observed_at,after_at:after.observed_at,change_pct:(after.value/before.value-1)*100,caused_by_event_verified:false};
 }
-export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/xml,text/xml,application/rss+xml',etag=null}={}){
+export async function boundedMacroGet(url,{fetchImpl=fetch,accept='application/xml,text/xml,application/rss+xml',etag=null,maxBytes=384*1024}={}){
+ if(!Number.isSafeInteger(maxBytes)||maxBytes<1024||maxBytes>1024*1024)throw Error('MACRO_FETCH_LIMIT_INVALID');
  const headers={Accept:accept};if(etag)headers['If-None-Match']=etag;
  const res=await fetchImpl(url,{redirect:'error',headers,signal:AbortSignal.timeout(8000)});
  if(res.redirected)throw Error('REDIRECT');
  if(res.status===304)return {notModified:true,etag,text:null};
  if(!res.ok){try{await res.body?.cancel()}catch{}throw Error(res.status===429?'RATE_LIMITED':res.status===403?'ACCESS_DENIED':'HTTP_'+res.status);}
- const limit=384*1024;if(Number(res.headers.get('content-length')??0)>limit)throw Error('OVERSIZE');
+ const limit=maxBytes;if(Number(res.headers.get('content-length')??0)>limit)throw Error('OVERSIZE');
  const reader=res.body?.getReader();if(!reader)throw Error('BODY_MISSING');
  let size=0;const parts=[];
  try{for(;;){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>limit)throw Error('OVERSIZE');parts.push(r.value);}}finally{try{await reader.cancel()}catch{}reader.releaseLock();}

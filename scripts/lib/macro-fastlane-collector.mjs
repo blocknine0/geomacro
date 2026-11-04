@@ -8,14 +8,16 @@ const tag=(s,name)=>new RegExp('<(?:atom:)?'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\
 const relevant=t=>macroPreciousTopic(t)||GLOBAL_MACRO_TOPIC_PATTERN.test(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
 export function parseMacroFeed(xml,spec,now){
  if(typeof xml!=='string'||xml.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(xml))throw Error('FEED_SHAPE_INVALID');
- if(spec.media==='atom'?!/<(?:atom:)?feed(?:\s|>)/i.test(xml):!/<rss(?:\s|>)/i.test(xml))throw Error('FEED_SHAPE_INVALID');
- const pattern=spec.media==='atom'?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
+ const isAtom=/<(?:atom:)?feed(?:\s|>)/i.test(xml);
+ const isRss=/<rss(?:\s|>)/i.test(xml);
+ if(!isAtom&&!isRss)throw Error('FEED_SHAPE_INVALID');
+ const pattern=isAtom?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
  const rows=[],seen=new Set();
  for(const [,item]of [...xml.matchAll(pattern)].slice(0,75)){
   const title=clean(tag(item,'title'));if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)))continue;
-  const rawLink=spec.media==='atom'?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
+  const rawLink=isAtom?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
   const articleUrl=pinnedMacroArticle(rawLink,spec);if(!articleUrl||seen.has(articleUrl))continue;
-  const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,spec.media==='atom'?'published':'pubDate'));
+  const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,isAtom?'published':'pubDate'));
   const at=/(?:Z|[+-]\d\d:?\d\d|GMT|UTC)$/i.test(clock)?Date.parse(clock):NaN;
   if(!Number.isFinite(at)||at>now||now-at>72*3600000)continue;
   seen.add(articleUrl);rows.push({title,description:clean(tag(item,spec.media==='atom'?'summary':'description')).slice(0,1000),articleUrl,publishedAt:new Date(at).toISOString(),sourceId:spec.id,category:'macro',credit:spec.credit});
@@ -23,11 +25,13 @@ export function parseMacroFeed(xml,spec,now){
  return rows;
 }
 export function macroIndexLeads(html,spec){
- if(typeof html!=='string'||html.length>384*1024||/<!ENTITY/i.test(html))return [];
+ if(typeof html!=='string'||html.length>1024*1024||/<!DOCTYPE|<!ENTITY/i.test(html))return [];
  const leads=[],seen=new Set();
  for(const [,link,title]of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)){
   const articleUrl=pinnedMacroArticle(link,spec),name=clean(title);
-  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)))continue;
+  const issuerTopic=spec.id==='cftc_news'&&/\b(?:CFTC|commodity|futures|swaps?|traders?|derivatives?|market|clearing|FX|forex|positioning)\b/i.test(name)||
+   spec.id==='cme_news'&&/\b(?:CME|futures|rates?|clearing|FX|forex|metals?|derivatives?|treasur(?:y|ies))\b/i.test(name);
+  if(!articleUrl||seen.has(articleUrl)||name.length<12||name.length>300||!(spec.official_communication===true||relevant(name)||issuerTopic))continue;
   seen.add(articleUrl);leads.push({articleUrl,title:name});if(leads.length===2)break;
  }
  return leads;
@@ -44,16 +48,18 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
   // windows can retry denied transport once per five minutes, never each second.
   if(old?.retry_after>now){checks.push({id:spec.id,state:'COOLDOWN',candidates:0});return;}
   try{
-   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag});
+   const data=await get(spec.url,{accept:spec.media==='html'?'text/html':'application/atom+xml,application/rss+xml,application/xml,text/xml',etag:old?.etag,maxBytes:spec.media==='html'?1024*1024:384*1024});
    if(data.notModified){checks.push({id:spec.id,state:'NOT_MODIFIED',candidates:0});return;}
    let rows=[];
    if(spec.media==='html'){
     for(const lead of macroIndexLeads(data.text,spec)){
      try{
-      const page=await get(lead.articleUrl,{accept:'text/html'});
-      const h1=clean(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.text)?.[1]);
-      const date=verifiedPublisherPageDate(page.text,new Date(now),null,{maxAgeMs:72*3600000});
-      if(date&&h1===lead.title)rows.push({...lead,publishedAt:date,sourceId:spec.id,category:'macro',credit:spec.credit});
+      const page=await get(lead.articleUrl,{accept:'text/html',maxBytes:1024*1024});
+      const headings=[...page.text.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].slice(0,4).map(m=>clean(m[1]));
+      // Original issuer pages sometimes precede the headline with a release-number H1.
+      // The date verifier requires publisher metadata, never a collection-time fallback.
+      const date=verifiedPublisherPageDate(page.text.slice(0,384*1024),new Date(now),null,{maxAgeMs:72*3600000});
+      if(date&&headings.includes(lead.title))rows.push({...lead,publishedAt:date,sourceId:spec.id,category:'macro',credit:spec.credit});
      }catch{/* a failed original never becomes a verified article */}
     }
    }else rows=parseMacroFeed(data.text,spec,now);
