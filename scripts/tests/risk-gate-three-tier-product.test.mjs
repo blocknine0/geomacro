@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {DatabaseSync} from "node:sqlite";
 import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS,RISK_GATE_PRODUCT_SCHEMA}
  from "../../workers/control-plane/src/risk-gate-three-tier-product.mjs";
 const NOW=Date.parse("2026-11-04T18:00:00.000Z");
@@ -150,4 +151,32 @@ test("Invalid product tier and invalid subject fail, no pricing downgrade",()=>{
  assert.throws(()=>composeRiskGateThreeTierResponse({
   tier:"basic_focused",snapshot:{...snapshot,target_type:"BOTH"},now:NOW,
  }),/RISK_GATE_THREE_TIER_INPUT_INVALID/);
+});
+
+test("Complex corridor archive proof migration upgrades existing D1 hot rows without minting readback",()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync("workers/control-plane/migrations/0020_predge_risk_gate_d1.sql","utf8"));
+ const payload="f".repeat(64);
+ db.prepare("INSERT INTO corridor_gro_verified_hot "+
+  "(corridor_id,object_id,schema_version,generated_at,expires_at,"+
+  "signing_key_id,payload_hash,record_sha256,archive_write_acknowledged,"+
+  "object_json,verified_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
+ .run("hormuz","gro-test","gro-1.1","2026-11-04T17:00:00Z",
+  "2026-11-04T19:00:00Z","k",payload,payload,1,"{}",
+  "2026-11-04T17:01:00Z","2026-11-04T17:01:00Z");
+ db.exec(readFileSync(
+  "workers/control-plane/migrations/0121_risk_gate_corridor_archive_readback.sql","utf8"));
+ assert.deepEqual(db.prepare("SELECT archive_key,archive_sha256,archive_readback_verified "+
+  "FROM corridor_gro_verified_hot").get(),{
+  archive_key:null,archive_sha256:null,archive_readback_verified:0});
+ assert.throws(()=>db.prepare(
+  "UPDATE corridor_gro_verified_hot SET archive_readback_verified=1 "+
+  "WHERE corridor_id='hormuz'").run(),/CORRIDOR_GRO_B2_READBACK_EXACT_PROOF_REQUIRED/);
+ const key="geomacro-evidence/v1/live/country-gro/hot-bundles/HOR/"+payload+".json.gz";
+ db.prepare("UPDATE corridor_gro_verified_hot SET "+
+  "archive_key=?,archive_sha256=?,archive_readback_verified=1 "+
+  "WHERE corridor_id='hormuz'").run(key,payload);
+ assert.equal(db.prepare("SELECT archive_readback_verified AS v "+
+  "FROM corridor_gro_verified_hot").get().v,1);
+ db.close();
 });
