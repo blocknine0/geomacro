@@ -74,7 +74,7 @@ export function hot50RetiredBackupSources(){
    publisher_country_iso3:row.publisher_country_iso3,
    category_count:row.categories.length,
    native_time_verified_at_registration:false,
-   same_publisher_as_retired:false,
+   publisher_equivalence_unverified:true,
    current_http_success_unverified:true,
   }));
  }
