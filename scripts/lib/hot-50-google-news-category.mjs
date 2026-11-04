@@ -47,8 +47,9 @@ export function hot50GoogleCategorySource(country,category,legacyAllDomainTerms=
  * Discovery routing is deterministic across delivered UTC 15m slots:
  * >=25 GETs/slot: all 150 Hot-50 × domain and 145 remaining country-wide
  * probes fit into 12 nominal slots, precisely within 180 minutes.
- * <25 GETs/slot: retain legacy all-195 country fairness on each sweep,
- * rotating Hot-50 domain-focused variants over 3 sweeps.
+ * <25 GETs/slot: preserve the legacy combined three-domain query per
+ * country on each sweep rather than starving two categories. The three
+ * separate category-focused variants remain catalogued but are deferred.
  * The network/scheduler may be delayed or an actual feed may be unavailable.
  */
 export function hot50CountryCategoryDiscoveryUnits(now,countries,perTick){
@@ -72,12 +73,8 @@ export function hot50CountryCategoryDiscoveryUnits(now,countries,perTick){
  }
  const full=[...hot,...other];
  const cycle=Math.ceil(full.length/perTick);
- const sweep=Math.floor(slot/cycle);
  const selected=full.slice((slot%cycle)*perTick,(slot%cycle+1)*perTick);
- return Object.freeze(selected.map((country,index)=>({
-  country,category:HOT50_COUNTRY_SET.has(country.iso3)?
-   DOMAINS[(sweep+hot.findIndex(x=>x.iso3===country.iso3))%DOMAINS.length]:null,
- })));
+ return Object.freeze(selected.map(country=>({country,category:null})));
 }
 export function hot50GoogleSourceCadence(perTick){
  if(!Number.isSafeInteger(perTick)||perTick<0||perTick>49)
@@ -88,8 +85,13 @@ export function hot50GoogleSourceCadence(perTick){
   existing_fetch_ceiling_unchanged:true,
   target_minutes:180,
   index_slots_per_tick:perTick,
-  complete_hot50_3domain_cycle_minutes:perTick===0?null:
-   perTick>=25?Math.ceil(295/perTick)*15:Math.ceil(195/perTick)*45,
+  complete_hot50_3domain_cycle_minutes:perTick>=25?
+   Math.ceil(295/perTick)*15:null,
+  combined_hot50_country_cycle_minutes:perTick===0?null:
+   Math.ceil(50/perTick)*15,
+  legacy_combined_all_country_cycle_minutes:perTick===0?null:
+   Math.ceil(195/perTick)*15,
+  combined_three_domain_query_fallback_active:perTick>0&&perTick<25,
   under_3h_nominal:perTick>=25,
   runtime_guaranteed:false,
   source_native_event_verified:false,
