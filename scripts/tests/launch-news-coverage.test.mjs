@@ -8,7 +8,7 @@ import {LAUNCH_NEWS_FAMILY_CATEGORIES,launchNewsCoveragePolicy} from '../../src/
 import {PRIVATE_OSINT_TOPICS,privateOsintGlobalSources} from '../lib/private-osint-global-sources.mjs';
 import {COUNTRIES_195} from '../../src/lib/canonical-country-registry-195.ts';
 import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,COUNTRY_MINERAL_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
-import {LAUNCH_PRIORITY_WATCHES} from '../lib/launch-priority-watch-sources.mjs';
+import {LAUNCH_PRIORITY_WATCHES,CATEGORY1_GOOGLE_GEOPOLITICS_QUERY} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
 
@@ -43,6 +43,12 @@ test('global watches replace three existing slots and retain 195-country/512 end
  assert.ok(result.length<=512);
  const watch=result.filter(s=>s.launch_watch);
  assert.equal(watch.length,3);
+ const geo=watch.find(s=>s.launch_watch==='wars_security');
+ assert.ok(geo,'Category 1 must share the existing global wars/security feed slot');
+ const geoQuery=new URL(geo.url).searchParams.get('q');
+ assert.ok(geoQuery.includes(CATEGORY1_GOOGLE_GEOPOLITICS_QUERY));
+ assert.ok(geoQuery.includes('war OR ceasefire'), 'existing global conflict discovery must remain');
+ assert.ok(geoQuery.endsWith('when:1d'));
  assert.deepEqual(new Set(watch.map(s=>s.id)),new Set(LAUNCH_PRIORITY_WATCHES.map(s=>s.id)));
  assert.deepEqual(result.slice(0,3).map(s=>s.id),watch.map(s=>s.id));
  for(const s of watch){
