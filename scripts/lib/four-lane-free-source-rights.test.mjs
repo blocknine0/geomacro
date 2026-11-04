@@ -36,8 +36,12 @@ test("no account-free or provider-restricted API is enabled without actual eligi
  assert.equal(get("aishub_ais").ingestion_state,"HOLD_PROVIDER_ELIGIBILITY");
  assert.equal(get("eia_energy_api").ingestion_state,"CREDENTIAL_GATED");
  assert.equal(get("bls_official_indicators").ingestion_state,"CREDENTIAL_GATED");
- assert.ok(x.providers.filter(s=>s.ingestion_state!=="EXISTING_COLLECTOR")
+ assert.ok(x.providers.filter(s=>["CREDENTIAL_GATED","CATALOGUED_NOT_POLLING",
+  "HOLD_NOT_FREE","HOLD_PROVIDER_ELIGIBILITY"].includes(s.ingestion_state))
    .every(s=>s.source_only_factual_metadata_allowed===false));
+ assert.equal(x.ingestion_states.EXISTING_PRIVATE_FEED_COLLECTOR,5);
+ assert.equal(x.ingestion_states.EXISTING_READ_ONLY_OBSERVER,10);
+ assert.equal(x.ingestion_states.EXISTING_STRUCTURAL_REFERENCE_ADAPTER,4);
  assert.equal(x.paid_apis_activated,0);
 });
 test("existing 20-minute production original collector retains source-only writer, free governor and 72h AEAD backlog",()=>{
