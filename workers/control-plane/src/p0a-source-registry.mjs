@@ -223,10 +223,67 @@ export async function fetchP0aSource(config,{fetchImpl=fetch,now=Date.now()}={})
    used_fallback:true};
  return {...primary,used_fallback:false};
 }
+
+/** Single-domain failure isolation, backed by private D1 across invocations. */
+async function p1DomainAdmit(env,hostname,now){
+ if(env.GEOMACRO_P1_FANOUT_ENABLED!=='1')return {admitted:true};
+ const r=await env.DB.prepare(
+  "SELECT next_allowed_at,consecutive_failures FROM p1_source_domain_backoff "+
+  "WHERE hostname=?").bind(hostname).first();
+ return {admitted:!r||r.next_allowed_at<=iso(now),until:r?.next_allowed_at??null,
+  failures:r?.consecutive_failures??0};
+}
+async function p1DomainRecord(env,hostname,state,now,delay){
+ if(env.GEOMACRO_P1_FANOUT_ENABLED!=='1')return;
+ if(['OBSERVED','EMPTY','UNCHANGED'].includes(state))return;
+ if(!['UNAVAILABLE','DENIED','RATE_LIMITED','MALFORMED'].includes(state))return;
+ const row=await env.DB.prepare(
+  "SELECT consecutive_failures FROM p1_source_domain_backoff "+
+  "WHERE hostname=?").bind(hostname).first();
+ const failures=Math.min(100,(row?.consecutive_failures??0)+1);
+ const duration=state==='DENIED'?3600000:
+  state==='RATE_LIMITED'?Math.max(300000,delay??300000):
+  [300000,900000,3600000][Math.min(2,failures-1)];
+ const until=iso(now+duration);
+ await env.DB.prepare(
+  "INSERT INTO p1_source_domain_backoff"+
+  "(hostname,consecutive_failures,next_allowed_at,last_failure_state,updated_at) "+
+  "VALUES (?,?,?,?,?) ON CONFLICT(hostname) DO UPDATE SET "+
+  "consecutive_failures=excluded.consecutive_failures,"+
+  "next_allowed_at=CASE WHEN p1_source_domain_backoff.next_allowed_at>"+
+  "excluded.next_allowed_at THEN p1_source_domain_backoff.next_allowed_at "+
+  "ELSE excluded.next_allowed_at END,"+
+  "last_failure_state=excluded.last_failure_state,updated_at=excluded.updated_at"
+ ).bind(hostname,failures,until,state,iso(now)).run();
+}
+/** Fingerprint title+canonical URL, not mutable feed GUID or fetch clock. */
+export function p1SourceContentFingerprintFields(row){
+ const title=typeof row?.title==='string'?row.title.trim().toLowerCase().replace(/\s+/gu,' '):"";
+ let url="";
+ try{
+  const u=new URL(row?.original_url??"");
+  u.hash="";
+  for(const k of [...u.searchParams.keys()])
+   if(/^utm_/iu.test(k)||["fbclid","gclid","mc_cid","mc_eid"].includes(k.toLowerCase()))
+    u.searchParams.delete(k);
+  url=u.href;
+ }catch{}
+ return title&&url?title+"\n"+url:null;
+}
+
 async function pollOne(env,row,{fetchImpl,now}){
  const config={...fromRow(row),poll_etag:row.poll_etag??null,
   poll_last_modified:row.poll_last_modified??null};
  const lockedUntil=iso(now+120000);
+ const hostname=new URL(config.canonical_endpoint).hostname.toLowerCase();
+ // A domain under exponential backoff does not consume an HTTP request or
+ // masquerade as a successful attempted poll in one-hour coverage.
+ const gate=await p1DomainAdmit(env,hostname,now);
+ if(!gate.admitted){
+  await env.DB.prepare("UPDATE source_registry SET next_poll_at=? WHERE source_id=? "+
+   "AND next_poll_at<=?").bind(gate.until,config.source_id,iso(now)).run();
+  return {source_id:config.source_id,state:"DOMAIN_BACKOFF",accepted:0};
+ }
  const lock=await env.DB.prepare(
   'UPDATE source_registry SET next_poll_at=? WHERE source_id=? AND next_poll_at=? AND enabled=1'
  ).bind(lockedUntil,row.source_id,row.next_poll_at).run();
@@ -235,6 +292,8 @@ async function pollOne(env,row,{fetchImpl,now}){
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
  catch{result={state:'UNAVAILABLE',status:null,records:[],used_fallback:false}}
  let state=result.state,accepted=0,p0b_failure_codes={};
+ try{await p1DomainRecord(env,hostname,state,now,result.delay)}
+ catch{/* domain journal unavailable must not fabricate a good source result */}
  // Defer P0-B admission until ALL fetched sources from this poll window are
  // combined. Do not commit source cursor before the shared B2 bundle is durable.
  if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
@@ -288,10 +347,24 @@ async function pollOne(env,row,{fetchImpl,now}){
    const staged=candidates.slice(0,MAX_NEW_ITEMS_PER_SOURCE),statements=[];
    const timestamp=iso(now),hashes=[];
    for(const item of staged){
-    const identity=await sha([config.source_id,item.source_record_id??item.original_url??item.title??'',
-     item.native_published_at??''].join('\n'));
+    const content=p1SourceContentFingerprintFields(item);
+    const fingerprint=content?await sha(content):null;
+    const identity=await sha([config.source_id,
+      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\n'));
     hashes.push(identity);
-    statements.push(env.DB.prepare(
+    if(env.GEOMACRO_P1_FANOUT_ENABLED==='1')
+     statements.push(env.DB.prepare(
+      'INSERT INTO p0a_normalized_source_items '+
+      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
+      'source_record_id,native_published_at,first_seen_at,last_seen_at,'+
+      'observed_at,clock_provenance,content_sha256) '+
+      'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET '+
+      'last_seen_at=excluded.last_seen_at'
+     ).bind(identity,config.source_id,config.intended_category,config.country_iso3,
+      config.rights_tier,item.title,item.original_url,item.source_record_id,
+      item.native_published_at,timestamp,timestamp,item.observed_at??timestamp,
+      item.clock_provenance??'INGESTION_OBSERVED',fingerprint));
+    else statements.push(env.DB.prepare(
      'INSERT INTO p0a_normalized_source_items '+
      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
      'source_record_id,native_published_at,first_seen_at,last_seen_at) '+
