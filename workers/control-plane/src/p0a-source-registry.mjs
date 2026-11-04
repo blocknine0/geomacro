@@ -340,9 +340,9 @@ export async function pollP0aSources(env,{
   const filtered=sourceIds!==null?
    ' AND source_id IN ('+sourceIds.map(()=>'?').join(',')+')':'';
   const q=await env.DB.prepare('SELECT * FROM source_registry '+
-   'WHERE enabled=1 AND next_poll_at<=?'+filtered+
+   (sourceIds===null?'WHERE enabled=1 AND next_poll_at<=?':'WHERE enabled=1')+filtered+
    ' ORDER BY next_poll_at,source_id LIMIT ?')
-   .bind(iso(now),...(sourceIds??[]),limit).all();
+   .bind(...(sourceIds===null?[iso(now)]:[]),...(sourceIds??[]),limit).all();
   rows=q.results??[];
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
  const polled=await Promise.all(rows.map(async row=>{
