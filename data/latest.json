@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-03T23:13:15.199Z",
+  "checked_at": "2026-11-04T00:22:23.237Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-80ea30e3",
+      "category": "macro",
+      "title": "Geomacro finds Alight forecast $2.115B-$2.125B 2026 revenue while raising adjusted EBITDA midpoint to $415M",
+      "what_changed": "A monitored source feed reports: Alight forecast $2.115B-$2.125B 2026 revenue while raising adjusted EBITDA midpoint to $415M. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T23:56:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a3966d8b",
       "category": "macro",
@@ -524,6 +543,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-efac1871",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said US will stop $4 billion military aid to Israel at end of 2026 - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Trump said US will stop $4 billion military aid to Israel at end of 2026 - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:26:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-7b412e50",
       "category": "macro",
       "title": "Geomacro finds Shopify reported US$462M Q3 net income, revenue up more than 30 per cent",
@@ -537,6 +575,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4268164d",
+      "category": "macro",
+      "title": "Geomacro finds Sindh cut wheat price by Rs500 per maund to provide public relief - samaa tv",
+      "what_changed": "A monitored source feed reports: Sindh cut wheat price by Rs500 per maund to provide public relief - samaa tv. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:05:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -575,6 +632,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8d60053c",
+      "category": "macro",
+      "title": "Geomacro finds Syria said foiled Hezbollah-linked plot to bomb oil refinery - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Syria said foiled Hezbollah-linked plot to bomb oil refinery - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4457,25 +4533,6 @@
       "severity": null
     },
     {
-      "id": "macro-7502de60",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Hikes Oil-Price forecast on ‘Substantial’ Supply Risks - Bloomberg",
-      "what_changed": "A monitored source feed reports: Goldman Hikes Oil-Price forecast on ‘Substantial’ Supply Risks - Bloomberg. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T06:04:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-f5499e5f",
       "category": "geopolitics",
       "title": "Geomacro finds Nelson Koech raised alarm over rogue agencies recruiting Kenyans to fight in Russia-Ukraine War - People Daily",
@@ -4504,44 +4561,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T05:26:32.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-0de3fd2d",
-      "category": "macro",
-      "title": "Geomacro finds BoJ said rate hikes are likely to ease inflation and support consumption - Newsquawk",
-      "what_changed": "A monitored source feed reports: BoJ said rate hikes are likely to ease inflation and support consumption - Newsquawk. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "inflation and prices",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T05:24:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-799200cd",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제",
-      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts... Brent at $105 by Year-End - 아시아경제. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T05:21:47.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4698,25 +4717,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.lusakatimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7c9816c1",
-      "category": "geopolitics",
-      "title": "Geomacro finds Arab League urged joint action against disinformation, AI-generated false content - Arab News",
-      "what_changed": "A monitored source feed reports: Arab League urged joint action against disinformation, AI-generated false content - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T03:00:41.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

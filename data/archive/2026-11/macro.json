@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-03T17:52:06.243Z",
+  "updated_at": "2026-11-04T00:22:23.237Z",
   "signals": [
+    {
+      "id": "macro-80ea30e3",
+      "category": "macro",
+      "title": "Geomacro finds Alight forecast $2.115B-$2.125B 2026 revenue while raising adjusted EBITDA midpoint to $415M",
+      "what_changed": "A monitored source feed reports: Alight forecast $2.115B-$2.125B 2026 revenue while raising adjusted EBITDA midpoint to $415M. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T23:56:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-a3966d8b",
       "category": "macro",
@@ -303,6 +322,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.winnipegfreepress.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4268164d",
+      "category": "macro",
+      "title": "Geomacro finds Sindh cut wheat price by Rs500 per maund to provide public relief - samaa tv",
+      "what_changed": "A monitored source feed reports: Sindh cut wheat price by Rs500 per maund to provide public relief - samaa tv. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T13:05:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8d60053c",
+      "category": "macro",
+      "title": "Geomacro finds Syria said foiled Hezbollah-linked plot to bomb oil refinery - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Syria said foiled Hezbollah-linked plot to bomb oil refinery - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T12:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
