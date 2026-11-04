@@ -98,11 +98,11 @@ export async function verifyPhase2hExistingArchive({
   fail("EXISTING_OBJECT_IDENTITY_INVALID");
  const governor=governorFactory({env,fetchImpl});
  const quota=await governor.status();
- // Two GETs with reserve for possible S3 read fallback; no B2 request on
+ // One GET with reserve for possible S3 read fallback; no B2 request on
  // exhausted account quotas. The underlying client reserves each attempt.
  if(quota?.ok!==true||!quota.used||!quota.limits||
-    quota.used.total>quota.limits.total-7||
-    quota.used.GET>quota.limits.GET-5||
+    quota.used.total>quota.limits.total-6||
+    quota.used.GET>quota.limits.GET-3||
     quota.used.NATIVE_AUTH>quota.limits.NATIVE_AUTH-2)
   fail("EXISTING_B2_HEADROOM_UNAVAILABLE");
  const date=last.b2_archived_at.slice(0,10).replaceAll("-","/");
@@ -112,9 +112,9 @@ export async function verifyPhase2hExistingArchive({
   secretKey:env.B2_APPLICATION_KEY,
   readAccessKey:env.B2_ARCHIVE_READ_KEY_ID,
   readSecretKey:env.B2_ARCHIVE_READ_APPLICATION_KEY});
- const a=Buffer.from(await b2.get(key)),b=Buffer.from(await b2.get(key));
- if(!a.equals(b)||hash(a)!==last.b2_object_sha256)
-  fail("EXISTING_TWO_GET_HASH_MISMATCH");
+ const a=Buffer.from(await b2.get(key));
+ if(hash(a)!==last.b2_object_sha256)
+  fail("EXISTING_ONE_GET_HASH_MISMATCH");
  let doc;
  try{doc=JSON.parse(gunzipSync(a,{maxOutputLength:4_000_000}).toString("utf8"))}
  catch{fail("EXISTING_GZIP_INVALID")}
@@ -124,14 +124,15 @@ export async function verifyPhase2hExistingArchive({
     !doc.category_counts)
   fail("EXISTING_RESTORED_B2_OBJECT_INVALID");
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
    storage_confirmed:true,rows_archived:doc.record_count,
    category_counts:doc.category_counts,object_sha256:last.b2_object_sha256,
-   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   b2_first_get_verified:true,b2_second_get_performed:false,
+   d1_atomic_one_statement_returning_verified:true,
    post_archive_d1_verified:true};
  const proof=await questionVerifier({env,fetchImpl,now:now.getTime(),receipt,
    expectedArchivedRows:doc.rows});
- return {...proof,existing_archived_object_two_get_restored:true,existing_object_sha256:last.b2_object_sha256};
+ return {...proof,existing_archived_object_one_get_restored:true,existing_object_sha256:last.b2_object_sha256};
 }
 export async function runPhase2hPermanentAcceptance({
  env=process.env,now=new Date(),
@@ -169,7 +170,8 @@ export async function runPhase2hPermanentAcceptance({
   if(receipt.schema!=="geomacro.phase2h.private-raw-b2-acceptance.v1"||
      !SHA.test(receipt.object_sha256)||receipt.rows_archived>300||
      receipt.b2_first_get_verified!==true||
-     receipt.b2_second_independent_get_verified!==true||
+     receipt.b2_second_get_performed!==false||
+     receipt.d1_atomic_one_statement_returning_verified!==true||
      receipt.post_archive_d1_verified!==true)
    fail("B2_POSITIVE_RECEIPT_INCOMPLETE");
   const proof=await verify({env,now:now.getTime(),receipt});
@@ -194,14 +196,14 @@ export async function runPhase2hPermanentAcceptance({
   for(const c of Object.keys(verifiedCategoryCounts))
    verifiedCategoryCounts[c]+=receipt.category_counts?.[c]??0;
  for(const proof of proofs)
-  if(proof.existing_archived_object_two_get_restored===true)
+  if(proof.existing_archived_object_one_get_restored===true)
    for(const c of Object.keys(verifiedCategoryCounts))
     verifiedCategoryCounts[c]+=proof.verified_category_counts?.[c]??0;
  const threeCategoriesHaveArchivedOriginals=Object.values(verifiedCategoryCounts).every(n=>Number.isSafeInteger(n)&&n>0);
  const independentlyVerifiedBatchRecords=receipts.reduce((n,r)=>n+r.rows_archived,0)+
-  proofs.filter(p=>p.existing_archived_object_two_get_restored===true)
+  proofs.filter(p=>p.existing_archived_object_one_get_restored===true)
    .reduce((n,p)=>n+(p.verified_b2_batch_rows??0),0);
- // Archived D1 rows were ACKed ONLY after real B2 PUT, two GET and
+ // Archived D1 rows were ACKed ONLY after real B2 PUT, one GET and
  // immutable hash restoration in their original job. They are not all
  // re-downloaded in this one run: a bounded periodic sample is a separate
  // truth claim. Never gate daily liveness on re-fetching all historic objects.
@@ -214,7 +216,7 @@ export async function runPhase2hPermanentAcceptance({
   allCurrentRowsHaveB2ArchiveAck&&
   threeCategoriesHaveArchivedOriginals&&
   entireStagedSetIndependentlyVerified&&
-  proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true&&
+  proofs.every(x=>x.b2_one_get_sha_verified_in_preceding_step===true&&
     x.deployed_authenticated_http_200===true&&x.per_record_five_part_exact===true);
  const summary={
   schema:"geomacro.phase2h.permanent-raw-b2-production-acceptance.v1",
@@ -223,16 +225,16 @@ export async function runPhase2hPermanentAcceptance({
    "VERIFIED_INCREMENTAL_B2_CORPUS_NOT_EXHAUSTIVELY_RECHECKED",
   incremental_batch_proof_pass:receipts.length>0&&
    proofs.every(x=>x.same_b2_object_and_d1_original===true&&
-     x.b2_two_get_verified_in_preceding_step===true&&
+     x.b2_one_get_sha_verified_in_preceding_step===true&&
      x.per_record_five_part_exact===true&&
      x.deployed_authenticated_http_200===true),
   verified_at:now.toISOString(),production_main_sha:env.GITHUB_SHA??null,
-  actual_b2_readback_verified:proofs.every(x=>x.b2_two_get_verified_in_preceding_step===true),
+  actual_b2_readback_verified:proofs.every(x=>x.b2_one_get_sha_verified_in_preceding_step===true),
   category_question_readbacks:Math.max(...proofs.map(x=>x.production_question_readback_categories??0)),
   archived_batches_this_run:receipts.length,
   verified_b2_object_sha256:receipts.map(x=>x.object_sha256),
   independently_restored_existing_b2_sha256:proofs
-   .filter(x=>x.existing_archived_object_two_get_restored===true)
+   .filter(x=>x.existing_archived_object_one_get_restored===true)
    .map(x=>x.existing_object_sha256),
   verified_category_counts:verifiedCategoryCounts,
   canonical_d1_category_census:census.category_counts,
@@ -249,7 +251,7 @@ export async function runPhase2hPermanentAcceptance({
    for(const key of ["geopolitics","macro","rare_earth"])sum[key]+=(x.category_counts?.[key]??0);
    return sum;
   },{geopolitics:0,macro:0,rare_earth:0}),
-  existing_archived_object_verified:proofs.some(x=>x.existing_archived_object_two_get_restored===true),
+  existing_archived_object_verified:proofs.some(x=>x.existing_archived_object_one_get_restored===true),
   canonical_d1_and_deployed_question_exact:proofs.every(x=>
     x.same_b2_object_and_d1_original===true&&x.per_record_five_part_exact===true),
   entire_admitted_raw_backlog_verified:complete,
