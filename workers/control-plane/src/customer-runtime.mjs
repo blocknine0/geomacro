@@ -171,8 +171,11 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    await db.prepare(`UPDATE sessions SET revoked_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL`).bind(at,user.session_id,user.id).run();return reply({ok:true});
   }
   if(action==='key-create'){
-   // Permanent funded-only cutover; paid runtime acceptance protects issuance and consumption.
-   if(env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=='ACCEPTED_CANONICAL_D1_PAID_RUNTIME')
+   // Risk Gate API keys have an independent commercial switch. Enabling this
+   // does not open checkout, PayPal funding, or unrelated paid endpoints.
+   const paidRuntime=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
+   const riskGateRuntime=env.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE==='ACCEPTED_RISK_GATE_PRICING_LEDGER';
+   if(!paidRuntime&&!riskGateRuntime)
     fail(503,CUSTOMER_KEY_GATE);
    if(Object.keys(body).some(k=>k!=='session_token'))
     fail(400,'CUSTOMER_KEY_CREATE_FIELDS_INVALID');
@@ -194,16 +197,17 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    db.prepare(`SELECT key_id,scopes_json,created_at,expires_at,revoked_at,last_used_at FROM api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 25`).bind(user.id).all(),
   ]);
   const paidAccepted=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
+  const riskGateAccepted=env.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE==='ACCEPTED_RISK_GATE_PRICING_LEDGER';
   const credentialReady=String(env.GEOMACRO_API_CREDENTIAL_PEPPER??'').length>=32;
-  const canIssue=paidAccepted&&credentialReady&&funded.key_issuance_eligible;
+  const canIssue=(paidAccepted||riskGateAccepted)&&credentialReady&&funded.key_issuance_eligible;
   // A verified grant can be displayed while activation is pending, but it
   // cannot silently enable a dashboard key that the Worker would refuse.
   const credits=funded.credits?{...funded.credits,
-   status:paidAccepted&&credentialReady?funded.credits.status:'pending_activation'}:null;
+   status:(paidAccepted||riskGateAccepted)&&credentialReady?funded.credits.status:'pending_activation'}:null;
   return reply({ok:true,user:{email:user.email},principal_ready:true,credits,
    verified_balance:credits?.remaining??0,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
    checkout_enabled:false,key_issuance_enabled:canIssue,
-   key_issuance_code:canIssue?null:!paidAccepted?CUSTOMER_KEY_GATE:
+   key_issuance_code:canIssue?null:!(paidAccepted||riskGateAccepted)?CUSTOMER_KEY_GATE:
     !credentialReady?'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED':'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED'});
  }catch(error){return reply({ok:false,code:error instanceof Failure?error.code:'CUSTOMER_D1_UNAVAILABLE'},error instanceof Failure?error.status:503);}
 }

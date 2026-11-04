@@ -509,7 +509,12 @@ export async function syncUnifiedRiskSupabase(env,{
    rows.some(x=>!read.some(y=>y.entity_type===x.entity_type&&y.entity_id===x.entity_id&&
     y.day_utc===x.day_utc&&y.content_sha256===x.content_sha256)))
    return {ok:false,error:"UNIFIED_SUPABASE_HASH_MISMATCH"};
-  const rollup=await syncRiskGateSevenDayOutputs(env,cfg,payload,now,fetcher);
+  // Reconciliation/canary scopes verify only the immutable daily census. The
+  // regular production backlog lane owns downstream rollups so these exact
+  // repair paths retain their bounded request and remote-read contract.
+  const rollup=scope==="BACKLOG"?
+   await syncRiskGateSevenDayOutputs(env,cfg,payload,now,fetcher):
+   {skipped:true,reason:"EXACT_CENSUS_SCOPE"};
   for(const row of rows){
    const receipt=await env.DB.prepare("UPDATE unified_risk_snapshots SET supabase_synced_at=? WHERE entity_type=? AND entity_id=? AND day_utc=? AND content_sha256=? AND supabase_synced_at IS NULL")
     .bind(iso(now),row.entity_type,row.entity_id,row.day_utc,row.content_sha256).run();

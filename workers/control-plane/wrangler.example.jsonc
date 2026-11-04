@@ -6,6 +6,9 @@
   "vars": {
     "GEOMACRO_P0B_SOURCE_FIRST_ENABLED": "1",
     "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app",
+    "GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE": "ACCEPTED_RISK_GATE_PRICING_LEDGER",
+    "RISK_GATE_SUPABASE_ACCEPTANCE": "ACCEPTED_PRIVATE_RISK_GATE_DAILY",
+    "RISK_GATE_SUPABASE_URL": "https://ymjuwuvbialsevfawvvq.supabase.co",
     "EMAIL_FROM_ADDRESS": "auth@geomacro.live",
     "GEOMACRO_P0B_ADMISSION_ACTIVE": "0",
     "GEOMACRO_P1_FANOUT_ENABLED": "1"

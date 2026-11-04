@@ -9,6 +9,9 @@ export const GEOMACRO_CREDIT_COSTS = {
   structural_corridor_profile: 12,
   signed_risk_object: 10,
   risk_gate_bundle: 15,
+  risk_gate_basic_focused: 1,
+  risk_gate_standard: 1,
+  risk_gate_complex_full: 1,
 } as const;
 
 export type GeomacroCreditCapability = keyof typeof GEOMACRO_CREDIT_COSTS;
@@ -54,7 +57,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: false,
       signed_risk_objects: true,
-      risk_gate: true,
+      risk_gate: false,
       execution_authorized: false,
       payment_environment: "testnet_only",
       payment_asset: "USDC",
@@ -84,7 +87,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: false,
+      risk_gate: true,
     },
   },
   pro_analyst: {
@@ -105,7 +108,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: false,
+      risk_gate: true,
     },
   },
   business_pilot: {

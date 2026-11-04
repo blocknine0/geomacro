@@ -60,7 +60,7 @@ test('new D1 credential HMAC exactly matches Node canonical commercial-bearer na
  await errCode(customerPaidKeyDigest({},key),'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED');
 });
 
-test('tier/cost table is locked and matches canonical TS registry, risk-gate/GRI withheld from new sale',()=>{
+test('tier/cost table matches canonical TS registry and exposes three risk-gate tiers only',()=>{
  const ts=readFileSync('src/lib/commercial-access-contract.ts','utf8');
  for(const [name,cost] of Object.entries(CUSTOMER_CREDIT_COSTS)){
   assert.match(ts,new RegExp(name+':\\s*'+cost+'[,}]'));
@@ -68,6 +68,8 @@ test('tier/cost table is locked and matches canonical TS registry, risk-gate/GRI
  assert.equal(CUSTOMER_CREDIT_COSTS.structural_corridor_profile,12);
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('gri_read'));
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle'));
+ for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
+  assert.ok(CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
 });
 
 test('unverified, zero-funded, or wrong-person keys cannot be issued',async()=>{

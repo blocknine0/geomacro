@@ -57,9 +57,9 @@ async function postUsage(db,record){
 /** Customer Risk Gate, held behind the existing explicit paid-runtime acceptance switch. */
 export async function commercialRiskGateEvaluate(request,env){
  if(request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
- if(env?.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!==
-   'ACCEPTED_CANONICAL_D1_PAID_RUNTIME')
-  return json({ok:false,error:'CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED'},503);
+ if(env?.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE!==
+   'ACCEPTED_RISK_GATE_PRICING_LEDGER')
+  return json({ok:false,error:'RISK_GATE_COMMERCIAL_RUNTIME_NOT_ACCEPTED'},503);
  if(!env?.DB?.prepare)return json({ok:false,error:'CUSTOMER_PAID_D1_UNAVAILABLE'},503);
  const auth=request.headers.get('authorization')??'';
  if(!auth.startsWith('Bearer '))return json({ok:false,error:'CUSTOMER_PAID_API_KEY_REQUIRED'},401);
