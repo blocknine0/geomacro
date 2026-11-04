@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T07:32:24.957Z",
+  "checked_at": "2026-11-04T07:41:01.355Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 390,
+  "item_count": 393,
   "counts": {
-    "geopolitics": 172,
-    "macro": 174,
+    "geopolitics": 174,
+    "macro": 175,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "1c3e437e0f26d400b30c53ce75309858e4f66fb12dd8f419b77020eafe77424c",
+  "source_native_ids_sha256": "693a48beb144a621fa3bc895832d2faefcbec5dbbd3f8fbf6cf6f14faecc297c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-7777e4ba",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said he will accept election results - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Trump said he will accept election results - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T07:36:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-663fb28a",
       "category": "macro",
@@ -2171,6 +2190,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: jowhar.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-91ee30f4",
+      "category": "macro",
+      "title": "Geomacro finds Wells Fargo raised Estee Lauder stock price target on volume growth - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Wells Fargo raised Estee Lauder stock price target on volume growth - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -6917,6 +6955,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T16:27:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2bb6e054",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
+      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:19:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

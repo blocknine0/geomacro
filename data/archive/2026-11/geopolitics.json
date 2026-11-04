@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T07:32:24.957Z",
+  "updated_at": "2026-11-04T07:41:01.355Z",
   "signals": [
+    {
+      "id": "geopolitics-7777e4ba",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said he will accept election results - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Trump said he will accept election results - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T07:36:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-01e0c6a7",
       "category": "geopolitics",
@@ -2921,6 +2940,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T18:08:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2bb6e054",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
+      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T16:19:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

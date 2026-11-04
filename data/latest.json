@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T07:32:24.957Z",
+  "checked_at": "2026-11-04T07:41:01.355Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-7777e4ba",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said he will accept election results - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Trump said he will accept election results - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T07:36:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-663fb28a",
       "category": "macro",
@@ -2095,6 +2114,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: jowhar.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-91ee30f4",
+      "category": "macro",
+      "title": "Geomacro finds Wells Fargo raised Estee Lauder stock price target on volume growth - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Wells Fargo raised Estee Lauder stock price target on volume growth - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T09:04:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4229,25 +4267,6 @@
       "severity": null
     },
     {
-      "id": "macro-15ead347",
-      "category": "macro",
-      "title": "Geomacro finds Oman and China signed deals to boost trade and investment",
-      "what_changed": "A monitored source feed reports: Oman and China signed deals to boost trade and investment. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T12:18:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-93047c49",
       "category": "geopolitics",
       "title": "Geomacro finds GPCL introduced security features on gazettes to curb fake publications",
@@ -4584,25 +4603,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thenationalnews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1ce6d8cb",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - dailyrecordnews.com",
-      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - dailyrecordnews.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:22:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
