@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T03:59:16.468Z",
+  "checked_at": "2026-11-04T06:01:25.764Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 383,
+  "item_count": 382,
   "counts": {
-    "geopolitics": 167,
+    "geopolitics": 166,
     "macro": 172,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "7cfc49af9090708138b3498cdb6a44f2b009e381c0d50d89cc7307b71693b3c7",
+  "source_native_ids_sha256": "e87354dd403f65457858cd785e3feccaa1e14bee78d75c20d4c75ed40ad977b9",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7278,25 +7278,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T06:17:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-793c1618",
-      "category": "geopolitics",
-      "title": "Geomacro finds Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business",
-      "what_changed": "A monitored source feed reports: Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T04:30:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
