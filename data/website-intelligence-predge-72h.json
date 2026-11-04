@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T06:01:25.764Z",
+  "checked_at": "2026-11-04T06:04:13.122Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 382,
+  "item_count": 384,
   "counts": {
     "geopolitics": 166,
-    "macro": 172,
-    "rare_earth": 44
+    "macro": 173,
+    "rare_earth": 45
   },
-  "source_native_ids_sha256": "e87354dd403f65457858cd785e3feccaa1e14bee78d75c20d4c75ed40ad977b9",
+  "source_native_ids_sha256": "97f61e0d3aa3e2b443c3baa49643e53e8165b1397fd90b39134af90d81794c7a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-57a98de7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Greenwing Resources agreed to Proposed San Jorge Lithium Partnership with Atana Elements - TradingView",
+      "what_changed": "A monitored source feed reports: Greenwing Resources agreed to Proposed San Jorge Lithium Partnership with Atana Elements - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-75f6ad7f",
       "category": "macro",
@@ -43,6 +62,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d14cc0fa",
+      "category": "macro",
+      "title": "Geomacro finds WGC cut 2026 gold investment growth forecast - IDNFinancials",
+      "what_changed": "A monitored source feed reports: WGC cut 2026 gold investment growth forecast - IDNFinancials. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T03:40:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
