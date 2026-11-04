@@ -14,12 +14,13 @@ export function buildPhase2hCensusReceipt(census,{now=new Date(),sha=null}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     !census||!CATEGORIES.every(c=>{
      const row=census.category_counts?.[c];
-     return row&&["staged","archived","pending"].every(k=>
+     return row&&["staged","archived","pending","pending_eligible_72h","pending_expired_72h"].every(k=>
        Number.isSafeInteger(row[k])&&row[k]>=0)&&
-       row.staged===row.archived+row.pending;
+       row.staged===row.archived+row.pending&&
+       row.pending===row.pending_eligible_72h+row.pending_expired_72h;
     }))fail("CATEGORY_TOTALS_INVALID");
  const total=k=>CATEGORIES.reduce((n,c)=>n+census.category_counts[c][k],0);
- if(["staged","archived","pending"].some(k=>
+ if(["staged","archived","pending","pending_eligible_72h","pending_expired_72h"].some(k=>
     census[k+"_total"]!==total(k)))fail("CANONICAL_TOTALS_DIVERGED");
  if(sha!==null&&!/^[a-f0-9]{40}$/u.test(sha))fail("GITHUB_SHA_INVALID");
  return {
@@ -30,6 +31,11 @@ export function buildPhase2hCensusReceipt(census,{now=new Date(),sha=null}={}){
   b2_put_or_get_performed:false,
   staged_total:census.staged_total,archived_total:census.archived_total,
   pending_total:census.pending_total,category_counts:census.category_counts,
+  pending_eligible_72h_total:census.pending_eligible_72h_total,
+  pending_expired_72h_total:census.pending_expired_72h_total,
+  pending_age_buckets_verified:true,
+  eligible_archive_backlog_zero:census.pending_eligible_72h_total===0,
+  all_staged_originals_archived:census.pending_total===0,
   registered_website_osint_row_provenance_verified:false,
   collector_origin_reconstruction:"UNVERIFIED_HISTORIC_ROWS_LACK_PRODUCER_TAG",
   archived_object_bytes_verified_by_this_census:false,

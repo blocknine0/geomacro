@@ -5,11 +5,12 @@ import {buildPhase2hCensusReceipt,capturePhase2hCanonicalCensus}
  from "../ops/phase2h-canonical-census-receipt.mjs";
 const rows={
  category_counts:{
-  geopolitics:{staged:5,archived:4,pending:1},
-  macro:{staged:3,archived:0,pending:3},
-  rare_earth:{staged:2,archived:2,pending:0}
+  geopolitics:{staged:5,archived:4,pending:1,pending_eligible_72h:1,pending_expired_72h:0},
+  macro:{staged:3,archived:0,pending:3,pending_eligible_72h:2,pending_expired_72h:1},
+  rare_earth:{staged:2,archived:2,pending:0,pending_eligible_72h:0,pending_expired_72h:0}
  },
- staged_total:10,archived_total:6,pending_total:4
+ staged_total:10,archived_total:6,pending_total:4,
+ pending_eligible_72h_total:3,pending_expired_72h_total:1
 };
 const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
  GITHUB_REF:"refs/heads/main",GITHUB_SHA:"a".repeat(40),
@@ -18,6 +19,9 @@ test("canonical census validates actual category counts but never asserts collec
  const receipt=buildPhase2hCensusReceipt(rows,{now:new Date("2026-10-30T12:17:00Z"),sha:env.GITHUB_SHA});
  assert.equal(receipt.staged_total,10);
  assert.equal(receipt.pending_total,4);
+ assert.equal(receipt.pending_eligible_72h_total,3);
+ assert.equal(receipt.pending_expired_72h_total,1);
+ assert.equal(receipt.all_staged_originals_archived,false);
  assert.equal(receipt.category_counts.macro.archived,0);
  assert.equal(receipt.registered_website_osint_row_provenance_verified,false);
  assert.equal(receipt.archived_object_bytes_verified_by_this_census,false);
@@ -39,6 +43,10 @@ test("malformed D1 census fails closed without invented counts",()=>{
  }),/PHASE2H_CENSUS_CATEGORY_TOTALS_INVALID/u);
  assert.throws(()=>buildPhase2hCensusReceipt({...rows,staged_total:11}),
   /PHASE2H_CENSUS_CANONICAL_TOTALS_DIVERGED/u);
+ assert.throws(()=>buildPhase2hCensusReceipt({...rows,
+  category_counts:{...rows.category_counts,
+   macro:{...rows.category_counts.macro,pending_expired_72h:2}}
+ }),/PHASE2H_CENSUS_CATEGORY_TOTALS_INVALID/u);
 });
 test("workflow keeps bounded isolated archive gate, preserves quota receipt and census before B2",()=>{
  const workflow=readFileSync(".github/workflows/phase2h-private-raw-archive.yml","utf8");
