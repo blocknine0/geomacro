@@ -199,13 +199,14 @@ export function composeRiskGateThreeTierResponse({
   };
  }
  const archived=verified_gro?archiveLocation(archive_proof,verified_gro):null;
+ const friction=sevenDays(history,now,subject);
  const ready=qualified&&archived!==null&&
   verified_gro.integrity?.signature_scheme==="Ed25519"&&
   typeof verified_gro.integrity.signature==="string"&&
   verified_gro.integrity.signature.length>=40&&
   HEX.test(String(verified_gro.integrity.payload_hash??""))&&
-  subject.type==="CORRIDOR";
- const friction=sevenDays(history,now,subject);
+  subject.type==="CORRIDOR"&&friction.verified_score_days>=2&&
+  friction.trend!=="INSUFFICIENT_VERIFIED_HISTORY";
  return {...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
   confidence:ready?{level:"HIGH",verification:"CRYPTO_SIGNED"}:null,
   risk_score_0_100:ready?boundedScore(verified_gro.risk.score):null,
