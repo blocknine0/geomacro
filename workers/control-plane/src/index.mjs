@@ -41,6 +41,7 @@ import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
+import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
@@ -1632,6 +1633,10 @@ export default {
       return verifyLatestP0bCommitted(env);
 
     try {
+      // Root-admin-only, noncommercial metadata discovery. Never customer,
+      // PREDGE or paid delivery. All lanes come from existing ingested D1 rows.
+      if(url.pathname==="/v1/internal/risk-gate/derived-discovery")
+        return handleDerivedRiskGateDiscovery(request,env);
       // Owner-only, strictly bounded current-day canonical reconciliation.
       // Page is the sole permitted input: 18 immutable ID-ordered pages
       // of 12/last 3 real records. No arbitrary target, day, source fetch,
