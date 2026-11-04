@@ -100,13 +100,15 @@ async function readPage(env,lane,now){
   next_cursor:next,page_sha256:proof};
 }
 async function commitPage(env,body,now){
- if(!own(body,["schema","lane","page_sha256","next_cursor","reviewed"])||
+ if(!own(body,["schema","lane","page_sha256","next_cursor","reviewed","checked_at"])||
     body.schema!==DERIVED_DISCOVERY_BRIDGE_SCHEMA||
     !Object.hasOwn(LANES,body.lane)||!SHA.test(body.page_sha256)||
-    !Array.isArray(body.reviewed)||body.reviewed.length>LIMIT)
+    !Array.isArray(body.reviewed)||body.reviewed.length>LIMIT||
+    !validUtc(body.checked_at)||Date.parse(body.checked_at)>now+60_000||
+    now-Date.parse(body.checked_at)>10*60_000)
   return response({ok:false,error:"DISCOVERY_ACK_INVALID"},400);
  try{
-  const page=await readPage(env,body.lane,now);
+  const page=await readPage(env,body.lane,Date.parse(body.checked_at));
   if(page.page_sha256!==body.page_sha256||
      JSON.stringify(page.next_cursor)!==JSON.stringify(body.next_cursor)||
      page.records.length!==body.reviewed.length||!page.next_cursor)
