@@ -310,3 +310,30 @@ test("research relay diagnostics remain nonsecret and fail closed on transport, 
   assert.equal(JSON.stringify(data).includes("private network failed"),false);
  }
 });
+
+
+test("Cloudflare workerd private Edge relay uses manual redirect without unsupported cache option",async()=>{
+ const req=()=>new Request("https://geomacro.live/api/research-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+"a".repeat(64),
+    "content-type":"application/json"},
+  body:JSON.stringify({origin_country:"UKR",destination_country:"USA"})
+ });
+ let called=0;
+ const result=await proxyIsolatedResearchRiskGate(req(),(async(_url:unknown,opts:any)=>{
+  called++;
+  assert.equal(opts.redirect,"manual");
+  assert.equal(Object.hasOwn(opts,"cache"),false);
+  return Response.json({
+   schema:"geomacro.research-corridor-gate.v1",ok:false,
+   decision:"PAUSE",reason:"VERIFIED_SIGNED_RESEARCH_STATE_UNAVAILABLE",
+   research_only:true,execution_authorized:false,commercial_eligible:false
+  },{status:503});
+ }) as any);
+ assert.equal(result.status,503);
+ assert.equal((await result.json()).reason,"VERIFIED_SIGNED_RESEARCH_STATE_UNAVAILABLE");
+ assert.equal(called,1);
+ const redirected=await proxyIsolatedResearchRiskGate(req(),(async()=>new Response(
+   "",{status:302,headers:{Location:"https://untrusted.example/"}})) as any);
+ assert.equal(redirected.status,503);
+ assert.equal((await redirected.json()).reason,"RESEARCH_EDGE_RELAY_UPSTREAM_STATUS");
+});

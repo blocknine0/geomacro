@@ -47,7 +47,10 @@ export async function proxyIsolatedResearchRiskGate(
  try{
   reply=await fetchImpl(
    "https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-risk-gate",{
-   method:"POST",redirect:"error",cache:"no-store",headers:{
+   // Workers fetch rejects redirect:"error" before networking. Manual mode
+   // prevents redirect following; 3xx is rejected by the status allowlist.
+   // Do not pass RequestInit.cache: older workerd runtimes may throw.
+   method:"POST",redirect:"manual",headers:{
     Authorization:authorization,"Content-Type":"application/json",Accept:"application/json"
    },body,signal:AbortSignal.timeout(9000)
   });
