@@ -106,6 +106,10 @@ test("Complex requires signed qualified GRO, exact B2 archive readback and corri
  const missing=render("complex_full",{verified_gro:gro()});
  assert.equal(missing.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
  assert.equal(missing.gro_signature,null);
+ const emptyHistory=render("complex_full",{verified_gro:gro(),archive_proof:archive});
+ assert.equal(emptyHistory.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(emptyHistory.proprietary_institutional_score_0_100,null);
+ assert.equal(emptyHistory.seven_day_corridor_friction_history,null);
  const wrong={...archive,archive_readback_verified:0};
  assert.equal(render("complex_full",{verified_gro:gro(),archive_proof:wrong}).status,
   "SIGNED_GRO_OR_ARCHIVE_NOT_READY");
