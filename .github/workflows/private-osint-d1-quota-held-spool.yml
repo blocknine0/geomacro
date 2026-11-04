@@ -178,6 +178,14 @@ jobs:
       - name: Warn when optional R2 evidence mirror failed
         if: ${{ steps.r2_mirror.outcome == 'failure' }}
         run: echo "::warning::PRIVATE_OSINT_R2_ESCROW_FAILED_GITHUB_CIPHERTEXT_RETAINED"
+      - name: Retain true 506-source transport/parser health when D1 is HELD
+        if: steps.reuse.outputs.collect == 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-sourcewise-health-held-${{ github.run_id }}
+          path: ${{ runner.temp }}/geomacro-direct20m-source-proof.json
+          retention-days: 2
+          if-no-files-found: warn
       - name: Save ONLY encrypted private-OSINT temporary artifact
         if: steps.reuse.outputs.collect == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
