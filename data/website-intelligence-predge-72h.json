@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T03:49:38.241Z",
+  "checked_at": "2026-11-04T03:50:11.880Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 383,
+  "item_count": 382,
   "counts": {
-    "geopolitics": 167,
+    "geopolitics": 166,
     "macro": 172,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "a25f3e68bbfc3dd4b5fbef5d71a2edebdda7da6bd63dba27ba80c3410d37ecfd",
+  "source_native_ids_sha256": "3caedf89c7aa4f73f13dd0ecceb883c46b45cbb7f2d2dd3f749fccb5354b9859",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7278,25 +7278,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T04:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ecac6ece",
-      "category": "geopolitics",
-      "title": "Geomacro finds India urged diplomacy, warns of global war costs - The Hawk",
-      "what_changed": "A monitored source feed reports: India urged diplomacy, warns of global war costs - The Hawk. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T03:50:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
