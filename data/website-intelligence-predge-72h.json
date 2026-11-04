@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T08:48:16.043Z",
+  "checked_at": "2026-11-04T10:02:38.160Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 401,
+  "item_count": 400,
   "counts": {
-    "geopolitics": 177,
+    "geopolitics": 176,
     "macro": 180,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "709a4500e8cf7f2ad67a2920cd3d5904a332a51de875e40000d1a1efb680680e",
+  "source_native_ids_sha256": "f80f1dd30e0cb00252fa9de60d1d09a964396c24fa95415bdcfda6a7d6bc19d4",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7624,25 +7624,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.rappler.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-ae904fc7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Court released two Arab party activists, criticizes police election bribe probe - Haaretz",
-      "what_changed": "A monitored source feed reports: Court released two Arab party activists, criticizes police election bribe probe - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T09:57:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
