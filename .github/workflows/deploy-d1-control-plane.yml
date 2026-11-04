@@ -93,6 +93,11 @@ on:
     branches:
       - main
     paths:
+      # The private archive client runs on Actions, not inside the Worker.
+      # A main-only archive-code release must still wake the guarded D1
+      # deployment so its verified-success workflow_run runs B2 archival.
+      - "scripts/ops/phase2h-archive-private-raw-news.mjs"
+      - "scripts/tests/phase2h-bulk-worker-archive.test.mjs"
       - "src/lib/news-product-factory.ts"
       - "src/lib/capability-pricing-catalog.ts"
       - "src/lib/store-product-examples.ts"
