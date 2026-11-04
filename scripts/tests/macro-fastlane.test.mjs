@@ -294,6 +294,15 @@ test('Macro publisher fetch identifies GeoMacro consistently with observed backu
 });
 
 
+test('Oceania fallback uses independently observed Mining Monthly XML instead of non-XML Stockhead resources',()=>{
+ const oceania=MINERALS_MESH.find(group=>group.region==='oceania');
+ assert.equal(oceania.fallback.id,'australian_mining_monthly');
+ assert.equal(oceania.fallback.url,'https://www.miningmonthly.com/feed/rss');
+ const rows=parseSectorFeed(rss('Australian lithium and copper mine faces new export restrictions',
+  'https://www.miningmonthly.com/news/australian-lithium-copper-export-restrictions/'),oceania.fallback,now);
+ assert.ok(rows.some(row=>row.category==='rare_earth'));
+ assert.ok(rows.every(row=>row.status==='osint_feed_observed_unverified'));
+});
 test('One-megabyte bounded Stockhead mineral RSS remains valid without unbounded raw bytes',async()=>{
  const url='https://stockhead.com.au/resources/feed/';
  const source={id:'stockhead_resources',url,region:'oceania'};
