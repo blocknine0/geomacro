@@ -71,22 +71,26 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
    source_id:row.source_id,shard,lease_token:token,scheduled_at:clock}});
  }
  const results=await Promise.all(groups.map(async(messages,shard)=>{
-  if(!messages.length)return {shard,queued:0,failed:0};
-  try{
-   await env.SOURCE_POLL_QUEUE.sendBatch(messages);
-   return {shard,queued:messages.length,failed:0};
-  }catch{
-   // Redelivery may already have occurred before provider failure. An old
-   // queue message with a released token is rejected by the consumer.
-   const sources=messages.map(x=>x.body.source_id);
-   try{await env.DB.prepare(
-    "UPDATE source_registry SET poll_dispatch_token=NULL,"+
-    "poll_dispatch_lease_until=NULL WHERE poll_dispatch_token=? "+
-    "AND source_id IN (SELECT value FROM json_each(?))"
-   ).bind(token,JSON.stringify(sources)).run();}
-   catch{/* 120s lease expires automatically; no source silently ACKed */}
-   return {shard,queued:0,failed:messages.length};
+  let queued=0,failed=0;
+  // Ten parallel logical shards; each transport sendBatch contains <=15
+  // source IDs, matching the configured 15-message Cloudflare consumer.
+  for(let i=0;i<messages.length;i+=BATCH){
+   const piece=messages.slice(i,i+BATCH);
+   try{
+    await env.SOURCE_POLL_QUEUE.sendBatch(piece);
+    queued+=piece.length;
+   }catch{
+    const sources=piece.map(x=>x.body.source_id);
+    try{await env.DB.prepare(
+     "UPDATE source_registry SET poll_dispatch_token=NULL,"+
+     "poll_dispatch_lease_until=NULL WHERE poll_dispatch_token=? "+
+     "AND source_id IN (SELECT value FROM json_each(?))"
+    ).bind(token,JSON.stringify(sources)).run();}
+    catch{/* lease expires automatically, no false ACK */}
+    failed+=piece.length;
+   }
   }
+  return {shard,queued,failed};
  }));
  const queued=results.reduce((n,x)=>n+x.queued,0),failed=results.reduce((n,x)=>n+x.failed,0);
  return {status:failed?"P1_DISPATCH_PARTIAL":"P1_DISPATCH_QUEUED",

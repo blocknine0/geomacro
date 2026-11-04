@@ -65,7 +65,8 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
    const r=await dispatchP1DueSources(env,{now:t});
    assert.ok(r.queued<=108);assert.equal(r.queued,r.selected);
    const produced=batches.slice(before);
-   assert.ok(produced.length<=10);
+   assert.ok(produced.length<=20);
+   assert.ok(new Set(produced.flatMap(g=>g.map(m=>m.body.shard))).size<=10);
    assert.ok(produced.every(g=>g.length<=15));
    for(const batch of produced){
     const messages=batch.map(x=>({
