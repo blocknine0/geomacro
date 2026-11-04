@@ -141,7 +141,12 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  // the existing 512 global fetch ceiling.
  const retrySpare=includeLocalGapLane&&activeBase.length>=300?
    Math.min(8,Math.max(0,availableForLocalAndIndex-1)):0;
- const slots=availableForLocalAndIndex-retrySpare;
+ // Two new first-party Canada origins reuse two existing spare transient
+ // retry positions, not any country-index or native local-publisher slot.
+ // The collector still caps total actual GETs (including retries) at 512.
+ const canNewOrigins=hotOfficial.filter(s=>s.id.startsWith("private_hot50_can_gac_")).length;
+ const effectiveRetrySpare=Math.max(0,retrySpare-canNewOrigins);
+ const slots=availableForLocalAndIndex-effectiveRetrySpare;
  const local=includeLocalGapLane?
    budgetedPrivateLocalPublisherSources(now,Math.min(96,Math.max(0,slots-1))):[];
  const indexPerTick=Math.min(normalIndex,slots-local.length);
