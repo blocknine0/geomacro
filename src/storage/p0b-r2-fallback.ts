@@ -36,7 +36,7 @@ async function gzip(input:Uint8Array,decode=false){
  if(output.length>MAX_CIPHER)throw Error("P0B_R2_FALLBACK_SIZE_INVALID");
  return output;
 }
-const valid=async row=>row&&HEX.test(row.candidateSha256??"")&&
+const valid=async (row:SpoolPayload)=>row&&HEX.test(row.candidateSha256??"")&&
  ID.test(row.sourceId??"")&&Number.isFinite(Date.parse(row.discoveredAt??""))&&
  await p0bSha256(canonicalJson(row.rawPayload))===row.candidateSha256;
 export async function p0bFallbackBatchId(payloads:SpoolPayload[]){

@@ -73,7 +73,11 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
  * on failure. The same shared account-wide B2 ticketing applies to redrive.
  */
 export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
- now=Date.now(),limit=2,persist=processFetchedBatch
+ now=Date.now(),limit=2,
+ persist=processFetchedBatch as (candidates:Parameters<typeof processFetchedBatch>[0],
+   env:Parameters<typeof processFetchedBatch>[1],
+   options:Parameters<typeof processFetchedBatch>[2])=>
+   Promise<{all_durable:boolean,receipts:Array<{status:string}>}>
 }={}){
  if(!env?.P0B_PRIVATE_FALLBACK_R2||!env.DB?.prepare||
     !Number.isSafeInteger(limit)||limit<1||limit>2)
