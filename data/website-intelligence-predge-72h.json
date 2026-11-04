@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T06:32:15.003Z",
+  "checked_at": "2026-11-04T07:25:44.862Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 388,
+  "item_count": 384,
   "counts": {
-    "geopolitics": 169,
-    "macro": 174,
-    "rare_earth": 45
+    "geopolitics": 167,
+    "macro": 173,
+    "rare_earth": 44
   },
-  "source_native_ids_sha256": "1738977e18ff366e757f1b391af5a93eac38a6b866cd16878940a4a7facd26e3",
+  "source_native_ids_sha256": "050231241458932e54dd1bff28a9ee58da2beefebd989696c3025fea69932bc4",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7316,82 +7316,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T09:57:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-b9319666",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
-      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:13:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a9715ea0",
-      "category": "macro",
-      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
-      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:13:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-eda9a268",
-      "category": "rare_earth",
-      "title": "Geomacro finds Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com",
-      "what_changed": "A monitored source feed reports: Russia said 'massive' drone attack targeted 'industrial enterprise' amid reports oil refinery hit - Euronews.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:13:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-f24e8770",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia launched massive morning drone attack on Ukraine - The New Voice of Ukraine",
-      "what_changed": "A monitored source feed reports: Russia launched massive morning drone attack on Ukraine - The New Voice of Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T07:12:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
