@@ -87,7 +87,7 @@ async function restJson(path:string,method:"POST"|"GET",payload:unknown,opts:{
  try{return JSON.parse(txt)}catch{fail("RESEARCH_SUPABASE_RESPONSE_INVALID")}
 }
 function utc(t:string,now:number,limit:number){
- if(typeof t!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/u.test(t))
+ if(typeof t!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(t))
   return null;
  const ms=Date.parse(t);
  return Number.isFinite(ms)&&ms<=now+60_000&&now-ms<=limit?ms:null;
@@ -208,7 +208,7 @@ export async function ingestDirectlyForRiskGate(
 }
 export async function getLatestSignedResearchGRO(country_code:string,opts:{
  env?:NodeJS.ProcessEnv;fetchImpl?:typeof fetch;now?:Date
-}={}):Promise<SignedResearchSnapshot|null>{
+}={}):Promise<(SignedResearchSnapshot&{research_signature_b64:string;research_sha256:string;research_signing_key_id:string})|null>{
  if(!country195ByIso3(country_code))return null;
  const env=opts.env??process.env,publicB64=
   String(env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64??"").trim();
@@ -248,6 +248,9 @@ export async function getLatestSignedResearchGRO(country_code:string,opts:{
      !verify(null,Buffer.from(canonical),publicKey,
        Buffer.from(String(row.signed_signature_b64??""),"base64")))
      return null;
-  return snap as SignedResearchSnapshot;
+  return {...snap as SignedResearchSnapshot,
+    research_signature_b64:String(row.signed_signature_b64),
+    research_sha256:String(row.signed_snapshot_sha256),
+    research_signing_key_id:String(row.signed_signing_key_id)};
  }catch{return null}
 }
