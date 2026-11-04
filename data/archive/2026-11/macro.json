@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T07:44:28.145Z",
+  "updated_at": "2026-11-04T07:52:23.378Z",
   "signals": [
     {
       "id": "macro-202c1363",
@@ -75,6 +75,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f20dd928",
+      "category": "macro",
+      "title": "Geomacro finds IRGC said 4 oil tankers destroyed, 56th US drone downed",
+      "what_changed": "A monitored source feed reports: IRGC said 4 oil tankers destroyed, 56th US drone downed. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:27:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

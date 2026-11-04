@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T07:44:28.145Z",
+  "checked_at": "2026-11-04T07:52:23.378Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 394,
+  "item_count": 396,
   "counts": {
-    "geopolitics": 174,
-    "macro": 176,
+    "geopolitics": 175,
+    "macro": 177,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "07a82f94ed69f88951a16a67215ed913ca6c0a7e784da092f58f2985248c7b47",
+  "source_native_ids_sha256": "d3747d480593e081a9c58cd447ef7c65ffd15f1b591a1baf61fa4139c687f3f9",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -214,6 +214,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f20dd928",
+      "category": "macro",
+      "title": "Geomacro finds IRGC said 4 oil tankers destroyed, 56th US drone downed",
+      "what_changed": "A monitored source feed reports: IRGC said 4 oil tankers destroyed, 56th US drone downed. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:27:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.mehrnews.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -575,6 +594,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-fe5630a3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump announced halt to $4 bn in aid to Israel on midterm election day",
+      "what_changed": "A monitored source feed reports: Trump announced halt to $4 bn in aid to Israel on midterm election day. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T21:47:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: rt-english.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
