@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T00:28:49.796Z",
+  "checked_at": "2026-11-04T01:21:44.181Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 351,
+  "item_count": 352,
   "counts": {
     "geopolitics": 157,
     "macro": 152,
-    "rare_earth": 42
+    "rare_earth": 43
   },
-  "source_native_ids_sha256": "5483f7dc497024b95c32c064f4ab6c3103e82c53a8f68dca0d21b0fe01a5d3a5",
+  "source_native_ids_sha256": "029e6c191e92169ee91d1f075b5bd93289b544d754da438ce9938eead05c8ad6",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-b12afbf7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-80ea30e3",
       "category": "macro",

@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-04T00:28:49.796Z",
+  "updated_at": "2026-11-04T01:21:44.181Z",
   "signals": [
+    {
+      "id": "rare_earth-b12afbf7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-1f04fb23",
       "category": "rare_earth",

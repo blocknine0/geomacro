@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T00:28:49.796Z",
+  "checked_at": "2026-11-04T01:21:44.181Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-b12afbf7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports",
+      "what_changed": "A monitored source feed reports: Exploration Co. confirmed Copper Mineralization at La Grande Zone 32 in Québec - Streetwise Reports. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-80ea30e3",
       "category": "macro",
@@ -4641,25 +4660,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-67379542",
-      "category": "macro",
-      "title": "Geomacro finds Lim Guan Eng urged Penang govt to freeze tax hikes, scrutinise major projects",
-      "what_changed": "A monitored source feed reports: Lim Guan Eng urged Penang govt to freeze tax hikes, scrutinise major projects. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T06:05:25.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.malaymail.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
