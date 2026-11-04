@@ -6,6 +6,7 @@ export const CUSTOMER_CREDIT_COSTS=Object.freeze({
   intelligence_query:1,gri_read:1,structural_country_digest:3,
   structural_corridor_digest:5,structural_country_profile:8,
   structural_corridor_profile:12,signed_risk_object:10,risk_gate_bundle:15,
+  risk_gate_basic_focused:1,risk_gate_standard:1,risk_gate_complex_full:1,
 });
 // GRI retired for new sales; Risk Gate is not public launch eligible.
 // Grant policy and evidence readiness are independent: this code does not
@@ -13,10 +14,11 @@ export const CUSTOMER_CREDIT_COSTS=Object.freeze({
 export const CUSTOMER_ENABLED_CAPABILITIES=Object.freeze([
   'intelligence_query','structural_country_digest','structural_corridor_digest',
   'structural_country_profile','structural_corridor_profile','signed_risk_object',
+  'risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full',
 ]);
 const PERMITTED=Object.freeze({
-  starter_dev:['intelligence_query','structural_country_digest','structural_country_profile'],
-  pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile'],
+  starter_dev:['intelligence_query','structural_country_digest','structural_country_profile','risk_gate_basic_focused'],
+  pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile','risk_gate_basic_focused','risk_gate_standard'],
   business_pilot:CUSTOMER_ENABLED_CAPABILITIES,
   // One-time prepaid credit packs are spendable on any currently live
   // intelligence capability. They never unlock retired GRI or public Risk Gate.
@@ -58,7 +60,7 @@ function scopeFor(capability){
   if(capability==='intelligence_query')return 'intelligence:read';
   if(capability.startsWith('structural_'))return 'structural:read';
   if(capability==='signed_risk_object')return 'signed:read';
-  if(capability==='risk_gate_bundle')return 'risk-gate:read';
+  if(capability.startsWith('risk_gate_')||capability==='risk_gate_bundle')return 'risk-gate:read';
   return 'gri:read';
 }
 function validCapability(c){
@@ -205,10 +207,10 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
   const scopes=['intelligence:read','structural:read'];
   // Preserve the existing Business Pilot granted scope; the separate
   // capability eligibility gate still withholds new public Risk Gate sales.
-  if(grants.some(g=>g.remaining>0 && g.tier==='business_pilot'))
+  if(grants.some(g=>g.remaining>0 && ['business_pilot','pro_analyst','starter_dev'].includes(g.tier)))
     scopes.push('signed:read','risk-gate:read');
   else if(grants.some(g=>g.remaining>0 && String(g.tier).startsWith('credits_')))
-    scopes.push('signed:read');
+    scopes.push('signed:read','risk-gate:read');
   const key='gmk_live_'+randHex(32),keyId='gmk_live_'+randHex(16);
   const hash=await customerPaidKeyDigest(env,key);
   try{

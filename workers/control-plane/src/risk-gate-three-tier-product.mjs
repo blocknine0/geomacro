@@ -189,6 +189,7 @@ export function composeRiskGateThreeTierResponse({
  }));
  if(tier==="standard"){
   return {...base,status:qualified?"READY":"INSUFFICIENT_CORROBORATION",
+   chargeable:qualified,
    confidence:qualified?{level:"MEDIUM",verification:"VERIFIED"}:null,
    risk_score_0_100:qualified?boundedScore(calculated.unifiedScore*100):null,
    risk_score_kind:"CORROBORATED_RISK_SCORE",
@@ -210,6 +211,7 @@ export function composeRiskGateThreeTierResponse({
   subject.type==="CORRIDOR"&&friction.verified_score_days>=2&&
   friction.trend!=="INSUFFICIENT_VERIFIED_HISTORY";
  return {...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
+  chargeable:ready,
   confidence:ready?{level:"HIGH",verification:"CRYPTO_SIGNED"}:null,
   risk_score_0_100:ready?boundedScore(verified_gro.risk.score):null,
   risk_score_kind:"PROPRIETARY_INSTITUTIONAL_SIGNED_SCORE",

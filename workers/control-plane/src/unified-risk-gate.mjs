@@ -12,6 +12,8 @@ import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bri
 import {readIndexedRiskCountryOriginals} from "./phase2h-risk-country-index.mjs";
 import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
  from "./risk-gate-three-tier-product.mjs";
+import {RISK_GATE_CORRIDOR_MEMBERS,RISK_GATE_CORRIDOR_WEIGHTS}
+ from "./risk-gate-corridor-members.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
@@ -243,6 +245,8 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  const snapshot={schema:UNIFIED_SCHEMA,target_type:type,target_id:id,day_utc:day,generated_at:iso(now),
   categories,unified_risk_score:score.unifiedScore??basicUnifiedScore,
   verified_unified_risk_score:score.unifiedScore,
+  signed_gro_payload_sha256:hex.test(String(gro?.integrity?.payload_hash??""))?
+   gro.integrity.payload_hash:null,
   basic_focused:{unified_risk_score:basicUnifiedScore,
    category_scores:basicCategoryScores,confidence:"LOW",verification:"PROVISIONAL",
    score_kind:"OBSERVED_BASELINE_ACTIVITY_PROXY"},
@@ -270,6 +274,145 @@ async function remote(cfg,path,{method="GET",body,headers={}}={},fetcher=fetch){
   headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,Accept:"application/json",...headers}});
  if(!r.ok||r.status>=300)throw Error("UNIFIED_SUPABASE_HTTP_FAILED");
  return r;
+}
+const COUNTRY_SIGNAL_DOMAIN=Object.freeze({GEOPOLITICS:"geopolitics",
+ MACRO_FX:"macro_fx",CRITICAL_MINERALS:"critical_minerals"});
+const finiteScore=value=>typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=1;
+const numberId=hexValue=>BigInt("0x"+hexValue.slice(0,15)).toString();
+function snapshotCategoryScore(snapshot,category){
+ const verified=snapshot?.categories?.[category];
+ if(finiteScore(verified?.risk_score)){
+  const gro=hex.test(String(snapshot?.signed_gro_payload_sha256??""))?
+   snapshot.signed_gro_payload_sha256:null;
+  return {score:verified.risk_score,status:gro?"VERIFIED":"OBSERVED_UNVERIFIED",gro};
+ }
+ if(snapshot?.basic_focused?.unified_risk_score!==null&&
+    finiteScore(snapshot?.basic_focused?.category_scores?.[category]))
+  return {score:snapshot.basic_focused.category_scores[category],status:"OBSERVED_UNVERIFIED",gro:null};
+ return null;
+}
+function summarizeSeries(values){
+ const scores=values.map(x=>x.score).filter(Number.isFinite);
+ if(!scores.length)return null;
+ const average=scores.reduce((a,b)=>a+b,0)/scores.length;
+ const volatility=Math.sqrt(scores.reduce((n,x)=>n+(x-average)**2,0)/scores.length);
+ return {average:Number(average.toFixed(2)),volatility:Number(volatility.toFixed(2)),count:scores.length};
+}
+async function signedSnapshotRows(env,whereSql,binds){
+ const out=await env.DB.prepare("SELECT entity_type,entity_id,day_utc,snapshot_json,"+
+  "audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots WHERE "+whereSql+
+  " ORDER BY day_utc ASC,entity_id ASC").bind(...binds).all();
+ if(!Array.isArray(out?.results))throw Error("RISK_GATE_7D_D1_ROWS_INVALID");
+ const rows=[];
+ for(const row of out.results){
+  let snapshot,proof;try{snapshot=JSON.parse(row.snapshot_json);proof=JSON.parse(row.audit_proof_json)}catch{throw Error("RISK_GATE_7D_D1_JSON_INVALID")}
+  if(snapshot?.target_type!==row.entity_type||snapshot?.target_id!==row.entity_id||
+     snapshot?.day_utc!==row.day_utc||row.content_sha256!==proof?.content_sha256||
+     !await verifySnapshot(snapshot,proof,env))throw Error("RISK_GATE_7D_D1_HMAC_INVALID");
+  rows.push({...row,snapshot,proof});
+ }
+ return rows;
+}
+async function projectCountryRiskSignal7d(env,latest){
+ if(latest.entity_type!=="COUNTRY")return [];
+ const day=latest.day_utc,from=iso(Date.parse(day+"T00:00:00.000Z")-6*DAY).slice(0,10);
+ const rows=await signedSnapshotRows(env,"entity_type='COUNTRY' AND entity_id=? AND day_utc>=? AND day_utc<=?",
+  [latest.entity_id,from,day]);
+ const projected=[];
+ for(const [category,domain] of Object.entries(COUNTRY_SIGNAL_DOMAIN)){
+  const series=[];
+  for(const row of rows){
+   const x=snapshotCategoryScore(row.snapshot,category);
+   if(x)series.push({day:row.day_utc,score:x.score*100,status:x.status,gro:x.gro,
+    sha:row.content_sha256,generated_at:row.generated_at});
+  }
+  const current=series.findLast(x=>x.day===day),summary=summarizeSeries(series);
+  if(!current||!summary)continue;
+  const eventSha=await hash("risk_signal_7d|"+latest.entity_id+"|"+domain+"|"+day);
+  projected.push({id:numberId(eventSha),event_sha256:eventSha,
+   verified_gro_sha256:current.status==="VERIFIED"?current.gro:null,
+   country_iso3:latest.entity_id,domain,signal_kind:"daily_risk_rollup",
+   intensity:Number(current.score.toFixed(2)),verification_status:current.status,
+   original_at:current.generated_at,score_0_100:Number(current.score.toFixed(2)),
+   rolling_7d_avg_0_100:summary.average,volatility_7d_0_100:summary.volatility,
+   risk_delta_0_100:Number((current.score-summary.average).toFixed(2)),rollup_day:day,
+   scored_days:summary.count,source_snapshot_sha256:current.sha});
+ }
+ return projected;
+}
+async function projectCorridorCandidate7d(env,day,now){
+ const corridors=Object.entries(RISK_GATE_CORRIDOR_MEMBERS);
+ const members=[...new Set(corridors.flatMap(([,list])=>list))];
+ const from=iso(Date.parse(day+"T00:00:00.000Z")-6*DAY).slice(0,10);
+ const rows=members.length?await signedSnapshotRows(env,
+  "entity_type='COUNTRY' AND entity_id IN ("+members.map(()=>"?").join(",")+") AND day_utc>=? AND day_utc<=?",
+  [...members,from,day]):[];
+ const byCountryDay=new Map();
+ for(const row of rows){
+  const verified=row.snapshot?.verified_unified_risk_score;
+  const basic=row.snapshot?.basic_focused?.unified_risk_score;
+  const score=finiteScore(verified)?verified:finiteScore(basic)?basic:null;
+  if(score!==null)byCountryDay.set(row.entity_id+"|"+row.day_utc,{score,sha:row.content_sha256});
+ }
+ const output=[];
+ for(const [corridorId,countries] of corridors){
+  const daily=[];
+  for(let age=6;age>=0;age--){
+   const date=iso(Date.parse(day+"T00:00:00.000Z")-age*DAY).slice(0,10);
+   const points=countries.map(c=>byCountryDay.get(c+"|"+date)).filter(Boolean);
+   if(points.length)daily.push({day:date,score:points.reduce((n,x)=>n+x.score,0)/points.length,
+    count:points.length,hashes:points.map(x=>x.sha)});
+  }
+  const current=daily.findLast(x=>x.day===day)??null;
+  const series=summarizeSeries(daily.map(x=>({score:x.score*100})));
+  const score=current?Number((current.score*100).toFixed(2)):null;
+  const candidateSha=await hash("corridor_candidate_7d|"+corridorId+"|"+day);
+  const complete=Boolean(current&&current.count===countries.length&&daily.length===7&&
+   daily.every(x=>x.count===countries.length));
+  output.push({id:numberId(candidateSha),candidate_sha256:candidateSha,
+   origin_country_iso3:null,destination_country_iso3:null,evidence_gro_sha256:null,
+   candidate_status:"CONDITIONAL_PASS",exposure_kind:"named_corridor_gate",
+   corridor_id:corridorId,day_utc:day,friction_index_0_100:score,
+   rolling_7d_avg_0_100:series?.average??null,volatility_7d_0_100:series?.volatility??null,
+   risk_delta_0_100:score===null||!series?null:Number((score-series.average).toFixed(2)),
+   constituent_countries:countries,weighting_method:countries.length?RISK_GATE_CORRIDOR_WEIGHTS:"NO_MEMBER_MAPPING",
+   evidence_completeness:countries.length?(complete?"COMPLETE":"INCOMPLETE"):"NO_MEMBER_MAPPING",
+   basic_tier_status:"CONDITIONAL_PASS",full_tier_status:"REQUIRES_SIGNED_GRO",
+   source_snapshot_sha256:current?await hash(current.hashes.join("|")):null,
+   ingested_at:iso(now),expires_at:iso(now+SEVEN)});
+ }
+ return output;
+}
+async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher){
+ const countries=latestRows.filter(x=>x.entity_type==="COUNTRY");
+ const signals=(await Promise.all(countries.map(x=>projectCountryRiskSignal7d(env,x)))).flat();
+ if(signals.length){
+  await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?on_conflict=event_sha256,country_iso3,domain",{
+   method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+   body:JSON.stringify(signals)},fetcher);
+  const ids=signals.map(x=>x.event_sha256);
+  const read=await (await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?select=event_sha256,country_iso3,domain,source_snapshot_sha256&event_sha256=in.("+ids.join(",")+")",{},fetcher)).json();
+  if(!Array.isArray(read)||read.length!==signals.length||signals.some(x=>!read.some(y=>
+   y.event_sha256===x.event_sha256&&y.country_iso3===x.country_iso3&&y.domain===x.domain&&
+   y.source_snapshot_sha256===x.source_snapshot_sha256)))throw Error("RISK_SIGNAL_7D_READBACK_MISMATCH");
+ }
+ if(countries.length){
+  const day=countries.map(x=>x.day_utc).sort().at(-1);
+  const outputs=await projectCorridorCandidate7d(env,day,now);
+  if(outputs.length){
+   await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?on_conflict=corridor_id,day_utc",{
+    method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
+    body:JSON.stringify(outputs)},fetcher);
+   const ids=outputs.map(x=>x.corridor_id);
+   const read=await (await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?select=corridor_id,day_utc,candidate_sha256,basic_tier_status,full_tier_status&corridor_id=in.("+
+    ids.join(",")+")&day_utc=eq."+day,{},fetcher)).json();
+   if(!Array.isArray(read)||read.length!==outputs.length||outputs.some(x=>!read.some(y=>
+    y.corridor_id===x.corridor_id&&y.day_utc===x.day_utc&&y.candidate_sha256===x.candidate_sha256&&
+    y.basic_tier_status==="CONDITIONAL_PASS"&&y.full_tier_status==="REQUIRES_SIGNED_GRO")))
+    throw Error("CORRIDOR_CANDIDATE_7D_READBACK_MISMATCH");
+  }
+ }
+ return {risk_signal_rows:signals.length,corridor_rows:countries.length?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
 }
 /** Bounded D1-to-Supabase immutable snapshot delivery.
  * BACKLOG is scheduled and strictly oldest-first (12 rows per run).
@@ -366,12 +509,14 @@ export async function syncUnifiedRiskSupabase(env,{
    rows.some(x=>!read.some(y=>y.entity_type===x.entity_type&&y.entity_id===x.entity_id&&
     y.day_utc===x.day_utc&&y.content_sha256===x.content_sha256)))
    return {ok:false,error:"UNIFIED_SUPABASE_HASH_MISMATCH"};
+  const rollup=await syncRiskGateSevenDayOutputs(env,cfg,payload,now,fetcher);
   for(const row of rows){
    const receipt=await env.DB.prepare("UPDATE unified_risk_snapshots SET supabase_synced_at=? WHERE entity_type=? AND entity_id=? AND day_utc=? AND content_sha256=? AND supabase_synced_at IS NULL")
     .bind(iso(now),row.entity_type,row.entity_id,row.day_utc,row.content_sha256).run();
    if(receipt?.success===false)return {ok:false,error:"UNIFIED_SUPABASE_D1_RECEIPT_FAILED"};
   }
   return {ok:true,synced:rows.length,hash_readback_verified:true,
+   seven_day_rollup:rollup,
    scope,exact_target_count:canary?3:null,
    canonical_page:canonicalPage?page:null,
    canonical_page_count:canonicalPage?rows.length:null,
@@ -430,6 +575,16 @@ export async function cleanupUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fet
   await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?generated_at=lt."+encoded,{method:"DELETE"},fetcher);
   const check=await (await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?select=entity_id&generated_at=lt."+encoded+"&limit=1",{},fetcher)).json();
   if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
+  await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?original_at=lt."+encoded,
+   {method:"DELETE",headers:{Prefer:"return=minimal"}},fetcher);
+  const signalCheck=await (await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?select=id&original_at=lt."+encoded+"&limit=1",{},fetcher)).json();
+  if(!Array.isArray(signalCheck)||signalCheck.length)
+   return {ok:false,error:"RISK_SIGNAL_7D_CLEANUP_READBACK_FAILED"};
+  await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?expires_at=lt."+encoded,
+   {method:"DELETE",headers:{Prefer:"return=minimal"}},fetcher);
+  const corridorCheck=await (await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?select=corridor_id&expires_at=lt."+encoded+"&limit=1",{},fetcher)).json();
+  if(!Array.isArray(corridorCheck)||corridorCheck.length)
+   return {ok:false,error:"CORRIDOR_CANDIDATE_7D_CLEANUP_READBACK_FAILED"};
   await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM risk_observations WHERE created_at<?").bind(cutoff).run();
   await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE day_utc<?").bind(cutoff.slice(0,10)).run();
