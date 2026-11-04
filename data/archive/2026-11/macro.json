@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T01:33:47.217Z",
+  "updated_at": "2026-11-04T02:58:49.520Z",
   "signals": [
+    {
+      "id": "macro-5159551c",
+      "category": "macro",
+      "title": "Geomacro finds Airtel Africa recorded 193.9m Customers, 28% Data Revenue Growth in H1 2026",
+      "what_changed": "A monitored source feed reports: Airtel Africa recorded 193.9m Customers, 28% Data Revenue Growth in H1 2026. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T02:52:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thisdaylive.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-53638d81",
+      "category": "macro",
+      "title": "Geomacro finds Trump said U.S. has no immediate plan to strike Iran: report",
+      "what_changed": "A monitored source feed reports: Trump said U.S. has no immediate plan to strike Iran: report. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T02:49:51.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e8e4985d",
+      "category": "macro",
+      "title": "Geomacro finds Cabinet approved new price of wheat at Rs4,500 per 40kg - Dawn",
+      "what_changed": "A monitored source feed reports: Cabinet approved new price of wheat at Rs4,500 per 40kg - Dawn. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T02:00:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-8c48dcf4",
       "category": "macro",
@@ -803,6 +860,25 @@
       "severity": null
     },
     {
+      "id": "macro-6f35e670",
+      "category": "macro",
+      "title": "Geomacro finds Jefferies raised American Electric Power stock price target on growth potential - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Jefferies raised American Electric Power stock price target on growth potential - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T10:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-15e70dad",
       "category": "macro",
       "title": "Geomacro finds Iran warned about ‘new battlefield’ after reported US strike on Qeshm",
@@ -917,6 +993,25 @@
       "severity": null
     },
     {
+      "id": "macro-0c42350d",
+      "category": "macro",
+      "title": "Geomacro finds Cabinet approved tax hike on imported EVs to 35% from 2027 - Thai PBS World",
+      "what_changed": "A monitored source feed reports: Cabinet approved tax hike on imported EVs to 35% from 2027 - Thai PBS World. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T08:14:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-c43d64ec",
       "category": "macro",
       "title": "Geomacro finds Chevron kept ADES’ 2007-built jack-up rig busy in Angolan waters for another year",
@@ -930,6 +1025,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.offshore-energy.biz"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-06c50884",
+      "category": "macro",
+      "title": "Geomacro finds India Renewable Energy Market reported 2026 - IEA - International Energy Agency",
+      "what_changed": "A monitored source feed reports: India Renewable Energy Market reported 2026 - IEA - International Energy Agency. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
