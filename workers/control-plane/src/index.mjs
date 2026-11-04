@@ -41,7 +41,7 @@ import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
-import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus} from "./gro-evidence-enrichment.mjs";
+import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
@@ -1362,6 +1362,10 @@ export default {
         if(!r.ok)console.error("GRO_EVIDENCE_BACKFILL_UNVERIFIED");
       }).catch(()=>console.error("GRO_EVIDENCE_BACKFILL_UNAVAILABLE")));
     }
+    // Hourly hot outbox TTL. Raw/B2 retention remains in its own authority.
+    if(env?.DB?.prepare&&utc.getUTCMinutes()===47)
+      ctx.waitUntil(pruneExpiredGroEvidence(env,utc.getTime())
+       .catch(()=>console.error("GRO_EVIDENCE_TTL_UNAVAILABLE")));
     // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
     // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
     // Successful generated snapshots are immutable per UTC day.
