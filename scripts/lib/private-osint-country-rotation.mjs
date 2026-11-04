@@ -1,5 +1,6 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
 import {selectHot50CountryDiscoveryBatch} from "./hot-50-country-watch.mjs";
+import {hot50CountryCategoryDiscoveryUnits,hot50GoogleCategorySource} from "./hot-50-google-news-category.mjs";
 import {hot50OfficialOriginalFeeds} from "./hot-50-official-original-feeds.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
@@ -64,23 +65,28 @@ export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=
    throw Error("PRIVATE_OSINT_COUNTRY_INDEX_REGISTRY_INVALID");
  const slot=Math.floor(now.getTime()/STEP_MS)%Math.ceil(countries.length/perTick);
  const selected=hot50Priority?
-  selectHot50CountryDiscoveryBatch(now,countries,perTick):
-  countries.slice(slot*perTick,(slot+1)*perTick);
- return Object.freeze(selected.map(country=>{
+  hot50CountryCategoryDiscoveryUnits(now,countries,perTick):
+  countries.slice(slot*perTick,(slot+1)*perTick).map(country=>({country,category:null}));
+ return Object.freeze(selected.map(({country,category})=>{
   // Known canonical aliases catch terms such as DRC, Ivory Coast and Burma.
   // These remain SEARCH HINTS only; no country is attributed from a query.
   const names=[country.name,...(Array.isArray(country.aliases)?country.aliases:[])].slice(0,3)
    .map(name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"');
+  const specific=category?hot50GoogleCategorySource(country,category):null;
   const query="("+names.join(" OR ")+") "+TERMS+" when:1d";
-  const url=new URL("https://news.google.com/rss/search");
-  url.searchParams.set("q",query);
-  url.searchParams.set("hl","en-US");
-  url.searchParams.set("gl","US");
-  url.searchParams.set("ceid","US:en");
+  const url=new URL(specific?.url??"https://news.google.com/rss/search");
+  if(!specific){
+   url.searchParams.set("q",query);
+   url.searchParams.set("hl","en-US");
+   url.searchParams.set("gl","US");
+   url.searchParams.set("ceid","US:en");
+  }
   return Object.freeze({
-   id:"private_country_index_"+country.iso3.toLowerCase(),
+   id:specific?.id??"private_country_index_"+country.iso3.toLowerCase(),
    url:url.toString(),continent:"global",publisher_country_iso3:null,
    discovery_country_iso3:country.iso3,
+   ...(specific?{index_query_focus_category:category,
+    google_news_category_specific:true}:{}),
    categories:CATEGORIES,type:"rss",supported:true,
    private_discovery_index_only:true,
    index_timestamp_not_original_page_clock:true,
