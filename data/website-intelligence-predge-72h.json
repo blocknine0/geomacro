@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T21:14:47.364Z",
+  "checked_at": "2026-11-04T23:42:31.224Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 358,
+  "item_count": 351,
   "counts": {
-    "geopolitics": 151,
-    "macro": 164,
-    "rare_earth": 43
+    "geopolitics": 148,
+    "macro": 162,
+    "rare_earth": 41
   },
-  "source_native_ids_sha256": "f92c850520f08342402aa7e21b43598d3f2f1afbcf0f4a42cc6b975522e588de",
+  "source_native_ids_sha256": "6e118c0ed3383e2089d43856d8b23b942566046d2120542fea452efb60d81735",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6693,139 +6693,6 @@
         "WTO news"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9a2b3d7b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Nigeria said troops kill 48 Islamist fighters after attacks in Borno, Yobe bases",
-      "what_changed": "A monitored source feed reports: Nigeria said troops kill 48 Islamist fighters after attacks in Borno, Yobe bases. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T23:20:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-54df3d64",
-      "category": "geopolitics",
-      "title": "Geomacro finds Justice Department urged sanctions for database analysis critical of its noncitizen voting claims",
-      "what_changed": "A monitored source feed reports: Justice Department urged sanctions for database analysis critical of its noncitizen voting claims. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "sanctions and trade restrictions",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T23:18:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.pbs.org"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-78952a80",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
-      "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:54:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-fdaa7380",
-      "category": "macro",
-      "title": "Geomacro finds Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International",
-      "what_changed": "A monitored source feed reports: Trump said Iran war will end very soon, calls oil rise a ‘small price’ - Iran International. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:54:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-431f0823",
-      "category": "macro",
-      "title": "Geomacro finds Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027",
-      "what_changed": "A monitored source feed reports: Fitch Solutions maintained nearly 6% growth rate for Ghana in 2026, but expects economy to lose momentum in 2027. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-29809f3f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027 - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-8d7365e9",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cochilco cut Chilean copper forecast for 2026, 2027",
-      "what_changed": "A monitored source feed reports: Cochilco cut Chilean copper forecast for 2026, 2027. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
