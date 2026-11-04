@@ -1,0 +1,91 @@
+{
+  "schema": "geomacro.category1-geopolitics-source-map.v1",
+  "as_of": "2026-11-04",
+  "category": "geopolitics",
+  "countries_iso3": [
+    "USA",
+    "CHN",
+    "IND",
+    "RUS",
+    "GBR",
+    "DEU",
+    "FRA",
+    "JPN",
+    "KOR",
+    "BEL"
+  ],
+  "scope": "PRIVATE_NEWS_DISCOVERY_AND_SOURCE_REVIEW",
+  "runtime_effect": "GOOGLE_WATCH_ONLY_EXISTING_15M_PRIVATE_OSINT_SLOT",
+  "telegram": [
+    {
+      "handle": "@osint613",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED"
+    },
+    {
+      "handle": "@DDGeopolitics",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED"
+    },
+    {
+      "handle": "@liveuamap",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED"
+    }
+  ],
+  "other_osint": [
+    {
+      "name": "OSINTdefender",
+      "url": "https://x.com/sentdefender",
+      "type": "X_ACCOUNT",
+      "activation_state": "API_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "Liveuamap",
+      "url": "https://liveuamap.com/",
+      "type": "CONFLICT_MAP",
+      "activation_state": "API_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    }
+  ],
+  "direct_news": [
+    {
+      "name": "Reuters World",
+      "url": "https://www.reuters.com/world/",
+      "activation_state": "PUBLISHER_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "Bloomberg Politics",
+      "url": "https://www.bloomberg.com/politics/",
+      "activation_state": "PUBLISHER_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "AP News",
+      "url": "https://apnews.com/world-news",
+      "activation_state": "PUBLISHER_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "South China Morning Post",
+      "url": "https://www.scmp.com/news/china",
+      "activation_state": "PUBLISHER_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "ANI",
+      "url": "https://aninews.in/",
+      "activation_state": "PUBLISHER_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    }
+  ],
+  "google_news": {
+    "query": "(\"United States\" OR \"China\" OR \"Russia\" OR \"India\") (\"Geopolitics\" OR \"Military\" OR \"Sanctions\")",
+    "integration": "scripts/lib/launch-priority-watch-sources.mjs",
+    "reuse_existing_global_wars_security_slot": true,
+    "requested_extra_network_calls": 0,
+    "source_kind": "DISCOVERY_AGGREGATOR",
+    "independent_event_proof": false
+  },
+  "rules": {
+    "raw_telegram_collection_without_channel_authorization": false,
+    "auto_paid_promotion": false,
+    "google_index_is_original_page": false,
+    "verified_live_original_coverage_claim": false
+  }
+}

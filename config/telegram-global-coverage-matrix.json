@@ -1,6 +1,6 @@
 {
   "schema_version": "geomacro.telegram.global-coverage.v1",
-  "review_date": "2026-09-18",
+  "review_date": "2026-11-04",
   "status": "DISCOVERY_MATRIX_ONLY",
   "runtime_effect": false,
   "approval_policy": "All candidates remain PENDING or HOLD until first-party identity, public username, rights boundary, and operator review are recorded. No candidate in this file authorizes ingestion.",
@@ -630,6 +630,22 @@
       "role": "aggregator",
       "status": "HOLD",
       "identity_basis": "prior review identified automated relay/no affiliation",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@osint613",
+      "region": "global",
+      "role": "independent OSINT publisher",
+      "status": "PENDING",
+      "identity_basis": "Public t.me/osint613 channel self-description; publisher authorization is not established",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@DDGeopolitics",
+      "region": "global",
+      "role": "independent geopolitical commentary/OSINT",
+      "status": "PENDING",
+      "identity_basis": "Public t.me/DDGeopolitics channel self-description; reports may include reposts and require independent verification",
       "rights": "INTERNAL_RESEARCH_ONLY"
     }
   ]
