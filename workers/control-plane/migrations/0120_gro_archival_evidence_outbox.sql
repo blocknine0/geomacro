@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS gro_evidence (
  archived_at TEXT NOT NULL,
  five_part_json TEXT NOT NULL CHECK(length(five_part_json) BETWEEN 100 AND 8000),
  five_part_sha256 TEXT NOT NULL CHECK(length(five_part_sha256)=64),
+ five_part_filled INTEGER NOT NULL DEFAULT 0 CHECK(five_part_filled IN (0,1)),
  source_reliability TEXT NOT NULL DEFAULT 'ORIGINAL_PAGE_NOT_INDEPENDENTLY_VERIFIED',
  entity_extraction TEXT NOT NULL DEFAULT 'COUNTRY_ASSOCIATION_NOT_INDEPENDENTLY_VERIFIED',
  impact_scoring TEXT NOT NULL DEFAULT 'NO_INDEPENDENT_IMPACT_SCORE',
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS gro_evidence (
  created_at TEXT NOT NULL,
  updated_at TEXT NOT NULL,
  CHECK(is_gro_verified = 0 OR (
-  independent_event_verified=1 AND impact_score_0_100 IS NOT NULL
+  five_part_filled=1 AND independent_event_verified=1 AND impact_score_0_100 IS NOT NULL
   AND independent_score_attestation_sha256 IS NOT NULL
   AND source_reliability='VERIFIED'
   AND entity_extraction='VERIFIED'
