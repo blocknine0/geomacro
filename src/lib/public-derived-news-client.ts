@@ -439,8 +439,7 @@ export async function fetchCurrentCanonicalWebsiteNews(
      !Array.isArray(doc.signals)||doc.signals.length>80||
      doc.rows_returned!==doc.signals.length)
     throw Error("CANONICAL_CATEGORY_FEED_UNTRUSTED");
-  const signals=doc.signals.filter(s=>safeSignal(s,now))
-   as StatelessIntelligenceSignal[];
+  const signals=doc.signals.filter(s=>safeSignal(s,now)) as StatelessIntelligenceSignal[];
   if(signals.length!==doc.signals.length||
      signals.some(s=>s.category!==category))
    throw Error("CANONICAL_CATEGORY_FEED_INVALID_STORY");
