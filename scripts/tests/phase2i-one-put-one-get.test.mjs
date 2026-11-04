@@ -15,7 +15,7 @@ test("governed B2 source queue writes one indexed bulk object and exactly one bo
   const candidates=Array.from({length:100},(_,i)=>({
    category:"geopolitics",title:"Publisher news topic "+i,
    articleUrl:"https://example.org/press/"+i,
-   publishedAt:"2026-11-04T08:00:00.000Z",sourceId:"issuer",
+   publishedAt:"2026-11-04T06:30:00.000Z",sourceId:"issuer",
    sourceUrl:"https://example.org/rss",credit:null,
    issuerContextCountryIso3:null,d1Acknowledged:false
   }));
