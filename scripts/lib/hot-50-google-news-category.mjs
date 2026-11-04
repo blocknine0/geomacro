@@ -47,9 +47,9 @@ export function hot50GoogleCategorySource(country,category,legacyAllDomainTerms=
  * Discovery routing is deterministic across delivered UTC 15m slots:
  * >=25 GETs/slot: all 150 Hot-50 × domain and 145 remaining country-wide
  * probes fit into 12 nominal slots, precisely within 180 minutes.
- * <25 GETs/slot: preserve the legacy combined three-domain query per
- * country on each sweep rather than starving two categories. The three
- * separate category-focused variants remain catalogued but are deferred.
+ * 8-24 GETs/slot: reserve one existing GET for a rolling targeted
+ * Hot-50 category query, the remaining GETs preserve combined three-domain
+ * searches for all 195 countries. <8 GETs keeps the full combined sweep.
  * The network/scheduler may be delayed or an actual feed may be unavailable.
  */
 export function hot50CountryCategoryDiscoveryUnits(now,countries,perTick){
@@ -72,9 +72,16 @@ export function hot50CountryCategoryDiscoveryUnits(now,countries,perTick){
   return Object.freeze(full.slice((slot%cycle)*perTick,(slot%cycle+1)*perTick));
  }
  const full=[...hot,...other];
- const cycle=Math.ceil(full.length/perTick);
- const selected=full.slice((slot%cycle)*perTick,(slot%cycle+1)*perTick);
- return Object.freeze(selected.map(country=>({country,category:null})));
+ const focusedSpare=perTick>=8?1:0;
+ const combinedCount=perTick-focusedSpare;
+ const cycle=Math.ceil(full.length/combinedCount);
+ const selected=full.slice((slot%cycle)*combinedCount,(slot%cycle+1)*combinedCount)
+  .map(country=>({country,category:null}));
+ if(focusedSpare){
+  const index=slot%150;
+  selected.push({country:hot[Math.floor(index/3)],category:DOMAINS[index%3]});
+ }
+ return Object.freeze(selected);
 }
 export function hot50GoogleSourceCadence(perTick){
  if(!Number.isSafeInteger(perTick)||perTick<0||perTick>49)
@@ -86,11 +93,12 @@ export function hot50GoogleSourceCadence(perTick){
   target_minutes:180,
   index_slots_per_tick:perTick,
   complete_hot50_3domain_cycle_minutes:perTick>=25?
-   Math.ceil(295/perTick)*15:null,
+   Math.ceil(295/perTick)*15:perTick>=8?150*15:null,
   combined_hot50_country_cycle_minutes:perTick===0?null:
-   Math.ceil(50/perTick)*15,
+   Math.ceil(50/(perTick>=8&&perTick<25?perTick-1:perTick))*15,
   legacy_combined_all_country_cycle_minutes:perTick===0?null:
-   Math.ceil(195/perTick)*15,
+   Math.ceil(195/(perTick>=8&&perTick<25?perTick-1:perTick))*15,
+  focused_google_category_slots_per_tick:perTick>=25?perTick:perTick>=8?1:0,
   combined_three_domain_query_fallback_active:perTick>0&&perTick<25,
   under_3h_nominal:perTick>=25,
   runtime_guaranteed:false,
