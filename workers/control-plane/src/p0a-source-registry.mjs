@@ -197,6 +197,25 @@ async function pollOne(env,row,{fetchImpl,now}){
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
  catch{result={state:'UNAVAILABLE',status:null,records:[],used_fallback:false}}
  let state=result.state,accepted=0,p0b_failure_codes={};
+ // Defer P0-B admission until ALL fetched sources from this poll window are
+ // combined. Do not commit source cursor before the shared B2 bundle is durable.
+ if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
+  try{
+   const candidates=await Promise.all(result.records.map(async item=>{
+    const raw={...item,intended_category:config.intended_category,
+     country_iso3:config.country_iso3,rights_tier:config.rights_tier};
+    return {candidateSha256:await sha(canonicalJson(raw)),
+     sourceId:config.source_id,raw};
+   }));
+   return {_p0b_deferred:true,source_id:config.source_id,
+    row,config,result,candidates};
+  }catch{
+   await env.DB.prepare(
+    "UPDATE source_registry SET next_poll_at=?,last_state='CAPACITY_DEFERRED' "+
+    'WHERE source_id=?').bind(iso(now+60000),config.source_id).run().catch(()=>{});
+   return {source_id:config.source_id,state:'CAPACITY_DEFERRED',accepted:0};
+  }
+ }
  try{
   if(state==='OBSERVED'&&env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
    // P0-B source-first: every parsed item is B2 encrypted/readback verified,
@@ -277,24 +296,83 @@ async function pollOne(env,row,{fetchImpl,now}){
    storage_readback_verified:false};
  }
 }
-export async function pollP0aSources(env,{fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL}={}){
- if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL)
+async function finishP0bSource(env,plan,now,admissions){
+ const {row,config,result,candidates}=plan;
+ const accepted=admissions.filter(a=>[
+  'QUEUED','DURABLE_PENDING_REDISPATCH','ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
+ ].includes(a?.status)).length;
+ const complete=admissions.length===candidates.length&&accepted===candidates.length;
+ const state=complete?'OBSERVED':'CAPACITY_DEFERRED',p0b_failure_codes={};
+ for(const a of admissions){
+  if(a?.status==='FAILED_NOT_ACKNOWLEDGED'||a?.status==='INVALID_CANDIDATE'||
+   a?.status==='HELD_FOR_REVIEW'){
+   const code=/^P0B_[A-Z0-9_]{3,80}$/u.test(a.error_code??'')?
+    a.error_code:'P0B_PRODUCER_FAILURE';
+   p0b_failure_codes[code]=(p0b_failure_codes[code]??0)+1;
+  }
+ }
+ const failures=complete?0:row.consecutive_failures+1;
+ const interval=config.polling_interval_sec*1000;
+ const delay=complete?interval:Math.min(3600000,
+  config.rate_limit_backoff.base_delay_ms*2**Math.min(failures,12));
+ const cursor=complete&&!result.used_fallback?
+  result.cursor??config.last_cursor:config.last_cursor;
+ await env.DB.prepare(
+  'UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
+  'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=? '+
+  'WHERE source_id=?'
+ ).bind(cursor,iso(now),iso(now+delay),state,
+  result.status??null,failures,config.source_id).run();
+ return {source_id:config.source_id,state,accepted,
+  parsed:result.records.length,status:result.status??null,
+  used_fallback:result.used_fallback===true,p0b_failure_codes};
+}
+export async function pollP0aSources(env,{
+ fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL,sourceIds=null
+}={}){
+ if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
+  (sourceIds!==null&&(!Array.isArray(sourceIds)||sourceIds.length<1||
+    sourceIds.length>5||sourceIds.some(x=>!SOURCE.test(x))||
+    new Set(sourceIds).size!==sourceIds.length)))
   return {ok:false,error:'P0A_POLL_ARGUMENT_INVALID'};
  let rows;
  try{
+  const filtered=sourceIds!==null?
+   ' AND source_id IN ('+sourceIds.map(()=>'?').join(',')+')':'';
   const q=await env.DB.prepare('SELECT * FROM source_registry '+
-   'WHERE enabled=1 AND next_poll_at<=? ORDER BY next_poll_at,source_id LIMIT ?')
-   .bind(iso(now),limit).all();
+   'WHERE enabled=1 AND next_poll_at<=?'+filtered+
+   ' ORDER BY next_poll_at,source_id LIMIT ?')
+   .bind(iso(now),...(sourceIds??[]),limit).all();
   rows=q.results??[];
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
- const receipts=await Promise.all(rows.map(async row=>{
+ const polled=await Promise.all(rows.map(async row=>{
   try{return await pollOne(env,row,{fetchImpl,now})}
   catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0}}
  }));
- // One broken source never blocks any other due source, and no verification,
- // commercial claim, website publication or customer debit is made.
+ const plans=polled.filter(x=>x._p0b_deferred);
+ if(plans.length){
+  const all=plans.flatMap(p=>p.candidates);
+  let admission;
+  try{admission=await processFetchedBatch(all,env)}
+  catch{admission=null}
+  const mapped=new Map();
+  for(const rec of admission?.receipts??[]){
+   const key=rec.sha256+'|'+rec.source_id;
+   if(!mapped.has(key))mapped.set(key,[]);
+   mapped.get(key).push(rec);
+  }
+  for(const plan of plans){
+   const admissions=plan.candidates.map(c=>
+    mapped.get(c.candidateSha256+'|'+c.sourceId)?.shift()??
+    {status:'FAILED_NOT_ACKNOWLEDGED',error_code:'P0B_PRODUCER_FAILURE'});
+   const idx=polled.indexOf(plan);
+   try{polled[idx]=await finishP0bSource(env,plan,now,admissions)}
+   catch{polled[idx]={source_id:plan.source_id,state:'CAPACITY_DEFERRED',
+    accepted:0,storage_readback_verified:false}}
+  }
+ }
  return {schema:'geomacro.p0a.poll.v1',ok:true,due_selected:rows.length,
-  receipts,private_only:true,paid_eligible:false,verified_originals:false,
+  receipts:polled,private_only:true,paid_eligible:false,verified_originals:false,
   rights_promoted:false,public_published:false};
 }
 export async function handleP0aAdmin(request,env){
