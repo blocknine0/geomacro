@@ -258,7 +258,10 @@ export class B2SpoolManager {
   return this.open(bytes,candidateSha256,sourceId);
  }
 
- async spoolBundleAndVerify(payloads:SpoolPayload[]){
+ async spoolBundleAndVerify(payloads:SpoolPayload[],opts:{keyTime?:Date}={}){
+  if(opts.keyTime!==undefined&&(!(opts.keyTime instanceof Date)||
+      !Number.isFinite(opts.keyTime.getTime())))
+   throw Error('P0B_BUNDLE_IDEMPOTENT_CLOCK_INVALID');
   if(!Array.isArray(payloads)||payloads.length<1||payloads.length>BUNDLE_MAX_ITEMS)
    throw Error('P0B_BUNDLE_ITEM_COUNT_INVALID');
   const index:{candidateSha256:string;sourceId:string;byteOffset:number;byteLength:number}[]=[];
@@ -295,7 +298,7 @@ export class B2SpoolManager {
   }));
   const object=await zipped(envelope,'gzip');
   if(object.length>MAX_CIPHER_BYTES)throw Error('P0B_BUNDLE_CIPHER_TOO_LARGE');
-  const stamp=this.now().toISOString().replace(/[-:]/gu,'').replace(/\.\d{3}/u,'');
+  const stamp=(opts.keyTime??this.now()).toISOString().replace(/[-:]/gu,'').replace(/\.\d{3}/u,'');
   const day=stamp.slice(0,8);
   const group=new Set(payloads.map(p=>p.sourceId)).size===1?payloads[0].sourceId:'mixed';
   const key=bundleKey(this.prefix,day,group,stamp,batchSha256);
