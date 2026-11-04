@@ -61,6 +61,9 @@ on:
       - "workers/control-plane/src/unified-risk-gate.mjs"
       - "workers/control-plane/src/unified-risk-private-osint-bridge.mjs"
       - "workers/control-plane/migrations/0110_unified_private_osint_evidence_index.sql"
+      - "workers/control-plane/migrations/0119_p1_source_fanout_585.sql"
+      - "workers/control-plane/src/p1-source-fanout.mjs"
+      - "scripts/tests/p1-source-fanout.test.mjs"
       - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/three-domain-structured-delivery.mjs"
@@ -196,6 +199,8 @@ jobs:
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
+      - name: Verify P1 1077 source fanout and exact 585-cell D1 health offline
+        run: node --test scripts/tests/p1-source-fanout.test.mjs
       - name: Verify Telegram Bot webhook relay preserves secret and no-leak ACK
         run: node --test scripts/tests/telegram-flash-relay.test.mjs
 

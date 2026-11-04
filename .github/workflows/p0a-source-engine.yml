@@ -7,6 +7,9 @@ on:
       - 'workers/control-plane/src/p0a-source-format.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
       - 'workers/control-plane/src/index.mjs'
+      - 'workers/control-plane/src/p1-source-fanout.mjs'
+      - 'workers/control-plane/migrations/0119_p1_source_fanout_585.sql'
+      - 'scripts/tests/p1-source-fanout.test.mjs'
       - 'workers/control-plane/migrations/0113_p0a_source_registry.sql'
       - 'scripts/tests/p0a-source-registry-engine.test.mjs'
       - '.github/workflows/p0a-source-engine.yml'
@@ -31,5 +34,6 @@ jobs:
           node --check workers/control-plane/src/p0a-source-format.mjs
           node --check workers/control-plane/src/p0a-source-registry.mjs
           node --check workers/control-plane/src/index.mjs
+          node --check workers/control-plane/src/p1-source-fanout.mjs
       - name: P0-A D1 migration and HTTP/format regression tests
-        run: node --test scripts/tests/p0a-source-registry-engine.test.mjs
+        run: node --test scripts/tests/p0a-source-registry-engine.test.mjs scripts/tests/p1-source-fanout.test.mjs
