@@ -36,9 +36,10 @@ function allowedPublisher(host,category){
 function htmlText(html){
  return String(html).replace(/<(script|style|noscript|svg)[^>]*>[\s\S]*?<\/\1\s*>/giu," ")
   .replace(/<!--([\s\S]*?)-->/gu," ").replace(/<[^>]+>/gu," ")
-  .replace(/&nbsp;|&#160;/giu," ").replace(/&amp;/giu,"&")
-  .replace(/&lt;/giu,"<").replace(/&gt;/giu,">")
-  .replace(/&quot;|&#34;/giu,'"').replace(/&#39;|&apos;/giu,"'")
+  .replace(/&(?:nbsp|#160|amp|lt|gt|quot|#34|#39|apos);/giu,entity=>({
+   "&nbsp;":" ","&#160;":" ","&amp;":"&","&lt;":"<","&gt;":">",
+   "&quot;":'"',"&#34;":'"',"&#39;":"'","&apos;":"'",
+  })[entity.toLowerCase()]??entity)
   .replace(/\s+/gu," ").slice(0,240000);
 }
 async function fetchArticle(item,target,fetcher){
