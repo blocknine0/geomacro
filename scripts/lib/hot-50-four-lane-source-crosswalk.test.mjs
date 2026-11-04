@@ -68,7 +68,9 @@ test("8 requests preserve all 195 country paths, report honest slower three-cate
  assert.equal(seen.size,195);
  assert.equal(hot50GoogleSourceCadence(8).under_3h_nominal,false);
  assert.equal(hot50GoogleSourceCadence(8).combined_three_domain_query_fallback_active,true);
- assert.equal(hot50GoogleSourceCadence(8).complete_hot50_3domain_cycle_minutes,null);
+ assert.equal(hot50GoogleSourceCadence(8).complete_hot50_3domain_cycle_minutes,2250);
+ assert.equal(hot50GoogleSourceCadence(8).combined_hot50_country_cycle_minutes,120);
+ assert.equal(hot50GoogleSourceCadence(8).focused_google_category_slots_per_tick,1);
  assert.equal(hot50GoogleSourceCadence(0).complete_hot50_3domain_cycle_minutes,null);
 });
 test("actual producer uses category-specific Google variants, no additional requests or commercial claims",()=>{
@@ -83,8 +85,9 @@ test("actual producer uses category-specific Google variants, no additional requ
  assert.equal(new Set(reg.map(x=>x.url)).size,reg.length);
  assert.ok(reg.some(x=>x.private_discovery_index_only===true&&
   HOT50_COUNTRY_SET.has(x.discovery_country_iso3)));
- // Small budgets preserve one full three-domain country search per GET.
- assert.equal(reg.filter(x=>x.google_news_category_specific===true).length,0);
+ // Small budgets preserve combined all-domain country searches and use at
+ // most one of their old GET slots for an additional focused query.
+ assert.equal(reg.filter(x=>x.google_news_category_specific===true).length,1);
  assert.ok(reg.some(x=>x.id==="private_hot50_can_gac_newsreleases"));
  assert.ok(reg.some(x=>x.id==="private_hot50_can_gac_statements"));
 });
