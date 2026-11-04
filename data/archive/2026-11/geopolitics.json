@@ -2,8 +2,141 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T00:25:41.344Z",
+  "updated_at": "2026-11-04T00:28:49.796Z",
   "signals": [
+    {
+      "id": "geopolitics-980cf4df",
+      "category": "geopolitics",
+      "title": "Geomacro finds President Zelenskyy said US elections will impact war in Ukraine",
+      "what_changed": "A monitored source feed reports: President Zelenskyy said US elections will impact war in Ukraine. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T21:43:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-561d77f3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Oil Settles lowered as Market Holds Out Hope for Middle East Diplomacy -- 3nd Update - MarketWatch",
+      "what_changed": "A monitored source feed reports: Oil Settles lowered as Market Holds Out Hope for Middle East Diplomacy -- 3nd Update - MarketWatch. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-63fb5906",
+      "category": "geopolitics",
+      "title": "Geomacro finds France condemned Russia's latest attacks on Ukraine, denounces Kremlin's cynicism",
+      "what_changed": "A monitored source feed reports: France condemned Russia's latest attacks on Ukraine, denounces Kremlin's cynicism. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:38:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c185a9b4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iranians said they cannot afford emergency kits as fears of renewed war grow - Iran International",
+      "what_changed": "A monitored source feed reports: Iranians said they cannot afford emergency kits as fears of renewed war grow - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:10:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2ad560ed",
+      "category": "geopolitics",
+      "title": "Geomacro finds Prime Minister Donald Tusk said Poland prevented a possible provocation on the border with Russia’s Kaliningrad exclave after spotting ‘people with flashlights’",
+      "what_changed": "A monitored source feed reports: Prime Minister Donald Tusk said Poland prevented a possible provocation on the border with Russia’s Kaliningrad exclave after spotting ‘people with flashlights’. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T19:42:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: meduza.io"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-e6aac3d0",
+      "category": "geopolitics",
+      "title": "Geomacro finds President Pezeshkian urged ambassadors to prioritize diplomacy, implementation of agreements",
+      "what_changed": "A monitored source feed reports: President Pezeshkian urged ambassadors to prioritize diplomacy, implementation of agreements. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T19:31:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: en.irna.ir"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-964a2942",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said U.S. cutting $3.8 billion annual security assistance to Israel",
+      "what_changed": "A monitored source feed reports: Trump said U.S. cutting $3.8 billion annual security assistance to Israel. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T19:10:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-1e1c0be6",
       "category": "geopolitics",
