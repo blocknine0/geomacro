@@ -97,6 +97,8 @@ jobs:
             throw Error("PHASE2H_HISTORICAL_D1_UNVERIFIED");
           appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+rows[0].uuid+"\n");
           NODE
+      - name: Install exact locked Zod v4 dependency for historical schema validation
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Archive at most 200 oldest unarchived D1 originals regardless of publication age
         run: node scripts/ops/phase2h-archive-private-raw-news.mjs
       - name: Preserve metadata-only B2 and D1 ACK receipt
