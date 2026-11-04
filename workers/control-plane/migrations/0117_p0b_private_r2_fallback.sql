@@ -5,10 +5,12 @@ CREATE TABLE IF NOT EXISTS p0b_private_r2_fallback (
  object_key TEXT NOT NULL UNIQUE,
  cipher_sha256 TEXT NOT NULL CHECK(length(cipher_sha256)=64),
  item_count INTEGER NOT NULL CHECK(item_count BETWEEN 1 AND 100),
- state TEXT NOT NULL CHECK(state IN ('PENDING_B2','B2_VERIFIED')),
+ state TEXT NOT NULL CHECK(state IN ('PENDING_B2','PROCESSING','B2_VERIFIED')),
  attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0),
  created_at TEXT NOT NULL,
  next_retry_at TEXT NOT NULL,
+ locked_until TEXT,
+ lease_id TEXT,
  b2_verified_at TEXT,
  last_error_code TEXT
 );

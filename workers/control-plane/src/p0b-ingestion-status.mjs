@@ -22,7 +22,7 @@ export async function getP0bIngestionStatus(env){
     "SUM(CASE WHEN state='DEAD_LETTER' THEN 1 ELSE 0 END) AS dead_letter "+
     'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first(),
    env.DB.prepare("SELECT COUNT(*) AS total,"+
-    "SUM(CASE WHEN state='PENDING_B2' THEN 1 ELSE 0 END) AS pending_b2,"+
+    "SUM(CASE WHEN state IN ('PENDING_B2','PROCESSING') THEN 1 ELSE 0 END) AS pending_b2,"+
     "SUM(CASE WHEN state='B2_VERIFIED' THEN 1 ELSE 0 END) AS b2_verified "+
     "FROM p0b_private_r2_fallback").first(),
   ]);

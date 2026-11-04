@@ -90,13 +90,24 @@ export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
  try{
   const result=await env.DB.prepare(
    "SELECT batch_id,object_key,cipher_sha256,item_count,attempt_count "+
-   "FROM p0b_private_r2_fallback WHERE state='PENDING_B2' AND next_retry_at<=? "+
-   "ORDER BY created_at,batch_id LIMIT ?").bind(clock,limit).all();
+   "FROM p0b_private_r2_fallback WHERE "+
+   "((state='PENDING_B2' AND next_retry_at<=?) OR "+
+   "(state='PROCESSING' AND locked_until<=?)) "+
+   "ORDER BY created_at,batch_id LIMIT ?").bind(clock,clock,limit).all();
   rows=result.results??[];
  }catch{return {status:"R2_FALLBACK_INDEX_UNAVAILABLE",selected:0,verified:0}}
  let verified=0,failed=0;
  for(const row of rows){
+  const leaseId=crypto.randomUUID();
+  const leaseUntil=new Date(now+5*60_000).toISOString();
   try{
+   const claim=await env.DB.prepare(
+    "UPDATE p0b_private_r2_fallback SET state='PROCESSING',"+
+    "lease_id=?,locked_until=? WHERE batch_id=? AND "+
+    "((state='PENDING_B2' AND next_retry_at<=?) OR "+
+    "(state='PROCESSING' AND locked_until<=?))"
+   ).bind(leaseId,leaseUntil,row.batch_id,clock,clock).run();
+   if(claim?.meta?.changes!==1)continue;
    const payloads=await restoreP0bR2Fallback(env,row);
    const result=await persist(payloads.map(p=>({
     candidateSha256:p.candidateSha256,sourceId:p.sourceId,raw:p.rawPayload
@@ -108,8 +119,9 @@ export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
     throw Error("P0B_R2_REPLAY_NOT_B2_VERIFIED");
    await env.DB.prepare(
     "UPDATE p0b_private_r2_fallback SET state='B2_VERIFIED',"+
-    "b2_verified_at=?,last_error_code=NULL WHERE batch_id=? AND state='PENDING_B2'"
-   ).bind(clock,row.batch_id).run();
+    "b2_verified_at=?,lease_id=NULL,locked_until=NULL,last_error_code=NULL "+
+    "WHERE batch_id=? AND state='PROCESSING' AND lease_id=?"
+   ).bind(clock,row.batch_id,leaseId).run();
    const proof=await env.DB.prepare(
     "SELECT state,b2_verified_at FROM p0b_private_r2_fallback WHERE batch_id=?"
    ).bind(row.batch_id).first();
@@ -121,9 +133,10 @@ export async function drainR2Fallback(env:R2FallbackEnv&DrainEnv,{
    const nextMs=Math.min(3600_000,60_000*2**Math.min(row.attempt_count+1,6));
    try{await env.DB.prepare(
     "UPDATE p0b_private_r2_fallback SET attempt_count=attempt_count+1,"+
-    "next_retry_at=?,last_error_code='P0B_R2_REPLAY_NOT_B2_VERIFIED' "+
-    "WHERE batch_id=? AND state='PENDING_B2'"
-   ).bind(new Date(now+nextMs).toISOString(),row.batch_id).run();}
+    "next_retry_at=?,state='PENDING_B2',locked_until=NULL,lease_id=NULL,"+
+    "last_error_code='P0B_R2_REPLAY_NOT_B2_VERIFIED' "+
+    "WHERE batch_id=? AND state='PROCESSING' AND lease_id=?"
+   ).bind(new Date(now+nextMs).toISOString(),row.batch_id,leaseId).run();}
    catch{/* R2 object and earlier D1 index remain durable for later retry. */}
   }
  }

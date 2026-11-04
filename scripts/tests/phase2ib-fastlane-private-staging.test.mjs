@@ -162,3 +162,25 @@ test("non-collision D1 outage is never swallowed by the isolation routine",async
   records:Array.from({length:6},(_,i)=>mk(i)),
  }),/PHASE2IB_FASTLANE_COLLISION_BATCH_CAP/);
 });
+
+test("100 provider-approved Phase2I originals use only two serial 50-row authenticated D1 requests",async()=>{
+ const records=Array.from({length:100},(_,i)=>({
+  record_id:i.toString(16).padStart(64,"0"),
+  category:["geopolitics","macro","rare_earth"][i%3]
+ }));
+ const sizes=[];
+ const post=async ({records:group})=>{
+  sizes.push(group.length);
+  return {stored:group.length,duplicate:0,readback_verified:true,
+   per_original_readback_verified:true,verified_originals:group.length};
+ };
+ const result=await postPhase2iCollisionIsolated({records,maxRows:100,post});
+ assert.deepEqual(sizes,[50,50]);
+ assert.equal(result.stored,100);
+ assert.equal(result.verifiedRecordIds.length,100);
+ assert.equal(result.readback_verified,true);
+ assert.ok(sizes.every(n=>n<=50));
+ await assert.rejects(postPhase2iCollisionIsolated({
+  records:[...records,records[0]],maxRows:100,post
+ }),/PHASE2IB_FASTLANE_COLLISION_BATCH_CAP/);
+});
