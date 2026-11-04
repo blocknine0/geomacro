@@ -13,6 +13,7 @@ import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {hot50Direct20mPublisherRegistry} from "./hot-50-direct-20m-sources.mjs";
 import {hot50RetiredBackupSources} from "./hot-50-retired-backup-sources.mjs";
 import {geopoliticsContinuitySources} from "./geopolitics-continuity-sources.mjs";
+import {macroMineralsContinuitySources} from "./macro-minerals-continuity-sources.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
@@ -108,6 +109,22 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
    }
  }
 
+ // Preserve original registry identity and one GET per distinct official URL.
+ // Alternate publishers do not turn upstream denials into HTTP success.
+ const macroMineralsContinuity=macroMineralsContinuitySources();
+ let macroMineralsNewDirectUrls=0;
+ for(const s of macroMineralsContinuity){
+   const old=merged.get(s.url);
+   if(old){
+     merged.set(s.url,safeDirect({...old,
+       categories:[...new Set([...old.categories,...s.categories])],
+       private_macro_minerals_continuity:true}));
+     hotUrls.add(s.url);
+   }else{
+     add(s,true);macroMineralsNewDirectUrls++;
+   }
+ }
+
  const backed=new Set([...merged.values()].flatMap(source=>
   source.backup_for_retired_ids??[]));
  if(backed.size!==14||
@@ -133,6 +150,9 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
   all_priority_direct_feeds:priority.length,
   geopolitics_continuity_sources_pinned:geoContinuity.length,
   geopolitics_new_direct_urls:geopoliticsNewDirectUrls,
+  macro_minerals_continuity_sources_pinned:macroMineralsContinuity.length,
+  macro_minerals_new_direct_urls:macroMineralsNewDirectUrls,
+  macro_minerals_continuity_transport_verified_by_registration:false,
   geopolitics_continuity_transport_verified_by_registration:false,
   hot50_retired_backup_mapping_count:backed.size,
   hot50_retired_backup_unique_urls_pinned:backups.registry.length,

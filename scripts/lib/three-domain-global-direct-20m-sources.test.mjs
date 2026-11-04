@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {threeDomainGlobal20mPublisherRegistry,GLOBAL_DIRECT_20M_MAX_REQUESTS}
  from "./three-domain-global-direct-20m-sources.mjs";
 import {hot50Direct20mPublisherRegistry} from "./hot-50-direct-20m-sources.mjs";
+import {macroMineralsContinuitySources} from "./macro-minerals-continuity-sources.mjs";
 import {PRIVATE_OSINT_RETIRED_SOURCE_IDS}
  from "./private-osint-retired-sources.mjs";
 
@@ -23,6 +24,14 @@ test("true 20-minute production registry includes all Hot-50 native feeds plus n
  assert.ok(categories.every(x=>registry.some(s=>s.categories.includes(x))));
  assert.equal(summary.hot50_retired_backup_mapping_count,14);
  assert.equal(summary.hot50_retired_backup_unique_urls_in_current_tick,14);
+ assert.equal(summary.macro_minerals_continuity_sources_pinned,4);
+ assert.equal(summary.macro_minerals_continuity_transport_verified_by_registration,false);
+ for(const candidate of macroMineralsContinuitySources()){
+  const pinned=registry.find(s=>s.url===candidate.url);
+  assert.ok(pinned,"official Macro/Minerals backup must never rotate out");
+  assert.ok(candidate.categories.every(c=>pinned.categories.includes(c)));
+  assert.equal(pinned.publisher_native_dates_required,true);
+ }
  assert.equal(summary.google_index_urls_polled,0);
  assert.equal(summary.telegram_messages_polled,0);
  assert.equal(summary.paid_credentials_used,0);
