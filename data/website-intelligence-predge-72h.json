@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T14:20:06.468Z",
+  "checked_at": "2026-11-04T17:17:51.111Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 383,
+  "item_count": 372,
   "counts": {
-    "geopolitics": 165,
-    "macro": 175,
+    "geopolitics": 158,
+    "macro": 171,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "cfd7795870c35db995aabad4a31b55c7caf15b8a4990e39f1607c8d1b574909d",
+  "source_native_ids_sha256": "becd30c951e57399bb24ebd0337a7ca23cdb4eea82981663973034856ffc8f16",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7090,215 +7090,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.pbs.org"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a62e5d6b",
-      "category": "macro",
-      "title": "Geomacro finds Carney said Canada, U.S. working in coming weeks towards trade deal",
-      "what_changed": "A monitored source feed reports: Carney said Canada, U.S. working in coming weeks towards trade deal. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T17:14:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: globalnews.ca"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1c3a7356",
-      "category": "macro",
-      "title": "Geomacro finds Russia said drone hit 'industrial enterprise' near Moscow, Kyiv claims hit major refinery - The Hindu",
-      "what_changed": "A monitored source feed reports: Russia said drone hit 'industrial enterprise' near Moscow, Kyiv claims hit major refinery - The Hindu. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:27:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-2bb6e054",
-      "category": "geopolitics",
-      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
-      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:19:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a8b986d2",
-      "category": "macro",
-      "title": "Geomacro finds Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News",
-      "what_changed": "A monitored source feed reports: Saudi Arabia condemned attack on Qatari LNG carrier in Gulf - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:19:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-c2e42719",
-      "category": "geopolitics",
-      "title": "Geomacro finds Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News",
-      "what_changed": "A monitored source feed reports: Sudan said drone attacks from Ethiopia killed, wounded hundreds - Arab News. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:07:22.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b69f1273",
-      "category": "macro",
-      "title": "Geomacro finds Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa",
-      "what_changed": "A monitored source feed reports: Raymond James cut Oil States stock price target on guidance outlook By Investing.com - Investing.com South Africa. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T16:04:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-dd8a713c",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jaishankar held key talks as regional crises test Indian diplomacy - India Today",
-      "what_changed": "A monitored source feed reports: Jaishankar held key talks as regional crises test Indian diplomacy - India Today. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T15:40:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-5c4e047a",
-      "category": "geopolitics",
-      "title": "Geomacro finds Dan S. Sullivan said he will accept election results - CNN",
-      "what_changed": "A monitored source feed reports: Dan S. Sullivan said he will accept election results - CNN. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T15:40:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-e7eaa5a9",
-      "category": "geopolitics",
-      "title": "Geomacro finds France launched 'attempted murder' probe after petrol bomb attack on security forces - Bangkok Post",
-      "what_changed": "A monitored source feed reports: France launched 'attempted murder' probe after petrol bomb attack on security forces - Bangkok Post. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:41:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-3d1a7806",
-      "category": "geopolitics",
-      "title": "Geomacro finds Jakarta urged Moscow to halt military recruitment of Indonesians",
-      "what_changed": "A monitored source feed reports: Jakarta urged Moscow to halt military recruitment of Indonesians. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:39:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: en.antaranews.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4495ae4b",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia agreed to Halt Recruitment of Ghanaians for Ukraine War - Bloomberg",
-      "what_changed": "A monitored source feed reports: Russia agreed to Halt Recruitment of Ghanaians for Ukraine War - Bloomberg. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T14:27:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
