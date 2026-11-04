@@ -325,7 +325,7 @@ describe("permanent derived-only website archive",()=>{
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
   let d1Calls=0;
   const fetchImpl=async url=>{
-   if(url.includes("/v1/public/website-derived-news-bundle"))d1Calls++;
+   if(url.includes("/v1/internal/website-derived-news-bundle"))d1Calls++;
    return new Response("",{status:503});
   };
   const held=await publishPermanentDerivedNewsArchive({
@@ -370,7 +370,7 @@ describe("permanent derived-only website archive",()=>{
   const workflow=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
   assert.ok(workflow.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.result == 'success' && needs.quota-admission.outputs.research == 'true' }}"));
   const publisher=readFileSync("scripts/ops/publish-permanent-derived-news-archive.mjs","utf8");
-  assert.ok(publisher.includes('canonicalCatchup:process.env.GEOMACRO_CANONICAL_D1_CATCHUP==="true"'));
+  assert.ok(publisher.includes("const canonicalCatchup=process.env.GEOMACRO_CANONICAL_D1_CATCHUP==='true';"));
   assert.match(publisher,/canonical_d1_catchup_completed:canonicalCatchupCompleted/u);
  });
 
