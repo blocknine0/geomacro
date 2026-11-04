@@ -172,10 +172,18 @@ export class B2SpoolManager {
    throw Error('P0B_SPOOL_CONTENT_ID_MISMATCH');
   return payload;
  }
- private async signed(method:'PUT'|'GET',key:string,body:Uint8Array){
+ private async signed(method:'PUT'|'GET',key:string,body:Uint8Array,
+  addressing:'path'|'virtual'='path'){
   const at=this.now(),time=at.toISOString().replace(/[:-]|\.\d{3}/gu,'');
-  const date=time.slice(0,8),path='/'+[this.env.B2_SPOOL_BUCKET,...key.split('/')].map(encodeURIComponent).join('/');
-  const host=new URL(this.endpoint).host,payloadHash=await p0bSha256(body);
+  const date=time.slice(0,8);
+  // Backblaze supports both S3 addressing forms. On an actual transport
+  // exception only, retry the SAME immutable object on the virtual bucket
+  // host with a freshly signed Host. No redirects or HTTP-denial fallback.
+  const base=new URL(this.endpoint);
+  const host=addressing==='path'?base.host:this.env.B2_SPOOL_BUCKET+'.'+base.host;
+  const path='/'+(addressing==='path'?[this.env.B2_SPOOL_BUCKET,...key.split('/')]:key.split('/'))
+   .map(encodeURIComponent).join('/');
+  const payloadHash=await p0bSha256(body);
   const headers='host:'+host+'\n'+'x-amz-content-sha256:'+payloadHash+'\n'+'x-amz-date:'+time+'\n';
   const signedHeaders='host;x-amz-content-sha256;x-amz-date';
   const scope=date+'/'+this.region+'/s3/aws4_request';
@@ -185,7 +193,7 @@ export class B2SpoolManager {
   const kRegion=await hmac(kDate,this.region),kService=await hmac(kRegion,'s3');
   const keySignature=await hmac(kService,'aws4_request');
   const signature=HEX(await hmac(keySignature,stringToSign));
-  return {url:this.endpoint+path,headers:{
+  return {url:'https://'+host+path,headers:{
    'x-amz-content-sha256':payloadHash,'x-amz-date':time,
    Authorization:'AWS4-HMAC-SHA256 Credential='+this.env.B2_KEY_ID+'/'+scope+
     ', SignedHeaders='+signedHeaders+', Signature='+signature
@@ -197,8 +205,10 @@ export class B2SpoolManager {
   // idempotent; every attempt consumes its own shared B2 quota reservation.
   // Never retry real HTTP rejection (401/403/429), bad signatures, or
   // unverified response bodies. Only 1 transport retry is permitted.
-  const request=await this.signed(method,key,body);
   for(let attempt=0;attempt<2;attempt++){
+   // Both addresses map to the same authorized private B2 bucket/key.
+   // Every independent network attempt consumes its own global quota slot.
+   const request=await this.signed(method,key,body,attempt===0?'path':'virtual');
    await this.reserve(method);
    let response:Response;
    try{
