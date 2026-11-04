@@ -1175,5 +1175,20 @@
     "predge_unmodified": true,
     "payments_unchanged": true,
     "production_deploy_acceptance_required": true
+  },
+  "approved_p2_canonical_d1_intelligence_feed_20261104": {
+    "approval": "Founder directed deployment of PR #3555 on 2026-11-04, including its canonical D1-backed three-category Website Intelligence feed.",
+    "approved_source_commit": "e25fbbc73540f14bbbfca89489de9c8702c0e255",
+    "approved_paths": [
+      "src/components/intelligence/stateless-live-desk.tsx",
+      "src/routes/intelligence.tsx"
+    ],
+    "exact_blob_lock": true,
+    "scope": "Use the PR's canonical D1 feed for the Intelligence first paint and two-minute refresh, preserving existing edge/static fallbacks and category/source-clock behavior.",
+    "global_risk_final_lock_unmodified": true,
+    "homepage_finds_permanent_removal_unchanged": true,
+    "predge_unmodified": true,
+    "payments_unchanged": true,
+    "production_deploy_acceptance_required": true
   }
 }

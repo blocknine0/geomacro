@@ -41,6 +41,8 @@ import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
+import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
+import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -1361,6 +1363,24 @@ export default {
         const r=await pollP0aSources(env,{now:utc.getTime()});
         if(!r.ok)console.error('P0A_SOURCE_POLL_UNAVAILABLE');
       })().catch(()=>console.error('P0A_SOURCE_POLL_UNAVAILABLE')));
+    // P2 GRO evidence: archive D1 trigger creates durable work outbox.
+    // Small independent batches on the EXISTING one-minute Worker cron;
+    // never couple a source writer, B2 archive ACK or website response to LLM.
+    // Four source readers are untouched and no B2 request is generated here.
+    if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%2===0){
+      ctx.waitUntil(groEvidenceTick(env,utc.getTime()).then(r=>{
+        if(!r.ok)console.error("GRO_EVIDENCE_TICK_UNVERIFIED");
+      }).catch(()=>console.error("GRO_EVIDENCE_TICK_UNAVAILABLE")));
+    }
+    if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%2===1){
+      ctx.waitUntil(groEvidenceBackfill(env,utc.getTime()).then(r=>{
+        if(!r.ok)console.error("GRO_EVIDENCE_BACKFILL_UNVERIFIED");
+      }).catch(()=>console.error("GRO_EVIDENCE_BACKFILL_UNAVAILABLE")));
+    }
+    // Hourly hot outbox TTL. Raw/B2 retention remains in its own authority.
+    if(env?.DB?.prepare&&utc.getUTCMinutes()===47)
+      ctx.waitUntil(pruneExpiredGroEvidence(env,utc.getTime())
+       .catch(()=>console.error("GRO_EVIDENCE_TTL_UNAVAILABLE")));
     // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
     // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
     // Successful generated snapshots are immutable per UTC day.
@@ -1495,6 +1515,12 @@ export default {
           free_website_only:true,chargeable:false},503);
     }
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    // P2 current Website Intelligence: immutable source clocks, bounded
+    // per-category D1 reads and one-minute per-POP cache; no static rebuild.
+    if(request.method==="GET"&&
+       /^\/api\/v1\/feed\/(geopolitics|macro|rare_earth)$/u.test(url.pathname)&&!url.search)
+      return publicReadCache(()=>readIncrementalWebsiteCategoryFeed(
+       env,url.pathname.slice("/api/v1/feed/".length)));
     if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return publicReadCache(()=>getSourceRuntimeStatus(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
@@ -1668,6 +1694,9 @@ export default {
       return verifyLatestP0bCommitted(env);
 
     try {
+      // Owner-only GRO evidence status: readiness is NOT a paid/signed object.
+      if(request.method==="GET"&&url.pathname==="/v1/internal/gro-evidence/status"&&!url.search)
+        return groEvidenceStatus(env);
       // Root-admin-only, noncommercial metadata discovery. Never customer,
       // PREDGE or paid delivery. All lanes come from existing ingested D1 rows.
       if(url.pathname==="/v1/internal/risk-gate/derived-discovery")

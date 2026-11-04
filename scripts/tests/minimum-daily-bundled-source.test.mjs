@@ -18,7 +18,11 @@ test("minimum Free D1 account plan reserves all three bounded 15-minute D1 produ
  const budget=plan.source_intake_budget_to_utc_reset;
  assert.equal(plan.source_intake,true);
  assert.equal(plan.source_intake_interval_minutes,15);
- assert.equal(plan.source_intake_max_new_rows,5);
+ assert.equal(plan.source_intake_max_new_rows,100);
+ assert.equal(plan.source_intake_phase2i_adaptive,true);
+ assert.equal(plan.source_intake_phase2i_extra_slot_rows_reserved,95);
+ assert.equal(plan.source_intake_phase2i_extra_write_reserved,1520);
+ assert.equal(plan.source_intake_phase2i_extra_read_reserved,6080);
  assert.equal(plan.minimum_daily_bundled_source_admitted,true);
  assert.equal(plan.minimum_daily_bundled_source_policy.no_paid_capacity,true);
  assert.equal(budget.remaining_source_slots,96);

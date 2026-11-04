@@ -15,6 +15,10 @@ on:
       - "scripts/tests/derived-risk-gate-website-raw.test.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
       - "workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql"
+      - "workers/control-plane/src/gro-evidence-enrichment.mjs"
+      - "workers/control-plane/src/website-incremental-feed.mjs"
+      - "workers/control-plane/migrations/0120_gro_archival_evidence_outbox.sql"
+      - "scripts/tests/p2-gro-edge-acceptance.test.mjs"
       - "workers/control-plane/src/risk-gate-three-tier-product.mjs"
       - "workers/control-plane/src/unified-risk-gate.mjs"
       - "scripts/tests/risk-gate-three-tier-product.test.mjs"
@@ -43,6 +47,10 @@ on:
       - "workers/control-plane/migrations/0121_risk_gate_corridor_archive_readback.sql"
       - "src/lib/capability-pricing-catalog.ts"
       - "src/lib/capability-structured-output-contract.ts"
+      - "workers/control-plane/src/gro-evidence-enrichment.mjs"
+      - "workers/control-plane/src/website-incremental-feed.mjs"
+      - "workers/control-plane/migrations/0120_gro_archival_evidence_outbox.sql"
+      - "scripts/tests/p2-gro-edge-acceptance.test.mjs"
       - ".github/workflows/derived-risk-gate-discovery-20m.yml"
 
 permissions:
@@ -62,3 +70,5 @@ jobs:
           node-version: "22"
       - name: Verify Risk Gate review loop and independently signed proof rules
         run: node --test scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs scripts/tests/derived-risk-gate-discovery-bridge.test.mjs scripts/tests/derived-risk-gate-website-raw.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs
+      - name: P2 real archival hook and canonical edge feed offline contracts
+        run: node --test scripts/tests/p2-gro-edge-acceptance.test.mjs

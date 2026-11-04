@@ -397,3 +397,59 @@ export async function fetchAllDerivedNews(
   }
   return collected;
 }
+
+
+/**
+ * P2 direct canonical 60s three-category D1 feed. The source's original clock
+ * is retained, and these Website cards remain unscored research, NOT signed
+ * GRO or a paid object. Existing static archive is only a fallback.
+ */
+export async function fetchCurrentCanonicalWebsiteNews(
+ fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]> {
+ if(!Number.isFinite(now))throw Error("CANONICAL_CATEGORY_FEED_CLOCK_INVALID");
+ const categories=["geopolitics","macro","rare_earth"] as const;
+ const batches=await Promise.all(categories.map(async category=>{
+  const target="https://geomacro-control-plane.daspallab202391.workers.dev"+
+   "/api/v1/feed/"+category;
+  const response=await fetchPublicReadWithRetry(fetchImpl,target,{
+   method:"GET",redirect:"error",
+   headers:{Accept:"application/json"},
+  },8000);
+  if(response.status!==200||
+     Number(response.headers.get("content-length")??0)>1_000_000||
+     response.headers.get("X-GeoMacro-Data-Origin")!=="canonical-d1")
+   throw Error("CANONICAL_CATEGORY_FEED_UNAVAILABLE");
+  const raw=await response.text();
+  if(raw.length>1_000_000)throw Error("CANONICAL_CATEGORY_FEED_OVERSIZE");
+  const doc=JSON.parse(raw) as Record<string,unknown>;
+  const checked=Date.parse(String(doc.checked_at??""));
+  if(doc.ok!==true||
+     doc.schema!=="geomacro.canonical-category-edge-feed.v1"||
+     doc.source!=="CANONICAL_WEBSITE_D1_JOURNAL"||
+     doc.category!==category||
+     doc.original_publisher_text_redistributed!==false||
+     doc.origin_readback!=="D1_CANONICAL"||
+     doc.gro_verified_publication!==false||
+     doc.independent_event_verified!==false||
+     doc.scored!==false||doc.chargeable!==false||
+     doc.journal_retention_hours!==72||
+     !Number.isFinite(checked)||checked>now+60_000||
+     now-checked>120_000||
+     !Array.isArray(doc.signals)||doc.signals.length>80||
+     doc.rows_returned!==doc.signals.length)
+    throw Error("CANONICAL_CATEGORY_FEED_UNTRUSTED");
+  const signals=doc.signals.filter(s=>safeSignal(s,now)) as StatelessIntelligenceSignal[];
+  if(signals.length!==doc.signals.length||
+     signals.some(s=>s.category!==category))
+   throw Error("CANONICAL_CATEGORY_FEED_INVALID_STORY");
+  return signals;
+ }));
+ const records=batches.flat(),seen=new Set<string>();
+ for(const x of records){
+  if(seen.has(x.id))throw Error("CANONICAL_CATEGORY_FEED_DUPLICATE_STORY");
+  seen.add(x.id);
+ }
+ return records.sort((a,b)=>b.published_at.localeCompare(a.published_at)||
+  a.id.localeCompare(b.id));
+}
