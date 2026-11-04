@@ -39,12 +39,14 @@ if(env.GITHUB_ACTIONS!=="true"||
  env.PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"||
  !["true","false"].includes(env.PHASE2I_PROVIDER_CRITICAL??"")||
  !["true","false"].includes(env.PHASE2I_PROVIDER_RESEARCH??"")||
- ![3,5,10,25,50].includes(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)))
+ !Number.isSafeInteger(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS))||
+ Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)<3||
+ Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)>100)
  throw Error("PHASE2I_SOURCE_ONLY_PROVIDER_ADMISSION_REQUIRED");
 // Spend no more than the live provider admission. Five is the existing
 // D1 collision-isolation batch cap, NOT an authority to exceed a 3-row slot.
 const providerRows=Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS);
-const admittedRows=Math.min(providerRows,5);
+
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 // Opt into durable R2/DO only after its protected endpoint is provisioned.
 const durableMode=Boolean(env.GEOMACRO_PHASE2I_DURABLE_URL);
@@ -139,6 +141,9 @@ if(durableMode){
 // Legacy cap is a hard safety boundary, not an assertion of source coverage.
 if(!durableMode&&queue.available>=7200)
  console.log("::warning::PRIVATE_NEWS_72H_QUEUE_AT_OR_ABOVE_90_PERCENT_CAPACITY; queued news remain encrypted but complete universal ingestion not verified");
+const pendingOriginals=queue.candidates.filter(c=>c.d1Acknowledged!==true).length;
+const requestedBatch=pendingOriginals>=500?100:50;
+const admittedRows=Math.min(providerRows,requestedBatch);
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
  maxRows:admittedRows,returnVerifiedRecordIds:true,
@@ -309,6 +314,7 @@ console.log(JSON.stringify({
  ...indexed.summary,
  selected_count,available_originals,deferred_count,selected_by_category,
  admitted_source_only_max_rows:admittedRows,
+ source_only_adaptive_mode:pendingOriginals>=500?"BACKLOG":"NORMAL",
  d1_inserted,d1_unchanged,d1_rejected_conflicts,d1_readback_verified,
  b2_verified,rights_verified:false,paid_eligible:false,payments:0,
  predge_modified:false,publication_attempted:false,

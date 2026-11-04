@@ -90,7 +90,7 @@ export async function acknowledgePhase2i({
  lease,verifiedRecordIds,env=process.env,fetchImpl=fetch,
 }={}){
  if(!lease)return {acked_now:0};
- if(!Array.isArray(verifiedRecordIds)||verifiedRecordIds.length>5)
+ if(!Array.isArray(verifiedRecordIds)||verifiedRecordIds.length>100)
   throw Error("PHASE2I_DURABLE_ACK_UNVERIFIED");
  return call("/v1/phase2i/ack",{
   chunk_id:lease.chunk_id,lease_id:lease.lease_id,

@@ -54,8 +54,8 @@ test("source-only job strictly uses the existing provider budget and D1 intake w
   "PHASE2I_PROVIDER_MAX_NEW_ROWS","GEOMACRO_SOURCE_INTAKE_ONLY"])
   assert.ok(sourceOnly.includes(marker),marker);
  assert.match(sourceOnly,/maxRows:admittedRows/u);
- assert.match(sourceOnly,/admittedRows=Math.min\(providerRows,5\)/u);
- assert.match(sourceOnly,/\[3,5,10,25,50\]\.includes\(Number\(env\.PHASE2I_PROVIDER_MAX_NEW_ROWS\)\)/u);
+ assert.match(sourceOnly,/admittedRows=Math.min\(providerRows,requestedBatch\)/u);
+ assert.match(sourceOnly,/Number\(env\.PHASE2I_PROVIDER_MAX_NEW_ROWS\)>100/u);
  assert.match(sourceOnly,/stagePhase2iOsintFairRaw/u);
  assert.match(sourceOnly,/createPhase2iSingleSweepOriginalIndex/u);
  assert.match(sourceOnly,/onOriginalCandidate:singleSweep\.observe/u);
