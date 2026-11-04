@@ -39,7 +39,7 @@ export const MACRO_NEWS_SOURCES=Object.freeze([
  s('wgc_research','https://www.gold.org/goldhub/gold-focus','www.gold.org',/^\/goldhub\/(?:gold-focus\/20\d{2}\/\d{2}\/[a-z0-9-]+|research\/[a-z0-9/-]+)$/u,{media:'html',credit:'World Gold Council',periodic:true}),
  s('lbma_news','https://www.lbma.org.uk/articles','www.lbma.org.uk',/^\/articles\/[a-z0-9-]+$/u,{media:'html',credit:'LBMA',periodic:true}),
  s('cftc_news','https://www.cftc.gov/PressRoom/PressReleases','www.cftc.gov',/^\/PressRoom\/PressReleases\/[0-9-]+$/u,{media:'html',credit:'Commodity Futures Trading Commission',periodic:true}),
- s('cme_news','https://www.cmegroup.com/media-room/press-releases.html','www.cmegroup.com',/^\/media-room\/press-releases\/20\d{2}\/\d{1,2}\/\d{1,2}\/[a-z0-9_-]+\.html$/u,{media:'html',credit:'CME Group',periodic:true}),
+ s('cme_news','https://feeds.feedburner.com/mediaroom/CMsF','investor.cmegroup.com',/^\/(?:(?:index\.php\/)?news-releases\/news-release-details\/[a-z0-9-]+|media-room\/press-releases\/20\d{2}\/\d{1,2}\/\d{1,2}\/[a-z0-9_-]+\.html|20\d{2}-\d{2}-\d{2}-[A-Za-z0-9,-]+)$/u,{credit:'CME Group',periodic:true,extraHosts:['www.cmegroup.com','cmegroup.mediaroom.com']}),
  s('silver_institute','https://silverinstitute.org/feed/','silverinstitute.org',/^\/[a-z0-9]+(?:-[a-z0-9]+){2,}\/$/u,{credit:'The Silver Institute',periodic:true}),
 ]);
 // Five-minute primary pool shares Fed/ECB reads with the existing collector.
@@ -63,7 +63,7 @@ export function pinnedMacroArticle(raw,spec){
   if(spec.rbi)value=value.replace(/^http:\/\/(?:www\.)?rbi\.org\.in\//i,'https://www.rbi.org.in/').replace(/^https:\/\/rbi\.org\.in\//i,'https://www.rbi.org.in/');
   if(spec.id==='ecb_press')value=value.replace('eu//press/','eu/press/');
   const u=new URL(value,spec.url);
-  if(u.protocol!=='https:'||u.hostname!==spec.host||u.username||u.password||u.port||u.hash||!spec.path.test(u.pathname))return null;
+  if(u.protocol!=='https:'||!(u.hostname===spec.host||spec.extraHosts?.includes(u.hostname))||u.username||u.password||u.port||u.hash||!spec.path.test(u.pathname))return null;
   if(spec.rbi){const p=[...u.searchParams];if(p.length!==1||p[0][0].toLowerCase()!=='prid'||!/^\d{3,10}$/.test(p[0][1]))return null;}
   else if(u.search)return null;
   return u.href;

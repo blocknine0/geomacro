@@ -694,3 +694,12 @@ test("Indonesia private ANTARA source prefers independently monitored alternate 
  assert.equal(base.url,source.url);
  assert.equal(base.publisher_country_iso3,"IDN");
 });
+
+
+test('Mining Technology private producer uses the same native RSS publisher URL as the observed healthy 5-minute minerals lane',()=>{
+ const sources=privateOsintGlobalSources();
+ const source=sources.find(s=>s.id==='private_mining_technology');
+ assert.ok(source);
+ assert.equal(source.url,'https://www.mining-technology.com/news/feed/');
+ assert.ok(!sources.some(s=>s.url==='https://www.mining-technology.com/feed/'));
+});
