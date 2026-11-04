@@ -32,6 +32,10 @@ on:
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/lib/p0b-first-party-rss.mjs"
       - "scripts/lib/p0b-reliefweb-ukraine.mjs"
+      # B2 private news spool transport changes must actually deploy to the
+      # canonical Worker; otherwise green source tests leave old code live.
+      - "src/storage/b2-spool-manager.ts"
+      - "tests/p0_b_admission_test.ts"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
@@ -100,6 +104,10 @@ on:
       - "scripts/lib/p0b-live-global-search.mjs"
       - "scripts/lib/p0b-first-party-rss.mjs"
       - "scripts/lib/p0b-reliefweb-ukraine.mjs"
+      # B2 private news spool transport changes must actually deploy to the
+      # canonical Worker; otherwise green source tests leave old code live.
+      - "src/storage/b2-spool-manager.ts"
+      - "tests/p0_b_admission_test.ts"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
