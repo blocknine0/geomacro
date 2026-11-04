@@ -105,9 +105,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://resourcesreview.com.au/feed/",
+      "url": "https://www.miningmonthly.com/feed/rss",
       "type": "rss",
-      "description": "Resources Review independent Australian mining industry journalism, unverified feed candidate",
+      "description": "Australia Mining Monthly RSS, Australia mining sector alternative",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -170,9 +170,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.miningreview.com/feed/",
+      "url": "https://www.miningweekly.com/page/latest-news/feed",
       "type": "rss",
-      "description": "Mining Review Africa sector-specific RSS candidate; unverified publisher rights",
+      "description": "Mining Weekly latest-news RSS, South Africa mining sector alternative",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
