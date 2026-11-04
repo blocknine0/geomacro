@@ -200,6 +200,17 @@ export async function ingestDirectlyForRiskGate(
  },opts);
  if(accepted!==true)
   fail("RESEARCH_SIGNATURE_STALE_COMPARE_AND_SWAP");
+ // Persisted bytes must be independently re-read, SHA-256 hashed, and
+ // Ed25519 verified against the CURRENT country state version before
+ // a successful signed-state receipt may leave this server.
+ const readback=await getLatestSignedResearchGRO(event.country_code,{
+  env:opts.env,fetchImpl:opts.fetchImpl,now
+ });
+ if(!readback||readback.research_sha256!==signed.hash||
+    readback.research_signature_b64!==signed.signature||
+    readback.research_signing_key_id!==signed.keyId||
+    readback.version!==Number(state.version))
+  fail("RESEARCH_SIGNED_DURABLE_READBACK_UNVERIFIED");
  return {
   status:"RESEARCH_SIGNED_STATE_UPDATED",state_changed:true,
   version:state.version,signed:true,snapshot_sha256:signed.hash,
