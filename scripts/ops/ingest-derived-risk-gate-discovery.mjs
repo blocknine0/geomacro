@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * GeoMacro Step 2: every 20-minute main-only cycle consumes the four existing
+ * GeoMacro Step 2: every 20-minute main-only cycle consumes the five existing
  * D1-backed ingestion lanes and persists RIGHTS-UNVERIFIED discovery signals.
  * No new publisher GET, raw publisher text, payment, score or GRO signing.
  * Each page is rechecked and atomically committed by the protected Worker.
@@ -71,7 +71,9 @@ function assertPage(page,lane){
  if(page.records.length===0&&page.next_cursor!==null)
   throw Error("DERIVED_DISCOVERY_EMPTY_CURSOR_INVALID");
  if(page.records.length>0&&
-    (!page.next_cursor||!SHA.test(page.next_cursor.cursor_ref)))
+    (!page.next_cursor||!(lane==="website_intelligence"?
+      /^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(page.next_cursor.cursor_ref):
+      SHA.test(page.next_cursor.cursor_ref))))
   throw Error("DERIVED_DISCOVERY_CURSOR_INVALID");
 }
 function review(page,lane){
