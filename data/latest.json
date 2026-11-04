@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T06:27:55.325Z",
+  "checked_at": "2026-11-04T06:32:15.003Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,63 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-7e1d5b57",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran launched fresh drone attacks in Kurdistan Region - Rudaw",
+      "what_changed": "A monitored source feed reports: Iran launched fresh drone attacks in Kurdistan Region - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T06:14:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-60e47656",
+      "category": "macro",
+      "title": "Geomacro finds Wheat released Price Reduced, Flour Becomes Cheaper by Rs17 Per Kilogram - Pakistan Observer",
+      "what_changed": "A monitored source feed reports: Wheat released Price Reduced, Flour Becomes Cheaper by Rs17 Per Kilogram - Pakistan Observer. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:37:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0bfd0262",
+      "category": "macro",
+      "title": "Geomacro finds Iran said US reply to Hormuz plan ‘unconvincing’; Trump confirms strikes",
+      "what_changed": "A monitored source feed reports: Iran said US reply to Hormuz plan ‘unconvincing’; Trump confirms strikes. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:39:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-57a98de7",
       "category": "rare_earth",
@@ -20,6 +77,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T04:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-a7919cb7",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper Slips As US Midterms kept Markets On Edge - Finimize",
+      "what_changed": "A monitored source feed reports: Copper Slips As US Midterms kept Markets On Edge - Finimize. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:22:35.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -1012,6 +1088,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-26e36975",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia imposed Over 3,500 Airport Flight Restrictions in 2026 Amid Ukrainian Drone Attacks - Avi-Go",
+      "what_changed": "A monitored source feed reports: Russia imposed Over 3,500 Airport Flight Restrictions in 2026 Amid Ukrainian Drone Attacks - Avi-Go. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:41:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2bccd576",
+      "category": "geopolitics",
+      "title": "Geomacro finds IEC condemned election-related intimidation and disruptions",
+      "what_changed": "A monitored source feed reports: IEC condemned election-related intimidation and disruptions. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:31:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.sanews.gov.za"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4115,25 +4229,6 @@
       "severity": null
     },
     {
-      "id": "macro-749764f0",
-      "category": "macro",
-      "title": "Geomacro finds Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo",
-      "what_changed": "A monitored source feed reports: Power cut hit nine Ukrainian oblasts after Russian strikes on energy sites&#xA0;&#x2014; Ukrenergo. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: english.nv.ua"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-720b7519",
       "category": "rare_earth",
       "title": "Geomacro finds American Lithium increased Macusani Uranium Measured and Indicated Resource - Toronto Star",
@@ -4248,25 +4343,6 @@
       "severity": null
     },
     {
-      "id": "macro-e8fbb6b5",
-      "category": "macro",
-      "title": "Geomacro finds Citi raised AI revenue estimates on hyperscaler demand strength By Investing.com - Investing.com South Africa",
-      "what_changed": "A monitored source feed reports: Citi raised AI revenue estimates on hyperscaler demand strength By Investing.com - Investing.com South Africa. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:06:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-0a68e230",
       "category": "rare_earth",
       "title": "Geomacro finds Citi cut lithium price outlook on weaker demand",
@@ -4314,25 +4390,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T11:06:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-54d6bae6",
-      "category": "macro",
-      "title": "Geomacro finds UBS raised BrightSpring Health stock price target to $92 on growth outlook - Investing.com UK",
-      "what_changed": "A monitored source feed reports: UBS raised BrightSpring Health stock price target to $92 on growth outlook - Investing.com UK. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:06:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4584,63 +4641,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-46379707",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine said rare ceasefire was cover for Russian regrouping - The Straits Times",
-      "what_changed": "A monitored source feed reports: Ukraine said rare ceasefire was cover for Russian regrouping - The Straits Times. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:32:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-4dd82e92",
-      "category": "geopolitics",
-      "title": "Geomacro finds Xi said China willing to work with Arab, GCC countries for regional peace - China Daily",
-      "what_changed": "A monitored source feed reports: Xi said China willing to work with Arab, GCC countries for regional peace - China Daily. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:25:11.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-178cf0b2",
-      "category": "geopolitics",
-      "title": "Geomacro finds No announced plans to destroy countries as colonial powers collapse, top Russian security official",
-      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers collapse, top Russian security official. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:22:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: tass.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

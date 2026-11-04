@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T06:04:13.122Z",
+  "updated_at": "2026-11-04T06:32:15.003Z",
   "signals": [
+    {
+      "id": "geopolitics-7e1d5b57",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran launched fresh drone attacks in Kurdistan Region - Rudaw",
+      "what_changed": "A monitored source feed reports: Iran launched fresh drone attacks in Kurdistan Region - Rudaw. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T06:14:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-d5374378",
       "category": "geopolitics",
@@ -360,6 +379,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: en.mehrnews.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-26e36975",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia imposed Over 3,500 Airport Flight Restrictions in 2026 Amid Ukrainian Drone Attacks - Avi-Go",
+      "what_changed": "A monitored source feed reports: Russia imposed Over 3,500 Airport Flight Restrictions in 2026 Amid Ukrainian Drone Attacks - Avi-Go. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:41:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2bccd576",
+      "category": "geopolitics",
+      "title": "Geomacro finds IEC condemned election-related intimidation and disruptions",
+      "what_changed": "A monitored source feed reports: IEC condemned election-related intimidation and disruptions. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:31:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.sanews.gov.za"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

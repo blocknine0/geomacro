@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T06:04:13.122Z",
+  "updated_at": "2026-11-04T06:32:15.003Z",
   "signals": [
+    {
+      "id": "macro-60e47656",
+      "category": "macro",
+      "title": "Geomacro finds Wheat released Price Reduced, Flour Becomes Cheaper by Rs17 Per Kilogram - Pakistan Observer",
+      "what_changed": "A monitored source feed reports: Wheat released Price Reduced, Flour Becomes Cheaper by Rs17 Per Kilogram - Pakistan Observer. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:37:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0bfd0262",
+      "category": "macro",
+      "title": "Geomacro finds Iran said US reply to Hormuz plan ‘unconvincing’; Trump confirms strikes",
+      "what_changed": "A monitored source feed reports: Iran said US reply to Hormuz plan ‘unconvincing’; Trump confirms strikes. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:39:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.aljazeera.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-75f6ad7f",
       "category": "macro",
