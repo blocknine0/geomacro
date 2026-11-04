@@ -46,7 +46,7 @@ import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
-import {drainBacklog} from '../../../src/workers/backlog-drain-cron.ts';
+import {drainBacklog,drainP0bArchiveOutbox} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1312,6 +1312,12 @@ export default {
       ctx.waitUntil(drainBacklog(env,{now:utc.getTime()}).then(r=>{
         if(!['DRAINED_BATCH','DRAIN_CLEAN'].includes(r.status))console.error('P0B_DRAIN_DEFERRED',r.status);
       }).catch(()=>console.error('P0B_DRAIN_UNAVAILABLE')));
+    if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
+       utc.getUTCMinutes()%10===0&&env?.DB?.prepare)
+      ctx.waitUntil(drainP0bArchiveOutbox(env,{now:utc.getTime()}).then(receipt=>{
+        if(!['P0B_OUTBOX_REPLAY_OK','P0B_OUTBOX_B2_CIRCUIT_HELD'].includes(receipt.status))
+          console.error('P0B_OUTBOX_REPLAY_UNVERIFIED',receipt.status);
+      }).catch(()=>console.error('P0B_OUTBOX_DRAIN_UNAVAILABLE')));
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
     if(env?.DB?.prepare)
