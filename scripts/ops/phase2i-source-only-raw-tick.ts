@@ -97,9 +97,13 @@ if(prior.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
  throw Error("PHASE2I_BACKLOG_RUNNER_PRIOR_UNVERIFIED");
 const queue=mergePrivatePhase2iSourceBacklog(
  prior.candidates,indexed.candidates,now.getTime());
-const observedThisTickKeys=new Set(indexed.candidates.map(c=>JSON.stringify([
- c.category,c.articleUrl,c.datePrecision==="day"?c.publishedAt.slice(0,10):c.publishedAt,
-])));
+const candidateIdentity=c=>JSON.stringify([c.category,c.articleUrl,
+ c.datePrecision==="day"?c.publishedAt.slice(0,10):c.publishedAt]);
+const priorKnownKeys=new Set(prior.candidates.map(candidateIdentity));
+// An item re-seen from the same publisher is NOT "newly discovered" merely
+// because the source was polled on this tick; preserve that distinction.
+const observedThisTickKeys=new Set(indexed.candidates.filter(c=>
+ !priorKnownKeys.has(candidateIdentity(c))).map(candidateIdentity));
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
  maxRows:admittedRows,returnVerifiedRecordIds:true,
@@ -207,6 +211,7 @@ console.log(JSON.stringify({
   hot50_direct_feed_urls_configured:hotFeedUrls.size,
   hot50_direct_feeds_http_healthy:hotFeedHealthy,
   hot50_native_dated_originals_by_category:hotNativeByCategory,
+  truly_first_seen_identity_keys_this_tick:observedThisTickKeys.size,
   d1_hot50_country_priority_applied:threeDomainDirect20m,
   d1_selected_native_last_20m:stage.selected_native_last_20m,
   d1_selected_hot50_country_hints:stage.selected_hot50_title_or_primary_issuer_hints,
