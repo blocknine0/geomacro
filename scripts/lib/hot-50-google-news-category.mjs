@@ -13,12 +13,18 @@ const HOT50_KEYWORDS=Object.freeze({
  rare_earth:'("critical minerals" OR "rare earth" OR "lithium" OR "copper" OR "cobalt" OR "nickel" OR "gallium" OR "germanium" OR "graphite" OR "mineral export")',
 });
 const escapeName=name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"';
-export function hot50GoogleCategorySource(country,category){
+export function hot50GoogleCategorySource(country,category,legacyAllDomainTerms=null){
  if(!country||!HOT50_COUNTRY_SET.has(country.iso3)||
     typeof country.name!=="string"||country.name.length<2||
     !Object.hasOwn(HOT50_KEYWORDS,category))throw Error("HOT50_GOOGLE_CATEGORY_INPUT_INVALID");
  const names=[country.name,...(Array.isArray(country.aliases)?country.aliases:[])].slice(0,3);
- const q="("+names.map(escapeName).join(" OR ")+") "+HOT50_KEYWORDS[category]+" when:1d";
+ if(!(legacyAllDomainTerms===null||
+   typeof legacyAllDomainTerms==="string"&&legacyAllDomainTerms.length<1300&&
+   legacyAllDomainTerms.startsWith("(")&&legacyAllDomainTerms.endsWith(")")))
+  throw Error("HOT50_ALL_DOMAIN_DISCOVERY_TERMS_INVALID");
+ const q="("+names.map(escapeName).join(" OR ")+") "+
+  (legacyAllDomainTerms?legacyAllDomainTerms+" ":"")+
+  HOT50_KEYWORDS[category]+" when:1d";
  const url=new URL("https://news.google.com/rss/search");
  url.searchParams.set("q",q);
  url.searchParams.set("hl","en-US");
