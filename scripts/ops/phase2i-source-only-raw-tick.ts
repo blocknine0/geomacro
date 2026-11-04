@@ -25,6 +25,8 @@ import {createPhase2iSingleSweepOriginalIndex} from "../lib/phase2i-single-sweep
 import {PRIVATE_OSINT_TOPICS} from "../lib/private-osint-global-sources.mjs";
 import {mergePrivatePhase2iSourceBacklog,sealPrivatePhase2iSourceBacklog}
  from "../lib/phase2i-encrypted-source-backlog.mjs";
+import {appendAndLeasePhase2i,acknowledgePhase2i,phase2iDurableStatus,
+ durableCandidateId} from "../lib/phase2i-durable-queue-client.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
@@ -44,6 +46,8 @@ if(env.GITHUB_ACTIONS!=="true"||
 const providerRows=Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS);
 const admittedRows=Math.min(providerRows,5);
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
+// Opt into durable R2/DO only after its protected endpoint is provisioned.
+const durableMode=Boolean(env.GEOMACRO_PHASE2I_DURABLE_URL);
 if(root.length<32)throw Error("PHASE2I_SOURCE_ONLY_PRIVATE_AUTH_REQUIRED");
 const controlToken=createHmac("sha256",root)
  .update("geomacro-control-plane-v1").digest("hex");
@@ -90,25 +94,50 @@ const priorPath=resolve(String(env.GEOMACRO_PHASE2I_PRIOR_QUEUE??"/missing"));
 const cipherPath=resolve(String(env.GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT??"/missing"));
 if(!priorPath.startsWith(temp+sep)||!cipherPath.startsWith(temp+sep)||
    priorPath===cipherPath)throw Error("PHASE2I_BACKLOG_RUNNER_PATH_INVALID");
-const prior=JSON.parse(readFileSync(priorPath,"utf8"));
-if(prior.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
-   !Array.isArray(prior.candidates)||prior.candidates.length>8000||
-   !Number.isFinite(Date.parse(prior.loaded_at))||
-   now.getTime()-Date.parse(prior.loaded_at)>5*60_000)
- throw Error("PHASE2I_BACKLOG_RUNNER_PRIOR_UNVERIFIED");
-const queue=mergePrivatePhase2iSourceBacklog(
- prior.candidates,indexed.candidates,now.getTime());
 const candidateIdentity=c=>JSON.stringify([c.category,c.articleUrl,
  c.datePrecision==="day"?c.publishedAt.slice(0,10):c.publishedAt]);
-const priorKnownKeys=new Set(prior.candidates.map(candidateIdentity));
-// An item re-seen from the same publisher is NOT "newly discovered" merely
-// because the source was polled on this tick; preserve that distinction.
-const observedThisTickKeys=new Set(indexed.candidates.filter(c=>
- !priorKnownKeys.has(candidateIdentity(c))).map(candidateIdentity));
-// Queue pressure is a real reliability threat, not a reason to silently
-// truncate news or pretend 100% coverage. The canonical AEAD queue fails
-// closed at 8,000 records until provider-approved B2 capacity is proven.
-if(queue.available>=7200)
+let queue,observedThisTickKeys,durableLease=null,durableAppend=null;
+if(durableMode){
+ // The durable producer writes and readback-verifies EVERY new encrypted
+ // 500-item chunk before the D1 admission/lease step; no 8,000 cap or
+ // ephemeral all-candidate snapshot can truncate the source sweep.
+ // Import any still-eligible, not-yet-D1-acknowledged originals from
+ // the last protected main-only GitHub AEAD snapshot on migration. The DO
+ // dedupes repeated imports, so there is no data-loss cutover.
+ const legacy=JSON.parse(readFileSync(priorPath,"utf8"));
+ if(legacy.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
+    !Array.isArray(legacy.candidates)||legacy.candidates.length>8000)
+  throw Error("PHASE2I_DURABLE_MIGRATION_PRIOR_UNVERIFIED");
+ const legacyPending=legacy.candidates.filter(c=>c.d1Acknowledged!==true);
+ durableAppend=await appendAndLeasePhase2i({
+  observed:[...legacyPending,...indexed.candidates],
+  root,now:now.getTime(),env
+ });
+ durableLease=durableAppend.lease;
+ queue={candidates:durableAppend.candidates,
+  available:durableAppend.candidates.length,
+  expired_or_invalid:durableAppend.invalid_or_expired,
+  duplicate_suppressed:durableAppend.duplicate_existing,
+  immutable_conflicts_quarantined:0};
+ observedThisTickKeys=new Set(indexed.candidates.filter(c=>
+  durableAppend.newly.has(durableCandidateId(c))).map(candidateIdentity));
+}else{
+ // Legacy AEAD Actions handoff remains available until the dedicated
+ // private R2 bucket and SQLite DO are independently deployed.
+ const prior=JSON.parse(readFileSync(priorPath,"utf8"));
+ if(prior.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
+    !Array.isArray(prior.candidates)||prior.candidates.length>8000||
+    !Number.isFinite(Date.parse(prior.loaded_at))||
+    now.getTime()-Date.parse(prior.loaded_at)>5*60_000)
+  throw Error("PHASE2I_BACKLOG_RUNNER_PRIOR_UNVERIFIED");
+ queue=mergePrivatePhase2iSourceBacklog(
+  prior.candidates,indexed.candidates,now.getTime());
+ const known=new Set(prior.candidates.map(candidateIdentity));
+ observedThisTickKeys=new Set(indexed.candidates.filter(c=>
+  !known.has(candidateIdentity(c))).map(candidateIdentity));
+}
+// Legacy cap is a hard safety boundary, not an assertion of source coverage.
+if(!durableMode&&queue.available>=7200)
  console.log("::warning::PRIVATE_NEWS_72H_QUEUE_AT_OR_ABOVE_90_PERCENT_CAPACITY; queued news remain encrypted but complete universal ingestion not verified");
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
@@ -152,28 +181,49 @@ const candidatesWithD1Receipts=queue.candidates.map(candidate=>{
 });
 const newAcknowledgements=candidatesWithD1Receipts.filter((c,i)=>
  c.d1Acknowledged===true&&queue.candidates[i].d1Acknowledged!==true).length;
-// Save a FULL 72h snapshot after the D1 receipt and source health pass. The
-// workflow uploads only these AEAD bytes (not original metadata or URLs).
-// If artifact upload fails, previous snapshots remain accessible by name.
-const sealed=sealPrivatePhase2iSourceBacklog({
- candidates:candidatesWithD1Receipts,root,now:Date.now()});
-mkdirSync(dirname(cipherPath),{recursive:true,mode:0o700});
-writeFileSync(cipherPath,JSON.stringify(sealed)+"\n",{
- encoding:"utf8",mode:0o600,flag:"wx"});
-console.log(JSON.stringify({
- schema:"geomacro.phase2i-encrypted-backlog-producer.v1",
- source_candidates_held_72h:queue.available,
- d1_originals_acknowledged_in_encrypted_queue:candidatesWithD1Receipts.filter(c=>
-  c.d1Acknowledged===true).length,
- newly_acknowledged_originals:newAcknowledgements,
- invalid_or_expired_removed:queue.expired_or_invalid,
- exact_duplicates_removed:queue.duplicate_suppressed,
- conflicting_originals_quarantined:queue.immutable_conflicts_quarantined,
- ciphertext_artifact_created:true,
- ciphertext_uploaded_and_durable_verified:false,
- provider_extra_requests:0,d1_extra_rows:0,
- private_originals_logged:false,commercial_rights_verified:false
-}));
+// Do not release a lease until independently readback-verified D1 exact IDs
+// have been acknowledged by the DO. A process crash leaves the lease to expire.
+let durableHealth=null;
+if(durableMode){
+ const ack=await acknowledgePhase2i({lease:durableLease,
+  verifiedRecordIds:stage.verified_record_ids??[],env});
+ if(ack.acked_now!==(stage.verified_record_ids??[]).length)
+  throw Error("PHASE2I_DURABLE_ACK_COUNT_MISMATCH");
+ durableHealth=await phase2iDurableStatus({env});
+ console.log(JSON.stringify({
+  schema:"geomacro.phase2i-durable-r2-do-ingestion.v1",
+  new_ciphertext_originals_readback_verified:durableAppend.appended_new,
+  previously_registered_originals:durableAppend.duplicate_existing,
+  ciphertext_chunk_appends_verified:durableAppend.verified_encrypted_objects,
+  d1_exact_readback_ids_acknowledged:ack.acked_now,
+  pending_eligible_in_durable_store:durableHealth.pending_eligible,
+  expired_without_d1_ack:durableHealth.expired_without_d1_ack,
+  fully_drained:durableHealth.fully_d1_drained,
+  source_titles_or_urls_exposed:false,payments:0
+ }));
+}else{
+ // Compatibility until opt-in is production-ready. Existing GH artifact
+ // contains only AEAD ciphertext; exceeding its cap fails closed.
+ const sealed=sealPrivatePhase2iSourceBacklog({
+  candidates:candidatesWithD1Receipts,root,now:Date.now()});
+ mkdirSync(dirname(cipherPath),{recursive:true,mode:0o700});
+ writeFileSync(cipherPath,JSON.stringify(sealed)+"\n",{
+  encoding:"utf8",mode:0o600,flag:"wx"});
+ console.log(JSON.stringify({
+  schema:"geomacro.phase2i-encrypted-backlog-producer.v1",
+  source_candidates_held_72h:queue.available,
+  d1_originals_acknowledged_in_encrypted_queue:candidatesWithD1Receipts.filter(c=>
+   c.d1Acknowledged===true).length,
+  newly_acknowledged_originals:newAcknowledgements,
+  invalid_or_expired_removed:queue.expired_or_invalid,
+  exact_duplicates_removed:queue.duplicate_suppressed,
+  conflicting_originals_quarantined:queue.immutable_conflicts_quarantined,
+  ciphertext_artifact_created:true,
+  ciphertext_uploaded_and_durable_verified:false,
+  provider_extra_requests:0,d1_extra_rows:0,
+  private_originals_logged:false,commercial_rights_verified:false
+ }));
+}
 // One small sanitized proof covers every configured direct publisher without
 // extra HTTP or D1/B2 operations. Never expose original article URLs or text.
 // The same source-ID receipt is required for regular 15m and direct 20m
@@ -237,10 +287,13 @@ console.log(JSON.stringify({
     indexed.candidates.filter(c=>c.category===cat).length])),
   native_dated_within_20m_by_category:native20mCounts,
   runtime_source_health_by_state:result.summary.source_states,
-  source_queue_capacity_max_candidates:8000,
-  source_queue_current_candidates:queue.available,
-  source_queue_near_capacity_warning:queue.available>=7200,
-  queued_candidates_not_all_d1_verified:queue.candidates.some(c=>c.d1Acknowledged!==true),
+  source_queue_storage:durableMode?"PRIVATE_R2_SQLITE_DO":"LEGACY_GH_AEAD",
+  source_queue_capacity_max_candidates:durableMode?null:8000,
+  source_queue_current_candidates:durableMode?
+   durableHealth.pending_eligible:queue.available,
+  source_queue_near_capacity_warning:!durableMode&&queue.available>=7200,
+  queued_candidates_not_all_d1_verified:durableMode?
+   durableHealth.pending_eligible>0:queue.candidates.some(c=>c.d1Acknowledged!==true),
   hot50_direct_feed_urls_configured:hotFeedUrls.size,
   hot50_direct_feeds_http_healthy:hotFeedHealthy,
   hot50_native_dated_originals_by_category:hotNativeByCategory,

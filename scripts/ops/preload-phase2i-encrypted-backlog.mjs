@@ -41,7 +41,7 @@ if(result.status!==200||result.redirected)
  throw Error("PHASE2I_BACKLOG_GITHUB_INDEX_UNAVAILABLE");
 const doc=await result.json();
 if(!Array.isArray(doc?.artifacts)||doc.artifacts.length>100||
-   !Number.isSafeInteger(doc.total_count)||doc.total_count>2000)
+   !Number.isSafeInteger(doc.total_count)||doc.total_count<doc.artifacts.length)
  throw Error("PHASE2I_BACKLOG_INDEX_AMBIGUOUS");
 // Latest snapshot carries all still-eligible previously queued candidates.
 // A 3-day artifact retention is used only as a transport handoff; original

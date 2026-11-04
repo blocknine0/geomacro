@@ -1,0 +1,18 @@
+name = "geomacro-phase2i-durable-queue"
+main = "worker.mjs"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[[durable_objects.bindings]]
+name = "PHASE2I_QUEUE_DO"
+class_name = "Phase2iDurableQueueDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Phase2iDurableQueueDO"]
+
+# A dedicated private bucket must exist before deploying; NEVER bind the
+# publicly served website R2 bucket here.
+[[r2_buckets]]
+binding = "PHASE2I_R2"
+bucket_name = "geomacro-private-osint-phase2i"

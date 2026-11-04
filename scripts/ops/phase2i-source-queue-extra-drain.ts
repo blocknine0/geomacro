@@ -9,6 +9,7 @@ import {mkdtempSync,readFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {execFileSync} from "node:child_process";
+import {appendAndLeasePhase2i,acknowledgePhase2i,phase2iDurableStatus} from "../lib/phase2i-durable-queue-client.mjs";
 import {unsealPrivatePhase2iSourceBacklog,PHASE2I_BACKLOG_ARTIFACT}
  from "../lib/phase2i-encrypted-source-backlog.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
@@ -28,6 +29,31 @@ if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"");
 const token=String(env.GH_TOKEN??"");
 if(root.length<32||token.length<20)throw Error("PHASE2I_EXTRA_D1_SECRET_UNAVAILABLE");
+// The existing, already-approved idle writer budget can also drain a
+// leased durable chunk without a new D1 allowance, publisher GET or B2 PUT.
+if(env.GEOMACRO_PHASE2I_DURABLE_URL){
+ const leased=await appendAndLeasePhase2i({observed:[],root,env});
+ const stage=await stagePhase2iOsintFairRaw({
+  candidates:leased.candidates,derive:deriveStatelessSignals,
+  maxRows:Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS),
+  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex"),
+  returnVerifiedRecordIds:true
+ });
+ if(stage.selected_count>0&&stage.d1_readback_verified!==true)
+  throw Error("PHASE2I_DURABLE_EXTRA_D1_READBACK_REQUIRED");
+ const ack=await acknowledgePhase2i({lease:leased.lease,
+  verifiedRecordIds:stage.verified_record_ids??[],env});
+ if(ack.acked_now!==(stage.verified_record_ids??[]).length)
+  throw Error("PHASE2I_DURABLE_EXTRA_ACK_MISMATCH");
+ const status=await phase2iDurableStatus({env});
+ console.log(JSON.stringify({schema:"geomacro.phase2i.durable-extra-drain.v1",
+  selected_count:stage.selected_count,d1_inserted:stage.d1_inserted,
+  pending_eligible:status.pending_eligible,
+  expired_without_ack:status.expired_without_d1_ack,
+  source_fetches:0,extra_b2_requests:0,
+  extra_provider_d1_approval_spent:false}));
+}else{
 const dir=mkdtempSync(join(tmpdir(),"geomacro-phase2i-extra-"));
 try{
  // Read EXACTLY the current trusted source-only job's ciphertext; not
@@ -66,3 +92,4 @@ try{
    rights_verified:false,payments:0}));
  }
 }finally{rmSync(dir,{recursive:true,force:true})}
+}
