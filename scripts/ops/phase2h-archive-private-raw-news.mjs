@@ -233,6 +233,7 @@ export function createPhase2hCanonicalD1({
        if(pageSize>1){
         pageSize=pageSize===25?10:pageSize===10?5:
          pageSize===5?2:1;
+        if(pageSize===5)maxRows=Math.min(maxRows,100);
         if(pageSize<=2)maxRows=Math.min(maxRows,60);
         continue;
        }
