@@ -14,7 +14,6 @@
   "allow_paid_data_sources": false,
   "rights_review_does_not_verify_actual_fetch": true,
   "event_coverage_not_certified": true,
-  "existing_scheduled_collectors_unchanged": true,
   "providers": [
     {
       "id": "gdelt_project_gkg",
@@ -416,5 +415,7 @@
       "source_only_factual_metadata_allowed": false,
       "paid_risk_gate_eligible": false
     }
-  ]
+  ],
+  "existing_15m_and_corridor_cron_schedules_unchanged": true,
+  "hot50_20m_cron_expanded_to_global_three_domain_direct_feeds": true
 }
