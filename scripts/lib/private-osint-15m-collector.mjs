@@ -11,6 +11,7 @@
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {hot50GoogleSourceCadence} from "./hot-50-google-news-category.mjs";
 import {orderHot50PrivateFetchJobs} from "./hot-50-private-fetch-priority.mjs";
+import {observedHot50FourLaneSourceState} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {HOT50_COUNTRY_SET,hot50NominalIndexCadence} from "./hot-50-country-watch.mjs";
 import {privateOsintRuntimeSources,nominalPrivateCountryIndexCycleMinutes} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
@@ -215,6 +216,8 @@ export async function collectPrivateOsint15m({
       rotating_country_index_nominal_full_cycle_minutes:
         nominalPrivateCountryIndexCycleMinutes(registry),
       hot50_watch_countries_configured:HOT50_COUNTRY_SET.size,
+      hot50_four_lane_source_state:observedHot50FourLaneSourceState(
+        registry,[...checks.values()],selected),
       hot50_google_news_category_index:hot50GoogleSourceCadence(
         registry.filter(s=>s.private_discovery_index_only===true&&
           /^[A-Z]{3}$/u.test(s.discovery_country_iso3??"")).length),
