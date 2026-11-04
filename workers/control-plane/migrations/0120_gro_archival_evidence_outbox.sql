@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS gro_evidence (
   AND temporal_context='VERIFIED'
   AND fact_cross_check='VERIFIED'
  )),
- FOREIGN KEY(record_id) REFERENCES phase2h_private_raw_news(record_id)
+ FOREIGN KEY(record_id) REFERENCES phase2h_private_raw_news(record_id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_gro_evidence_verified_category
  ON gro_evidence(is_gro_verified,category,original_published_at DESC);
