@@ -403,7 +403,7 @@ export async function runPhase2hGovernedRawB2({
  if(ack.archived!==plan.record_count||
     ack.independent_d1_archive_ack_verified!==true)
   fail("ARCHIVE_ACK_NOT_CANONICAL");
- return {schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+ const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
   storage_confirmed:true,rows_archived:plan.record_count,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
@@ -417,6 +417,14 @@ export async function runPhase2hGovernedRawB2({
   b2_gets_per_bulk_object:1,b2_puts_per_bulk_object:1,
   original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
+ // This strict ephemeral in-process evidence was selected from canonical
+ // D1 and authenticated against B2 full-body GET. Never JSON-serialize or
+ // upload the private originals; consumer uses it for metadata-only D1
+ // bulk verification, avoiding a second multi-megabyte raw-json SELECT.
+ Object.defineProperty(receipt,"verified_original_records",{
+  value:plan.rows,enumerable:false,writable:false,configurable:false
+ });
+ return receipt;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
