@@ -44,7 +44,7 @@ test('B2 429 recovery stays behind exact failed scope step and next UTC quota re
  assert.match(recovery,/Verify actual B2 key scope and derive allowed private spool prefix/u);
  assert.match(recovery,/b2_scope_conclusion" != "failure"/u);
  assert.match(recovery,/P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429/u);
- assert.match(recovery,/cron: "10 0 \* \* \* \*"/u);
+ assert.match(recovery,/cron: "10 0 \* \* \*"/u);
  assert.doesNotMatch(recovery,/P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429[\\s\\S]*?wrangler deploy/u);
 });
 
