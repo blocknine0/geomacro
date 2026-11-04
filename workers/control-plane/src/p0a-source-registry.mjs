@@ -152,9 +152,13 @@ async function fetchEndpoint(url,config,fetchImpl,now){
   let response;
   try{
    const headers={'Accept':'application/rss+xml, application/atom+xml, application/rdf+xml, application/json, text/csv, text/html, application/zip, */*;q=0.2',
-    'User-Agent':'GeoMacro/1.0 (+https://geomacro.live; source-normalization)'};
-   if(config.last_cursor?.startsWith('etag:'))headers['If-None-Match']=config.last_cursor.slice(5);
-   if(config.last_cursor?.startsWith('modified:'))headers['If-Modified-Since']=config.last_cursor.slice(9);
+    'User-Agent':'GeoMacroSourceCollector/1.0 (+https://geomacro.live; private-research; contact: admin@geomacro.live)'};
+   if(config.poll_etag)headers['If-None-Match']=config.poll_etag;
+   else if(config.last_cursor?.startsWith('etag:'))
+    headers['If-None-Match']=config.last_cursor.slice(5);
+   if(config.poll_last_modified)headers['If-Modified-Since']=config.poll_last_modified;
+   else if(config.last_cursor?.startsWith('modified:'))
+    headers['If-Modified-Since']=config.last_cursor.slice(9);
    response=await fetchImpl(url,{method:'GET',redirect:'manual',headers,
     signal:AbortSignal.timeout(10000)});
   }catch(error){
@@ -165,7 +169,8 @@ async function fetchEndpoint(url,config,fetchImpl,now){
    break;
   }
   const status=response.status;
-  if(status===304)return {state:'UNCHANGED',status,cursor:config.last_cursor,records:[]};
+  if(status===304)return {state:'UNCHANGED',status,cursor:config.last_cursor,
+   etag:config.poll_etag??null,modified:config.poll_last_modified??null,records:[]};
   if(status===403||status===401)return {state:'DENIED',status,delay:3600000,records:[]};
   if(status===429)return {state:'RATE_LIMITED',status,
    delay:config.rate_limit_backoff.respect_retry_after?
@@ -173,13 +178,34 @@ async function fetchEndpoint(url,config,fetchImpl,now){
   if(status===200){
    try{
     const bytes=await responseBytes(response);
+    const head=new TextDecoder().decode(bytes.slice(0,1200)).trimStart();
+    const contentType=(response.headers.get('content-type')??'').toLowerCase();
+    if(config.parser_type!=='HTML_BOUNDED'&&
+       (contentType.startsWith('text/html')||
+        /^<!doctype\s+html\b|^<html\b/iu.test(head)))
+      return {state:'MALFORMED',status,records:[],
+       error_code:'P1_FEED_RETURNED_HTML'};
+    if(config.parser_type!=='HTML_BOUNDED'&&
+       /<title>\s*(?:404|not found|page not found|access denied)\b/iu.test(head))
+      return {state:'MALFORMED',status,records:[],
+       error_code:'P1_SOFT_404_BLOCK_PAGE'};
     const records=await normalizeP0aPayload(config.parser_type,bytes);
     const etag=response.headers.get('etag'),modified=response.headers.get('last-modified');
+    const observedAt=modified&&Number.isFinite(Date.parse(modified))?
+     new Date(Date.parse(modified)).toISOString():iso(now);
+    const provenance=modified&&Number.isFinite(Date.parse(modified))?
+     'HTTP_LAST_MODIFIED':'INGESTION_OBSERVED';
+    for(const item of records){
+      item.observed_at=item.native_published_at??observedAt;
+      item.clock_provenance=item.native_published_at?'SOURCE_NATIVE':provenance;
+    }
     const firstId=records.find(x=>typeof x.source_record_id==='string'&&x.source_record_id.length)?.source_record_id;
     const cursor=etag&&etag.length<=1000?'etag:'+etag:
       modified&&modified.length<=1000?'modified:'+modified:
       firstId?'id:'+firstId:config.last_cursor;
-    return {state:records.length?'OBSERVED':'EMPTY',status,cursor,records};
+    return {state:records.length?'OBSERVED':'EMPTY',status,cursor,records,
+     etag:etag??config.poll_etag??null,
+     modified:modified??config.poll_last_modified??null};
    }catch{return {state:'MALFORMED',status,records:[]}}
   }
   last={state:'UNAVAILABLE',status,records:[]};
@@ -198,7 +224,8 @@ export async function fetchP0aSource(config,{fetchImpl=fetch,now=Date.now()}={})
  return {...primary,used_fallback:false};
 }
 async function pollOne(env,row,{fetchImpl,now}){
- const config=fromRow(row);
+ const config={...fromRow(row),poll_etag:row.poll_etag??null,
+  poll_last_modified:row.poll_last_modified??null};
  const lockedUntil=iso(now+120000);
  const lock=await env.DB.prepare(
   'UPDATE source_registry SET next_poll_at=? WHERE source_id=? AND next_poll_at=? AND enabled=1'
@@ -288,12 +315,22 @@ async function pollOne(env,row,{fetchImpl,now}){
   const interval=config.polling_interval_sec*1000;
   const delay=state==='DENIED'?Math.max(3600000,interval):
    state==='RATE_LIMITED'?Math.max(interval,result.delay??interval):
-   failures?Math.min(3600000,config.rate_limit_backoff.base_delay_ms*2**Math.min(failures,12)):interval;
+   state==='UNAVAILABLE'?[300000,900000,3600000][Math.min(failures-1,2)]:
+   failures?Math.min(3600000,Math.max(60000,
+    config.rate_limit_backoff.base_delay_ms*2**Math.min(failures,12))):interval;
   // Only a complete parse may advance the cache cursor. Fallback responses
   // never replace the canonical endpoint's cursor.
   const cursor=(state==='OBSERVED'||state==='EMPTY'||state==='UNCHANGED')&&
     !result.used_fallback?result.cursor??config.last_cursor:config.last_cursor;
-  await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
+  if(env.GEOMACRO_P1_FANOUT_ENABLED==='1'){
+   await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
+    'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=?,'+
+    'poll_etag=?,poll_last_modified=? WHERE source_id=?')
+    .bind(cursor,iso(now),iso(now+delay),state,result.status??null,failures,
+     !result.used_fallback?result.etag??config.poll_etag:config.poll_etag,
+     !result.used_fallback?result.modified??config.poll_last_modified:config.poll_last_modified,
+     config.source_id).run();
+  }else await env.DB.prepare('UPDATE source_registry SET last_cursor=?,last_polled_at=?,'+
    'next_poll_at=?,last_state=?,last_http_status=?,consecutive_failures=? WHERE source_id=?')
     .bind(cursor,iso(now),iso(now+delay),state,result.status??null,failures,config.source_id).run();
   return {source_id:config.source_id,state,accepted,parsed:result.records?.length??0,
