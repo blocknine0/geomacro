@@ -91,10 +91,23 @@ jobs:
             if [ -n "$PINNED_CANARY_IDS" ]; then
               IDS="$(printf '%s' "$PINNED_CANARY_IDS" | jq -Rc 'split(",")|map(gsub("^ +| +$";""))|map(select(length>0))')"
             else
-              IDS="$(printf '%s' "$REGISTRY" | jq -c '[
-                .sources[] | select(.enabled==true and
-                (.last_state=="OBSERVED" or .last_state=="UNCHANGED")) | .source_id
-              ] | unique | .[:5]')"
+              # Known accepted pinned official endpoints. Their *current*
+              # reachability is proven by the actual canary, not historical data.
+              IDS="$(printf '%s' "$REGISTRY" | jq -c '
+                ["private_us_doe_minerals_global.critical_minerals",
+                 "private_boc_press_global.macro_fx",
+                 "private_fed_monetary.macro_fx",
+                 "private_sa_news.geopolitics",
+                 "private_rba.macro_fx"] as $pin |
+                [.sources[] | select(.enabled==true) |
+                 select(.source_id as $id | $pin | index($id)) | .source_id] |
+                unique | .[:5]')"
+              if [ "$(printf '%s' "$IDS" | jq 'length')" -lt 3 ]; then
+                IDS="$(printf '%s' "$REGISTRY" | jq -c '[
+                  .sources[] | select(.enabled==true and
+                  (.last_state=="OBSERVED" or .last_state=="UNCHANGED")) | .source_id
+                ] | unique | .[:5]')"
+              fi
             fi
             COUNT="$(printf '%s' "$IDS" | jq 'length')"
             test "$COUNT" -ge 3 && test "$COUNT" -le 5 || {
