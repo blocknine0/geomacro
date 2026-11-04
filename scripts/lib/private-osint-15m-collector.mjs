@@ -9,6 +9,7 @@
  * article bodies persisted. Never promote OSINT to verified/paid news.
  */
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
+import {HOT50_COUNTRY_SET,hot50NominalIndexCadence} from "./hot-50-country-watch.mjs";
 import {privateOsintRuntimeSources,nominalPrivateCountryIndexCycleMinutes} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
@@ -211,6 +212,21 @@ export async function collectPrivateOsint15m({
       rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
       rotating_country_index_nominal_full_cycle_minutes:
         nominalPrivateCountryIndexCycleMinutes(registry),
+      hot50_watch_countries_configured:HOT50_COUNTRY_SET.size,
+      hot50_watch_categories_configured:3,
+      hot50_index_nominal_cadence:hot50NominalIndexCadence(
+        registry.filter(s=>s.private_discovery_index_only===true&&
+          /^[A-Z]{3}$/u.test(s.discovery_country_iso3??"")).length),
+      hot50_first_party_pinned_candidate_endpoints:registry.filter(s=>
+        s.private_hot50_original_candidate===true).length,
+      hot50_first_party_healthy_feed_checks:registry.filter(s=>
+        s.private_hot50_original_candidate===true&&s.categories.some(c=>
+          [...checks.values()].some(v=>v.source_ref===sourceRef(s,c)&&
+           ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(v.state)))).length,
+      hot50_title_attributed_private_items:selected.filter(item=>
+        HOT50_COUNTRY_SET.has(item.country_iso3)).length,
+      hot50_original_country_event_verified:false,
+      hot50_three_hour_delivery_sla_guaranteed:false,
       first_party_local_sources_prioritized_within_512_gets:true,
       global_multilateral_hub_candidates_this_tick:
         registry.filter(s=>s.private_hub_overlay===true).length,
