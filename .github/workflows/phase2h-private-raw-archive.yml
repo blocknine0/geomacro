@@ -22,6 +22,8 @@ on:
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs"
+      - "scripts/lib/phase2i-fragmented-b2-bundle.mjs"
+      - "scripts/lib/phase2i-fragmented-b2-bundle.test.mjs"
       - "scripts/tests/phase2i-ciphertext-b2-archive.test.mjs"
       - "scripts/lib/phase2i-encrypted-source-backlog.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
@@ -65,7 +67,7 @@ jobs:
         run: |
           node --test scripts/tests/phase2h-original-metadata.test.mjs
           node --test scripts/tests/phase2h-archive-worker-fallback.test.mjs
-          node --test scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
       github.event_name == 'schedule' &&
@@ -268,7 +270,7 @@ jobs:
       - name: Guard AES-256-GCM queue and exact scoped B2 retention before production I/O
         run: |
           node --check scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs
-          node --test scripts/tests/phase2i-ciphertext-b2-archive.test.mjs
+          node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs
       - name: B2 ciphertext PUT, two independent GET/SHA restores and provider lifecycle readback
         run: |
           set -euo pipefail
