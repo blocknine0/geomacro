@@ -109,7 +109,7 @@ class D1 {
      const prior=this.websiteSignals.get(x[0]);
      if(prior&&prior.source_sha256===x[5])continue;
      this.websiteSignals.set(x[0],{
-      signal_id:x[0],website_story_id:x[1],category:x[2],
+      signal_id:x[0],website_story_id:x[1],lane:"website_intelligence",category:x[2],
       country_iso3:null,source_clock_at:x[3],
       first_seen_at:x[4],source_sha256:x[5],
       rights_state:"UNVERIFIED_SOURCE_RIGHTS",
