@@ -10,12 +10,24 @@ const enc=new TextEncoder();
 const hash=async value=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(value)))].map(x=>x.toString(16).padStart(2,"0")).join("");
 const hostOf=value=>{try{const u=new URL(value);return u.protocol==="https:"?u.hostname.toLowerCase().replace(/^www\./u,""):""}catch{return ""}};
 const cleanHost=value=>typeof value==="string"&&/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/iu.test(value)?value.toLowerCase().replace(/^www\./u,""):"";
+const ACTION=/\b(?:announc(?:es|ed|ing)?|impos(?:es|ed|ing)?|restrict(?:s|ed|ing)?|suspend(?:s|ed|ing)?|ban(?:s|ned|ning)?|launch(?:es|ed|ing)?|confirm(?:s|ed|ing)?|approv(?:es|ed|ing)?|cut(?:s|ting)?|rais(?:es|ed|ing)?|closes?|halt(?:s|ed|ing)?|defaults?|restructur(?:es|ed|ing)?)\b/iu;
+const SPECULATIVE=/\b(?:might|could|may|alleged|unverified|rumou?r|denies|fact.check)\b/iu;
+const IMPACT_RULES={
+ GEOPOLITICS:[[/\b(?:sanctions?|embargo|asset freeze|export controls?|arms ban)\b/iu,82],
+  [/\b(?:airstrike|armed conflict|invasion|missile strike|ceasefire violation)\b/iu,85],
+  [/\b(?:border closure|diplomatic expulsion|trade restrictions?)\b/iu,68]],
+ MACRO_FX:[[/\b(?:sovereign default|debt default|debt restructuring)\b/iu,83],
+  [/\b(?:central bank|interest rate|policy rate|monetary policy|currency devaluation)\b/iu,58],
+  [/\b(?:capital controls?|currency restrictions?|banking crisis)\b/iu,75]],
+ CRITICAL_MINERALS:[[/\b(?:rare earth|critical minerals?|lithium|cobalt|nickel|copper|gallium|germanium|tungsten|graphite|antimony)\b.{0,75}\b(?:export ban|ban|restriction|halt|suspend|closure)\b/iu,80],
+  [/\b(?:export ban|export restriction|mine closure|smelter shutdown)\b.{0,75}\b(?:rare earth|critical minerals?|lithium|cobalt|nickel|copper|gallium|germanium|tungsten|graphite|antimony)\b/iu,80],
+  [/\b(?:critical minerals?|rare earth|lithium|cobalt|nickel|copper|gallium|germanium|tungsten|graphite)\b/iu,55]]
+};
 function impactFactor(title,category){
  const text=String(title??"").normalize("NFKC").toLowerCase();
- const terms=CATEGORY_SPECS[category]?.keywords??[];
- const hits=terms.filter(term=>text.includes(term.toLowerCase())).length;
- const acute=/\b(default|invasion|airstrike|export ban|shutdown|sanctions|devaluation|strike|blockade|closure)\b/u.test(text);
- return Math.min(100,Math.max(0,Math.min(4,hits)*10+(acute?20:0)));
+ if(!ACTION.test(text)||SPECULATIVE.test(text))return null;
+ for(const [pattern,value] of IMPACT_RULES[category]??[])if(pattern.test(text))return value;
+ return null;
 }
 function allowedPublisher(host,category){
  const allowed=[...(CATEGORY_SPECS[category]?.authoritative_domains??[]),...TIER_ONE_HOSTS];
