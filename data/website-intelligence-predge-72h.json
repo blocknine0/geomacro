@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T01:21:44.181Z",
+  "checked_at": "2026-11-04T01:23:52.685Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 352,
+  "item_count": 356,
   "counts": {
-    "geopolitics": 157,
-    "macro": 152,
+    "geopolitics": 159,
+    "macro": 154,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "029e6c191e92169ee91d1f075b5bd93289b544d754da438ce9938eead05c8ad6",
+  "source_native_ids_sha256": "320087ed29d8d9afde50fdb112ab8acb6b52f39894e1f2ef8bf4bfeda0dde04e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-8c48dcf4",
+      "category": "macro",
+      "title": "Geomacro finds Toast raised full-year 2026 adjusted EBITDA outlook to $840M-$850M as it targets 26% recurring gross profit growth",
+      "what_changed": "A monitored source feed reports: Toast raised full-year 2026 adjusted EBITDA outlook to $840M-$850M as it targets 26% recurring gross profit growth. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T01:17:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-01fc2df3",
+      "category": "macro",
+      "title": "Geomacro finds AMD forecast more than 80% revenue growth in 2027 as data center targets more than 80% of total revenue",
+      "what_changed": "A monitored source feed reports: AMD forecast more than 80% revenue growth in 2027 as data center targets more than 80% of total revenue. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T01:17:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-b12afbf7",
       "category": "rare_earth",
@@ -1550,6 +1588,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-717bc5a9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - Reuters",
+      "what_changed": "A monitored source feed reports: Russia said it struck Ukrainian electricity grid facilities in massive overnight attack - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T07:06:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-961b5ad0",
       "category": "geopolitics",
       "title": "Geomacro finds How Beijing announced plans to cut trade costs and speed cross-border payments - South China Morning Post",
@@ -1677,6 +1734,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.malaymail.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-c062ee74",
+      "category": "geopolitics",
+      "title": "Geomacro finds Ghalibaf said ball is in US court to prevent war - Iran International",
+      "what_changed": "A monitored source feed reports: Ghalibaf said ball is in US court to prevent war - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T06:32:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
