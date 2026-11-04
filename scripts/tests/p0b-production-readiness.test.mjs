@@ -17,6 +17,7 @@ function dbFixture(){
  db.exec(text('workers/control-plane/migrations/0114_p0_b_spool_queue.sql'));
  db.exec(text('workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'));
  db.exec(text('workers/control-plane/migrations/0116_p0b_microbatch_spool.sql'));
+ db.exec(text('workers/control-plane/migrations/0117_p0b_private_r2_fallback.sql'));
  const sql=(statement,values=[])=>({
   bind(...args){return sql(statement,args)},
   async first(){return db.prepare(statement).get(...values)??null},

@@ -38,8 +38,16 @@ function fixture(){
    return {arrayBuffer:async()=>copy.buffer};
   }
  };
+ const DB={prepare:prep,async batch(statements:any[]){
+   db.exec("BEGIN");
+   try{
+    const result=[];
+    for(const s of statements)result.push(await s.run());
+    db.exec("COMMIT");return result;
+   }catch(error){db.exec("ROLLBACK");throw error;}
+  }};
  const env:any={
-  DB:{prepare:prep},INGEST_QUEUE:{async send(){}},
+  DB,INGEST_QUEUE:{async send(){}},
   B2_S3_ENDPOINT:"https://s3.us-east-005.backblazeb2.com",
   B2_KEY_ID:"sample-key-id-not-real",
   B2_APPLICATION_KEY:"a".repeat(32),

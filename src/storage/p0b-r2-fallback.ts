@@ -16,12 +16,12 @@ const MAX_ITEMS=100,MAX_CIPHER=1536*1024,MAX_PLAIN=512*1024;
 const HEX=/^[a-f0-9]{64}$/u,ID=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const prefix="p0b/private-fallback/v1/";
 const enc=new TextEncoder();
-const bytes=x=>enc.encode(x);
+const bytes=(x:string)=>enc.encode(x);
 const toArrayBuffer=(x:Uint8Array):ArrayBuffer=>{
  const a=new ArrayBuffer(x.length);new Uint8Array(a).set(x);return a;
 };
-const b64=x=>{let result="";for(const b of x)result+=String.fromCharCode(b);return btoa(result)};
-const unb64=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0));
+const b64=(x:Uint8Array)=>{let result="";for(const b of x)result+=String.fromCharCode(b);return btoa(result)};
+const unb64=(x:string)=>Uint8Array.from(atob(x),c=>c.charCodeAt(0));
 async function aes(env:R2FallbackEnv){
  if(typeof env.B2_SPOOL_ENCRYPTION_KEY!=="string"||
     env.B2_SPOOL_ENCRYPTION_KEY.length<32)
