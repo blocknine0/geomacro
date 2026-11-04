@@ -25,12 +25,15 @@ const EXTRA=Object.freeze([
 // of BLS/CFTC/LBMA, and publisher reachability is proved only by the 20m runner.
 // Pin exact issuer-controlled RSS endpoints documented by their publishers.
 const NATIVE_OFFICIAL=Object.freeze([
- ["us_eia_press","https://www.eia.gov/rss/press_rss.xml","USA","macro"],
- ["us_eia_today","https://www.eia.gov/rss/todayinenergy.xml","USA","macro"],
+ // These issuer-controlled feeds have already produced accepted RSS/Atom
+ // parser states in prior fastlane or protected read-only CI observations.
+ // Reuse URL-level source dedupe if another native collector pins the same URL.
+ ["us_fed_monetary","https://www.federalreserve.gov/feeds/press_monetary.xml","USA","macro"],
+ ["can_boc_press","https://www.bankofcanada.ca/content_type/press/feed/","CAN","macro"],
  ["us_bea_release","https://apps.bea.gov/rss/rss.xml","USA","macro"],
- ["us_cme_ir","https://cmegroupinc.gcs-web.com/rss/news-releases.xml","USA","macro"],
+ ["jpn_boj_press","https://www.boj.or.jp/en/rss/whatsnew.xml","JPN","macro"],
  ["us_usgs_minerals","https://www.usgs.gov/news/minerals/feed","USA","rare_earth"],
- ["au_minister_critical_minerals","https://www.minister.industry.gov.au/feed/t-ayres/rss.xml","AUS","rare_earth"],
+ ["can_bc_minerals","https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed","CAN","rare_earth"],
 ]);
 
 export function macroMineralsContinuitySources(){
@@ -78,12 +81,12 @@ export function macroMineralsContinuitySources(){
  const official=NATIVE_OFFICIAL.map(([suffix,url,country,category])=>{
   const parsed=new URL(url);
   if(parsed.protocol!=="https:"||parsed.username||parsed.password||
-     parsed.port||parsed.hash||parsed.search||!["USA","AUS"].includes(country)||
+     parsed.port||parsed.hash||parsed.search||!["USA","CAN","JPN"].includes(country)||
      !["macro","rare_earth"].includes(category))
    throw Error("MACRO_MINERALS_NATIVE_OFFICIAL_SOURCE_INVALID");
   return Object.freeze({
    id:"private_macro_minerals_continuity_"+suffix,url,type:"rss",
-   continent:country==="AUS"?"oceania":"north_america",
+   continent:country==="JPN"?"asia":"north_america",
    publisher_country_iso3:country,publisher_kind:"official",
    categories:Object.freeze([category]),supported:true,
    private_macro_minerals_continuity:true,
