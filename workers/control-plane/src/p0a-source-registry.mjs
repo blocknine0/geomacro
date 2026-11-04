@@ -388,6 +388,20 @@ export async function handleP0aAdmin(request,env){
    }catch{return json({ok:false,error:'P0A_REQUEST_INVALID'},400)}
   }
  }
+ if(u.pathname==='/v1/internal/p0a/canary'&&request.method==='POST'){
+  try{
+   if(env.GEOMACRO_P0B_ADMISSION_ACTIVE!=='1')
+    return json({ok:false,error:'P0B_NOT_ACTIVATED'},503);
+   const raw=await request.text();
+   if(raw.length>2000)return json({ok:false,error:'P0B_CANARY_ARGUMENT_INVALID'},400);
+   const body=JSON.parse(raw);
+   if(!Array.isArray(body?.source_ids)||body.source_ids.length<3||
+    body.source_ids.length>5||Object.keys(body).join(',')!=='source_ids')
+    return json({ok:false,error:'P0B_CANARY_ARGUMENT_INVALID'},400);
+   return json(await pollP0aSources(env,{
+    sourceIds:body.source_ids,limit:body.source_ids.length}));
+  }catch{return json({ok:false,error:'P0B_CANARY_ARGUMENT_INVALID'},400)}
+ }
  if(u.pathname==='/v1/internal/p0a/poll'&&request.method==='POST')
   return json(await pollP0aSources(env));
  return json({ok:false,error:'P0A_METHOD_NOT_ALLOWED'},405);
