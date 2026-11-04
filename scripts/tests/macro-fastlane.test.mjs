@@ -47,6 +47,7 @@ test('Gold/silver are Macro Economics; related markets share the one journal eve
  assert.equal(macroPreciousTopic('Golden medal awarded to researcher'),null);
  const s=MACRO_NEWS_SOURCES.find(s=>s.id==='bls_cpi');
  assert.equal(parseMacroFeed(atom('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm'),s,now).length,1);
+ assert.equal(parseMacroFeed(rss('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm'),s,now).length,1);
  assert.equal(parseMacroFeed(atom('Consumer Price Index release','https://attacker.example/news.release/cpi.nr0.htm'),s,now).length,0);
  assert.equal(parseMacroFeed(atom('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm').replace('<published>','<updated>').replace('</published>','</updated>'),s,now).length,0);
 });
