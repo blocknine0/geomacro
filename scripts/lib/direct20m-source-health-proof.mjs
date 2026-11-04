@@ -19,8 +19,8 @@ export function buildDirect20mSourceHealthProof({
 }){
  if(!Number.isFinite(now)||!Array.isArray(registry)||registry.length>512||
    !Array.isArray(checks)||checks.length>1536||
-   !Array.isArray(observedCandidates)||observedCandidates.length>8000||
-   !Array.isArray(retainedCandidates)||retainedCandidates.length>8000)
+   !(observedCandidates===null||Array.isArray(observedCandidates)&&observedCandidates.length<=8000)||
+   !(retainedCandidates===null||Array.isArray(retainedCandidates)&&retainedCandidates.length<=8000))
   throw Error('DIRECT20M_SOURCE_PROOF_INVALID');
  const checked=new Map(checks.map(row=>[row.source_ref,row.state]));
  const byUrlCategory=new Map();
@@ -34,9 +34,9 @@ export function buildDirect20mSourceHealthProof({
    byUrlCategory.set(address,old);
   }
  };
- grouped(observedCandidates,'current_sweep');
- grouped(retainedCandidates,'queued_72h');
- if(d1ReadbackVerified===true){
+ if(Array.isArray(observedCandidates))grouped(observedCandidates,'current_sweep');
+ if(Array.isArray(retainedCandidates))grouped(retainedCandidates,'queued_72h');
+ if(d1ReadbackVerified===true&&Array.isArray(retainedCandidates)){
   grouped(retainedCandidates.filter(c=>c.d1Acknowledged===true),'d1_acknowledged_72h');
  }
  const sources=[];
@@ -49,9 +49,9 @@ export function buildDirect20mSourceHealthProof({
    const state=checked.get(receiptKey(source.id,source.url,category))??'NOT_CHECKED';
    sources.push({
     source_id:source.id,category,transport_parser_state:state,
-    candidates_observed_this_sweep:x?.current_sweep??0,
-    candidates_in_retained_72h_queue:x?.queued_72h??0,
-    original_last_published_at_in_72h_queue:x?.last_native_published_at??null,
+    candidates_observed_this_sweep:Array.isArray(observedCandidates)?x?.current_sweep??0:null,
+    candidates_in_retained_72h_queue:Array.isArray(retainedCandidates)?x?.queued_72h??0:null,
+    original_last_published_at_in_72h_queue:Array.isArray(retainedCandidates)?x?.last_native_published_at??null:null,
     d1_originals_acknowledged_in_retained_queue:d1ReadbackVerified===true
       ?x?.d1_acknowledged_72h??0:null,
     native_publication_is_not_event_verification:true,
@@ -67,6 +67,8 @@ export function buildDirect20mSourceHealthProof({
   d1_selected_batch_readback_verified:d1ReadbackVerified===true,
   b2_original_archive_readback_verified:b2ReadbackVerified===true,
   producer_publication_success_not_inferred:true,
+  current_sweep_native_candidate_attribution_measured:Array.isArray(observedCandidates),
+  retained_72h_queue_attribution_measured:Array.isArray(retainedCandidates),
   original_article_urls_included:false,raw_article_content_included:false,
   sources,
  };
