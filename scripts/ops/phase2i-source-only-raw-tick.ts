@@ -176,7 +176,9 @@ console.log(JSON.stringify({
 }));
 // One small sanitized proof covers every configured direct publisher without
 // extra HTTP or D1/B2 operations. Never expose original article URLs or text.
-if(threeDomainDirect20m){
+// The same source-ID receipt is required for regular 15m and direct 20m
+// admitted runs; no additional HTTP, D1 reads or B2 operations.
+{
  const proof=buildDirect20mSourceHealthProof({
   registry,checks:result.checks,observedCandidates:indexed.candidates,
   retainedCandidates:candidatesWithD1Receipts,
@@ -191,6 +193,7 @@ if(threeDomainDirect20m){
   source_category_checks_expected:proof.source_category_checks_expected,
   d1_selected_batch_readback_verified:proof.d1_selected_batch_readback_verified,
   b2_original_archive_readback_verified:proof.b2_original_archive_readback_verified,
+  poll_lane:threeDomainDirect20m?'THREE_DOMAIN_DIRECT_20M':'PRIVATE_ADMITTED_15M',
   artifact_created:true,public_article_payload_exposed:false,
  }));
 }
