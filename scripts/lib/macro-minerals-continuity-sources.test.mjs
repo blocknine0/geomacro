@@ -25,8 +25,8 @@ test("manifest candidates are only discovery: no unverified event, payment or de
  assert.equal(new Set(feeds.map(s=>s.url)).size,feeds.length);
  for(const feed of feeds){
   const u=new URL(feed.url);
-  assert.ok(["www.gov.uk","www.eia.gov","apps.bea.gov","cmegroupinc.gcs-web.com",
-   "www.usgs.gov","www.minister.industry.gov.au"].includes(u.hostname));
+  assert.ok(["www.gov.uk","www.federalreserve.gov","www.bankofcanada.ca",
+   "apps.bea.gov","www.boj.or.jp","www.usgs.gov","news.gov.bc.ca"].includes(u.hostname));
   assert.ok(feed.type==="atom"||feed.type==="rss");
   assert.equal(feed.provider_rights_verified,false);
   assert.equal(feed.transport_verified_at_registration,false);
