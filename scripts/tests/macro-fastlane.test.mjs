@@ -108,6 +108,21 @@ test('Malformed/denied sources cannot block healthy issuers; BLS requests stay s
  }});
  assert.equal(max,1);assert.equal(result.candidates.length,2);assert.equal(result.state.cursors.bls_employment.retry_after,now+15*60000);assert.ok(validateMacroState(result.state,now));
 });
+test('Denied Mining Technology is safely recovered by one already-shared Mining Weekly original discovery GET',async()=>{
+ const urls=[];
+ const result=await collectCriticalMineralsFastlane({now,fetchImpl:async url=>{
+  urls.push(url);
+  if(url==='https://www.miningweekly.com/page/latest-news/feed')return new Response(rss('Chile announces new lithium and copper mining export curbs','https://www.miningweekly.com/article/chile-lithium-copper-export-curbs-2026-10-27'));
+  if(url==='https://www.mining-technology.com/news/feed/')return new Response('',{status:403});
+  return new Response('',{status:503});
+ }});
+ assert.equal(urls.filter(x=>x==='https://www.miningweekly.com/page/latest-news/feed').length,1);
+ assert.equal(result.receipt.regional_groups.find(x=>x.region==='africa').fallback_healthy,true);
+ assert.ok(result.receipt.regional_groups.find(x=>x.region==='asia').global_substitute_healthy);
+ assert.ok(result.checks.some(x=>x.id==='mining_technology'&&x.state==='ACCESS_DENIED'));
+ assert.ok(result.signals.every(x=>x.status==='osint_feed_observed_unverified'));
+ assert.ok(urls.length<=13);
+});
 test('The same bundle reuses one global fallback request across regional failures',async()=>{
  const urls=[];
  const result=await collectCriticalMineralsFastlane({now,macroNeedsFallback:true,fetchImpl:async url=>{
