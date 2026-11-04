@@ -25,12 +25,14 @@ class FakeD1 {
    async first(){
     if(sql.includes("FROM derived_risk_gate_discovery_cursors"))
      return db.cursors.get(state.args[0])??null;
-    if(sql.includes("SELECT EXISTS(SELECT 1 FROM derived_risk_gate_discovery_signals"))
+    if(sql.includes("SELECT EXISTS(SELECT 1 FROM derived_risk_gate_all_discovery_signals"))
      return {stale:Number([...db.signals.values()].some(
       x=>x.first_seen_at<state.args[0]))};
     return null;
    },
    async run(){
+    if(sql.includes("DELETE FROM derived_risk_gate_website_raw_signals"))
+     return {success:true};
     if(sql.includes("DELETE FROM derived_risk_gate_discovery_signals")){
      for(const [id,value] of db.signals)
       if(value.first_seen_at<state.args[0])db.signals.delete(id);
@@ -43,7 +45,7 @@ class FakeD1 {
      const supplied=new Set(JSON.parse(state.args[0]).map(x=>x[0]));
      return {results:[...db.signals.values()].filter(x=>supplied.has(x.signal_id))};
     }
-    if(sql.includes("FROM derived_risk_gate_discovery_signals ")){
+    if(sql.includes("FROM derived_risk_gate_all_discovery_signals ")){
      const cutoff=state.args[0];
      const offset=state.args[1];
      return {results:[...db.signals.values()]
@@ -109,11 +111,11 @@ const ack=page=>({
  next_cursor:page.next_cursor,reviewed:review(page),
 });
 
-test("enumerates existing canonical, private OSINT, reusable and GDELT lanes",async()=>{
+test("enumerates canonical, private OSINT, reusable, GDELT and Website lanes",async()=>{
  assert.deepEqual(DERIVED_DISCOVERY_LANES,
-  ["canonical","private_osint","reusable_news","gdelt_cameo"]);
+  ["canonical","private_osint","reusable_news","gdelt_cameo","website_intelligence"]);
  const db=new FakeD1();
- for(const [i,lane] of DERIVED_DISCOVERY_LANES.entries()){
+ for(const [i,lane] of DERIVED_DISCOVERY_LANES.slice(0,4).entries()){
   db.sources.set(lane,[row(String.fromCharCode(97+i),
    ["geopolitics","macro","rare_earth","geopolitics"][i])]);
   const r=await get(db,"?lane="+lane);
