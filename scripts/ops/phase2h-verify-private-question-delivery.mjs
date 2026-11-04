@@ -168,8 +168,11 @@ export async function verifyPhase2hProductionQuestionChain({
   }
   questionReadbacks++;
  }
- if(questionReadbacks!==categories.filter(c=>counts[c]>0).length)
-  fail("THREE_CATEGORY_QUESTION_READBACK_INCOMPLETE");
+ // Only categories with an actually answerable, evidence-grounded original
+ // require question readback. Raw-only categories still receive B2/D1 proof.
+ if(questionReadbacks!==categories.filter(c=>
+    questionEligible.some(x=>x.category===c)).length)
+  fail("QUESTION_ELIGIBLE_CATEGORY_READBACK_INCOMPLETE");
  const pending=await query("SELECT EXISTS(SELECT 1 FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL LIMIT 1) AS has_pending");
  if(pending.length!==1||![0,1].includes(Number(pending[0].has_pending)))
   fail("ARCHIVE_BACKLOG_NOT_VERIFIABLE");
