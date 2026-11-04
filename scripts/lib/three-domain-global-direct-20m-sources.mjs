@@ -27,7 +27,8 @@ const directSource=s=>{
  if(!s||typeof s.url!=="string"||typeof s.id!=="string"||
     !TYPES.has(s.type)||!Array.isArray(s.categories)||
     !s.categories.length||s.categories.some(c=>!CATS.includes(c))||
-    s.private_discovery_index_only===true||isRetiredPrivateOsintSource(s))
+    s.private_discovery_index_only===true||
+    (isRetiredPrivateOsintSource(s)&&s.private_hot50_retired_reprobe!==true))
   return false;
  let u;
  try{u=new URL(s.url)}catch{return false}
@@ -54,7 +55,7 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
   throw Error("THREE_DOMAIN_20M_REGISTRY_INVALID");
  const raw=base??privateOsintRuntimeSources(now,privateOsintGlobalSources(),
    COUNTRIES_195,{includeLocalGapLane:true});
- const first=hot50??hot50Direct20mPublisherRegistry().registry;
+ const first=hot50??hot50Direct20mPublisherRegistry(now).registry;
  if(!Array.isArray(raw)||raw.length<1||raw.length>512||
     !Array.isArray(first)||first.length<1||first.length>512)
   throw Error("THREE_DOMAIN_20M_SOURCE_ARRAY_INVALID");
@@ -93,6 +94,9 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  return Object.freeze({registry,summary:Object.freeze({
   publisher_feed_candidates_configured:merged.size,
   hot50_distinct_direct_feeds_pinned:priority.length,
+  hot50_retired_transport_reprobes_this_tick:priority.filter(s=>
+   s.private_hot50_retired_reprobe===true).length,
+  hot50_retired_reprobe_does_not_prove_http_success:true,
   other_direct_feeds_configured:other.length,
   other_direct_feeds_deferred_this_tick:Math.max(0,other.length-rotating.length),
   checked_feed_urls_this_tick:registry.length,
