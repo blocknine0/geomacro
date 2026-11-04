@@ -21,6 +21,7 @@ on:
       - "config/hot-50-four-lane-source-crosswalk.v1.json"
       - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
+      - "scripts/tests/hot50-fresh-priority-d1.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
@@ -40,6 +41,7 @@ on:
       - "config/hot-50-four-lane-source-crosswalk.v1.json"
       - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
+      - "scripts/tests/hot50-fresh-priority-d1.test.mjs"
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
@@ -74,6 +76,7 @@ jobs:
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
           node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
+          node --test scripts/tests/hot50-fresh-priority-d1.test.mjs
           node --input-type=module -e 'import {threeDomainGlobal20mPublisherRegistry} from "./scripts/lib/three-domain-global-direct-20m-sources.mjs"; console.log(JSON.stringify({schema:"geomacro.global-three-domain-20m-source-census.v1",...threeDomainGlobal20mPublisherRegistry(new Date()).summary}))'
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs

@@ -97,9 +97,24 @@ if(prior.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
  throw Error("PHASE2I_BACKLOG_RUNNER_PRIOR_UNVERIFIED");
 const queue=mergePrivatePhase2iSourceBacklog(
  prior.candidates,indexed.candidates,now.getTime());
+const candidateIdentity=c=>JSON.stringify([c.category,c.articleUrl,
+ c.datePrecision==="day"?c.publishedAt.slice(0,10):c.publishedAt]);
+const priorKnownKeys=new Set(prior.candidates.map(candidateIdentity));
+// An item re-seen from the same publisher is NOT "newly discovered" merely
+// because the source was polled on this tick; preserve that distinction.
+const observedThisTickKeys=new Set(indexed.candidates.filter(c=>
+ !priorKnownKeys.has(candidateIdentity(c))).map(candidateIdentity));
+// Queue pressure is a real reliability threat, not a reason to silently
+// truncate news or pretend 100% coverage. The canonical AEAD queue fails
+// closed at 8,000 records until provider-approved B2 capacity is proven.
+if(queue.available>=7200)
+ console.log("::warning::PRIVATE_NEWS_72H_QUEUE_AT_OR_ABOVE_90_PERCENT_CAPACITY; queued news remain encrypted but complete universal ingestion not verified");
 const stage=await stagePhase2iOsintFairRaw({
  candidates:queue.candidates,now,derive:deriveStatelessSignals,
  maxRows:admittedRows,returnVerifiedRecordIds:true,
+ ...(threeDomainDirect20m?{
+  priorityMode:"HOT50_FRESH_FIRST",observedThisTickKeys,
+ }:{}),
  controlPlaneRoot:"https://geomacro-control-plane.daspallab202391.workers.dev",
  token:controlToken,
 });
@@ -110,6 +125,20 @@ if(stage.selected_count>0&&stage.d1_readback_verified!==true)
 // and independently read them back; never create an article or renew clocks
 // when actual sources were denied/unavailable.
 const heartbeat=await persistPrivateOsintHeartbeats({summary:result.summary,now});
+const hotFeedUrls=new Set(threeDomainDirect20m?registry
+ .filter(source=>source.private_hot50_direct_20m===true)
+ .map(source=>source.url):[]);
+const hotNativeByCategory=Object.fromEntries(["geopolitics","macro","rare_earth"]
+ .map(category=>[category,indexed.candidates.filter(c=>c.category===category&&
+   hotFeedUrls.has(c.sourceUrl)).length]));
+const checkByRef=new Map(result.checks.map(check=>[check.source_ref,check.state]));
+const hotFeedHealthy=registry.filter(source=>hotFeedUrls.has(source.url)&&
+ source.categories.some(category=>{
+  const ref=createHash("sha256").update([source.id,source.url,category].join("\n")).digest("hex");
+  return ["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"].includes(checkByRef.get(ref));
+ })).length;
+if(threeDomainDirect20m&&hotFeedHealthy<hotFeedUrls.size)
+ console.log("::warning::DIRECT_20M_HOT50_SOME_FEEDS_NOT_HEALTHY; actual provider health below configured Hot50 count");
 // Acknowledge only exact original IDs returned after authenticated D1 readback.
 // All receipt identities stay in the protected runner and AES-GCM queue.
 const verifiedIds=new Set(stage.verified_record_ids??[]);
@@ -184,6 +213,17 @@ console.log(JSON.stringify({
     indexed.candidates.filter(c=>c.category===cat).length])),
   native_dated_within_20m_by_category:native20mCounts,
   runtime_source_health_by_state:result.summary.source_states,
+  source_queue_capacity_max_candidates:8000,
+  source_queue_current_candidates:queue.available,
+  source_queue_near_capacity_warning:queue.available>=7200,
+  queued_candidates_not_all_d1_verified:queue.candidates.some(c=>c.d1Acknowledged!==true),
+  hot50_direct_feed_urls_configured:hotFeedUrls.size,
+  hot50_direct_feeds_http_healthy:hotFeedHealthy,
+  hot50_native_dated_originals_by_category:hotNativeByCategory,
+  truly_first_seen_identity_keys_this_tick:observedThisTickKeys.size,
+  d1_hot50_country_priority_applied:threeDomainDirect20m,
+  d1_selected_native_last_20m:stage.selected_native_last_20m,
+  d1_selected_hot50_country_hints:stage.selected_hot50_title_or_primary_issuer_hints,
   actual_native_news_d1_ack_count:stage.selected_count>0&&stage.d1_readback_verified===true?
    stage.d1_inserted:0,
   actual_all_new_native_items_durable_verified:false,

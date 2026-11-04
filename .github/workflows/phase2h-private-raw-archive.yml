@@ -36,8 +36,9 @@ on:
       - "scripts/tests/phase2h-original-metadata.test.mjs"
       - "scripts/lib/phase2ib-fastlane-private-staging.mjs"
       - "scripts/lib/phase2i-osint-country-fair-raw-staging.mjs"
+      - "scripts/tests/hot50-fresh-priority-d1.test.mjs"
       - "scripts/tests/phase2ib-fastlane-private-staging.test.mjs"
-      - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs"
+      - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/hot50-fresh-priority-d1.test.mjs"
   schedule:
     - cron: "29 0,6,12,18 * * *"
 

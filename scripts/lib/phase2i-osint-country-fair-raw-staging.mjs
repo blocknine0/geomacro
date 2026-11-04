@@ -9,6 +9,7 @@ import {phase2hHeadlineCountryCandidate} from "./phase2h-country-originals-195.m
 import {privateOsintCountryMentions} from "./private-osint-country-mentions.mjs";
 import {qualifyPrivateNationalPrimaryScope,sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 const CATS=["geopolitics","macro","rare_earth"];
 const MAX=5;
 const counts=rows=>Object.fromEntries(CATS.map(category=>[
@@ -50,11 +51,14 @@ function withoutAmbiguousSameOriginal(candidates){
  * countries is UNATTRIBUTED, not falsely assigned to either country.
  */
 export function planPhase2iOsintCountryFairRaw(candidates,{
- now=new Date(),derive,maxRows=MAX
+ now=new Date(),derive,maxRows=MAX,priorityMode="ROTATING_ALL",
+ observedThisTickKeys=null,
 }={}){
  if(!Array.isArray(candidates)||!(now instanceof Date)||
     !Number.isFinite(now.getTime())||typeof derive!=="function"||
-    !Number.isInteger(maxRows)||maxRows<3||maxRows>MAX)
+    !Number.isInteger(maxRows)||maxRows<3||maxRows>MAX||
+   !["ROTATING_ALL","HOT50_FRESH_FIRST"].includes(priorityMode)||
+   !(observedThisTickKeys===null||observedThisTickKeys instanceof Set))
   throw Error("PHASE2I_OSINT_RAW_PLAN_INVALID");
  const dedup=withoutAmbiguousSameOriginal(candidates);
  // Retain genuine native time, but never respend a scarce admitted D1 slot
@@ -124,7 +128,36 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   }
   const plannedQuota=baseQuota+(index<maxRows%CATS.length?1:0);
   const offset=(tick*plannedQuota)%arranged.length;
-  return [...arranged.slice(offset),...arranged.slice(0,offset)];
+  const fair=[...arranged.slice(offset),...arranged.slice(0,offset)];
+  if(priorityMode!=="HOT50_FRESH_FIRST")return fair;
+  // Admission is only 3-5 per cycle. Prioritize genuine NEW, publisher-
+  // native recent Hot-50 originals, then other globally current news, but
+  // retain every 72h unacknowledged original for subsequent admitted ticks.
+  // A headline/issuer country match is a routing hint, NOT event proof.
+  const twentyMinutes=20*60_000;
+  const rank=row=>{
+   const native=Date.parse(row.original.original_published_at);
+   const current=Number.isFinite(native)&&native>=now.getTime()-twentyMinutes&&
+     native<=now.getTime()+60_000;
+   const key=JSON.stringify([row.category,row.original.original_url,
+     row.original.original_published_at]);
+   const newlySeen=observedThisTickKeys?.has(key)===true;
+   const country=phase2hHeadlineCountryCandidate(row.original.original_title)
+     ??issuerRouteFor(row);
+   const hot=HOT50_COUNTRY_SET.has(country);
+   if(hot&&current&&newlySeen)return 0;
+   if(current&&newlySeen)return 1;
+   if(hot&&newlySeen)return 2;
+   if(newlySeen)return 3;
+   if(hot&&current)return 4;
+   if(current)return 5;
+   return 6;
+  };
+  // Sort by tier only; stable insertion order preserves the rotating
+  // country/depth fairness of the existing default admission logic.
+  return fair.map((row,position)=>({row,position,rank:rank(row)}))
+   .sort((a,b)=>a.rank-b.rank||a.position-b.position)
+   .map(x=>x.row);
  });
  const selected=[],index=[0,0,0];
  while(selected.length<maxRows&&index.some((n,i)=>n<lanes[i].length)){
@@ -140,6 +173,14 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
   phase2hHeadlineCountryCandidate(r.original.original_title)===null&&
   issuerRouteFor(r)!==null).length;
  return Object.freeze({records:selected,selected_count:selected.length,
+  source_priority_mode:priorityMode,
+  selected_hot50_title_or_primary_issuer_hints:selected.filter(r=>
+   HOT50_COUNTRY_SET.has(phase2hHeadlineCountryCandidate(r.original.original_title)
+    ??issuerRouteFor(r))).length,
+  selected_native_last_20m:selected.filter(r=>{
+   const ms=Date.parse(r.original.original_published_at);
+   return ms>=now.getTime()-20*60_000&&ms<=now.getTime()+60_000;
+  }).length,
   available_originals:available,deferred_count:available-selected.length,
   selected_by_category:counts(selected),available_by_category:counts(recentOriginals),
   original_native_72h_eligible:recentOriginals.length,
@@ -155,9 +196,12 @@ export function planPhase2iOsintCountryFairRaw(candidates,{
 
 export async function stagePhase2iOsintFairRaw({
  candidates,now=new Date(),derive,controlPlaneRoot,token,
- fetchImpl=fetch,post,maxRows=MAX,returnVerifiedRecordIds=false
+ fetchImpl=fetch,post,maxRows=MAX,returnVerifiedRecordIds=false,
+ priorityMode="ROTATING_ALL",observedThisTickKeys=null,
 }={}){
- const plan=planPhase2iOsintCountryFairRaw(candidates,{now,derive,maxRows});
+ const plan=planPhase2iOsintCountryFairRaw(candidates,{
+  now,derive,maxRows,priorityMode,observedThisTickKeys,
+ });
  const {records,...safe}=plan;
  if(!records.length)return Object.freeze({
   schema:"geomacro.phase2i.osint-fair-phase2h-stage.v1",
