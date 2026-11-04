@@ -83,7 +83,7 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  const budget=requestCeiling-priority.length;
  const slot=Math.floor(now.getTime()/INTERVAL);
  // Round-robin over time, not source country inferred from publisher.
- const offset=other.length?slot%other.length:0;
+ const offset=other.length?(slot*Math.max(1,budget))%other.length:0;
  const rotating=other.length<=budget?other:
   [...other.slice(offset),...other.slice(0,offset)].slice(0,budget);
  const registry=Object.freeze([...priority,...rotating]);
