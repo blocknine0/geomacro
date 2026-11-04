@@ -58,8 +58,13 @@ test("native item time must be precise and recent, not feed updated or future",(
   assert.equal(atomOriginalResearchCandidates(atom(0,invalid),specs[0],time).length,0);
  }
  const noPublished=atom(0).replace("<published>"+stamp+"</published>",
-  "<updated>"+stamp+"</updated>");
- assert.equal(atomOriginalResearchCandidates(noPublished,specs[0],time).length,0);
+  "<updated>2026-11-04T04:19:00Z</updated>");
+ const onlyHint=atomOriginalResearchCandidates(noPublished,specs[0],time);
+ assert.equal(onlyHint.length,1);
+ assert.equal(onlyHint[0].publishedAt,null); // updated is NOT publication proof
+ const oldHint=noPublished.replace("2026-11-04T04:19:00Z",
+   "2026-11-03T04:19:00Z");
+ assert.equal(atomOriginalResearchCandidates(oldHint,specs[0],time).length,0);
 });
 test("only fully verified first-party original pages produce direct private state events",async()=>{
  const events=[];
@@ -78,6 +83,22 @@ test("only fully verified first-party original pages produce direct private stat
    e.trusted_native_originals_verified===true&&e.commercial_eligible===false&&
    e.original_published_at===stamp&&e.confidence===60&&
    e.independent_originals===1&&/^[a-f0-9]{64}$/.test(e.evidence_sha256)));
+});
+test("updated-only GOV.UK Atom requires true first-published Content API proof",async()=>{
+ const events=[];
+ const fetchImpl=url=>{
+  if(String(url)===specs[0].feed_url)return new Response(atom(0)
+   .replace("<published>"+stamp+"</published>",
+    "<updated>2026-11-04T04:19:00Z</updated>"),{status:200});
+  return mock(url);
+ };
+ const result=await runOfficialResearch20m({sources:specs,now:time,
+  fetchImpl,ingest:async e=>{events.push(e);return {
+   state_changed:true,signed:true,commercial_eligible:false,execution_authorized:false
+  }}});
+ assert.equal(result.state_updated,3);
+ assert.equal(events[0].original_published_at,stamp);
+ assert.equal(events.length,3);
 });
 test("publisher original mismatch, denied page and fabricated source get zero writes",async()=>{
  let writes=0;
