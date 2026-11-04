@@ -57,7 +57,12 @@ const safeRow=(lane,row)=>{
     !Number.isFinite(Date.parse(row.observed_clock))||
     !CATS.has(row.category)||!(row.country_iso3===null||
        /^[A-Z]{3}$/u.test(row.country_iso3)))throw Error("DISCOVERY_SOURCE_ROW_INVALID");
- return row;
+ // Explicit positive projection: never trust a widened SQL result or caller.
+ return Object.freeze({
+  original_ref:row.original_ref,source_sha:row.source_sha,
+  first_seen_at:row.first_seen_at,observed_clock:row.observed_clock,
+  category:row.category,country_iso3:row.country_iso3,
+ });
 };
 function sqlFor(lane){
  const s=LANES[lane];
