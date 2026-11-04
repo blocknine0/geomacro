@@ -1,0 +1,39 @@
+{
+  "schema": "geomacro.hot50-official-new-originals.v1",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "discovery_reference": "https://international.canada.ca/en/global-affairs/news/rss",
+  "basis": "Canadian Global Affairs official Atom feed links; HTTP and native item timestamp must be reverified on each runtime poll. Not source rights or event verification.",
+  "sources": [
+    {
+      "id": "private_hot50_can_gac_newsreleases",
+      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+news+releases&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=newsreleases",
+      "publisher_country_iso3": "CAN",
+      "continent": "north_america",
+      "type": "atom",
+      "categories": [
+        "geopolitics",
+        "macro"
+      ],
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_can_gac_statements",
+      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?atomtitle=Global+Affairs+Canada+statements&dept=departmentofforeignaffairstradeanddevelopment&format=atom&orderBy=desc&pick=50&publishedDate%3E=2015-01-01&sort=publishedDate&type=statements",
+      "publisher_country_iso3": "CAN",
+      "continent": "north_america",
+      "type": "atom",
+      "categories": [
+        "geopolitics"
+      ],
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "transport_verified_at_registration": false,
+      "provider_rights_verified": false,
+      "commercial_eligible": false,
+      "publicly_deliverable": false
+    }
+  ]
+}
