@@ -316,6 +316,7 @@ jobs:
           # Quota admission is mandatory. Held/failed quota means ZERO extra D1
           # reads, while source-derived append-only publication continues.
           GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.result == 'success' && needs.quota-admission.outputs.research == 'true' }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

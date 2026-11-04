@@ -29,7 +29,9 @@ test("quota-held archive may read at most one complete public journal bundle und
  assert.ok(workflow.includes("snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}"));
  assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
  assert.ok(block.includes("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
- assert.ok(!block.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
+ assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
+ const onlyCollector=block.split('      - name: Collect derived originals and archive candidate only (zero D1)')[1]?.split('      - name: Publish append-only permanent Finds archive')[0]??'';
+ assert.ok(!onlyCollector.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
 });
 test("quota-held archive remains D1-write-free and cannot run on untrusted pushes",()=>{
   // Enforce denial before any publisher attempts; never bypass D1 governor
@@ -38,7 +40,7 @@ test("quota-held archive remains D1-write-free and cannot run on untrusted pushe
   assert.ok(condition.includes("needs.quota-admission.outputs.research == 'false'"));
   assert.ok(!condition.includes("github.event_name == 'push'"));
   assert.ok(block.includes("GEOMACRO_DERIVED_ARCHIVE_ONLY"));
-  assert.ok(!block.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
+  assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
 });
 test("admitted publisher still uses the identical canonical archive-to-D1 reconciliation path",()=>{
   const admitted=workflow.split("  refresh-derived-news:")[1]?.split("\n  private-b2-derived-news-acceptance:")[0]??"";

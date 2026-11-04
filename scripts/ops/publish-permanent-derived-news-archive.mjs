@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import {dirname, join, resolve} from "node:path";
 import {createHash} from "node:crypto";
+import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs";
 import {isSafeDerivedNewsReadbackSignal} from "../lib/derived-news-readback-policy.mjs";
 import {buildWebsitePilotSnapshot} from "../lib/website-predge-static-72h-snapshot.mjs";
 import {buildDailyOfficialFinds} from "../lib/public-daily-official-finds.mjs";
@@ -348,13 +349,20 @@ export async function readRecoverableD1Seed(fetchImpl=fetch,now=Date.now()){
  * materialized preview is NOT necessarily identical to the canonical bundle.
  * A quota-admitted recovery uses one bounded GET, never extra publisher GETs.
  */
-export async function readRecoverableD1CanonicalBundle(fetchImpl=fetch,now=Date.now()){
+export async function readRecoverableD1CanonicalBundle(fetchImpl=fetch,now=Date.now(),canonicalOriginToken=null){
+  // The public bundle may be served from R2/edge cache and cannot prove
+  // canonical D1 identity. Use the existing protected direct-D1 owner route.
+  if(!/^[a-f0-9]{64}$/u.test(String(canonicalOriginToken??'')))
+    throw Error('PERMANENT_ARCHIVE_CANONICAL_ORIGIN_AUTH_REQUIRED');
   const response=await fetchImpl(
-    "https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-bundle",{
-      method:"GET",redirect:"error",cache:"no-store",
-      headers:{Accept:"application/json","Cache-Control":"no-cache"},
+    'https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/website-derived-news-bundle',{
+      method:'GET',redirect:'error',cache:'no-store',
+      headers:{Accept:'application/json','Cache-Control':'no-cache',
+        Authorization:'Bearer '+canonicalOriginToken},
       signal:AbortSignal.timeout(12_000),
     });
+  if(response.headers.get('X-GeoMacro-Origin-Readback')!=='d1-canonical')
+    throw Error('PERMANENT_ARCHIVE_CANONICAL_ORIGIN_PROOF_MISSING');
   if(!response.ok||response.redirected||
      Number(response.headers.get("content-length")??0)>4_000_000)
     throw Error("PERMANENT_ARCHIVE_CANONICAL_BUNDLE_UNAVAILABLE");
@@ -406,6 +414,7 @@ function readCandidates(path,now){
 export async function publishPermanentDerivedNewsArchive({
   archiveDir,assetsDir,candidatePath,
   fetchImpl=fetch,now=Date.now(),canonicalCatchup=false,
+  canonicalOriginToken=null,
 }={}){
   if(typeof canonicalCatchup!=="boolean")
     throw Error("PERMANENT_ARCHIVE_CATCHUP_CONFIG_INVALID");
@@ -463,12 +472,15 @@ export async function publishPermanentDerivedNewsArchive({
     // workflow_run events. Persist only a safe clock checkpoint in the
     // archive branch so D1 is read no more than once in any 55-minute window.
     // An invalid checkpoint never suppresses the recovery attempt.
+    // v3 invalidates v2 checkpoints: a previous "success" could have read
+    // an R2/public cache, which is not proof of canonical D1 origin. Force
+    // exactly one new authenticated origin read after upgrading, then pace.
     const checkpointPath=join(dataDir,"canonical-catchup-checkpoint.json");
     let lastSuccessfulRead=NaN;
     try{
       const checkpoint=readJsonIfPresent(checkpointPath,
         "PERMANENT_ARCHIVE_CATCHUP_CHECKPOINT_INVALID");
-      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v2"){
+      if(checkpoint?.schema==="geomacro.canonical-archive-catchup-checkpoint.v3"){
         const at=Date.parse(checkpoint.last_success_at);
         if(Number.isFinite(at)&&at<=now)lastSuccessfulRead=at;
       }
@@ -483,10 +495,10 @@ export async function publishPermanentDerivedNewsArchive({
     // D1 does not block static source-derived publication or claim success.
     if(!canonicalCatchupSkippedCadence){
       try{
-        seedRows=await readRecoverableD1CanonicalBundle(fetchImpl,now);
+        seedRows=await readRecoverableD1CanonicalBundle(fetchImpl,now,canonicalOriginToken);
         canonicalCatchupCompleted=true;
         writeFileSync(checkpointPath,JSON.stringify({
-          schema:"geomacro.canonical-archive-catchup-checkpoint.v2",
+          schema:"geomacro.canonical-archive-catchup-checkpoint.v3",
           last_success_at:new Date(now).toISOString()
         })+"\n",{encoding:"utf8",mode:0o644});
       }catch{
@@ -647,8 +659,12 @@ export async function publishPermanentDerivedNewsArchive({
 
 if(process.argv[1]&&import.meta.url===new URL("file://"+resolve(process.argv[1])).href){
   const [archiveDir,assetsDir,candidatePath]=process.argv.slice(2);
+  const canonicalCatchup=process.env.GEOMACRO_CANONICAL_D1_CATCHUP==='true';
+  // Derive only within this production process; never persist or log keys.
+  const canonicalOriginToken=canonicalCatchup?
+    deriveControlPlaneRootToken(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN):null;
   publishPermanentDerivedNewsArchive({archiveDir,assetsDir,candidatePath,
-    canonicalCatchup:process.env.GEOMACRO_CANONICAL_D1_CATCHUP==="true"
+    canonicalCatchup,canonicalOriginToken
   }).catch(error=>{
     const code=error instanceof Error&&/^PERMANENT_ARCHIVE_[A-Z0-9_]+$/.test(error.message)
       ?error.message:"PERMANENT_ARCHIVE_UPDATE_FAILED";
