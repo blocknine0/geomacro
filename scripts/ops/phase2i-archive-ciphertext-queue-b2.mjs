@@ -22,6 +22,16 @@ import {buildPrivatePhase2iFragmentedBundle,reconstructPrivatePhase2iFragmentedB
 export const PHASE2I_B2_PREFIX="geomacro-evidence/v1/private/phase2i-source-queue/";
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 const fail=code=>{throw Error("PHASE2I_B2_"+code)};
+// Fail with safe stage names only: never leak a provider body, object URL,
+// encryption key, decrypted headline, source ID or SQL in Actions logs.
+async function guarded(stage,work){
+ try{return await work()}
+ catch(error){
+  if(/^PHASE2I_B2_[A-Z0-9_]+$/u.test(String(error?.message??"")))
+   throw error;
+  fail(stage+"_UNVERIFIED");
+ }
+}
 const CATS=["geopolitics","macro","rare_earth"];
 const sixHours=6*3600_000;
 
@@ -152,8 +162,8 @@ export async function runPhase2iCiphertextB2Archive({
  if(event?.schedule!=="29 0,6,12,18 * * *")
   fail("UNAPPROVED_SCHEDULE");
  const root=env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
- const {envelope,sourceRunId}=await artifactReader({
-   token:env.GH_TOKEN,now,fetchImpl});
+ const {envelope,sourceRunId}=await guarded("ACTIONS_SOURCE_ARTIFACT",()=>artifactReader({
+   token:env.GH_TOKEN,now,fetchImpl}));
  const plan=buildPhase2iCiphertextB2Object({envelope,root,now,sourceRunId});
  // Keep the existing authenticated, gzip-compressed source queue unchanged.
  // Split it into 128 KiB indexed fragments *inside one B2 object*. This is
@@ -167,20 +177,21 @@ export async function runPhase2iCiphertextB2Archive({
    const original=reconstructPrivatePhase2iFragmentedBundle(packed);
    return verifyPhase2iCiphertextB2Readback(original,plan,root,now);
  };
- const runtimeEnv={...env,D1_DATABASE_ID:await exactD1Id(env,fetchImpl)};
+ const runtimeEnv={...env,D1_DATABASE_ID:await guarded("D1_DATABASE_DISCOVERY",
+   ()=>exactD1Id(env,fetchImpl))};
  // Existing canonical B2 client gets its atomic D1 guard from process.env.
  // This job sets only the independently verified canonical D1 UUID.
  const previousId=process.env.D1_DATABASE_ID;
  process.env.D1_DATABASE_ID=runtimeEnv.D1_DATABASE_ID;
  try{
   const governor=governorFactory({env:runtimeEnv,fetchImpl});
-  const quota=await governor.status();
+  const quota=await guarded("ATOMIC_B2_GOVERNOR_STATUS",()=>governor.status());
   if(quota?.ok!==true||quota.used.total>quota.limits.total-7||
      quota.used.GET>quota.limits.GET-4||
      quota.used.PUT>quota.limits.PUT-2||
      quota.used.NATIVE_AUTH>quota.limits.NATIVE_AUTH-2)
    fail("B2_SHARED_HEADROOM_HELD");
-  const lifecycle=await lifecycleVerifier({env:runtimeEnv,fetchImpl,governor});
+  const lifecycle=await guarded("B2_LIFECYCLE",()=>lifecycleVerifier({env:runtimeEnv,fetchImpl,governor}));
   if(lifecycle?.phase2i_source_queue_prefix_verified!==true||
      lifecycle?.private_72h_delete_lifecycle_verified!==true||
      lifecycle?.no_bucket_mutation!==true)
@@ -190,13 +201,14 @@ export async function runPhase2iCiphertextB2Archive({
    secretKey:env.B2_APPLICATION_KEY,
    readAccessKey:env.B2_ARCHIVE_READ_KEY_ID,
    readSecretKey:env.B2_ARCHIVE_READ_APPLICATION_KEY});
-  const first=await b2.putWithMetadataVerification(bundleKey,bundle.bytes,{
-   verifyRestored:verifyBulkReadback
-  });
+  const first=await guarded("B2_FIRST_PUT_AND_GET",()=>
+   b2.putWithMetadataVerification(bundleKey,bundle.bytes,{
+    verifyRestored:verifyBulkReadback
+   }));
   if(first?.full_body_readback_verified!==true||first.sha256!==bundle.sha256||
      first.bytes!==bundle.bytes.length)
    fail("B2_FIRST_PUT_GET_NOT_VERIFIED");
-  const second=await b2.get(bundleKey);
+  const second=await guarded("B2_SECOND_GET",()=>b2.get(bundleKey));
   verifyBulkReadback(second);
   return Object.freeze({
    schema:"geomacro.phase2i.private-source-queue-b2-acceptance.v1",
