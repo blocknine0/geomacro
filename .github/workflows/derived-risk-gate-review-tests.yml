@@ -1,0 +1,32 @@
+name: Derived Risk Gate Review Tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/derived-risk-gate-review-loop.test.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
+      - ".github/workflows/derived-risk-gate-review-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/lib/official-original-issuer-rights.mjs"
+      - "scripts/lib/derived-risk-gate-review-loop.test.mjs"
+      - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
+      - ".github/workflows/derived-risk-gate-review-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  facts-only-review:
+    name: Restricted-source and independent proof policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify Risk Gate review loop and independently signed proof rules
+        run: node --test scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
