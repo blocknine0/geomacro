@@ -1,0 +1,101 @@
+{
+  "schema": "geomacro.category3-geopolitics-source-map.v1",
+  "as_of": "2026-11-04",
+  "priority_band": "21-30",
+  "category": "geopolitics",
+  "country_iso3": [
+    "POL",
+    "UKR",
+    "TUR",
+    "SAU",
+    "ARE",
+    "IRN",
+    "ISR",
+    "EGY",
+    "QAT",
+    "OMN"
+  ],
+  "scope": "PRIVATE_NEWS_DISCOVERY_AND_SOURCE_REVIEW",
+  "runtime_effect": "GOOGLE_WATCH_ONLY_EXISTING_15M_PRIVATE_OSINT_SLOT",
+  "telegram": [
+    {
+      "handle": "@militarySummary",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED",
+      "ingest_enabled_by_registration": false
+    },
+    {
+      "handle": "@Middle_East_Spectator",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED",
+      "ingest_enabled_by_registration": false
+    },
+    {
+      "handle": "@AuroraIntel",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED",
+      "ingest_enabled_by_registration": false
+    }
+  ],
+  "other_osint": [
+    {
+      "name": "DeepStateMap",
+      "url": "https://deepstatemap.live/",
+      "source_type": "UKRAINE_FRONTLINE_MAP",
+      "activation_state": "OFFICIAL_API_OR_RIGHTS_REVIEW_REQUIRED",
+      "note": "No map data scraping or territorial-state inference from this registry"
+    },
+    {
+      "name": "Aurora Intel",
+      "url": "https://x.com/AuroraIntel",
+      "source_type": "X_ACCOUNT",
+      "activation_state": "PLATFORM_API_AND_RIGHTS_REVIEW_REQUIRED"
+    }
+  ],
+  "direct_news": [
+    {
+      "name": "The Kyiv Independent",
+      "url": "https://kyivindependent.com/",
+      "feed_url": "https://kyivindependent.com/news-archive/rss/",
+      "existing_registry_source_id": "private_news_kyivindependent",
+      "activation_state": "REGISTERED_EXISTING_SOURCE_RUNTIME_UNVERIFIED"
+    },
+    {
+      "name": "Al Jazeera English",
+      "url": "https://www.aljazeera.com/",
+      "feed_url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "existing_registry_source_id": "private_news_aljazeera",
+      "activation_state": "REGISTERED_EXISTING_SOURCE_RUNTIME_UNVERIFIED"
+    },
+    {
+      "name": "The Times of Israel",
+      "url": "https://www.timesofisrael.com/",
+      "feed_url": "https://www.timesofisrael.com/feed/",
+      "existing_registry_source_id": "private_repo_1265c67781f34c2923f3",
+      "activation_state": "RETIRED_BY_EXISTING_SOURCE_HEALTH_POLICY"
+    },
+    {
+      "name": "Middle East Eye",
+      "url": "https://www.middleeasteye.net/",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    }
+  ],
+  "google_news": {
+    "query": "(\"Ukraine\" OR \"Israel\" OR \"Iran\" OR \"Saudi Arabia\") (\"Conflict\" OR \"Strike\" OR \"Oil\" OR \"Geopolitics\")",
+    "watch_id": "private_repo_1eee878dce7c0efa8c56",
+    "watch_lane": "category3_europe_middle_east_frontlines",
+    "integration": "scripts/lib/launch-priority-watch-sources.mjs",
+    "reuse_existing_malformed_google_index_slot": true,
+    "requested_extra_network_calls": 0,
+    "source_kind": "DISCOVERY_AGGREGATOR",
+    "independent_event_proof": false
+  },
+  "source_policy": {
+    "no_telegram_collection_without_source_authorization": true,
+    "third_party_news_requires_access_rights_and_native_clock": true,
+    "original_country_independently_proven": false,
+    "automatic_paid_promotion": false,
+    "commercial_reuse_rights_unverified": true,
+    "no_live_ingestion_claim_from_registration": true
+  }
+}
