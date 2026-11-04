@@ -77,7 +77,7 @@ export function validateExistingPhase2hReceipt(report,mainSha){
   canonical_d1_staged_total:report.canonical_d1_staged_total,
   canonical_d1_archived_total:report.canonical_d1_archived_total,
   canonical_d1_pending_total:report.canonical_d1_pending_total,
-  b2_put_and_two_get_and_sha_verified_for_reported_batches:true,
+  b2_put_and_one_get_and_sha_verified_for_reported_batches:true,
   same_object_d1_id_hash_reconciled_for_reported_batches:true,
   deployed_exact_question_verified_for_reported_categories:true,
   all_backlog_clear:report.status==="PASS_REAL_B2_TO_EXACT_QUESTION"&&
@@ -97,7 +97,7 @@ export function createPhase2ibCycle({mainSha,runId,admission,archiveJob,report=n
  // A prior independently verified object never disappears merely because
  // today's source or quota gate is held. It is not proof of *current* backlog.
  const prior=previous?.schema===RAW_CYCLE_SCHEMA&&
-   previous?.last_positive_receipt?.b2_put_and_two_get_and_sha_verified_for_reported_batches===true
+   previous?.last_positive_receipt?.b2_put_and_one_get_and_sha_verified_for_reported_batches===true
     ?previous.last_positive_receipt:null;
  const status=positive?
   (positive.all_backlog_clear?"VERIFIED_ARCHIVE_CURRENT_CENSUS":"VERIFIED_PARTIAL_ARCHIVE_BACKLOG"):
