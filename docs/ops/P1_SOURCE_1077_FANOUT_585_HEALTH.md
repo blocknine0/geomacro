@@ -1,0 +1,31 @@
+# GeoMacro P1 Source Coverage: 1077 lanes, 10-shard Queues, 585 health cells
+
+## Exact source inventory
+Current pinned source JSON catalogs are 369 independently preflighted private OSINT feed endpoints with 1,069 source/category lanes, plus eight distinct UK Government official Atom feeds. Hence 1,077 D1 source/category rows but only 377 distinct fetched URLs. Duplicating a feed across categories is not an independent reporting organization and never creates corroboration. Manifest readback is configuration, NOT actual 1,077 successful live polls.
+
+## Permanent production architecture
+Existing one-minute Cloudflare control-plane cron reads at most 108 due/lease-expired D1 source IDs, atomically leases them for two minutes, partitions them into ten stable logical shards, publishes source IDs (never caller URLs or secrets) to a separate Queue geomacro-source-poll, splits sends into at most 15 IDs each, and consumer invokes existing P0-A / P0-B private source pipeline. Consumer ACKs only after a poll outcome has been D1 accounted; unavailable source is an attempted poll, not a successful fetch.
+The private queue has a separate dead-letter queue geomacro-source-poll-dlq, a 15-message batch cap, retry with delay, and max-concurrency 10. Cloudflare may autoscale consumer invocations up to 10; it does not guarantee that all 10 shards run simultaneously. Existing B2 spool queue and paid/PREDGE endpoints remain independent.
+Existing source_registry controls enabled, next_poll_at, last_polled_at, and polling_interval_sec; migration 0119 adds a generated polling_interval_minutes, independent ETag/Last-Modified, and a fanout lease token. P1 registration sets hourly baseline; any existing 15/20-minute direct private OSINT lanes remain separate.
+Actual seed (and remote readback) happens in protected Deploy D1 Control Plane production job *after* migration 0119: `node scripts/ops/seed-p1-1077-source-registry.mjs`, followed by `wrangler d1 execute --file` and a remote D1 manifest count of exactly 1,077. Repeated deploy does not write unchanged source rows.
+
+## Transport / parsing
+Respectful User-Agent and conditional ETag plus Last-Modified GET reduce duplicated bodies (304 is a successful poll, not news). HTML 200 responses on RSS/Atom/RDF are MALFORMED, never source news. A source with actual 401/403 remains DENIED for 1 hour, and is never routed through an unauthorized residential/rotating proxy. Independent approved publisher endpoints may be registered as source alternatives. 503/unavailable cooldown is 5, 15, then 60 minutes; per-host cooldown lives in D1.
+Normalized publisher-native time is UTC only when explicitly timezone-stamped. Timezone-free dates are not forced into UTC as if publisher-originated: HTTP Last-Modified or ingestion time is tracked as an observation timestamp with explicit provenance. The source-first staging dedupes by publisher source + SHA(title normalized + canonical URL stripped of tracking parameters). Raw origin content is kept off public / paid surfaces.
+The existing bounded RSS/Atom/RDF/JSON/CSV parser is hardened, but changing it to the requested fast-xml-parser+Zod implementation requires a pinned package/lockfile migration and fresh payload acceptance. Do not claim that exact parser migration is complete or that 98% extraction has been empirically measured until it has been.
+
+## Country × category
+Migration 0119 creates 195 UN-plus-observer ISO3 countries x three categories = 585 explicit cells and a ranked source-to-cell mapping table, with a D1 mapping-health view. A country-scoped registered publisher may be mapped only to its own source category and country. GLOBAL sources are not automatically multiplied into 585 unverifiable independent reports.
+`GET /v1/internal/p1/source-health` (admin bearer) gives enabled count, count actually polled within last hour, denied/unavailable/deferred counts, matrix of 585 cells, mapping completeness (at least two primary plus one secondary), and records backed by actual B2-ACKed private Phase2H originals with publication/ingest clocks in previous six hours.
+Only B2-backed private original records are counted as fresh evidence. A 6-hour period with no valid original news can correctly have empty cells; never manufacture news to make a 95% score pass. Independent licensed Google News / topic feeds require demonstrated permitted endpoint usage and classification before being mapped to country/category.
+
+## Production acceptance (do NOT infer from mocked CI)
+- PR merge, protected production migration and actual 1,077-row D1 seed receipt succeed.
+- More than 1,077 enabled is possible only if additional independently configured sources exist; hourly 100% means every enabled source_id has last_polled_at in the trailing 60 min, including HTTP 304, not including an unattempted domain-backoff or queue reservation.
+- 0 CAPACITY_DEFERRED requires proven downstream D1/B2 storage headroom, 403/401 must remain denied if unpermitted, and UNAVAILABLE under 15% requires real publisher responses. Neither is a deterministic code-level guarantee.
+- 98%+ valid titles, URL and UTC clock provenance must be derived from real actual 200 publisher responses, not from parser mocks. Separate original publication time from HTTP or ingestion observation.
+- 95% x 585 means **556 or more cells** with actually fresh B2-backed original items in rolling six hours. Absent primary/secondary sources remain visible missing mappings.
+- The claimed historical P0 6,054-to-zero and B2/D1 parity must continue to use their own live D1/B2 proofs; this P1 source registry is not an archive shortcut.
+
+## Operator checks
+Read protected /v1/internal/p1/source-health and /v1/internal/p0b/status; retain no raw article titles/URLs in CI logs. Verify GitHub production step `P1_REMOTE_1077_SOURCE_LANES_CONFIGURED=true`. Check Cloudflare queue geomacro-source-poll consumer+DLQ, cron every minute, and each provider-guarded B2 admission result. Source status that was last observed days ago is not counted as current success.
