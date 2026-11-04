@@ -1,0 +1,47 @@
+name: Phase2I 585 Country Category Snapshot Audit (Research Only)
+
+# Branch snapshot is NOT a live source health receipt. This audit never
+# fetches publishers, writes D1/B2/Supabase, or changes commercial eligibility.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase2i-585-coverage-audit.yml"
+      - "scripts/ops/audit-phase2i-585-coverage.mjs"
+      - "src/lib/risk-gate/stream-ingest.ts"
+      - "src/routes/api.research-risk-gate.ts"
+      - "src/__tests__/research-risk-state.test.ts"
+      - "supabase/migrations/20261104090800_research_country_risk_state_noqueue.sql"
+  schedule:
+    - cron: "13,33,53 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-phase2i-585-coverage-branch-readonly-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  evidence-branch-census:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Check out current canonical code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out immutable-read reference branch (never execute its code)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: blocknine0/geomacro
+          ref: phase2i-source-evidence
+          path: evidence-reference
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Parse exact 585 coverage JSON, record only metadata and prove no false live claims
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-phase2i-585-coverage.mjs "$PWD/evidence-reference/data/phase2i/coverage-585.latest.json"
