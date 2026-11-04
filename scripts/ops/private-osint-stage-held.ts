@@ -8,6 +8,7 @@ import {mkdirSync,writeFileSync} from "node:fs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
+import {threeDomainGlobal20mPublisherRegistry} from "../lib/three-domain-global-direct-20m-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
@@ -19,7 +20,13 @@ if(process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
  !["schedule","workflow_dispatch","push","workflow_run"].includes(process.env.GITHUB_EVENT_NAME??""))
  throw Error("OSINT_SPOOL_PROTECTED_MAIN_HELD_ONLY");
 const now=new Date(),root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
-const sources=privateOsintRuntimeSources(now,privateOsintGlobalSources(),
+const threeDomain20m=process.env.GEOMACRO_SOURCE_REGISTRY_MODE==="THREE_DOMAIN_DIRECT_20M";
+if(process.env.GEOMACRO_SOURCE_REGISTRY_MODE&&!threeDomain20m)
+ throw Error("OSINT_HELD_SOURCE_MODE_UNRECOGNIZED");
+if(threeDomain20m&&process.env.GITHUB_EVENT_NAME!=="schedule")
+ throw Error("OSINT_DIRECT_20M_HELD_SCHEDULE_ONLY");
+const sources=threeDomain20m?threeDomainGlobal20mPublisherRegistry(now).registry:
+ privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
 const result=await collectPrivateOsint15m({
  now,registry:sources,normalize:normalizeReusableNewsJson,
@@ -41,6 +48,10 @@ if(envelope){
 console.log(JSON.stringify({
  schema:"geomacro.osint-held-spool-collection-receipt.v1",
  mode:"ENCRYPTED_QUOTA_HELD_PRIVATE_ONLY",checked_source_endpoints:sources.length,
+ direct20m_three_domain_source_lane:threeDomain20m,
+ direct20m_live_source_checks_verified:result.checks.length>=sources.length,
+ durable_originals_in_d1_verified:false,
+ b2_ciphertext_durable_verified:false,
  checked_country_routes:195,checked_categories:3,
  source_health_by_state:result.summary.source_states,
  captured_unverified_items:prepared.items.length,
