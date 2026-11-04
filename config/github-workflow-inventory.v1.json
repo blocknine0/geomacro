@@ -117,6 +117,8 @@
     "deploy-telegram-signal-supabase.yml",
     "deploy-web-candidate.yml",
     "derive-risk-object-public-key.yml",
+    "derived-risk-gate-discovery-20m.yml",
+    "derived-risk-gate-review-tests.yml",
     "direct-global-corridor-intake.yml",
     "direct-publisher-intelligence-acceptance.yml",
     "distributed-40k-evidence-closure.yml",
