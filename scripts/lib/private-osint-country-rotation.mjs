@@ -72,7 +72,7 @@ export function rotatingPrivateCountryDiscoverySources(now=new Date(),countries=
   // These remain SEARCH HINTS only; no country is attributed from a query.
   const names=[country.name,...(Array.isArray(country.aliases)?country.aliases:[])].slice(0,3)
    .map(name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"');
-  const specific=category?hot50GoogleCategorySource(country,category):null;
+  const specific=category?hot50GoogleCategorySource(country,category,TERMS):null;
   const query="("+names.join(" OR ")+") "+TERMS+" when:1d";
   const url=new URL(specific?.url??"https://news.google.com/rss/search");
   if(!specific){
