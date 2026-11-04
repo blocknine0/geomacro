@@ -1,0 +1,28 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4.1-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    volumes: [rabbitmq_data:/var/lib/rabbitmq]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+  risk_gate_live:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:?Set user}:${RABBITMQ_PASSWORD:?Set password}@rabbitmq/
+      RISK_GATE_STATE_DB: /data/risk_gate_events.sqlite
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    volumes: [risk_gate_state:/data]
+    ports: ["127.0.0.1:8765:8765"]
+volumes:
+  rabbitmq_data:
+  risk_gate_state:

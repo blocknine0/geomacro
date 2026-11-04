@@ -1,0 +1,52 @@
+name: Risk Gate streaming lane contract
+on:
+  pull_request:
+    paths: ["workers/risk-gate-live/**", ".github/workflows/risk-gate-streaming.yml"]
+  push:
+    branches: [main]
+    paths: ["workers/risk-gate-live/**", ".github/workflows/risk-gate-streaming.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned dependencies
+        run: python -m pip install -r workers/risk-gate-live/requirements.txt
+      - name: Run streaming contract tests
+        working-directory: workers/risk-gate-live
+        run: |
+          python -m unittest -v test_core.py
+          python -m compileall -q .
+      - name: Build worker image
+        run: docker build -t geomacro-risk-gate-stream:ci workers/risk-gate-live
+  publish-image:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [test-and-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish image by immutable Git SHA
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          image="ghcr.io/${owner}/geomacro-risk-gate-stream:${GITHUB_SHA}"
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build -t "$image" workers/risk-gate-live
+          docker push "$image"
