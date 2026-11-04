@@ -1,6 +1,7 @@
 name: Hot-50 Direct Original News (20-Minute Cron)
 
-# Poll pinned Hot-50 RSS/Atom/JSON publishers; no Google index or Telegram.
+# Poll all eligible existing three-domain direct RSS/Atom/JSON publishers,
+# Hot-50 first, then global sources; no Google index or Telegram.
 # All actual D1 writes use the EXISTING authenticated private source-only
 # writer and shared cross-workflow mutex. Github cron is best effort;
 # transport success is not proof of native events or B2 archiving.
@@ -18,6 +19,11 @@ on:
       - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "config/hot-50-four-lane-source-crosswalk.v1.json"
+      - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
+      - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
+      - "scripts/ops/private-osint-stage-held.ts"
+      - "scripts/lib/four-lane-free-source-rights.mjs"
+      - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "config/four-lane-free-source-rights.v1.json"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
@@ -32,6 +38,11 @@ on:
       - "scripts/tests/minimum-daily-bundled-source.test.mjs"
       - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
       - "config/hot-50-four-lane-source-crosswalk.v1.json"
+      - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
+      - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
+      - "scripts/ops/private-osint-stage-held.ts"
+      - "scripts/lib/four-lane-free-source-rights.mjs"
+      - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "config/four-lane-free-source-rights.v1.json"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
@@ -57,11 +68,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - name: Verify 50 countries, pinned direct-only registry, D1 budget and 20m cron
+      - name: Verify 50-country priority, global native feeds, D1 budget, and 20m cron
         run: |
           set -euo pipefail
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
+          node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs
           node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
@@ -141,9 +153,9 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/preload-phase2i-encrypted-backlog.mjs
-      - name: Poll only Hot-50 direct feeds, dedupe with existing queue, read back up to 5 native D1 originals
+      - name: Poll three-domain global direct feeds, dedupe with existing queue, read back quota-admitted D1 originals
         env:
-          GEOMACRO_SOURCE_REGISTRY_MODE: HOT50_DIRECT_20M
+          GEOMACRO_SOURCE_REGISTRY_MODE: THREE_DOMAIN_DIRECT_20M
           GEOMACRO_SOURCE_INTAKE_ONLY: "1"
           PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
           PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
@@ -172,3 +184,46 @@ jobs:
           GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
           GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
         run: rm -f -- "$GEOMACRO_PHASE2I_PRIOR_QUEUE" "$GEOMACRO_SOURCE_WEBSITE_HANDOFF"
+
+  encrypted-held-three-domain-20m:
+    name: Poll three-domain direct news even when D1 quota is held, protect eligible news in AES-GCM replay
+    needs: [source-contract, quota-admission]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'schedule' &&
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.source_intake != 'true'
+    concurrency:
+      group: geomacro-private-osint-held-publisher-fetch
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Poll same global native publishers, seal qualifying items, do not write HELD D1
+        env:
+          GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
+          GEOMACRO_SOURCE_REGISTRY_MODE: THREE_DOMAIN_DIRECT_20M
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/private-osint-stage-held.ts
+      - name: Keep only encrypted eligible native-dated source observations for automated existing replay
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-encrypted-private-osint-held
+          path: /tmp/geomacro-encrypted-held-spool/sealed.json
+          if-no-files-found: ignore
+          retention-days: 2
+          compression-level: 0
