@@ -10,7 +10,7 @@ export async function getP0bIngestionStatus(env){
  if(!env?.DB?.prepare)return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
  try{
   const utcDay=new Date().toISOString().slice(0,10)+'T00:00:00.000Z';
-  const [sources,states,admitted,guard,bundles]=await Promise.all([
+  const [sources,states,admitted,guard,bundles,outbox]=await Promise.all([
    env.DB.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) AS enabled, '+
     'SUM(CASE WHEN last_polled_at IS NOT NULL THEN 1 ELSE 0 END) AS ever_polled '+
     'FROM source_registry').first(),
@@ -21,6 +21,25 @@ export async function getP0bIngestionStatus(env){
     "SUM(CASE WHEN state='D1_COMMITTED' AND acked_at IS NOT NULL THEN 1 ELSE 0 END) AS committed,"+
     "SUM(CASE WHEN state='DEAD_LETTER' THEN 1 ELSE 0 END) AS dead_letter "+
     'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first(),
+   // Correlated checks use the existing unique B2 bundle URI and the
+   // b2_spool_uri item index; they never fetch protected source JSON.
+   env.DB.prepare(
+    "SELECT COUNT(*) AS total,"+
+    "COALESCE(SUM(CASE WHEN state IN ('PENDING_ARCHIVE','REPLAYING') THEN 1 ELSE 0 END),0) AS pending,"+
+    "COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) AS archived,"+
+    "COALESCE(SUM(CASE WHEN state='ARCHIVED' AND "+
+    "(b2_uri IS NULL OR b2_object_sha256 IS NULL) THEN 1 ELSE 0 END),0) AS archived_missing_b2,"+
+    "COALESCE(SUM(CASE WHEN state='ARCHIVED' AND NOT EXISTS ("+
+    "SELECT 1 FROM ingestion_spool_bundles AS b WHERE "+
+    "b.b2_spool_uri=p0b_archive_outbox.b2_uri AND "+
+    "b.bundle_sha256=p0b_archive_outbox.b2_object_sha256 AND "+
+    "b.item_count=p0b_archive_outbox.item_count) THEN 1 ELSE 0 END),0) AS bundle_journal_mismatch,"+
+    "COALESCE(SUM(CASE WHEN state='ARCHIVED' AND "+
+    "(SELECT COUNT(*) FROM ingestion_spool_queue AS q "+
+    "WHERE q.b2_spool_uri=p0b_archive_outbox.b2_uri)<>item_count "+
+    "THEN 1 ELSE 0 END),0) AS item_journal_mismatch "+
+    "FROM p0b_archive_outbox"
+   ).first(),
   ]);
   const queueState={PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
    RETRY:0,QUARANTINED:0,DEAD_LETTER:0};
@@ -43,8 +62,14 @@ export async function getP0bIngestionStatus(env){
    }
   }catch{/* Not a provider ACK proof; fail closed. */}
   const objects=bundles?.created??0,committedBundles=bundles?.committed??0;
+  const noOutboxMismatch=outbox!==null&&
+   (outbox?.archived_missing_b2??-1)===0&&
+   (outbox?.bundle_journal_mismatch??-1)===0&&
+   (outbox?.item_journal_mismatch??-1)===0;
+  const outboxDrained=(outbox?.pending??-1)===0&&
+   (outbox?.total??0)>0;
   const journalParity=objects>0&&committedBundles===objects&&
-   (bundles?.dead_letter??0)===0;
+   (bundles?.dead_letter??0)===0&&noOutboxMismatch&&outboxDrained;
   const checkedAt=new Date().toISOString();
   return resp({
    schema:'geomacro.p0b.production-status.v1',ok:true,checked_at:checkedAt,
@@ -52,13 +77,28 @@ export async function getP0bIngestionStatus(env){
    source_registry:{total:sources?.total??0,enabled:sources?.enabled??0,
     ever_polled:sources?.ever_polled??0},
    queue_state:queueState,normalized_metadata_rows:admitted?.n??0,
+   transactional_outbox_parity:{
+    state:"D1_FIRST_ENCRYPTED_THEN_B2_VERIFIED",
+    total_bundle_records:outbox?.total??null,
+    pending_archive_bundles:outbox?.pending??null,
+    archived_verified_bundles:outbox?.archived??null,
+    archived_without_b2_pointer:outbox?.archived_missing_b2??null,
+    archived_without_exact_bundle_journal:outbox?.bundle_journal_mismatch??null,
+    archived_item_count_mismatch:outbox?.item_journal_mismatch??null,
+    integrity_zero_mismatch:noOutboxMismatch,
+    fully_drained:noOutboxMismatch&&outboxDrained,
+    bundle_objects_not_equated_with_candidate_rows:true,
+    physical_b2_object_list_not_independently_enumerated:true
+   },
    live_bundle_parity:{
     utc_day:utcDay,b2_objects_created:objects,d1_committed_count:committedBundles,
     unacked_queue_items:providerBacklog,
     queue_metrics_best_effort:true,
     provider_queue_metrics_available:providerBacklog!==null,
     assertion_passed:journalParity&&providerBacklog===0,
-    dead_letter_bundles:bundles?.dead_letter??0
+    dead_letter_bundles:bundles?.dead_letter??0,
+    private_transactional_outbox_consistent:noOutboxMismatch,
+    private_transactional_outbox_pending:outbox?.pending??null,
    },
    b2_storage_guard:{open:Boolean(guard?.hold_until&&guard.hold_until>checkedAt),
     last_error_code:guard?.last_error_code??null,
