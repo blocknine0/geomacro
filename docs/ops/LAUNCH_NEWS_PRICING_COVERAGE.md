@@ -16,7 +16,7 @@ news volume and the number of feeds do not create category surcharges.
 Existing native-language matchers are retained. Topic matching remains discovery,
 never corroboration, attribution of event country, scoring or commercial rights.
 
-Three malformed/redundant Google index searches are replaced in their existing
+Three malformed/redundant Google index searches were replaced in their existing
 slots by global war/security, macro/corridor and mineral-supply watches. They run
 first in the existing private collector, with no extra source slots, D1 tables,
 network allowance or paid feed. Country rotation and the <=512 endpoint limit
@@ -131,3 +131,6 @@ request cap on internal acceptance probes. The frozen Predge workflow
 is unchanged; the new job cannot recursively dispatch recovery. The existing 500/UTC-day atomic
 cap, expiry, attribution, 72h window and protected credentials remain unchanged.
 GitHub delays and publisher outages are still observable failures, not an SLA.
+
+## Category 2 and Category 3 geopolitical discovery (4 November 2026)
+The existing private 15-minute OSINT registry now reuses **two additional malformed Google-index entries** as separate geopolitics watch queries without increasing the count of upstream fetches. Category 2 covers NATO/EU/Brazil/Australia plus defense policy, trade, and elections. Category 3 covers Ukraine/Israel/Iran/Saudi Arabia plus conflict, strikes, oil and geopolitics. Both preserve `when:1d` and the previously installed Category 1 and global wars/macro/minerals watches. Five priority watches now take precedence within the same unchanged 512-endpoint ceiling. Google index metadata, publication clocks, country names, and third-party headlines cannot serve as original publisher verification, country attribution or commercial rights evidence. No paid feed or new user-facing alert system is created; per-source production success is not implied by CI.

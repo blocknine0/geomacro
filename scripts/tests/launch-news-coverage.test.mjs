@@ -8,7 +8,7 @@ import {LAUNCH_NEWS_FAMILY_CATEGORIES,launchNewsCoveragePolicy} from '../../src/
 import {PRIVATE_OSINT_TOPICS,privateOsintGlobalSources} from '../lib/private-osint-global-sources.mjs';
 import {COUNTRIES_195} from '../../src/lib/canonical-country-registry-195.ts';
 import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,COUNTRY_MINERAL_DISCOVERY_TERMS,privateOsintRuntimeSources} from '../lib/private-osint-country-rotation.mjs';
-import {LAUNCH_PRIORITY_WATCHES,CATEGORY1_GOOGLE_GEOPOLITICS_QUERY} from '../lib/launch-priority-watch-sources.mjs';
+import {LAUNCH_PRIORITY_WATCHES,CATEGORY1_GOOGLE_GEOPOLITICS_QUERY,CATEGORY2_GOOGLE_GEOPOLITICS_QUERY,CATEGORY3_GOOGLE_GEOPOLITICS_QUERY} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
 
@@ -36,21 +36,33 @@ test('runtime catches wars, corridor, systemic and mineral shocks without routin
   assert.equal(PRIVATE_OSINT_TOPICS.rare_earth.test(title),false);
  assert.equal(PRIVATE_OSINT_TOPICS.macro.test('Gold medal awarded to a champion'),false);
 });
-test('global watches replace three existing slots and retain 195-country/512 endpoint budget',()=>{
+test('global watches replace five existing slots and retain 195-country/512 endpoint budget',()=>{
  const base=privateOsintGlobalSources(),at=new Date('2026-10-28T07:00:00Z');
  const result=privateOsintRuntimeSources(at,base,undefined,{includeLocalGapLane:true});
  assert.ok(result.filter(x=>x.private_country_local_candidate).length>=80); // native publisher feeds now precede index hints
  assert.ok(result.length<=512);
  const watch=result.filter(s=>s.launch_watch);
- assert.equal(watch.length,3);
+ assert.equal(watch.length,5);
  const geo=watch.find(s=>s.launch_watch==='wars_security');
  assert.ok(geo,'Category 1 must share the existing global wars/security feed slot');
  const geoQuery=new URL(geo.url).searchParams.get('q');
  assert.ok(geoQuery.includes(CATEGORY1_GOOGLE_GEOPOLITICS_QUERY));
  assert.ok(geoQuery.includes('war OR ceasefire'), 'existing global conflict discovery must remain');
  assert.ok(geoQuery.endsWith('when:1d'));
+ for(const [lane,query] of [
+  ['category2_nato_eu_latam_pacific',CATEGORY2_GOOGLE_GEOPOLITICS_QUERY],
+  ['category3_europe_middle_east_frontlines',CATEGORY3_GOOGLE_GEOPOLITICS_QUERY]
+ ]){
+  const feed=watch.find(s=>s.launch_watch===lane);
+  assert.ok(feed,lane);
+  assert.equal(new URL(feed.url).searchParams.get('q'),query+' when:1d');
+  assert.equal(feed.private_discovery_index_only,true);
+  assert.equal(feed.publisher_country_iso3,null);
+  assert.equal(feed.commercial_eligible,false);
+  assert.equal(feed.publicly_deliverable,false);
+ }
  assert.deepEqual(new Set(watch.map(s=>s.id)),new Set(LAUNCH_PRIORITY_WATCHES.map(s=>s.id)));
- assert.deepEqual(result.slice(0,3).map(s=>s.id),watch.map(s=>s.id));
+ assert.deepEqual(result.slice(0,5).map(s=>s.id),watch.map(s=>s.id));
  for(const s of watch){
   const u=new URL(s.url),q=u.searchParams.get('q');
   assert.equal(u.origin,'https://news.google.com');
@@ -72,7 +84,7 @@ test('new watch reports ingest only as private dated unverified observations, ne
   resolveCountry:()=>null,onOriginalCandidate:()=>{originalCallbacks++},
   fetchImpl:async()=>{requests++;return new Response('<rss><channel>'+titles.map((t,i)=>'<item><title>'+t+'</title><link>https://news.google.com/rss/articles/'+i+'</link><pubDate>Wed, 28 Oct 2026 06:55:00 GMT</pubDate></item>').join('')+'</channel></rss>')}
  });
- assert.equal(requests,3);assert.equal(originalCallbacks,0);
+ assert.equal(requests,5);assert.equal(originalCallbacks,0);
  assert.ok(result.items.length>0);
  assert.ok(result.items.some(i=>i.facts.event_types.includes('telecom_internet_shutdown')));
  assert.ok(result.items.some(i=>i.facts.event_types.includes('insurance_market_withdrawal_war_risk')));

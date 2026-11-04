@@ -1,10 +1,15 @@
-/** Reuse three malformed, redundant index searches; never add a network slot. */
+/** Reuse existing malformed, redundant index searches; never add a network slot. */
 // Operator-selected Category 1 query; feeds remain discovery-only and unverified.
 export const CATEGORY1_GOOGLE_GEOPOLITICS_QUERY='("United States" OR "China" OR "Russia" OR "India") ("Geopolitics" OR "Military" OR "Sanctions")';
+export const CATEGORY2_GOOGLE_GEOPOLITICS_QUERY='("NATO" OR "EU" OR "Brazil" OR "Australia") ("Defense Policy" OR "Trade" OR "Elections")';
+export const CATEGORY3_GOOGLE_GEOPOLITICS_QUERY='("Ukraine" OR "Israel" OR "Iran" OR "Saudi Arabia") ("Conflict" OR "Strike" OR "Oil" OR "Geopolitics")';
 export const LAUNCH_PRIORITY_WATCHES=Object.freeze([
  {id:'private_repo_4688ad23c9b59eb5b42e',lane:'wars_security',terms:'('+CATEGORY1_GOOGLE_GEOPOLITICS_QUERY+' OR '+("(war OR ceasefire OR \"missile strike\" OR \"airspace closure\" OR sanctions OR \"cyber attack\" OR \"internet shutdown\" OR coup OR election OR displacement OR \"president statement\" OR \"prime minister\" OR \"finance minister\" OR \"trade minister\" OR \"central bank governor\" OR \"central bank speech\")")+')'},
  {id:'private_repo_c1d816902275558c19c8',lane:'macro_corridors',terms:'(shipping OR chokepoint OR "border closure" OR "port strike" OR freight OR pipeline OR "payment outage" OR "capital controls" OR "war risk premium" OR "central bank" OR inflation OR CPI OR PPI OR PMI OR GDP OR payrolls OR "retail sales" OR "industrial production" OR "bank liquidity" OR "bank stress" OR "debt default" OR "grid outage" OR tariffs OR Hormuz OR "Red Sea" OR Suez)'},
  {id:'private_repo_fb1be770eb7ef866a3b8',lane:'minerals_supply',terms:'("critical minerals" OR "rare earth" OR lithium OR copper OR graphite OR cobalt OR nickel OR gallium OR germanium OR antimony OR tungsten OR neodymium OR "mining permit" OR "smelter outage" OR "mineral export ban")'},
+ // Reuse two previously malformed Google index endpoints, not extra fetches.
+ {id:'private_repo_f3bd6a5cffe44c285d10',lane:'category2_nato_eu_latam_pacific',terms:CATEGORY2_GOOGLE_GEOPOLITICS_QUERY},
+ {id:'private_repo_1eee878dce7c0efa8c56',lane:'category3_europe_middle_east_frontlines',terms:CATEGORY3_GOOGLE_GEOPOLITICS_QUERY},
 ]);
 export function launchPriorityWatchSources(sources){
  const watches=new Map(LAUNCH_PRIORITY_WATCHES.map(w=>[w.id,w]));
