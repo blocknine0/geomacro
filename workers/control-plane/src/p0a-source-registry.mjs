@@ -308,8 +308,9 @@ async function pollOne(env,row,{fetchImpl,now}){
     row,config,result,candidates};
   }catch{
    await env.DB.prepare(
-    "UPDATE source_registry SET next_poll_at=?,last_state='CAPACITY_DEFERRED' "+
-    'WHERE source_id=?').bind(iso(now+60000),config.source_id).run().catch(()=>{});
+    "UPDATE source_registry SET next_poll_at=?,last_state='CAPACITY_DEFERRED',"+
+    "last_polled_at=?,consecutive_failures=consecutive_failures+1 "+
+    'WHERE source_id=?').bind(iso(now+60000),iso(now),config.source_id).run().catch(()=>{});
    return {source_id:config.source_id,state:'CAPACITY_DEFERRED',accepted:0,
     p0b_failure_codes:{P0B_CANDIDATE_PREPARATION_FAILED:1}};
   }
