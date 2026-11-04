@@ -16,6 +16,7 @@ import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
 import {hot50Direct20mPublisherRegistry} from "../lib/hot-50-direct-20m-sources.mjs";
+import {threeDomainGlobal20mPublisherRegistry} from "../lib/three-domain-global-direct-20m-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
 import {persistPrivateOsintHeartbeats} from "../lib/phase2i-osint-source-heartbeat.mjs";
@@ -46,12 +47,15 @@ if(root.length<32)throw Error("PHASE2I_SOURCE_ONLY_PRIVATE_AUTH_REQUIRED");
 const controlToken=createHmac("sha256",root)
  .update("geomacro-control-plane-v1").digest("hex");
 const now=new Date();
-const hot50Direct20m=env.GEOMACRO_SOURCE_REGISTRY_MODE==="HOT50_DIRECT_20M";
-if(hot50Direct20m&&env.GITHUB_EVENT_NAME!=="schedule")
- throw Error("HOT50_DIRECT20M_SCHEDULE_ONLY");
-if(env.GEOMACRO_SOURCE_REGISTRY_MODE&&!hot50Direct20m)
+const sourceMode=env.GEOMACRO_SOURCE_REGISTRY_MODE??"";
+const hot50Direct20m=sourceMode==="HOT50_DIRECT_20M";
+const threeDomainDirect20m=sourceMode==="THREE_DOMAIN_DIRECT_20M";
+if(sourceMode&&!hot50Direct20m&&!threeDomainDirect20m)
  throw Error("UNKNOWN_PRIVATE_SOURCE_REGISTRY_MODE");
-const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():null;
+if((hot50Direct20m||threeDomainDirect20m)&&env.GITHUB_EVENT_NAME!=="schedule")
+ throw Error("THREE_DOMAIN_DIRECT20M_SCHEDULE_ONLY");
+const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():
+ threeDomainDirect20m?threeDomainGlobal20mPublisherRegistry(now):null;
 const registry=direct20m?.registry??privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
 const pinnedCategories=new Map(registry.map(source=>[source.url,source.categories]));
@@ -69,6 +73,14 @@ if(result.summary.configured_country_routes!==195||
  result.summary.source_endpoints_attempted!==result.summary.registered_source_endpoints)
  throw Error("PHASE2I_SOURCE_ONLY_195X3_SOURCE_SWEEP_UNVERIFIED");
 const indexed=singleSweep.finish();
+// Count publisher-native timely observations without exposing original
+// titles/URLs, never confuse article publication time with occurrence time.
+const native20mFloor=now.getTime()-20*60_000;
+const native20mCounts=Object.fromEntries(["geopolitics","macro","rare_earth"]
+ .map(cat=>[cat,indexed.candidates.filter(c=>c.category===cat&&
+  Number.isFinite(Date.parse(c.publishedAt))&&
+  Date.parse(c.publishedAt)>=native20mFloor&&
+  Date.parse(c.publishedAt)<=now.getTime()).length]));
 // The preceding trusted runner-only preloader restores the latest encrypted
 // historical candidate queue. NEVER accept untrusted plaintext from a URL,
 // env value or pull-request artifact. No additional publisher fetches.
@@ -161,11 +173,21 @@ console.log(JSON.stringify({
  country_routes:hot50Direct20m?50:195,
  country_category_routes:hot50Direct20m?150:585,
  source_endpoints_attempted:result.summary.source_endpoints_attempted,
- ...(hot50Direct20m?{
-  source_lane:"HOT50_DIRECT_20M",
-  hot50_direct_catalogue:direct20m.summary,
+ ...(hot50Direct20m||threeDomainDirect20m?{
+  source_lane:threeDomainDirect20m?"THREE_DOMAIN_DIRECT_20M":"HOT50_DIRECT_20M",
+  direct_catalogue:direct20m.summary,
   actual_country_coverage_verified:false,
-  all_pinned_direct_endpoints_checked:result.summary.source_endpoints_attempted===registry.length,
+  real_original_news_freshness_checked:true,
+  complete_fresh_eligible_original_persistence_not_proven:true,
+  native_dated_candidate_count_by_category:Object.fromEntries(
+   ["geopolitics","macro","rare_earth"].map(cat=>[cat,
+    indexed.candidates.filter(c=>c.category===cat).length])),
+  native_dated_within_20m_by_category:native20mCounts,
+  runtime_source_health_by_state:result.summary.source_states,
+  actual_native_news_d1_ack_count:stage.selected_count>0&&stage.d1_readback_verified===true?
+   stage.d1_inserted:0,
+  actual_all_new_native_items_durable_verified:false,
+  all_selected_direct_endpoints_checked:result.summary.source_endpoints_attempted===registry.length,
  }:{}),
  ...indexed.summary,
  selected_count,available_originals,deferred_count,selected_by_category,
