@@ -30,6 +30,15 @@ test('future, stale and extra content cannot become native dates',()=>{
  assert.equal(p.sources[0].original_last_published_at_in_72h_queue,null);
 });
 
+test('quota-held and default private collection both use the identical fail-closed source-ID proof',()=>{
+ const xs=Array.from({length:506},(_,i)=>({id:'private_'+i,url:'https://news'+i+'.example.gov/feed',categories:['macro','rare_earth']}));
+ const checks=xs.flatMap(x=>x.categories.map(category=>({source_ref:createHash('sha256').update([x.id,x.url,category].join('\n')).digest('hex'),state:'OBSERVED'})));
+ const proof=buildDirect20mSourceHealthProof({registry:xs,checks,observedCandidates:null,retainedCandidates:null,now:at});
+ assert.equal(proof.source_endpoints_configured,506);
+ assert.equal(proof.category_checks_with_runtime_state,1012);
+ assert.ok(proof.sources.every(z=>z.d1_originals_acknowledged_in_retained_queue===null));
+ assert.equal(proof.b2_original_archive_readback_verified,false);
+});
 test('quota-held source proof reports true parser states but never invents native counts or D1 ACKs',()=>{
  const proof=buildDirect20mSourceHealthProof({registry,checks:[{source_ref:source_ref('macro'),state:'DENIED'}],observedCandidates:null,retainedCandidates:null,now:at});
  assert.equal(proof.sources[0].transport_parser_state,'DENIED');
