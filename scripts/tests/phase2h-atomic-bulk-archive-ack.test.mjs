@@ -5,14 +5,16 @@ import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning,
 const sha=i=>i.toString(16).padStart(64,"0");
 const rows=n=>Array.from({length:n},(_,i)=>({record_id:sha(i+1),raw_sha256:sha(i+9001)}));
 const now=new Date("2026-11-04T08:00:00.000Z"),objectSha=sha(5555);
-test("100 originals form exactly ONE all-or-none D1 UPDATE RETURNING statement",()=>{
- const items=rows(100),plan=phase2hAtomicBulkArchiveAck(items,objectSha,now);
+test("48 originals form exactly ONE all-or-none D1 UPDATE RETURNING statement within 100 parameter limit",()=>{
+ assert.equal(MAX_D1_BULK_ARCHIVE_ACK,48);
+ const items=rows(MAX_D1_BULK_ARCHIVE_ACK),plan=phase2hAtomicBulkArchiveAck(items,objectSha,now);
  assert.equal(plan.d1_statements,1);
- assert.equal(plan.count,100);
- assert.equal(plan.params.length,203);
+ assert.equal(plan.count,48);
+ assert.equal(plan.params.length,99);
+ assert.ok(plan.params.length<=100);
  assert.equal(plan.params.at(-3),objectSha);
  assert.equal(plan.params.at(-2),now.toISOString());
- assert.equal(plan.params.at(-1),100);
+ assert.equal(plan.params.at(-1),48);
  assert.equal(plan.sql.match(/\bUPDATE\b/gu).length,1);
  assert.equal(plan.sql.match(/\bRETURNING\b/gu).length,1);
  assert.match(plan.sql,/AS MATERIALIZED/gu);
@@ -20,7 +22,7 @@ test("100 originals form exactly ONE all-or-none D1 UPDATE RETURNING statement",
  assert.match(plan.sql,/AND \(SELECT total FROM eligible\)=\?/u);
  const result={results:items.map(x=>({...x,b2_object_sha256:objectSha}))};
  const receipt=assertPhase2hBulkArchiveAckReturning(result,items,objectSha);
- assert.equal(receipt.archived,100);
+ assert.equal(receipt.archived,48);
  assert.equal(receipt.d1_atomic_one_statement_returning_verified,true);
 });
 test("reject duplicate IDs, hash collision, missing rows and wrong B2 receipt",()=>{

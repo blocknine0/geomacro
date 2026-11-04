@@ -5,7 +5,10 @@
  * before the caller invokes this builder.
  */
 const HEX=/^[a-f0-9]{64}$/u;
-export const MAX_D1_BULK_ARCHIVE_ACK=100;
+// Cloudflare D1 accepts at most 100 SQL bound parameters per query.
+// Each original uses two parameters and the atomic UPDATE uses three more:
+// 2 * 48 + 3 = 99 (49 originals would require 101).
+export const MAX_D1_BULK_ARCHIVE_ACK=48;
 const fail=code=>{throw Error("PHASE2H_BULK_ACK_"+code)};
 export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
  if(!Array.isArray(rows)||rows.length<1||rows.length>MAX_D1_BULK_ARCHIVE_ACK||
@@ -33,7 +36,9 @@ export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
   "AND record_id IN (SELECT record_id FROM expected) "+
   "AND (SELECT total FROM eligible)=? "+
   "RETURNING record_id,raw_sha256,b2_object_sha256";
- return Object.freeze({sql,params:[...params,objectSha,now.toISOString(),rows.length],
+ const boundParams=[...params,objectSha,now.toISOString(),rows.length];
+ if(boundParams.length>100)fail("D1_BOUND_PARAMETER_LIMIT_EXCEEDED");
+ return Object.freeze({sql,params:boundParams,
   object_sha256:objectSha,count:rows.length,
   d1_statements:1,all_or_nothing_expected_guard:true});
 }

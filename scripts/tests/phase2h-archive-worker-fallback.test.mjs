@@ -33,7 +33,7 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
   if(init.method==="PUT"){
    const body=JSON.parse(init.body);
    assert.equal(body.schema,"geomacro.phase2h.b2-archive-ack.v1");
-   assert.equal(body.items.length,51);
+   assert.ok(body.items.length>=1&&body.items.length<=48);
    workerAcks.push(body);
    return Response.json({ok:true,archived:body.items.length,
     independent_d1_archive_ack_verified:true,
@@ -60,7 +60,8 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
  const ack=await d1.markArchived(rows,"e".repeat(64),now);
  assert.equal(ack.archived,51);
  assert.equal(ack.independent_d1_archive_ack_verified,true);
- assert.equal(workerAcks.length,1);
+ assert.equal(workerAcks.length,2);
+ assert.deepEqual(workerAcks.map(x=>x.items.length),[48,3]);
 });
 test("403 access denial or 7500 impostor never enables fallback",async()=>{
  for(const [status,code] of [[403,7500],[400,7100]]){

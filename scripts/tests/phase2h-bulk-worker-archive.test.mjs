@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
-import {phase2hPrivateRawArchiveExportV2,validPrivateRawNews}
+import {phase2hPrivateRawArchiveExportV2,phase2hPrivateRawMarkArchived,validPrivateRawNews}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {createPhase2hCanonicalD1} from "../ops/phase2h-archive-private-raw-news.mjs";
 
@@ -141,4 +141,49 @@ test("V2 accepts last scanned cursor equal to the last valid row and advances be
  assert.equal(rows.length,26);
  assert.deepEqual(rows.map(x=>x.record_id),originals.map(x=>x.record_id));
  assert.deepEqual(requests,[null,originals[24].record_id]);
+});
+
+test("production V2 archives 51 originals in one atomic D1 statement per <=48-row bounded ACK",async()=>{
+ const env={
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_API_TOKEN:"token".repeat(8),
+  D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:ROOT,PHASE2H_BULK_WORKER_ARCHIVE_V2:"1"
+ };
+ const records=Array.from({length:51},(_,n)=>({
+  record_id:(n+1).toString(16).padStart(64,"0"),
+  raw_sha256:(n+100).toString(16).padStart(64,"0")
+ }));
+ const sizes=[];
+ const fetchImpl=async(url,init)=>{
+  const u=new URL(url);
+  assert.equal(u.pathname,"/v1/internal/phase2h-raw-news");
+  assert.equal(init.method,"PUT");
+  const body=JSON.parse(init.body);
+  sizes.push(body.items.length);
+  assert.equal(body.schema,"geomacro.phase2h.b2-archive-ack.v1");
+  assert.ok(body.items.length<=48);
+  return Response.json({ok:true,archived:body.items.length,
+   independent_d1_archive_ack_verified:true,
+   d1_atomic_one_statement_returning_verified:true,
+   rights_verified:false,payments:0});
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ const ack=await d1.markArchived(records,"d".repeat(64),now);
+ assert.deepEqual(sizes,[48,3]);
+ assert.equal(ack.archived,51);
+ assert.equal(ack.d1_write_statements,2);
+});
+
+test("protected Worker rejects 49-item D1 ACK before touching provider",async()=>{
+ let d1Calls=0;
+ const env={DB:{prepare(){d1Calls++;throw Error("PROVIDER_CALLED")}}};
+ const records=Array.from({length:49},(_,n)=>({
+  record_id:(n+1).toString(16).padStart(64,"0"),
+  raw_sha256:(n+101).toString(16).padStart(64,"0")
+ }));
+ const r=await phase2hPrivateRawMarkArchived(env,{
+  schema:"geomacro.phase2h.b2-archive-ack.v1",
+  object_sha256:"d".repeat(64),items:records},now.getTime());
+ assert.equal(r.status,400);
+ assert.equal(d1Calls,0);
 });
