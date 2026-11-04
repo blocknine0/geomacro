@@ -10,7 +10,7 @@ export async function getP0bIngestionStatus(env){
  if(!env?.DB?.prepare)return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
  try{
   const utcDay=new Date().toISOString().slice(0,10)+'T00:00:00.000Z';
-  const [sources,states,admitted,guard,bundles]=await Promise.all([
+  const [sources,states,admitted,guard,bundles,r2Fallback]=await Promise.all([
    env.DB.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) AS enabled, '+
     'SUM(CASE WHEN last_polled_at IS NOT NULL THEN 1 ELSE 0 END) AS ever_polled '+
     'FROM source_registry').first(),
@@ -21,6 +21,10 @@ export async function getP0bIngestionStatus(env){
     "SUM(CASE WHEN state='D1_COMMITTED' AND acked_at IS NOT NULL THEN 1 ELSE 0 END) AS committed,"+
     "SUM(CASE WHEN state='DEAD_LETTER' THEN 1 ELSE 0 END) AS dead_letter "+
     'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first(),
+   env.DB.prepare("SELECT COUNT(*) AS total,"+
+    "SUM(CASE WHEN state='PENDING_B2' THEN 1 ELSE 0 END) AS pending_b2,"+
+    "SUM(CASE WHEN state='B2_VERIFIED' THEN 1 ELSE 0 END) AS b2_verified "+
+    "FROM p0b_private_r2_fallback").first(),
   ]);
   const queueState={PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
    RETRY:0,QUARANTINED:0,DEAD_LETTER:0};
@@ -60,6 +64,10 @@ export async function getP0bIngestionStatus(env){
     assertion_passed:journalParity&&providerBacklog===0,
     dead_letter_bundles:bundles?.dead_letter??0
    },
+   r2_fallback_outbox:{configured:Boolean(env.P0B_PRIVATE_FALLBACK_R2),
+    total:r2Fallback?.total??0,pending_b2:r2Fallback?.pending_b2??0,
+    b2_verified:r2Fallback?.b2_verified??0,
+    r2_pending_does_not_qualify_as_b2_success:true},
    b2_storage_guard:{open:Boolean(guard?.hold_until&&guard.hold_until>checkedAt),
     last_error_code:guard?.last_error_code??null,
     hold_until:guard?.hold_until??null},
