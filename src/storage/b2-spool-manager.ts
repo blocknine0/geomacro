@@ -32,6 +32,8 @@ export type SpoolDependencies = {
  fetchImpl?: typeof fetch;
  reserve?: (kind:'PUT'|'GET')=>Promise<void>;
  now?: ()=>Date;
+ sleep?: (ms:number)=>Promise<void>;
+ random?: ()=>number;
 };
 const ENCODER=new TextEncoder(),DECODER=new TextDecoder('utf-8',{fatal:true});
 const SHA=/^[a-f0-9]{64}$/;
@@ -114,6 +116,8 @@ export class B2SpoolManager {
  private fetchImpl:typeof fetch;
  private reserve:(kind:'PUT'|'GET')=>Promise<void>;
  private now:()=>Date;
+ private sleep:(ms:number)=>Promise<void>;
+ private random:()=>number;
  private endpoint:string;
  private region:string;
  private prefix:string;
@@ -122,6 +126,8 @@ export class B2SpoolManager {
   this.env=env;this.endpoint=endpoint;this.region=region;this.prefix=prefix;
   this.fetchImpl=opts.fetchImpl??fetch;
   this.now=opts.now??(()=>new Date());
+  this.sleep=opts.sleep??(ms=>new Promise(resolve=>setTimeout(resolve,ms)));
+  this.random=opts.random??Math.random;
   this.reserve=opts.reserve??(async kind=>{
    const result=await reserveB2AccountQuota(env.DB,
     {kind,workflow_id:'p0b_durable_spool'},{now:this.now()});
@@ -200,33 +206,37 @@ export class B2SpoolManager {
   }};
  }
  private async request(method:'PUT'|'GET',key:string,body=new Uint8Array(0)){
-  // A transient network timeout can happen even after B2 received a PUT.
-  // Repeating the same immutable key and EXACT SAME ciphertext bytes is
-  // idempotent; every attempt consumes its own shared B2 quota reservation.
-  // Never retry real HTTP rejection (401/403/429), bad signatures, or
-  // unverified response bodies. Only 1 transport retry is permitted.
-  for(let attempt=0;attempt<2;attempt++){
-   // Both addresses map to the same authorized private B2 bucket/key.
-   // Every independent network attempt consumes its own global quota slot.
-   const request=await this.signed(method,key,body,attempt===0?'path':'virtual');
+  // Verified immutable object bytes across attempts; Cloudflare fetch owns
+  // HTTP connection reuse. S3 SigV4 uses per-request signing, not an expiring
+  // bearer token; every retry independently reserves shared provider quota.
+  const caps=[100,500,1500],timeouts=[10000,10000,16000,16000];
+  for(let attempt=0;attempt<4;attempt++){
+   if(attempt){
+    const fraction=this.random();
+    if(!Number.isFinite(fraction)||fraction<0||fraction>1)
+     throw Error('P0B_B2_JITTER_SOURCE_INVALID');
+    await this.sleep(Math.floor(caps[attempt-1]*fraction));
+   }
+   const signed=await this.signed(method,key,body,attempt%2===0?'path':'virtual');
    await this.reserve(method);
    let response:Response;
    try{
-    response=await this.fetchImpl(request.url,{method,headers:{
-     ...request.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?
-      'application/gzip':'application/json'}:{})
-    },body:method==='PUT'?(attempt===0?body:toBytes(body)):undefined,
-    // A cross-host S3 redirect invalidates the signed Host header. Diagnose
-    // 3xx as exact HTTP status but never follow or proxy upstream secrets.
-    redirect:'manual',
-    signal:AbortSignal.timeout(attempt===0?10000:16000)});
+    response=await this.fetchImpl(signed.url,{method,headers:{
+     ...signed.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?
+       'application/gzip':'application/json'}:{})
+    },body:method==='PUT'?toBytes(body):undefined,
+    redirect:'manual',signal:AbortSignal.timeout(timeouts[attempt])});
    }catch(error){
-    if(attempt===0)continue;
-    const code=error instanceof Error&&error.name==='TimeoutError'?
-      'TIMEOUT':'TRANSPORT_UNAVAILABLE';
+    if(attempt<3)continue;
+    const code=error instanceof Error&&
+      ['TimeoutError','AbortError'].includes(error.name)?
+       'TIMEOUT':'TRANSPORT_UNAVAILABLE';
     throw Error('P0B_B2_'+method+'_'+code);
    }
-   if(!response.ok)throw Error('P0B_B2_'+method+'_HTTP_'+response.status);
+   if(!response.ok){
+    if(attempt<3&&[408,500,502,503,504].includes(response.status))continue;
+    throw Error('P0B_B2_'+method+'_HTTP_'+response.status);
+   }
    if(method==='PUT')return {data:new Uint8Array(),etag:response.headers.get('etag')};
    const length=Number(response.headers.get('content-length')??'0');
    if(length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
