@@ -79,6 +79,7 @@ test("read-only evidence from provider sources does not automatically activate p
   "config/four-lane-free-source-rights.v1.json",new URL("../../",import.meta.url)),"utf8");
  const doc=JSON.parse(s);
  assert.equal(doc.allow_commercial_billing_from_registration,false);
- assert.equal(doc.existing_scheduled_collectors_unchanged,true);
+ assert.equal(doc.existing_15m_and_corridor_cron_schedules_unchanged,true);
+ assert.equal(doc.hot50_20m_cron_expanded_to_global_three_domain_direct_feeds,true);
  assert.ok(doc.providers.every(row=>row.paid_risk_gate_eligible===false));
 });
