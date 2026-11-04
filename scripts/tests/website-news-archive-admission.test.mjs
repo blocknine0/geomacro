@@ -26,8 +26,8 @@ test("archive-only resumes after trusted deployed archive during D1 quota HELD",
   ])assert.ok(block.includes(required),`Missing restricted archive prerequisite: ${required}`);
 });
 test("quota-held archive may read at most one complete public journal bundle under snapshot headroom, never write D1",()=>{
- assert.match(workflow,/snapshot_refresh: \$\\{\\{ steps\\.budget\\.outputs\\.snapshot_refresh \\}\\}/u);
- assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: \${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
+ assert.ok(workflow.includes("snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}"));
+ assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
  assert.ok(block.includes("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
  assert.ok(!block.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
 });
