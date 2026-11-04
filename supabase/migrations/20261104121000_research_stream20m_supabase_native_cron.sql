@@ -105,9 +105,14 @@ do $body$begin
  end if;
 end$body$;
 
+-- Hosted production projects enable pg_cron; disposable local Supabase
+-- does not necessarily preload it. Keep both cron definitions in the
+-- migration but execute only when the extension's cron schema exists.
+do $cron_guard$ begin
+ if pg_catalog.to_regnamespace('cron') is not null then
 -- The background producer is QUEUE-FREE for signing and research decisions.
 -- Existing canonical D1/B2 original-evidence preservation is not altered.
-select cron.schedule(
+perform cron.schedule(
  'geomacro-research-stream20m-direct-production',
  '11,31,51 * * * *',
  $job$
@@ -121,7 +126,7 @@ select cron.schedule(
 );
 -- Recovery runs ONLY when no healthy producer receipt was stored
 -- in the prior nine minutes. Repeated news is evidence-SHA deduped by RPC.
-select cron.schedule(
+perform cron.schedule(
  'geomacro-research-stream20m-recovery-backstop',
  '19,39,59 * * * *',
  $job$
@@ -138,3 +143,8 @@ select cron.schedule(
     'STATE_UPDATED','SIGNED_UPDATED'));
  $job$
 );
+
+ else
+  raise notice 'RESEARCH_20M_LOCAL_ONLY_NO_PG_CRON; remote production cron remains independently verified';
+ end if;
+end $cron_guard$;
