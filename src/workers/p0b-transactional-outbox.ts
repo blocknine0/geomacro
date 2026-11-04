@@ -17,7 +17,7 @@ const b64=(data:Uint8Array)=>{
  let value="";for(const b of data)value+=String.fromCharCode(b);
  return btoa(value);
 };
-const unb64=x=>Uint8Array.from(atob(x),t=>t.charCodeAt(0));
+const unb64=(x:string)=>Uint8Array.from(atob(x),t=>t.charCodeAt(0));
 const aes=async(root:string)=>{
  if(typeof root!=="string"||root.length<32)
   throw Error("P0B_OUTBOX_ENCRYPTION_KEY_REQUIRED");
