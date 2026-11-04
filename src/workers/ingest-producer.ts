@@ -4,6 +4,7 @@
  */
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
 import {canonicalJson} from '../lib/canonical-json.ts';
+import {stageP0bR2Fallback} from '../storage/p0b-r2-fallback.ts';
 import type {B2SpoolEnv,SpoolPayload} from '../storage/b2-spool-manager.ts';
 export type IngestCandidate={candidateSha256:string;sourceId:string;raw:unknown};
 export type ProducerEnv=B2SpoolEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
@@ -61,7 +62,7 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     seenSource===c.sourceId?undefined:'P0B_DUPLICATE_SHA_SOURCE_CONFLICT');continue;
   }
   seen.set(c.candidateSha256,c.sourceId);
-  if(stopCode){status(c,'FAILED_NOT_ACKNOWLEDGED',stopCode);continue;}
+  if(stopCode&&!env.P0B_PRIVATE_FALLBACK_R2){status(c,'FAILED_NOT_ACKNOWLEDGED',stopCode);continue;}
   try{
    if(await p0bSha256(canonicalJson(c.raw))!==c.candidateSha256)
     throw Error('P0B_CANDIDATE_IDENTITY_INVALID');
@@ -102,7 +103,20 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     rawPayload:c.raw,headers:{},discoveredAt:now().toISOString()}});
   }catch(error){status(c,'FAILED_NOT_ACKNOWLEDGED',failureCode(error));}
  }
- let bundles_created=0,objects_requested=0;
+ let bundles_created=0,objects_requested=0,r2_fallback_chunks_readback_verified=0;
+ const fallback=async (chunk:Pending[],reason:string)=>{
+  try{
+   const proof=await stageP0bR2Fallback(env,chunk.map(x=>x.payload),now());
+   if(proof?.verified!==true||proof.itemCount!==chunk.length)
+    throw Error('P0B_R2_FALLBACK_DURABILITY_UNVERIFIED');
+   r2_fallback_chunks_readback_verified++;
+   for(const p of chunk)
+    status(p.candidate,proof.pendingB2?'R2_DURABLE_PENDING_B2':'ALREADY_COMMITTED');
+  }catch{
+   for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',
+    'P0B_R2_FALLBACK_UNAVAILABLE');
+  }
+ };
  let cursor=0;
  while(cursor<pending.length){
   const chunk:Pending[]=[];let bytes=0;
@@ -111,7 +125,8 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    chunk.push(pending[cursor++]);bytes+=chunk[chunk.length-1].bytes;
   }
   if(stopCode){
-   for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',stopCode);
+   if(env.P0B_PRIVATE_FALLBACK_R2)await fallback(chunk,stopCode);
+   else for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',stopCode);
    continue;
   }
   try{
@@ -160,7 +175,9 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    for(const p of chunk)status(p.candidate,kind);
   }catch(error){
    const code=failureCode(error);
-   for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',code);
+   if(env.P0B_PRIVATE_FALLBACK_R2&&code.startsWith('P0B_B2_'))
+    await fallback(chunk,code);
+   else for(const p of chunk)status(p.candidate,'FAILED_NOT_ACKNOWLEDGED',code);
    const millis=holdMillis(code,now());
    if(millis){
     stopCode='P0B_STORAGE_CIRCUIT_HELD';
@@ -173,6 +190,8 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
   x.status==='INVALID_CANDIDATE'||x.status==='HELD_FOR_REVIEW').length;
  return {schema:'geomacro.p0b.producer-microbatch.v1',
   examined:candidates.length,receipts,unaccepted,all_durable:unaccepted===0,
-  bundles_created,objects_requested,no_news_silently_dropped:true,
+  bundles_created,objects_requested,
+  r2_fallback_chunks_readback_verified,
+  b2_success_not_inferred_from_r2:true,no_news_silently_dropped:true,
   paid_published:false};
 }
