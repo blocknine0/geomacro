@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T03:46:03.251Z",
+  "checked_at": "2026-11-04T03:49:38.241Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-75f6ad7f",
+      "category": "macro",
+      "title": "Geomacro finds Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70",
+      "what_changed": "A monitored source feed reports: Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T03:46:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f5ba9232",
       "category": "macro",
@@ -201,6 +220,63 @@
       "severity": null
     },
     {
+      "id": "macro-46cda459",
+      "category": "macro",
+      "title": "Geomacro finds Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com",
+      "what_changed": "A monitored source feed reports: Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a15f64ac",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d7fd72ee",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-980cf4df",
       "category": "geopolitics",
       "title": "Geomacro finds President Zelenskyy said US elections will impact war in Ukraine",
@@ -385,6 +461,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-932b015b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said it is in 'total war' with US and Israel across multiple fronts - Iran International",
+      "what_changed": "A monitored source feed reports: Iran said it is in 'total war' with US and Israel across multiple fronts - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:47:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4210,25 +4305,6 @@
       "severity": null
     },
     {
-      "id": "macro-c7ce42fb",
-      "category": "macro",
-      "title": "Geomacro finds IDF said It Seized Just 4 Weapons in Major 10-Day Raid in West Bank's Hebron - Haaretz",
-      "what_changed": "A monitored source feed reports: IDF said It Seized Just 4 Weapons in Major 10-Day Raid in West Bank's Hebron - Haaretz. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:47:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-3f7ace5f",
       "category": "rare_earth",
       "title": "Geomacro finds Medallion reported high-grade drill results at Kundip Mining Centre",
@@ -4257,25 +4333,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T10:42:20.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-114f10ab",
-      "category": "macro",
-      "title": "Geomacro finds Egypt signed $1 billion World Bank deal as war compounds economic pressures - The National",
-      "what_changed": "A monitored source feed reports: Egypt signed $1 billion World Bank deal as war compounds economic pressures - The National. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:40:56.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -4318,25 +4375,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.khaleejtimes.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b8268ed3",
-      "category": "macro",
-      "title": "Geomacro finds FM signed $1 billion financing agreement with World Bank",
-      "what_changed": "A monitored source feed reports: FM signed $1 billion financing agreement with World Bank. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:30:45.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.egyptindependent.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4451,25 +4489,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2ed1c37e",
-      "category": "macro",
-      "title": "Geomacro finds Kyrgyzstan's Tax Service introduced automated checks of importers' tax reports",
-      "what_changed": "A monitored source feed reports: Kyrgyzstan's Tax Service introduced automated checks of importers' tax reports. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:46:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: 24.kg"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4618,25 +4637,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T09:05:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6948de0f",
-      "category": "geopolitics",
-      "title": "Geomacro finds NEURC proposed cutting Ukrenergo’s transmission tariff for 2027 - EXPRO Consulting",
-      "what_changed": "A monitored source feed reports: NEURC proposed cutting Ukrenergo’s transmission tariff for 2027 - EXPRO Consulting. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:00:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T03:36:04.364Z",
+  "updated_at": "2026-11-04T03:49:38.241Z",
   "signals": [
+    {
+      "id": "macro-75f6ad7f",
+      "category": "macro",
+      "title": "Geomacro finds Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70",
+      "what_changed": "A monitored source feed reports: Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T03:46:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f5ba9232",
       "category": "macro",
@@ -151,6 +170,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-46cda459",
+      "category": "macro",
+      "title": "Geomacro finds Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com",
+      "what_changed": "A monitored source feed reports: Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a15f64ac",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d7fd72ee",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

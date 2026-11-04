@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T03:46:03.251Z",
+  "checked_at": "2026-11-04T03:49:38.241Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 378,
+  "item_count": 383,
   "counts": {
-    "geopolitics": 166,
-    "macro": 168,
+    "geopolitics": 167,
+    "macro": 172,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "1a48b4f03456029e3956cdff5cd30d53963148906e1008244608bf5cd1771142",
+  "source_native_ids_sha256": "a25f3e68bbfc3dd4b5fbef5d71a2edebdda7da6bd63dba27ba80c3410d37ecfd",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-75f6ad7f",
+      "category": "macro",
+      "title": "Geomacro finds Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70",
+      "what_changed": "A monitored source feed reports: Amgen projected 2026 revenue of $38.9B-$39.7B while raising non-GAAP EPS to $22.90-$23.70. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T03:46:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-f5ba9232",
       "category": "macro",
@@ -220,6 +239,63 @@
       "severity": null
     },
     {
+      "id": "macro-46cda459",
+      "category": "macro",
+      "title": "Geomacro finds Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com",
+      "what_changed": "A monitored source feed reports: Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:52:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a15f64ac",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: oilprice.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d7fd72ee",
+      "category": "macro",
+      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T22:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-980cf4df",
       "category": "geopolitics",
       "title": "Geomacro finds President Zelenskyy said US elections will impact war in Ukraine",
@@ -404,6 +480,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-932b015b",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said it is in 'total war' with US and Israel across multiple fronts - Iran International",
+      "what_changed": "A monitored source feed reports: Iran said it is in 'total war' with US and Israel across multiple fronts - Iran International. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:47:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
