@@ -51,6 +51,7 @@ function fixture(){
  };
  const objects=new Map(),requests=[];
  const fetchImpl=async (url,opts)=>{
+  assert.equal(opts.redirect,'manual'); // origin never changes after SigV4
   assert.match(opts.headers.Authorization,/^AWS4-HMAC-SHA256 Credential=/u);
   const key=new URL(url).pathname;
   requests.push({method:opts.method,key});
@@ -409,5 +410,29 @@ test('two failed B2 transport attempts never fabricate a successful PUT or D1 po
   assert.equal(reservations,2);
   assert.equal(f.objects.size,0);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
+ }finally{f.close()}
+});
+
+test('backblaze HTTP 307 never follows arbitrary redirect or retries signed B2 PUT',async()=>{
+ const f=fixture();
+ try{
+  let attempts=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},
+   fetchImpl:async(_url,opts)=>{
+    attempts++;
+    assert.equal(opts.redirect,'manual');
+    return new Response(null,{status:307,
+     headers:{location:'https://untrusted.example.net/steal-upload'}});
+   },
+  });
+  const c=await candidate(3004);
+  await assert.rejects(manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}
+  }),/P0B_B2_PUT_HTTP_307/u);
+  assert.equal(attempts,1);
+  assert.equal(reservations,1);
+  assert.equal(f.objects.size,0);
  }finally{f.close()}
 });
