@@ -123,6 +123,13 @@ async function googleObserved(target,cat,now,fetcher){
    published_at:x.published_at,publisher_host:x.publisher_host,origin:"GOOGLE_RSS_UNVERIFIED"}));
  }catch{return []}
 }
+async function countGapObserved(env,target,cat,now){
+ try{
+  const rows=await env.DB.prepare("SELECT COUNT(DISTINCT source_host) AS source_count FROM unverified_observations WHERE entity_type=? AND entity_id=? AND category=? AND event_at>=? AND event_at<=? AND status IN ('OBSERVED','CORROBORATED')")
+   .bind(target.type,target.id,cat,iso(now-DAY),iso(now)).first();
+  return Math.max(0,Math.min(40,Number(rows?.source_count)||0));
+ }catch{return 0}
+}
 function compactEvidence(items){
  const seen=new Set(),out=[];
  for(const v of items){
@@ -204,6 +211,10 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
     source_lane:research.source_lane,
     private_osint_observed_count:research.observed_count};
   }
+  const gapCount=await countGapObserved(env,target,category,now);
+  if(gapCount>0)return {category,entries:[],
+   source_lane:"GAP_ENRICHMENT_UNVERIFIED",private_osint_observed_count:0,
+   gap_observed_count:gapCount};
   // Countries without country-attributed private OSINT and all corridor
   // targets keep the existing bounded Google fallback. We cannot infer a
   // corridor from a country-level private OSINT title tag.
@@ -213,7 +224,7 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  const categories={};
  for(const x of readings){
   const score=signedCategoryScores[x.category]??null;
-  const sourceCount=x.entries.length||x.private_osint_observed_count;
+  const sourceCount=x.entries.length||x.private_osint_observed_count||x.gap_observed_count||0;
   const v=categoryView(x.category,sourceCount,score,gro);
   categories[x.category]={...v,source_lane:x.source_lane,
    private_osint_research_only:x.private_osint_observed_count>0};
@@ -222,6 +233,7 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
   // article URLs, publishers or source names in risk observations/snapshots.
   const payload={schema:"geomacro.risk-observation.v1",sources:x.entries,
     private_osint_research_observation_count:x.private_osint_observed_count,
+    gap_enrichment_observation_count:x.gap_observed_count??0,
     private_osint_original_page_verified:false,
     provenance:"METADATA_ONLY_NO_ORIGINAL_ARTICLE_CONTENT",
     publisher_attribution_does_not_verify_incident:true};
