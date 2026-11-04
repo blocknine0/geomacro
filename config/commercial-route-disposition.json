@@ -312,6 +312,10 @@
     "/testnet-console": {
       "classification": "REMOVE",
       "status": "REMOVED"
+    },
+    "/api/research-risk-gate": {
+      "classification": "INTERNAL",
+      "status": "RESEARCH_ONLY_FAIL_CLOSED"
     }
   }
 }
