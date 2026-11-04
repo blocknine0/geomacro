@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic,planRegisteredAdaptiveFreeOriginals,REGISTERED_ADAPTIVE_FREE_CAP} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic,planRegisteredAdaptiveFreeOriginals,planPhase2iAdaptiveSourceBudget,REGISTERED_ADAPTIVE_FREE_CAP} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
 const now=new Date("2026-10-27T12:00:00.000Z");
@@ -388,4 +388,36 @@ test("adaptive producer is closed on denial/stale or insufficient account-wide b
  assert.equal(planRegisteredAdaptiveFreeOriginals({remaining_rows_read:4_000_000,
   remaining_rows_written:100_000},{remaining_source_slots:48,rows_read:1000,rows_written:1000},{
    now:t,criticalGranted:false}).max_new_rows,0);
+});
+
+test("provider-granted Phase2I normal 50 and backlog 100 row slots only borrow current-slot spare quota",()=>{
+ const strong=planD1BundledWork(quota(200_000,1_000),{now});
+ assert.equal(strong.source_intake,true);
+ assert.equal(strong.critical,true);
+ assert.equal(strong.source_intake_max_new_rows,100);
+ assert.equal(strong.source_intake_phase2i_adaptive,true);
+ assert.equal(strong.source_intake_phase2i_extra_slot_rows_reserved,95);
+ assert.equal(strong.source_intake_phase2i_extra_write_reserved,95*16);
+ assert.equal(strong.source_intake_phase2i_extra_read_reserved,95*64);
+ assert.equal(strong.source_intake_budget_to_utc_reset.max_new_rows,5);
+ assert.equal(strong.predge_account_headroom_planning_reserve.rows_written,8000);
+ assert.equal(strong.predge_account_headroom_planning_reserve.rows_read,500000);
+ // A separate registered producer cannot reserve those same Phase2I rows.
+ assert.ok(strong.registered_private_extra_daily_write_reserve+
+  strong.source_intake_phase2i_extra_write_reserved+
+  strong.source_intake_budget_to_utc_reset.rows_written+23000<
+  strong.remaining_rows_written);
+});
+test("Phase2I burst must fall back to 5 on critical denial or unreliable provider snapshot",()=>{
+ const baseline={remaining_source_slots:10,additional_hot50_direct_20m_slots_reserved:10,
+  rows_written:2000,rows_read:3000};
+ const guarded=planPhase2iAdaptiveSourceBudget(quota(100,100),baseline,null,
+  {now,criticalGranted:false});
+ assert.equal(guarded.max_new_rows,5);
+ assert.equal(guarded.extra_write_reserved,0);
+ assert.equal(planPhase2iAdaptiveSourceBudget(null,baseline,null,{
+  now,criticalGranted:true}).max_new_rows,5);
+ const q=planD1BundledWork(quota(3_900_000,50_000),{now});
+ assert.equal(q.critical,false);
+ assert.equal(q.source_intake_max_new_rows,0);
 });
