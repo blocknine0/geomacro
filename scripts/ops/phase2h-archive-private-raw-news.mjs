@@ -142,9 +142,16 @@ export function createPhase2hCanonicalD1({
    signal:AbortSignal.timeout(15000),
   });
   if(!response.ok){
-   // Exact numeric HTTP status is safe for production diagnostics; never log
-   // private page bodies, query arguments, secrets or original headlines.
-   console.error("::warning::PHASE2H_RAW_B2_INTERNAL_HTTP_"+response.status);
+   // Only a fixed route class and an allowlisted machine error code may be
+   // logged. Never log payloads, source URLs, original rows, SQL or tokens.
+   const phase=init.method==="PUT"?"ACK":path.startsWith("/v1/internal/phase2h-raw-archive-export-v2")?"EXPORT_V2":"LEGACY_READ";
+   let reason="REDACTED";
+   try{
+    const details=await response.json();
+    if(typeof details?.error==="string"&&/^[A-Z][A-Z0-9_]{4,80}$/u.test(details.error))
+     reason=details.error;
+   }catch{}
+   console.error("::warning::PHASE2H_RAW_B2_INTERNAL_"+phase+"_HTTP_"+response.status+"_CODE_"+reason);
    const failure=Error("PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE");
    failure.upstream_status=response.status;
    throw failure;
