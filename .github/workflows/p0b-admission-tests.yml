@@ -5,6 +5,7 @@ on:
     paths:
       - 'workers/control-plane/migrations/0114_p0_b_spool_queue.sql'
       - 'workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'
+      - 'workers/control-plane/migrations/0116_p0b_microbatch_spool.sql'
       - 'scripts/ops/p0b-b2-scope-preflight.mjs'
       - 'scripts/tests/p0b-b2-scope-preflight.test.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
@@ -13,6 +14,7 @@ on:
       - 'src/storage/b2-spool-manager.ts'
       - 'src/workers/ingest-producer.ts'
       - 'src/workers/ingest-consumer.ts'
+      - 'src/workers/ingest-bundle-consumer.ts'
       - 'src/workers/backlog-drain-cron.ts'
       - 'tests/p0_b_admission_test.ts'
       - 'workers/control-plane/src/p0b-ingestion-status.mjs'
@@ -44,6 +46,7 @@ jobs:
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/p0a-source-registry.mjs
           npm run test:p0-b
+          node --test scripts/tests/p0a-source-registry-engine.test.mjs
       - name: Compile Cloudflare control-plane Worker without deploying
         run: |
           node -e "const fs=require('fs');const p='workers/control-plane/wrangler.example.jsonc';const c=JSON.parse(fs.readFileSync(p));c.d1_databases[0].database_id='00000000-0000-4000-8000-000000000000';fs.writeFileSync('workers/control-plane/wrangler.p0b-ci.jsonc',JSON.stringify(c))"
