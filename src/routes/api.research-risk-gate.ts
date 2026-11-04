@@ -51,9 +51,9 @@ export async function proxyIsolatedResearchRiskGate(
     Authorization:authorization,"Content-Type":"application/json",Accept:"application/json"
    },body,signal:AbortSignal.timeout(9000)
   });
- }catch{return pause("RESEARCH_STORE_UNAVAILABLE")}
+ }catch{return pause("RESEARCH_EDGE_RELAY_TRANSPORT_UNAVAILABLE")}
  if(reply.redirected||![200,400,401,405,413,415,503].includes(reply.status))
-  return pause("RESEARCH_STORE_UNAVAILABLE");
+  return pause("RESEARCH_EDGE_RELAY_UPSTREAM_STATUS");
  let result:Record<string,unknown>;
  try{
   const text=await reply.text();
@@ -61,7 +61,7 @@ export async function proxyIsolatedResearchRiskGate(
   const data=JSON.parse(text);
   if(!data||typeof data!=="object"||Array.isArray(data))throw Error("SHAPE");
   result=data;
- }catch{return pause("RESEARCH_STORE_UNAVAILABLE")}
+ }catch{return pause("RESEARCH_EDGE_RELAY_INVALID_JSON")}
  if(result.schema!=="geomacro.research-corridor-gate.v1"||
     result.execution_authorized!==false||
     result.commercial_eligible!==false||result.research_only!==true||
@@ -70,7 +70,7 @@ export async function proxyIsolatedResearchRiskGate(
     (reply.status===200?(result.ok!==true||
        result.verification_status!=="PROVISIONAL_RESEARCH_ONLY"):
      (result.ok!==false||result.decision!=="PAUSE")))
-  return pause("RESEARCH_STORE_UNAVAILABLE");
+  return pause("RESEARCH_EDGE_RELAY_INVALID_ENVELOPE");
  return Response.json(result,{status:reply.status,headers:HEADERS});
 }
 
@@ -82,7 +82,13 @@ export async function evaluateResearchRiskGate(
  const env=opts.env??process.env,now=opts.now??new Date();
  if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE==="0")
   return pause("RESEARCH_RISK_GATE_NOT_ACTIVATED");
- if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE===undefined||
+ // Research-only Supabase Edge tokens are independently minted 256-bit hex.
+ // Route these through the isolated, Ed25519-verified production gate even
+ // if the legacy Nitro env switch is "1" without matching local secrets.
+ // An explicit ENABLE=0 remains the hard production kill switch.
+ const incomingBearer=request.headers.get("authorization")??"";
+ if(/^Bearer [a-f0-9]{64}$/u.test(incomingBearer)||
+    env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE===undefined||
     env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE==="")
   return proxyIsolatedResearchRiskGate(request,opts.fetchImpl);
  if(env.GEOMACRO_RESEARCH_RISK_GATE_ENABLE!=="1")

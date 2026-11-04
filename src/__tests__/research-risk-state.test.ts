@@ -259,3 +259,54 @@ test("native proxy fails closed on corrupted research response or forged executi
   assert.equal((await out.json()).decision,"PAUSE");
  }
 });
+
+
+test("production enable=1 still routes a dedicated 256-bit Vault read token via isolated Edge",async()=>{
+ let called=0;
+ const token="a".repeat(64);
+ const req=new Request("https://geomacro.live/api/research-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},
+  body:JSON.stringify({origin_country:"UKR",destination_country:"USA"})
+ });
+ const remoteFetch=(async(url:unknown,opts:any)=>{
+  called++;assert.equal(String(url),
+   "https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-risk-gate");
+  assert.equal(opts.headers.Authorization,"Bearer "+token);
+  return Response.json({
+   schema:"geomacro.research-corridor-gate.v1",ok:false,decision:"PAUSE",
+   reason:"VERIFIED_SIGNED_RESEARCH_STATE_UNAVAILABLE",
+   research_only:true,execution_authorized:false,commercial_eligible:false
+  },{status:503});
+ }) as any;
+ const result=await evaluateResearchRiskGate(req,{
+  env:{GEOMACRO_RESEARCH_RISK_GATE_ENABLE:"1"} as NodeJS.ProcessEnv,
+  fetchImpl:remoteFetch
+ });
+ assert.equal(result.status,503);
+ assert.equal((await result.json()).reason,
+  "VERIFIED_SIGNED_RESEARCH_STATE_UNAVAILABLE");
+ assert.equal(called,1);
+});
+test("research relay diagnostics remain nonsecret and fail closed on transport, unexpected status and invalid JSON",async()=>{
+ const req=()=>new Request("https://geomacro.live/api/research-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+"e".repeat(64),
+   "content-type":"application/json"},body:"{}"
+ });
+ const {proxyIsolatedResearchRiskGate}=await import("../routes/api.research-risk-gate");
+ for(const [remote,reason] of [
+  [async()=>{throw Error("private network failed")},
+   "RESEARCH_EDGE_RELAY_TRANSPORT_UNAVAILABLE"],
+  [async()=>Response.json({message:"gateway failure"},{status:502}),
+   "RESEARCH_EDGE_RELAY_UPSTREAM_STATUS"],
+  [async()=>new Response("<html>not found</html>",{status:503}),
+   "RESEARCH_EDGE_RELAY_INVALID_JSON"],
+ ] as const){
+  const output=await proxyIsolatedResearchRiskGate(req(),remote as any);
+  assert.equal(output.status,503);
+  const data=await output.json();
+  assert.equal(data.reason,reason);
+  assert.equal(data.execution_authorized,false);
+  assert.equal(data.commercial_eligible,false);
+  assert.equal(JSON.stringify(data).includes("private network failed"),false);
+ }
+});
