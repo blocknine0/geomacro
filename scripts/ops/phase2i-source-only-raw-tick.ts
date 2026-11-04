@@ -9,6 +9,7 @@
  * no full OSINT health ring, speculative research, signing or public output.
  */
 import {createHmac,createHash} from "node:crypto";
+import {buildDirect20mSourceHealthProof} from "../lib/direct20m-source-health-proof.mjs";
 import {resolve,sep,dirname} from "node:path";
 import {writeFileSync,readFileSync,mkdirSync} from "node:fs";
 import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
@@ -173,6 +174,26 @@ console.log(JSON.stringify({
  provider_extra_requests:0,d1_extra_rows:0,
  private_originals_logged:false,commercial_rights_verified:false
 }));
+// One small sanitized proof covers every configured direct publisher without
+// extra HTTP or D1/B2 operations. Never expose original article URLs or text.
+if(threeDomainDirect20m){
+ const proof=buildDirect20mSourceHealthProof({
+  registry,checks:result.checks,observedCandidates:indexed.candidates,
+  retainedCandidates:candidatesWithD1Receipts,
+  d1ReadbackVerified:stage.d1_readback_verified===true,
+  b2ReadbackVerified:stage.b2_verified===true,now:now.getTime(),
+ });
+ const healthProofPath=resolve(temp,"geomacro-direct20m-source-proof.json");
+ writeFileSync(healthProofPath,JSON.stringify(proof)+"\n",{mode:0o600,flag:"wx"});
+ console.log(JSON.stringify({schema:proof.schema,
+  source_endpoints_configured:proof.source_endpoints_configured,
+  category_checks_with_runtime_state:proof.category_checks_with_runtime_state,
+  source_category_checks_expected:proof.source_category_checks_expected,
+  d1_selected_batch_readback_verified:proof.d1_selected_batch_readback_verified,
+  b2_original_archive_readback_verified:proof.b2_original_archive_readback_verified,
+  artifact_created:true,public_article_payload_exposed:false,
+ }));
+}
 // Research-funded public newsroom publisher consumes only this same sweep.
  // Source-only staging is complete and independently D1 verified FIRST.
  // Never expose raw original candidates as Actions artifacts, outputs or logs.
