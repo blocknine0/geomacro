@@ -136,7 +136,7 @@ test("single-row REST recovery can archive real pending rows when D1 multirow SE
   const limit=Number(match?.[1]);
   limits.push(limit);
   if(limit>1)return denial(400,7500);
-  const cursor=body.params.length===4?body.params[3]:null;
+  const cursor=body.params.length===3?body.params[2]:null;
   const idx=cursor===null?0:wanted.findIndex(row=>row.record_id>cursor);
   const found=idx<0?[]:wanted.slice(idx,idx+1).map(row=>({
    record_id:row.record_id,first_ingested_at:row.ingested_at,

@@ -137,17 +137,19 @@ test("immutable per-ID compressed B2 plan restores exact source-native and five 
  assert.throws(()=>verifyPhase2hRawB2Restore(Buffer.from("tamper"),plan),
    /PHASE2H_RAW_B2_COMPRESSED_SHA_MISMATCH/u);
 });
-test("six-hour incremental writer can archive recent, never-archived D1 originals within 72h",()=>{
- // Older than the immediate-ingest window but still eligible for the same
- // 72-hour private question/retention contract. Never restore October 1 rows.
+test("six-hour archive-only writer recovers retained original beyond 72h",()=>{
+ // Private B2 archival of retained old data is separate from 72h read TTL.
+ // This follows the owner policy recorded on 31 October.
  const older=data().records.map(x=>({...x,ingested_at:"2026-10-28T09:00:00.000Z"}));
  const plan=buildPhase2hRawB2Plan(older,now);
  assert.equal(plan.record_count,3);
  assert.deepEqual(plan.counts,{geopolitics:1,macro:1,rare_earth:1});
  assert.equal(verifyPhase2hRawB2Restore(plan.compressed,plan),true);
- assert.throws(()=>buildPhase2hRawB2Plan([
-  {...older[0],ingested_at:"2026-10-01T09:00:00.000Z"}
- ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
+ const historical=buildPhase2hRawB2Plan([{
+  ...older[0],ingested_at:"2026-10-01T09:00:00.000Z"
+ }],now);
+ assert.equal(historical.record_count,1);
+ assert.equal(verifyPhase2hRawB2Restore(historical.compressed,historical),true);
  assert.throws(()=>buildPhase2hRawB2Plan([
   {...older[0],ingested_at:"2026-10-31T06:10:00.000Z"}
  ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
@@ -848,9 +850,9 @@ test("Phase2H index keyset reads all 300 rows exactly once without OFFSET",async
   assert.doesNotMatch(q.sql,/OFFSET/);
   assert.match(q.sql,/ORDER BY first_ingested_at,record_id LIMIT /);
   assert.ok(q.params.every(x=>typeof x==="string"));
-  assert.ok(q.params.length===1||q.params.length===4);
+  assert.ok(q.params.length===0||q.params.length===3);
   const limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
-  const cursor=q.params.length===4?q.params[3]:null;
+  const cursor=q.params.length===3?q.params[2]:null;
   const offset=cursor===null?0:records.findIndex(r=>r.record_id>cursor);
   reads.push([limit,cursor]);
   const page=offset<0?[]:records.slice(offset,offset+limit);
@@ -883,7 +885,7 @@ test("Phase2H 400/7500 provider failures reduce 25 then 10 then use safe 5-row k
  const pattern=[];
  const fiveFetch=async(_url,init)=>{
   const q=JSON.parse(init.body),limit=Number(q.sql.match(/LIMIT (\d+)/u)[1]);
-  const offset=q.params.length===1?0:parseInt(q.params[3],10)+1;
+  const offset=q.params.length===0?0:parseInt(q.params[2],10)+1;
   pattern.push([limit,offset]);
   if(limit>5)return Response.json({success:false,result:[],errors:[{code:7500}]},{status:400});
   const page=Array.from({length:Math.min(5,Math.max(0,100-offset))},(_,n)=>{
@@ -903,16 +905,15 @@ test("Phase2H 400/7500 provider failures reduce 25 then 10 then use safe 5-row k
   env,fetchImpl:async()=>Response.json({success:false,result:[]})
  }).readPending(),/PHASE2H_RAW_B2_CANONICAL_D1_PROVIDER_REQUEST_FAILED/u);
 });
-test("Phase2H D1 REST binds dates and keyset cursor without user-controlled SQL",async()=>{
+test("Phase2H archive-only REST keyset preserves immutable records without a recency exclusion",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
    D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
    CLOUDFLARE_API_TOKEN:"token".repeat(8)};
  let seen=0;
  const fake=async(_url,init)=>{
   const q=JSON.parse(init.body);
-  assert.equal(q.params.length,1);
-  assert.ok(Number.isFinite(Date.parse(q.params[0])));
-  assert.match(q.sql,/first_ingested_at>\?/);
+  assert.equal(q.params.length,0);
+   assert.doesNotMatch(q.sql,/first_ingested_at>\?/u);
   assert.match(q.sql,/LIMIT 25$/);
   assert.doesNotMatch(q.sql,/OFFSET/);
   assert.equal(init.redirect,"error");
@@ -930,7 +931,7 @@ test("Phase2H keyset limits reject injection and legacy OFFSET helper is never p
  assert.throws(()=>phase2hKeysetPendingPageSQL(25,"true"),/D1_PAGE_BOUNDS_INVALID/);
  assert.match(phase2hBoundedPendingPageSQL(5,295),/OFFSET 295$/);
 });
-test("Phase2H raw B2 plan excludes the expired immutable first-ingested window",()=>{
+test("Phase2H B2 archival-only plan accepts retained history and rejects future timestamps",()=>{
  const planNow=new Date("2026-10-30T12:00:00Z");
  const valid={
   record_id:"a".repeat(64),category:"macro",raw_sha256:"b".repeat(64),
@@ -939,9 +940,12 @@ test("Phase2H raw B2 plan excludes the expired immutable first-ingested window",
   commercial_rights_verified:false,commercial_delivery_authorized:false
  };
  assert.equal(buildPhase2hRawB2Plan([valid],planNow).record_count,1);
- assert.throws(()=>buildPhase2hRawB2Plan([{
+ assert.equal(buildPhase2hRawB2Plan([{
   ...valid,ingested_at:"2026-10-27T11:59:59.999Z"
- }],planNow),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/);
+ }],planNow).record_count,1);
+ assert.throws(()=>buildPhase2hRawB2Plan([{
+  ...valid,ingested_at:"2026-10-31T11:59:59.999Z"
+ }],planNow),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
 });
 
 test("raw-only nullable five-part is archived with immutable provenance but never falsely question-qualified",async()=>{

@@ -257,6 +257,8 @@ export async function runPhase2hPermanentAcceptance({
   actual_b2_readback_verified:proofs.every(x=>x.b2_one_get_sha_verified_in_preceding_step===true),
   category_question_readbacks:Math.max(...proofs.map(x=>x.production_question_readback_categories??0)),
   archived_batches_this_run:receipts.length,
+  historical_expired_originals_archived_this_run:receipts.reduce((sum,r)=>
+   sum+(r.historical_expired_originals_archived??0),0),
   verified_b2_object_sha256:receipts.map(x=>x.object_sha256),
   independently_restored_existing_b2_sha256:proofs
    .filter(x=>x.existing_archived_object_one_get_restored===true)
