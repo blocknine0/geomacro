@@ -167,6 +167,34 @@ export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
  });
 }
 
+/** One quota-backed Phase2I source burst. Every later slot re-proves quota. */
+export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered,{
+ now=new Date(),criticalGranted=false,
+}={}){
+ const baseline=MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows;
+ const held=Object.freeze({max_new_rows:baseline,adaptive:false,
+  additional_slot_rows_reserved:0,extra_write_reserved:0,extra_read_reserved:0});
+ if(!criticalGranted||!intakeBudget||!snapshot||
+    !(now instanceof Date)||!Number.isFinite(now.getTime())||
+    !Number.isSafeInteger(snapshot.remaining_rows_read)||
+    !Number.isSafeInteger(snapshot.remaining_rows_written))return held;
+ if(!Number.isSafeInteger(intakeBudget.remaining_source_slots)||
+    intakeBudget.remaining_source_slots<1)return held;
+ const archiveSlots=[0,6,12,18].filter(h=>h>=now.getUTCHours()).length||1;
+ const writeAvailable=Math.max(0,snapshot.remaining_rows_written-
+   D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-
+   (registered?.extra_write_reserved??0)-archiveSlots*750-10_000);
+ const readAvailable=Math.max(0,snapshot.remaining_rows_read-
+   D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
+   (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
+ const extra=Math.max(0,Math.min(95,
+   Math.floor(writeAvailable/16),Math.floor(readAvailable/64)));
+ const max_new_rows=baseline+extra;
+ return Object.freeze({max_new_rows,adaptive:max_new_rows>baseline,
+  additional_slot_rows_reserved:extra,
+  extra_write_reserved:extra*16,extra_read_reserved:extra*64});
+}
+
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
@@ -277,7 +305,15 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const utcHour=now.getUTCHours();
   const remainingArchiveSlots=slotHours.filter(h=>h>=utcHour).length||1;
   const remainingHourSlots=1;
-  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
+  const phase2iAdaptive=planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,
+    null,{now,criticalGranted:grants.critical===true&&sourceIntake});
+  const registeredAdaptive=planRegisteredAdaptiveFreeOriginals({
+    ...snapshot,
+    remaining_rows_written:Math.max(0,snapshot.remaining_rows_written-
+      phase2iAdaptive.extra_write_reserved),
+    remaining_rows_read:Math.max(0,snapshot.remaining_rows_read-
+      phase2iAdaptive.extra_read_reserved),
+  },intakeBudget,{
     now,criticalGranted:grants.critical===true&&sourceIntake,
   });
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
@@ -289,7 +325,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const rawWriteRoom=sourceIntake?
     snapshot.remaining_rows_written-
       D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-150-
-      registeredAdaptive.extra_write_reserved:0;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved:0;
   const archiveWriteReserve=remainingArchiveSlots*750;
   const preserveArchive=rawWriteRoom>archiveWriteReserve+
     remainingHourSlots*25;
@@ -301,7 +337,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingHourSlots*2500+10000+
-      registeredAdaptive.extra_read_reserved;
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved;
   const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
     Math.min(1000,safeRowsPerHour):0;
   const retentionCleanup=retentionCleanupMaxRows>0;
@@ -318,21 +354,23 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       remainingArchiveSlots*20_000+10_000+
-      registeredAdaptive.extra_read_reserved&&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
       remainingArchiveSlots*750+150+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Low-priority historical archive, scanned by original D1 ingest state
   // (never article publication age). Existing Free quota/PREDGE/future news
   // reserves win before each 10-minute, <=200-original recovery slot.
   const historicalRecovery=phase2hRawArchive&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
-      registeredAdaptive.extra_write_reserved+remainingArchiveSlots*750+750&&
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved+
+      remainingArchiveSlots*750+750&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      registeredAdaptive.extra_read_reserved+remainingArchiveSlots*20_000+25_000;
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved+
+      remainingArchiveSlots*20_000+25_000;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -343,20 +381,20 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const governedMeasurement=sourceIntake &&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
   // Separate from source intake/signing; reserve 250k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
       250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved &&
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
       D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
@@ -370,10 +408,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
       250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
-      registeredAdaptive.extra_read_reserved &&
+      registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
-      registeredAdaptive.extra_write_reserved;
+      registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   const state=grants.maintenance?"NORMAL":grants.research?"CONSERVE":
     grants.critical?"CRITICAL_ONLY":"HELD";
   return Object.freeze({
@@ -409,7 +447,11 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     predge_protected_write_headroom_observed:
       snapshot.remaining_rows_written>PREDGE_D1_FREE_HEADROOM.rows_written,
     source_intake_interval_minutes:intakeBudget?.interval_minutes??null,
-    source_intake_max_new_rows:intakeBudget?.max_new_rows??0,
+    source_intake_max_new_rows:sourceIntake?phase2iAdaptive.max_new_rows:0,
+    source_intake_phase2i_adaptive:phase2iAdaptive.adaptive,
+    source_intake_phase2i_extra_slot_rows_reserved:phase2iAdaptive.additional_slot_rows_reserved,
+    source_intake_phase2i_extra_write_reserved:phase2iAdaptive.extra_write_reserved,
+    source_intake_phase2i_extra_read_reserved:phase2iAdaptive.extra_read_reserved,
     minimum_daily_bundled_source_policy:MINIMUM_DAILY_BUNDLED_SOURCE,
     minimum_daily_bundled_source_admitted:sourceIntake,
     snapshot_refresh:snapshotRefresh,
