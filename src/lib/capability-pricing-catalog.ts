@@ -90,6 +90,31 @@ export function resolveGeomacroCapabilityPrice(capability:string,variant:string)
   });
 }
 
+/** Stable public tier IDs mapped onto the existing immutable Risk Gate variants. */
+export const GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS=[
+  {id:"basic_focused",name:"Basic / Focused",variant:"existing_proof_preflight",
+   score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
+   confidence:"LOW / PROVISIONAL",
+   deliverables:["Indicative Risk Score (0–100)","Fast signal alerts"]},
+  {id:"standard",name:"Standard",variant:"standard",
+   score_kind:"CORROBORATED_RISK_SCORE",confidence:"MEDIUM / VERIFIED",
+   deliverables:["Corroborated Risk Score","Three-category fact sheets","Source references"]},
+  {id:"complex_full",name:"Complex / Full",variant:"complex_multi_source",
+   score_kind:"PROPRIETARY_INSTITUTIONAL_SIGNED_SCORE",
+   confidence:"HIGH / CRYPTO_SIGNED",
+   deliverables:["Institutional Risk Score","Ed25519 signature",
+     "7-day corridor friction history","B2 archive reference","Evidence chain"]},
+] as const;
+export function publicRiskGateThreeTierProducts(){
+ return GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS.map(tier=>{
+  const price=resolveGeomacroCapabilityPrice("risk_gate_bundle",tier.variant);
+  return {...tier,usd_per_call:price.amount_usdc,
+   usdc_atomic:price.amount_atomic,
+   currency:"USD" as const,billing_unit:"PER_SUCCESSFUL_DELIVERY" as const,
+   response_schema:"geomacro.risk-gate-commercial-three-tier.v1" as const};
+ });
+}
+
 export function capabilityPricingCatalog(){
   return (Object.entries(GEOMACRO_CAPABILITY_PRICES) as
     [PricedCapability,Record<string,string>][]).map(([capability,variants])=>({
