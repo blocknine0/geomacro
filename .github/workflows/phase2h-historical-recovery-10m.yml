@@ -95,7 +95,7 @@ jobs:
           if(!response.ok||data.success!==true||rows.length!==1||
              !/^[a-f0-9-]{36}$/i.test(rows[0]?.uuid??""))
             throw Error("PHASE2H_HISTORICAL_D1_UNVERIFIED");
-          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+rows[0].uuid+"\\n");
+          appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+rows[0].uuid+"\n");
           NODE
       - name: Archive at most 200 oldest unarchived D1 originals regardless of publication age
         run: node scripts/ops/phase2h-archive-private-raw-news.mjs

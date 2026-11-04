@@ -227,12 +227,12 @@ export class B2SpoolManager {
     throw Error('P0B_B2_'+method+'_'+code);
    }
    if(!response.ok)throw Error('P0B_B2_'+method+'_HTTP_'+response.status);
-   if(method==='PUT')return new Uint8Array();
+   if(method==='PUT')return {data:new Uint8Array(),etag:response.headers.get('etag')};
    const length=Number(response.headers.get('content-length')??'0');
    if(length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
    const bytes=new Uint8Array(await response.arrayBuffer());
    if(bytes.length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
-   return bytes;
+   return {data:bytes,etag:null};
   }
   throw Error('P0B_B2_'+method+'_TRANSPORT_UNAVAILABLE');
  }
@@ -245,7 +245,7 @@ export class B2SpoolManager {
   const key=objectKey(payload.sourceId,payload.candidateSha256,day,this.prefix);
   const bytes=await this.seal(payload);
   await this.request('PUT',key,bytes);
-  const restored=await this.request('GET',key);
+  const restored=(await this.request('GET',key)).data;
   if(restored.length!==bytes.length||await p0bSha256(restored)!==await p0bSha256(bytes))
    throw Error('P0B_B2_SPOOL_INTEGRITY_MISMATCH');
   await this.open(restored,payload.candidateSha256,payload.sourceId);
@@ -254,7 +254,7 @@ export class B2SpoolManager {
  }
  async readVerified(b2Uri:string,candidateSha256:string,sourceId:string){
   const key=safeKey(b2Uri,candidateSha256,sourceId,this.prefix);
-  const bytes=await this.request('GET',key);
+  const bytes=(await this.request('GET',key)).data;
   return this.open(bytes,candidateSha256,sourceId);
  }
 
@@ -302,15 +302,15 @@ export class B2SpoolManager {
   const day=stamp.slice(0,8);
   const group=new Set(payloads.map(p=>p.sourceId)).size===1?payloads[0].sourceId:'mixed';
   const key=bundleKey(this.prefix,day,group,stamp,batchSha256);
-  await this.request('PUT',key,object);
-  const readback=await this.request('GET',key);
+  const put=await this.request('PUT',key,object);
+  const readback=(await this.request('GET',key)).data;
   if(readback.length!==object.length||
    await p0bSha256(readback)!==await p0bSha256(object))
    throw Error('P0B_B2_BUNDLE_INTEGRITY_MISMATCH');
   const restored=await this.decodeBundle(readback,batchSha256);
   if(restored.items.length!==index.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
   return {b2Uri:'b2://'+key,byteSize:object.length,batchSha256,
-   storedAt:this.now().toISOString(),items:index};
+   etag:put.etag,storedAt:this.now().toISOString(),items:index};
  }
  private async decodeBundle(object:Uint8Array,batchSha256:string){
   if(object.length>MAX_CIPHER_BYTES)throw Error('P0B_BUNDLE_CIPHER_TOO_LARGE');
@@ -365,7 +365,7 @@ export class B2SpoolManager {
   const {key,sha}=verifiedBundleKey(b2Uri,this.prefix);
   if(!SHA.test(expectedSha256)||expectedSha256!==sha)
    throw Error('P0B_BUNDLE_URI_HASH_MISMATCH');
-  return this.decodeBundle(await this.request('GET',key),expectedSha256);
+  return this.decodeBundle((await this.request('GET',key)).data,expectedSha256);
  }
 
 }

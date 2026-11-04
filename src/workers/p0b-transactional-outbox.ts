@@ -1,7 +1,8 @@
-/** Hash-only D1-before-B2 private transactional outbox.
- * Never stores original payload, original URL, title or authentication keys.
- * Pending rows are replayed only by source re-observation / durable
- * encrypted upstream spool. Do NOT invent successful B2 receipts.
+/** Private encrypted D1-before-B2 transactional outbox.
+ * D1 stores hash-only indexed metadata and AES-256-GCM ciphertext, never
+ * plaintext original payload, URL, title or any authentication keys.
+ * The sealed pending payload survives a B2/network/D1 crash and is replayed
+ * on the existing ten-minute cron. Never fabricate B2 success.
  */
 import {p0bSha256} from "../storage/b2-spool-manager.ts";
 import {canonicalJson} from "../lib/canonical-json.ts";

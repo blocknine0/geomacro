@@ -61,7 +61,7 @@ function fixture(){
   requests.push({method:opts.method,key});
   if(opts.method==='PUT'){
    objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
-   return new Response(null,{status:200});
+   return new Response(null,{status:200,headers:{etag:'"'+'c'.repeat(32)+'"'}});
   }
   if(opts.method==='GET'){
    if(!objects.has(key))return new Response(null,{status:404});
@@ -511,6 +511,7 @@ test('P0-B encrypted transactional outbox replays B2 PUT+GET and archives exactl
   assert.equal(recovered.archived,1);
   const row=f.db.prepare('SELECT * FROM p0b_archive_outbox').get();
   assert.equal(row.state,'ARCHIVED');
+  assert.equal(row.b2_etag,'"'+ 'c'.repeat(32) +'"');
   assert.equal(row.sealed_payload,null);
   assert.match(row.b2_uri,/^b2:\/\//u);
   assert.match(row.b2_object_sha256,/^[a-f0-9]{64}$/u);
