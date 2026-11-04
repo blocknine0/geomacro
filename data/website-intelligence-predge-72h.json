@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T07:25:44.862Z",
+  "checked_at": "2026-11-04T07:29:08.108Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 384,
+  "item_count": 386,
   "counts": {
-    "geopolitics": 167,
+    "geopolitics": 169,
     "macro": 173,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "050231241458932e54dd1bff28a9ee58da2beefebd989696c3025fea69932bc4",
+  "source_native_ids_sha256": "b9cbf0a342e4bbb89e2dabf28883bbcfde72b6b02113b2a88be87445a3e61cdc",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -30,6 +30,25 @@
   "payments": 0,
   "signals": [
     {
+      "id": "geopolitics-01e0c6a7",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said Iran war played role in US midterms defeat",
+      "what_changed": "A monitored source feed reports: Trump said Iran war played role in US midterms defeat. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T07:00:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.vanguardngr.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-7e1d5b57",
       "category": "geopolitics",
       "title": "Geomacro finds Iran launched fresh drone attacks in Kurdistan Region - Rudaw",
@@ -39,6 +58,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T06:14:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-71d6c2a8",
+      "category": "geopolitics",
+      "title": "Geomacro finds Iran said Americans voted ‘no to war’ after Republican midterm defeat - Al Arabiya English",
+      "what_changed": "A monitored source feed reports: Iran said Americans voted ‘no to war’ after Republican midterm defeat - Al Arabiya English. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T06:14:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
