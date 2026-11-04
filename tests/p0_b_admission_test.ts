@@ -338,3 +338,71 @@ test('same-window three-source P0-A poll uses one mixed B2 bundle before cursor 
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM normalized_articles").get().n,3);
  }finally{f.close()}
 });
+
+
+test('transient B2 transport failure retries EXACT same encrypted PUT once with new quota reservation',async()=>{
+ const f=fixture();
+ try{
+  let tries=0;const urls:string[]=[],bytes:Uint8Array[]=[];
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{f.requests.push({method:'QUOTA',key:'reserved'});},
+   fetchImpl:async(url,opts)=>{
+    if(opts.method==='PUT'){
+     tries++;urls.push(url);bytes.push(Uint8Array.from(opts.body));
+     if(tries===1)throw new TypeError('temporary connection closed');
+    }
+    return f.fetchImpl(url,opts);
+   }
+  });
+  const c=await candidate(3001);
+  const receipt=await manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}
+  });
+  assert.equal(tries,2);
+  assert.deepEqual(urls,[urls[0],urls[0]]);
+  assert.deepEqual(bytes[0],bytes[1]);
+  assert.equal(f.objects.size,1);
+  assert.equal(f.requests.filter(x=>x.method==='QUOTA').length,3);
+  assert.equal(receipt.sha256,c.candidateSha256);
+  const original=await manager.readVerified(receipt.b2Uri,c.candidateSha256,c.sourceId);
+  assert.deepEqual(original.rawPayload,c.raw);
+ }finally{f.close()}
+});
+test('B2 provider HTTP 403 is never retried, and no candidate is marked durable',async()=>{
+ const f=fixture();
+ try{
+  let attempts=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},
+   fetchImpl:async()=>{attempts++;return new Response(null,{status:403})}
+  });
+  const c=await candidate(3002);
+  await assert.rejects(manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}
+  }),/P0B_B2_PUT_HTTP_403/u);
+  assert.equal(attempts,1);
+  assert.equal(reservations,1);
+  assert.equal(f.objects.size,0);
+ }finally{f.close()}
+});
+test('two failed B2 transport attempts never fabricate a successful PUT or D1 pointer',async()=>{
+ const f=fixture();
+ try{
+  let attempts=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},
+   fetchImpl:async()=>{attempts++;throw new TypeError('simulated B2 network failure')}
+  });
+  const c=await candidate(3003);
+  await assert.rejects(manager.spoolAndVerify({
+   candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}
+  }),/P0B_B2_PUT_TRANSPORT_UNAVAILABLE/u);
+  assert.equal(attempts,2);
+  assert.equal(reservations,2);
+  assert.equal(f.objects.size,0);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
+ }finally{f.close()}
+});
