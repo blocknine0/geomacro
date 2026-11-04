@@ -14,7 +14,7 @@ describe("founder low-barrier public new-sale pricing",()=>{
    expect(GEOMACRO_ACCESS_TIERS.analyst_pilot.pricing_reference).toBe("RETIRED_FOR_NEW_SALES");
    expect(GEOMACRO_ACCESS_TIERS.api_pilot.pricing_reference).toBe("RETIRED_FOR_NEW_SALES");
  });
- it("offers Base x402 at 0.02–0.05 without unauthorized funds",()=>{
+ it("describes exact catalog prices up to Risk Gate 0.25 without activating funds",()=>{
    const x=publicGeomacroPaidPricingManifest();
    expect(x.launch_pricing_version).toBe(GEOMACRO_LOW_BARRIER_VERSION);
    expect(x.subscriptions).toBe(GEOMACRO_SUBSCRIPTIONS);
@@ -24,10 +24,10 @@ describe("founder low-barrier public new-sale pricing",()=>{
    expect(x.credit_pack_checkout_status).toBe("NOT_YET_VERIFIED");
    expect(x.payment_authorized).toBe(false);
    expect(GEOMACRO_AGENT_MICROPAYMENT.minimum_usdc).toBe("0.02");
-   expect(GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc).toBe("0.05");
+   expect(GEOMACRO_AGENT_MICROPAYMENT.maximum_usdc).toBe("0.25");
    for(const row of x.capabilities)for(const v of row.variants){
      expect(Number(v.price_usdc)).toBeGreaterThanOrEqual(0.02);
-     expect(Number(v.price_usdc)).toBeLessThanOrEqual(0.05);
+     expect(Number(v.price_usdc)).toBeLessThanOrEqual(row.capability==="risk_gate_bundle"?0.25:0.05);
    }
    expect(x.capabilities.some(x=>x.capability==="gri_read")).toBe(false);
  });
