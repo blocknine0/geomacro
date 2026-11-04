@@ -31,7 +31,7 @@ async function worker(){
     const reader=response.body?.getReader();
     const chunk=reader?await reader.read():{value:new Uint8Array()};
     const sample=new TextDecoder().decode((chunk.value??new Uint8Array()).slice(0,8192));
-    xml_like=/<(?:rss|feed|rdf:RDF)(?:\\s|>)/iu.test(sample);
+    xml_like=/<(?:rss|feed|rdf:RDF)(?:\s|>)/iu.test(sample);
     state=xml_like?"HTTP_200_XML_CANDIDATE":"HTTP_200_NOT_XML";
     try{await reader?.cancel()}catch{}
    }
@@ -49,7 +49,7 @@ const nativeByRef=new Map(native.checks.map(c=>[c.source_ref,c.state]));
 const checks=registry.map(s=>({
  source_id:s.id,
  native_category_state:nativeByRef.get(createHash("sha256").update(
-   [s.id,s.url,"geopolitics"].join("\\n")).digest("hex"))??"NOT_CHECKED",
+   [s.id,s.url,"geopolitics"].join("\n")).digest("hex"))??"NOT_CHECKED",
 }));
 const report={
  schema:"geomacro.geopolitics-continuity-readonly-probe.v1",
