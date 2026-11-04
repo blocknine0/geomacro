@@ -61,7 +61,7 @@
       "transport_verified_in_current_run": false,
       "native_event_verified_in_current_run": false,
       "publisher_content_commercially_reusable": false,
-      "source_only_factual_metadata_allowed": true,
+      "source_only_factual_metadata_allowed": false,
       "paid_risk_gate_eligible": false
     },
     {
@@ -221,7 +221,7 @@
       "transport_verified_in_current_run": false,
       "native_event_verified_in_current_run": false,
       "publisher_content_commercially_reusable": false,
-      "source_only_factual_metadata_allowed": true,
+      "source_only_factual_metadata_allowed": false,
       "paid_risk_gate_eligible": false
     },
     {
@@ -301,7 +301,7 @@
       "transport_verified_in_current_run": false,
       "native_event_verified_in_current_run": false,
       "publisher_content_commercially_reusable": false,
-      "source_only_factual_metadata_allowed": true,
+      "source_only_factual_metadata_allowed": false,
       "paid_risk_gate_eligible": false
     },
     {
