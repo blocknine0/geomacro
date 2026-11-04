@@ -170,6 +170,44 @@ export function createPhase2hCanonicalD1({
    raw_json:JSON.stringify(x),
   }))};
  };
+ // Exact admin-bound, indexed D1 single-SELECT scanner. Production uses
+ // this BEFORE the legacy REST /query endpoint, whose 7500 failure currently
+ // blocks even one original. Invalid D1 rows are counted but never archived.
+ const workerReadV2=async(limit,cursorClock,cursorId)=>{
+  const q=new URLSearchParams({limit:String(limit)});
+  if(cursorClock!==null){
+   q.set("archive_cursor_clock",cursorClock);
+   q.set("archive_cursor_id",cursorId);
+  }
+  const result=await internal("/v1/internal/phase2h-raw-archive-export-v2?"+q);
+  if(result.schema!=="geomacro.phase2h.private-raw-archive-export-v2.v1"||
+     result.paid_eligible!==false||result.rights_verified!==false||
+     result.raw_public_delivery!==false||result.payments!==0||
+     result.provider_d1_single_select!==true||
+     !Array.isArray(result.rows)||
+     !Number.isSafeInteger(result.scanned_count)||
+     !Number.isSafeInteger(result.rejected_unverified_or_expired_count)||
+     result.scanned_count<0||result.scanned_count>limit||
+     result.rows.length+result.rejected_unverified_or_expired_count!==
+       result.scanned_count||
+     result.scan_complete!==(result.scanned_count<limit))
+   fail("BULK_WORKER_V2_RECEIPT_INVALID");
+  if(result.scanned_count>0&&(
+     typeof result.next_cursor_clock!=="string"||
+     !Number.isFinite(Date.parse(result.next_cursor_clock))||
+     !/^[a-f0-9]{64}$/u.test(result.next_cursor_id??"")))
+   fail("BULK_WORKER_V2_CURSOR_INVALID");
+  return {
+   results:result.rows.map(row=>({
+    record_id:row.record_id,first_ingested_at:row.ingested_at,
+    raw_json:JSON.stringify(row)
+   })),
+   scanned_count:result.scanned_count,
+   next_cursor_clock:result.next_cursor_clock,
+   next_cursor_id:result.next_cursor_id,
+   scan_complete:result.scan_complete
+  };
+ };
  const workerAck=async(items,objectSha)=>{
   let written=0;
   for(let i=0;i<items.length;i+=100){
@@ -201,6 +239,7 @@ export function createPhase2hCanonicalD1({
    // No OFFSET instability after concurrent ACKs. Never invent timestamps,
    // advance cursor on failure, or duplicate original article bodies.
    const rows=[];
+   const useBulkWorkerV2=env.PHASE2H_BULK_WORKER_ARCHIVE_V2==="1";
    let pageSize=25,maxRows=300,attempts=0,useInternal=false;
    let cursorClock=null,cursorId=null;
    while(rows.length<maxRows){
@@ -208,7 +247,9 @@ export function createPhase2hCanonicalD1({
     let result;
     try{
      const hasCursor=cursorClock!==null;
-     result=useInternal?
+     result=useBulkWorkerV2?
+      await workerReadV2(Math.min(pageSize,maxRows-rows.length),cursorClock,cursorId):
+      useInternal?
       await workerRead(Math.min(pageSize,maxRows-rows.length),cursorClock,cursorId):
       await sql(
        phase2hKeysetPendingPageSQL(
@@ -216,6 +257,13 @@ export function createPhase2hCanonicalD1({
        hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
       );
     }catch(error){
+     if(useBulkWorkerV2&&error instanceof Error&&
+       error.message==="PHASE2H_RAW_B2_INTERNAL_FALLBACK_D1_UNAVAILABLE"&&
+       [429,500,502,503,504].includes(error.upstream_status)&&pageSize>1){
+      pageSize=pageSize===25?10:pageSize===10?5:1;
+      if(pageSize===1)maxRows=Math.min(maxRows,60);
+      continue;
+     }
      // Private Worker can temporarily reject a 25-row verified JSON batch
      // when a single Cloudflare isolate cannot complete the full readback.
      // Retry the SAME immutable keyset cursor with smaller bounded pages;
@@ -274,11 +322,26 @@ export function createPhase2hCanonicalD1({
      cursorClock=item.first_ingested_at;
      cursorId=item.record_id;
     }
-    if(page.length<pageSize)break;
+    if(useBulkWorkerV2){
+     // Advance by LAST SCANNED D1 ID, including quarantined invalid rows.
+     // A blank valid page must never stick at the same unarchiveable row.
+     if(result.scanned_count>0){
+      if(cursorClock!==null&&(
+        result.next_cursor_clock<cursorClock||
+        result.next_cursor_clock===cursorClock&&
+        result.next_cursor_id<=cursorId))
+       fail("BULK_WORKER_V2_NONADVANCING_CURSOR");
+      cursorClock=result.next_cursor_clock;
+      cursorId=result.next_cursor_id;
+     }
+     if(result.scan_complete)break;
+    }else if(page.length<pageSize)break;
    }
    return rows;
   },
   async markArchived(items,objectSha,now){
+   if(env.PHASE2H_BULK_WORKER_ARCHIVE_V2==="1")
+    return workerAck(items,objectSha);
    // One atomic D1 UPDATE/RETURNING per up-to-100 record batch, never
    // per-original reads/writes. Protected Worker is the recovery channel
    // only on the exact provider HTTP400/7500 statement failure.
