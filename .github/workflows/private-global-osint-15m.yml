@@ -282,7 +282,7 @@ jobs:
           node --check scripts/lib/phase2i-single-sweep-original-index.mjs
           node --test scripts/tests/phase2i-single-sweep-original-index.test.mjs
           node --check scripts/lib/phase2i-osint-country-fair-raw-staging.mjs
-          node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs
+          node --test scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/hot50-fresh-priority-d1.test.mjs
           node --test scripts/tests/phase2i-encrypted-source-backlog.test.mjs
           node --test scripts/tests/phase2i-idle-source-drain-contract.test.mjs
           node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
