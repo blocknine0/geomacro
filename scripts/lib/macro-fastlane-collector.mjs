@@ -14,7 +14,10 @@ export function parseMacroFeed(xml,spec,now){
  const pattern=isAtom?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
  const rows=[],seen=new Set();
  for(const [,item]of [...xml.matchAll(pattern)].slice(0,75)){
-  const title=clean(tag(item,'title'));if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)))continue;
+  const title=clean(tag(item,'title'));
+  const cmeNews=spec.id==='cme_news'&&/\b(?:CME Group|CME|futures?|markets?|FX|trading)\b/i.test(title)&&
+    /\b(?:ADV|volume|FX|futures?|options?|rates?|trading|metals?|clearing|exchange|commodities|market|treasury)\b/i.test(title);
+  if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)||cmeNews))continue;
   const rawLink=isAtom?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
   const articleUrl=pinnedMacroArticle(rawLink,spec);if(!articleUrl||seen.has(articleUrl))continue;
   const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,isAtom?'published':'pubDate'));
