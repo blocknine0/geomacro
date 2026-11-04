@@ -235,6 +235,15 @@ test('ECB official daily reference is source-dated and never claimed as live FX'
 });
 
 
+test('CFTC original release-number heading does not mask verified publisher headline; large HTML may keep early native clock',async()=>{
+ const spec=MACRO_NEWS_SOURCES.find(s=>s.id==='cftc_news');
+ const iso=at;
+ const index='<a href="/PressRoom/PressReleases/9320-26">CFTC futures and commodity market announcement</a>';
+ const original='<meta property="article:published_time" content="'+iso+'"><h1>Release Number 9320-26</h1><h1>CFTC futures and commodity market announcement</h1>'+' '.repeat(400*1024);
+ const output=await collectMacroFastlane({now,state:freshState(),sourceIds:[spec.id],prices:false,calendars:false,fetchImpl:async url=>new Response(url===spec.url?index:original)});
+ assert.equal(output.candidates.length,1);
+ assert.equal(output.candidates[0].sourceId,spec.id);
+});
 test('Disabled CFTC RSS and denied CME investor route use pinned first-party HTML index recovery',async()=>{
  const cftc=MACRO_NEWS_SOURCES.find(s=>s.id==='cftc_news');
  const cme=MACRO_NEWS_SOURCES.find(s=>s.id==='cme_news');
