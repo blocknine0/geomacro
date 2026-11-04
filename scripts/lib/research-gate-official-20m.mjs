@@ -118,6 +118,8 @@ export async function runOfficialResearch20m({sources,now=new Date(),
   throw Error("RESEARCH_OFFICIAL_PRODUCER_INVALID");
  let sourceHealthy=0,qualified=0,verifiedPages=0,signed=0,updated=0,failed=0;
  const accepted=new Set(),categoryCounters={geopolitics:0,macro:0,critical_minerals:0};
+ // Denied or malformed official pages may not trigger unbounded retries.
+ const pageAttempts={geopolitics:0,macro:0,critical_minerals:0};
  for(const source of sources){
   let candidates=[];
   try{
@@ -127,10 +129,12 @@ export async function runOfficialResearch20m({sources,now=new Date(),
    sourceHealthy++;
   }catch{failed++;continue}
   for(const c of candidates){
-   if(categoryCounters[c.category]>=perCategory)continue;
+   if(categoryCounters[c.category]>=perCategory||
+      pageAttempts[c.category]>=Math.min(2*perCategory,4))continue;
    const key=h(c.category+"\n"+c.articleUrl+"\n"+c.publishedAt);
    if(accepted.has(key))continue;
    accepted.add(key);
+   pageAttempts[c.category]++;
    qualified++;
    // Only the first-party original article and its exact same-publisher API
    // can attest the native publication instant. No title-only GRO signing.
