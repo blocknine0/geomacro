@@ -6,7 +6,7 @@ import {
  ingestDirectlyForRiskGate,getLatestSignedResearchGRO,
  createSignedResearchSnapshot,canonicalResearchJson,researchSha256
 } from "../lib/risk-gate/stream-ingest";
-import {evaluateResearchRiskGate} from "../routes/api.research-risk-gate";
+import {evaluateResearchRiskGate,proxyIsolatedResearchRiskGate} from "../routes/api.research-risk-gate";
 const time=new Date("2026-11-04T04:20:00.000Z");
 const key=generateKeyPairSync("ed25519");
 const env={
@@ -193,4 +193,69 @@ test("research endpoint fails closed for absent secrets, absent signatures or in
   fetchImpl:(async()=>response([])) as any});
  assert.equal(res.status,503);
  assert.equal((await res.json()).execution_authorized,false);
+});
+
+
+test("production host without secrets transparently forwards ONLY authenticated private Edge research requests",async()=>{
+ let count=0;
+ const bearer="a".repeat(64),input=JSON.stringify({
+  origin_country:"UKR",destination_country:"USA",policy_threshold:70
+ });
+ const req=new Request("https://geomacro.live/api/research-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+bearer,
+   "content-type":"application/json"},body:input
+ });
+ const res=await evaluateResearchRiskGate(req,{env:{} as NodeJS.ProcessEnv,
+  fetchImpl:(async(url:unknown,opts:any)=>{
+   count++;
+   assert.equal(String(url),
+    "https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-risk-gate");
+   assert.equal(opts.headers.Authorization,"Bearer "+bearer);
+   assert.equal(opts.body,input);
+   return Response.json({schema:"geomacro.research-corridor-gate.v1",
+    ok:false,decision:"PAUSE",reason:"VERIFIED_SIGNED_RESEARCH_STATE_UNAVAILABLE",
+    execution_authorized:false,commercial_eligible:false,research_only:true
+   },{status:503});
+  }) as any});
+ assert.equal(count,1);assert.equal(res.status,503);
+ assert.equal((await res.json()).decision,"PAUSE");
+ assert.equal(res.headers.get("cache-control"),"private, no-store");
+});
+test("explicit research-off switch and absent bearer never access the remote native gate",async()=>{
+ let calls=0;
+ const fetchImpl=(async()=>{calls++;throw Error("SHOULD_NOT_CALL")}) as any;
+ for(const auth of ["","Bearer invalid"]){
+  const r=await proxyIsolatedResearchRiskGate(new Request(
+   "https://geomacro.live/api/research-risk-gate",{
+    method:"POST",headers:{authorization:auth,"content-type":"application/json"},
+    body:JSON.stringify({origin_country:"UKR",destination_country:"USA"})}),fetchImpl);
+  assert.equal(r.status,401);
+ }
+ const r=await evaluateResearchRiskGate(new Request(
+  "https://geomacro.live/api/research-risk-gate",{
+   method:"POST",headers:{authorization:"Bearer "+"a".repeat(64),
+    "content-type":"application/json"},body:"{}"
+  }),{env:{GEOMACRO_RESEARCH_RISK_GATE_ENABLE:"0"} as NodeJS.ProcessEnv,
+     fetchImpl});
+ assert.equal(r.status,503);assert.equal(calls,0);
+});
+test("native proxy fails closed on corrupted research response or forged execution grant",async()=>{
+ const req=()=>new Request("https://geomacro.live/api/research-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+"f".repeat(64),
+   "content-type":"application/json"},
+  body:JSON.stringify({origin_country:"UKR",destination_country:"USA"})
+ });
+ for(const bad of [
+  {schema:"geomacro.research-corridor-gate.v1",ok:true,
+   decision:"CONTINUE",verification_status:"PROVISIONAL_RESEARCH_ONLY",
+   execution_authorized:true,commercial_eligible:false,research_only:true},
+  {schema:"geomacro.research-corridor-gate.v1",ok:true,
+   decision:"CONTINUE",verification_status:"UNVERIFIED",
+   execution_authorized:false,commercial_eligible:false,research_only:true}
+ ]){
+  const out=await proxyIsolatedResearchRiskGate(req(),
+    (async()=>Response.json(bad,{status:200})) as any);
+  assert.equal(out.status,503);
+  assert.equal((await out.json()).decision,"PAUSE");
+ }
 });
