@@ -24,7 +24,7 @@ test("B2 archive ACK atomically enqueues GRO; verified requires independent evid
 });
 
 test("bounded backlog keyset checks B2-acked rows and advances independently",async()=>{
- let position="",jobs=[],writes=[];
+ let position="",initialized=false,jobs=[],writes=[];
  const env={DB:{
   prepare(sql){
    let args=[];
@@ -33,7 +33,7 @@ test("bounded backlog keyset checks B2-acked rows and advances independently",as
     bind(...params){args=params;return statement;},
     async first(){
      if(sql.includes("FROM gro_evidence_backfill_state"))
-      return position?{last_record_id:position}:null;
+      return initialized?{last_record_id:position}:null;
      throw Error("unexpected first");
     },
     async all(){
@@ -56,8 +56,8 @@ test("bounded backlog keyset checks B2-acked rows and advances independently",as
     if(s._sql.includes("INSERT INTO gro_evidence_backfill_state"))
       position=s._args[0]||"RESET";
    }
-   // Reset cursor is an empty string (not absent).
-   position="";
+   // Reset cursor is an empty string, but the row remains present.
+   position="";initialized=true;
    return stmts.map(()=>({success:true}));
   },
  }};
@@ -89,7 +89,7 @@ test("empty private GRO enrichment queue does not fabricate signatures or scores
 });
 test("protected GRO status cannot infer verification from raw counts",async()=>{
  const env={DB:{prepare(sql){
-  return {async first(){
+  return {bind(){return this},async first(){
    if(sql.includes("WHERE is_gro_verified=1"))
     return {pending:14,quarantined:1,verified:0,unverified:22,filled:10};
    if(sql.includes("FROM gro_evidence_jobs j LEFT JOIN gro_evidence"))
