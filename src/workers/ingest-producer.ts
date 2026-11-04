@@ -4,10 +4,13 @@
  */
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
 import {canonicalJson} from '../lib/canonical-json.ts';
+import {openP0bArchiveOutbox,p0bOutboxCommitStatement,verifyP0bOutboxCommitted}
+ from './p0b-transactional-outbox.ts';
 import type {B2SpoolEnv,SpoolPayload} from '../storage/b2-spool-manager.ts';
 export type IngestCandidate={candidateSha256:string;sourceId:string;raw:unknown};
 export type ProducerEnv=B2SpoolEnv&{INGEST_QUEUE:{send:(message:unknown)=>Promise<void>}};
-type ProducerOptions={manager?:Pick<B2SpoolManager,'spoolBundleAndVerify'>;now?:()=>Date};
+type ProducerOptions={manager?:Pick<B2SpoolManager,'spoolBundleAndVerify'>;
+ now?:()=>Date;replayLeaseId?:string};
 const SHA=/^[a-f0-9]{64}$/u,SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const LIMIT=100,MAX_BYTES=320*1024,MAX_ITEM_BYTES=256*1024;
 const encoder=new TextEncoder();
@@ -115,8 +118,15 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    continue;
   }
   try{
+   // D1-before-B2: persist the encrypted, hash-addressed candidate list
+   // BEFORE attempting the S3 PUT. A failed B2 request leaves a repairable
+   // PENDING_ARCHIVE row without advancing any source cursor.
+   const opened=await openP0bArchiveOutbox(env.DB,chunk.map(x=>x.payload),
+    now(),env.B2_SPOOL_ENCRYPTION_KEY,opts.replayLeaseId??null);
    objects_requested++;
-   const verified=await manager.spoolBundleAndVerify(chunk.map(x=>x.payload));
+   const verified=await manager.spoolBundleAndVerify(opened.payloads,{
+    keyTime:new Date(opened.first_seen_at)
+   });
    if(verified.items.length!==chunk.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
    const registeredAt=now().toISOString();
    const commands=[env.DB.prepare(
@@ -132,8 +142,11 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     ).bind(crypto.randomUUID(),item.candidateSha256,item.sourceId,
      verified.b2Uri,verified.byteSize,item.byteOffset,item.byteLength));
    }
-   // A partial D1 batch or cross-source identity conflict never counts as durable.
+   // D1 journal + B2 outbox ARCHIVED update are one atomic db.batch.
+   // A B2 PUT success alone MUST NOT become an ARCHIVED receipt.
+   commands.push(p0bOutboxCommitStatement(env.DB,opened,verified,now()));
    await env.DB.batch(commands);
+   await verifyP0bOutboxCommitted(env.DB,opened,verified);
    const registered=await env.DB.prepare(
     'SELECT bundle_sha256,item_count,state,b2_byte_size FROM ingestion_spool_bundles '+
     'WHERE b2_spool_uri=?').bind(verified.b2Uri).first();

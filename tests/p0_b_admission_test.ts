@@ -6,7 +6,8 @@ import {B2SpoolManager,p0bSha256} from '../src/storage/b2-spool-manager.ts';
 import {canonicalJson} from '../src/lib/canonical-json.ts';
 import {processFetchedBatch} from '../src/workers/ingest-producer.ts';
 import {handleQueueBatch} from '../src/workers/ingest-consumer.ts';
-import {drainBacklog} from '../src/workers/backlog-drain-cron.ts';
+import {drainBacklog,drainP0bArchiveOutbox} from '../src/workers/backlog-drain-cron.ts';
+import {readP0bSealedOutbox} from '../src/workers/p0b-transactional-outbox.ts';
 import {pollP0aSources} from '../workers/control-plane/src/p0a-source-registry.mjs';
 
 const at='2026-11-04T03:00:00.000Z',NOW=Date.parse(at);
@@ -17,6 +18,7 @@ function fixture(){
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0114_p0_b_spool_queue.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0116_p0b_microbatch_spool.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0118_p0b_archive_outbox.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");
  db.prepare(
   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
@@ -59,7 +61,7 @@ function fixture(){
   requests.push({method:opts.method,key});
   if(opts.method==='PUT'){
    objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
-   return new Response(null,{status:200});
+   return new Response(null,{status:200,headers:{etag:'"'+'c'.repeat(32)+'"'}});
   }
   if(opts.method==='GET'){
    if(!objects.has(key))return new Response(null,{status:404});
@@ -455,5 +457,106 @@ test('P0-B transport outage activates a durable five-minute source-batch circuit
   assert.equal(second.receipts[0].error_code,'P0B_STORAGE_CIRCUIT_HELD');
   assert.equal(bad.calls,1);
   assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+ }finally{f.close()}
+});
+
+
+test('P0-B crash after D1 PENDING_ARCHIVE retains AES-256-GCM ciphertext without B2 success or fake queue ACK',async()=>{
+ const f=fixture();
+ try{
+  const entries=await Promise.all(Array.from({length:26},(_,i)=>candidate(i+10000)));
+  let attempts=0;
+  const failed=await processFetchedBatch(entries,f.env,{
+   now:NOW_DATE,manager:{async spoolBundleAndVerify(){
+    attempts++;throw Error('P0B_B2_PUT_TRANSPORT_UNAVAILABLE');
+   }}
+  });
+  assert.equal(attempts,1);
+  assert.equal(failed.all_durable,false);
+  assert.equal(f.objects.size,0);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+  const outbox=f.db.prepare("SELECT * FROM p0b_archive_outbox").get();
+  assert.equal(outbox.state,'PENDING_ARCHIVE');
+  assert.equal(outbox.item_count,26);
+  assert.equal(outbox.b2_uri,null);
+  assert.equal(outbox.b2_object_sha256,null);
+  assert.equal(outbox.sealed_payload.includes('Unique publisher article'),false);
+  const restored=await readP0bSealedOutbox(outbox,f.env.B2_SPOOL_ENCRYPTION_KEY);
+  assert.equal(restored.length,26);
+  assert.deepEqual(restored.map(x=>x.candidateSha256),
+   entries.map(x=>x.candidateSha256));
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_bundles').get().n,0);
+ }finally{f.close()}
+});
+test('P0-B encrypted transactional outbox replays B2 PUT+GET and archives exactly one bundle via leased D1 commit',async()=>{
+ const f=fixture();
+ try{
+  const entries=await Promise.all(Array.from({length:26},(_,i)=>candidate(i+10100)));
+  await processFetchedBatch(entries,f.env,{
+   now:NOW_DATE,manager:{async spoolBundleAndVerify(){
+    throw Error('P0B_B2_PUT_TRANSPORT_UNAVAILABLE');
+   }}
+  });
+  const initial=f.db.prepare('SELECT state FROM p0b_archive_outbox').get();
+  assert.equal(initial.state,'PENDING_ARCHIVE');
+  const noReplay=await drainP0bArchiveOutbox(f.env,{now:NOW+60_000,
+   persist:async()=>{throw Error('SHOULD_NOT_BYPASS_CIRCUIT')}});
+  assert.equal(noReplay.status,'P0B_OUTBOX_B2_CIRCUIT_HELD');
+  const recovered=await drainP0bArchiveOutbox(f.env,{now:NOW+7*60_000,
+   persist:(candidates,env,opts)=>processFetchedBatch(candidates,env,{
+    ...opts,manager:f.manager
+   })
+  });
+  assert.equal(recovered.status,'P0B_OUTBOX_REPLAY_OK');
+  assert.equal(recovered.archived,1);
+  const row=f.db.prepare('SELECT * FROM p0b_archive_outbox').get();
+  assert.equal(row.state,'ARCHIVED');
+  assert.equal(row.b2_etag,'"'+ 'c'.repeat(32) +'"');
+  assert.equal(row.sealed_payload,null);
+  assert.match(row.b2_uri,/^b2:\/\//u);
+  assert.match(row.b2_object_sha256,/^[a-f0-9]{64}$/u);
+  assert.equal(f.objects.size,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,26);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_bundles').get().n,1);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,1);
+ }finally{f.close()}
+});
+test('P0-B outbox remote B2 PUT succeeds but D1 journal failure never marks ARCHIVED',async()=>{
+ const f=fixture();
+ try{
+  const c=await candidate(10200);
+  const broken={...f.env,DB:{
+   ...f.env.DB,
+   async batch(){throw Error('D1_SIMULATED_TRANSACTION_FAILURE')}
+  }};
+  const result=await processFetchedBatch([c],broken,{manager:f.manager,now:NOW_DATE});
+  assert.equal(result.all_durable,false);
+  assert.equal(f.objects.size,1);
+  const pending=f.db.prepare('SELECT state,b2_uri,sealed_payload FROM p0b_archive_outbox').get();
+  assert.equal(pending.state,'PENDING_ARCHIVE');
+  assert.equal(pending.b2_uri,null);
+  assert.ok(typeof pending.sealed_payload==='string');
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,0);
+ }finally{f.close()}
+});
+
+test('P0-B same immutable batch and publisher clock produce exact same encrypted B2 bytes and idempotent key',async()=>{
+ const f=fixture();
+ try{
+  const rows=await Promise.all([candidate(12000),candidate(12001)]);
+  const payloads=rows.map(c=>({
+    candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+    rawPayload:c.raw,headers:{},discoveredAt:at
+  }));
+  const a=await f.manager.spoolBundleAndVerify(payloads,{keyTime:NOW_DATE()});
+  const objectA=new Uint8Array(f.objects.values().next().value);
+  const b=await f.manager.spoolBundleAndVerify(payloads,{keyTime:NOW_DATE()});
+  const objectB=new Uint8Array(f.objects.values().next().value);
+  assert.equal(a.b2Uri,b.b2Uri);
+  assert.equal(a.batchSha256,b.batchSha256);
+  assert.deepEqual(objectA,objectB);
+  assert.equal(f.objects.size,1);
+  const restores=await f.manager.readBundleVerified(a.b2Uri,a.batchSha256);
+  assert.equal(restores.items.length,2);
  }finally{f.close()}
 });

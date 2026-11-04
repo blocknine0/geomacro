@@ -236,10 +236,12 @@ export function createPhase2hCanonicalD1({
    d1_write_statements:Math.ceil(items.length/MAX_D1_BULK_ARCHIVE_ACK)};
  };
  return {
-  async readPending(now=new Date()){
+  async readPending(now=new Date(),{maxRows:requestedMax=300}={}){
    // 31 Oct owner policy: B2 archival-only reader must recover retained
    // original D1 history; general question/read routes still enforce 72h.
-   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
+   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
+      !Number.isSafeInteger(requestedMax)||requestedMax<1||
+      requestedMax>300)
     fail("CANONICAL_D1_ARCHIVE_CLOCK_INVALID");
 
    // 25-row bounded indexed keyset (same provider quota and 300-row cap).
@@ -247,7 +249,7 @@ export function createPhase2hCanonicalD1({
    // advance cursor on failure, or duplicate original article bodies.
    const rows=[];
    const useBulkWorkerV2=env.PHASE2H_BULK_WORKER_ARCHIVE_V2==="1";
-   let pageSize=25,maxRows=300,attempts=0,useInternal=false;
+   let pageSize=25,maxRows=requestedMax,attempts=0,useInternal=false;
    let cursorClock=null,cursorId=null;
    while(rows.length<maxRows){
     if(++attempts>70)fail("D1_PAGE_REQUEST_BUDGET_EXCEEDED");
@@ -301,7 +303,7 @@ export function createPhase2hCanonicalD1({
        // Exact admin-only D1 binding remains last-resort fallback. Original
        // data and idempotent cursor stay unchanged on every failed attempt.
        pageSize=25;
-       maxRows=300;
+       maxRows=requestedMax;
        continue;
       }
      }
@@ -421,6 +423,68 @@ export function phase2hAuthorizedArchiveWindow({
    deployed?.head_sha===env.GITHUB_SHA;
  }catch{return false}
 }
+/** Exact schedule and trusted-main-only identity for the separate historical
+ * retry lane. It never changes live news freshness or customer research.
+ */
+export function phase2hAuthorizedHistoricalRecoveryWindow({
+ env=process.env,eventReader=readFileSync
+}={}){
+ if(env.GITHUB_ACTIONS!=="true"||
+    env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+    env.GITHUB_REF!=="refs/heads/main"||
+    env.GITHUB_EVENT_NAME!=="schedule"||
+    env.GITHUB_WORKFLOW_REF!==
+     "blocknine0/geomacro/.github/workflows/phase2h-historical-recovery-10m.yml@refs/heads/main")
+   return false;
+ const path=String(env.GITHUB_EVENT_PATH??"");
+ if(!isAbsolute(path)||!path.endsWith("/event.json")||path.length>512)
+  return false;
+ try{return JSON.parse(eventReader(path,"utf8"))?.schedule==="*/10 * * * *";}
+ catch{return false;}
+}
+
+/** Historical-only Zod v4 schema gate (installed in isolated recovery
+ * action). Existing Worker validPrivateRawNews still performs full hash,
+ * exact-key and immutable-original verification before returning each row.
+ */
+export async function validateHistoricalArchiveRowsZod(rows,importZod=()=>import("zod")){
+ if(!Array.isArray(rows)||rows.length>200)fail("HISTORICAL_ZOD_BATCH_INVALID");
+ let z;
+ try{({z}=await importZod());}
+ catch{fail("HISTORICAL_ZOD_DEPENDENCY_UNAVAILABLE")}
+ const hex=z.string().regex(/^[a-f0-9]{64}$/u);
+ const date=z.string().refine(v=>Number.isFinite(Date.parse(v)));
+ const article=z.object({
+  schema:z.literal("geomacro.phase2h.private-raw-observation.v1"),
+  record_id:hex,category:z.enum(["geopolitics","macro","rare_earth"]),
+  raw_sha256:hex,ingested_at:date,
+  commercial_rights_verified:z.literal(false),
+  commercial_delivery_authorized:z.literal(false),
+  original:z.object({
+   original_source_id:z.string(),original_url:z.string().url(),
+   original_published_at:date,original_title:z.string(),
+   full_article_html_collected:z.literal(false),
+  }),
+  analysis:z.object({
+   schema:z.literal("geomacro.phase2h.private-five-part.v1"),
+   what_happened:z.object({text:z.string().nullable()}),
+   why_it_matters:z.object({text:z.string().nullable()}),
+   market_relevance:z.object({
+    observed_market_reaction_verified:z.literal(false)
+   }),
+   what_to_watch:z.object({trigger:z.string()}),
+   evidence_and_confidence:z.object({
+    original_observation_id:hex,paid_eligible:z.literal(false),
+    commercial_rights_verified:z.literal(false),
+   }),
+  })
+ });
+ for(const item of rows)
+  if(!article.safeParse(item).success)fail("HISTORICAL_ZOD_ROW_INVALID");
+ return {verified_count:rows.length,all_strictly_typed:true,
+  original_clocks_preserved:true};
+}
+
 export async function runPhase2hGovernedRawB2({
  env=process.env,now=new Date(),fetchImpl=fetch,
  b2Factory=createB2Client,governorFactory=createB2D1AccountGovernor,
@@ -438,7 +502,10 @@ export async function runPhase2hGovernedRawB2({
   fail("PROTECTED_MAIN_GOVERNOR_REQUIRED");
  // Only canonical six-hour schedule; backlog may exceed a single slot.
  // Manual-only storage deletion remains independent.
- if(!windowAuthorizer({env,now,eventReader}))
+ const historicalRecovery=env.PHASE2H_HISTORICAL_RECOVERY==="1";
+ if(historicalRecovery?
+    !phase2hAuthorizedHistoricalRecoveryWindow({env,eventReader}):
+    !windowAuthorizer({env,now,eventReader}))
   return {status:"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT",storage_confirmed:false,
    rows_archived:0,object_sha256:null};
  const governor=governorFactory({env,fetchImpl});
@@ -449,9 +516,13 @@ export async function runPhase2hGovernedRawB2({
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
  const d1=d1Factory({env,fetchImpl});
- const initialRows=await d1.readPending(now);
- if(!Array.isArray(initialRows)||initialRows.length>300)
+ const initialRows=await d1.readPending(now,{maxRows:historicalRecovery?200:300});
+ if(!Array.isArray(initialRows)||initialRows.length>(historicalRecovery?200:300))
    fail("PRIVATE_SOURCE_CONTRACT_INVALID");
+ // Mandatory Zod v4 in the 10-minute archive-only lane. Live source
+ // publication and existing six-hour archive dependencies are unchanged.
+ if(historicalRecovery&&initialRows.length)
+   await validateHistoricalArchiveRowsZod(initialRows);
  if(!initialRows.length)
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
@@ -491,7 +562,8 @@ export async function runPhase2hGovernedRawB2({
     now.getTime()-Date.parse(r.ingested_at)>=72*60*60_000).length,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
-  backlog_may_remain:initialRows.length===300,
+  backlog_may_remain:initialRows.length===(historicalRecovery?200:300),
+  historical_recovery_lane:historicalRecovery,
   b2_automatic_deletion_paused_provider_verified:true,
   b2_first_get_verified:true,b2_second_get_performed:false,
   post_archive_d1_verified:true,
