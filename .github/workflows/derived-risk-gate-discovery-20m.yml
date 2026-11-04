@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  protected-four-lane-intake:
+  protected-five-lane-intake:
     runs-on: ubuntu-latest
     timeout-minutes: 14
     environment: production
