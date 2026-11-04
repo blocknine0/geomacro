@@ -6,8 +6,10 @@
 import {readFileSync,existsSync} from "node:fs";
 const root=new URL("../../",import.meta.url);
 const LANES=Object.freeze(["geopolitics","macro","rare_earth","corridor"]);
-const STATES=new Set(["EXISTING_COLLECTOR","CATALOGUED_NOT_POLLING",
- "CREDENTIAL_GATED","HOLD_NOT_FREE","HOLD_PROVIDER_ELIGIBILITY"]);
+const STATES=new Set(["EXISTING_READ_ONLY_OBSERVER",
+ "EXISTING_PRIVATE_FEED_COLLECTOR","EXISTING_STRUCTURAL_REFERENCE_ADAPTER",
+ "CATALOGUED_NOT_POLLING","CREDENTIAL_GATED",
+ "HOLD_NOT_FREE","HOLD_PROVIDER_ELIGIBILITY"]);
 const RIGHTS=new Set(["OPEN_WITH_ATTRIBUTION","US_PUBLIC_DOMAIN_GOV_WORKS",
  "OPEN_WITH_ATTRIBUTION_SUBSET","CONDITIONAL_BIS_STATISTICS_ONLY",
  "PUBLISHER_REVIEW_REQUIRED","NOT_FREE_FOR_PRODUCTION",
@@ -50,8 +52,9 @@ export function fourLaneOpenSourceRightsInventory(){
      x.publisher_content_commercially_reusable!==false||
      x.paid_risk_gate_eligible!==false)
    throw Error("FOUR_LANE_UNTRUSTED_PROVIDER_RECORD:"+x?.id);
-  const shouldFetch= !["HOLD_NOT_FREE","HOLD_PROVIDER_ELIGIBILITY",
-   "CATALOGUED_NOT_POLLING","CREDENTIAL_GATED"].includes(x.ingestion_state);
+  const shouldFetch= ["EXISTING_READ_ONLY_OBSERVER",
+   "EXISTING_PRIVATE_FEED_COLLECTOR",
+   "EXISTING_STRUCTURAL_REFERENCE_ADAPTER"].includes(x.ingestion_state);
   if(x.source_only_factual_metadata_allowed!==shouldFetch||
      forbiddenRightsForFree.has(x.rights_class)&&x.ingestion_state!=="HOLD_NOT_FREE"||
      x.ingestion_state==="HOLD_NOT_FREE"&&x.rights_class!=="NOT_FREE_FOR_PRODUCTION"||
