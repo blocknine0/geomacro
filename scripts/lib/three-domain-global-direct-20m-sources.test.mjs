@@ -21,6 +21,8 @@ test("true 20-minute production registry includes all Hot-50 native feeds plus n
  assert.ok(hot.every(x=>urls.has(x.url)), "never omit a pinned Hot-50 direct source");
  assert.deepEqual([...summary.categories_configured],categories);
  assert.ok(categories.every(x=>registry.some(s=>s.categories.includes(x))));
+ assert.equal(summary.hot50_retired_backup_mapping_count,14);
+ assert.equal(summary.hot50_retired_backup_unique_urls_in_current_tick,14);
  assert.equal(summary.google_index_urls_polled,0);
  assert.equal(summary.telegram_messages_polled,0);
  assert.equal(summary.paid_credentials_used,0);
@@ -54,7 +56,7 @@ test("over-cap global nonpriority direct publishers fairly rotate without losing
   const urls=new Set(registry.map(x=>x.url));
   assert.equal(registry.length,504);
   assert.equal(summary.other_direct_feeds_deferred_this_tick,
-   430-(504-hot.length));
+   430-(504-summary.hot50_priority_direct_feeds_including_backups));
   assert.ok(hot.every(x=>urls.has(x.url)));
   for(const src of registry)if(src.id.startsWith("private_test_global_"))
    seen.add(src.id);
