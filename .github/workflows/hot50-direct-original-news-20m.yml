@@ -101,7 +101,7 @@ jobs:
           node --check scripts/ops/probe-geopolitics-continuity-feeds.mjs
           node --test scripts/lib/hot-50-retired-backup-sources.test.mjs
           node --check scripts/ops/probe-hot50-retired-backup-transports.mjs
-          node --test scripts/tests/hot50-fresh-priority-d1.test.mjs
+          node --test scripts/tests/hot50-fresh-priority-d1.test.mjs scripts/tests/direct20m-source-health-proof.test.mjs
           node --input-type=module -e 'import {threeDomainGlobal20mPublisherRegistry} from "./scripts/lib/three-domain-global-direct-20m-sources.mjs"; console.log(JSON.stringify({schema:"geomacro.global-three-domain-20m-source-census.v1",...threeDomainGlobal20mPublisherRegistry(new Date()).summary}))'
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs
@@ -233,6 +233,15 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Retain source-wise runtime health and D1 readback counts (no publisher article bytes)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-direct20m-source-health-${{ github.run_id }}
+          path: ${{ runner.temp }}/geomacro-direct20m-source-proof.json
+          if-no-files-found: warn
+          retention-days: 1
+          compression-level: 6
       - name: Save ONLY 72h AEAD ciphertext; never upload raw original titles/links
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
