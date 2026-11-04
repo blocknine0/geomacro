@@ -75,6 +75,18 @@ export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
  expected_categories:3,maximum_original_records_per_slot:5,
  no_paid_capacity:true,protect_predge_reserve:true,
 });
+/** One additional 20-minute direct-source microbundle is reserved on every
+ * remaining UTC 20-minute slot BEFORE any admission. It uses the same
+ * five-original existing D1 writer and cross-workflow serialization, never
+ * a parallel unlimited D1 consumer or a paid Cloudflare plan. */
+export const HOT50_DIRECT_20M_FREE_RESERVE=Object.freeze({
+ interval_minutes:20,producers_per_slot:1,
+ max_new_rows:MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows,
+ rows_read_per_slot:MINIMUM_DAILY_BUNDLED_SOURCE.rows_read_per_slot,
+ rows_written_per_slot:MINIMUM_DAILY_BUNDLED_SOURCE.rows_written_per_new_row*
+  MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows+
+  MINIMUM_DAILY_BUNDLED_SOURCE.rows_written_overhead_per_slot,
+});
 export function planSourceIntake(snapshot,now){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
     !snapshot||!Number.isSafeInteger(snapshot.remaining_rows_read)||
@@ -84,11 +96,13 @@ export function planSourceIntake(snapshot,now){
  const remainingMs=DAY_MS-
   (now.getTime()-Date.parse(now.toISOString().slice(0,10)+"T00:00:00.000Z"));
  const slots=Math.ceil(remainingMs/(c.interval_minutes*60000));
+ const directSlots=Math.ceil(remainingMs/
+   (HOT50_DIRECT_20M_FREE_RESERVE.interval_minutes*60000));
  const rows_read=c.rows_read_per_slot*slots*c.producers_per_slot+
-   c.rows_read_fixed;
+   c.rows_read_fixed+directSlots*HOT50_DIRECT_20M_FREE_RESERVE.rows_read_per_slot;
  const rows_written=(c.rows_written_per_new_row*c.max_new_rows+
    c.rows_written_overhead_per_slot)*slots*c.producers_per_slot+
-   c.rows_written_fixed;
+   c.rows_written_fixed+directSlots*HOT50_DIRECT_20M_FREE_RESERVE.rows_written_per_slot;
  // No borrowing from PREDGE's 500k read / 8k write reserve, critical
  // emergency operations, or a future source tick. Strict '>' absorbs
  // non-atomic provider counter lag; unknown quota is a hard HOLD upstream.
@@ -98,6 +112,8 @@ export function planSourceIntake(snapshot,now){
  return Object.freeze({
   interval_minutes:c.interval_minutes,max_new_rows:c.max_new_rows,
   producers_per_slot:c.producers_per_slot,
+  additional_hot50_direct_20m_slots_reserved:directSlots,
+  hot50_direct_20m_max_new_rows:HOT50_DIRECT_20M_FREE_RESERVE.max_new_rows,
   rows_read,rows_written,remaining_source_slots:slots,
   remaining_five_minute_slots:Math.ceil(remainingMs/300000),
   plan:"MINIMUM_FREE_15M_THREE_CATEGORY_BUNDLED_SOURCE",
