@@ -161,6 +161,8 @@ const approvedPricing = [
   config.approved_permanent_home_finds_removal_20261102,
   // Founder-scoped, exact blobs: R2-only Intelligence data read, no UI unlock.
   config.approved_r2_latest_json_intelligence_20261104,
+  // Founder-directed PR #3555 canonical D1 feed, pinned to exact approved blobs.
+  config.approved_p2_canonical_d1_intelligence_feed_20261104,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
