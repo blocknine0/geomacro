@@ -314,6 +314,7 @@
     "risk-gate-core-resilience.yml",
     "risk-gate-production-proof.yml",
     "risk-gate-staging-load.yml",
+    "risk-gate-streaming.yml",
     "risk-indices-realtime-direct-postgres.yml",
     "risk-indices-verified-d1-parent.yml",
     "risk-indices-verified-parent-backstop.yml",
