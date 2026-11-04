@@ -196,3 +196,117 @@ export function resolveDerivedCommercialEligibility(source={}){
       "DERIVED_FACTS_COMMERCIAL_CANDIDATE",
  });
 }
+
+
+/**
+ * Step 1: deterministic facts-only commercial Risk Gate review loop.
+ * Call on every authorized discovery event, new independent source proof, or
+ * signed-score arrival. No source fetch, payment unlock, storage, GRO signing
+ * or customer publish happens here. An unlicensed article is a discovery
+ * signal only; all promoted data comes from separately verified evidence.
+ */
+export const DERIVED_RISK_GATE_REVIEW_SCHEMA=
+  "geomacro.derived-risk-gate-review-cycle.v1";
+const RISK_GATE_CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
+const CANDIDATE_FACT_SHA=/^[a-f0-9]{64}$/u;
+const nextReviewAction=status=>({
+  HOLD_SOURCE_ACCESS_OR_EXPRESSION:"VERIFY_SOURCE_ACCESS_AND_PROCESSING_RIGHTS",
+  PENDING_CORROBORATION:"FETCH_AND_VERIFY_INDEPENDENT_PRIMARY_OR_LICENSED_EVIDENCE",
+  PENDING_INDEPENDENT_SCORE_AUDIT:"RECOMPUTE_AND_DUAL_SIGN_GRI_V12_PROOF",
+  PENDING_EVENT_SCORE_BINDING:"BIND_ONE_VERIFIED_EVENT_TO_SIGNED_SCORE_ROW",
+  DERIVED_FACTS_READY_FOR_DELIVERY_REVIEW:"RUN_SEPARATE_COMMERCIAL_DELIVERY_GATES",
+})[status]??"HOLD_UNVERIFIED";
+
+export function advanceDerivedRiskGateReview(source={}){
+  const s=source&&typeof source==="object"&&!Array.isArray(source)?source:{};
+  const rights=resolveDerivedCommercialEligibility(s);
+  let status=rights.status==="HOLD_SOURCE_ACCESS_OR_EXPRESSION"?
+    "HOLD_SOURCE_ACCESS_OR_EXPRESSION":
+    !rights.independentFactsVerified?"PENDING_CORROBORATION":
+    !rights.commercialEligible?"PENDING_INDEPENDENT_SCORE_AUDIT":
+    "DERIVED_FACTS_READY_FOR_DELIVERY_REVIEW";
+  let candidate=null;
+  if(rights.commercialEligible){
+    // The pinned and independently signed GRI proof already covers the score
+    // event array. Bind the derived record to exactly ONE corresponding event;
+    // never accept severity, domain or prose supplied separately by a caller.
+    const rows=s.scoreProof?.score_events;
+    const eventRows=Array.isArray(rows)?
+      rows.filter(r=>r?.story_canonical_label===s.eventType):[];
+    const row=eventRows.length===1?eventRows[0]:null;
+    if(!row||!RISK_GATE_CATEGORIES.has(row.category)||
+       typeof row.severity!=="number"||
+       !Number.isFinite(row.severity)||row.severity<0||row.severity>100){
+      status="PENDING_EVENT_SCORE_BINDING";
+    }else{
+      candidate=Object.freeze({
+        schema:"geomacro.verified-risk-gate-fact-candidate.v1",
+        event_type:s.eventType,
+        country_iso3:s.countryIso3,
+        domain:row.category,
+        severity_impact:row.severity,
+        // The event code is a controlled fact label: NOT article wording.
+        recorded_fact:s.eventType,
+        risk_score_0_100:s.scoreProof.verified_score_0_100,
+        factual_record_sha256:s.factualRecordSha256,
+        score_calculation_sha256:s.scoreProof.calculation_hash,
+        evidence: Object.freeze(s.independentEvidence.map(e=>Object.freeze({
+          kind:e.kind,issuer:e.issuer,url:e.url,sha256:e.contentSha256,
+        }))),
+      });
+    }
+  }
+  return Object.freeze({
+    schema:DERIVED_RISK_GATE_REVIEW_SCHEMA,
+    status,next_action:nextReviewAction(status),
+    source_id:rights.sourceId,
+    original_source_signal_only:rights.originalSourceSignalOnly,
+    source_rights_basis:rights.originalIssuerRightsBasis,
+    independent_facts_verified:rights.independentFactsVerified,
+    storeRawText:false,publishOriginalArticle:false,
+    originalArticleRedistributed:false,
+    allowMathematicalScore:rights.allowMathematicalScore,
+    commercialEligible:status==="DERIVED_FACTS_READY_FOR_DELIVERY_REVIEW"&&
+      candidate!==null,
+    paidDeliveryAuthorized:false,signedGroAuthorized:false,
+    candidate,
+  });
+}
+
+/**
+ * Bounded, idempotent-in-output review pass for scheduled ingestion callers.
+ * Duplicates of an independently hashed event are collapsed, preferring its
+ * most verified disposition. This function performs no writes and makes no
+ * claim that producers are already wired to invoke it.
+ */
+export function reviewDerivedRiskGateBatch(sources=[]){
+  if(!Array.isArray(sources)||sources.length>500)
+    return Object.freeze({schema:DERIVED_RISK_GATE_REVIEW_SCHEMA,
+      status:"BLOCKED_INVALID_BATCH",scanned:0,deduplicated:0,
+      candidates:Object.freeze([]),reviews:Object.freeze([])});
+  const accepted=new Map();
+  for(let i=0;i<sources.length;i++){
+    const source=sources[i];
+    const result=advanceDerivedRiskGateReview(source);
+    const s=source&&typeof source==="object"&&!Array.isArray(source)?source:{};
+    const key=CANDIDATE_FACT_SHA.test(s.factualRecordSha256??"")&&
+      /^[A-Z]{3}$/u.test(s.countryIso3??"")&&
+      /^[A-Z][A-Z0-9_]{3,79}$/u.test(s.eventType??"")?
+      s.countryIso3+"|"+s.eventType+"|"+s.factualRecordSha256:
+      "unverified:"+i;
+    const previous=accepted.get(key);
+    const rank=r=>r.commercialEligible?4:
+      r.status==="PENDING_EVENT_SCORE_BINDING"?3:
+      r.status==="PENDING_INDEPENDENT_SCORE_AUDIT"?2:
+      r.status==="PENDING_CORROBORATION"?1:0;
+    if(!previous||rank(result)>rank(previous))accepted.set(key,result);
+  }
+  const reviews=Object.freeze([...accepted.values()]);
+  return Object.freeze({
+    schema:DERIVED_RISK_GATE_REVIEW_SCHEMA,status:"REVIEWED",
+    scanned:sources.length,deduplicated:sources.length-reviews.length,
+    candidates:Object.freeze(reviews.filter(r=>r.commercialEligible)
+      .map(r=>r.candidate)),
+    reviews,
+  });
+}
