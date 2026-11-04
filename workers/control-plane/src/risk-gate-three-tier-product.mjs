@@ -27,10 +27,6 @@ export const RISK_GATE_PRODUCT_TIERS=Object.freeze({
 });
 const HEX=/^[a-f0-9]{64}$/u;
 const ISO=/^\d{4}-\d{2}-\d{2}$/u;
-const HTTPS=s=>{
- try{const u=new URL(s);return u.protocol==="https:"&&!u.username&&!u.password&&
-  !u.hash&&u.href.length<=400?u.href:null;}catch{return null;}
-};
 const boundedScore=n=>Number.isFinite(n)&&n>=0&&n<=100?Number(n.toFixed(2)):null;
 const dayDate=(now,offset)=>new Date(now-offset*86400000).toISOString().slice(0,10);
 
@@ -86,13 +82,11 @@ function corroborationProof(gro){
     evidence.source_ids.filter(x=>typeof x==="string"&&x.length<=128).slice(0,6):[];
   const hashes=Array.isArray(evidence.content_hashes)?
     evidence.content_hashes.filter(x=>HEX.test(x)).slice(0,6):[];
-  const urls=Array.isArray(evidence.source_urls)?
-    evidence.source_urls.map(HTTPS).filter(Boolean).slice(0,6):[];
-  if(refs.length+hashes.length+urls.length===0)continue;
+  if(refs.length+hashes.length===0)continue;
   source_references.push({
    event_reference:String(evidence.event_id??"").slice(0,128),
    independent_source_count:evidence.independent_source_count,
-   source_ids:refs,content_sha256:hashes,source_urls:urls,
+   source_ids:refs,content_sha256:hashes,
   });
  }
  return source_references.length?source_references:null;
@@ -124,8 +118,8 @@ function sevenDays(rows,now,subject){
  return {window_days:7,points:observations,verified_score_days:rated.length,
   trend:direction,
   latest_minus_earliest:rated.length<2?null:
-   boundedScore(rated.at(-1).friction_score_0_100-
-    rated[0].friction_score_0_100)};
+   Number((rated.at(-1).friction_score_0_100-
+    rated[0].friction_score_0_100).toFixed(2))};
 }
 function archiveLocation(proof,gro){
  if(!proof||proof.archive_readback_verified!==1||
@@ -172,7 +166,7 @@ export function composeRiskGateThreeTierResponse({
    confidence:score===null?null:{level:"LOW",verification:"PROVISIONAL"},
    risk_score_0_100:score,risk_score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
    indicative_risk_score_0_100:score,
-   signal_alerts:alerts,fast_sla_monitoring:true,
+   signal_alerts:alerts,fast_sla_mode:"SOURCE_TIMESTAMP_DRIVEN_ALERTS",
    data_basis:"SINGLE_SOURCE_AND_OBSERVED_METADATA",
    category_observations:categoryRows.map(({category,observed_count,status})=>({
     category,observed_count,status,
