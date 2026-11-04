@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {MINIMUM_DAILY_BUNDLED_SOURCE,planSourceIntake,planD1BundledWork,
- PREDGE_D1_FREE_HEADROOM,D1_BUNDLE_LANES}
+ PREDGE_D1_FREE_HEADROOM,D1_BUNDLE_LANES,HOT50_DIRECT_20M_FREE_RESERVE}
  from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 const quota=(when,read,written)=>({
@@ -22,8 +22,11 @@ test("minimum Free D1 account plan reserves all three bounded 15-minute D1 produ
  assert.equal(plan.minimum_daily_bundled_source_admitted,true);
  assert.equal(plan.minimum_daily_bundled_source_policy.no_paid_capacity,true);
  assert.equal(budget.remaining_source_slots,96);
- assert.equal(budget.rows_read,1021600);
- assert.equal(budget.rows_written,36560);
+ assert.equal(budget.rows_read,1252000);
+ assert.equal(budget.rows_written,45200);
+ assert.equal(budget.additional_hot50_direct_20m_slots_reserved,72);
+ assert.equal(budget.hot50_direct_20m_max_new_rows,5);
+ assert.equal(HOT50_DIRECT_20M_FREE_RESERVE.interval_minutes,20);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.maximum_original_records_per_slot,5);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.producers_per_slot,3);
  assert.equal(MINIMUM_DAILY_BUNDLED_SOURCE.expected_categories,3);
@@ -36,7 +39,7 @@ test("minimum Free D1 account plan reserves all three bounded 15-minute D1 produ
 });
 test("strict account-wide Free reserve leaves PREDGE and critical capacity untouched",()=>{
  const at=new Date("2026-10-31T23:45:00.000Z");
- const readBudget=109600,writeBudget=2360;
+ const readBudget=112800,writeBudget=2480;
  const exactRead=quota(at,5_000_000-(1_250_000+readBudget),0);
  const exactWrite=quota(at,0,100_000-(23_000+writeBudget));
  assert.equal(planSourceIntake(exactRead,at),null);
@@ -64,6 +67,7 @@ test("daily budget recalculates only from true UTC time and never admits unknown
  assert.equal(planD1BundledWork({...quota(at,1_000_000,1_000),day_utc:"2026-10-30"},{now:at}).source_intake,false);
  const admitted=planD1BundledWork(quota(at,1_000_000,1_000),{now:at});
  assert.equal(admitted.source_intake_budget_to_utc_reset.remaining_source_slots,48);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,560800);
- assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,19280);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_read,676000);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.rows_written,23600);
+ assert.equal(admitted.source_intake_budget_to_utc_reset.additional_hot50_direct_20m_slots_reserved,36);
 });

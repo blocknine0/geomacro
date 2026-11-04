@@ -1,0 +1,167 @@
+name: Hot-50 Direct Original News (20-Minute Cron)
+
+# Poll pinned Hot-50 RSS/Atom/JSON publishers; no Google index or Telegram.
+# All actual D1 writes use the EXISTING authenticated private source-only
+# writer and shared cross-workflow mutex. Github cron is best effort;
+# transport success is not proof of native events or B2 archiving.
+on:
+  schedule:
+    - cron: "6,26,46 * * * *"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/hot50-direct-original-news-20m.yml"
+      - "scripts/lib/hot-50-direct-20m-sources.mjs"
+      - "scripts/lib/hot-50-direct-20m-sources.test.mjs"
+      - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
+      - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
+      - "config/hot-50-four-lane-source-crosswalk.v1.json"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/hot50-direct-original-news-20m.yml"
+      - "scripts/lib/hot-50-direct-20m-sources.mjs"
+      - "scripts/lib/hot-50-direct-20m-sources.test.mjs"
+      - "scripts/ops/phase2i-source-only-raw-tick.ts"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/minimum-daily-bundled-source.test.mjs"
+      - "scripts/ops/preload-phase2i-encrypted-backlog.mjs"
+      - "config/hot-50-four-lane-source-crosswalk.v1.json"
+
+permissions:
+  contents: read
+  actions: read
+
+# Prevent push/PR verification from replacing an actual 20-minute source run.
+concurrency:
+  group: ${{ github.event_name == 'schedule' && 'geomacro-hot50-direct20m-scheduled' || github.event_name == 'pull_request' && format('geomacro-hot50-direct20m-pr-{0}', github.event.pull_request.number) || format('geomacro-hot50-direct20m-{0}', github.event_name) }}
+  cancel-in-progress: false
+
+jobs:
+  source-contract:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify 50 countries, pinned direct-only registry, D1 budget and 20m cron
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/hot-50-direct-20m-sources.mjs
+          node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
+          node --test scripts/tests/minimum-daily-bundled-source.test.mjs
+          node --check scripts/ops/preload-phase2i-encrypted-backlog.mjs
+
+  quota-admission:
+    name: Reserved Free D1 source intake for next protected 20-minute microbundle
+    needs: source-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment: production
+    outputs:
+      source_intake: ${{ steps.budget.outputs.source_intake }}
+      critical: ${{ steps.budget.outputs.critical }}
+      research: ${{ steps.budget.outputs.research }}
+      source_intake_max_new_rows: ${{ steps.budget.outputs.source_intake_max_new_rows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Check account-wide D1 free quota including all remaining 20m slots
+        id: budget
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Quota HELD is not ingestion
+        if: steps.budget.outputs.source_intake != 'true'
+        run: echo "::warning::HOT50_DIRECT_20M_SOURCE_INTAKE_HELD; no D1 news inserted"
+
+  collect-direct-20m:
+    name: Fetch pinned direct publishers and stage native originals into canonical private D1
+    needs: [source-contract, quota-admission]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'schedule' &&
+      needs.quota-admission.result == 'success' &&
+      needs.quota-admission.outputs.source_intake == 'true'
+    # Shared with both existing 15-minute private original producer and the
+    # five-minute canonical fastlane, so no simultaneous D1 writer races.
+    concurrency:
+      group: geomacro-permanent-news-publication
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Recover latest authenticated encrypted original queue from same protected source store
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+        run: |
+          set -euo pipefail
+          node scripts/ops/preload-phase2i-encrypted-backlog.mjs
+      - name: Poll only Hot-50 direct feeds, dedupe with existing queue, read back up to 5 native D1 originals
+        env:
+          GEOMACRO_SOURCE_REGISTRY_MODE: HOT50_DIRECT_20M
+          GEOMACRO_SOURCE_INTAKE_ONLY: "1"
+          PHASE2I_PROVIDER_SOURCE_INTAKE: ${{ needs.quota-admission.outputs.source_intake }}
+          PHASE2I_PROVIDER_CRITICAL: ${{ needs.quota-admission.outputs.critical }}
+          PHASE2I_PROVIDER_RESEARCH: ${{ needs.quota-admission.outputs.research }}
+          PHASE2I_PROVIDER_MAX_NEW_ROWS: ${{ needs.quota-admission.outputs.source_intake_max_new_rows }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+          GEOMACRO_PHASE2I_QUEUE_CIPHERTEXT: ${{ runner.temp }}/phase2i-ciphertext/queue.json
+          GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Save ONLY 72h AEAD ciphertext; never upload raw original titles/links
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-private-phase2i-72h-ciphertext
+          path: ${{ runner.temp }}/phase2i-ciphertext/queue.json
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+      - name: Wipe ephemeral decrypted queue and private website handoff
+        if: always()
+        env:
+          GEOMACRO_PHASE2I_PRIOR_QUEUE: ${{ runner.temp }}/phase2i-previous-source-queue.json
+          GEOMACRO_SOURCE_WEBSITE_HANDOFF: ${{ runner.temp }}/geomacro-source-website-handoff.json
+        run: rm -f -- "$GEOMACRO_PHASE2I_PRIOR_QUEUE" "$GEOMACRO_SOURCE_WEBSITE_HANDOFF"

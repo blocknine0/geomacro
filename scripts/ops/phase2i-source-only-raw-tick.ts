@@ -15,6 +15,7 @@ import {planSourceWebsiteHandoff} from "../lib/source-only-website-handoff.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
+import {hot50Direct20mPublisherRegistry} from "../lib/hot-50-direct-20m-sources.mjs";
 import {privateOsintCountryMention} from "../lib/private-osint-country-mentions.mjs";
 import {stagePhase2iOsintFairRaw} from "../lib/phase2i-osint-country-fair-raw-staging.mjs";
 import {persistPrivateOsintHeartbeats} from "../lib/phase2i-osint-source-heartbeat.mjs";
@@ -45,7 +46,13 @@ if(root.length<32)throw Error("PHASE2I_SOURCE_ONLY_PRIVATE_AUTH_REQUIRED");
 const controlToken=createHmac("sha256",root)
  .update("geomacro-control-plane-v1").digest("hex");
 const now=new Date();
-const registry=privateOsintRuntimeSources(now,privateOsintGlobalSources(),
+const hot50Direct20m=env.GEOMACRO_SOURCE_REGISTRY_MODE==="HOT50_DIRECT_20M";
+if(hot50Direct20m&&env.GITHUB_EVENT_NAME!=="schedule")
+ throw Error("HOT50_DIRECT20M_SCHEDULE_ONLY");
+if(env.GEOMACRO_SOURCE_REGISTRY_MODE&&!hot50Direct20m)
+ throw Error("UNKNOWN_PRIVATE_SOURCE_REGISTRY_MODE");
+const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():null;
+const registry=direct20m?.registry??privateOsintRuntimeSources(now,privateOsintGlobalSources(),
  COUNTRIES_195,{includeLocalGapLane:true});
 const pinnedCategories=new Map(registry.map(source=>[source.url,source.categories]));
 const singleSweep=createPhase2iSingleSweepOriginalIndex({
@@ -151,8 +158,15 @@ const {schema,status,selected_count,available_originals,deferred_count,
  d1_readback_verified,b2_verified}=stage;
 console.log(JSON.stringify({
  schema,status,source_intake_lane_only:true,
- country_routes:195,country_category_routes:585,
+ country_routes:hot50Direct20m?50:195,
+ country_category_routes:hot50Direct20m?150:585,
  source_endpoints_attempted:result.summary.source_endpoints_attempted,
+ ...(hot50Direct20m?{
+  source_lane:"HOT50_DIRECT_20M",
+  hot50_direct_catalogue:direct20m.summary,
+  actual_country_coverage_verified:false,
+  all_pinned_direct_endpoints_checked:result.summary.source_endpoints_attempted===registry.length,
+ }:{}),
  ...indexed.summary,
  selected_count,available_originals,deferred_count,selected_by_category,
  admitted_source_only_max_rows:admittedRows,

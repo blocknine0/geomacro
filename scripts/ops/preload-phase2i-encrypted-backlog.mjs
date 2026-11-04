@@ -29,6 +29,10 @@ if(!output.startsWith(runner+sep)||output.includes(".."))
  throw Error("PHASE2I_BACKLOG_PATH_INVALID");
 const url="https://api.github.com/repos/blocknine0/geomacro/actions/artifacts?per_page=100&name="+
  encodeURIComponent(PHASE2I_BACKLOG_ARTIFACT);
+// 96 previous 15m snapshots/day plus 72 new 20m snapshots/day can exceed
+// 500 retained ciphertext artifacts across 72h. The endpoint returns the
+// newest 100; the selected main-branch AEAD payload is independently
+// authenticated, expiry-checked and never treated as a D1 ACK.
 const result=await fetch(url,{redirect:"error",
  headers:{Authorization:"Bearer "+token,Accept:"application/vnd.github+json",
   "X-GitHub-Api-Version":"2022-11-28"},
@@ -37,7 +41,7 @@ if(result.status!==200||result.redirected)
  throw Error("PHASE2I_BACKLOG_GITHUB_INDEX_UNAVAILABLE");
 const doc=await result.json();
 if(!Array.isArray(doc?.artifacts)||doc.artifacts.length>100||
-   !Number.isSafeInteger(doc.total_count)||doc.total_count>500)
+   !Number.isSafeInteger(doc.total_count)||doc.total_count>2000)
  throw Error("PHASE2I_BACKLOG_INDEX_AMBIGUOUS");
 // Latest snapshot carries all still-eligible previously queued candidates.
 // A 3-day artifact retention is used only as a transport handoff; original

@@ -192,6 +192,7 @@
     "hosted-authority-readiness.yml",
     "hosting-alignment.yml",
     "hot-topic-family-readiness.yml",
+    "hot50-direct-original-news-20m.yml",
     "imf-oecd-native-period.yml",
     "industry-scale-security-gate.yml",
     "ingest-reliefweb-live.yml",
@@ -409,6 +410,7 @@
     "global-risk-cadence.yml",
     "governed-source-ingestion.yml",
     "gri-signed-ready-cadence-backstop.yml",
+    "hot50-direct-original-news-20m.yml",
     "ingest-reliefweb-live.yml",
     "intelligence-current-scoring-all-domains.yml",
     "intelligence-machine-current.yml",
@@ -462,7 +464,8 @@
     "global-risk-cadence.yml": "GeoMacro Global Risk 30 Minute Verified Cadence (No Funds)",
     "ingest-reliefweb-live.yml": "Ingest ReliefWeb live metadata into canonical private D1",
     "rss-private-d1-15m.yml": "RSS canonical private D1 originals every 15 minutes",
-    "part2-source-d1-acceptance.yml": "Part 2 Source D1 and Rights Acceptance"
+    "part2-source-d1-acceptance.yml": "Part 2 Source D1 and Rights Acceptance",
+    "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -507,6 +510,11 @@
     "rss-private-d1-15m.yml": [
       "cron: \"11,26,41,56 * * * *\"",
       "RSS_LIVE_CYCLE_TRANSPORT: d1_private"
+    ],
+    "hot50-direct-original-news-20m.yml": [
+      "- cron: \"6,26,46 * * * *\"",
+      "group: geomacro-permanent-news-publication",
+      "scripts/ops/phase2i-source-only-raw-tick.ts"
     ]
   },
   "predgeBlobSha1": {
