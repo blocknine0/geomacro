@@ -130,6 +130,32 @@ async function countGapObserved(env,target,cat,now){
   return Math.max(0,Math.min(40,Number(rows?.source_count)||0));
  }catch{return 0}
 }
+async function corroboratedGapFacts(env,target,now){
+ const output={};
+ for(const category of CATEGORIES){
+  try{
+   const rows=(await env.DB.prepare("SELECT event_id,impact_factor,source_id,source_host,title_sha256,event_at FROM unverified_observations WHERE entity_type=? AND entity_id=? AND category=? AND event_at>=? AND event_at<=? AND status='CORROBORATED' AND independent_source_count>=2 AND fact_basis='ARTICLE_FULL_TEXT' AND original_page_fetched=1 AND impact_factor IS NOT NULL ORDER BY event_at DESC LIMIT 80")
+    .bind(target.type,target.id,category,iso(now-DAY),iso(now)).all())?.results??[];
+   const events=new Map();
+   for(const row of rows){
+    if(!hex.test(String(row.event_id))||!hex.test(String(row.title_sha256))||
+       !Number.isFinite(Number(row.impact_factor))||Number(row.impact_factor)<0||Number(row.impact_factor)>100||
+       !Number.isFinite(Date.parse(row.event_at))||!safeHost("https://"+String(row.source_host)))continue;
+    const event=events.get(row.event_id)??{impact:Number(row.impact_factor),sources:[]};
+    if(!event.sources.some(x=>x.source_host===row.source_host))event.sources.push({
+     source_id:String(row.source_id??"").slice(0,100),source_host:String(row.source_host).slice(0,120),
+     title_sha256:row.title_sha256,published_at:row.event_at,
+    });
+    event.impact=Math.max(event.impact,Number(row.impact_factor));events.set(row.event_id,event);
+   }
+   const qualified=[...events.entries()].filter(([,e])=>e.sources.length>=2).slice(0,12);
+   if(qualified.length)output[category]={score_0_100:Number((qualified.reduce((n,[,e])=>n+e.impact,0)/qualified.length).toFixed(2)),
+    event_count:qualified.length,source_count:qualified.reduce((n,[,e])=>n+e.sources.length,0),
+    source_references:qualified.map(([event_id,e])=>({event_id,independent_source_count:e.sources.length,sources:e.sources}))};
+  }catch{/* Missing migration or an unavailable D1 read is not evidence. */}
+ }
+ return output;
+}
 function compactEvidence(items){
  const seen=new Set(),out=[];
  for(const v of items){
@@ -221,6 +247,7 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
   return {category,entries:compactEvidence(await googleObserved(target,category,now,fetcher)),
    source_lane:"GOOGLE_GAP_FILL_OR_EMPTY",private_osint_observed_count:0};
  }));
+ const corroboratedFacts=await corroboratedGapFacts(env,target,now);
  const categories={};
  for(const x of readings){
   const score=signedCategoryScores[x.category]??null;
@@ -262,6 +289,7 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
   basic_focused:{unified_risk_score:basicUnifiedScore,
    category_scores:basicCategoryScores,confidence:"LOW",verification:"PROVISIONAL",
    score_kind:"OBSERVED_BASELINE_ACTIVITY_PROXY"},
+  corroborated_risk_facts:corroboratedFacts,
   dominant_risk:score.dominantFactor??(hasObservedBaseline?basicScore.dominantFactor:null),
   assessment_status:score.unifiedScore===null?
    hasObservedBaseline?"PROVISIONAL_OBSERVED_BASELINE":"INSUFFICIENT_COVERAGE":"VERIFIED_FULL_COVERAGE",
