@@ -192,21 +192,36 @@ export class B2SpoolManager {
   }};
  }
  private async request(method:'PUT'|'GET',key:string,body=new Uint8Array(0)){
-  await this.reserve(method);
+  // A transient network timeout can happen even after B2 received a PUT.
+  // Repeating the same immutable key and EXACT SAME ciphertext bytes is
+  // idempotent; every attempt consumes its own shared B2 quota reservation.
+  // Never retry real HTTP rejection (401/403/429), bad signatures, or
+  // unverified response bodies. Only 1 transport retry is permitted.
   const request=await this.signed(method,key,body);
-  let response:Response;
-  try{response=await this.fetchImpl(request.url,{method,headers:{
-   ...request.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?'application/gzip':'application/json'}:{})
-  },body:method==='PUT'?body:undefined,redirect:'error',
-  signal:AbortSignal.timeout(10000)});}
-  catch{throw Error('P0B_B2_'+method+'_UNAVAILABLE')}
-  if(!response.ok)throw Error('P0B_B2_'+method+'_HTTP_'+response.status);
-  if(method==='PUT')return new Uint8Array();
-  const length=Number(response.headers.get('content-length')??'0');
-  if(length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
-  const bytes=new Uint8Array(await response.arrayBuffer());
-  if(bytes.length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
-  return bytes;
+  for(let attempt=0;attempt<2;attempt++){
+   await this.reserve(method);
+   let response:Response;
+   try{
+    response=await this.fetchImpl(request.url,{method,headers:{
+     ...request.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?
+      'application/gzip':'application/json'}:{})
+    },body:method==='PUT'?body:undefined,redirect:'error',
+    signal:AbortSignal.timeout(attempt===0?10000:16000)});
+   }catch(error){
+    if(attempt===0)continue;
+    const code=error instanceof Error&&error.name==='TimeoutError'?
+      'TIMEOUT':'TRANSPORT_UNAVAILABLE';
+    throw Error('P0B_B2_'+method+'_'+code);
+   }
+   if(!response.ok)throw Error('P0B_B2_'+method+'_HTTP_'+response.status);
+   if(method==='PUT')return new Uint8Array();
+   const length=Number(response.headers.get('content-length')??'0');
+   if(length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(bytes.length>MAX_CIPHER_BYTES)throw Error('P0B_B2_GET_TOO_LARGE');
+   return bytes;
+  }
+  throw Error('P0B_B2_'+method+'_TRANSPORT_UNAVAILABLE');
  }
  async spoolAndVerify(payload:SpoolPayload):Promise<SpoolReceipt>{
   if(!payload||!SHA.test(payload.candidateSha256)||!ID.test(payload.sourceId)||
