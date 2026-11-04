@@ -91,6 +91,42 @@ describe("private B2 server native fallback", () => {
     await expect(readPrivateB2Object("geomacro-evidence/v1/test.json"))
       .rejects.toThrow("B2_PRIVATE_NATIVE_READ_CAPABILITY_MISSING");
   });
+  it("reuses native authorization for 24 hours and refreshes it after expiry", async () => {
+    setReadCredentials("24h-cache");
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-04T00:00:00.000Z"));
+    let authorizations = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
+        return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
+      }
+      if (url === "https://api.backblazeb2.com/b2api/v4/b2_authorize_account") {
+        authorizations += 1;
+        return Response.json({
+          authorizationToken: `native-token-${authorizations}`,
+          apiInfo: { storageApi: {
+            downloadUrl: "https://f005.backblazeb2.com",
+            allowed: { capabilities: ["readFiles"],
+              buckets: [{ name: "geomacro-private-archive" }],
+              namePrefix: "geomacro-evidence/v1/" },
+          } },
+        });
+      }
+      if (url.startsWith("https://f005.backblazeb2.com/file/")) {
+        return new Response("ok", { status: 200 });
+      }
+      return new Response("unexpected", { status: 500 });
+    }));
+
+    await readPrivateB2Object("geomacro-evidence/v1/first.json", { maxBytes: 1024 });
+    await readPrivateB2Object("geomacro-evidence/v1/second.json", { maxBytes: 1024 });
+    expect(authorizations).toBe(1);
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000 + 1);
+    await readPrivateB2Object("geomacro-evidence/v1/third.json", { maxBytes: 1024 });
+    expect(authorizations).toBe(2);
+    vi.useRealTimers();
+  });
   it("stops on native download cap instead of trying another credential", async () => {
     setReadCredentials("hard-cap");
     process.env.B2_KEY_ID = "primary-key";

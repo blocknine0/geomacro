@@ -349,6 +349,62 @@ test('same-window three-source P0-A poll uses one mixed B2 bundle before cursor 
 });
 
 
+test('B2 transient failures use bounded full jitter and reserve quota for each retry',async()=>{
+ const f=fixture();
+ try{
+  const delays:number[]=[],putBodies:Uint8Array[]=[];
+  let puts=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},sleep:async ms=>{delays.push(ms)},
+   random:()=>0.5,
+   fetchImpl:async(url,opts)=>{
+    if(opts.method==='PUT'){
+     puts++;putBodies.push(new Uint8Array(opts.body));
+     if(puts<=3)throw new TypeError('transient TLS connection reset');
+    }
+    return f.fetchImpl(url,opts);
+   }
+  });
+  const c=await candidate(3200);
+  const receipt=await manager.spoolAndVerify({candidateSha256:c.candidateSha256,
+   sourceId:c.sourceId,rawPayload:c.raw,discoveredAt:at,headers:{}});
+  assert.deepEqual(delays,[50,250,750]);
+  assert.equal(puts,4);
+  assert.equal(reservations,5);
+  assert.equal(f.objects.size,1);
+  assert.ok(putBodies.every(x=>Buffer.from(x).equals(Buffer.from(putBodies[0]))));
+  assert.equal(receipt.sha256,c.candidateSha256);
+ }finally{f.close()}
+});
+test('B2 HTTP 503 retries with a new quota reservation; 401 and 429 are terminal',async()=>{
+ const f=fixture();
+ try{
+  let calls=0,reservations=0;
+  const manager=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{reservations++},sleep:async()=>{},random:()=>0.25,
+   fetchImpl:async(url,opts)=>{
+    if(opts.method==='PUT'&&calls++===0)return new Response(null,{status:503});
+    return f.fetchImpl(url,opts);
+   }
+  });
+  const c=await candidate(3201);
+  await manager.spoolAndVerify({candidateSha256:c.candidateSha256,
+   sourceId:c.sourceId,rawPayload:c.raw,discoveredAt:at,headers:{}});
+  assert.equal(calls,2);
+  assert.equal(reservations,3);
+  let terminalCalls=0,terminalReservations=0;
+  const terminal=new B2SpoolManager(f.env,{
+   now:NOW_DATE,reserve:async()=>{terminalReservations++},sleep:async()=>{},random:()=>0.25,
+   fetchImpl:async()=>{terminalCalls++;return new Response(null,{status:429})}
+  });
+  const next=await candidate(3202);
+  await assert.rejects(terminal.spoolAndVerify({candidateSha256:next.candidateSha256,
+   sourceId:next.sourceId,rawPayload:next.raw,discoveredAt:at,headers:{}}),
+   /P0B_B2_PUT_HTTP_429/u);
+  assert.equal(terminalCalls,1);
+  assert.equal(terminalReservations,1);
+ }finally{f.close()}
+});
 test('transient B2 transport failure retries EXACT same encrypted PUT once with new quota reservation',async()=>{
  const f=fixture();
  try{
@@ -399,7 +455,7 @@ test('B2 provider HTTP 403 is never retried, and no candidate is marked durable'
   assert.equal(f.objects.size,0);
  }finally{f.close()}
 });
-test('two failed B2 transport attempts never fabricate a successful PUT or D1 pointer',async()=>{
+test('four failed B2 transport attempts never fabricate a successful PUT or D1 pointer',async()=>{
  const f=fixture();
  try{
   let attempts=0,reservations=0;
@@ -412,8 +468,8 @@ test('two failed B2 transport attempts never fabricate a successful PUT or D1 po
    candidateSha256:c.candidateSha256,sourceId:c.sourceId,
    rawPayload:c.raw,discoveredAt:at,headers:{}
   }),/P0B_B2_PUT_TRANSPORT_UNAVAILABLE/u);
-  assert.equal(attempts,2);
-  assert.equal(reservations,2);
+  assert.equal(attempts,4);
+  assert.equal(reservations,4);
   assert.equal(f.objects.size,0);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
  }finally{f.close()}

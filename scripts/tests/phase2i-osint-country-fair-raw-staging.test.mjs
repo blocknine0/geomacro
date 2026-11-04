@@ -161,7 +161,7 @@ test("provider-limited 3-row slot still reaches each category and every original
   for(const row of plan.records)ids.add(row.record_id);
  }
  assert.equal(ids.size,12);
- for(const tooSmall of [0,1,2,6,50])
+ for(const tooSmall of [0,1,2,101,500])
   assert.throws(()=>planPhase2iOsintCountryFairRaw(candidates,
    {now,derive,maxRows:tooSmall}),/PHASE2I_OSINT_RAW_PLAN_INVALID/u);
 });

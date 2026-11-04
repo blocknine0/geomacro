@@ -339,7 +339,8 @@ async function pollOne(env,row,{fetchImpl,now}){
    if(!receipt.all_durable||receipt.examined!==candidates.length)
     state='CAPACITY_DEFERRED';
    accepted=receipt.receipts.filter(x=>[
-    'QUEUED','DURABLE_PENDING_REDISPATCH','ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
+    'QUEUED','DURABLE_PENDING_REDISPATCH','R2_DURABLE_PENDING_B2',
+    'ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
    ].includes(x.status)).length;
   }else if(state==='OBSERVED'){
    // Never claim full capture if this durable per-source page budget is exceeded.
@@ -422,7 +423,8 @@ async function pollOne(env,row,{fetchImpl,now}){
 async function finishP0bSource(env,plan,now,admissions){
  const {row,config,result,candidates}=plan;
  const accepted=admissions.filter(a=>[
-  'QUEUED','DURABLE_PENDING_REDISPATCH','ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
+  'QUEUED','DURABLE_PENDING_REDISPATCH','R2_DURABLE_PENDING_B2',
+  'ALREADY_COMMITTED','DUPLICATE_IN_BATCH'
  ].includes(a?.status)).length;
  const complete=admissions.length===candidates.length&&accepted===candidates.length;
  const state=complete?'OBSERVED':'CAPACITY_DEFERRED',p0b_failure_codes={};

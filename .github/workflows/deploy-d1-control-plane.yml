@@ -36,6 +36,9 @@ on:
       # canonical Worker; otherwise green source tests leave old code live.
       - "src/storage/b2-spool-manager.ts"
       - "tests/p0_b_admission_test.ts"
+      - "workers/control-plane/migrations/0122_p0b_private_r2_fallback.sql"
+      - "src/lib/b2-private-archive-read.server.ts"
+      - "scripts/ops/b2-s3-client.mjs"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
@@ -241,6 +244,7 @@ jobs:
       WRANGLER_VERSION: "4.136.3"
       PUBLIC_NEWS_R2_BUCKET: ${{ vars.GEOMACRO_PUBLIC_NEWS_R2_BUCKET }}
       PUBLIC_NEWS_KV_NAMESPACE_ID: ${{ vars.GEOMACRO_PUBLIC_NEWS_KV_NAMESPACE_ID }}
+      P0B_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_P0B_PRIVATE_R2_BUCKET }}
       # Owner-requested permanent P0-B activation. Use already provisioned
       # production B2 credentials and canonical private archive bucket.
       P0B_ACTIVATE: "1"
@@ -382,6 +386,14 @@ jobs:
             config.vars.B2_S3_ENDPOINT=endpoint;
             config.vars.B2_SPOOL_PREFIX=prefix;
             config.vars.B2_SPOOL_BUCKET=bucket;
+            const privateR2=String(process.env.P0B_PRIVATE_R2_BUCKET||'').trim();
+            if(privateR2){
+              if(!/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(privateR2)||
+                 privateR2===String(process.env.PUBLIC_NEWS_R2_BUCKET||''))
+                throw Error('P0B_PRIVATE_R2_BUCKET_INVALID');
+              config.r2_buckets=[...(config.r2_buckets??[]),
+                {binding:'P0B_PRIVATE_FALLBACK_R2',bucket_name:privateR2}];
+            }
             // Source polling is an independent queue with separate
             // dead-letter and max 15-source consumer batches.
             const hasPollProducer=config.queues?.producers?.some(x=>

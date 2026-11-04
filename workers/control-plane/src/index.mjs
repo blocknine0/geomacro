@@ -49,7 +49,7 @@ import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth,p1U
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
-import {drainBacklog,drainP0bArchiveOutbox} from '../../../src/workers/backlog-drain-cron.ts';
+import {drainBacklog,drainP0bArchiveOutbox,drainR2Fallback} from '../../../src/workers/backlog-drain-cron.ts';
 import {getPrivateLegacySourceDirectory,getPrivateLegacySourceDirectoryCoverage} from "./private-source-directory.mjs";
 import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.mjs";
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
@@ -1321,6 +1321,12 @@ export default {
         if(!['P0B_OUTBOX_REPLAY_OK','P0B_OUTBOX_B2_CIRCUIT_HELD'].includes(receipt.status))
           console.error('P0B_OUTBOX_REPLAY_UNVERIFIED',receipt.status);
       }).catch(()=>console.error('P0B_OUTBOX_DRAIN_UNAVAILABLE')));
+    if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&
+       utc.getUTCMinutes()%10===0&&env?.P0B_PRIVATE_FALLBACK_R2)
+      ctx.waitUntil(drainR2Fallback(env,{now:utc.getTime()}).then(receipt=>{
+        if(!['R2_FALLBACK_REPLAY_OK'].includes(receipt.status))
+          console.error('P0B_R2_PENDING_REPLAY',receipt.status);
+      }).catch(()=>console.error('P0B_R2_REPLAY_UNAVAILABLE')));
     // Independent 108-source/minute D1-leased fanout. Queue workers have
     // their own throughput and failure isolation from the B2 spool queue.
     if(env?.GEOMACRO_P1_FANOUT_ENABLED==='1'&&env?.DB?.prepare)
