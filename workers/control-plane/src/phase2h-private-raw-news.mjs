@@ -558,6 +558,89 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   return safeReply({ok:false,error:"PRIVATE_RAW_CANONICAL_READ_UNAVAILABLE"},503);
  }
 }
+/**
+ * Authenticated archival-only D1 cursor scanner, independent from the public
+ * question API. Never promotes publisher statements or returns originals
+ * to a public caller; index.mjs enforces the existing control-plane bearer.
+ *
+ * One bounded D1 SELECT (1..25 raw rows) per request. A corrupt, stale or
+ * unqualified original is omitted from the B2 payload but STILL advances the
+ * scan cursor. A malformed old record can no longer permanently trap every
+ * scheduled archival tick at the same first record.
+ */
+export async function phase2hPrivateRawArchiveExportV2(
+ env,params=new URLSearchParams(),now=Date.now()
+){
+ const bad=code=>safeReply({ok:false,error:code,paid_eligible:false},400);
+ if(!env?.DB||[...params.keys()].some(k=>![
+   "limit","archive_cursor_clock","archive_cursor_id"].includes(k))||
+   ["limit","archive_cursor_clock","archive_cursor_id"].some(
+    k=>params.getAll(k).length>1))
+  return bad("PHASE2H_ARCHIVE_EXPORT_INVALID");
+ const limit=Number(params.get("limit")??"10");
+ const clock=params.get("archive_cursor_clock"),id=params.get("archive_cursor_id");
+ if(!Number.isSafeInteger(limit)||limit<1||limit>25||
+    (clock===null)!==(id===null)||
+    (clock!==null&&(
+      !/^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z$/u.test(clock)||
+      !Number.isFinite(Date.parse(clock))||!HEX.test(id))))
+  return bad("PHASE2H_ARCHIVE_EXPORT_CURSOR_INVALID");
+ const cutoff=phase2hNewsCutoff(now);
+ const select="SELECT record_id,first_ingested_at,raw_sha256,raw_json "+
+  "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_unarchived "+
+  "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  (clock===null?"":"AND (first_ingested_at>? OR "+
+   "(first_ingested_at=? AND record_id>?)) ")+
+  "ORDER BY first_ingested_at,record_id LIMIT ?";
+ const bindings=clock===null?[cutoff,limit]:[cutoff,clock,clock,id,limit];
+ let found;
+ try{found=await env.DB.prepare(select).bind(...bindings).all();}
+ catch{
+  return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_QUERY_UNAVAILABLE",
+   paid_eligible:false,raw_public_delivery:false},503);
+ }
+ if(found?.success===false||!Array.isArray(found?.results)||
+    found.results.length>limit)
+  return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_PROVIDER_INVALID",
+   paid_eligible:false,raw_public_delivery:false},503);
+ let lastClock=clock,lastId=id;
+ const rows=[];let rejected=0,previousClock=clock,previousId=id;
+ for(const entry of found.results){
+  if(typeof entry.record_id!=="string"||!HEX.test(entry.record_id)||
+     typeof entry.first_ingested_at!=="string"||
+     !Number.isFinite(Date.parse(entry.first_ingested_at))||
+     (previousClock!==null&&(
+      entry.first_ingested_at<previousClock||
+      entry.first_ingested_at===previousClock&&entry.record_id<=previousId)))
+   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_ORDER_UNVERIFIED",
+    paid_eligible:false},503);
+  lastClock=entry.first_ingested_at;lastId=entry.record_id;
+  previousClock=lastClock;previousId=lastId;
+  try{
+   if(typeof entry.raw_json!=="string"||
+      entry.raw_json.length>12000||!HEX.test(entry.raw_sha256))
+    throw Error("INVALID");
+   const record=JSON.parse(entry.raw_json);
+   if(record?.record_id!==entry.record_id||
+      record?.raw_sha256!==entry.raw_sha256||
+      record?.ingested_at!==entry.first_ingested_at||
+      !phase2hRawWithinRetention(record,now)||
+      await validPrivateRawNews(record,now,false)!==entry.raw_json)
+    throw Error("INVALID");
+   rows.push(record);
+  }catch{rejected++;}
+ }
+ return safeReply({
+  ok:true,schema:"geomacro.phase2h.private-raw-archive-export-v2.v1",
+  rows,scanned_count:found.results.length,
+  rejected_unverified_or_expired_count:rejected,
+  next_cursor_clock:lastClock,next_cursor_id:lastId,
+  scan_complete:found.results.length<limit,
+  source_native_clocks_unchanged:true,
+  provider_d1_single_select:true,paid_eligible:false,
+  rights_verified:false,raw_public_delivery:false,payments:0
+ });
+}
 export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
  if(!env?.DB||body?.schema!=="geomacro.phase2h.b2-archive-ack.v1"||
     !HEX.test(body.object_sha256)||!Array.isArray(body.items)||
