@@ -110,10 +110,11 @@ function validEvent(e:TrustedResearchEvent,now:number){
  return timestamp;
 }
 function signingMaterial(env:NodeJS.ProcessEnv=process.env){
- const privateB64=String(env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64??"").trim();
- const id=String(env.RISK_OBJECT_SIGNING_KEY_ID??"").trim();
- const publicB64=String(env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64??"").trim();
- if(!SANITIZED.test(id)||privateB64.length<40||publicB64.length<40)
+ const privateB64=String(env.GEOMACRO_RESEARCH_SIGNING_PRIVATE_KEY_PKCS8_B64??"").trim();
+ const id=String(env.GEOMACRO_RESEARCH_SIGNING_KEY_ID??"").trim();
+ const publicB64=String(env.GEOMACRO_RESEARCH_SIGNING_PUBLIC_KEY_SPKI_B64??"").trim();
+ if(!SANITIZED.test(id)||id==="geomacro-risk-2026-03"||
+    privateB64.length<40||publicB64.length<40)
   fail("RESEARCH_ED25519_SIGNER_NOT_CONFIGURED");
  let key:ReturnType<typeof createPrivateKey>;
  try{key=createPrivateKey({key:Buffer.from(privateB64,"base64"),
@@ -211,7 +212,7 @@ export async function getLatestSignedResearchGRO(country_code:string,opts:{
 }={}):Promise<(SignedResearchSnapshot&{research_signature_b64:string;research_sha256:string;research_signing_key_id:string})|null>{
  if(!country195ByIso3(country_code))return null;
  const env=opts.env??process.env,publicB64=
-  String(env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64??"").trim();
+  String(env.GEOMACRO_RESEARCH_SIGNING_PUBLIC_KEY_SPKI_B64??"").trim();
  if(publicB64.length<40)return null;
  let rows:unknown;
  try{
@@ -231,7 +232,7 @@ export async function getLatestSignedResearchGRO(country_code:string,opts:{
    Number(row.version)!==snap.version||
    !SHA.test(String(row.signed_snapshot_sha256??""))||
    !SANITIZED.test(String(row.signed_signing_key_id??""))||
-   row.signed_signing_key_id!==env.RISK_OBJECT_SIGNING_KEY_ID)
+   row.signed_signing_key_id!==env.GEOMACRO_RESEARCH_SIGNING_KEY_ID)
    return null;
  const clock=(opts.now??new Date()).getTime();
  if(utc(String(snap.generated_at??""),clock,MAX_SIGNED_AGE_MS)===null||
