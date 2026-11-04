@@ -10,8 +10,8 @@ import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
 import {phase2hNewsCutoff,phase2hRawWithinRetention}
  from "../../../scripts/lib/phase2h-retention-72h.mjs";
 import {riskCountryFromOriginalTitle} from "./phase2h-risk-country-index.mjs";
-import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning}
- from "../../../scripts/lib/phase2h-atomic-bulk-archive-ack.mjs";
+import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning,
+ MAX_D1_BULK_ARCHIVE_ACK} from "../../../scripts/lib/phase2h-atomic-bulk-archive-ack.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const DATE=/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u;
@@ -644,7 +644,7 @@ export async function phase2hPrivateRawArchiveExportV2(
 export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
  if(!env?.DB||body?.schema!=="geomacro.phase2h.b2-archive-ack.v1"||
     !HEX.test(body.object_sha256)||!Array.isArray(body.items)||
-    body.items.length<1||body.items.length>100)
+    body.items.length<1||body.items.length>MAX_D1_BULK_ARCHIVE_ACK)
   return safeReply({ok:false,error:"PRIVATE_ARCHIVE_PROOF_INVALID"},400);
  try{
   const ids=new Set(),rows=[];
@@ -653,7 +653,7 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
       ids.has(item.record_id))throw Error();
    ids.add(item.record_id);rows.push(item);
   }
-  // Exactly one D1 write statement per verified 100-original batch.
+  // Exactly one D1 write statement per verified <=48-original batch (<=99 bindings).
   // The materialized expected-ID+hash precondition rejects a partial match
   // atomically; RETURNING proves the records actually acknowledged.
   const plan=phase2hAtomicBulkArchiveAck(rows,body.object_sha256,new Date(now));
