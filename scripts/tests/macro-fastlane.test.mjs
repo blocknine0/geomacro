@@ -264,7 +264,7 @@ test('Disabled CFTC RSS and denied CME investor route use pinned first-party HTM
  const cme=MACRO_NEWS_SOURCES.find(s=>s.id==='cme_news');
  assert.equal(cftc.media,'html');assert.equal(cme.media,'rss');
  assert.equal(cftc.url,'https://www.cftc.gov/PressRoom/PressReleases');
- assert.equal(cme.url,'https://cmegroupinc.gcs-web.com/rss/news-releases.xml');
+ assert.equal(cme.url,'https://feeds.feedburner.com/mediaroom/CMsF');
  const {macroIndexLeads}=await import('../lib/macro-fastlane-collector.mjs');
  const source='<a href="/PressRoom/PressReleases/9320-26">CFTC futures and commodity market announcement</a>';
  assert.equal(macroIndexLeads(source,cftc).length,1);
