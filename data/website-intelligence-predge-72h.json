@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T01:23:52.685Z",
+  "checked_at": "2026-11-04T01:33:47.217Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 356,
+  "item_count": 367,
   "counts": {
-    "geopolitics": 159,
-    "macro": 154,
+    "geopolitics": 164,
+    "macro": 160,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "320087ed29d8d9afde50fdb112ab8acb6b52f39894e1f2ef8bf4bfeda0dde04e",
+  "source_native_ids_sha256": "72b53829de35f67367d308b868f2ead47d2941de40aee70004a797a0565abcf3",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -144,6 +144,25 @@
       "severity": null
     },
     {
+      "id": "macro-6b7cf091",
+      "category": "macro",
+      "title": "Geomacro finds National Wheat Yield Contest announced 2026 winners - High Plains Journal",
+      "what_changed": "A monitored source feed reports: National Wheat Yield Contest announced 2026 winners - High Plains Journal. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:48:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-63fb5906",
       "category": "geopolitics",
       "title": "Geomacro finds France condemned Russia's latest attacks on Ukraine, denounces Kremlin's cynicism",
@@ -157,6 +176,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.ukrinform.net"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4aaf3131",
+      "category": "macro",
+      "title": "Geomacro finds Keurig and Luckin reported Growth Amid Coffee Market Shifts - Daily Coffee News by Roast Magazine",
+      "what_changed": "A monitored source feed reports: Keurig and Luckin reported Growth Amid Coffee Market Shifts - Daily Coffee News by Roast Magazine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:35:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-94270349",
+      "category": "macro",
+      "title": "Geomacro finds National Wheat Yield Contest announced 2026 Winners - Newsbug.info",
+      "what_changed": "A monitored source feed reports: National Wheat Yield Contest announced 2026 Winners - Newsbug.info. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T20:17:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -233,6 +290,63 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8307736b",
+      "category": "macro",
+      "title": "Geomacro finds Barclays maintained 2026, 2027 oil price forecasts - marketscreener.com",
+      "what_changed": "A monitored source feed reports: Barclays maintained 2026, 2027 oil price forecasts - marketscreener.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:21:43.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-534ca239",
+      "category": "macro",
+      "title": "Geomacro finds Arab Youth Centre launched New Economy Programme to train 400 young Arabs in tech and business - The National",
+      "what_changed": "A monitored source feed reports: Arab Youth Centre launched New Economy Programme to train 400 young Arabs in tech and business - The National. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:00:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-e118ecf9",
+      "category": "macro",
+      "title": "Geomacro finds Oil Futures Turn lowered as Market Holds Out Hope for Middle East Diplomacy -- 2nd Update - MarketWatch",
+      "what_changed": "A monitored source feed reports: Oil Futures Turn lowered as Market Holds Out Hope for Middle East Diplomacy -- 2nd Update - MarketWatch. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -328,6 +442,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-475c01a4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump cut Israeli military aid: $3.8 billion in security assistance slashed",
+      "what_changed": "A monitored source feed reports: Trump cut Israeli military aid: $3.8 billion in security assistance slashed. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:01:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.france24.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ce85990c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russian Attack left Kyiv Without Water",
+      "what_changed": "A monitored source feed reports: Russian Attack left Kyiv Without Water. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:01:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -467,6 +619,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-ac4cb1e2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Tusk reported suspicious overnight activity near Poland's border with Russia's Kaliningrad Oblast",
+      "what_changed": "A monitored source feed reports: Tusk reported suspicious overnight activity near Poland's border with Russia's Kaliningrad Oblast. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:21:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-952dcd18",
       "category": "geopolitics",
       "title": "Geomacro finds Trump said he will end billions of dollars in military aid to Israel - Politico",
@@ -543,6 +714,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-fa40588f",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched Secret Strikes on Iran Ahead of Midterm Elections - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S. launched Secret Strikes on Iran Ahead of Midterm Elections - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-b06c6cd8",
       "category": "macro",
       "title": "Geomacro finds U.S. launched Secret Strikes on Iran Ahead of Midterm Elections - Crude Oil Prices Today | OilPrice.com",
@@ -575,6 +765,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.thehindu.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0a424822",
+      "category": "geopolitics",
+      "title": "Geomacro finds Copper held Above $14,000 As Election Jitters Hit Metals - Finimize",
+      "what_changed": "A monitored source feed reports: Copper held Above $14,000 As Election Jitters Hit Metals - Finimize. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:53:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

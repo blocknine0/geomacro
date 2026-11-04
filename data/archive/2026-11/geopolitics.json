@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T01:23:52.685Z",
+  "updated_at": "2026-11-04T01:33:47.217Z",
   "signals": [
     {
       "id": "geopolitics-980cf4df",
@@ -157,6 +157,63 @@
       "severity": null
     },
     {
+      "id": "geopolitics-475c01a4",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump cut Israeli military aid: $3.8 billion in security assistance slashed",
+      "what_changed": "A monitored source feed reports: Trump cut Israeli military aid: $3.8 billion in security assistance slashed. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:01:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.france24.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ce85990c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Russian Attack left Kyiv Without Water",
+      "what_changed": "A monitored source feed reports: Russian Attack left Kyiv Without Water. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T16:01:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.kyivpost.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ac4cb1e2",
+      "category": "geopolitics",
+      "title": "Geomacro finds Tusk reported suspicious overnight activity near Poland's border with Russia's Kaliningrad Oblast",
+      "what_changed": "A monitored source feed reports: Tusk reported suspicious overnight activity near Poland's border with Russia's Kaliningrad Oblast. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:21:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: english.nv.ua"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-952dcd18",
       "category": "geopolitics",
       "title": "Geomacro finds Trump said he will end billions of dollars in military aid to Israel - Politico",
@@ -208,6 +265,44 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.pbs.org"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-fa40588f",
+      "category": "geopolitics",
+      "title": "Geomacro finds U.S. launched Secret Strikes on Iran Ahead of Midterm Elections - Crude Oil Prices Today | OilPrice.com",
+      "what_changed": "A monitored source feed reports: U.S. launched Secret Strikes on Iran Ahead of Midterm Elections - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T15:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-0a424822",
+      "category": "geopolitics",
+      "title": "Geomacro finds Copper held Above $14,000 As Election Jitters Hit Metals - Finimize",
+      "what_changed": "A monitored source feed reports: Copper held Above $14,000 As Election Jitters Hit Metals - Finimize. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T14:53:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
