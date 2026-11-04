@@ -10,7 +10,7 @@ import {PRIVATE_OSINT_RETIRED_SOURCE_IDS}
 const now=new Date("2026-11-04T03:00:00Z");
 const categories=["geopolitics","macro","rare_earth"];
 test("true 20-minute production registry includes all Hot-50 native feeds plus non-Hot50 global native feeds",()=>{
- const hot=hot50Direct20mPublisherRegistry().registry;
+ const hot=hot50Direct20mPublisherRegistry(now).registry;
  const {registry,summary}=threeDomainGlobal20mPublisherRegistry(now);
  const urls=new Set(registry.map(x=>x.url));
  assert.equal(GLOBAL_DIRECT_20M_MAX_REQUESTS,512);
