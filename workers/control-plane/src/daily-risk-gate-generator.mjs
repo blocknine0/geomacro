@@ -56,7 +56,7 @@ export async function parseGoogleRiskRss(xml,now=Date.now()){
   const id=await hash("google-news-rss\n"+link+"\n"+published);
   if(seen.has(id))continue;
   seen.add(id);
-  items.push({id,source_id:"google_news_rss_aggregated",url:link,
+  items.push({id,source_id:"google_news_rss_aggregated",url:link,title,
    publisher_host:hostname(publisher),title_hash:fingerprint,published_at:published,
    source_published_at:published,attribution_kind:"THIRD_PARTY_AGGREGATOR",original_article_verified:false});
  }
