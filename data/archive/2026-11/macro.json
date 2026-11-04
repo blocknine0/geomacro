@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T03:04:43.131Z",
+  "updated_at": "2026-11-04T03:36:04.364Z",
   "signals": [
+    {
+      "id": "macro-f5ba9232",
+      "category": "macro",
+      "title": "Geomacro finds Flux Power forecast $7M-$8M Q2 revenue as paused customer places surprise OEM order",
+      "what_changed": "A monitored source feed reports: Flux Power forecast $7M-$8M Q2 revenue as paused customer places surprise OEM order. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T03:27:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-06cf0966",
       "category": "macro",
@@ -1335,6 +1354,25 @@
       "severity": null
     },
     {
+      "id": "macro-5ecfe61c",
+      "category": "macro",
+      "title": "Geomacro finds Drought Forces Indonesia Nickel cut as ENC Output Falls to 30% - Discovery Alert",
+      "what_changed": "A monitored source feed reports: Drought Forces Indonesia Nickel cut as ENC Output Falls to 30% - Discovery Alert. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T02:25:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-01d39b23",
       "category": "macro",
       "title": "Geomacro finds Gold held near $3,950 as Iran peace hopes ease oil, U.S. vote in focus - Investing.com",
@@ -1344,6 +1382,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T01:25:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2beb1be9",
+      "category": "macro",
+      "title": "Geomacro finds Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek",
+      "what_changed": "A monitored source feed reports: Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T00:26:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
