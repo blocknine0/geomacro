@@ -166,9 +166,11 @@ test("Complex corridor archive proof migration upgrades existing D1 hot rows wit
   "2026-11-04T17:01:00Z","2026-11-04T17:01:00Z");
  db.exec(readFileSync(
   "workers/control-plane/migrations/0121_risk_gate_corridor_archive_readback.sql","utf8"));
- assert.deepEqual(db.prepare("SELECT archive_key,archive_sha256,archive_readback_verified "+
-  "FROM corridor_gro_verified_hot").get(),{
-  archive_key:null,archive_sha256:null,archive_readback_verified:0});
+ const original=db.prepare("SELECT archive_key,archive_sha256,archive_readback_verified "+
+  "FROM corridor_gro_verified_hot").get();
+ assert.equal(original.archive_key,null);
+ assert.equal(original.archive_sha256,null);
+ assert.equal(original.archive_readback_verified,0);
  assert.throws(()=>db.prepare(
   "UPDATE corridor_gro_verified_hot SET archive_readback_verified=1 "+
   "WHERE corridor_id='hormuz'").run(),/CORRIDOR_GRO_B2_READBACK_EXACT_PROOF_REQUIRED/);
