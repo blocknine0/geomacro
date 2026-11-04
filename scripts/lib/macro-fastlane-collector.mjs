@@ -8,14 +8,16 @@ const tag=(s,name)=>new RegExp('<(?:atom:)?'+name+'(?:\\s[^>]*)?>([\\s\\S]*?)<\\
 const relevant=t=>macroPreciousTopic(t)||GLOBAL_MACRO_TOPIC_PATTERN.test(t)||/\b(?:monetary|interest rates?|policy rates?|federal funds|FOMC|repo|inflation|consumer price|producer price|employment|payroll|foreign exchange|currency|exchange rate|financial stability|liquidity|balance of payments|reserve assets?|gold reserves?|manufacturing|industrial demand|solar demand|positioning|commitments of traders)\b/i.test(t);
 export function parseMacroFeed(xml,spec,now){
  if(typeof xml!=='string'||xml.length>384*1024||/<!DOCTYPE|<!ENTITY/i.test(xml))throw Error('FEED_SHAPE_INVALID');
- if(spec.media==='atom'?!/<(?:atom:)?feed(?:\s|>)/i.test(xml):!/<rss(?:\s|>)/i.test(xml))throw Error('FEED_SHAPE_INVALID');
- const pattern=spec.media==='atom'?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
+ const isAtom=/<(?:atom:)?feed(?:\s|>)/i.test(xml);
+ const isRss=/<rss(?:\s|>)/i.test(xml);
+ if(!isAtom&&!isRss)throw Error('FEED_SHAPE_INVALID');
+ const pattern=isAtom?/<(?:atom:)?entry(?:\s[^>]*)?>([\s\S]*?)<\/(?:atom:)?entry>/gi:/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/gi;
  const rows=[],seen=new Set();
  for(const [,item]of [...xml.matchAll(pattern)].slice(0,75)){
   const title=clean(tag(item,'title'));if(title.length<12||title.length>300||!(spec.official_communication===true||relevant(title)))continue;
-  const rawLink=spec.media==='atom'?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
+  const rawLink=isAtom?/<(?:atom:)?link\b[^>]*href=["']([^"']+)["']/i.exec(item)?.[1]:clean(tag(item,'link'));
   const articleUrl=pinnedMacroArticle(rawLink,spec);if(!articleUrl||seen.has(articleUrl))continue;
-  const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,spec.media==='atom'?'published':'pubDate'));
+  const clock=clean(spec.id==='snb_monetary'?tag(item,'dc:date'):tag(item,isAtom?'published':'pubDate'));
   const at=/(?:Z|[+-]\d\d:?\d\d|GMT|UTC)$/i.test(clock)?Date.parse(clock):NaN;
   if(!Number.isFinite(at)||at>now||now-at>72*3600000)continue;
   seen.add(articleUrl);rows.push({title,description:clean(tag(item,spec.media==='atom'?'summary':'description')).slice(0,1000),articleUrl,publishedAt:new Date(at).toISOString(),sourceId:spec.id,category:'macro',credit:spec.credit});
