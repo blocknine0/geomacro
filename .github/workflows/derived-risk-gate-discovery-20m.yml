@@ -32,7 +32,8 @@ jobs:
         run: |
           node --test scripts/lib/derived-risk-gate-review-loop.test.mjs \
             scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs \
-            scripts/tests/derived-risk-gate-discovery-bridge.test.mjs
+            scripts/tests/derived-risk-gate-discovery-bridge.test.mjs \
+            scripts/tests/derived-risk-gate-website-raw.test.mjs
       - name: Read existing D1 lanes, hold noncommercial signals, readback-ack
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
