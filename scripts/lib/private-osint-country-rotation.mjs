@@ -1,7 +1,7 @@
 import {launchPriorityWatchSources} from "./launch-priority-watch-sources.mjs";
-import {selectHot50CountryDiscoveryBatch} from "./hot-50-country-watch.mjs";
 import {hot50CountryCategoryDiscoveryUnits,hot50GoogleCategorySource} from "./hot-50-google-news-category.mjs";
 import {hot50OfficialOriginalFeeds} from "./hot-50-official-original-feeds.mjs";
+import {hot50NewOfficialOriginalFeeds} from "./hot-50-new-official-original-feeds.mjs";
 import {privateOsintGlobalHubSources} from "./private-osint-global-hub-overlay.mjs";
 import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
@@ -113,7 +113,7 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
     (!includeLocalGapLane&&activeBase.length+normalIndex>512))
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_SOURCE_CEILING");
  const hotOfficial=activeBase.length>=300?
-  hot50OfficialOriginalFeeds().filter(source=>!urls.has(source.url)&&
+  [...hot50OfficialOriginalFeeds(),...hot50NewOfficialOriginalFeeds()].filter(source=>!urls.has(source.url)&&
    !isRetiredPrivateOsintSource(source)):[];
  const hubs=activeBase.length>=300?
   privateOsintGlobalHubSources().filter(source=>!urls.has(source.url)):[];
