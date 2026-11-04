@@ -186,7 +186,9 @@ export function createPhase2hCanonicalD1({
      fail("INTERNAL_FALLBACK_ACK_UNVERIFIED");
    written+=batch.length;
   }
-  return {archived:written,independent_d1_archive_ack_verified:true};
+  return {archived:written,independent_d1_archive_ack_verified:true,
+   d1_atomic_one_statement_returning_verified:true,
+   d1_write_statements:Math.ceil(items.length/100)};
  };
  return {
   async readPending(now=new Date()){
