@@ -109,3 +109,36 @@ test("production archive V2 uses only root-admin Worker one-D1-SELECT batches an
  assert.equal(operations[0].limit,"25");
  assert.equal(operations[1].path,"/v1/internal/phase2h-raw-news");
 });
+
+test("V2 accepts last scanned cursor equal to the last valid row and advances between full pages",async()=>{
+ const env={
+  CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),CLOUDFLARE_API_TOKEN:"token".repeat(8),
+  D1_DATABASE_ID:"00000000-0000-4000-8000-000000000001",
+  GEOMACRO_COMMERCE_LEDGER_TOKEN:ROOT,PHASE2H_BULK_WORKER_ARCHIVE_V2:"1"
+ };
+ const originals=Array.from({length:26},(_,n)=>({
+  ...item,record_id:(n+1).toString(16).padStart(64,"0")
+ }));
+ const requests=[];
+ const fetchImpl=async(url)=>{
+  const u=new URL(url);
+  assert.equal(u.pathname,"/v1/internal/phase2h-raw-archive-export-v2");
+  const cursor=u.searchParams.get("archive_cursor_id");
+  requests.push(cursor);
+  const rows=cursor===null?originals.slice(0,25):originals.slice(25);
+  assert.equal(u.searchParams.get("limit"),"25");
+  return Response.json({
+   ok:true,schema:"geomacro.phase2h.private-raw-archive-export-v2.v1",
+   rows,scanned_count:rows.length,rejected_unverified_or_expired_count:0,
+   next_cursor_clock:rows.at(-1).ingested_at,
+   next_cursor_id:rows.at(-1).record_id,
+   scan_complete:rows.length<25,provider_d1_single_select:true,
+   paid_eligible:false,rights_verified:false,raw_public_delivery:false,payments:0
+  });
+ };
+ const d1=createPhase2hCanonicalD1({env,fetchImpl});
+ const rows=await d1.readPending(now);
+ assert.equal(rows.length,26);
+ assert.deepEqual(rows.map(x=>x.record_id),originals.map(x=>x.record_id));
+ assert.deepEqual(requests,[null,originals[24].record_id]);
+});
