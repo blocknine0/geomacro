@@ -7,7 +7,8 @@
     "GEOMACRO_P0B_SOURCE_FIRST_ENABLED": "1",
     "GEOMACRO_CUSTOMER_ALLOWED_ORIGINS": "https://geomacro.live,https://geomacro.lovable.app",
     "EMAIL_FROM_ADDRESS": "auth@geomacro.live",
-    "GEOMACRO_P0B_ADMISSION_ACTIVE": "0"
+    "GEOMACRO_P0B_ADMISSION_ACTIVE": "0",
+    "GEOMACRO_P1_FANOUT_ENABLED": "1"
   },
   "triggers": {
     "crons": [
@@ -37,6 +38,10 @@
       {
         "binding": "INGEST_QUEUE",
         "queue": "geomacro-ingestion-spool"
+      },
+      {
+        "binding": "SOURCE_POLL_QUEUE",
+        "queue": "geomacro-source-poll"
       }
     ],
     "consumers": [
@@ -47,6 +52,15 @@
         "max_retries": 10,
         "dead_letter_queue": "geomacro-ingestion-dead-letter",
         "retry_delay": 60
+      },
+      {
+        "queue": "geomacro-source-poll",
+        "max_batch_size": 15,
+        "max_batch_timeout": 2,
+        "max_retries": 5,
+        "dead_letter_queue": "geomacro-source-poll-dlq",
+        "retry_delay": 30,
+        "max_concurrency": 10
       }
     ]
   }
