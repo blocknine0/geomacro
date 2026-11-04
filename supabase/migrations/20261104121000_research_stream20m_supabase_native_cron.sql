@@ -117,7 +117,7 @@ perform cron.schedule(
  '11,31,51 * * * *',
  $job$
  select net.http_post(
-  url:='https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-stream20m',
+  url:='https:'||'//ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-stream20m',
   headers:=jsonb_build_object('Content-Type','application/json',
    'x-gm-research-cron',(select decrypted_secret from vault.decrypted_secrets
     where name='gm_research_stream20m_cron_token_v1')),
@@ -131,7 +131,7 @@ perform cron.schedule(
  '19,39,59 * * * *',
  $job$
  select net.http_post(
-  url:='https://ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-stream20m',
+  url:='https:'||'//ymjuwuvbialsevfawvvq.supabase.co/functions/v1/gm-research-stream20m',
   headers:=jsonb_build_object('Content-Type','application/json',
    'x-gm-research-cron',(select decrypted_secret from vault.decrypted_secrets
     where name='gm_research_stream20m_cron_token_v1')),
