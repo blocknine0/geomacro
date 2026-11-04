@@ -1,4 +1,4 @@
-/** Sanitized, source-wise direct-20m runtime evidence. No raw URLs/articles. */
+/** Sanitized source-wise runtime evidence for direct 20m and private 15m. No original URLs/articles. */
 import {createHash} from 'node:crypto';
 
 const CATEGORIES=new Set(['geopolitics','macro','rare_earth']);
