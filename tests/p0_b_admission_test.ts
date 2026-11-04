@@ -175,7 +175,7 @@ test('test_zero_loss_on_worker_crash: expired lease recovers, B2 survives',async
    .run(new Date(NOW-120000).toISOString());
   const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
   const receipt=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
-  assert.equal(receipt.committed,1);
+  assert.equal(receipt.bundles?.committed,1);
   assert.equal(records[0].ackCount,1);
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue').get().state,'D1_COMMITTED');
   assert.equal(f.objects.size,1);
