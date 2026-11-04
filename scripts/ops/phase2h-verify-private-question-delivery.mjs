@@ -25,11 +25,13 @@ export async function verifyPhase2hProductionQuestionChain({
    (env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").length<32)
   fail("PROTECTED_PRODUCTION_CONFIG_REQUIRED");
  if(receipt?.schema!=="geomacro.phase2h.private-raw-b2-acceptance.v1"||
-   receipt.status!=="B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED"||
+   !((receipt.status==="B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED"&&
+       receipt.d1_atomic_one_statement_returning_verified===true)||
+      (receipt.status==="B2_HISTORICAL_ONE_GET_SHA_D1_ACK_REVERIFIED"&&
+       receipt.d1_atomic_one_statement_returning_verified===false))||
    receipt.storage_confirmed!==true||
    receipt.b2_first_get_verified!==true||
    receipt.b2_second_get_performed!==false||
-   receipt.d1_atomic_one_statement_returning_verified!==true||
    receipt.post_archive_d1_verified!==true||
    !Number.isSafeInteger(receipt.rows_archived)||receipt.rows_archived<1||
    !HEX.test(receipt.object_sha256))
@@ -162,7 +164,8 @@ export async function verifyPhase2hProductionQuestionChain({
   schema:"geomacro.phase2h.production-raw-b2-exact-question-acceptance.v1",
   same_b2_object_and_d1_original:true,
   b2_one_get_sha_verified_in_preceding_step:true,
-  d1_atomic_one_statement_returning_verified:true,
+  d1_atomic_one_statement_returning_verified:
+   receipt.d1_atomic_one_statement_returning_verified===true,
   original_native_clock_preserved:true,
   per_record_five_part_exact:true,
   verified_b2_batch_rows:originals.length,
