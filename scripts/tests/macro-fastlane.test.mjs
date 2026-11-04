@@ -291,3 +291,15 @@ test('Macro publisher fetch identifies GeoMacro consistently with observed backu
   fetchImpl:async()=>new Response('',{status:403})
  }),/ACCESS_DENIED/);
 });
+
+
+test('One-megabyte bounded Stockhead mineral RSS remains valid without unbounded raw bytes',async()=>{
+ const url='https://stockhead.com.au/resources/feed/';
+ const source={id:'stockhead_resources',url,region:'oceania'};
+ const item=rss('Australian lithium and copper mining projects face export curbs',
+  'https://stockhead.com.au/resources/lithium-copper-export-curbs/');
+ const padded=item.replace('</channel>','<!--'+'.'.repeat(410*1024)+'--></channel>');
+ assert.ok(new TextEncoder().encode(padded).byteLength>384*1024);
+ assert.equal(parseSectorFeed(padded,source,now).length,1);
+ assert.throws(()=>parseSectorFeed(padded+'X'.repeat(1024*1024),source,now),/SECTOR_FEED_INVALID/);
+});
