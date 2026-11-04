@@ -39,7 +39,7 @@ import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-in
 import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-news-scores.ts';
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
-import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived} from "./phase2h-private-raw-news.mjs";
+import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -1790,6 +1790,10 @@ export default {
       }
       // Canonical admin-only original observation intake. No public, partner,
       // PREDGE, scoring, signing or x402 route is modified or reused.
+      // Same root-admin auth as private raw news. Never public or paid.
+      if(request.method==="GET"&&
+         url.pathname==="/v1/internal/phase2h-raw-archive-export-v2")
+        return phase2hPrivateRawArchiveExportV2(env,url.searchParams);
       if(url.pathname==="/v1/internal/phase2h-raw-news"){
         if(request.method==="GET")return phase2hPrivateRawGet(env,url.searchParams);
         if(request.method==="PUT"&&!url.search){
