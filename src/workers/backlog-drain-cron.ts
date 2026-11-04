@@ -23,19 +23,35 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
  // This is not a complete account-wide D1 row-write quota report.
  if((count?.committed_today??0)>=90000)
   return {status:'QUOTA_HOLD',count:0};
- let rows;
+ let bundles:any[]=[],rows:any[]=[];
  try{
   const stale=new Date(now-5*60000).toISOString();
-  const res=await env.DB.prepare(
-   'SELECT candidate_sha256,source_id,b2_spool_uri FROM ingestion_spool_queue '+
-   "WHERE ((state IN ('PENDING','RETRY') AND spooled_at<=?) OR "+
+  const queued=await env.DB.prepare(
+   'SELECT bundle_sha256,b2_spool_uri,item_count FROM ingestion_spool_bundles '+
+   "WHERE ((state IN ('PENDING','RETRY') AND created_at<=?) OR "+
    "(state='PROCESSING' AND locked_until<=?)) "+
-   'ORDER BY spooled_at ASC,candidate_sha256 ASC LIMIT ?'
+   'ORDER BY created_at ASC,bundle_sha256 ASC LIMIT ?'
   ).bind(stale,current,limit).all();
-  rows=res.results??[];
+  bundles=queued.results??[];
+  if(bundles.length<limit){
+   const legacy=await env.DB.prepare(
+    'SELECT candidate_sha256,source_id,b2_spool_uri FROM ingestion_spool_queue '+
+    "WHERE bundle_offset IS NULL AND ((state IN ('PENDING','RETRY') AND spooled_at<=?) OR "+
+    "(state='PROCESSING' AND locked_until<=?)) "+
+    'ORDER BY spooled_at ASC,candidate_sha256 ASC LIMIT ?'
+   ).bind(stale,current,limit-bundles.length).all();
+   rows=legacy.results??[];
+  }
  }catch{return {status:'D1_BACKLOG_READ_UNAVAILABLE',count:0}}
- if(rows.length===0)return {status:'DRAIN_CLEAN',count:0};
+ if(bundles.length===0&&rows.length===0)return {status:'DRAIN_CLEAN',count:0};
  let sent=0,failed=0;
+ for(const bundle of bundles){
+  try{
+   await env.INGEST_QUEUE.send({kind:'P0B_BUNDLE_V1',
+    b2Uri:bundle.b2_spool_uri,bundleSha256:bundle.bundle_sha256,
+    candidateCount:bundle.item_count});sent++;
+  }catch{failed++}
+ }
  for(const row of rows){
   try{
    await env.INGEST_QUEUE.send({
@@ -45,5 +61,5 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
   }catch{failed++}
  }
  return {status:failed?'DRAIN_PARTIAL':'DRAINED_BATCH',count:sent,failed,
-  selected:rows.length,no_pending_deletions:true};
+  selected:rows.length+bundles.length,bundles_selected:bundles.length,no_pending_deletions:true};
 }

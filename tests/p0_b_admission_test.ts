@@ -7,6 +7,7 @@ import {canonicalJson} from '../src/lib/canonical-json.ts';
 import {processFetchedBatch} from '../src/workers/ingest-producer.ts';
 import {handleQueueBatch} from '../src/workers/ingest-consumer.ts';
 import {drainBacklog} from '../src/workers/backlog-drain-cron.ts';
+import {pollP0aSources} from '../workers/control-plane/src/p0a-source-registry.mjs';
 
 const at='2026-11-04T03:00:00.000Z',NOW=Date.parse(at);
 const NOW_DATE=()=>new Date(NOW);
@@ -15,6 +16,7 @@ function fixture(){
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0113_p0a_source_registry.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0114_p0_b_spool_queue.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0116_p0b_microbatch_spool.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");
  db.prepare(
   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
@@ -102,8 +104,10 @@ test('test_burst_admission_over_150: all 250 B2-spooled, no drop',async()=>{
   const receipt=await processFetchedBatch(candidates,f.env,{manager:f.manager,now:NOW_DATE});
   assert.equal(receipt.unaccepted,0);
   assert.equal(receipt.receipts.filter(x=>x.status==='QUEUED').length,250);
-  assert.equal(f.objects.size,250);
-  assert.equal(f.env.INGEST_QUEUE.sent.length,250);
+  assert.equal(f.objects.size,3);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,3);
+  assert.equal(f.requests.filter(x=>x.method==='PUT').length,3);
+  assert.equal(f.requests.filter(x=>x.method==='GET').length,3);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM ingestion_spool_queue WHERE state='PENDING'").get().n,250);
  }finally{f.close()}
 });
@@ -115,9 +119,10 @@ test('test_state_machine_transitions: pending -> processing -> D1 commit -> ACK'
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue').get().state,'PENDING');
   const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
   const receipt=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
-  assert.equal(receipt.committed,1);
+  assert.equal(receipt.bundles?.committed,1);
   assert.equal(records[0].ackCount,1);
   assert.equal(records[0].retryCount,0);
+  assert.equal(f.db.prepare("SELECT state FROM ingestion_spool_bundles").get().state,'D1_COMMITTED');
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue').get().state,'D1_COMMITTED');
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM normalized_articles WHERE status='ADMITTED'").get().n,1);
   await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
@@ -131,9 +136,9 @@ test('test_dead_letter_quarantine: third failure durable, no forged commit',asyn
   const c=await candidate(400);
   await processFetchedBatch([c],f.env,{manager:f.manager,now:NOW_DATE});
   const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
-  const badManager={async readVerified(){throw Error('P0B_B2_GET_UNAVAILABLE')}};
+  const badManager={async readBundleVerified(){throw Error('P0B_B2_GET_UNAVAILABLE')}};
   for(let n=0;n<3;n++)await handleQueueBatch(batch,f.env,{manager:badManager,now:NOW_DATE});
-  const row=f.db.prepare('SELECT state,retry_count,last_error_code FROM ingestion_spool_queue').get();
+  const row=f.db.prepare('SELECT state,retry_count,last_error_code FROM ingestion_spool_bundles').get();
   assert.equal(row.retry_count,3);
   assert.equal(row.state,'DEAD_LETTER');
   assert.equal(row.last_error_code,'P0B_B2_GET_UNAVAILABLE');
@@ -167,11 +172,11 @@ test('test_zero_loss_on_worker_crash: expired lease recovers, B2 survives',async
   const c=await candidate(650);
   await processFetchedBatch([c],f.env,{manager:f.manager,now:NOW_DATE});
   // A consumer crashes after locking but before commit; no queue ACK.
-  f.db.prepare("UPDATE ingestion_spool_queue SET state='PROCESSING',locked_until=?")
+  f.db.prepare("UPDATE ingestion_spool_bundles SET state='PROCESSING',locked_until=?")
    .run(new Date(NOW-120000).toISOString());
   const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
   const receipt=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
-  assert.equal(receipt.committed,1);
+  assert.equal(receipt.bundles?.committed,1);
   assert.equal(records[0].ackCount,1);
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue').get().state,'D1_COMMITTED');
   assert.equal(f.objects.size,1);
@@ -214,7 +219,7 @@ test('P0-B global circuit halts repeated 403 B2 requests across independent sour
  try{
   const batch=await Promise.all([candidate(900),candidate(901),candidate(902)]);
   let requests=0;
-  const bad={async spoolAndVerify(){requests++;throw Error('P0B_B2_PUT_HTTP_403')}};
+  const bad={async spoolBundleAndVerify(){requests++;throw Error('P0B_B2_PUT_HTTP_403')}};
   const result=await processFetchedBatch(batch,f.env,{manager:bad,now:NOW_DATE});
   assert.equal(result.all_durable,false);
   assert.equal(result.receipts.length,3);
@@ -229,5 +234,107 @@ test('P0-B global circuit halts repeated 403 B2 requests across independent sour
   assert.equal(again.receipts[0].error_code,'P0B_STORAGE_CIRCUIT_HELD');
   assert.equal(requests,1);
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,0);
+ }finally{f.close()}
+});
+
+
+test('100 independent item hashes and offsets occupy exactly one encrypted gzip PUT',async()=>{
+ const f=fixture();
+ try{
+  const arr=await Promise.all(Array.from({length:100},(_,i)=>candidate(i+1000)));
+  const result=await processFetchedBatch(arr,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(result.unaccepted,0);assert.equal(result.bundles_created,1);
+  assert.equal(f.requests.filter(x=>x.method==='PUT').length,1);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,1);
+  const msg=f.env.INGEST_QUEUE.sent[0];
+  assert.equal(msg.kind,'P0B_BUNDLE_V1');
+  assert.match(msg.b2Uri,
+   /^b2:\/\/spool\/20261104\/src_probe\/bundle_20261104T030000Z_[0-9a-f]{64}\.json\.gz$/u);
+  const restored=await f.manager.readBundleVerified(msg.b2Uri,msg.bundleSha256);
+  assert.equal(restored.items.length,100);
+  assert.equal(new Set(restored.index.map(x=>x.candidateSha256)).size,100);
+  for(let i=1;i<restored.index.length;i++)
+   assert.equal(restored.index[i].byteOffset,
+    restored.index[i-1].byteOffset+restored.index[i-1].byteLength);
+  const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
+  const done=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(done.bundles?.committed,1);
+  assert.equal(records[0].ackCount,1);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM ingestion_spool_queue WHERE state='D1_COMMITTED'").get().n,100);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,100);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM ingestion_spool_bundles WHERE state='D1_COMMITTED'").get().n,1);
+ }finally{f.close()}
+});
+test('tampered gzip bundle never ACKs or falsely commits candidate',async()=>{
+ const f=fixture();
+ try{
+  await processFetchedBatch([await candidate(1200)],f.env,{manager:f.manager,now:NOW_DATE});
+  const key=f.objects.keys().next().value;
+  const tampered=Uint8Array.from(f.objects.get(key));tampered[tampered.length-3]^=1;
+  f.objects.set(key,tampered);
+  const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
+  await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(records[0].ackCount,0);
+  assert.equal(records[0].retryCount,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
+ }finally{f.close()}
+});
+test('per-bundle send failure is recovered via one FIFO dispatch',async()=>{
+ const f=fixture();
+ try{
+  const arr=await Promise.all(Array.from({length:35},(_,i)=>candidate(1300+i)));
+  f.env.INGEST_QUEUE.send=async()=>{throw Error('QUEUE_OUTAGE')};
+  const receipt=await processFetchedBatch(arr,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(receipt.all_durable,true);
+  assert.equal(receipt.bundles_created,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_bundles').get().n,1);
+  f.env.INGEST_QUEUE.send=async body=>f.env.INGEST_QUEUE.sent.push(body);
+  const redrive=await drainBacklog(f.env,{now:NOW+12*60000});
+  assert.equal(redrive.count,1);
+  assert.equal(redrive.bundles_selected,1);
+  const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
+  const done=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(done.bundles?.committed,1);
+  assert.equal(records[0].ackCount,1);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,35);
+ }finally{f.close()}
+});
+
+
+test('same-window three-source P0-A poll uses one mixed B2 bundle before cursor advancement',async()=>{
+ const f=fixture();
+ try{
+  const add=f.db.prepare(
+   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
+   'country_iso3,rights_tier,polling_interval_sec,rate_limit_backoff) VALUES (?,?,?,?,?,?,?,?)');
+  for(const [id,href] of [['src_second','https://example.org/second'],
+                            ['src_third','https://example.org/third']]){
+   add.run(id,href,'RSS_2','GEOPOLITICS','GLOBAL','RESEARCH_ONLY',
+    300,'{"max_retries":1,"base_delay_ms":100,"respect_retry_after":true}');
+  }
+  f.env.GEOMACRO_P0B_ADMISSION_ACTIVE='1';
+  const fetchImpl=async url=>{
+   const title=String(url).includes('second')?'Second country report':
+    String(url).includes('third')?'Third minerals policy':'First macro policy';
+   const raw='<rss><channel><item><title>'+title+'</title>'+
+    '<link>https://example.org/story/'+title.replaceAll(' ','-')+'</link>'+
+    '<pubDate>Wed, 04 Nov 2026 02:00:00 GMT</pubDate></item></channel></rss>';
+   return new Response(raw,{status:200,headers:{etag:'"batch-v1"'}});
+  };
+  const results=await pollP0aSources(f.env,{fetchImpl,now:NOW,limit:3,producerManager:f.manager});
+  assert.equal(results.due_selected,3);
+  assert.ok(results.receipts.every(x=>x.state==='OBSERVED'));
+  assert.equal(f.objects.size,1);
+  assert.equal(f.requests.filter(x=>x.method==='PUT').length,1);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,1);
+  assert.match(f.env.INGEST_QUEUE.sent[0].b2Uri,/\/mixed\/bundle_/u);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,3);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM source_registry WHERE last_cursor=?')
+   .get('etag:"batch-v1"').n,3);
+  const {records,batch}=messages(f.env.INGEST_QUEUE.sent);
+  const consumed=await handleQueueBatch(batch,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(consumed.bundles?.committed,1);
+  assert.equal(records[0].ackCount,1);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM normalized_articles").get().n,3);
  }finally{f.close()}
 });

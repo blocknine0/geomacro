@@ -86,6 +86,29 @@ function validateEnv(env:B2SpoolEnv){
   throw Error('P0B_SPOOL_PREFIX_INVALID');
  return {endpoint:endpoint.origin,region,prefix};
 }
+
+const BUNDLE_MAX_ITEMS=100, BUNDLE_MAX_PLAIN_BYTES=512*1024;
+async function zipped(bytes:Uint8Array,mode:'gzip'|'ungzip'){
+ const stream=new Blob([toBytes(bytes)]).stream().pipeThrough(
+  mode==='gzip'?new CompressionStream('gzip'):new DecompressionStream('gzip'));
+ const result=new Uint8Array(await new Response(stream).arrayBuffer());
+ if(result.length>2*BUNDLE_MAX_PLAIN_BYTES)throw Error('P0B_BUNDLE_DECOMPRESSION_LIMIT');
+ return result;
+}
+function bundleKey(prefix:string,day:string,group:string,stamp:string,sha:string){
+ if(!/^\d{8}$/u.test(day)||!ID.test(group)||!/^\d{8}T\d{6}Z$/u.test(stamp)||
+  !SHA.test(sha))throw Error('P0B_BUNDLE_KEY_INVALID');
+ return prefix+day+'/'+group+'/bundle_'+stamp+'_'+sha+'.json.gz';
+}
+function verifiedBundleKey(uri:string,prefix:string){
+ if(typeof uri!=='string'||!uri.startsWith('b2://'+prefix))
+  throw Error('P0B_BUNDLE_URI_INVALID');
+ const key=uri.slice(5),suffix=key.slice(prefix.length);
+ const match=/^(\d{8})\/([a-z0-9][a-z0-9_.:-]{2,119})\/bundle_(\d{8}T\d{6}Z)_([a-f0-9]{64})\.json\.gz$/u.exec(suffix);
+ if(!match)throw Error('P0B_BUNDLE_URI_INVALID');
+ return {key,sha:match[4]};
+}
+
 export class B2SpoolManager {
  private env:B2SpoolEnv;
  private fetchImpl:typeof fetch;
@@ -173,7 +196,7 @@ export class B2SpoolManager {
   const request=await this.signed(method,key,body);
   let response:Response;
   try{response=await this.fetchImpl(request.url,{method,headers:{
-   ...request.headers,...(method==='PUT'?{'Content-Type':'application/json'}:{})
+   ...request.headers,...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?'application/gzip':'application/json'}:{})
   },body:method==='PUT'?body:undefined,redirect:'error',
   signal:AbortSignal.timeout(10000)});}
   catch{throw Error('P0B_B2_'+method+'_UNAVAILABLE')}
@@ -206,4 +229,112 @@ export class B2SpoolManager {
   const bytes=await this.request('GET',key);
   return this.open(bytes,candidateSha256,sourceId);
  }
+
+ async spoolBundleAndVerify(payloads:SpoolPayload[]){
+  if(!Array.isArray(payloads)||payloads.length<1||payloads.length>BUNDLE_MAX_ITEMS)
+   throw Error('P0B_BUNDLE_ITEM_COUNT_INVALID');
+  const index:{candidateSha256:string;sourceId:string;byteOffset:number;byteLength:number}[]=[];
+  const lines:Uint8Array[]=[];let offset=0;
+  const seen=new Set<string>();
+  for(const p of payloads){
+   if(!p||!SHA.test(p.candidateSha256)||!ID.test(p.sourceId)||
+    !Number.isFinite(Date.parse(p.discoveredAt))||seen.has(p.candidateSha256)||
+    await p0bSha256(canonicalJson(p.rawPayload))!==p.candidateSha256)
+    throw Error('P0B_BUNDLE_CANDIDATE_INVALID');
+   seen.add(p.candidateSha256);
+   const line=ENCODER.encode(canonicalJson({candidateSha256:p.candidateSha256,
+    sourceId:p.sourceId,rawPayload:p.rawPayload,discoveredAt:p.discoveredAt})+'\n');
+   if(line.length>MAX_PLAIN_BYTES||offset+line.length>BUNDLE_MAX_PLAIN_BYTES)
+    throw Error('P0B_BUNDLE_PLAIN_TOO_LARGE');
+   index.push({candidateSha256:p.candidateSha256,sourceId:p.sourceId,
+    byteOffset:offset,byteLength:line.length});lines.push(line);offset+=line.length;
+  }
+  const bytes=new Uint8Array(offset);let at=0;
+  for(const line of lines){bytes.set(line,at);at+=line.length;}
+  const plain=ENCODER.encode(canonicalJson({
+   schema:'geomacro.p0b.microbatch.v1',index,payload_base64:base64(bytes)}));
+  if(plain.length>2*BUNDLE_MAX_PLAIN_BYTES)throw Error('P0B_BUNDLE_PLAIN_TOO_LARGE');
+  const batchSha256=await p0bSha256(plain);
+  const compressed=await zipped(plain,'gzip');
+  const nonce=crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext=new Uint8Array(await crypto.subtle.encrypt({
+   name:'AES-GCM',iv:toBytes(nonce),additionalData:toBytes('p0b.bundle|'+batchSha256)
+  },await this.aesKey(),toBytes(compressed)));
+  const envelope=ENCODER.encode(canonicalJson({
+   schema:'geomacro.p0b.encrypted-microbatch.v1',algorithm:'AES-256-GCM',
+   batch_sha256:batchSha256,compressed_sha256:await p0bSha256(compressed),
+   item_count:index.length,nonce:base64(nonce),ciphertext:base64(ciphertext)
+  }));
+  const object=await zipped(envelope,'gzip');
+  if(object.length>MAX_CIPHER_BYTES)throw Error('P0B_BUNDLE_CIPHER_TOO_LARGE');
+  const stamp=this.now().toISOString().replace(/[-:]/gu,'').replace(/\.\d{3}/u,'');
+  const day=stamp.slice(0,8);
+  const group=new Set(payloads.map(p=>p.sourceId)).size===1?payloads[0].sourceId:'mixed';
+  const key=bundleKey(this.prefix,day,group,stamp,batchSha256);
+  await this.request('PUT',key,object);
+  const readback=await this.request('GET',key);
+  if(readback.length!==object.length||
+   await p0bSha256(readback)!==await p0bSha256(object))
+   throw Error('P0B_B2_BUNDLE_INTEGRITY_MISMATCH');
+  const restored=await this.decodeBundle(readback,batchSha256);
+  if(restored.items.length!==index.length)throw Error('P0B_BUNDLE_ITEM_READBACK_MISMATCH');
+  return {b2Uri:'b2://'+key,byteSize:object.length,batchSha256,
+   storedAt:this.now().toISOString(),items:index};
+ }
+ private async decodeBundle(object:Uint8Array,batchSha256:string){
+  if(object.length>MAX_CIPHER_BYTES)throw Error('P0B_BUNDLE_CIPHER_TOO_LARGE');
+  let env:any;
+  try{env=JSON.parse(DECODER.decode(await zipped(object,'ungzip')))}
+  catch{throw Error('P0B_BUNDLE_CIPHER_INVALID')}
+  if(env?.schema!=='geomacro.p0b.encrypted-microbatch.v1'||
+   env.algorithm!=='AES-256-GCM'||env.batch_sha256!==batchSha256||
+   !SHA.test(env.compressed_sha256??'')||!Number.isInteger(env.item_count)||
+   env.item_count<1||env.item_count>BUNDLE_MAX_ITEMS)
+   throw Error('P0B_BUNDLE_CIPHER_INVALID');
+  let compressed:Uint8Array;
+  try{compressed=new Uint8Array(await crypto.subtle.decrypt({
+   name:'AES-GCM',iv:toBytes(fromBase64(env.nonce)),
+   additionalData:toBytes('p0b.bundle|'+batchSha256)
+  },await this.aesKey(),toBytes(fromBase64(env.ciphertext))));}
+  catch{throw Error('P0B_BUNDLE_AUTHENTICATION_FAILED')}
+  if(await p0bSha256(compressed)!==env.compressed_sha256)
+   throw Error('P0B_BUNDLE_INTEGRITY_MISMATCH');
+  let bundle:any,plain:Uint8Array;
+  try{plain=await zipped(compressed,'ungzip');
+   if(await p0bSha256(plain)!==batchSha256)throw Error('HASH');
+   bundle=JSON.parse(DECODER.decode(plain));}
+  catch{throw Error('P0B_BUNDLE_INTEGRITY_MISMATCH')}
+  if(bundle?.schema!=='geomacro.p0b.microbatch.v1'||
+    !Array.isArray(bundle.index)||bundle.index.length!==env.item_count)
+   throw Error('P0B_BUNDLE_MANIFEST_INVALID');
+  const payload=fromBase64(bundle.payload_base64),items:SpoolPayload[]=[];
+  let nextOffset=0;const seen=new Set<string>();
+  for(const i of bundle.index){
+   if(!SHA.test(i?.candidateSha256??'')||!ID.test(i?.sourceId??'')||
+    !Number.isInteger(i.byteOffset)||!Number.isInteger(i.byteLength)||
+    i.byteOffset!==nextOffset||i.byteLength<1||i.byteLength>MAX_PLAIN_BYTES||
+    seen.has(i.candidateSha256)||i.byteOffset+i.byteLength>payload.length)
+    throw Error('P0B_BUNDLE_MANIFEST_INVALID');
+   nextOffset+=i.byteLength;seen.add(i.candidateSha256);
+   let item:any;
+   try{item=JSON.parse(DECODER.decode(payload.subarray(i.byteOffset,nextOffset)))}
+   catch{throw Error('P0B_BUNDLE_ITEM_INVALID')}
+   if(item.candidateSha256!==i.candidateSha256||item.sourceId!==i.sourceId||
+    await p0bSha256(canonicalJson(item.rawPayload))!==i.candidateSha256||
+    !Number.isFinite(Date.parse(item.discoveredAt)))
+    throw Error('P0B_BUNDLE_ITEM_HASH_MISMATCH');
+   items.push({candidateSha256:i.candidateSha256,sourceId:i.sourceId,
+    rawPayload:item.rawPayload,headers:{},discoveredAt:item.discoveredAt});
+  }
+  if(nextOffset!==payload.length||payload.length>BUNDLE_MAX_PLAIN_BYTES)
+   throw Error('P0B_BUNDLE_MANIFEST_INVALID');
+  return {batchSha256,items,index:bundle.index};
+ }
+ async readBundleVerified(b2Uri:string,expectedSha256:string){
+  const {key,sha}=verifiedBundleKey(b2Uri,this.prefix);
+  if(!SHA.test(expectedSha256)||expectedSha256!==sha)
+   throw Error('P0B_BUNDLE_URI_HASH_MISMATCH');
+  return this.decodeBundle(await this.request('GET',key),expectedSha256);
+ }
+
 }

@@ -1315,9 +1315,30 @@ export default {
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
     if(env?.DB?.prepare)
-      ctx.waitUntil(pollP0aSources(env,{now:utc.getTime()}).then(r=>{
+      ctx.waitUntil((async()=>{
+        if(env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
+          // First after each 00:00 UTC quota reset: admin-controlled 3–5
+          // real-source canary. Broad polls cannot preempt its verified ACK.
+          if(utc.getUTCMinutes()%5!==0)return;
+          const day=utc.toISOString().slice(0,10)+'T00:00:00.000Z';
+          const result=await env.DB.prepare(
+            'SELECT COUNT(*) AS verified FROM ingestion_spool_bundles '+
+            "WHERE created_at>=? AND state='D1_COMMITTED' AND acked_at IS NOT NULL"
+          ).bind(day).first();
+          if((result?.verified??0)<1){
+            console.error('P0B_DAILY_CANARY_AWAITING_B2_D1_PARITY');return;
+          }
+          if(typeof env.INGEST_QUEUE?.metrics!=='function'){
+            console.error('P0B_DAILY_CANARY_QUEUE_METRICS_UNAVAILABLE');return;
+          }
+          const metrics=await env.INGEST_QUEUE.metrics();
+          if(metrics?.backlogCount!==0){
+            console.error('P0B_DAILY_CANARY_QUEUE_ACK_UNVERIFIED');return;
+          }
+        }
+        const r=await pollP0aSources(env,{now:utc.getTime()});
         if(!r.ok)console.error('P0A_SOURCE_POLL_UNAVAILABLE');
-      }).catch(()=>console.error('P0A_SOURCE_POLL_UNAVAILABLE')));
+      })().catch(()=>console.error('P0A_SOURCE_POLL_UNAVAILABLE')));
     // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
     // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
     // Successful generated snapshots are immutable per UTC day.

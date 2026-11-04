@@ -3,6 +3,7 @@ name: P0-B Real B2 D1 Production Parity
 on:
   schedule:
     - cron: '23 * * * *'
+    - cron: '7 0 * * *'
   workflow_dispatch:
   push:
     branches:
@@ -33,6 +34,7 @@ jobs:
     env:
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       WORKER_ROOT: https://geomacro-control-plane.daspallab202391.workers.dev
+      PINNED_CANARY_IDS: ${{ vars.GEOMACRO_P0B_CANARY_IDS }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -77,25 +79,94 @@ jobs:
           QUOTA="$(curl --fail-with-body -fsS --max-time 20 \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/b2-quota/status")"
           printf '%s' "$QUOTA" | jq -c '{schema: "geomacro.p0b.private-quota-census.v1",used,limits}'
-          # Do not spend another PUT ticket when the account-wide governor
-          # is exhausted or the shared storage circuit is already open.
-          if printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.total < .limits.total' >/dev/null &&
-             printf '%s' "$STATUS" | jq -e '.b2_storage_guard.open != true' >/dev/null; then
+          # Midnight first: no broad poll until a genuine 3-5 source canary
+          # produced a bundle, its full D1 journal committed, and Queues says
+          # zero unacknowledged messages (not just local acked_at flags).
+          PARITY="$(printf '%s' "$STATUS" | jq -r '.live_bundle_parity.assertion_passed // false')"
+          if [ "$PARITY" != true ]; then
+            if ! printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.GET < .limits.GET and .used.total < .limits.total' >/dev/null ||
+               ! printf '%s' "$STATUS" | jq -e '.b2_storage_guard.open != true' >/dev/null; then
+              echo "::error::P0B_CANARY_BLOCKED_BY_ACCOUNT_QUOTA_OR_CIRCUIT"; exit 5
+            fi
+            if [ -n "$PINNED_CANARY_IDS" ]; then
+              IDS="$(printf '%s' "$PINNED_CANARY_IDS" | jq -Rc 'split(",")|map(gsub("^ +| +$";""))|map(select(length>0))')"
+            else
+              # Known accepted pinned official endpoints. Their *current*
+              # reachability is proven by the actual canary, not historical data.
+              IDS="$(printf '%s' "$REGISTRY" | jq -c '
+                ["private_us_doe_minerals_global.critical_minerals",
+                 "private_boc_press_global.macro_fx",
+                 "private_fed_monetary.macro_fx",
+                 "private_sa_news.geopolitics",
+                 "private_rba.macro_fx"] as $pin |
+                [.sources[] | select(.enabled==true) |
+                 select(.source_id as $id | $pin | index($id)) | .source_id] |
+                unique | .[:5]')"
+              if [ "$(printf '%s' "$IDS" | jq 'length')" -lt 3 ]; then
+                IDS="$(printf '%s' "$REGISTRY" | jq -c '[
+                  .sources[] | select(.enabled==true and
+                  (.last_state=="OBSERVED" or .last_state=="UNCHANGED")) | .source_id
+                ] | unique | .[:5]')"
+              fi
+            fi
+            COUNT="$(printf '%s' "$IDS" | jq 'length')"
+            test "$COUNT" -ge 3 && test "$COUNT" -le 5 || {
+              echo "::error::P0B_3_TO_5_CURRENT_VERIFIED_CANARY_SOURCES_REQUIRED"; exit 6
+            }
+            CANARY="$(curl --fail-with-body -fsS --max-time 65 -X POST \
+              -H "authorization: Bearer $TOKEN" \
+              -H 'content-type: application/json' \
+              --data "$(jq -cn --argjson ids "$IDS" '{source_ids:$ids}')" \
+              "$WORKER_ROOT/v1/internal/p0a/canary")"
+            printf '%s' "$CANARY" | jq -c '{
+              schema:"geomacro.p0b.utc-canary-result.v1",due_selected,
+              states:([.receipts[]?]|group_by(.state)|
+              map({key:.[0].state,value:length})|from_entries),
+              accepted:([.receipts[]?|(.accepted//0)]|add//0)
+            }'
+            printf '%s' "$CANARY" | jq -e '.ok==true and .due_selected>=3 and .due_selected<=5' >/dev/null || {
+              echo "::error::P0B_CANARY_POLL_FAILED"; exit 7
+            }
+            for i in 1 2 3 4 5 6; do
+              sleep 10
+              STATUS="$(curl --fail-with-body -fsS --max-time 20 \
+                -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+              if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
+                break
+              fi
+            done
+            printf '%s' "$STATUS" | jq -c '{live_bundle_parity}'
+            printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null || {
+              echo "::error::P0B_LIVE_CANARY_BUNDLE_D1_QUEUE_PARITY_MISSING"; exit 8
+            }
+          fi
+          # Regular poll only AFTER verified canary, with existing source
+          # admission and quota guards (never a blind all-source burst).
+          if printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.GET < .limits.GET and .used.total < .limits.total' >/dev/null; then
             POLL="$(curl --fail-with-body -fsS --max-time 65 -X POST \
               -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/poll")"
             printf '%s' "$POLL" | jq -c '{
-              schema: "geomacro.p0b.private-producer-diagnosis.v1",
+              schema:"geomacro.p0b.private-producer-diagnosis.v1",
               due_selected,
-              accepted_count:([.receipts[]? | (.accepted // 0)] | add // 0),
-              producer_error_codes:([.receipts[]? | (.p0b_failure_codes // {}) |
-                to_entries[]?] | group_by(.key) |
-                map({key:.[0].key,value:(map(.value)|add)}) | from_entries),
-              polled_states:([.receipts[]?] | group_by(.state) |
-                map({key:.[0].state,value:length}) | from_entries)
+              accepted_count:([.receipts[]?|(.accepted//0)]|add//0),
+              polled_states:([.receipts[]?]|group_by(.state)|
+                map({key:.[0].state,value:length})|from_entries)
             }'
-          else
-            echo "P0B_PRODUCER_PROBE_SKIPPED_STORAGE_GUARD_OR_QUOTA=true"
           fi
+          # Queue consumption is asynchronous: wait for the resulting ACKs
+          # before asserting day-level parity, not merely latest-candidate proof.
+          for i in 1 2 3 4 5 6; do
+            STATUS="$(curl --fail-with-body -fsS --max-time 20 \
+              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+            if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
+              break
+            fi
+            sleep 10
+          done
+          printf '%s' "$STATUS" | jq -c '{live_bundle_parity}'
+          printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null || {
+            echo "::error::P0B_LIVE_DAY_PARITY_ASSERTION_FAILED"; exit 9
+          }
           PROOF="$(curl --fail-with-body -fsS --max-time 30 -X POST \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/verify-latest")"
           printf '%s' "$PROOF" | jq -e '
@@ -103,6 +174,8 @@ jobs:
             .b2_remote_get_and_decryption_verified==true and
             .canonical_payload_sha256_verified==true and
             .d1_normalized_metadata_readback_verified==true and
-            .d1_ack_state_verified==true and .source_rights_granted==false
+            .d1_ack_state_verified==true and
+            .bundle_gzip_sha256_and_manifest_verified==true and
+            .source_rights_granted==false
           ' >/dev/null || { echo "::error::P0B_REAL_B2_D1_PARITY_MISSING"; exit 4; }
           echo "P0B_REAL_B2_D1_PARITY_VERIFIED=true"
