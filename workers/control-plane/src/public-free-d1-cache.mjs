@@ -14,6 +14,9 @@ export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
 export const PUBLIC_FREE_D1_DERIVED_TTL_SECONDS = 300;
 export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 60;
 const PATHS = new Set([
+  "/api/v1/feed/geopolitics",
+  "/api/v1/feed/macro",
+  "/api/v1/feed/rare_earth",
   "/v1/public/macro-fastlane",
   "/v1/public/fastlane-intelligence",
   "/v1/public/three-domain-continuity",
@@ -48,6 +51,7 @@ const HIGH_READ_DERIVED_PATHS=new Set([
   "/v1/public/derived-structural-72h",
 ]);
 const ttlForPath=pathname=>
+  pathname.startsWith("/api/v1/feed/")?60:
   pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
   HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:
   PUBLIC_FREE_D1_TTL_SECONDS;
