@@ -44,6 +44,8 @@ import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
+import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth}
+ from './p1-source-fanout.mjs';
 import {getP0bIngestionStatus} from './p0b-ingestion-status.mjs';
 import {verifyLatestP0bCommitted} from './p0b-production-verifier.mjs';
 import {handleQueueBatch} from '../../../src/workers/ingest-consumer.ts';
@@ -1319,9 +1321,16 @@ export default {
         if(!['P0B_OUTBOX_REPLAY_OK','P0B_OUTBOX_B2_CIRCUIT_HELD'].includes(receipt.status))
           console.error('P0B_OUTBOX_REPLAY_UNVERIFIED',receipt.status);
       }).catch(()=>console.error('P0B_OUTBOX_DRAIN_UNAVAILABLE')));
+    // Independent 108-source/minute D1-leased fanout. Queue workers have
+    // their own throughput and failure isolation from the B2 spool queue.
+    if(env?.GEOMACRO_P1_FANOUT_ENABLED==='1'&&env?.DB?.prepare)
+      ctx.waitUntil(dispatchP1DueSources(env,{now:utc.getTime()}).then(r=>{
+        if(!['P1_DISPATCH_IDLE','P1_DISPATCH_QUEUED'].includes(r.status))
+          console.error('P1_FANOUT_DEFERRED',r.status);
+      }).catch(()=>console.error('P1_FANOUT_DISPATCH_UNAVAILABLE')));
     // P0-A: D1-authoritative per-source due polling; empty registry is inert.
     // One source failure cannot poison the cron or unrelated risk publishers.
-    if(env?.DB?.prepare)
+    if(env?.GEOMACRO_P1_FANOUT_ENABLED!=='1'&&env?.DB?.prepare)
       ctx.waitUntil((async()=>{
         if(env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'){
           // First after each 00:00 UTC quota reset: admin-controlled 3–5
@@ -1451,6 +1460,11 @@ export default {
     }
   },
   async queue(batch,env,ctx){
+    if(batch?.queue==='geomacro-source-poll')
+      return consumeP1SourcePollBatch(batch,env);
+    // Unknown future queue types never receive a P0B durable ACK.
+    if(batch?.queue&&batch.queue!=='geomacro-ingestion-spool')
+      throw Error('P1_UNKNOWN_QUEUE_BINDING');
     await handleQueueBatch(batch,env);
   },
   async fetch(request, env, ctx) {
@@ -1632,6 +1646,8 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
+      return p1SourceCoverageHealth(env);
     if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
       return getP0bIngestionStatus(env);

@@ -371,9 +371,19 @@ jobs:
             config.vars.B2_S3_ENDPOINT=endpoint;
             config.vars.B2_SPOOL_PREFIX=prefix;
             config.vars.B2_SPOOL_BUCKET=bucket;
+            // Source polling is an independent queue with separate
+            // dead-letter and max 15-source consumer batches.
+            const hasPollProducer=config.queues?.producers?.some(x=>
+              x.binding==='SOURCE_POLL_QUEUE'&&x.queue==='geomacro-source-poll');
+            const hasPollConsumer=config.queues?.consumers?.some(x=>
+              x.queue==='geomacro-source-poll'&&x.max_batch_size===15);
+            if(!hasPollProducer||!hasPollConsumer)
+              throw Error('P1_SOURCE_POLL_QUEUE_CONFIG_UNVERIFIED');
+            config.vars.GEOMACRO_P1_FANOUT_ENABLED='1';
           }else{
             delete config.queues;
             config.vars.GEOMACRO_P0B_ADMISSION_ACTIVE='0';
+            config.vars.GEOMACRO_P1_FANOUT_ENABLED='0';
           }
           // Public verification material ONLY. No private signer reaches the Worker.
           const keys=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
@@ -464,7 +474,7 @@ jobs:
         run: |
           set -euo pipefail
           # Probe each queue with the supported pinned Wrangler 4 info command.
-          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter; do
+          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter geomacro-source-poll geomacro-source-poll-dlq; do
             if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
               echo "P0B_QUEUE_PRESENT:$queue"
             else
