@@ -5,6 +5,11 @@ on:
     - cron: '23 * * * *'
     - cron: '7 0 * * *'
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/p0b-production-parity-hourly.yml'
+      - 'scripts/tests/p0b-capacity-canary-telemetry.test.mjs'
+      - 'workers/control-plane/src/p0a-source-registry.mjs'
   push:
     branches:
       - main
@@ -26,6 +31,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  sanitized-canary-diagnostics-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Run actual jq source-code diagnostics and no-leak guard
+        run: node --test scripts/tests/p0b-capacity-canary-telemetry.test.mjs
+
   real-parity:
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
@@ -122,7 +141,11 @@ jobs:
               schema:"geomacro.p0b.utc-canary-result.v1",due_selected,
               states:([.receipts[]?]|group_by(.state)|
               map({key:.[0].state,value:length})|from_entries),
-              accepted:([.receipts[]?|(.accepted//0)]|add//0)
+              accepted:([.receipts[]?|(.accepted//0)]|add//0),
+              failure_code_counts:(reduce (.receipts[]? |
+                (.p0b_failure_codes // {}) | to_entries[] |
+                select(.key|test("^P0B_[A-Z0-9_]{3,80}$")))
+                as $i ({}; .[$i.key]=((.[$i.key]//0)+($i.value//0))))
             }'
             printf '%s' "$CANARY" | jq -e '.ok==true and .due_selected>=3 and .due_selected<=5' >/dev/null || {
               echo "::error::P0B_CANARY_POLL_FAILED"; exit 7
