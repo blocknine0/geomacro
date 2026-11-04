@@ -90,8 +90,11 @@ test("empty private GRO enrichment queue does not fabricate signatures or scores
 test("protected GRO status cannot infer verification from raw counts",async()=>{
  const env={DB:{prepare(sql){
   return {async first(){
-   assert(sql.includes("WHERE is_gro_verified=1"));
-   return {pending:14,quarantined:1,verified:0,unverified:22,filled:10};
+   if(sql.includes("WHERE is_gro_verified=1"))
+    return {pending:14,quarantined:1,verified:0,unverified:22,filled:10};
+   if(sql.includes("FROM gro_evidence_jobs j LEFT JOIN gro_evidence"))
+    return {eligible:3,verified_within_15m:0,draft_within_15m:2};
+   throw Error("unexpected status query");
   }};
  }}};
  const r=await groEvidenceStatus(env,NOW);
@@ -100,6 +103,9 @@ test("protected GRO status cannot infer verification from raw counts",async()=>{
  assert.equal(data.pending,14);
  assert.equal(data.verified,0);
  assert.equal(data.unverified,22);
+ assert.equal(data.acceptance.verified_15m_ratio,0);
+ assert.equal(data.acceptance.verified_90pct_target_met,false);
+ assert.equal(data.acceptance.draft_ready_within_15m,2);
  assert.equal(data.verified_requires_independent_source_and_score,true);
 });
 test("edge category feed refuses missing D1 even if legacy archive exists",async()=>{
