@@ -38,9 +38,9 @@
       "categories": [
         "macro"
       ],
-      "url": "https://wm.incometaxindia.gov.in/notification-rss-feed/-/asset_publisher/bxhj/rss",
+      "url": "https://www.thehindu.com/business/Economy/feeder/default.rss",
       "type": "rss",
-      "description": "Income Tax Department notifications RSS; same publisher host",
+      "description": "The Hindu Economy RSS; tax/fiscal topic discovery, not tax authority",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -105,9 +105,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.minister.industry.gov.au/feed/media-releases/rss.xml",
+      "url": "https://resourcesreview.com.au/feed/",
       "type": "rss",
-      "description": "Australian Industry and Resources ministers official media-release RSS",
+      "description": "Resources Review independent Australian mining industry journalism, unverified feed candidate",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -118,9 +118,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.minister.industry.gov.au/feed/king/rss.xml",
+      "url": "https://stockhead.com.au/resources/feed/",
       "type": "rss",
-      "description": "Australia Resources Minister official RSS; related but not GA's own reporting",
+      "description": "Stockhead Australia resources-mining editorial feed candidate, not Geoscience Australia",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -131,9 +131,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.abc.net.au/news/feed/2942460/rss.xml",
+      "url": "https://stockhead.com.au/feed/",
       "type": "rss",
-      "description": "Existing ABC Australia national RSS, topical mining discovery only",
+      "description": "Stockhead broader latest Australian business/mining editorial feed candidate; ABC feed reportedly stopped updating",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -157,9 +157,9 @@
       "categories": [
         "geopolitics"
       ],
-      "url": "https://www.president.gov.ua/en/rss/news/last.rss",
+      "url": "https://www.pravda.com.ua/eng/rss/view_news/",
       "type": "rss",
-      "description": "Ukraine Presidency official current-events RSS",
+      "description": "Ukrayinska Pravda English live news RSS; editorial alternative, not presidency",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
