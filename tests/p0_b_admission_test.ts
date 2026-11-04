@@ -55,7 +55,7 @@ function fixture(){
   const key=new URL(url).pathname;
   requests.push({method:opts.method,key});
   if(opts.method==='PUT'){
-   objects.set(key,Uint8Array.from(opts.body));
+   objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
    return new Response(null,{status:200});
   }
   if(opts.method==='GET'){
@@ -352,7 +352,7 @@ test('transient B2 transport failure retries EXACT same encrypted PUT once with 
    now:NOW_DATE,reserve:async()=>{f.requests.push({method:'QUOTA',key:'reserved'});},
    fetchImpl:async(url,opts)=>{
     if(opts.method==='PUT'){
-     tries++;urls.push(url);bytes.push(Uint8Array.from(opts.body));
+     tries++;urls.push(url);bytes.push(opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
      if(tries===1)throw new TypeError('temporary connection closed');
     }
     return f.fetchImpl(url,opts);
@@ -366,6 +366,7 @@ test('transient B2 transport failure retries EXACT same encrypted PUT once with 
   assert.equal(tries,2);
   assert.deepEqual(urls,[urls[0],urls[0]]);
   assert.deepEqual(bytes[0],bytes[1]);
+  assert.equal(bytes[0].length>0,true);
   assert.equal(f.objects.size,1);
   assert.equal(f.requests.filter(x=>x.method==='QUOTA').length,3);
   assert.equal(receipt.sha256,c.candidateSha256);
