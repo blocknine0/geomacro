@@ -92,14 +92,22 @@ export function renderP1SourceRegistrationSQL(records){
    "country_iso3=excluded.country_iso3,"+
    "rights_tier='RESEARCH_ONLY',"+
    "polling_interval_sec=excluded.polling_interval_sec,"+
-   "rate_limit_backoff=excluded.rate_limit_backoff;");
+   "rate_limit_backoff=excluded.rate_limit_backoff WHERE "+
+   "source_registry.canonical_endpoint<>excluded.canonical_endpoint OR "+
+   "source_registry.parser_type<>excluded.parser_type OR "+
+   "source_registry.intended_category<>excluded.intended_category OR "+
+   "source_registry.country_iso3<>excluded.country_iso3 OR "+
+   "source_registry.rights_tier<>'RESEARCH_ONLY' OR "+
+   "source_registry.polling_interval_sec<>excluded.polling_interval_sec OR "+
+   "source_registry.rate_limit_backoff<>excluded.rate_limit_backoff;");
   const receipts=chunk.map(r=>"("+esc(r.source_id)+","+esc(sha([
    r.source_id,r.canonical_endpoint,r.parser_type,r.intended_category,
    r.country_iso3,r.polling_interval_sec].join("|")))+","+
    "strftime('%Y-%m-%dT%H:%M:%fZ','now'))").join(",\n");
   lines.push("INSERT INTO p1_source_seed_manifest(source_id,seed_sha256,seeded_at) VALUES\n"+
    receipts+" ON CONFLICT(source_id) DO UPDATE SET "+
-   "seed_sha256=excluded.seed_sha256,seeded_at=excluded.seeded_at;");
+   "seed_sha256=excluded.seed_sha256,seeded_at=excluded.seeded_at "+
+   "WHERE p1_source_seed_manifest.seed_sha256<>excluded.seed_sha256;");
  }
  // Only physically specific-country sources are mapped. Explicit priorities
  // are based on real source definitions; missing primary/backup slots stay gaps.
