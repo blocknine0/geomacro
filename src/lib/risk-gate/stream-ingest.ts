@@ -18,7 +18,7 @@ export type TrustedResearchEvent=Readonly<{
  independent_originals:number;
  trusted_native_originals_verified:true;
  research_use_permitted:true;
- commercial_eligible?:false; // never used as a gate or proof of rights
+ commercial_eligible?:boolean; // never accepted as a source-truth or rights claim
 }>;
 export type SignedResearchSnapshot=Readonly<{
  schema:typeof RESEARCH_STATE_SCHEMA;profile:typeof RESEARCH_PROFILE;
