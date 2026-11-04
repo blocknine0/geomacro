@@ -29,3 +29,12 @@ test('future, stale and extra content cannot become native dates',()=>{
  assert.equal(p.sources[0].candidates_observed_this_sweep,0);
  assert.equal(p.sources[0].original_last_published_at_in_72h_queue,null);
 });
+
+test('quota-held source proof reports true parser states but never invents native counts or D1 ACKs',()=>{
+ const proof=buildDirect20mSourceHealthProof({registry,checks:[{source_ref:source_ref('macro'),state:'DENIED'}],observedCandidates:null,retainedCandidates:null,now:at});
+ assert.equal(proof.sources[0].transport_parser_state,'DENIED');
+ assert.equal(proof.sources[0].candidates_observed_this_sweep,null);
+ assert.equal(proof.sources[0].candidates_in_retained_72h_queue,null);
+ assert.equal(proof.sources[0].d1_originals_acknowledged_in_retained_queue,null);
+ assert.equal(proof.current_sweep_native_candidate_attribution_measured,false);
+});

@@ -5,6 +5,7 @@
  * artifact, never an unencrypted private news payload.
  */
 import {mkdirSync,writeFileSync} from "node:fs";
+import {buildDirect20mSourceHealthProof} from "../lib/direct20m-source-health-proof.mjs";
 import {collectPrivateOsint15m} from "../lib/private-osint-15m-collector.mjs";
 import {privateOsintRuntimeSources} from "../lib/private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "../lib/private-osint-global-sources.mjs";
@@ -40,6 +41,18 @@ if(result.summary.source_endpoints_attempted!==sources.length||
  throw Error("OSINT_SPOOL_SOURCE_COVERAGE_INVALID");
 const prepared=selectEligiblePrivateOsintSpoolItems(result.items,Date.now());
 const envelope=sealPrivateOsintSpool({items:prepared.items,root,now:Date.now()});
+if(threeDomain20m){
+ const proof=buildDirect20mSourceHealthProof({registry:sources,checks:result.checks,
+  observedCandidates:null,retainedCandidates:null,
+  d1ReadbackVerified:false,b2ReadbackVerified:false,now:now.getTime()});
+ const path=String(process.env.RUNNER_TEMP??'/tmp')+'/geomacro-direct20m-source-proof.json';
+ writeFileSync(path,JSON.stringify(proof)+'\n',{mode:0o600,flag:'wx'});
+ console.log(JSON.stringify({schema:proof.schema,
+  source_endpoints_configured:proof.source_endpoints_configured,
+  category_checks_with_runtime_state:proof.category_checks_with_runtime_state,
+  quota_held:true,d1_writes:0,b2_operations:0,
+  native_candidate_attribution_not_measured:true}));
+}
 if(envelope){
  const dest="/tmp/geomacro-encrypted-held-spool";
  mkdirSync(dest,{recursive:true,mode:0o700});
