@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T03:36:04.364Z",
+  "checked_at": "2026-11-04T03:46:03.251Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 379,
+  "item_count": 378,
   "counts": {
     "geopolitics": 166,
-    "macro": 169,
+    "macro": 168,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "f13e810d528ed9d43891d058bd0adb1ebab6e5dd3971e0895d7887a4b80a1cdd",
+  "source_native_ids_sha256": "1a48b4f03456029e3956cdff5cd30d53963148906e1008244608bf5cd1771142",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -7206,25 +7206,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-536b75c1",
-      "category": "macro",
-      "title": "Geomacro finds Shipping Strikes In Hormuz left Both Sides With Economic Pain",
-      "what_changed": "A monitored source feed reports: Shipping Strikes In Hormuz left Both Sides With Economic Pain. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T03:45:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
