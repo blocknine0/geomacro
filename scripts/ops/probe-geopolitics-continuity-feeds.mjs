@@ -18,11 +18,24 @@ async function worker(){
   const i=next++,s=registry[i];
   let state="NETWORK_ERROR",http_status=null,xml_like=false;
   try{
-   const response=await fetch(s.url,{
+   const opts={
     method:"GET",redirect:"manual",signal:AbortSignal.timeout(8000),
     headers:{"Accept":"application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9",
       "User-Agent":"GeomacroOSINT/1.0 (+https://geomacro.live)"}
-   });
+   };
+   let response=await fetch(s.url,opts);
+   // UN Geneva's published RSS entry redirects once to its exact /en/ URL.
+   // Follow ONLY this documented same-issuer HTTPS path. This never follows
+   // arbitrary redirects or turns an issuer denial into a valid source.
+   if(s.id==="private_geo_continuity_un_geneva_press"&&response.status===301){
+     const location=response.headers.get("location");
+     let canonical=null;
+     try{if(location)canonical=new URL(location,s.url)}catch{}
+     if(canonical?.href==="https://www.ungeneva.org/en/news-media/press-releases-list/rss.xml"){
+       try{await response.body?.cancel()}catch{}
+       response=await fetch(canonical.href,{...opts,signal:AbortSignal.timeout(8000)});
+     }
+   }
    http_status=response.status;
    if(response.status!==200){
     state=[401,403,429].includes(response.status)?"DENIED_OR_RATE_LIMITED":
