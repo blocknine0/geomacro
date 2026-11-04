@@ -20,7 +20,7 @@ async function worker(){
     const reader=response.body?.getReader();
     const chunk=reader?await reader.read():{value:new Uint8Array()};
     const sample=new TextDecoder().decode((chunk.value??new Uint8Array()).slice(0,8192));
-    xml_like=/<(?:rss(?:\\s|>)|feed(?:\\s|>)|rdf:RDF(?:\\s|>))/iu.test(sample);
+    xml_like=/<(?:rss|feed|rdf:RDF)(?:\s|>)/iu.test(sample);
     state=xml_like?"HTTP_200_XML_CANDIDATE":"HTTP_200_NOT_XML";
     try{await reader?.cancel()}catch{}
    }
@@ -39,5 +39,5 @@ const report={schema:"geomacro.hot50.backup-readonly-transport-probe.v1",
  items_d1_written:0,items_b2_written:0,
  results};
 writeFileSync("/tmp/geomacro-hot50-backup-live-probe.json",
- JSON.stringify(report,null,2)+"\\n",{mode:0o600});
+ JSON.stringify(report,null,2),{mode:0o600});
 console.log(JSON.stringify(report));
