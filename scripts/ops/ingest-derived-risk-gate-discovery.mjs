@@ -123,12 +123,18 @@ async function run(){
   }
   if(!finished)throw Error("DERIVED_DISCOVERY_LANE_PAGE_CAP_EXCEEDED_"+lane);
  }
+ const pruned=await call("POST",ROOT+PATH,{
+  schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA,operation:"PRUNE_DISCOVERY_72H",
+ });
+ if(pruned.pruned_retention_hours!==72||pruned.expired_rows_remaining!==0||
+    pruned.raw_archives_modified!==false||pruned.commercialEligible!==false)
+  throw Error("DERIVED_DISCOVERY_PRUNE_UNVERIFIED");
  const summary={
   schema:"geomacro.derived-risk-discovery-20m-cycle.v1",
   ok:true,root_admin_only:true,
   original_content_exported:false,independent_event_verified:false,
   commercial_activation:false,paid_delivery:false,signed_gro:false,
-  new_publisher_fetches:0,
+  new_publisher_fetches:0,discovery_retention_hours:72,
   categories_covered:CATS,
   all_lanes_processed:true,
   per_lane:stats,
