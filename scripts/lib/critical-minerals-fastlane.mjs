@@ -6,7 +6,10 @@ import {unverifiedWebsiteSignalFromOsint} from './private-osint-website-bridge.m
 import {actorActionNewsObservation} from '../../src/lib/release-news-observation.ts';
 import {sectorFeed as feed,MINERALS_MESH} from "./critical-minerals-registry.mjs";
 export {MINERALS_MESH,MINERALS_SOURCE_IDS} from "./critical-minerals-registry.mjs";
-const globalAlternative=feed('mining_technology','https://www.mining-technology.com/news/feed/','global');
+// Share the already-observed Africa regional publisher's same URL as a
+// worldwide discovery-only fallback when Mining Technology blocks direct fetch.
+// Cache-by-URL guarantees no additional GET in any successful Africa read.
+const globalAlternative=feed('miningweekly','https://www.miningweekly.com/page/latest-news/feed','global');
 const googleMinerals=feed('google_minerals','https://news.google.com/rss/search?q='+encodeURIComponent('(\"critical minerals\" OR \"rare earth\" OR lithium OR cobalt OR nickel OR graphite OR copper OR gallium OR germanium) (export OR supply OR mine OR policy OR sanctions) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
 const financialAlternative=feed('fxstreet_news','https://www.fxstreet.com/rss/news','global');
 const googleMacro=feed('google_macro_metals','https://news.google.com/rss/search?q='+encodeURIComponent('(forex OR \"central bank\" OR gold OR silver) (rates OR demand OR supply OR intervention OR reserves) when:1d')+'&hl=en-US&gl=US&ceid=US:en','global');
@@ -53,7 +56,15 @@ export async function collectCriticalMineralsFastlane({now=Date.now(),fetchImpl=
     const rows=parseSectorFeed(data.text,spec,now);signals.push(...rows);
     cursors[spec.id]={etag:data.etag,retry_after:0,checked_at:now};checks.push({id:spec.id,state:'OK',candidates:rows.length});
     return {healthy:true,recent:rows.some(s=>now-Date.parse(s.published_at)<=60*60000)};
-   }catch(e){const denied=/ACCESS_DENIED|RATE_LIMITED/.test(e?.message);cursors[spec.id]={etag:null,retry_after:now+(denied?15:5)*60000,checked_at:now};checks.push({id:spec.id,state:denied?'ACCESS_DENIED':'UNAVAILABLE',candidates:0});return {healthy:false,recent:false};}
+   }catch(e){
+    const message=String(e?.message??'');
+    const denied=/ACCESS_DENIED|RATE_LIMITED/.test(message);
+    const reason=denied?'ACCESS_DENIED':message==='OVERSIZE'?'OVERSIZE':
+      message==='SECTOR_FEED_INVALID'?'FEED_SHAPE_INVALID':'UNAVAILABLE';
+    cursors[spec.id]={etag:null,retry_after:now+(denied?15:5)*60000,checked_at:now};
+    checks.push({id:spec.id,state:reason,candidates:0});
+    return {healthy:false,recent:false};
+   }
   })();cache.set(spec.url,promise);return promise;
  };
  const regions=await Promise.all(MINERALS_MESH.map(async group=>{
