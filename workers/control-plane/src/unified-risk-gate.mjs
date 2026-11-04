@@ -10,6 +10,8 @@ import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
 import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bridge.mjs";
 import {readIndexedRiskCountryOriginals} from "./phase2h-risk-country-index.mjs";
+import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
+ from "./risk-gate-three-tier-product.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
@@ -430,7 +432,10 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   if(enc.encode(raw).length>4096)return reply({ok:false,error:"PAYLOAD_TOO_LARGE"},413);
   payload=JSON.parse(raw);
  }catch{return reply({ok:false,error:"INVALID_JSON"},400)}
- if(!payload||Object.keys(payload).some(k=>!["target_type","target_id","client_policy","override_acknowledged","approved_thresholds"].includes(k))||
+ if(payload?.product_tier!==undefined&&
+  !Object.hasOwn(RISK_GATE_PRODUCT_TIERS,payload.product_tier))
+  return reply({ok:false,error:"UNIFIED_PRODUCT_TIER_INVALID",chargeable:false},400);
+ if(!payload||Object.keys(payload).some(k=>!["target_type","target_id","client_policy","override_acknowledged","approved_thresholds","product_tier"].includes(k))||
   !basePolicy(payload))return reply({ok:false,error:"UNIFIED_INVALID_REQUEST"},400);
  const target=parseTarget(payload);
  if(!target)return reply({ok:false,error:"UNKNOWN_COUNTRY_OR_CORRIDOR"},400);
@@ -481,7 +486,50 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   const lenient=payload.client_policy==="LENIENT"&&payload.override_acknowledged===true;
   const clientPolicyDecision=lenient?
    customTiers.policy.lenient_mode_outcome:customTiers.core.gate_decision;
+  let tiered_product=null;
+  if(payload.product_tier!==undefined){
+   const page=await env.DB.prepare(
+    "SELECT category,source_count,evidence_payload FROM risk_observations "+
+    "WHERE entity_type=? AND entity_id=? AND day_utc=? LIMIT 4"
+   ).bind(target.type,target.id,x.snapshot.day_utc).all();
+   const observations=page?.results;
+   if(!Array.isArray(observations)||observations.length>3)
+    throw Error("RISK_GATE_THREE_TIER_OBSERVATION_READ_UNVERIFIED");
+   let archive_proof=null,history=[];
+   if(payload.product_tier==="complex_full"){
+    const lookup=target.type==="COUNTRY"?
+     "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
+      "archive_readback_verified FROM country_gro_verified_hot "+
+      "WHERE country_iso3=? AND object_id=? LIMIT 1":
+     "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
+      "archive_readback_verified FROM corridor_gro_verified_hot "+
+      "WHERE corridor_id=? AND object_id=? LIMIT 1";
+    if(gro)archive_proof=await env.DB.prepare(lookup).bind(target.id,gro.object_id).first();
+    const beginning=iso(now-6*DAY).slice(0,10);
+    const scanned=await env.DB.prepare(
+     "SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,"+
+     "content_sha256 FROM unified_risk_snapshots "+
+     "WHERE entity_type=? AND entity_id=? AND day_utc>=? AND day_utc<=? "+
+     "ORDER BY day_utc ASC LIMIT 8"
+    ).bind(target.type,target.id,beginning,iso(now).slice(0,10)).all();
+    if(!Array.isArray(scanned?.results)||scanned.results.length>7)
+     throw Error("RISK_GATE_THREE_TIER_HISTORY_PAGE_UNVERIFIED");
+    for(const r of scanned.results){
+     const hist=JSON.parse(r.snapshot_json),proof=JSON.parse(r.audit_proof_json);
+     if(r.entity_type!==target.type||r.entity_id!==target.id||
+       r.day_utc!==hist.day_utc||r.content_sha256!==proof.content_sha256||
+       !await verifySnapshot(hist,proof,env))
+      throw Error("RISK_GATE_THREE_TIER_HISTORY_PROOF_MISMATCH");
+     history.push({...r,snapshot:hist,proof_verified:true});
+    }
+   }
+   tiered_product=composeRiskGateThreeTierResponse({
+    tier:payload.product_tier,snapshot:x.snapshot,observations,
+    verified_gro:gro,archive_proof,history,now,
+   });
+  }
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
+   ...(tiered_product?{tiered_product}:{}),
    client_policy:payload.client_policy??"STRICT",
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
    policy_evaluation_proof_scope:"NOT_INCLUDED_IN_DAILY_SNAPSHOT_HMAC",
