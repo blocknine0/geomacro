@@ -7,16 +7,24 @@ export const CUSTOMER_CREDIT_COSTS=Object.freeze({
   structural_corridor_digest:5,structural_country_profile:8,
   structural_corridor_profile:12,signed_risk_object:10,risk_gate_bundle:15,
 });
+export const CUSTOMER_RISK_GATE_USAGE_USD_CENTS=Object.freeze({
+  risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25,
+});
+const CUSTOMER_ENTITLEMENT_UNITS=Object.freeze({
+ ...CUSTOMER_CREDIT_COSTS,risk_gate_basic_focused:1,risk_gate_standard:1,
+ risk_gate_complex_full:1,
+});
 // GRI retired for new sales; Risk Gate is not public launch eligible.
 // Grant policy and evidence readiness are independent: this code does not
 // authorize any priced response or bypass product availability checks.
 export const CUSTOMER_ENABLED_CAPABILITIES=Object.freeze([
   'intelligence_query','structural_country_digest','structural_corridor_digest',
   'structural_country_profile','structural_corridor_profile','signed_risk_object',
+  'risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full',
 ]);
 const PERMITTED=Object.freeze({
-  starter_dev:['intelligence_query','structural_country_digest','structural_country_profile'],
-  pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile'],
+  starter_dev:['intelligence_query','structural_country_digest','structural_country_profile','risk_gate_basic_focused'],
+  pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile','risk_gate_basic_focused','risk_gate_standard'],
   business_pilot:CUSTOMER_ENABLED_CAPABILITIES,
   // One-time prepaid credit packs are spendable on any currently live
   // intelligence capability. They never unlock retired GRI or public Risk Gate.
@@ -58,11 +66,13 @@ function scopeFor(capability){
   if(capability==='intelligence_query')return 'intelligence:read';
   if(capability.startsWith('structural_'))return 'structural:read';
   if(capability==='signed_risk_object')return 'signed:read';
-  if(capability==='risk_gate_bundle')return 'risk-gate:read';
+  if(capability.startsWith('risk_gate_')||capability==='risk_gate_bundle')return 'risk-gate:read';
   return 'gri:read';
 }
-function validCapability(c){
-  if(!Object.hasOwn(CUSTOMER_CREDIT_COSTS,c)||!CUSTOMER_ENABLED_CAPABILITIES.includes(c))
+function validCapability(c,{allowRiskGate=false}={}){
+  if((!Object.hasOwn(CUSTOMER_CREDIT_COSTS,c)&&
+      !(allowRiskGate&&Object.hasOwn(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,c)))||
+     !CUSTOMER_ENABLED_CAPABILITIES.includes(c))
     fail(403,'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
   return c;
 }
@@ -124,20 +134,20 @@ async function chooseGrant(db,key,capability,now){
   const rows=(await queryGrants(db,key.user_id,now)).results??[];
   const eligible=rows.filter(g=>customerPaidCapabilityPolicy(g.tier,capability));
   if(!eligible.length)fail(403,'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
-  const grant=eligible.find(g=>Number.isInteger(g.remaining)&&g.remaining>=CUSTOMER_CREDIT_COSTS[capability]);
+  const grant=eligible.find(g=>Number.isInteger(g.remaining)&&g.remaining>=CUSTOMER_ENTITLEMENT_UNITS[capability]);
   if(!grant)fail(402,'CUSTOMER_PAID_INSUFFICIENT_CREDITS');
   return grant;
 }
 /** Read-only verified grant/account proof; no credits are allocated here. */
 export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){
-  capability=validCapability(capability);
+  capability=validCapability(capability,{allowRiskGate:true});
   const key=await scopedKey(db,env,apiKey,now);
   const grant=await chooseGrant(db,key,capability,now);
   return {ok:true,principal_id:key.user_id,principal_type:'api_client',
     principal_external_id:'d1:'+key.user_id,key_id:key.key_id,
     scopes:key.scopes,grant_id:grant.grant_id,tier:grant.tier,
     contract_version:grant.contract_version,period_ends_at:grant.expires_at,
-    credits_remaining:grant.remaining,credit_cost:CUSTOMER_CREDIT_COSTS[capability]};
+    credits_remaining:grant.remaining,credit_cost:CUSTOMER_ENTITLEMENT_UNITS[capability]};
 }
 /** Single-statement mutation. SQLite AFTER INSERT trigger appends debit and
  * fails atomically if any of the grant/active-key/credit checks fails.
@@ -205,10 +215,10 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
   const scopes=['intelligence:read','structural:read'];
   // Preserve the existing Business Pilot granted scope; the separate
   // capability eligibility gate still withholds new public Risk Gate sales.
-  if(grants.some(g=>g.remaining>0 && g.tier==='business_pilot'))
+  if(grants.some(g=>g.remaining>0 && ['business_pilot','pro_analyst','starter_dev'].includes(g.tier)))
     scopes.push('signed:read','risk-gate:read');
   else if(grants.some(g=>g.remaining>0 && String(g.tier).startsWith('credits_')))
-    scopes.push('signed:read');
+    scopes.push('signed:read','risk-gate:read');
   const key='gmk_live_'+randHex(32),keyId='gmk_live_'+randHex(16);
   const hash=await customerPaidKeyDigest(env,key);
   try{

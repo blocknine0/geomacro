@@ -92,6 +92,34 @@ function corroborationProof(gro){
  }
  return source_references.length?source_references:null;
 }
+function corroboratedObservationProof(snapshot){
+ const facts=snapshot?.corroborated_risk_facts;
+ if(!facts||typeof facts!=="object"||Array.isArray(facts))return null;
+ const source_references=[];
+ const categoryScores={};
+ const factSheets=[];
+ for(const category of CATEGORIES){
+  const fact=facts[category];
+  if(!fact||!Number.isFinite(fact.score_0_100)||fact.score_0_100<0||fact.score_0_100>100||
+    !Number.isSafeInteger(fact.event_count)||fact.event_count<1||!Array.isArray(fact.source_references))return null;
+  const valid=fact.source_references.filter(event=>typeof event?.event_id==="string"&&
+    HEX.test(event.event_id)&&Number.isSafeInteger(event.independent_source_count)&&
+    event.independent_source_count>=2&&Array.isArray(event.sources)&&
+    new Set(event.sources.map(x=>x?.source_host).filter(x=>typeof x==="string"&&x.length<=120)).size>=2);
+  if(valid.length<fact.event_count)return null;
+  categoryScores[category]=Number((fact.score_0_100/100).toFixed(6));
+  factSheets.push({category,verified_category_score_0_100:boundedScore(fact.score_0_100),
+   evidence_status:"VERIFIED_CORROBORATED",observed_count:Math.max(0,Number(snapshot?.categories?.[category]?.source_count)||0),
+   corroborated_event_count:fact.event_count});
+  for(const event of valid.slice(0,12))source_references.push({
+   event_reference:event.event_id,independent_source_count:event.independent_source_count,
+   source_ids:event.sources.map(x=>String(x.source_id??"")).filter(Boolean).slice(0,6),
+   source_hosts:event.sources.map(x=>String(x.source_host??"")).filter(Boolean).slice(0,6),
+   content_sha256:event.sources.map(x=>x.title_sha256).filter(x=>HEX.test(String(x))).slice(0,6),
+  });
+ }
+ return source_references.length?{categoryScores,factSheets,source_references}:null;
+}
 function sevenDays(rows,now,subject){
  const indexed=new Map();
  for(const row of rows??[]){
@@ -164,6 +192,7 @@ export function composeRiskGateThreeTierResponse({
   const alerts=categoryRows.flatMap(r=>r.observed_alerts).sort((a,b)=>
    b.observed_at.localeCompare(a.observed_at)).slice(0,12);
   return {...base,status:score===null?"NO_OBSERVED_SIGNAL":"READY",
+   chargeable:score!==null,
    confidence:score===null?null:{level:"LOW",verification:"PROVISIONAL"},
    risk_score_0_100:score,risk_score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
    indicative_risk_score_0_100:score,
@@ -179,7 +208,12 @@ export function composeRiskGateThreeTierResponse({
  const calculated=calculateUnifiedRisk(Object.fromEntries(
   CATEGORIES.map(c=>[c,scores[c]??null])));
  const references=corroborationProof(verified_gro);
- const qualified=calculated.unifiedScore!==null&&references!==null;
+ const observedProof=corroboratedObservationProof(snapshot);
+ const signedQualified=calculated.unifiedScore!==null&&references!==null;
+ const observedQualified=observedProof!==null;
+ const qualified=signedQualified||observedQualified;
+ const standardScore=signedQualified?calculated.unifiedScore:
+  observedQualified?calculateUnifiedRisk(observedProof.categoryScores).unifiedScore:null;
  const factsheets=CATEGORIES.map(category=>({
   category,verified_category_score_0_100:
    qualified?boundedScore(scores[category]*100):null,
@@ -187,13 +221,16 @@ export function composeRiskGateThreeTierResponse({
   observed_count:categoryRows.find(r=>r.category===category)?.observed_count??0,
  }));
  if(tier==="standard"){
+  const standardFacts=observedQualified&&!signedQualified?observedProof.factSheets:factsheets;
+  const standardReferences=signedQualified?references:observedProof?.source_references??[];
   return {...base,status:qualified?"READY":"INSUFFICIENT_CORROBORATION",
+   chargeable:qualified,
    confidence:qualified?{level:"MEDIUM",verification:"VERIFIED"}:null,
-   risk_score_0_100:qualified?boundedScore(calculated.unifiedScore*100):null,
+   risk_score_0_100:qualified?boundedScore(standardScore*100):null,
    risk_score_kind:"CORROBORATED_RISK_SCORE",
    corroborated_risk_score_0_100:
-    qualified?boundedScore(calculated.unifiedScore*100):null,
-   category_fact_sheets:factsheets,source_references:qualified?references:[],
+    qualified?boundedScore(standardScore*100):null,
+   category_fact_sheets:standardFacts,source_references:qualified?standardReferences:[],
    auto_search_enrichment:"EXISTING_D1_FIRST_AND_BOUNDED_RSS_GAP_FILL",
    independent_corroboration_verified:qualified,
    signed_gro:null,
@@ -209,6 +246,7 @@ export function composeRiskGateThreeTierResponse({
   subject.type==="CORRIDOR"&&friction.verified_score_days>=2&&
   friction.trend!=="INSUFFICIENT_VERIFIED_HISTORY";
  return {...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
+  chargeable:ready,
   confidence:ready?{level:"HIGH",verification:"CRYPTO_SIGNED"}:null,
   risk_score_0_100:ready?boundedScore(verified_gro.risk.score):null,
   risk_score_kind:"PROPRIETARY_INSTITUTIONAL_SIGNED_SCORE",

@@ -54,7 +54,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: false,
       signed_risk_objects: true,
-      risk_gate: true,
+      risk_gate: false,
       execution_authorized: false,
       payment_environment: "testnet_only",
       payment_asset: "USDC",
@@ -84,7 +84,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: false,
+      risk_gate: true,
     },
   },
   pro_analyst: {
@@ -105,7 +105,7 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: false,
+      risk_gate: true,
     },
   },
   business_pilot: {

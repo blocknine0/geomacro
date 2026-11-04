@@ -126,10 +126,11 @@ test("actual unified snapshot uses private OSINT only as unverified fallback; no
  assert.equal(snapshot.categories.GEOPOLITICS.source_lane,PRIVATE_OSINT_RISK_EVIDENCE_LANE);
  assert.equal(snapshot.categories.MACRO_FX.source_count,0);
  assert.equal(snapshot.categories.CRITICAL_MINERALS.source_count,0);
- assert.equal(snapshot.unified_risk_score,null);
- assert.equal(snapshot.assessment_status,"INSUFFICIENT_VERIFIED_CATEGORY_COVERAGE");
+ assert.equal(snapshot.unified_risk_score,snapshot.basic_focused.unified_risk_score);
+ assert.equal(snapshot.basic_focused.verification,"PROVISIONAL");
+ assert.equal(snapshot.assessment_status,"PROVISIONAL_OBSERVED_BASELINE");
  assert.equal(snapshot.tiers.core.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
- assert.equal(snapshot.chargeable,false);
+ assert.equal(snapshot.chargeable,true);
  assert.equal(fetches.length,2,"Google remains last resort for genuinely missing categories");
  assert.equal(riskRows.get("GEOPOLITICS").payload.private_osint_research_observation_count,2);
  assert.deepEqual(riskRows.get("GEOPOLITICS").payload.sources,[]);

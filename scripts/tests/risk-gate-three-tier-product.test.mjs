@@ -103,6 +103,25 @@ test("Standard real three-category corroboration delivers verified fact sheets w
  assert.equal(r.auto_search_enrichment,"EXISTING_D1_FIRST_AND_BOUNDED_RSS_GAP_FILL");
  assert.equal(r.charged,false);
 });
+test("Standard accepts full-text independent-source corroboration from auto-enrichment",()=>{
+ const corroborated={...snapshot,corroborated_risk_facts:Object.fromEntries([
+  ["GEOPOLITICS",60],["MACRO_FX",40],["CRITICAL_MINERALS",80],
+ ].map(([category,score])=>[category,{score_0_100:score,event_count:1,source_count:2,
+  source_references:[{event_id:"c".repeat(64),
+   independent_source_count:2,sources:[
+    {source_id:"source-one",source_host:"official.example",title_sha256:SHA},
+    {source_id:"source-two",source_host:"news.example",title_sha256:"b".repeat(64)},
+   ]}]}]))};
+ const r=composeRiskGateThreeTierResponse({tier:"standard",snapshot:corroborated,
+  observations,now:NOW});
+ assert.equal(r.status,"READY");
+ assert.equal(r.chargeable,true);
+ assert.equal(r.risk_score_0_100,58);
+ assert.equal(r.confidence.verification,"VERIFIED");
+ assert.equal(r.category_fact_sheets.every(x=>x.evidence_status==="VERIFIED_CORROBORATED"),true);
+ assert.equal(r.source_references.length,3);
+ assert.deepEqual(r.source_references[0].source_ids,["source-one","source-two"]);
+});
 test("Complex requires signed qualified GRO, exact B2 archive readback and corridor scope",()=>{
  const missing=render("complex_full",{verified_gro:gro()});
  assert.equal(missing.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");

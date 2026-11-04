@@ -91,7 +91,11 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
  const data=await result.json();
  assert.equal(data.target_id,"TWN");
  assert.equal(data.tiers.core.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
- assert.equal(data.unified_risk_score,null);
+ assert.equal(data.unified_risk_score,data.basic_focused.unified_risk_score);
+ assert.equal(data.basic_focused.confidence,"LOW");
+ assert.equal(data.basic_focused.verification,"PROVISIONAL");
+ assert.equal(data.assessment_status,"PROVISIONAL_OBSERVED_BASELINE");
+ assert.equal(data.chargeable,true);
  assert.equal(data.verified_live_scoring.status,"CURRENT_SIGNED_GRO_UNAVAILABLE");
  assert.equal(data.verified_live_scoring.advisory_state,"NOT_READY");
  assert.equal(data.verified_live_scoring.fail_closed,true);
@@ -151,9 +155,10 @@ test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
  assert.equal(r.error,"UNIFIED_RECOVERY_D1_UNAVAILABLE");
 });
 
-test("hourly seven-day retention uses remote readback before any D1 prune",async()=>{
+test("hourly seven-day retention verifies all three Supabase tables before any D1 prune",async()=>{
  const now=Date.parse("2026-11-13T08:35:00Z"),sqlCalls=[];
- let remoteDelete=0,remoteRead=0,remoteOldRows=[];
+ let remoteDelete=0,remoteRead=0;
+ const remoteOldRows={daily:[],signals:[],corridors:[]};
  const env={RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
   RISK_GATE_SUPABASE_URL:"https://rg-example.supabase.co",
   RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-private-not-a-production-key-32bytes",
@@ -162,25 +167,28 @@ test("hourly seven-day retention uses remote readback before any D1 prune",async
   }}}}}
  };
  const fetcher=async(url,opt)=>{
-  assert.match(url,/generated_at=lt/);
   assert.match(url,/2026-11-06/);
   if(opt.method==="DELETE"){remoteDelete++;return new Response(null,{status:204})}
-  remoteRead++;return Response.json(remoteOldRows);
+  remoteRead++;
+  if(url.includes("geomacro_unified_risk_daily"))return Response.json(remoteOldRows.daily);
+  if(url.includes("geomacro_risk_signal_7d"))return Response.json(remoteOldRows.signals);
+  if(url.includes("geomacro_corridor_candidate_7d"))return Response.json(remoteOldRows.corridors);
+  assert.fail("unexpected cleanup table");
  };
  const cleaned=await cleanupUnifiedRiskSupabase(env,{now,fetcher});
  assert.equal(cleaned.ok,true);
  assert.equal(cleaned.verified,true);
  assert.equal(cleaned.interval_hours,1);
  assert.equal(cleaned.retention_days,7);
- assert.equal(remoteDelete,1);
- assert.equal(remoteRead,1);
+ assert.equal(remoteDelete,3);
+ assert.equal(remoteRead,3);
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_generation_attempts")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM risk_observations")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_snapshots")&&
    x.query.includes("supabase_synced_at IS NOT NULL")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("INSERT INTO risk_gate_daily_housekeeping")));
  sqlCalls.length=0;
- remoteOldRows=[{entity_id:"STALE"}];
+ remoteOldRows.daily=[{entity_id:"STALE"}];
  const blocked=await cleanupUnifiedRiskSupabase(env,{now,fetcher});
  assert.equal(blocked.ok,false);
  assert.equal(blocked.error,"UNIFIED_CLEANUP_READBACK_FAILED");
