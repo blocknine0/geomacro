@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T07:52:23.378Z",
+  "updated_at": "2026-11-04T07:55:24.018Z",
   "signals": [
     {
       "id": "geopolitics-7777e4ba",
@@ -71,6 +71,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T06:14:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-a2f5a764",
+      "category": "geopolitics",
+      "title": "Geomacro finds North Korea launched missiles toward the sea as Pyongyang protests against US claims on Binance hack - AP News",
+      "what_changed": "A monitored source feed reports: North Korea launched missiles toward the sea as Pyongyang protests against US claims on Binance hack - AP News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-09500e27",
+      "category": "geopolitics",
+      "title": "Geomacro finds President Trump said he will accept the results of the election - CNN",
+      "what_changed": "A monitored source feed reports: President Trump said he will accept the results of the election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:20:26.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

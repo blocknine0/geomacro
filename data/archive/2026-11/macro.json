@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T07:52:23.378Z",
+  "updated_at": "2026-11-04T07:55:24.018Z",
   "signals": [
     {
       "id": "macro-202c1363",
@@ -423,6 +423,25 @@
       "severity": null
     },
     {
+      "id": "macro-2e6c676d",
+      "category": "macro",
+      "title": "Geomacro finds Qualcomm Seen Posting lowered 4Q Revenue Amid Smartphone Slowdown, Ramp of Custom Chips -- Earnings Preview - MarketWatch",
+      "what_changed": "A monitored source feed reports: Qualcomm Seen Posting lowered 4Q Revenue Amid Smartphone Slowdown, Ramp of Custom Chips -- Earnings Preview - MarketWatch. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:13:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-534ca239",
       "category": "macro",
       "title": "Geomacro finds Arab Youth Centre launched New Economy Programme to train 400 young Arabs in tech and business - The National",
@@ -455,6 +474,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ddcdfff5",
+      "category": "macro",
+      "title": "Geomacro finds Hormuz Standoff left Both Sides With Economic Pain",
+      "what_changed": "A monitored source feed reports: Hormuz Standoff left Both Sides With Economic Pain. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:47:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

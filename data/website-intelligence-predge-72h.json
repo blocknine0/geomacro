@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T07:52:23.378Z",
+  "checked_at": "2026-11-04T07:55:24.018Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 396,
+  "item_count": 400,
   "counts": {
-    "geopolitics": 175,
-    "macro": 177,
+    "geopolitics": 177,
+    "macro": 179,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "d3747d480593e081a9c58cd447ef7c65ffd15f1b591a1baf61fa4139c687f3f9",
+  "source_native_ids_sha256": "be016a7399f6c9904d8932930a1c6d114607230f602c4d6ede2543640ad23d81",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -144,6 +144,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-a2f5a764",
+      "category": "geopolitics",
+      "title": "Geomacro finds North Korea launched missiles toward the sea as Pyongyang protests against US claims on Binance hack - AP News",
+      "what_changed": "A monitored source feed reports: North Korea launched missiles toward the sea as Pyongyang protests against US claims on Binance hack - AP News. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:51:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-60e47656",
       "category": "macro",
       "title": "Geomacro finds Wheat released Price Reduced, Flour Becomes Cheaper by Rs17 Per Kilogram - Pakistan Observer",
@@ -153,6 +172,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T05:37:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-09500e27",
+      "category": "geopolitics",
+      "title": "Geomacro finds President Trump said he will accept the results of the election - CNN",
+      "what_changed": "A monitored source feed reports: President Trump said he will accept the results of the election - CNN. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T05:20:26.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -847,6 +885,25 @@
       "severity": null
     },
     {
+      "id": "macro-2e6c676d",
+      "category": "macro",
+      "title": "Geomacro finds Qualcomm Seen Posting lowered 4Q Revenue Amid Smartphone Slowdown, Ramp of Custom Chips -- Earnings Preview - MarketWatch",
+      "what_changed": "A monitored source feed reports: Qualcomm Seen Posting lowered 4Q Revenue Amid Smartphone Slowdown, Ramp of Custom Chips -- Earnings Preview - MarketWatch. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T18:13:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-534ca239",
       "category": "macro",
       "title": "Geomacro finds Arab Youth Centre launched New Economy Programme to train 400 young Arabs in tech and business - The National",
@@ -879,6 +936,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ddcdfff5",
+      "category": "macro",
+      "title": "Geomacro finds Hormuz Standoff left Both Sides With Economic Pain",
+      "what_changed": "A monitored source feed reports: Hormuz Standoff left Both Sides With Economic Pain. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-03T17:47:08.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: gcaptain.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
