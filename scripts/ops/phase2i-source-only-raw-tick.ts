@@ -158,7 +158,8 @@ const {schema,status,selected_count,available_originals,deferred_count,
  d1_readback_verified,b2_verified}=stage;
 console.log(JSON.stringify({
  schema,status,source_intake_lane_only:true,
- country_routes:195,country_category_routes:585,
+ country_routes:hot50Direct20m?50:195,
+ country_category_routes:hot50Direct20m?150:585,
  source_endpoints_attempted:result.summary.source_endpoints_attempted,
  ...(hot50Direct20m?{
   source_lane:"HOT50_DIRECT_20M",
