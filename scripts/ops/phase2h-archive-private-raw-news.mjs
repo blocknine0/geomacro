@@ -28,7 +28,7 @@ export function buildPhase2hRawB2Plan(rows,now=new Date()){
    typeof r.ingested_at!=="string"||!/^20\d\d-\d\d-\d\dT/u.test(r.ingested_at)||
    !Number.isFinite(Date.parse(r.ingested_at))||
    Date.parse(r.ingested_at)>now.getTime()+60_000||
-   now.getTime()-Date.parse(r.ingested_at)>=72*60*60_000||
+
    r.commercial_rights_verified!==false||
    r.commercial_delivery_authorized!==false)
    fail("SOURCE_CONTENT_INVALID");
@@ -74,7 +74,7 @@ export function phase2hKeysetPendingPageSQL(limit,hasCursor=false){
  if(!Number.isSafeInteger(limit)||limit<1||limit>25||
     typeof hasCursor!=="boolean")fail("D1_PAGE_BOUNDS_INVALID");
  return "SELECT record_id,first_ingested_at,raw_json FROM phase2h_private_raw_news "+
-  "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  "WHERE b2_object_sha256 IS NULL "+
   (hasCursor?"AND (first_ingested_at>? OR (first_ingested_at=? AND record_id>?)) ":"")+
   "ORDER BY first_ingested_at,record_id LIMIT "+limit;
 }
@@ -84,7 +84,7 @@ export function phase2hBoundedPendingPageSQL(limit,offset){
     !Number.isSafeInteger(offset)||offset<0||offset>299||
     offset+limit>300)fail("D1_PAGE_BOUNDS_INVALID");
  return "SELECT raw_json FROM phase2h_private_raw_news WHERE "+
-  "b2_object_sha256 IS NULL AND first_ingested_at>? "+
+  "b2_object_sha256 IS NULL "+
   "ORDER BY first_ingested_at,record_id LIMIT "+limit+" OFFSET "+offset;
 }
 export function createPhase2hCanonicalD1({
@@ -237,11 +237,11 @@ export function createPhase2hCanonicalD1({
  };
  return {
   async readPending(now=new Date()){
-   // Only the 72h current D1 originals are eligible for private B2.
-   // Never let thousands of expired pending records starve fresh originals.
+   // 31 Oct owner policy: B2 archival-only reader must recover retained
+   // original D1 history; general question/read routes still enforce 72h.
    if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     fail("CANONICAL_D1_ARCHIVE_CLOCK_INVALID");
-   const cutoff=new Date(now.getTime()-72*60*60_000).toISOString();
+
    // 25-row bounded indexed keyset (same provider quota and 300-row cap).
    // No OFFSET instability after concurrent ACKs. Never invent timestamps,
    // advance cursor on failure, or duplicate original article bodies.
@@ -261,7 +261,7 @@ export function createPhase2hCanonicalD1({
       await sql(
        phase2hKeysetPendingPageSQL(
         Math.min(pageSize,maxRows-rows.length),hasCursor),
-       hasCursor?[cutoff,cursorClock,cursorClock,cursorId]:[cutoff]
+       hasCursor?[cursorClock,cursorClock,cursorId]:[]
       );
     }catch(error){
      if(useBulkWorkerV2&&error instanceof Error&&
@@ -487,6 +487,8 @@ export async function runPhase2hGovernedRawB2({
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
   storage_confirmed:true,rows_archived:plan.record_count,
+   historical_expired_originals_archived:plan.rows.filter(r=>
+    now.getTime()-Date.parse(r.ingested_at)>=72*60*60_000).length,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
