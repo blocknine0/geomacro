@@ -266,6 +266,7 @@
     "phase2h-manual-d1-storage-cleanup.yml",
     "phase2h-private-raw-archive.yml",
     "phase2i-195x3-source-coverage.yml",
+    "phase2i-585-coverage-audit.yml",
     "post-listing-health.yml",
     "ppg-production-promotion-census.yml",
     "pre-mainnet-x402-zero-fund-acceptance.yml",
