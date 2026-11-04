@@ -325,7 +325,7 @@ describe("permanent derived-only website archive",()=>{
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
   let d1Calls=0;
   const fetchImpl=async url=>{
-   if(url.includes("/v1/public/website-derived-news-bundle"))d1Calls++;
+   if(url.includes("/v1/internal/website-derived-news-bundle"))d1Calls++;
    return new Response("",{status:503});
   };
   const held=await publishPermanentDerivedNewsArchive({
@@ -352,14 +352,14 @@ describe("permanent derived-only website archive",()=>{
   writeFileSync(indexPath,JSON.stringify(idx));
   writeCandidates(p.candidatePath,[signal("1234abcd")]);
   const invalid=await publishPermanentDerivedNewsArchive({
-   ...p,now:NOW,canonicalCatchup:true,
+   ...p,now:NOW,canonicalCatchup:true,canonicalOriginToken:"a".repeat(64),
    fetchImpl:async()=>Response.json({
     ok:true,schema:"geomacro.website-derived-news-bundle.v1",
     checked_at:new Date(NOW).toISOString(),complete:false,item_cap:600,
     returned_rows:0,signals:[],retention_days:3,retention_hours:72,
     original_release_delay_minutes:0,delivery_scope:"free_website_only",
     scored:false,chargeable:false,supabase_dependency:false
-   })
+   },{headers:{"X-GeoMacro-Origin-Readback":"d1-canonical"}})
   });
   assert.equal(invalid.canonical_d1_catchup_requested,true);
   assert.equal(invalid.canonical_d1_catchup_completed,false);
@@ -370,7 +370,8 @@ describe("permanent derived-only website archive",()=>{
   const workflow=readFileSync(".github/workflows/website-derived-news-cadence-backstop.yml","utf8");
   assert.ok(workflow.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.result == 'success' && needs.quota-admission.outputs.research == 'true' }}"));
   const publisher=readFileSync("scripts/ops/publish-permanent-derived-news-archive.mjs","utf8");
-  assert.ok(publisher.includes('canonicalCatchup:process.env.GEOMACRO_CANONICAL_D1_CATCHUP==="true"'));
+  assert.ok(publisher.includes("const canonicalCatchup=process.env.GEOMACRO_CANONICAL_D1_CATCHUP==='true'"));
+  assert.ok(publisher.includes("deriveControlPlaneRootToken(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN)"));
   assert.match(publisher,/canonical_d1_catchup_completed:canonicalCatchupCompleted/u);
  });
 
