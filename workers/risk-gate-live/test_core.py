@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta, timezone
-from core import canonicalize, threshold_breached, dispatch_envelope, no_expired_dispatch
+from core import canonicalize, threshold_breached, score_candidate, dispatch_envelope, no_expired_dispatch
 
 class PipelineContractTests(unittest.TestCase):
     def test_three_categories_iso3_and_severity(self):
@@ -19,7 +19,7 @@ class PipelineContractTests(unittest.TestCase):
                 self.assertEqual(obj["verification_state"], "UNVERIFIED")
 
     def test_liquidity_gate(self):
-        event = canonicalize({"id": "1", "headline": "US sanctions on Iran"}, "telegram_osint")
+        event = canonicalize({"id": "1", "headline": "US sanctions on Iran", "published_at": datetime.now(timezone.utc).isoformat()}, "telegram_osint")
         self.assertTrue(threshold_breached(event, True))
         self.assertFalse(threshold_breached(event, False))
         event["country_iso3"] = []
@@ -30,6 +30,19 @@ class PipelineContractTests(unittest.TestCase):
         self.assertEqual(obj["country_iso3"], [])
         self.assertIsNone(obj["published_at"])
         self.assertFalse(threshold_breached(obj, True))
+
+    def test_missing_stale_and_future_source_time_fail_closed(self):
+        e = canonicalize({"id":"x", "headline":"War in Ukraine"}, "liveuamap")
+        self.assertFalse(score_candidate(e))
+        e["published_at"] = (datetime.now(timezone.utc) - timedelta(hours=4)).isoformat()
+        self.assertFalse(score_candidate(e))
+        e["published_at"] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        self.assertFalse(score_candidate(e))
+
+    def test_calendar_date_is_not_publication_time(self):
+        e = canonicalize({"CalendarId":"1", "Event":"Argentina debt default", "Date":"2026-11-05T00:00:00Z", "Country":"Argentina"}, "tradingeconomics")
+        self.assertIsNone(e["published_at"])
+        self.assertFalse(score_candidate(e))
 
     def test_three_hour_strict_window(self):
         now = datetime(2026, 11, 4, tzinfo=timezone.utc)

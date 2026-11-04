@@ -16,7 +16,7 @@ import aio_pika
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from core import canonicalize, threshold_breached
+from core import canonicalize, score_candidate
 from dispatcher import dispatch_candidate
 from sources import (
     configured_json, poll_gazettes, poll_liveuamap, poll_rss,
@@ -97,7 +97,7 @@ class Runtime:
         result = {"status": "NO_THRESHOLD_OR_COUNTRY"}
         # Raw source feeds remain UNVERIFIED and never directly grant
         # commercial GRO eligibility or permit customer broker execution.
-        if threshold_breached(event, True):
+        if score_candidate(event):
             result = await dispatch_candidate(event)
         self.db.execute(
             "INSERT OR IGNORE INTO processed_events (event_id, result_json) VALUES (?, ?)",

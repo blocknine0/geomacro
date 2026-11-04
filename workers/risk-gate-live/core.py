@@ -106,7 +106,7 @@ def canonicalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
     record_id = str(raw.get("source_record_id") or raw.get("id") or raw.get("CalendarId") or raw.get("url") or "").strip()
     if not record_id:
         raise ValueError("source record id required")
-    published = parse_utc(raw.get("published_at") or raw.get("published") or raw.get("Date") or raw.get("date"))
+    published = parse_utc(raw.get("published_at") or raw.get("published"))
     event_type, severity = classify(title)
     countries = iso3_list(raw, title)
     event_id = sha256(f"{source}\0{record_id}".encode()).hexdigest()
@@ -126,14 +126,23 @@ def canonicalize(raw: dict[str, Any], source: str) -> dict[str, Any]:
         "commercial_eligible": False,
     }
 
-def threshold_breached(event: dict[str, Any], liquid: bool) -> bool:
+def score_candidate(event: dict[str, Any], now: datetime | None = None) -> bool:
+    """Pre-liquidity filter: only recent, originally timestamped source events."""
+    source_time = parse_utc(event.get("published_at"))
+    current = now or utcnow()
+    if not source_time or source_time > current + timedelta(minutes=5):
+        return False
+    if current - source_time > DISPATCH_WINDOW:
+        return False
     return bool(
         event.get("event_type")
         and isinstance(event.get("severity"), (int, float))
         and event["severity"] >= THRESHOLD
         and event.get("country_iso3")
-        and liquid is True
     )
+
+def threshold_breached(event: dict[str, Any], liquid: bool, now: datetime | None = None) -> bool:
+    return score_candidate(event, now) and liquid is True
 
 def dispatch_envelope(event: dict[str, Any], symbol: str, now: datetime | None = None) -> dict[str, Any]:
     now = (now or utcnow()).astimezone(timezone.utc)
