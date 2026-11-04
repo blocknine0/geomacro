@@ -37,7 +37,7 @@ concurrency:
 jobs:
   verify-source-state-contract:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -45,6 +45,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
+      - name: Install repo-pinned dependencies for Vitest (no unpinned network fallback)
+        run: bun install --frozen-lockfile
       - name: Verify original-page first, three categories, zero queue, and rejected tampering
         run: |
           set -euo pipefail
