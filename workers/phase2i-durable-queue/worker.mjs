@@ -15,7 +15,8 @@ const digest=async bytes=>Array.from(new Uint8Array(
 function authorized(request,env){
  const actual=request.headers.get("authorization")??"";
  const expected="Bearer "+String(env.PHASE2I_DURABLE_TOKEN??"");
- if(expected.length<40||actual.length!==expected.length)return false;
+ if(String(env.PHASE2I_DURABLE_TOKEN??"").length<32||
+    actual.length!==expected.length)return false;
  let unequal=0;
  for(let i=0;i<expected.length;i++)unequal|=actual.charCodeAt(i)^expected.charCodeAt(i);
  return unequal===0;
@@ -89,7 +90,7 @@ export class Phase2iDurableQueueDO {
    acknowledged:[],lastLeasedAt:0,leaseId:null,leaseUntil:0};
   const additions=fresh.filter(x=>!chunk.items.some(y=>y.id===x.id));
   chunk.items.push(...additions);
-  const writes={"chunk:"+id:chunk};
+  const writes={["chunk:"+id]:chunk};
   for(const item of additions)writes["item:"+item.id]={
    chunkId:id,expiresAt:item.expiresAt};
   await this.state.storage.put(writes);

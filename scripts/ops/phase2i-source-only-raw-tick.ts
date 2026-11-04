@@ -101,8 +101,17 @@ if(durableMode){
  // The durable producer writes and readback-verifies EVERY new encrypted
  // 500-item chunk before the D1 admission/lease step; no 8,000 cap or
  // ephemeral all-candidate snapshot can truncate the source sweep.
+ // Import any still-eligible, not-yet-D1-acknowledged originals from
+ // the last protected main-only GitHub AEAD snapshot on migration. The DO
+ // dedupes repeated imports, so there is no data-loss cutover.
+ const legacy=JSON.parse(readFileSync(priorPath,"utf8"));
+ if(legacy.schema!=="geomacro.phase2i-protected-runner-prior.v1"||
+    !Array.isArray(legacy.candidates)||legacy.candidates.length>8000)
+  throw Error("PHASE2I_DURABLE_MIGRATION_PRIOR_UNVERIFIED");
+ const legacyPending=legacy.candidates.filter(c=>c.d1Acknowledged!==true);
  durableAppend=await appendAndLeasePhase2i({
-  observed:indexed.candidates,root,now:now.getTime(),env
+  observed:[...legacyPending,...indexed.candidates],
+  root,now:now.getTime(),env
  });
  durableLease=durableAppend.lease;
  queue={candidates:durableAppend.candidates,
