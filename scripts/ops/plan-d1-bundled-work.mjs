@@ -167,6 +167,40 @@ export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
  });
 }
 
+/** Quota-backed Phase2I burst budget. Unlike the permanent 5-row safety
+ * reserve, additional 50/100 row writer slots are granted only when there
+ * is genuinely unused account-wide capacity AFTER all future publisher,
+ * registered-source, raw-archive, emergency and PREDGE reservations.
+ * Provider GraphQL is non-atomic; serialization remains mandatory.
+ */
+export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered,{
+ now=new Date(),criticalGranted=false,
+}={}){
+ const baseline=MINIMUM_DAILY_BUNDLED_SOURCE.max_new_rows;
+ const held=Object.freeze({max_new_rows:baseline,adaptive:false,
+  additional_slot_rows_reserved:0});
+ if(!criticalGranted||!intakeBudget||!snapshot||
+    !(now instanceof Date)||!Number.isFinite(now.getTime())||
+    !Number.isSafeInteger(snapshot.remaining_rows_read)||
+    !Number.isSafeInteger(snapshot.remaining_rows_written))return held;
+ const slots=intakeBudget.remaining_source_slots+
+   intakeBudget.additional_hot50_direct_20m_slots_reserved;
+ if(!Number.isSafeInteger(slots)||slots<1)return held;
+ const archiveSlots=[0,6,12,18].filter(h=>h>=now.getUTCHours()).length||1;
+ const writeAvailable=Math.max(0,snapshot.remaining_rows_written-
+   D1_BUNDLE_LANES.critical.write_reserve-intakeBudget.rows_written-
+   (registered?.extra_write_reserved??0)-archiveSlots*750-10_000);
+ const readAvailable=Math.max(0,snapshot.remaining_rows_read-
+   D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
+   (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
+ const extra=Math.max(0,Math.min(95,
+   Math.floor(writeAvailable/(slots*16)),
+   Math.floor(readAvailable/(slots*64))));
+ const max_new_rows=baseline+extra;
+ return Object.freeze({max_new_rows,adaptive:max_new_rows>baseline,
+   additional_slot_rows_reserved:extra*slots});
+}
+
 const held=(reason,now)=>Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",
   day_utc:now.toISOString().slice(0,10),state:"HELD",
@@ -279,6 +313,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   const registeredAdaptive=planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
     now,criticalGranted:grants.critical===true&&sourceIntake,
   });
+  const phase2iAdaptive=planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,
+    registeredAdaptive,{now,criticalGranted:grants.critical===true&&sourceIntake});
   // One quota-admitted Phase2H cleanup run can use 25..1000 row deletes;
   // reserve the *entire* one-run retention pass at the granted maximum.
   // Do not admit a 1000-row writer behind the old 25-row/hour budget.
@@ -396,7 +432,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     predge_protected_write_headroom_observed:
       snapshot.remaining_rows_written>PREDGE_D1_FREE_HEADROOM.rows_written,
     source_intake_interval_minutes:intakeBudget?.interval_minutes??null,
-    source_intake_max_new_rows:intakeBudget?.max_new_rows??0,
+    source_intake_max_new_rows:sourceIntake?phase2iAdaptive.max_new_rows:0,
+    source_intake_phase2i_adaptive:phase2iAdaptive.adaptive,
+    source_intake_phase2i_extra_slot_rows_reserved:phase2iAdaptive.additional_slot_rows_reserved,
     minimum_daily_bundled_source_policy:MINIMUM_DAILY_BUNDLED_SOURCE,
     minimum_daily_bundled_source_admitted:sourceIntake,
     snapshot_refresh:snapshotRefresh,
