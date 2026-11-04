@@ -539,3 +539,24 @@ test('P0-B outbox remote B2 PUT succeeds but D1 journal failure never marks ARCH
   assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM ingestion_spool_queue').get().n,0);
  }finally{f.close()}
 });
+
+test('P0-B same immutable batch and publisher clock produce exact same encrypted B2 bytes and idempotent key',async()=>{
+ const f=fixture();
+ try{
+  const rows=await Promise.all([candidate(12000),candidate(12001)]);
+  const payloads=rows.map(c=>({
+    candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+    rawPayload:c.raw,headers:{},discoveredAt:at
+  }));
+  const a=await f.manager.spoolBundleAndVerify(payloads,{keyTime:NOW_DATE()});
+  const objectA=new Uint8Array(f.objects.values().next().value);
+  const b=await f.manager.spoolBundleAndVerify(payloads,{keyTime:NOW_DATE()});
+  const objectB=new Uint8Array(f.objects.values().next().value);
+  assert.equal(a.b2Uri,b.b2Uri);
+  assert.equal(a.batchSha256,b.batchSha256);
+  assert.deepEqual(objectA,objectB);
+  assert.equal(f.objects.size,1);
+  const restores=await f.manager.readBundleVerified(a.b2Uri,a.batchSha256);
+  assert.equal(restores.items.length,2);
+ }finally{f.close()}
+});

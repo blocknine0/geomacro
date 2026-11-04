@@ -287,7 +287,12 @@ export class B2SpoolManager {
   if(plain.length>2*BUNDLE_MAX_PLAIN_BYTES)throw Error('P0B_BUNDLE_PLAIN_TOO_LARGE');
   const batchSha256=await p0bSha256(plain);
   const compressed=await zipped(plain,'gzip');
-  const nonce=crypto.getRandomValues(new Uint8Array(12));
+  // Same authenticated canonical microbatch -> byte-identical sealed
+  // object and stable B2 key across crash replay. HMAC-domain-separated
+  // nonce is unique to this SHA256 message under the private secret key.
+  // A different plaintext produces a different identity and AES-GCM nonce.
+  const nonce=(await hmac(ENCODER.encode(this.env.B2_SPOOL_ENCRYPTION_KEY),
+   'p0b.encrypted-bundle-nonce.v1|'+batchSha256)).slice(0,12);
   const ciphertext=new Uint8Array(await crypto.subtle.encrypt({
    name:'AES-GCM',iv:toBytes(nonce),additionalData:toBytes('p0b.bundle|'+batchSha256)
   },await this.aesKey(),toBytes(compressed)));

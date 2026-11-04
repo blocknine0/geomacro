@@ -141,10 +141,11 @@ export function p0bOutboxCommitStatement(db:any,row:any,verified:any,at:Date){
   "UPDATE p0b_archive_outbox SET "+
   "state='ARCHIVED',b2_uri=?,b2_etag=?,b2_object_sha256=?,"+
   "archived_at=?,sealed_payload=NULL,lease_id=NULL,locked_until=NULL,"+
-  "last_error_code=NULL WHERE batch_id=? AND "+
-  "state IN ('PENDING_ARCHIVE','REPLAYING') AND candidate_fingerprint=?"
+  "last_error_code=NULL WHERE batch_id=? AND candidate_fingerprint=? "+
+  "AND (state='PENDING_ARCHIVE' OR "+
+  "(state='REPLAYING' AND lease_id=?))"
  ).bind(verified.b2Uri,etag,verified.batchSha256,at.toISOString(),
-  row.batch_id,row.candidate_fingerprint);
+  row.batch_id,row.candidate_fingerprint,row.lease_id??null);
 }
 export async function verifyP0bOutboxCommitted(db:any,row:any,verified:any){
  const saved=await db.prepare(
