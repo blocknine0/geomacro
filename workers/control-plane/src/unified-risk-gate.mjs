@@ -495,6 +495,29 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    const observations=page?.results;
    if(!Array.isArray(observations)||observations.length>3)
     throw Error("RISK_GATE_THREE_TIER_OBSERVATION_READ_UNVERIFIED");
+   // Basic Fast SLA: re-read the actual last-24h D1 native originals on
+   // every authorized query. Existing once/day HMAC snapshot is not current
+   // news, so supplement older observations without rebuilding daily state.
+   if(payload.product_tier==="basic_focused"){
+    const liveTarget={...target,...registry(target.type,target.id)};
+    const fresh=await Promise.all(CATEGORIES.map(async category=>{
+     const entries=compactEvidence(
+      await d1Observed(env,liveTarget,category,now));
+     return {category,entries};
+    }));
+    for(const reading of fresh){
+     if(!reading.entries.length)continue;
+     const replacement={
+      category:reading.category,source_count:reading.entries.length,
+      evidence_payload:JSON.stringify({
+       schema:"geomacro.risk-observation.v1",sources:reading.entries,
+      }),
+     };
+     const position=observations.findIndex(x=>x.category===reading.category);
+     if(position>=0)observations[position]=replacement;
+     else observations.push(replacement);
+    }
+   }
    let archive_proof=null,history=[];
    if(payload.product_tier==="complex_full"){
     const lookup=target.type==="COUNTRY"?
