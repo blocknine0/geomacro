@@ -45,7 +45,7 @@ const publisherNativeChecks=registry.map(source=>({
  source_id:source.id,backup_for_retired_ids:source.backup_for_retired_ids,
  category_states:Object.fromEntries(source.categories.map(category=>[
   category,nativeStateByRef.get(createHash("sha256").update(
-   [source.id,source.url,category].join("\\n")).digest("hex"))??"NOT_CHECKED"
+   [source.id,source.url,category].join("\n")).digest("hex"))??"NOT_CHECKED"
  ]))
 }));
 const report={schema:"geomacro.hot50.backup-readonly-transport-probe.v1",
