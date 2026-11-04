@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T07:55:24.018Z",
+  "checked_at": "2026-11-04T08:48:16.043Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 400,
+  "item_count": 401,
   "counts": {
     "geopolitics": 177,
-    "macro": 179,
+    "macro": 180,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "be016a7399f6c9904d8932930a1c6d114607230f602c4d6ede2543640ad23d81",
+  "source_native_ids_sha256": "709a4500e8cf7f2ad67a2920cd3d5904a332a51de875e40000d1a1efb680680e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -457,6 +457,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T02:00:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3d53be7c",
+      "category": "macro",
+      "title": "Geomacro finds Gold held near $3,930 as Iran talks, U.S. midterms shape outlook - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Gold held near $3,930 as Iran talks, U.S. midterms shape outlook - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T01:34:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
