@@ -210,8 +210,39 @@ export async function groEvidenceStatus(env,now=Date.now()){
   if(!stats||!["pending","quarantined","verified","unverified","filled"].every(
    k=>Number.isSafeInteger(stats[k])&&stats[k]>=0))
    throw Error();
+  // An archive proof is NOT the GRO acceptance event. The numerator requires
+  // both independent verification and completion <=15m from the B2 ACK.
+  // Exclude immature records from the SLO denominator; no fake 100% on zero.
+  const matureAt=iso(now-15*60000),windowFrom=iso(now-75*60000);
+  const cohort=await env.DB.prepare(
+   "SELECT COUNT(*) AS eligible, "+
+   "SUM(CASE WHEN e.is_gro_verified=1 AND e.updated_at<= "+
+   "strftime('%Y-%m-%dT%H:%M:%fZ',j.archived_at,'+15 minutes') "+
+   "THEN 1 ELSE 0 END) AS verified_within_15m, "+
+   "SUM(CASE WHEN j.state='DRAFT_READY' AND j.processed_at<= "+
+   "strftime('%Y-%m-%dT%H:%M:%fZ',j.archived_at,'+15 minutes') "+
+   "THEN 1 ELSE 0 END) AS draft_within_15m "+
+   "FROM gro_evidence_jobs j LEFT JOIN gro_evidence e ON "+
+   "e.record_id=j.record_id WHERE j.archived_at>=? AND j.archived_at<=?"
+  ).bind(windowFrom,matureAt).first();
+  if(!Number.isSafeInteger(cohort?.eligible)||cohort.eligible<0)
+   throw Error("GRO_SLO_COHORT_INVALID");
+  const denom=cohort.eligible;
+  const verified=Number(cohort.verified_within_15m??0);
+  const drafted=Number(cohort.draft_within_15m??0);
+  if(!Number.isSafeInteger(verified)||!Number.isSafeInteger(drafted)||
+     verified<0||drafted<0||verified>denom||drafted>denom)throw Error();
   return Response.json({
    ok:true,schema:"geomacro.gro-evidence-private-health.v1",
+   acceptance:{
+    eligible_archived_matured_15m:denom,
+    verified_within_15m:verified,
+    verified_15m_ratio:denom===0?null:verified/denom,
+    verified_90pct_target_met:denom>0&&verified/denom>=0.9,
+    draft_ready_within_15m:drafted,
+    synthetic_archive_proofs_created:0,
+    observed_not_guaranteed:true,
+   },
    checked_at:iso(now),...stats,
    verified_requires_independent_source_and_score:true,
    raw_ingestion_is_not_verified_gro:true,
