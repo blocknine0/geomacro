@@ -23,7 +23,9 @@ if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.PHASE2I_PROVIDER_CRITICAL!=="true"||
    env.PHASE2I_PROVIDER_RESEARCH!=="true"||
    env.PHASE2I_HELD_SPOOL_EMPTY_VERIFIED!=="1"||
-   ![3,5].includes(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS))||
+   !Number.isSafeInteger(Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS))||
+   Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)<3||
+   Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS)>100||
    !/^\d{1,20}$/u.test(env.GITHUB_RUN_ID??""))
  throw Error("PHASE2I_EXTRA_D1_PROTECTED_IDLE_REPLAY_SLOT_REQUIRED");
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"");
