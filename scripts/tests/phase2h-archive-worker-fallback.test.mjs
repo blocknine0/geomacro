@@ -36,7 +36,9 @@ test("Cloudflare REST 400/7500 delegates to the same admin-bound D1 keyset",asyn
    assert.equal(body.items.length,51);
    workerAcks.push(body);
    return Response.json({ok:true,archived:body.items.length,
-    independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+    independent_d1_archive_ack_verified:true,
+    d1_atomic_one_statement_returning_verified:true,
+    rights_verified:false,payments:0});
   }
   const limit=Number(u.searchParams.get("limit"));
   assert.ok(limit<=25);

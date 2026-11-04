@@ -1,6 +1,7 @@
 name: Phase 2H Permanent Private Raw B2 and Exact-Question Acceptance
 # Every six hours, bounded incremental archive of ORIGINAL pending D1 rows.
-# One D1 raw-json read per row before B2 PUT/two GETs and hash ACK.
+# Bounded bulk D1 keyset SELECT + one atomic UPDATE RETURNING per 100 rows.
+# Exactly one B2 PUT and one full-body GET per compressed bulk object on success.
 # Backlog is explicit, never silently reported as complete.
 # Automatic D1 raw-news deletion is PAUSED; no monthly cleanup job.
 # Backblaze B2 has its OWN independent provider lifecycle rule and must be
@@ -22,6 +23,10 @@ on:
       - "scripts/ops/phase2h-verify-b2-72h-lifecycle.mjs"
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs"
+      - "scripts/lib/phase2h-atomic-bulk-archive-ack.mjs"
+      - "scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs"
+      - "scripts/tests/phase2i-one-put-one-get.test.mjs"
+      - "scripts/ops/phase2h-verify-private-question-delivery.mjs"
       - "scripts/lib/phase2i-fragmented-b2-bundle.mjs"
       - "scripts/lib/phase2i-fragmented-b2-bundle.test.mjs"
       - "scripts/tests/phase2i-ciphertext-b2-archive.test.mjs"
@@ -43,6 +48,10 @@ on:
       - "scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/hot50-fresh-priority-d1.test.mjs"
   schedule:
     - cron: "29 0,6,12,18 * * *"
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -66,14 +75,23 @@ jobs:
       - name: Verify scoped metadata-only census and strict B2 admission (offline)
         run: |
           node --test scripts/tests/phase2h-original-metadata.test.mjs
-          node --test scripts/tests/phase2h-archive-worker-fallback.test.mjs
-          node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/phase2h-archive-worker-fallback.test.mjs scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs
+          node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs scripts/tests/phase2i-one-put-one-get.test.mjs scripts/tests/phase2h-canonical-census-receipt.test.mjs scripts/tests/phase2h-maintenance-gate.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/tests/phase2ib-fastlane-private-staging.test.mjs scripts/tests/phase2i-osint-country-fair-raw-staging.test.mjs scripts/tests/phase2i-b-evidence-bridge.test.mjs scripts/tests/phase2h-live-proof-guard.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
   quota-admission:
     if: >-
-      github.event_name == 'schedule' &&
-      github.event.schedule == '29 0,6,12,18 * * *' &&
       github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' &&
+      (
+        (github.event_name == 'schedule' &&
+         github.event.schedule == '29 0,6,12,18 * * *') ||
+        (github.event_name == 'workflow_run' &&
+         github.event.action == 'completed' &&
+         github.event.workflow_run.name == 'Deploy D1 Control Plane' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.head_sha == github.sha)
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     environment: production
@@ -211,7 +229,7 @@ jobs:
           NODE
       - name: Preserve independently read canonical D1 category census before B2 attempt
         run: node scripts/ops/phase2h-canonical-census-receipt.mjs
-      - name: Actual private B2 PUT, two GETs, D1 same-ID and deployed question JSON
+      - name: Actual private bulk B2 PUT, one verified GET, atomic D1 ACK and deployed question JSON
         run: |
           set -euo pipefail
           # Offline specimens are in Git; only this exact run may produce a
@@ -271,7 +289,7 @@ jobs:
         run: |
           node --check scripts/ops/phase2i-archive-ciphertext-queue-b2.mjs
           node --test scripts/lib/phase2i-fragmented-b2-bundle.test.mjs scripts/tests/phase2i-ciphertext-b2-archive.test.mjs
-      - name: B2 ciphertext PUT, two independent GET/SHA restores and provider lifecycle readback
+      - name: One B2 ciphertext bulk PUT and one full-body GET/SHA restore with provider lifecycle readback
         run: |
           set -euo pipefail
           rm -f artifacts/derived-news/phase2i-ciphertext-b2-acceptance.json

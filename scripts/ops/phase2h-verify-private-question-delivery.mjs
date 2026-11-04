@@ -25,10 +25,13 @@ export async function verifyPhase2hProductionQuestionChain({
    (env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").length<32)
   fail("PROTECTED_PRODUCTION_CONFIG_REQUIRED");
  if(receipt?.schema!=="geomacro.phase2h.private-raw-b2-acceptance.v1"||
-   receipt.status!=="B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED"||
+   !((receipt.status==="B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED"&&
+       receipt.d1_atomic_one_statement_returning_verified===true)||
+      (receipt.status==="B2_HISTORICAL_ONE_GET_SHA_D1_ACK_REVERIFIED"&&
+       receipt.d1_atomic_one_statement_returning_verified===false))||
    receipt.storage_confirmed!==true||
    receipt.b2_first_get_verified!==true||
-   receipt.b2_second_independent_get_verified!==true||
+   receipt.b2_second_get_performed!==false||
    receipt.post_archive_d1_verified!==true||
    !Number.isSafeInteger(receipt.rows_archived)||receipt.rows_archived<1||
    !HEX.test(receipt.object_sha256))
@@ -47,19 +50,26 @@ export async function verifyPhase2hProductionQuestionChain({
    fail("PROVIDER_CANONICAL_D1_READ_FAILED");
   return body.result[0].results;
  }
- const rows=await query("SELECT record_id,category,raw_sha256,raw_json,b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news WHERE b2_object_sha256=? ORDER BY record_id LIMIT 301",
+ // One provider D1 readback for the whole B2 bundle. Original rows
+ // were already authenticated by the one full-body B2 GET and remain only
+ // in the private process; omit the repeated large raw_json response.
+ const hasVerifiedRows=expectedArchivedRows!==null;
+ const rows=await query("SELECT record_id,category,raw_sha256,"+
+  (hasVerifiedRows?"":"raw_json,")+
+  "b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news "+
+  "WHERE b2_object_sha256=? ORDER BY record_id LIMIT 301",
   [receipt.object_sha256]);
  if(rows.length!==receipt.rows_archived||rows.length>300)
   fail("B2_BATCH_D1_ID_CENSUS_INCOMPLETE");
  // For restored B2 objects, category counts alone cannot prove identical
  // original ID/hash/content in canonical D1. Never log private originals.
+ const restored=new Map();
  if(expectedArchivedRows!==null){
   if(!Array.isArray(expectedArchivedRows)||
      expectedArchivedRows.length!==rows.length||
      expectedArchivedRows.some(x=>!x||!HEX.test(x.record_id)||
        !HEX.test(x.raw_sha256)))
    fail("B2_RESTORED_OBJECT_ID_SET_INVALID");
-  const restored=new Map();
   for(const x of expectedArchivedRows){
    if(restored.has(x.record_id))fail("B2_RESTORED_DUPLICATE_ID");
    restored.set(x.record_id,x);
@@ -68,7 +78,7 @@ export async function verifyPhase2hProductionQuestionChain({
    const original=restored.get(x.record_id);
    return !original||original.category!==x.category||
       original.raw_sha256!==x.raw_sha256||
-      JSON.stringify(original)!==x.raw_json;
+      (typeof x.raw_json==="string"&&JSON.stringify(original)!==x.raw_json);
   }))fail("B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH");
  }
  const categories=["geopolitics","macro","rare_earth"];
@@ -80,7 +90,8 @@ export async function verifyPhase2hProductionQuestionChain({
     !HEX.test(record.raw_sha256)||!record.b2_archived_at)
    fail("B2_OBJECT_D1_ID_NOT_ACKNOWLEDGED");
   seen.add(record.record_id);
-  const row=JSON.parse(record.raw_json);
+  const row=hasVerifiedRows?restored.get(record.record_id):
+   JSON.parse(record.raw_json);
   if(row.record_id!==record.record_id||row.raw_sha256!==record.raw_sha256||
     !categories.includes(row.category)||row.category!==record.category)
    fail("CANONICAL_D1_IMMUTABLE_ID_MISMATCH");
@@ -160,7 +171,9 @@ export async function verifyPhase2hProductionQuestionChain({
  return Object.freeze({
   schema:"geomacro.phase2h.production-raw-b2-exact-question-acceptance.v1",
   same_b2_object_and_d1_original:true,
-  b2_two_get_verified_in_preceding_step:true,
+  b2_one_get_sha_verified_in_preceding_step:true,
+  d1_atomic_one_statement_returning_verified:
+   receipt.d1_atomic_one_statement_returning_verified===true,
   original_native_clock_preserved:true,
   per_record_five_part_exact:true,
   verified_b2_batch_rows:originals.length,

@@ -9,6 +9,8 @@ import {deriveControlPlaneRootToken} from "./derive-control-plane-root-token.mjs
 import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {verifyPhase2hB2Lifecycle} from "./phase2h-verify-b2-72h-lifecycle.mjs";
+import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning}
+ from "../lib/phase2h-atomic-bulk-archive-ack.mjs";
 import {pathToFileURL} from "node:url";
 import {resolve,isAbsolute} from "node:path";
 import {mkdirSync,writeFileSync,readFileSync} from "node:fs";
@@ -179,11 +181,14 @@ export function createPhase2hCanonicalD1({
    });
    if(answer.archived!==batch.length||
       answer.independent_d1_archive_ack_verified!==true||
+      answer.d1_atomic_one_statement_returning_verified!==true||
       answer.rights_verified!==false||answer.payments!==0)
      fail("INTERNAL_FALLBACK_ACK_UNVERIFIED");
    written+=batch.length;
   }
-  return {archived:written,independent_d1_archive_ack_verified:true};
+  return {archived:written,independent_d1_archive_ack_verified:true,
+   d1_atomic_one_statement_returning_verified:true,
+   d1_write_statements:Math.ceil(items.length/100)};
  };
  return {
   async readPending(now=new Date()){
@@ -274,31 +279,31 @@ export function createPhase2hCanonicalD1({
    return rows;
   },
   async markArchived(items,objectSha,now){
-   const ids=items.map(x=>x.record_id);
-   const holders=ids.map(()=>"?").join(",");
-   let check;
-   try{check=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids)}
-   catch(error){
-    if(error?.provider_http_status===400&&error?.provider_code===7500)
-     return workerAck(items,objectSha);
-    throw error;
+   // One atomic D1 UPDATE/RETURNING per up-to-100 record batch, never
+   // per-original reads/writes. Protected Worker is the recovery channel
+   // only on the exact provider HTTP400/7500 statement failure.
+   let archived=0;
+   for(let offset=0;offset<items.length;offset+=100){
+    const rows=items.slice(offset,offset+100);
+    const plan=phase2hAtomicBulkArchiveAck(rows,objectSha,now);
+    try{
+     const result=await sql(plan.sql,plan.params);
+     assertPhase2hBulkArchiveAckReturning(result,rows,objectSha);
+    }catch(error){
+     if(error?.provider_http_status===400&&error?.provider_code===7500){
+      const receipt=await workerAck(rows,objectSha);
+      if(receipt.archived!==rows.length||
+         receipt.d1_atomic_one_statement_returning_verified!==true)
+       fail("WORKER_ATOMIC_ACK_UNVERIFIED");
+     }else throw error;
+    }
+    archived+=rows.length;
    }
-   const before=new Map(check.results.map(x=>[x.record_id,x]));
-   if(before.size!==ids.length||items.some(x=>
-      before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
-      before.get(x.record_id)?.b2_object_sha256!==null))
-    fail("D1_PRE_ARCHIVE_RECORD_DIVERGED");
-   const updated=await sql("UPDATE phase2h_private_raw_news SET b2_object_sha256=?,b2_archived_at=? WHERE b2_object_sha256 IS NULL AND record_id IN ("+holders+")",
-     [objectSha,now.toISOString(),...ids]);
-   if(updated.meta?.changes!==ids.length)
-    fail("D1_ARCHIVE_METADATA_WRITE_NOT_EXACT");
-   const verified=await sql("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+holders+")",ids);
-   if(verified.results.length!==ids.length||verified.results.some(x=>
-    before.get(x.record_id)?.raw_sha256!==x.raw_sha256||
-    x.b2_object_sha256!==objectSha))
-    fail("D1_POST_ARCHIVE_METADATA_READBACK_MISMATCH");
-   return {archived:ids.length,independent_d1_archive_ack_verified:true};
-  },
+   if(archived!==items.length)fail("D1_ARCHIVE_BATCH_ACK_INCOMPLETE");
+   return {archived,independent_d1_archive_ack_verified:true,
+    d1_atomic_one_statement_returning_verified:true,
+    d1_write_statements:Math.ceil(items.length/100)};
+  }
  };
 }
 /** Only four canonical six-hour GitHub cron events; no manual/push bypass.
@@ -309,16 +314,30 @@ export function phase2hAuthorizedArchiveWindow({
  env=process.env,now=new Date(),eventReader=readFileSync,
 }={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))return false;
- if(env.GITHUB_EVENT_NAME!=="schedule"||
-    env.GITHUB_WORKFLOW_REF!==
-      "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main")
+ if(env.GITHUB_WORKFLOW_REF!==
+      "blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main"||
+    !["schedule","workflow_run"].includes(env.GITHUB_EVENT_NAME))
    return false;
  const path=String(env.GITHUB_EVENT_PATH??"");
  if(!isAbsolute(path)||!path.endsWith("/event.json")||path.length>512)
    return false;
  try{
   const event=JSON.parse(eventReader(path,"utf8"));
-  return event?.schedule==="29 0,6,12,18 * * *";
+  if(env.GITHUB_EVENT_NAME==="schedule")
+   return event?.schedule==="29 0,6,12,18 * * *";
+  // Exact-main, successful D1 Worker production deployment is a second
+  // admission opportunity after archive-code releases. The provider D1/B2
+  // quota gates still run first. PR, manual, fork or outdated SHA cannot
+  // invoke this production archival writer.
+  const deployed=event?.workflow_run;
+  return event?.action==="completed"&&
+   event?.repository?.full_name==="blocknine0/geomacro"&&
+   deployed?.name==="Deploy D1 Control Plane"&&
+   deployed?.event==="push"&&deployed?.conclusion==="success"&&
+   deployed?.head_branch==="main"&&
+   deployed?.head_repository?.full_name==="blocknine0/geomacro"&&
+   /^[a-f0-9]{40}$/u.test(env.GITHUB_SHA??"")&&
+   deployed?.head_sha===env.GITHUB_SHA;
  }catch{return false}
 }
 export async function runPhase2hGovernedRawB2({
@@ -344,7 +363,7 @@ export async function runPhase2hGovernedRawB2({
  const governor=governorFactory({env,fetchImpl});
  const q=await governor.status(),u=q?.used,l=q?.limits;
  if(q?.ok!==true||!u||!l)fail("PROVIDER_GOVERNOR_UNAVAILABLE");
- if(u.total>l.total-13||u.GET>l.GET-7||u.PUT>l.PUT-6||
+ if(u.total>l.total-11||u.GET>l.GET-5||u.PUT>l.PUT-6||
     u.NATIVE_AUTH>l.NATIVE_AUTH-2)
    return {status:"B2_ACCOUNT_HEADROOM_HELD",storage_confirmed:false,
     rows_archived:0,object_sha256:null};
@@ -356,7 +375,7 @@ export async function runPhase2hGovernedRawB2({
   return {status:"NO_PENDING_PRIVATE_RAW_ROWS",storage_confirmed:true,
    rows_archived:0,object_sha256:null,all_backlog_cleared:true};
  // Enforce provider lifecycle on EVERY caller, not only on a single workflow.
- // Two native read-only operations use the SAME global atomic B2 governor.
+ // Lifecycle metadata reads plus one full-body GET use the SAME atomic B2 quota governor.
  // No B2 original-news PUT while provider-side automatic deletion remains enabled.
  let lifecycle;
  try{lifecycle=await lifecycleVerifier({env,fetchImpl,governor});}
@@ -377,8 +396,6 @@ export async function runPhase2hGovernedRawB2({
  if(first?.full_body_readback_verified!==true||
    first.sha256!==plan.compressed_sha256||first.bytes!==plan.compressed.length)
    fail("FIRST_GET_OR_PUT_UNVERIFIED");
- const independentSecond=await b2.get(plan.key);
- verifyPhase2hRawB2Restore(Buffer.from(independentSecond),plan);
  // Read original raw_json exactly once per batch. The following D1
  // acknowledgement checks record_id/raw_sha256 before and after the
  // metadata write, without loading the source payload again.
@@ -386,16 +403,28 @@ export async function runPhase2hGovernedRawB2({
  if(ack.archived!==plan.record_count||
     ack.independent_d1_archive_ack_verified!==true)
   fail("ARCHIVE_ACK_NOT_CANONICAL");
- return {schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-  status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+ const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
+  status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
   storage_confirmed:true,rows_archived:plan.record_count,
   category_counts:plan.counts,object_sha256:plan.compressed_sha256,
   object_key:plan.key,private_raw_includes_original_full_article:false,
   backlog_may_remain:initialRows.length===300,
   b2_automatic_deletion_paused_provider_verified:true,
-  b2_first_get_verified:true,b2_second_independent_get_verified:true,
-  post_archive_d1_verified:true,original_clocks_unchanged:true,
+  b2_first_get_verified:true,b2_second_get_performed:false,
+  post_archive_d1_verified:true,
+  d1_atomic_one_statement_returning_verified:ack.d1_atomic_one_statement_returning_verified===true,
+  d1_archive_ack_write_statements:ack.d1_write_statements,
+  b2_gets_per_bulk_object:1,b2_puts_per_bulk_object:1,
+  original_clocks_unchanged:true,
   rights_verified:false,paid_eligible:false,payments:0};
+ // This strict ephemeral in-process evidence was selected from canonical
+ // D1 and authenticated against B2 full-body GET. Never JSON-serialize or
+ // upload the private originals; consumer uses it for metadata-only D1
+ // bulk verification, avoiding a second multi-megabyte raw-json SELECT.
+ Object.defineProperty(receipt,"verified_original_records",{
+  value:plan.rows,enumerable:false,writable:false,configurable:false
+ });
+ return receipt;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{

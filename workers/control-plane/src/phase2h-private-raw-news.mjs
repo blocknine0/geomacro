@@ -10,6 +10,8 @@ import {phase2hCountry,phase2hCountrySqlHints,phase2hHeadlineCountryCandidate}
 import {phase2hNewsCutoff,phase2hRawWithinRetention}
  from "../../../scripts/lib/phase2h-retention-72h.mjs";
 import {riskCountryFromOriginalTitle} from "./phase2h-risk-country-index.mjs";
+import {phase2hAtomicBulkArchiveAck,assertPhase2hBulkArchiveAckReturning}
+ from "../../../scripts/lib/phase2h-atomic-bulk-archive-ack.mjs";
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
 const HEX=/^[a-f0-9]{64}$/u;
 const DATE=/^20\d{2}-\d\d-\d\d(?:T\d\d:\d\d:\d\d(?:\.\d{3})?Z)?$/u;
@@ -568,19 +570,16 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
       ids.has(item.record_id))throw Error();
    ids.add(item.record_id);rows.push(item);
   }
-  const placeholders=rows.map(()=>"?").join(",");
-  const before=await env.DB.prepare("SELECT record_id,raw_sha256,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
-  if(before.results?.length!==rows.length)throw Error();
-  const map=new Map(before.results.map(x=>[x.record_id,x]));
-  if(map.size!==rows.length||rows.some(x=>map.get(x.record_id)?.raw_sha256!==x.raw_sha256||
-    map.get(x.record_id)?.b2_object_sha256!==null))throw Error();
-  const result=await env.DB.prepare("UPDATE phase2h_private_raw_news SET b2_object_sha256=?,b2_archived_at=? WHERE record_id IN ("+placeholders+") AND b2_object_sha256 IS NULL")
-   .bind(body.object_sha256,new Date(now).toISOString(),...ids).run();
-  if(result?.success===false)throw Error();
-  const after=await env.DB.prepare("SELECT record_id,b2_object_sha256 FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
-  if(after.results?.length!==rows.length||
-     after.results.some(x=>x.b2_object_sha256!==body.object_sha256))throw Error();
-  return safeReply({ok:true,archived:rows.length,independent_d1_archive_ack_verified:true,
-    rights_verified:false,payments:0});
+  // Exactly one D1 write statement per verified 100-original batch.
+  // The materialized expected-ID+hash precondition rejects a partial match
+  // atomically; RETURNING proves the records actually acknowledged.
+  const plan=phase2hAtomicBulkArchiveAck(rows,body.object_sha256,new Date(now));
+  const answer=await env.DB.prepare(plan.sql).bind(...plan.params).all();
+  if(answer?.success===false)throw Error();
+  const proof=assertPhase2hBulkArchiveAckReturning(answer,rows,body.object_sha256);
+  return safeReply({ok:true,archived:proof.archived,
+   independent_d1_archive_ack_verified:true,
+   d1_atomic_one_statement_returning_verified:true,
+   rights_verified:false,payments:0});
  }catch{return safeReply({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},503)}
 }

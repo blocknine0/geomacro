@@ -186,8 +186,8 @@ export async function runPhase2iCiphertextB2Archive({
  try{
   const governor=governorFactory({env:runtimeEnv,fetchImpl});
   const quota=await guarded("ATOMIC_B2_GOVERNOR_STATUS",()=>governor.status());
-  if(quota?.ok!==true||quota.used.total>quota.limits.total-7||
-     quota.used.GET>quota.limits.GET-4||
+  if(quota?.ok!==true||quota.used.total>quota.limits.total-6||
+     quota.used.GET>quota.limits.GET-3||
      quota.used.PUT>quota.limits.PUT-2||
      quota.used.NATIVE_AUTH>quota.limits.NATIVE_AUTH-2)
    fail("B2_SHARED_HEADROOM_HELD");
@@ -208,13 +208,12 @@ export async function runPhase2iCiphertextB2Archive({
   if(first?.full_body_readback_verified!==true||first.sha256!==bundle.sha256||
      first.bytes!==bundle.bytes.length)
    fail("B2_FIRST_PUT_GET_NOT_VERIFIED");
-  const second=await guarded("B2_SECOND_GET",()=>b2.get(bundleKey));
-  verifyBulkReadback(second);
   return Object.freeze({
    schema:"geomacro.phase2i.private-source-queue-b2-acceptance.v1",
-   status:"B2_ENCRYPTED_SOURCE_QUEUE_PUT_TWO_GET_SHA_VERIFIED",
+   status:"B2_ENCRYPTED_SOURCE_QUEUE_ONE_PUT_ONE_GET_SHA_VERIFIED",
    b2_private_ciphertext_verified:true,
-   b2_two_independent_gets_verified:true,
+   b2_one_independent_get_verified:true,
+   b2_second_get_performed:false,
    b2_provider_lifecycle_verified:true,
    source_run_id:plan.source_run_id,
    source_snapshot_created_at:plan.source_snapshot_created_at,
@@ -228,7 +227,7 @@ export async function runPhase2iCiphertextB2Archive({
    encrypted_fragments_inside_one_b2_object:bundle.fragment_count,
    fragment_bytes:bundle.fragment_size,
    b2_puts_for_all_fragments:1,
-   b2_gets_for_readback:2,
+   b2_gets_for_readback:1,
    exact_unfragmented_aead_queue_verified:true,
    all_candidates_individually_d1_verified:
      plan.not_d1_acknowledged_in_snapshot===0,
