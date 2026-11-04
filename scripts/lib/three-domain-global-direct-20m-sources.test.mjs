@@ -56,7 +56,7 @@ test("over-cap global nonpriority direct publishers fairly rotate without losing
   const urls=new Set(registry.map(x=>x.url));
   assert.equal(registry.length,504);
   assert.equal(summary.other_direct_feeds_deferred_this_tick,
-   430-(504-summary.hot50_priority_direct_feeds_including_backups));
+   430-(504-summary.all_priority_direct_feeds));
   assert.ok(hot.every(x=>urls.has(x.url)));
   for(const src of registry)if(src.id.startsWith("private_test_global_"))
    seen.add(src.id);
