@@ -56,10 +56,8 @@ class FakeD1 {
      .slice(0,101)};
    },
   };
-  return {
-   bind(...args){state.args=args;return bound;},
-   _state:state,
-  };
+  bound._state=state;
+  return {bind(...args){state.args=args;return bound;}};
  }
  async batch(stmts){
   for(const stmt of stmts){
