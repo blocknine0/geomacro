@@ -1,4 +1,4 @@
-import {test} from "node:test";
+import {it as test} from "vitest";
 import assert from "node:assert/strict";
 import {generateKeyPairSync} from "node:crypto";
 import {COUNTRIES_195} from "../lib/canonical-country-registry-195";
