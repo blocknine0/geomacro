@@ -164,6 +164,7 @@ export function composeRiskGateThreeTierResponse({
   const alerts=categoryRows.flatMap(r=>r.observed_alerts).sort((a,b)=>
    b.observed_at.localeCompare(a.observed_at)).slice(0,12);
   return {...base,status:score===null?"NO_OBSERVED_SIGNAL":"READY",
+   chargeable:score!==null,
    confidence:score===null?null:{level:"LOW",verification:"PROVISIONAL"},
    risk_score_0_100:score,risk_score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
    indicative_risk_score_0_100:score,

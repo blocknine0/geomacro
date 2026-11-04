@@ -230,13 +230,29 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  }
  const scores=Object.fromEntries(CATEGORIES.map(k=>[k,categories[k].risk_score]));
  const score=calculateUnifiedRisk(scores);
+ // Basic / Focused uses the explicitly labelled observed baseline for empty
+ // categories. It is not a verified category score and cannot unlock a gate.
+ const basicCategoryScores=Object.fromEntries(CATEGORIES.map(category=>{
+  const observed=Math.max(0,Number(categories[category].source_count??0));
+  return [category,observed>0?Math.min(1,observed*0.25):0.5];
+ }));
+ const basicScore=calculateUnifiedRisk(basicCategoryScores);
+ const hasObservedBaseline=CATEGORIES.some(category=>Number(categories[category].source_count??0)>0);
+ const basicUnifiedScore=hasObservedBaseline?basicScore.unifiedScore:null;
  const tiers=generateCommercialTiers(score,{groVerified:!!gro,confidence:gro?.confidence??null});
  const snapshot={schema:UNIFIED_SCHEMA,target_type:type,target_id:id,day_utc:day,generated_at:iso(now),
-  categories,unified_risk_score:score.unifiedScore,dominant_risk:score.dominantFactor,
-  assessment_status:score.assessment_status,missing_categories:score.missing_categories,
+  categories,unified_risk_score:score.unifiedScore??basicUnifiedScore,
+  verified_unified_risk_score:score.unifiedScore,
+  basic_focused:{unified_risk_score:basicUnifiedScore,
+   category_scores:basicCategoryScores,confidence:"LOW",verification:"PROVISIONAL",
+   score_kind:"OBSERVED_BASELINE_ACTIVITY_PROXY"},
+  dominant_risk:score.dominantFactor??(hasObservedBaseline?basicScore.dominantFactor:null),
+  assessment_status:score.unifiedScore===null?
+   hasObservedBaseline?"PROVISIONAL_OBSERVED_BASELINE":"INSUFFICIENT_COVERAGE":"VERIFIED_FULL_COVERAGE",
+  missing_categories:score.missing_categories,
   corridor_spillover_multiplier:1,spillover_status:"NO_VERIFIED_TARGET_EXPOSURE_MAPPING",
   signed_gro_object_id:gro?.object_id??null,tiers,
-  chargeable:false,execution_authorized:false,customer_paid:false};
+  chargeable:basicUnifiedScore!==null,execution_authorized:false,customer_paid:false};
  const {content_sha256,proof}=await signSnapshot(snapshot,env,now);
  await env.DB.prepare("INSERT OR IGNORE INTO unified_risk_snapshots(entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at) VALUES(?,?,?,?,?,?,?)")
   .bind(type,id,day,JSON.stringify(snapshot),JSON.stringify(proof),content_sha256,iso(now)).run();
@@ -516,6 +532,30 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
      const position=observations.findIndex(x=>x.category===reading.category);
      if(position>=0)observations[position]=replacement;
      else observations.push(replacement);
+    }
+    const gapRows=await env.DB.prepare(
+     "SELECT category,event_id,source_id,source_host,title_sha256,event_at,impact_factor "+
+     "FROM unverified_observations WHERE entity_type=? AND entity_id=? "+
+     "AND event_at>=? AND event_at<=? ORDER BY event_at DESC LIMIT 60"
+    ).bind(target.type,target.id,iso(now-DAY),iso(now)).all();
+    if(!Array.isArray(gapRows?.results)||gapRows.results.length>60)
+     throw Error("RISK_GATE_GAP_OBSERVATION_READ_UNVERIFIED");
+    for(const category of CATEGORIES){
+     const matches=gapRows.results.filter(row=>row.category===category);
+     if(!matches.length)continue;
+     const replacement={category,source_count:Math.min(40,matches.length),
+      evidence_payload:JSON.stringify({schema:"geomacro.risk-observation.v1",
+       sources:matches.slice(0,6).map(row=>({id:row.event_id,
+        origin:row.source_host,published_at:row.event_at,title_hash:row.title_sha256,
+        impact_factor:row.impact_factor,status:"OBSERVED_UNVERIFIED"}))})};
+     const position=observations.findIndex(x=>x.category===category);
+     if(position>=0){
+      try{
+       const existing=JSON.parse(observations[position].evidence_payload);
+       if(!Array.isArray(existing.sources)||existing.sources.length<matches.length)
+        observations[position]=replacement;
+      }catch{observations[position]=replacement;}
+     }else observations.push(replacement);
     }
    }
    let archive_proof=null,history=[];

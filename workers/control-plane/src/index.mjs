@@ -42,6 +42,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
+import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
@@ -1312,6 +1313,12 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Rotating 12-cell search page every 20 minutes across the 195x3 matrix
+    // and registered corridors. Results remain unverified observations.
+    if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%20===0)
+      ctx.waitUntil(riskGapEnrichmentTick(env,{now:utc.getTime()}).then(r=>{
+        if(!r.ok)console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE");
+      }).catch(()=>console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE")));
     // P0-B: leverage the EXISTING one-minute Worker cron, no extra trigger.
     if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&utc.getUTCMinutes()%10===0&&env?.DB?.prepare&&env?.INGEST_QUEUE?.send)
       ctx.waitUntil(drainBacklog(env,{now:utc.getTime()}).then(r=>{
