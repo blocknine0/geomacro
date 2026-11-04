@@ -1,0 +1,217 @@
+/**
+ * P1 source fan-out on the EXISTING private Cloudflare control-plane Worker.
+ *
+ * Every minute: one D1 indexed due-page read (<=108), one idempotent D1
+ * lease write and ten deterministic shards to a separate source-poll Queue.
+ * Payloads contain source IDs ONLY, never arbitrary caller-supplied URLs.
+ * Queues independently autoscale up to configured max_concurrency=10;
+ * 15 source attempts max per consumer invocation.
+ */
+import {pollP0aSources} from "./p0a-source-registry.mjs";
+const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u,ISO3=/^[A-Z]{3}$/u;
+const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
+const MAX_DUE=108,SHARDS=10,BATCH=15;
+const nowIso=(ms)=>new Date(ms).toISOString();
+const response=(body,code=200)=>Response.json(body,{status:code,headers:{
+ "Cache-Control":"private, no-store","X-Robots-Tag":"noindex,nofollow"}});
+export function p1Shard(sourceId){
+ if(!SOURCE.test(sourceId))throw Error("P1_SOURCE_ID_INVALID");
+ let h=2166136261;
+ for(let i=0;i<sourceId.length;i++){
+  h^=sourceId.charCodeAt(i);h=Math.imul(h,16777619);
+ }
+ return (h>>>0)%SHARDS;
+}
+export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}){
+ if(env?.GEOMACRO_P1_FANOUT_ENABLED!=="1")
+  return {status:"P1_FANOUT_DISABLED",selected:0,queued:0};
+ if(!env?.DB?.prepare||typeof env.SOURCE_POLL_QUEUE?.sendBatch!=="function"||
+    !Number.isSafeInteger(limit)||limit<1||limit>MAX_DUE||
+    !Number.isFinite(now))
+  return {status:"P1_DISPATCH_BINDING_UNAVAILABLE",selected:0,queued:0};
+ const clock=nowIso(now);
+ let rows;
+ try{
+  const r=await env.DB.prepare(
+   "SELECT source_id FROM source_registry "+
+   "WHERE enabled=1 AND next_poll_at<=? AND "+
+   "(poll_dispatch_lease_until IS NULL OR poll_dispatch_lease_until<=?) "+
+   "ORDER BY next_poll_at,source_id LIMIT ?"
+  ).bind(clock,clock,limit).all();
+  rows=r.results??[];
+  if(!Array.isArray(rows)||rows.length>limit||rows.some(x=>!SOURCE.test(x.source_id)))
+   throw Error("P1_DISPATCH_SOURCE_PAGE_INVALID");
+ }catch{return {status:"P1_DISPATCH_D1_SELECT_FAILED",selected:0,queued:0}}
+ if(!rows.length)return {status:"P1_DISPATCH_IDLE",selected:0,queued:0};
+ const ids=rows.map(x=>x.source_id),idSet=new Set(ids);
+ if(idSet.size!==ids.length)return {status:"P1_DISPATCH_DUPLICATE_IDS",selected:0,queued:0};
+ const token=crypto.randomUUID(),leaseUntil=nowIso(now+120000);
+ try{
+  const claim=await env.DB.prepare(
+   "UPDATE source_registry SET poll_dispatch_token=?,poll_dispatch_lease_until=? "+
+   "WHERE source_id IN (SELECT value FROM json_each(?)) AND enabled=1 "+
+   "AND next_poll_at<=? AND "+
+   "(poll_dispatch_lease_until IS NULL OR poll_dispatch_lease_until<=?)"
+  ).bind(token,leaseUntil,JSON.stringify(ids),clock,clock).run();
+  const leased=await env.DB.prepare(
+   "SELECT source_id FROM source_registry WHERE poll_dispatch_token=? "+
+   "AND poll_dispatch_lease_until=? ORDER BY source_id LIMIT ?"
+  ).bind(token,leaseUntil,MAX_DUE).all();
+  const selected=leased.results??[];
+  if(!Array.isArray(selected)||selected.length>ids.length||
+     selected.some(x=>!idSet.has(x.source_id))||
+     selected.length!==(claim?.meta?.changes??selected.length))
+   throw Error("P1_DISPATCH_LEASE_READBACK_MISMATCH");
+  rows=selected;
+ }catch{return {status:"P1_DISPATCH_LEASE_UNVERIFIED",selected:ids.length,queued:0}}
+ const groups=Array.from({length:SHARDS},()=>[]);
+ for(const row of rows){
+  const shard=p1Shard(row.source_id);
+  groups[shard].push({body:{kind:"P1_SOURCE_POLL_V1",
+   source_id:row.source_id,shard,lease_token:token,scheduled_at:clock}});
+ }
+ const results=await Promise.all(groups.map(async(messages,shard)=>{
+  if(!messages.length)return {shard,queued:0,failed:0};
+  try{
+   await env.SOURCE_POLL_QUEUE.sendBatch(messages);
+   return {shard,queued:messages.length,failed:0};
+  }catch{
+   // Redelivery may already have occurred before provider failure. An old
+   // queue message with a released token is rejected by the consumer.
+   const sources=messages.map(x=>x.body.source_id);
+   try{await env.DB.prepare(
+    "UPDATE source_registry SET poll_dispatch_token=NULL,"+
+    "poll_dispatch_lease_until=NULL WHERE poll_dispatch_token=? "+
+    "AND source_id IN (SELECT value FROM json_each(?))"
+   ).bind(token,JSON.stringify(sources)).run();}
+   catch{/* 120s lease expires automatically; no source silently ACKed */}
+   return {shard,queued:0,failed:messages.length};
+  }
+ }));
+ const queued=results.reduce((n,x)=>n+x.queued,0),failed=results.reduce((n,x)=>n+x.failed,0);
+ return {status:failed?"P1_DISPATCH_PARTIAL":"P1_DISPATCH_QUEUED",
+  selected:rows.length,queued,failed,
+  logical_shards:SHARDS,source_per_minute_cap:MAX_DUE,
+  no_source_payloads_or_urls_in_queue:true};
+}
+export async function consumeP1SourcePollBatch(batch,env,{
+ now=Date.now(),fetchImpl=fetch,producerManager=null,poll=pollP0aSources
+}={}){
+ if(batch?.queue!=="geomacro-source-poll"||!Array.isArray(batch.messages)||
+    batch.messages.length>BATCH||!env?.DB?.prepare)
+  throw Error("P1_QUEUE_CONSUMER_BINDING_INVALID");
+ const expected=[];
+ for(const msg of batch.messages){
+  const item=msg.body;
+  if(item?.kind!=="P1_SOURCE_POLL_V1"||!SOURCE.test(item?.source_id??"")||
+     !/^[a-f0-9-]{36}$/iu.test(item?.lease_token??"")||
+     p1Shard(item.source_id)!==item.shard||
+     typeof item.scheduled_at!=="string"||
+     !Number.isFinite(Date.parse(item.scheduled_at))){
+   msg.ack();continue;
+  }
+  expected.push({msg,source_id:item.source_id,token:item.lease_token});
+ }
+ if(!expected.length)return {status:"P1_CONSUME_EMPTY",attempted:0};
+ const current=new Map();
+ // Claim lookup by UUID in D1, bounded 15 IDs, never client-supplied URL.
+ for(const item of expected){
+  const r=await env.DB.prepare(
+   "SELECT source_id,poll_dispatch_token,poll_dispatch_lease_until "+
+   "FROM source_registry WHERE source_id=? AND enabled=1"
+  ).bind(item.source_id).first();
+  if(r?.poll_dispatch_token===item.token&&r.poll_dispatch_lease_until>nowIso(now))
+   current.set(item.source_id,item);
+  else item.msg.ack();
+ }
+ const ids=[...current.keys()];
+ if(!ids.length)return {status:"P1_CONSUME_LEASE_EXPIRED",attempted:0};
+ let result;
+ try{
+  result=await poll({DB:env.DB,...env},{now,fetchImpl,sourceIds:ids,
+   limit:ids.length,...(producerManager?{producerManager}:{})});
+ }catch{
+  for(const item of current.values())item.msg.retry({delaySeconds:30});
+  return {status:"P1_CONSUME_SOURCE_QUERY_FAILED",attempted:0};
+ }
+ if(result?.ok!==true||!Array.isArray(result.receipts)){
+  for(const item of current.values())item.msg.retry({delaySeconds:30});
+  return {status:"P1_CONSUME_POLL_UNVERIFIED",attempted:0};
+ }
+ const outcomes=new Map(result.receipts.map(x=>[x.source_id,x]));
+ let attempts=0,failed=0;
+ for(const [id,item] of current){
+  if(!outcomes.has(id)||outcomes.get(id)?.state==="NOT_DUE"){
+   item.msg.retry({delaySeconds:30});failed++;continue;
+  }
+  item.msg.ack();attempts++;
+ }
+ return {status:failed?"P1_CONSUME_PARTIAL":"P1_CONSUME_POLLED",
+  requested:ids.length,attempts,failed,
+  state_counts:result.receipts.reduce((acc,x)=>{
+   const k=/^[A-Z_]{2,40}$/u.test(x?.state??"")?x.state:"UNKNOWN";
+   acc[k]=(acc[k]??0)+1;return acc;
+  },{}),rights_promoted:false};
+}
+export async function p1SourceCoverageHealth(env,{now=Date.now()}={}){
+ if(!env?.DB?.prepare||!Number.isFinite(now))return response({
+  ok:false,error:"P1_HEALTH_D1_UNAVAILABLE"},503);
+ const hourAgo=nowIso(now-3600000),sixHours=nowIso(now-6*3600000);
+ try{
+  const [polled,linked,cells,evidence]=await Promise.all([
+   env.DB.prepare(
+    "SELECT COUNT(*) AS enabled,"+
+    "SUM(CASE WHEN last_polled_at>=? THEN 1 ELSE 0 END) AS polled_1h,"+
+    "SUM(CASE WHEN last_state='DENIED' THEN 1 ELSE 0 END) AS denied,"+
+    "SUM(CASE WHEN last_state='UNAVAILABLE' THEN 1 ELSE 0 END) AS unavailable,"+
+    "SUM(CASE WHEN last_state='CAPACITY_DEFERRED' THEN 1 ELSE 0 END) AS capacity_deferred "+
+    "FROM source_registry WHERE enabled=1"
+   ).bind(hourAgo).first(),
+   env.DB.prepare("SELECT country_iso3,primary_category,"+
+    "SUM(CASE WHEN rank<=2 THEN 1 ELSE 0 END) AS primary_count,"+
+    "SUM(CASE WHEN rank=3 THEN 1 ELSE 0 END) AS secondary_count "+
+    "FROM p1_source_to_cell GROUP BY country_iso3,primary_category").all(),
+   env.DB.prepare("SELECT country_iso3,primary_category "+
+    "FROM p1_country_category_cells ORDER BY country_iso3,primary_category LIMIT 585").all(),
+   // Only B2-ACK-backed private original evidence is eligible for the
+   // verified-source health flag: raw feed titles alone never count.
+   env.DB.prepare("SELECT risk_country_iso3 AS country_iso3,category,"+
+    "COUNT(*) AS records,MAX(original_published_at) AS latest "+
+    "FROM phase2h_private_raw_news "+
+    "WHERE b2_object_sha256 IS NOT NULL AND original_published_at>=? "+
+    "AND first_ingested_at>=? AND risk_country_iso3 IS NOT NULL "+
+    "GROUP BY risk_country_iso3,category"
+   ).bind(sixHours,sixHours).all()
+  ]);
+  const cm=new Map((linked.results??[]).map(x=>[
+   x.country_iso3+"|"+x.primary_category,x]));
+  const ev=new Map((evidence.results??[]).map(x=>[
+   x.country_iso3+"|"+({geopolitics:"GEOPOLITICS",
+    macro:"MACRO_FX",rare_earth:"CRITICAL_MINERALS"}[x.category]??"UNMAPPED"),x]));
+  const matrix=(cells.results??[]).map(x=>{
+   const key=x.country_iso3+"|"+x.primary_category,link=cm.get(key),proof=ev.get(key);
+   const primary=link?.primary_count??0,secondary=link?.secondary_count??0;
+   return {country_iso3:x.country_iso3,category:x.primary_category,
+    configured_primary_sources:primary,configured_secondary_sources:secondary,
+    mapping_complete:primary>=2&&secondary>=1,
+    verified_b2_originals_6h:proof?.records??0,
+    freshest_verified_original_at:proof?.latest??null,
+    fresh_verified_evidence_6h:(proof?.records??0)>0};
+  });
+  if(matrix.length!==585)return response({ok:false,
+   error:"P1_585_CELL_REGISTRY_INCOMPLETE"},503);
+  const active=matrix.filter(x=>x.fresh_verified_evidence_6h).length;
+  return response({ok:true,schema:"geomacro.p1.source-coverage-585.v1",
+   measured_at:nowIso(now),
+   registry:{enabled:polled?.enabled??0,polled_at_least_once_last_1h:polled?.polled_1h??0,
+    fully_polled_1h:(polled?.enabled??0)>0&&polled.polled_1h===polled.enabled,
+    denied:polled?.denied??0,unavailable:polled?.unavailable??0,
+    capacity_deferred:polled?.capacity_deferred??0},
+   cells_total:585,cells_with_fresh_b2_original_6h:active,
+   coverage_percent:Math.round(active/585*10000)/100,
+   target_95_percent_met:active>=556,
+   missing_mapping_cells:matrix.filter(x=>!x.mapping_complete).length,
+   gaps:matrix.filter(x=>!x.fresh_verified_evidence_6h).length,
+   matrix,commercial_rights_promoted:false});
+ }catch{return response({ok:false,error:"P1_COVERAGE_QUERY_UNVERIFIED"},503)}
+}
