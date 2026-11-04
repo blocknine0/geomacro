@@ -23,15 +23,29 @@ test('real timestamped Wrangler quota output recovers without a GitHub display n
    [`2026-10-27T22:55:40.8305008Z ${quota}. [code: 9999]\n`,false],
    [`2026-10-27T22:55:40.8305008Z ${'unrelated failure '.repeat(10)} [code: 7500]\n`,false],
    ['',false],
+   [`2026-11-04T17:13:20.341Z ${'quota report '.repeat(10)} P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429\n`,true,'b2'],
+   [`2026-11-04T17:13:20.341Z ${'quota report '.repeat(10)} P0B_B2_KEY_AUTH_FAILED_HTTP_429\n`,false,'b2'],
+   [`2026-11-04T17:13:20.341Z ${'quota report '.repeat(10)} P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429\n`,false,'d1'],
   ];
-  for(const [content,expected] of cases){
+  for(const [content,expected,kind='d1'] of cases){
    const log=join(dir,'job.log'),output=join(dir,'output');
    writeFileSync(log,content);writeFileSync(output,'');
-   const result=spawnSync('bash',['-euo','pipefail','-c',script],{encoding:'utf8',env:{...process.env,log_text:log,GITHUB_OUTPUT:output}});
+   const result=spawnSync('bash',['-euo','pipefail','-c',script],{encoding:'utf8',env:{...process.env,log_text:log,GITHUB_OUTPUT:output,
+    migration_conclusion:kind==='d1'?'failure':'',
+    schema_conclusion:'',
+    b2_scope_conclusion:kind==='b2'?'failure':''}});
    assert.equal(result.status,0,result.stderr);
    assert.equal(readFileSync(output,'utf8').trim(),`retry=${expected}`);
   }
  } finally {rmSync(dir,{recursive:true,force:true});}
+});
+
+test('B2 429 recovery stays behind exact failed scope step and next UTC quota reset',()=>{
+ assert.match(recovery,/Verify actual B2 key scope and derive allowed private spool prefix/u);
+ assert.match(recovery,/b2_scope_conclusion" != "failure"/u);
+ assert.match(recovery,/P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429/u);
+ assert.match(recovery,/cron: "10 0 \* \* \* \*"/u);
+ assert.doesNotMatch(recovery,/P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429[\\s\\S]*?wrangler deploy/u);
 });
 
 test("quota reset recovery sends the exact protected deployment confirmation",()=>{
