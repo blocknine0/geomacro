@@ -53,7 +53,9 @@ function fixture(){
  const fetchImpl=async (url,opts)=>{
   assert.equal(opts.redirect,'manual'); // origin never changes after SigV4
   assert.match(opts.headers.Authorization,/^AWS4-HMAC-SHA256 Credential=/u);
-  const key=new URL(url).pathname;
+  const parsed=new URL(url);
+  const bucket='geomacro-private-archive';
+  const key=parsed.hostname.startsWith(bucket+'.')?'/'+bucket+parsed.pathname:parsed.pathname;
   requests.push({method:opts.method,key});
   if(opts.method==='PUT'){
    objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
@@ -365,7 +367,9 @@ test('transient B2 transport failure retries EXACT same encrypted PUT once with 
    rawPayload:c.raw,discoveredAt:at,headers:{}
   });
   assert.equal(tries,2);
-  assert.deepEqual(urls,[urls[0],urls[0]]);
+  assert.equal(new URL(urls[0]).hostname,'s3.us-east-005.backblazeb2.com');
+  assert.equal(new URL(urls[1]).hostname,'geomacro-private-archive.s3.us-east-005.backblazeb2.com');
+  assert.equal(new URL(urls[1]).pathname,'/spool/20261104/src_probe/'+(urls[0].split('/').at(-1)));
   assert.deepEqual(bytes[0],bytes[1]);
   assert.equal(bytes[0].length>0,true);
   assert.equal(f.objects.size,1);
@@ -434,5 +438,22 @@ test('backblaze HTTP 307 never follows arbitrary redirect or retries signed B2 P
   assert.equal(attempts,1);
   assert.equal(reservations,1);
   assert.equal(f.objects.size,0);
+ }finally{f.close()}
+});
+
+test('P0-B transport outage activates a durable five-minute source-batch circuit, without swallowing D1 or B2 debt',async()=>{
+ const f=fixture();
+ try{
+  const bad={calls:0,async spoolBundleAndVerify(){this.calls++;throw Error('P0B_B2_PUT_TRANSPORT_UNAVAILABLE')}};
+  const first=await processFetchedBatch([await candidate(9801)],f.env,{manager:bad,now:NOW_DATE});
+  assert.equal(first.all_durable,false);
+  assert.equal(bad.calls,1);
+  const row=f.db.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit WHERE singleton=1').get();
+  assert.equal(row.last_error_code,'P0B_B2_PUT_TRANSPORT_UNAVAILABLE');
+  assert.ok(Date.parse(row.hold_until)>=NOW.getTime()+300000);
+  const second=await processFetchedBatch([await candidate(9802)],f.env,{manager:bad,now:NOW_DATE});
+  assert.equal(second.receipts[0].error_code,'P0B_STORAGE_CIRCUIT_HELD');
+  assert.equal(bad.calls,1);
+  assert.equal(f.env.INGEST_QUEUE.sent.length,0);
  }finally{f.close()}
 });
