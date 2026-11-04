@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T07:29:08.108Z",
+  "checked_at": "2026-11-04T07:32:24.957Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,25 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-663fb28a",
+      "category": "macro",
+      "title": "Geomacro finds Alfen reported third quarter profit beat despite revenue miss By Investing.com - Investing.com Nigeria",
+      "what_changed": "A monitored source feed reports: Alfen reported third quarter profit beat despite revenue miss By Investing.com - Investing.com Nigeria. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T07:31:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-01e0c6a7",
       "category": "geopolitics",
@@ -106,6 +125,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-4bd766f1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said will accept results of midterm congressional elections",
+      "what_changed": "A monitored source feed reports: Trump said will accept results of midterm congressional elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:31:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-57a98de7",
       "category": "rare_earth",
       "title": "Geomacro finds Greenwing Resources agreed to Proposed San Jorge Lithium Partnership with Atana Elements - TradingView",
@@ -134,6 +172,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T04:22:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-24ddd988",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said in interview that he will accept election results - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Trump said in interview that he will accept election results - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:20:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -347,6 +404,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-24c0fce9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Donald Trump said US will end $4bn in annual military aid to Israel - The National",
+      "what_changed": "A monitored source feed reports: Donald Trump said US will end $4bn in annual military aid to Israel - The National. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T00:22:30.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4172,25 +4248,6 @@
       "severity": null
     },
     {
-      "id": "macro-f7d975cc",
-      "category": "macro",
-      "title": "Geomacro finds Egypt raised Over $650m In IPO Of State-Owned Bank",
-      "what_changed": "A monitored source feed reports: Egypt raised Over $650m In IPO Of State-Owned Bank. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T12:16:08.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelstv.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-93047c49",
       "category": "geopolitics",
       "title": "Geomacro finds GPCL introduced security features on gazettes to curb fake publications",
@@ -4552,44 +4609,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-a9c9a511",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said US in no rush for Iran deal, keeps possibility of renewed war open",
-      "what_changed": "A monitored source feed reports: Trump said US in no rush for Iran deal, keeps possibility of renewed war open. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:22:30.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.thehindu.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-6cb0ce34",
-      "category": "geopolitics",
-      "title": "Geomacro finds No announced plans to destroy countries as colonial powers crumble, top Russian security official",
-      "what_changed": "A monitored source feed reports: No announced plans to destroy countries as colonial powers crumble, top Russian security official. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:19:49.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: tass.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-742dfb14",
       "category": "rare_earth",
       "title": "Geomacro finds Ajax extended Nueva Celti Copper Project Option to November 30 - TipRanks",
@@ -4599,25 +4618,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-02T10:04:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9e6dab28",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Alabama News Wire",
-      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Alabama News Wire. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T09:55:14.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

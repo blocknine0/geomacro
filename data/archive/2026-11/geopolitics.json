@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T07:29:08.108Z",
+  "updated_at": "2026-11-04T07:32:24.957Z",
   "signals": [
     {
       "id": "geopolitics-01e0c6a7",
@@ -62,6 +62,44 @@
       "severity": null
     },
     {
+      "id": "geopolitics-4bd766f1",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said will accept results of midterm congressional elections",
+      "what_changed": "A monitored source feed reports: Trump said will accept results of midterm congressional elections. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:31:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: tass.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-24ddd988",
+      "category": "geopolitics",
+      "title": "Geomacro finds Trump said in interview that he will accept election results - Bangkok Post",
+      "what_changed": "A monitored source feed reports: Trump said in interview that he will accept election results - Bangkok Post. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T04:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "geopolitics-d5374378",
       "category": "geopolitics",
       "title": "Geomacro finds North Korea launched missiles toward the sea as Pyongyang protests against US claims on Binance hack - dailyadvance.com",
@@ -71,6 +109,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T03:35:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-24c0fce9",
+      "category": "geopolitics",
+      "title": "Geomacro finds Donald Trump said US will end $4bn in annual military aid to Israel - The National",
+      "what_changed": "A monitored source feed reports: Donald Trump said US will end $4bn in annual military aid to Israel - The National. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T00:22:30.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
