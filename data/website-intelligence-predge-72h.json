@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T02:58:49.520Z",
+  "checked_at": "2026-11-04T03:04:43.131Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 373,
+  "item_count": 376,
   "counts": {
-    "geopolitics": 164,
-    "macro": 165,
+    "geopolitics": 166,
+    "macro": 166,
     "rare_earth": 44
   },
-  "source_native_ids_sha256": "dc1b3a82de0119c1919c06cceb8d329f5a71ac1bd5621fa696ec72711414d6b2",
+  "source_native_ids_sha256": "b831b20ec955ad5b024659d4f1985d78a41ca8c800eedad577a41986808d0c9e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-06cf0966",
+      "category": "macro",
+      "title": "Geomacro finds FG raised the Alarm Over Gambian Directive to Replace 57 Nigerian Bank Workers",
+      "what_changed": "A monitored source feed reports: FG raised the Alarm Over Gambian Directive to Replace 57 Nigerian Bank Workers. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T02:56:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.thisdaylive.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-5159551c",
       "category": "macro",
@@ -7088,6 +7107,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T06:17:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-793c1618",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business",
+      "what_changed": "A monitored source feed reports: Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T04:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ecac6ece",
+      "category": "geopolitics",
+      "title": "Geomacro finds India urged diplomacy, warns of global war costs - The Hawk",
+      "what_changed": "A monitored source feed reports: India urged diplomacy, warns of global war costs - The Hawk. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T03:50:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

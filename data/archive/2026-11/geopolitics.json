@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-04T02:58:49.520Z",
+  "updated_at": "2026-11-04T03:04:43.131Z",
   "signals": [
     {
       "id": "geopolitics-980cf4df",
@@ -3111,6 +3111,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T07:12:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-793c1618",
+      "category": "geopolitics",
+      "title": "Geomacro finds Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business",
+      "what_changed": "A monitored source feed reports: Saudi Arabia recorded 13,357 residency, labour and border violations in one week - Arabian Business. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T04:30:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-ecac6ece",
+      "category": "geopolitics",
+      "title": "Geomacro finds India urged diplomacy, warns of global war costs - The Hawk",
+      "what_changed": "A monitored source feed reports: India urged diplomacy, warns of global war costs - The Hawk. This report has not been independently verified.",
+      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
+      "topic": "geopolitical security",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-01T03:50:08.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
