@@ -275,6 +275,41 @@ test("delayed six-hour GitHub cron archive retains one authorized schedule witho
  assert.equal(skipped.status,"SKIPPED_OUTSIDE_EXISTING_ARCHIVE_SLOT");
 });
 
+
+test("only successful exact-main Worker deployment enables governed post-release archive verification",()=>{
+ const sha="a".repeat(40);
+ const env={
+  GITHUB_EVENT_NAME:"workflow_run",
+  GITHUB_SHA:sha,
+  GITHUB_WORKFLOW_REF:"blocknine0/geomacro/.github/workflows/phase2h-private-raw-archive.yml@refs/heads/main",
+  GITHUB_EVENT_PATH:"/home/runner/work/_temp/_github_workflow/event.json"
+ };
+ const event={
+  action:"completed",
+  repository:{full_name:"blocknine0/geomacro"},
+  workflow_run:{
+   name:"Deploy D1 Control Plane",event:"push",conclusion:"success",
+   head_branch:"main",head_sha:sha,
+   head_repository:{full_name:"blocknine0/geomacro"}
+  }
+ };
+ const valid=()=>JSON.stringify(event);
+ assert.equal(phase2hAuthorizedArchiveWindow({env,eventReader:valid}),true);
+ for(const bad of [
+  {...event,action:"requested"},
+  {...event,workflow_run:{...event.workflow_run,event:"pull_request"}},
+  {...event,workflow_run:{...event.workflow_run,conclusion:"failure"}},
+  {...event,workflow_run:{...event.workflow_run,head_sha:"b".repeat(40)}},
+  {...event,workflow_run:{...event.workflow_run,head_repository:{full_name:"untrusted/fork"}}},
+  {...event,repository:{full_name:"untrusted/fork"}}
+ ]){
+  assert.equal(phase2hAuthorizedArchiveWindow({
+   env,eventReader:()=>JSON.stringify(bad)}),false);
+ }
+ assert.equal(phase2hAuthorizedArchiveWindow({
+  env:{...env,GITHUB_EVENT_NAME:"workflow_dispatch"},eventReader:valid}),false);
+});
+
 test("six-hour Phase2H production rejects manual dispatch without a D1/B2 quota request",async()=>{
  const when=new Date("2026-11-01T00:39:00Z");
  const env={
