@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T01:33:47.217Z",
+  "checked_at": "2026-11-04T02:39:24.775Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 367,
+  "item_count": 366,
   "counts": {
     "geopolitics": 164,
-    "macro": 160,
+    "macro": 159,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "72b53829de35f67367d308b868f2ead47d2941de40aee70004a797a0565abcf3",
+  "source_native_ids_sha256": "b223eb7fd333c6e9a370f630035a48f1f987ffb2e480e13516f0e2ebb6a1e5bb",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -6974,25 +6974,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-01T03:45:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: gcaptain.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f95d44fe",
-      "category": "macro",
-      "title": "Geomacro finds Taiwan said China Harassing Shipping With East Coast Patrol",
-      "what_changed": "A monitored source feed reports: Taiwan said China Harassing Shipping With East Coast Patrol. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-01T02:36:33.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
