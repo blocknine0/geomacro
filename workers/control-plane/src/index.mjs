@@ -42,6 +42,7 @@ import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
 import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus} from "./gro-evidence-enrichment.mjs";
+import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -1490,6 +1491,12 @@ export default {
           free_website_only:true,chargeable:false},503);
     }
     if (!env.DB) return json({ ok: false, error: "D1_BINDING_MISSING" }, 503);
+    // P2 current Website Intelligence: immutable source clocks, bounded
+    // per-category D1 reads and one-minute per-POP cache; no static rebuild.
+    if(request.method==="GET"&&
+       /^\/api\/v1\/feed\/(geopolitics|macro|rare_earth)$/u.test(url.pathname)&&!url.search)
+      return publicReadCache(()=>readIncrementalWebsiteCategoryFeed(
+       env,url.pathname.slice("/api/v1/feed/".length)));
     if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return publicReadCache(()=>getSourceRuntimeStatus(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
