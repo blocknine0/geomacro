@@ -129,7 +129,7 @@ test("single-row REST recovery can archive real pending rows when D1 multirow SE
    worker.push(url);
    throw Error("internal fallback should not be needed for single-row REST");
   }
-  const body=JSON.parse(init.body),match=body.sql.match(/LIMIT (\\d+)$/u);
+  const body=JSON.parse(init.body),match=body.sql.match(/LIMIT ([0-9]+)$/u);
   const limit=Number(match?.[1]);
   limits.push(limit);
   if(limit>1)return denial(400,7500);
