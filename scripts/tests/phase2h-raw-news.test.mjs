@@ -152,7 +152,7 @@ test("six-hour incremental writer can archive recent, never-archived D1 original
   {...older[0],ingested_at:"2026-10-31T06:10:00.000Z"}
  ],now),/PHASE2H_RAW_B2_SOURCE_CONTENT_INVALID/u);
 });
-test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exact readback required",async()=>{
+test("one B2 PUT plus one independent GET and one atomic D1 ACK per archive batch",async()=>{
  const items=data().records;
  let put=0,first=0,second=0,postRead=0,marked=0;
  const r=await runPhase2hGovernedRawB2({
@@ -171,7 +171,8 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
    async markArchived(rows,objectSha){
     marked++;assert.equal(rows.length,3);
     assert.match(objectSha,/^[a-f0-9]{64}$/u);
-    return {archived:3,independent_d1_archive_ack_verified:true};
+    return {archived:3,independent_d1_archive_ack_verified:true,
+     d1_atomic_one_statement_returning_verified:true,d1_write_statements:1};
    }
   }),
   b2Factory:()=>({
@@ -182,16 +183,17 @@ test("real-shaped governed PUT, two independent B2 GETs and post-archive D1 exac
      sha256:buildPhase2hRawB2Plan(items,now).compressed_sha256,
      bytes:bytes.length};
    },
-   async get(){second++;return buildPhase2hRawB2Plan(items,now).compressed;}
+   async get(){second++;throw Error("EXTRA_B2_GET_FORBIDDEN");}
   }),
  });
  assert.equal(r.storage_confirmed,true);
  assert.equal(r.rows_archived,3);
  assert.equal(r.b2_automatic_deletion_paused_provider_verified,true);
  assert.equal(r.b2_first_get_verified,true);
- assert.equal(r.b2_second_independent_get_verified,true);
+ assert.equal(r.b2_second_get_performed,false);
+ assert.equal(r.d1_atomic_one_statement_returning_verified,true);
  assert.equal(r.post_archive_d1_verified,true);
- assert.equal(put,1);assert.equal(first,1);assert.equal(second,1);
+ assert.equal(put,1);assert.equal(first,1);assert.equal(second,0);
  assert.equal(postRead,1);assert.equal(marked,1);
  assert.equal(r.payments,0);
 });
@@ -430,7 +432,7 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
  const digest="c".repeat(64);
  let providerReads=0,httpReads=0;
  const receipt={schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-  status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+  status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
   storage_confirmed:true,rows_archived:1,category_counts:{geopolitics:0,macro:1,rare_earth:0},
   b2_first_get_verified:true,
   b2_second_independent_get_verified:true,post_archive_d1_verified:true,
@@ -477,7 +479,7 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
   expectedArchivedRows:[{...row,original:{...row.original,original_title:"Tampered source title"}}]}),
   /PHASE2H_QUESTION_CHAIN_B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH/u);
  await assert.rejects(verifyPhase2hProductionQuestionChain({
-  now:now.getTime(),env,receipt:{...receipt,b2_second_independent_get_verified:false},
+  now:now.getTime(),env,receipt:{...receipt,b2_first_get_verified:false},
   fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
 });
 
@@ -494,16 +496,17 @@ test("bounded two-batch real-shaped archive drains and verifies exact production
  const proof=await runPhase2hPermanentAcceptance({env,now,
   archive:async()=>{archived++;return {
    schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
-   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
    storage_confirmed:true,rows_archived:archived===1?300:15,
    category_counts:{geopolitics:1,macro:1,rare_earth:archived===1?298:13},
    object_sha256:(archived===1?"a":"b").repeat(64),
-   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   b2_first_get_verified:true,b2_second_get_performed:false,
+    d1_atomic_one_statement_returning_verified:true,
    post_archive_d1_verified:true};},
   verify:async()=>{checked++;return {
    same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
    deployed_authenticated_http_200:true,
-   b2_two_get_verified_in_preceding_step:true,
+   b2_one_get_sha_verified_in_preceding_step:true,
    production_question_readback_categories:3,
    unarchived_backlog_present:checked===1,
    entire_admitted_raw_backlog_verified:checked===2};},
@@ -581,14 +584,15 @@ test("one verified batch with backlog is valid incremental progress, never corpu
  const result=await runPhase2hPermanentAcceptance({env,now,
   archive:async()=>({schema:"geomacro.phase2h.private-raw-b2-acceptance.v1",
    storage_confirmed:true,rows_archived:300,
-   status:"B2_PUT_TWO_INDEPENDENT_GET_SHA_AND_D1_VERIFIED",
+   status:"B2_ONE_PUT_ONE_GET_SHA_AND_D1_VERIFIED",
    category_counts:{geopolitics:100,macro:100,rare_earth:100},
    object_sha256:(++count===1?"a":"b").repeat(64),
-   b2_first_get_verified:true,b2_second_independent_get_verified:true,
+   b2_first_get_verified:true,b2_second_get_performed:false,
+    d1_atomic_one_statement_returning_verified:true,
    post_archive_d1_verified:true}),
   verify:async()=>({
    same_b2_object_and_d1_original:true,per_record_five_part_exact:true,
-   deployed_authenticated_http_200:true,b2_two_get_verified_in_preceding_step:true,
+   deployed_authenticated_http_200:true,b2_one_get_sha_verified_in_preceding_step:true,
    production_question_readback_categories:3,unarchived_backlog_present:true,
    entire_admitted_raw_backlog_verified:false}),
   verifyExisting:()=>{throw Error("NO_HISTORICAL_B2_RESCAN")},
