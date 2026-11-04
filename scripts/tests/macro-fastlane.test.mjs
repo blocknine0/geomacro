@@ -111,11 +111,11 @@ test('The same bundle reuses one global fallback request across regional failure
  const urls=[];
  const result=await collectCriticalMineralsFastlane({now,macroNeedsFallback:true,fetchImpl:async url=>{
   urls.push(url);
-  if(url==='https://www.mining.com/feed/')return new Response(rss('Chile announces new copper and lithium export rules','https://www.mining.com/chile-copper-lithium-export-rules/'));
+  if(url==='https://www.mining-technology.com/news/feed/')return new Response(rss('Chile announces new copper and lithium export rules','https://www.mining-technology.com/news/chile-copper-lithium-export-rules/'));
   if(new URL(url).hostname==='news.google.com')return new Response(rss('China announces rare earth export controls','https://news.google.com/rss/articles/example'));
   return new Response('',{status:403});
  }});
- assert.equal(MINERALS_MESH.length,6);assert.equal(urls.filter(u=>u==='https://www.mining.com/feed/').length,1);assert.ok(urls.length<=13);assert.ok(result.signals.length>0);
+ assert.equal(MINERALS_MESH.length,6);assert.equal(urls.filter(u=>u==='https://www.mining-technology.com/news/feed/').length,1);assert.ok(urls.length<=13);assert.ok(result.signals.length>0);
  assert.ok(result.signals.every(s=>s.status==='osint_feed_observed_unverified'&&verifyDerivedStory(s,now)));
  assert.equal(result.receipt.google_is_original_verification,false);
  const spec={url:'https://www.mining.com/feed/'};
@@ -231,4 +231,18 @@ test('ECB official daily reference is source-dated and never claimed as live FX'
  }});
  assert.deepEqual(sameDay.state.fx_reference,parsed);
  assert.equal(sameDay.receipt.ecb_reference_available,true);
+});
+
+
+test('Disabled CFTC RSS and denied CME investor route use pinned first-party HTML index recovery',async()=>{
+ const cftc=MACRO_NEWS_SOURCES.find(s=>s.id==='cftc_news');
+ const cme=MACRO_NEWS_SOURCES.find(s=>s.id==='cme_news');
+ assert.equal(cftc.media,'html');assert.equal(cme.media,'html');
+ assert.equal(cftc.url,'https://www.cftc.gov/PressRoom/PressReleases');
+ assert.equal(cme.url,'https://www.cmegroup.com/media-room/press-releases.html');
+ const {macroIndexLeads}=await import('../lib/macro-fastlane-collector.mjs');
+ const source='<a href="/PressRoom/PressReleases/9320-26">CFTC futures and commodity market announcement</a>';
+ assert.equal(macroIndexLeads(source,cftc).length,1);
+ assert.equal(macroIndexLeads(source.replace('/PressRoom/PressReleases/9320-26','https://attacker.invalid/PressRoom/PressReleases/9320-26'),cftc).length,0);
+ assert.equal(macroIndexLeads('<a href="/media-room/press-releases/2026/11/03/futures_clearing.html">CME Group announces new FX futures clearing program</a>',cme).length,1);
 });
