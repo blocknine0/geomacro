@@ -21,7 +21,9 @@ function holdMillis(code:string,date:Date){
  if(/^P0B_B2_(?:PUT|GET)_HTTP_(?:401|403)$/u.test(code)||
   code==='P0B_B2_BUNDLE_INTEGRITY_MISMATCH'||code==='P0B_BUNDLE_AUTHENTICATION_FAILED')
   return 3600000;
- if(/^P0B_B2_(?:PUT|GET)_(?:HTTP_[0-9]{3}|UNAVAILABLE)$/u.test(code))
+ // A transport-failed PUT must trip the circuit too; otherwise each 15m
+ // poll reattempts every failed B2 bundle and exhausts the account quota.
+ if(/^P0B_B2_(?:PUT|GET)_(?:HTTP_[0-9]{3}|UNAVAILABLE|TRANSPORT_UNAVAILABLE|TIMEOUT)$/u.test(code))
   return 300000;
  return 0;
 }
