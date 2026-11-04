@@ -25,7 +25,18 @@ class FakeD1 {
    async first(){
     if(sql.includes("FROM derived_risk_gate_discovery_cursors"))
      return db.cursors.get(state.args[0])??null;
+    if(sql.includes("SELECT EXISTS(SELECT 1 FROM derived_risk_gate_discovery_signals"))
+     return {stale:Number([...db.signals.values()].some(
+      x=>x.first_seen_at<state.args[0]))};
     return null;
+   },
+   async run(){
+    if(sql.includes("DELETE FROM derived_risk_gate_discovery_signals")){
+     for(const [id,value] of db.signals)
+      if(value.first_seen_at<state.args[0])db.signals.delete(id);
+     return {success:true};
+    }
+    throw Error("unexpected run query");
    },
    async all(){
     if(sql.includes("FROM derived_risk_gate_discovery_signals WHERE signal_id IN")){
@@ -182,5 +193,24 @@ test("fails closed for invalid lane, stale proof and malformed ack",async()=>{
   original_ref:r.records[0].original_ref,status:"PENDING_CORROBORATION",
   commercialEligible:false,
  }]})).status,400);
+ assert.equal(db.signals.size,0);
+});
+
+test("protected 72-hour housekeeping deletes only derived metadata",async()=>{
+ const db=new FakeD1();
+ db.signals.set("a".repeat(64),{
+  signal_id:"a".repeat(64),lane:"canonical",category:"macro",
+  country_iso3:"USA",source_clock_at:stamp,
+  first_seen_at:new Date(NOW-80*3600000).toISOString(),
+  source_sha256:"a".repeat(64),review_status:"HOLD_SOURCE_ACCESS_OR_EXPRESSION",
+  rights_state:"UNVERIFIED_SOURCE_RIGHTS",
+ });
+ const r=await post(db,{
+  schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA,operation:"PRUNE_DISCOVERY_72H",
+ });
+ assert.equal(r.status,200);
+ const result=await r.json();
+ assert.equal(result.expired_rows_remaining,0);
+ assert.equal(result.raw_archives_modified,false);
  assert.equal(db.signals.size,0);
 });
