@@ -22,6 +22,9 @@ on:
       - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
       - "scripts/lib/geopolitics-continuity-sources.mjs"
       - "scripts/lib/geopolitics-continuity-sources.test.mjs"
+      - "scripts/lib/macro-minerals-continuity-sources.mjs"
+      - "scripts/lib/macro-minerals-continuity-sources.test.mjs"
+      - "scripts/ops/probe-macro-minerals-continuity-feeds.mjs"
       - "scripts/ops/probe-geopolitics-continuity-feeds.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
       - "scripts/lib/hot-50-retired-backup-sources.mjs"
@@ -49,6 +52,9 @@ on:
       - "scripts/lib/three-domain-global-direct-20m-sources.mjs"
       - "scripts/lib/geopolitics-continuity-sources.mjs"
       - "scripts/lib/geopolitics-continuity-sources.test.mjs"
+      - "scripts/lib/macro-minerals-continuity-sources.mjs"
+      - "scripts/lib/macro-minerals-continuity-sources.test.mjs"
+      - "scripts/ops/probe-macro-minerals-continuity-feeds.mjs"
       - "scripts/ops/probe-geopolitics-continuity-feeds.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
       - "scripts/lib/hot-50-retired-backup-sources.mjs"
@@ -90,7 +96,8 @@ jobs:
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
           node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
-          node --test scripts/lib/geopolitics-continuity-sources.test.mjs
+          node --test scripts/lib/geopolitics-continuity-sources.test.mjs scripts/lib/macro-minerals-continuity-sources.test.mjs
+          node --check scripts/ops/probe-macro-minerals-continuity-feeds.mjs
           node --check scripts/ops/probe-geopolitics-continuity-feeds.mjs
           node --test scripts/lib/hot-50-retired-backup-sources.test.mjs
           node --check scripts/ops/probe-hot50-retired-backup-transports.mjs
@@ -102,6 +109,17 @@ jobs:
       - name: Read-only transport probe of 14 source-specific backup URLs
         if: github.event_name == 'pull_request'
         run: node scripts/ops/probe-hot50-retired-backup-transports.mjs
+      - name: Probe Macro/FX and Critical Minerals official alternate publisher feeds (read-only)
+        if: github.event_name == 'pull_request'
+        run: node scripts/ops/probe-macro-minerals-continuity-feeds.mjs
+      - name: Save official Macro/Minerals HTTP and native-date states (no article payloads)
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-macro-minerals-continuity-probe-${{ github.run_id }}
+          path: /tmp/geomacro-macro-minerals-continuity-readonly.json
+          retention-days: 7
+          if-no-files-found: warn
       - name: Probe 15 geopolitical alternates without ingesting or bypassing denied publishers
         if: github.event_name == 'pull_request'
         run: node scripts/ops/probe-geopolitics-continuity-feeds.mjs
