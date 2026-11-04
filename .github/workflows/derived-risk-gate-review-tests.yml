@@ -7,6 +7,12 @@ on:
       - "scripts/lib/derived-risk-gate-review-loop.test.mjs"
       - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - ".github/workflows/derived-risk-gate-review-tests.yml"
+      - "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/migrations/0117_derived_risk_gate_discovery_bridge.sql"
+      - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
+      - "scripts/tests/derived-risk-gate-discovery-bridge.test.mjs"
+      - ".github/workflows/derived-risk-gate-discovery-20m.yml"
   push:
     branches: [main]
     paths:
@@ -14,6 +20,12 @@ on:
       - "scripts/lib/derived-risk-gate-review-loop.test.mjs"
       - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - ".github/workflows/derived-risk-gate-review-tests.yml"
+      - "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/migrations/0117_derived_risk_gate_discovery_bridge.sql"
+      - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
+      - "scripts/tests/derived-risk-gate-discovery-bridge.test.mjs"
+      - ".github/workflows/derived-risk-gate-discovery-20m.yml"
 
 permissions:
   contents: read
@@ -29,4 +41,4 @@ jobs:
         with:
           node-version: "22"
       - name: Verify Risk Gate review loop and independently signed proof rules
-        run: node --test scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
+        run: node --test scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs scripts/tests/derived-risk-gate-discovery-bridge.test.mjs
