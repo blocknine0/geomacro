@@ -170,9 +170,9 @@
       "categories": [
         "rare_earth"
       ],
-      "url": "https://www.dsti.gov.za/rss.xml",
+      "url": "https://www.miningreview.com/feed/",
       "type": "rss",
-      "description": "South Africa Department of Science Technology and Innovation official general RSS",
+      "description": "Mining Review Africa sector-specific RSS candidate; unverified publisher rights",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
@@ -183,9 +183,9 @@
       "categories": [
         "geopolitics"
       ],
-      "url": "https://data.gmanews.tv/gno/rss/news/feed.xml",
+      "url": "https://www.philstar.com/rss/nation",
       "type": "rss",
-      "description": "GMA Philippines general editorial RSS; independent from PNA and noncommercial",
+      "description": "Philstar Philippines nation/politics RSS; editorial alternative, not PNA",
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
       "publicly_deliverable": false
