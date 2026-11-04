@@ -55,9 +55,11 @@ export async function collectMacroFastlane({now=Date.now(),fetchImpl=fetch,state
     for(const lead of macroIndexLeads(data.text,spec)){
      try{
       const page=await get(lead.articleUrl,{accept:'text/html',maxBytes:1024*1024});
-      const h1=clean(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(page.text)?.[1]);
-      const date=verifiedPublisherPageDate(page.text,new Date(now),null,{maxAgeMs:72*3600000});
-      if(date&&h1===lead.title)rows.push({...lead,publishedAt:date,sourceId:spec.id,category:'macro',credit:spec.credit});
+      const headings=[...page.text.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].slice(0,4).map(m=>clean(m[1]));
+      // Original issuer pages sometimes precede the headline with a release-number H1.
+      // The date verifier requires publisher metadata, never a collection-time fallback.
+      const date=verifiedPublisherPageDate(page.text.slice(0,384*1024),new Date(now),null,{maxAgeMs:72*3600000});
+      if(date&&headings.includes(lead.title))rows.push({...lead,publishedAt:date,sourceId:spec.id,category:'macro',credit:spec.credit});
      }catch{/* a failed original never becomes a verified article */}
     }
    }else rows=parseMacroFeed(data.text,spec,now);
