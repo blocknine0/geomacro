@@ -1,3 +1,4 @@
+import {handleBundleQueueBatch} from './ingest-bundle-consumer.ts';
 /** P0-B idempotent Cloudflare Queue consumer.
  * B2 AEAD+SHA verification -> atomic D1 insert/state commit -> independent
  * readback -> ack. A lock expiry allows crash takeover without double insert.
@@ -29,10 +30,14 @@ export async function handleQueueBatch(batch:QueueBatch<SpoolQueueMessage>,
   throw Error('P0B_CONSUMER_CONFIG_INVALID');
  const manager=options.manager??new B2SpoolManager(env);
  const now=options.now??(()=>new Date());
+ const bundleMessages=batch.messages.filter(m=>(m.body as any)?.kind==='P0B_BUNDLE_V1');
+ const bundleResult=bundleMessages.length?await handleBundleQueueBatch(
+  {messages:bundleMessages as any},env,{now,manager:manager as any}):null;
+ const legacyMessages=batch.messages.filter(m=>(m.body as any)?.kind!=='P0B_BUNDLE_V1');
  const result:{committed:number;duplicates:number;retried:number;dead_letter:number}={
   committed:0,duplicates:0,retried:0,dead_letter:0
  };
- for(const message of batch.messages){
+ for(const message of legacyMessages){
   const item=message.body;
   if(!item||!HASH.test(item.candidateSha256??'')||
      typeof item.sourceId!=='string'||typeof item.b2Uri!=='string'){
@@ -110,5 +115,5 @@ export async function handleQueueBatch(batch:QueueBatch<SpoolQueueMessage>,
   }
  }
  return {schema:'geomacro.p0b.consumer.v1',...result,
-  public_published:false,commercial_eligible:false};
+  bundles:bundleResult,public_published:false,commercial_eligible:false};
 }
