@@ -187,3 +187,23 @@ test("protected Worker rejects 49-item D1 ACK before touching provider",async()=
  assert.equal(r.status,400);
  assert.equal(d1Calls,0);
 });
+
+test("V2 archival-only selector includes retained >72h private original",async()=>{
+ const retained={...item,ingested_at:"2026-10-28T06:00:00.000Z"};
+ const stored={record_id:retained.record_id,raw_sha256:retained.raw_sha256,
+  first_ingested_at:retained.ingested_at,raw_json:JSON.stringify(retained)};
+ const seen=[];
+ const env={DB:{prepare(sql){seen.push(sql);return {bind(...values){
+  seen.push(values);return {all:async()=>({success:true,results:[stored]})};
+ }};}}};
+ const response=await phase2hPrivateRawArchiveExportV2(env,
+  new URLSearchParams({limit:"1"}),now.getTime());
+ assert.equal(response.status,200);
+ const doc=await response.json();
+ assert.equal(doc.rows.length,1);
+ assert.equal(doc.rows[0].ingested_at,retained.ingested_at);
+ assert.equal(doc.paid_eligible,false);
+ assert.equal(doc.raw_public_delivery,false);
+ assert.doesNotMatch(seen[0],/first_ingested_at>\?/u);
+ assert.deepEqual(seen[1],[1]);
+});
