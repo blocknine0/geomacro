@@ -10,7 +10,7 @@ import {PRIVATE_OSINT_RETIRED_SOURCE_IDS}
 const now=new Date("2026-11-04T03:00:00Z");
 const categories=["geopolitics","macro","rare_earth"];
 test("true 20-minute production registry includes all Hot-50 native feeds plus non-Hot50 global native feeds",()=>{
- const hot=hot50Direct20mPublisherRegistry().registry;
+ const hot=hot50Direct20mPublisherRegistry(now).registry;
  const {registry,summary}=threeDomainGlobal20mPublisherRegistry(now);
  const urls=new Set(registry.map(x=>x.url));
  assert.equal(GLOBAL_DIRECT_20M_MAX_REQUESTS,512);
@@ -29,7 +29,10 @@ test("true 20-minute production registry includes all Hot-50 native feeds plus n
   x.commercial_eligible===false&&
   x.publicly_deliverable===false&&
   x.original_article_verified===false&&
-  !PRIVATE_OSINT_RETIRED_SOURCE_IDS.includes(x.id)));
+  (!PRIVATE_OSINT_RETIRED_SOURCE_IDS.includes(x.id)||
+   x.private_hot50_retired_reprobe===true)));
+ assert.equal(summary.hot50_retired_transport_reprobes_this_tick,5);
+ assert.equal(summary.hot50_retired_reprobe_does_not_prove_http_success,true);
  assert.ok(registry.every(x=>{
   const u=new URL(x.url);
   return u.protocol==="https:"&&u.hostname!=="news.google.com"&&
@@ -50,7 +53,8 @@ test("over-cap global nonpriority direct publishers fairly rotate without losing
    new Date(aligned.getTime()+slot*1200000),{base:global,hot50:hot});
   const urls=new Set(registry.map(x=>x.url));
   assert.equal(registry.length,504);
-  assert.equal(summary.other_direct_feeds_deferred_this_tick,35);
+  assert.equal(summary.other_direct_feeds_deferred_this_tick,
+   430-(504-hot.length));
   assert.ok(hot.every(x=>urls.has(x.url)));
   for(const src of registry)if(src.id.startsWith("private_test_global_"))
    seen.add(src.id);
