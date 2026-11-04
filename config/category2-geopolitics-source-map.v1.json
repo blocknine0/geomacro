@@ -1,0 +1,96 @@
+{
+  "schema": "geomacro.category2-geopolitics-source-map.v1",
+  "as_of": "2026-11-04",
+  "priority_band": "11-20",
+  "category": "geopolitics",
+  "country_iso3": [
+    "CAN",
+    "AUS",
+    "BRA",
+    "MEX",
+    "ITA",
+    "ESP",
+    "NLD",
+    "CHE",
+    "NOR",
+    "SWE"
+  ],
+  "scope": "PRIVATE_NEWS_DISCOVERY_AND_SOURCE_REVIEW",
+  "runtime_effect": "GOOGLE_WATCH_ONLY_EXISTING_15M_PRIVATE_OSINT_SLOT",
+  "telegram": [
+    {
+      "handle": "@clashreport",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED",
+      "ingest_enabled_by_registration": false
+    },
+    {
+      "handle": "@eurasianist",
+      "registry": "blocknine0/geomacro-telegram-signals/config/source_registry.json",
+      "activation_state": "PUBLISHER_AUTH_REQUIRED",
+      "ingest_enabled_by_registration": false
+    }
+  ],
+  "other_osint": [
+    {
+      "name": "Bellingcat",
+      "url": "https://www.bellingcat.com/",
+      "source_type": "INVESTIGATIVE_OSINT",
+      "candidate_rss_url": "https://www.bellingcat.com/feed/",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "OSINTtechnical",
+      "url": "https://x.com/Osinttechnical",
+      "source_type": "X_ACCOUNT",
+      "activation_state": "PLATFORM_API_AND_RIGHTS_REVIEW_REQUIRED"
+    }
+  ],
+  "direct_news": [
+    {
+      "name": "POLITICO Europe",
+      "url": "https://www.politico.eu/",
+      "candidate_rss_url": "https://www.politico.eu/feed/",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "Euractiv",
+      "url": "https://www.euractiv.com/",
+      "candidate_rss_url": "https://www.euractiv.com/?feed=mcfeed",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "name": "MercoPress",
+      "url": "https://en.mercopress.com/",
+      "candidate_rss_url": "https://en.mercopress.com/rss/",
+      "publisher_feed_directory": "https://en.mercopress.com/feeds",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED",
+      "note": "Publisher feed directory requests attribution/link-back to original"
+    },
+    {
+      "name": "The Local",
+      "url": "https://www.thelocal.com/",
+      "candidate_rss_url": "https://feeds.thelocal.com/rss/de",
+      "activation_state": "DIRECT_FEED_ACCESS_AND_RIGHTS_REVIEW_REQUIRED",
+      "note": "Example Germany edition; country editions must not be presented as single pan-European feed"
+    }
+  ],
+  "google_news": {
+    "query": "(\"NATO\" OR \"EU\" OR \"Brazil\" OR \"Australia\") (\"Defense Policy\" OR \"Trade\" OR \"Elections\")",
+    "watch_id": "private_repo_f3bd6a5cffe44c285d10",
+    "watch_lane": "category2_nato_eu_latam_pacific",
+    "integration": "scripts/lib/launch-priority-watch-sources.mjs",
+    "reuse_existing_malformed_google_index_slot": true,
+    "requested_extra_network_calls": 0,
+    "source_kind": "DISCOVERY_AGGREGATOR",
+    "independent_event_proof": false
+  },
+  "source_policy": {
+    "no_telegram_collection_without_source_authorization": true,
+    "third_party_news_requires_access_rights_and_native_clock": true,
+    "original_country_independently_proven": false,
+    "automatic_paid_promotion": false,
+    "commercial_reuse_rights_unverified": true,
+    "no_live_ingestion_claim_from_registration": true
+  }
+}
