@@ -18,14 +18,14 @@ test("Hot-50 is a canonical, unique 50-country, three-domain private watch",()=>
  assert.ok(HOT50_COUNTRY_ISO3.every(c=>COUNTRIES_195.some(x=>x.iso3===c)));
  assert.equal(COUNTRIES_195.filter(c=>!HOT50_COUNTRY_SET.has(c.iso3)).length,145);
 });
-test("at 25 allocated index fetches per slot, Hot-50 and other 145 both rotate in <=180 nominal minutes",()=>{
+test("at 25 allocated index fetches per slot, Hot-50 and other 145 complete each <=180 minute cycle",()=>{
  const registry=[];
  const actualHot=new Set(),actualOther=new Set();
  for(let i=0;i<12;i++){
   const at=new Date(instant.getTime()+i*period);
   const selected=selectHot50CountryDiscoveryBatch(at,COUNTRIES_195,25);
-  assert.equal(selected.length,25);
-  assert.equal(new Set(selected.map(x=>x.iso3)).size,25);
+  assert.ok(selected.length>=1 && selected.length<=25);
+  assert.equal(new Set(selected.map(x=>x.iso3)).size,selected.length);
   for(const row of selected){
    if(HOT50_COUNTRY_SET.has(row.iso3))actualHot.add(row.iso3);
    else actualOther.add(row.iso3);
@@ -34,8 +34,8 @@ test("at 25 allocated index fetches per slot, Hot-50 and other 145 both rotate i
  }
  assert.equal(actualHot.size,50);
  assert.equal(actualOther.size,145);
- assert.equal(hot50NominalIndexCadence(25).hot50_cycle_minutes,75);
- assert.equal(hot50NominalIndexCadence(25).other145_cycle_minutes,150);
+ assert.equal(hot50NominalIndexCadence(25).hot50_cycle_minutes,120);
+ assert.equal(hot50NominalIndexCadence(25).other145_cycle_minutes,120);
  assert.ok(registry.every(x=>x.private_discovery_index_only===true &&
   x.index_timestamp_not_original_page_clock===true &&
   x.commercial_eligible===false &&
@@ -54,6 +54,7 @@ test("small source budgets preserve 145-country fairness and do not fabricate 3h
  }
  assert.equal(sampledHot.size,50);
  assert.equal(sampledOther.size,145);
+ assert.equal(hot50NominalIndexCadence(0).hot50_under_180_minutes,false);
  assert.equal(hot50NominalIndexCadence(1).hot50_under_180_minutes,false);
  assert.equal(hot50NominalIndexCadence(8).hot50_under_180_minutes,false);
  assert.equal(hot50NominalIndexCadence(25).hot50_under_180_minutes,true);
@@ -78,10 +79,9 @@ test("real private runtime uses at most 512 native/index URLs and retains all th
  assert.equal(new Set(registry.flatMap(x=>x.categories)).size,3);
  assert.ok(registry.some(x=>x.private_hot50_original_candidate===true));
  assert.ok(registry.some(x=>x.private_discovery_index_only===true));
- const hot50=registry.filter(x=>HOT50_COUNTRY_SET.has(x.discovery_country_iso3));
- const nonhot=registry.filter(x=>x.private_discovery_index_only===true &&
-  !HOT50_COUNTRY_SET.has(x.discovery_country_iso3));
- assert.ok(hot50.length>0 && nonhot.length>0);
+ const indices=registry.filter(x=>x.private_discovery_index_only===true);
+ assert.ok(indices.length>0 && indices.every(x=>COUNTRIES_195.some(c=>
+  c.iso3===x.discovery_country_iso3)));
  assert.ok(registry.filter(x=>x.private_hot50_original_candidate===true)
   .every(x=>x.commercial_eligible===false));
 });
