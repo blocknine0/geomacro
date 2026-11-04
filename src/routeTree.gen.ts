@@ -42,9 +42,9 @@ import { Route as ApiEarlyWarningRouteImport } from './routes/api.early-warning'
 import { Route as ApiHealthRouteImport } from './routes/api.health'
 import { Route as ApiMcpRouteImport } from './routes/api.mcp'
 import { Route as ApiPublicDataProxyRouteImport } from './routes/api.public-data-proxy'
+import { Route as ApiResearchRiskGateRouteImport } from './routes/api.research-risk-gate'
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 import { Route as ApiRiskGateReadinessRouteImport } from './routes/api.risk-gate-readiness'
-import { Route as ApiResearchRiskGateRouteImport } from './routes/api.research-risk-gate'
 import { Route as ApiRiskObjectKeysRouteImport } from './routes/api.risk-object-keys'
 import { Route as DocsSlugRouteImport } from './routes/docs_.$slug'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
@@ -254,6 +254,11 @@ const ApiPublicDataProxyRoute = ApiPublicDataProxyRouteImport.update({
   path: '/api/public-data-proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiResearchRiskGateRoute = ApiResearchRiskGateRouteImport.update({
+  id: '/api/research-risk-gate',
+  path: '/api/research-risk-gate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
   id: '/api/risk-gate',
   path: '/api/risk-gate',
@@ -262,11 +267,6 @@ const ApiRiskGateRoute = ApiRiskGateRouteImport.update({
 const ApiRiskGateReadinessRoute = ApiRiskGateReadinessRouteImport.update({
   id: '/api/risk-gate-readiness',
   path: '/api/risk-gate-readiness',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiResearchRiskGateRoute = ApiResearchRiskGateRouteImport.update({
-  id: '/api/research-risk-gate',
-  path: '/api/research-risk-gate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRiskObjectKeysRoute = ApiRiskObjectKeysRouteImport.update({
@@ -534,9 +534,9 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
+  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
-  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
@@ -615,9 +615,9 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
+  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
-  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
@@ -697,9 +697,9 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/api/mcp': typeof ApiMcpRoute
   '/api/public-data-proxy': typeof ApiPublicDataProxyRoute
+  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
-  '/api/research-risk-gate': typeof ApiResearchRiskGateRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
   '/docs_/$slug': typeof DocsSlugRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
@@ -780,6 +780,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public-data-proxy'
+    | '/api/research-risk-gate'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
@@ -860,6 +861,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public-data-proxy'
+    | '/api/research-risk-gate'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
@@ -940,6 +942,7 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/api/mcp'
     | '/api/public-data-proxy'
+    | '/api/research-risk-gate'
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
@@ -1021,9 +1024,9 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   ApiMcpRoute: typeof ApiMcpRoute
   ApiPublicDataProxyRoute: typeof ApiPublicDataProxyRoute
+  ApiResearchRiskGateRoute: typeof ApiResearchRiskGateRoute
   ApiRiskGateRoute: typeof ApiRiskGateRoute
   ApiRiskGateReadinessRoute: typeof ApiRiskGateReadinessRoute
-  ApiResearchRiskGateRoute: typeof ApiResearchRiskGateRoute
   ApiRiskObjectKeysRoute: typeof ApiRiskObjectKeysRoute
   DocsSlugRoute: typeof DocsSlugRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
@@ -1302,6 +1305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicDataProxyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/research-risk-gate': {
+      id: '/api/research-risk-gate'
+      path: '/api/research-risk-gate'
+      fullPath: '/api/research-risk-gate'
+      preLoaderRoute: typeof ApiResearchRiskGateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/risk-gate': {
       id: '/api/risk-gate'
       path: '/api/risk-gate'
@@ -1314,13 +1324,6 @@ declare module '@tanstack/react-router' {
       path: '/api/risk-gate-readiness'
       fullPath: '/api/risk-gate-readiness'
       preLoaderRoute: typeof ApiRiskGateReadinessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/research-risk-gate': {
-      id: '/api/research-risk-gate'
-      path: '/api/research-risk-gate'
-      fullPath: '/api/research-risk-gate'
-      preLoaderRoute: typeof ApiResearchRiskGateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/risk-object-keys': {
@@ -1661,9 +1664,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   ApiMcpRoute: ApiMcpRoute,
   ApiPublicDataProxyRoute: ApiPublicDataProxyRoute,
+  ApiResearchRiskGateRoute: ApiResearchRiskGateRoute,
   ApiRiskGateRoute: ApiRiskGateRoute,
   ApiRiskGateReadinessRoute: ApiRiskGateReadinessRoute,
-  ApiResearchRiskGateRoute: ApiResearchRiskGateRoute,
   ApiRiskObjectKeysRoute: ApiRiskObjectKeysRoute,
   DocsSlugRoute: DocsSlugRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
