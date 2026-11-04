@@ -647,6 +647,46 @@
       "status": "PENDING",
       "identity_basis": "Public t.me/DDGeopolitics channel self-description; reports may include reposts and require independent verification",
       "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@clashreport",
+      "region": "global",
+      "role": "independent conflict news / commentary",
+      "status": "PENDING",
+      "identity_basis": "Public Telegram channel has conflict-news self-description; no platform or publisher reuse authorization",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@eurasianist",
+      "region": "global",
+      "role": "identity-unconfirmed geopolitical channel candidate",
+      "status": "PENDING",
+      "identity_basis": "Operator-supplied handle; public channel identity could not be independently confirmed",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@militarySummary",
+      "region": "eastern_europe_balkans",
+      "role": "independent frontline analysis",
+      "status": "PENDING",
+      "identity_basis": "Public Telegram channel identifies as Military Summary; no independent event proof",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@Middle_East_Spectator",
+      "region": "middle_east",
+      "role": "independent geopolitical news / commentary",
+      "status": "PENDING",
+      "identity_basis": "Public channel identifies as Middle East Spectator; ideological claims are unverified research leads",
+      "rights": "INTERNAL_RESEARCH_ONLY"
+    },
+    {
+      "handle": "@AuroraIntel",
+      "region": "middle_east",
+      "role": "independent OSINT account",
+      "status": "PENDING",
+      "identity_basis": "Public Telegram channel says it is associated with @AuroraIntel on X; publisher consent not established",
+      "rights": "INTERNAL_RESEARCH_ONLY"
     }
   ]
 }
