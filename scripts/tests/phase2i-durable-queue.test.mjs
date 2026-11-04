@@ -17,7 +17,8 @@ class Storage {
  constructor(){this.data=new Map()}
  async get(k){if(Array.isArray(k))return new Map(k.filter(x=>this.data.has(x)).map(x=>[x,structuredClone(this.data.get(x))]));return this.data.has(k)?structuredClone(this.data.get(k)):undefined}
  async put(k,v){if(typeof k==="string")this.data.set(k,structuredClone(v));else for(const [key,value] of Object.entries(k))this.data.set(key,structuredClone(value))}
- async list({prefix,limit=1000}){return new Map([...this.data].filter(([key])=>key.startsWith(prefix)).slice(0,limit).map(([key,v])=>[key,structuredClone(v)]))}
+ async list({prefix,limit=1000,startAfter=""}){return new Map([...this.data].filter(([key])=>key.startsWith(prefix)&&key>startAfter).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit).map(([key,v])=>[key,structuredClone(v)]))}
+ async transaction(fn){return fn(this)}
 }
 class R2 {
  constructor(){this.objects=new Map();this.corrupt=false}
