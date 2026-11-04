@@ -1,11 +1,11 @@
-import {authorizeCanonicalCustomerPaid,CustomerPaidError}
+import {authorizeCanonicalCustomerPaid,CustomerPaidError,CUSTOMER_RISK_GATE_USAGE_USD_CENTS}
  from './customer-paid-ledger.mjs';
 import {unifiedRiskGateEvaluate} from './unified-risk-gate.mjs';
 
 const TIERS=Object.freeze({
- basic_focused:{capability:'risk_gate_basic_focused',price:10,label:'BASIC_0_10'},
- standard:{capability:'risk_gate_standard',price:15,label:'STANDARD_0_15'},
- complex_full:{capability:'risk_gate_complex_full',price:25,label:'COMPLEX_0_25'},
+ basic_focused:{capability:'risk_gate_basic_focused',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_basic_focused,label:'BASIC_0_10'},
+ standard:{capability:'risk_gate_standard',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_standard,label:'STANDARD_0_15'},
+ complex_full:{capability:'risk_gate_complex_full',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_complex_full,label:'COMPLEX_0_25'},
 });
 const REQUEST_ID=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
 const HASH=/^[a-f0-9]{64}$/;
@@ -115,6 +115,8 @@ export async function commercialRiskGateEvaluate(request,env){
  const confidence=product.confidence?.verification==='CRYPTO_SIGNED'?'HIGH / CRYPTO_SIGNED':
   product.confidence?.verification==='VERIFIED'?'MEDIUM / VERIFIED':'LOW / PROVISIONAL';
  const categoryRows=product.category_fact_sheets??product.category_observations??[];
+ const sourcesAnalyzed=categoryRows.reduce((total,row)=>total+
+  Math.max(0,Number(row.observed_count??row.source_count??0)||0),0);
  const coverage={};for(const row of categoryRows){
   const category=String(row.category??'').toLowerCase();if(!category)continue;
   coverage[category]=row.evidence_status==='VERIFIED_CORROBORATED'?'VERIFIED':
@@ -125,7 +127,7 @@ export async function commercialRiskGateEvaluate(request,env){
   tier:deliveredRule.label,requested_tier:TIERS[tier].label,delivered_tier:deliveredRule.label,
   unified_risk_score:product.risk_score_0_100,confidence_grade:confidence,coverage,
   data_provenance:{canonical_hash:`sha256:${snapshotHash}`,
-   sources_analyzed_count:Number(snapshot.sources_analyzed_count??0),
+   sources_analyzed_count:sourcesAnalyzed,
    ed25519_signature:product.gro_signature?.signature??null,
    ed25519_payload_sha256:product.gro_signature?.payload_sha256??null,
    source_references:product.source_references??[]},

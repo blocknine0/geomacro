@@ -329,7 +329,7 @@ async function projectCountryRiskSignal7d(env,latest){
   const current=series.findLast(x=>x.day===day),summary=summarizeSeries(series);
   if(!current||!summary)continue;
   const eventSha=await hash("risk_signal_7d|"+latest.entity_id+"|"+domain+"|"+day);
-  projected.push({id:numberId(eventSha),event_sha256:eventSha,
+  projected.push({event_sha256:eventSha,
    verified_gro_sha256:current.status==="VERIFIED"?current.gro:null,
    country_iso3:latest.entity_id,domain,signal_kind:"daily_risk_rollup",
    intensity:Number(current.score.toFixed(2)),verification_status:current.status,
@@ -369,7 +369,7 @@ async function projectCorridorCandidate7d(env,day,now){
   const candidateSha=await hash("corridor_candidate_7d|"+corridorId+"|"+day);
   const complete=Boolean(current&&current.count===countries.length&&daily.length===7&&
    daily.every(x=>x.count===countries.length));
-  output.push({id:numberId(candidateSha),candidate_sha256:candidateSha,
+  output.push({candidate_sha256:candidateSha,
    origin_country_iso3:null,destination_country_iso3:null,evidence_gro_sha256:null,
    candidate_status:"CONDITIONAL_PASS",exposure_kind:"named_corridor_gate",
    corridor_id:corridorId,day_utc:day,friction_index_0_100:score,

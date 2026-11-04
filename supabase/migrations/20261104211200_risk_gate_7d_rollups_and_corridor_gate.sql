@@ -2,6 +2,37 @@
 -- Private service-role writes only; scores remain labelled VERIFIED or OBSERVED.
 BEGIN;
 
+-- These two derived tables existed in the production project before they
+-- were represented in the repository's replayable migration history. Create
+-- their canonical base shape when replaying from zero; on production this is
+-- a no-op and the ALTER statements below evolve the existing tables.
+CREATE TABLE IF NOT EXISTS public.geomacro_risk_signal_7d (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  event_sha256 text NOT NULL UNIQUE CHECK (event_sha256 ~ '^[a-f0-9]{64}$'),
+  verified_gro_sha256 text CHECK (verified_gro_sha256 IS NULL OR verified_gro_sha256 ~ '^[a-f0-9]{64}$'),
+  country_iso3 text NOT NULL CHECK (country_iso3 ~ '^[A-Z]{3}$'),
+  domain text NOT NULL CHECK (domain IN ('geopolitics','macro_fx','critical_minerals')),
+  signal_kind text NOT NULL CHECK (signal_kind ~ '^[a-z_]{1,64}$'),
+  intensity numeric(5,2) NOT NULL CHECK (intensity BETWEEN 0 AND 100),
+  verification_status text NOT NULL DEFAULT 'VERIFIED'
+    CHECK (verification_status IN ('VERIFIED','OBSERVED_UNVERIFIED','NO_VERIFIED_SIGNAL')),
+  original_at timestamptz NOT NULL,
+  ingested_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(event_sha256,country_iso3,domain)
+);
+
+CREATE TABLE IF NOT EXISTS public.geomacro_corridor_candidate_7d (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  candidate_sha256 text NOT NULL UNIQUE CHECK (candidate_sha256 ~ '^[a-f0-9]{64}$'),
+  origin_country_iso3 text CHECK (origin_country_iso3 IS NULL OR origin_country_iso3 ~ '^[A-Z]{3}$'),
+  destination_country_iso3 text CHECK (destination_country_iso3 IS NULL OR destination_country_iso3 ~ '^[A-Z]{3}$'),
+  evidence_gro_sha256 text CHECK (evidence_gro_sha256 IS NULL OR evidence_gro_sha256 ~ '^[a-f0-9]{64}$'),
+  candidate_status text NOT NULL DEFAULT 'UNSCORED'
+    CHECK (candidate_status IN ('UNSCORED','REJECTED','VERIFIED_EXPOSURE','CONDITIONAL_PASS','REQUIRES_SIGNED_GRO')),
+  exposure_kind text NOT NULL CHECK (exposure_kind ~ '^[a-z_]{1,64}$'),
+  ingested_at timestamptz NOT NULL DEFAULT now()
+);
+
 ALTER TABLE public.geomacro_risk_signal_7d
   ADD COLUMN IF NOT EXISTS score_0_100 numeric(5,2),
   ADD COLUMN IF NOT EXISTS rolling_7d_avg_0_100 numeric(5,2),

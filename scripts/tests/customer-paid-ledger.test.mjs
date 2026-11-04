@@ -6,6 +6,7 @@ import {handleCustomerRuntime} from '../../workers/control-plane/src/customer-ru
 import {readFileSync} from 'node:fs';
 import {
  CUSTOMER_CREDIT_COSTS,CUSTOMER_CREDIT_CONTRACT,CUSTOMER_ENABLED_CAPABILITIES,
+ CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
  customerPaidKeyDigest,authorizeCanonicalCustomerPaid,
  consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount
 } from '../../workers/control-plane/src/customer-paid-ledger.mjs';
@@ -70,6 +71,8 @@ test('tier/cost table matches canonical TS registry and exposes three risk-gate 
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle'));
  for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
   assert.ok(CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
+ assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
+  {risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25});
 });
 
 test('unverified, zero-funded, or wrong-person keys cannot be issued',async()=>{
