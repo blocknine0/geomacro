@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {macroMineralsContinuitySources} from "./macro-minerals-continuity-sources.mjs";
 import {threeDomainGlobal20mPublisherRegistry} from "./three-domain-global-direct-20m-sources.mjs";
-test("pin four independent official Atom source candidates to every 20-minute run",()=>{
+test("pin ten independent official Atom source candidates to every 20-minute run",()=>{
  const feeds=macroMineralsContinuitySources();
- assert.deepEqual(feeds.map(s=>s.categories[0]),["macro","macro","rare_earth","rare_earth"]);
+ assert.deepEqual(feeds.map(s=>s.categories[0]),["macro","macro","rare_earth","rare_earth","macro","macro","macro","macro","rare_earth","rare_earth"]);
  const {registry,summary}=threeDomainGlobal20mPublisherRegistry(new Date("2026-11-04T08:00:00Z"));
- assert.equal(summary.macro_minerals_continuity_sources_pinned,4);
+ assert.equal(summary.macro_minerals_continuity_sources_pinned,10);
  assert.equal(summary.macro_minerals_continuity_transport_verified_by_registration,false);
  assert.ok(registry.length<=504);
  for(const feed of feeds){

@@ -10,11 +10,21 @@ const IDS=Object.freeze([
  "uk_dbt_ogl_minerals_atom","uk_desnz_ogl_minerals_atom"
 ]);
 const CATEGORY=Object.freeze({MACRO:"macro",CRITICAL_MINERALS:"rare_earth"});
+const EXTRA=Object.freeze([
+ // Separate current government publishers. Each URL is a runtime probe candidate.
+ ["uk_export_finance","uk-export-finance","macro"],
+ ["uk_hmrc","hm-revenue-customs","macro"],
+ ["uk_dwp","department-for-work-pensions","macro"],
+ ["uk_cma","competition-and-markets-authority","macro"],
+ ["uk_bist","department-for-business-innovation-science-and-trade","rare_earth"],
+ ["uk_ukri","uk-research-and-innovation","rare_earth"],
+]);
+
 export function macroMineralsContinuitySources(){
  const manifest=JSON.parse(readFileSync(MANIFEST,"utf8"));
  if(manifest.schema!=="geomacro.official-free-atom-license-registry.v1"||
     !Array.isArray(manifest.sources))throw Error("MACRO_MINERALS_OFFICIAL_MANIFEST_INVALID");
- const selected=IDS.map(id=>{
+ const fromManifest=IDS.map(id=>{
   const matches=manifest.sources.filter(s=>s.source_id===id);
   if(matches.length!==1)throw Error("MACRO_MINERALS_OFFICIAL_ID_INVALID");
   const s=matches[0],category=CATEGORY[s.category];
@@ -41,7 +51,20 @@ export function macroMineralsContinuitySources(){
    publicly_deliverable:false,private_only:true
   });
  });
- if(new Set(selected.map(s=>s.url)).size!==selected.length)
-  throw Error("MACRO_MINERALS_OFFICIAL_DUPLICATE_URL");
+ const additional=EXTRA.map(([suffix,slug,category])=>Object.freeze({
+  id:"private_macro_minerals_continuity_"+suffix,
+  url:"https://www.gov.uk/government/organisations/"+slug+".atom",
+  type:"atom",continent:"europe",publisher_country_iso3:"GBR",
+  publisher_kind:"official",categories:Object.freeze([category]),
+  supported:true,private_macro_minerals_continuity:true,
+  publisher_native_dates_required:true,
+  transport_verified_at_registration:false,original_article_verified:false,
+  provider_rights_verified:false,commercial_eligible:false,
+  publicly_deliverable:false,private_only:true
+ }));
+ const selected=[...fromManifest,...additional];
+ if(new Set(selected.map(s=>s.url)).size!==selected.length||
+    new Set(selected.map(s=>s.id)).size!==selected.length)
+  throw Error("MACRO_MINERALS_OFFICIAL_DUPLICATE_URL_OR_ID");
  return Object.freeze(selected);
 }

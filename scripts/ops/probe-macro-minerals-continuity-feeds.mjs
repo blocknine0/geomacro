@@ -25,7 +25,7 @@ const checks=registry.map(s=>{
 });
 const report={schema:"geomacro.macro-minerals-continuity-readonly-probe.v1",
  checked_at:now.toISOString(),sources_configured:registry.length,
- by_category:{macro:2,rare_earth:2},
+ by_category:{macro:6,rare_earth:4},
  source_checks:checks,
  collector_source_states:receipt.summary.source_states,
  factual_items_25h:receipt.summary.selected_items_by_category,
