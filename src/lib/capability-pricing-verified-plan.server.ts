@@ -26,7 +26,12 @@ function classifyVerifiedPublishedPlanPrice(
 ): CapabilityPrice {
   // A structural-only country digest does not purport to contain a signed GRO.
   // Never waive a cryptographic signature on an actual signed risk product.
-  const signedProofRequired = plan.delivery_tier !== "structural_baseline";
+  // Basic / Focused is explicitly indicative and never claims a signed
+  // GRO; its actual observed-source qualification remains a separate proof.
+  const basicRiskGateSelected=plan.product?.capability==="risk_gate_bundle"&&
+    plan.product.variant==="existing_proof_preflight";
+  const signedProofRequired =
+    plan.delivery_tier !== "structural_baseline" && !basicRiskGateSelected;
   if (!proof || proof.evidence_verified !== true || proof.rights_verified !== true ||
       (signedProofRequired && proof.signing_verified !== true) ||
       proof.deliverable !== true) {
@@ -63,11 +68,13 @@ function classifyVerifiedPublishedPlanPrice(
 
   const topics = new Set(plan.topics);
   if (topics.has("risk_gate")) {
-    if (plan.subjects.length !== 1 || proof.signed_object_lifecycle === "none") {
+    if (plan.subjects.length !== 1 ||
+        (proof.signed_object_lifecycle === "none" && !basicRiskGateSelected)) {
       throw new Error("CAPABILITY_PRICE_RISK_GATE_SIGNED_PROOF_REQUIRED");
     }
     const additional = [...topics].filter(t => t !== "risk_gate" && t !== "risk_object");
-    const variant = proof.signed_object_lifecycle === "existing" &&
+    const variant = basicRiskGateSelected ? "existing_proof_preflight" :
+      proof.signed_object_lifecycle === "existing" &&
       additional.length === 0 && plan.detail !== "full"
         ? "existing_proof_preflight"
         : additional.length <= 2 && plan.detail !== "full"

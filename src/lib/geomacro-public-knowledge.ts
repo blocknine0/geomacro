@@ -13,7 +13,7 @@ const PRODUCT_NAMES: Record<string,string> = {
  structural_corridor_profile:"Corridor Structural Profile",
  intelligence_query:"Intelligence — Focused / Standard / Complex Multi-source",
  signed_risk_object:"Signed Risk Object — Existing / New",
- risk_gate_bundle:"Risk Gate — Preflight / Standard / Complex",
+ risk_gate_bundle:"Risk Gate — Basic / Focused | Standard | Complex / Full",
 };
 function publicAnswer(summary:string,links:GeomacroPublicLink[]):HybridAskAnswer {
  return {summary,what_changed:"",why_it_matters:"",geomacro_view:"",evidence:[],
