@@ -8,6 +8,9 @@
 import {appendFileSync} from "node:fs";
 
 export const MIN_REFRESH_GAP_MS=25*60*1000;
+// Failed live signing/publishing gets a bounded cooldown: don't hammer D1
+// while it is out or quota-limited, but retry automatically on a later wake.
+export const MIN_FAILED_RETRY_GAP_MS=15*60*1000;
 export const MAX_SIGNED_RUNS_PER_UTC_DAY=48;
 const REPO="blocknine0/geomacro";
 const WORKFLOW="predge-pilot-signed-news-v2-refresh.yml";
@@ -48,27 +51,27 @@ export async function assessSignedRefreshCadence({
      assert(Number.isFinite(created),"RUN_CLOCK_INVALID");
      if(created<searchStart){reachedEarlierDay=true;continue;}
      if(run.head_branch!=="main"||!ACCEPTED_EVENTS.has(run.event))continue;
-     if(run.status!=="completed"||run.conclusion!=="success")continue;
+     if(run.status!=="completed"||!["success","failure"].includes(run.conclusion))continue;
      candidates.push(run);
    }
    if(reachedEarlierDay||data.workflow_runs.length<100)break;
    assert(page<maxPages,"RUN_HISTORY_PAGINATION_LIMIT");
  }
  // Jobs API is mandatory: "success" can also mean an opt-in disabled no-op.
- const signed=[];
+ const signed=[],failed=[];
  for(let i=0;i<candidates.length;i+=8){
    const batch=candidates.slice(i,i+8);
    const results=await Promise.all(batch.map(async run=>{
      const detail=await json(fetchImpl,"https://api.github.com/repos/"+REPO+
        "/actions/runs/"+run.id+"/jobs?per_page=100",token);
      assert(Array.isArray(detail.jobs),"JOB_LIST_INVALID");
-     const passed=detail.jobs.some(job=>
-       job.name==="refresh"&&job.conclusion==="success"&&
-       Array.isArray(job.steps)&&job.steps.some(step=>
-         step.name===SIGN_STEP&&step.conclusion==="success"));
-     return passed?run:null;
+     const job=detail.jobs.find(job=>job.name==="refresh"&&Array.isArray(job.steps));
+     const signStep=job?.steps.find(step=>step.name===SIGN_STEP);
+     return {run,passed:job?.conclusion==="success"&&signStep?.conclusion==="success",
+       failed:job?.conclusion==="failure"&&signStep?.conclusion==="failure"};
    }));
-   signed.push(...results.filter(Boolean));
+   signed.push(...results.filter(x=>x.passed).map(x=>x.run));
+   failed.push(...results.filter(x=>x.failed).map(x=>x.run));
  }
  const newest=signed.reduce((max,run)=>{
    const t=Date.parse(run.updated_at||run.created_at);
@@ -80,6 +83,13 @@ export async function assessSignedRefreshCadence({
      lastVerifiedAt:new Date(newest).toISOString()};
  if(signedToday>=MAX_SIGNED_RUNS_PER_UTC_DAY)
    return {should_run:false,reason:"DAILY_SIGNED_REFRESH_CAP",signedToday};
+ const newestFailed=failed.reduce((max,run)=>{
+   const t=Date.parse(run.updated_at||run.created_at);
+   return Number.isFinite(t)?Math.max(max,t):max;
+ },0);
+ if(newestFailed&&now-newestFailed<MIN_FAILED_RETRY_GAP_MS)
+   return {should_run:false,reason:"RECENT_FAILED_SIGNING_COOLDOWN",signedToday,
+     lastAttemptAt:new Date(newestFailed).toISOString()};
  return {should_run:true,reason:"SIGNING_DUE",signedToday};
 }
 async function main(){

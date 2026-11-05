@@ -202,6 +202,9 @@ test("protected preview gate reads opt-in only after production environment is a
  assert.match(workflow,/github\.ref == 'refs\/heads\/main'/);
  assert.match(workflow,/workflow_run\.head_repository\.full_name == github\.repository/);
  assert.match(workflow,/workflow_run\.conclusion == 'success'/);
+ assert.ok(workflow.includes("workflow_run.name == 'Predge Research Continuity and Pilot Renewal (No Funds)'"));
+ assert.ok(workflow.includes("workflow_run.conclusion == 'failure'"));
+ assert.ok(!workflow.includes("workflow_run.conclusion == 'cancelled'"));
  assert.match(workflow,/Three-Domain 30-Minute Original Publisher Pulse/);
  assert.match(workflow,/Verify prior signed-readback freshness and remaining daily quota/);
  assert.match(workflow,/steps\.cadence\.outputs\.should_run == 'true'/);
