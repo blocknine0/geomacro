@@ -118,7 +118,8 @@ jobs:
           migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           schema_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify D1 schema directly") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           b2_scope_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify actual B2 key scope and derive allowed private spool prefix") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" && "$b2_scope_conclusion" != "failure" ]]; then
+          p0b_ticket_conclusion="$(jq -r \'[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Reserve and read back native-auth quota directly in canonical D1") | .conclusion\' "$jobs_file" 2>/dev/null || true)"
+          if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" && "$b2_scope_conclusion" != "failure" && "$p0b_ticket_conclusion" != "failure" ]]; then
             echo "Latest deployment did not fail at protected D1 migration/schema or B2 key-scope steps; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -153,6 +154,14 @@ jobs:
              grep -aFq "Your account has exceeded D1's free tier daily row read limit" "$log_text" &&
              grep -aFq "code: 7500" "$log_text"; then
             echo "Confirmed D1 daily row-read quota exhaustion on latest canonical deploy; eligible for one post-reset retry."
+            echo "retry=true" >> "$GITHUB_OUTPUT"
+          elif [[ "${p0b_ticket_conclusion:-}" == "failure" ]] &&
+               { grep -aFq "P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED" "$log_text" ||
+                 grep -aFq "P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_READ_LIMIT_7500" "$log_text"; }; then
+            # Only an exact provider quota signature from the failed native
+            # D1 ticket step allows the next-UTC-day retry. Never treat
+            # UNKNOWN/SQL/AUTH/B2 quota failures as D1 row-read exhaustion.
+            echo "Provider-verified D1 native-auth ticket read quota reached; eligible after UTC reset."
             echo "retry=true" >> "$GITHUB_OUTPUT"
           elif [[ "${b2_scope_conclusion:-}" == "failure" ]] &&
                grep -aFq "P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429" "$log_text"; then
