@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
-import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure,safeP0bWranglerD1Hint,verifiedP0bD1ReadQuotaExhaustion} from "../ops/reserve-p0b-native-auth-ticket.mjs";
+import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure,safeP0bWranglerD1Hint,verifiedP0bD1ReadQuotaExhaustion,verifiedP0bD1WriteQuotaExhaustion} from "../ops/reserve-p0b-native-auth-ticket.mjs";
 test("native auth quota ticket reuses canonical atomic account ledger",()=>{
  const q=buildP0bNativeAuthTicketSql(new Date("2026-11-05T11:00:00.000Z"));
  assert.match(q.quotaSql,/ON CONFLICT\(day_utc\) DO UPDATE/u);
@@ -71,4 +71,18 @@ test("D1 bootstrap config survives until native-auth ticket then is cleaned",asy
  assert.ok(ticket.includes("trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT"));
  assert.ok(ticket.includes("node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs"));
  assert.ok(ticket.indexOf("trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT")<ticket.indexOf("node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs"));
+});
+test("provider write-limit evidence requires exact 100k daily rows and verified counts",()=>{
+ const base={provider_graphql_usage_observed:true,
+   limits:{rows_written:100_000},day_utc:"2026-11-05",
+   observed_rows_written:100_000,remaining_rows_written:0};
+ assert.equal(verifiedP0bD1WriteQuotaExhaustion(base),true);
+ for(const changed of [
+   {observed_rows_written:99999},{remaining_rows_written:1},
+   {provider_graphql_usage_observed:false},{day_utc:"invalid"},
+   {limits:{rows_written:200_000}}
+ ]) assert.equal(verifiedP0bD1WriteQuotaExhaustion({...base,...changed}),false);
+ assert.equal(classifyP0bWranglerD1Failure({stderr:
+   "Your account has exceeded D1's free tier daily row write limit [code: 7500]"}),
+   "D1_DAILY_ROW_WRITE_LIMIT_7500");
 });
