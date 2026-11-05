@@ -4,13 +4,13 @@ import {GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PACKS}
   from "../../src/lib/low-barrier-pricing.ts";
 import {
   assertPublicPriceManifest,assertLockedStorefront,
-  assertStoreAlias,assertBuildMarker,
+  assertStoreAlias,assertRetiredGlobalRiskRedirect,assertBuildMarker,
 } from "../lib/website-live-audit-contract.mjs";
 
 const BASE = "https://geomacro.live";
 const paths = ["/","/intelligence","/risk-indices","/ask-geomacro",
   "/institutional","/pricing","/contact","/about","/research",
-  "/docs","/roadmap","/ecosystem","/global-risk"];
+  "/docs","/roadmap","/ecosystem"];
 const LIMIT = 1_000_000;
 
 async function read(path,accept="text/html") {
@@ -45,6 +45,23 @@ async function verifyLegacyAlias() {
   }
 }
 
+async function verifyRetiredGlobalRisk() {
+  const response = await fetch(BASE + "/global-risk",{
+    redirect:"manual",
+    signal:AbortSignal.timeout(20_000),
+    headers:{Accept:"text/html"},
+  });
+  try {
+    return assertRetiredGlobalRiskRedirect({
+      status:response.status,
+      location:response.headers.get("location"),
+      robots:response.headers.get("x-robots-tag"),
+    },BASE);
+  } finally {
+    try { await response.body?.cancel(); } catch { /* read only */ }
+  }
+}
+
 async function main() {
   const pages = new Map();
   // Read-only, at most four document requests at once; never send Ask prompts,
@@ -76,6 +93,7 @@ async function main() {
   const store = assertLockedStorefront(pages.get("/pricing"),
     GEOMACRO_SUBSCRIPTIONS,GEOMACRO_ONE_TIME_PACKS);
   const dataApiAlias = await verifyLegacyAlias();
+  const retiredGlobalRisk = await verifyRetiredGlobalRisk();
 
   const build = JSON.parse(await read("/.well-known/geomacro-build.json","application/json"));
   const buildProof = assertBuildMarker(build,process.env.EXPECTED_SHA);
@@ -83,6 +101,7 @@ async function main() {
     schema:"geomacro.website-crosscheck.v2",
     public_documents_verified:paths.length,
     legacy_data_api_alias:dataApiAlias,
+    retired_global_risk_redirect:retiredGlobalRisk,
     home_navigation_verified:true,
     intelligence_filters_verified:true,
     ...pricing,
