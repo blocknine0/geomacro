@@ -556,6 +556,7 @@ async function projectCorridorCandidate7d(env,day,now,verifiedRows=null){
 }
 async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher,verifiedRows=null){
  const countries=latestRows.filter(x=>x.entity_type==="COUNTRY");
+ const rejectedHistory=[];
  if(countries.length&&verifiedRows===null){
   const ids=[...new Set([...countries.map(x=>x.entity_id),
    ...(hot50RiskGateEnabled(env)?[]:Object.values(RISK_GATE_CORRIDOR_MEMBERS).flat())])];
@@ -563,7 +564,7 @@ async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher,verifi
   const from=iso(Date.parse(days[0]+"T00:00:00.000Z")-6*DAY).slice(0,10);
   verifiedRows=await signedSnapshotRows(env,
    "entity_type='COUNTRY' AND entity_id IN ("+ids.map(()=>"?").join(",")+") AND day_utc>=? AND day_utc<=?",
-   [...ids,from,last]);
+   [...ids,from,last],rejectedHistory);
  }
  const signals=(await Promise.all(countries.map(x=>projectCountryRiskSignal7d(env,x,verifiedRows)))).flat();
  // Keep both the upsert and exact hash-readback URL bounded. A whole
@@ -595,7 +596,8 @@ async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher,verifi
     throw Error("CORRIDOR_CANDIDATE_7D_READBACK_MISMATCH");
   }
  }
- return {risk_signal_rows:signals.length,corridor_rows:countries.length&&!hot50RiskGateEnabled(env)?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
+ return {risk_signal_rows:signals.length,corridor_rows:countries.length&&!hot50RiskGateEnabled(env)?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0,
+  quarantined_history_rows:rejectedHistory.length};
 }
 /** Daily seven-day rollup, separate from retention cleanup.
  * Every source row is HMAC-verified from D1 before any derived upsert.
@@ -674,7 +676,7 @@ export async function syncUnifiedRiskSupabase(env,{
   const pageTargets=canonicalPage?ordered.slice(page*12,page*12+12):null;
   const select="SELECT entity_type,entity_id,day_utc,snapshot_json,"+
    "audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots ";
-  const rows=canary?
+  let rows=canary?
    (await env.DB.prepare(select+
     "WHERE day_utc=? AND ("+
     "(entity_type='COUNTRY' AND entity_id IN ('TWN','CHN')) OR "+
@@ -701,8 +703,9 @@ export async function syncUnifiedRiskSupabase(env,{
   if(!Array.isArray(rows)||rows.length>12)
    return {ok:false,error:"UNIFIED_SUPABASE_SYNC_SOURCE_INVALID"};
   if(!rows.length)return {ok:true,synced:0};
-  const payload=[];
+  const payload=[],verifiedRows=[],quarantined=[];
   for(const x of rows){
+   try{
    const snapshot=JSON.parse(x.snapshot_json),audit_proof=JSON.parse(x.audit_proof_json);
    if(!hex.test(String(x.content_sha256??""))||
       audit_proof?.content_sha256!==x.content_sha256||
@@ -710,11 +713,19 @@ export async function syncUnifiedRiskSupabase(env,{
       snapshot?.target_id!==x.entity_id||
       snapshot?.day_utc!==x.day_utc||
       !await verifySnapshot(snapshot,audit_proof,env))
-    return {ok:false,error:"UNIFIED_SUPABASE_LOCAL_HMAC_OR_ID_INVALID"};
+    throw Error("UNIFIED_SUPABASE_LOCAL_HMAC_OR_ID_INVALID");
    payload.push({entity_type:x.entity_type,entity_id:x.entity_id,
     day_utc:x.day_utc,snapshot,audit_proof,
     content_sha256:x.content_sha256,generated_at:x.generated_at});
+   verifiedRows.push(x);
+   }catch{
+    if(scope!=="BACKLOG")return {ok:false,error:"UNIFIED_SUPABASE_LOCAL_HMAC_OR_ID_INVALID"};
+    quarantined.push(true);
+   }
   }
+  if(!verifiedRows.length)return {ok:false,error:"UNIFIED_SUPABASE_LOCAL_HMAC_OR_ID_INVALID",
+   quarantined_snapshot_rows:quarantined.length};
+  rows=verifiedRows;
   const and=rows.map(x=>"and(entity_type.eq."+x.entity_type+",entity_id.eq."+
    encodeURIComponent(x.entity_id)+",day_utc.eq."+x.day_utc+")").join(",");
   const readPath="/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,day_utc,content_sha256&or=("+and+")";
@@ -754,6 +765,7 @@ export async function syncUnifiedRiskSupabase(env,{
    if(receipt?.success===false)return {ok:false,error:"UNIFIED_SUPABASE_D1_RECEIPT_FAILED"};
   }
   return {ok:true,synced:rows.length,hash_readback_verified:true,
+   quarantined_snapshot_rows:quarantined.length,degraded:quarantined.length>0||Number(rollup.quarantined_history_rows??0)>0,
    seven_day_rollup:rollup,
    scope,exact_target_count:canary?3:null,
    canonical_page:canonicalPage?page:null,

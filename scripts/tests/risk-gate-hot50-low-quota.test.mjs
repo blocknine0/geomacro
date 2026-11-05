@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {createHash,createHmac} from "node:crypto";
 import {RISK_GATE_HOT50,activeRiskTargets} from "../../workers/control-plane/src/risk-gate-hot50-scope.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,runUnifiedRiskSevenDayRollup,UNIFIED_SCHEMA} from "../../workers/control-plane/src/unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,runUnifiedRiskSevenDayRollup,syncUnifiedRiskSupabase,UNIFIED_SCHEMA} from "../../workers/control-plane/src/unified-risk-gate.mjs";
 const secret="test-only-hot50-hmac-32-characters-secret",now=Date.parse("2026-11-05T12:00:00Z");
 test("exact owner Hot50 list and three prices stay pinned",()=>{
  const manifest=JSON.parse(readFileSync(new URL("../../config/hot-50-three-domain-watch.v1.json",import.meta.url)));
@@ -63,4 +63,23 @@ test("a corrupt historical row cannot block other verified countries or be forwa
  assert.equal(r.quarantined_snapshot_rows,1);assert.equal(r.snapshot_rows,1);
  assert.equal(r.risk_signal_rows,3);assert.ok(posted.every(x=>x.country_iso3==="USA"));
  assert.equal(r.assessment_rows,0);assert.equal(broken.audit_proof_json,'{"signature":"forged"}');
+});
+
+test("regular backlog sync advances valid rows without acknowledging a corrupt oldest row",async()=>{
+ const broken=signedRow("CHN");broken.audit_proof_json="{}";
+ const valid=signedRow("USA"),acked=[],posts=new Map();
+ const env={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_GATE_OBSERVATION_HMAC_KEY:secret,
+  RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",
+  RISK_GATE_SUPABASE_URL:"https://test.supabase.co",RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:secret,
+  DB:{prepare(sql){const statement=(args=[])=>({bind(...v){return statement(v)},
+   all:async()=>({results:[broken,valid]}),run:async()=>{assert.match(sql,/UPDATE unified_risk_snapshots/);acked.push(args[2]);return {success:true}}});return statement();}}};
+ const r=await syncUnifiedRiskSupabase(env,{now,fetcher:async(url,options)=>{
+  const table=url.includes("geomacro_unified_risk_daily")?"snapshots":"signals";
+  if(options.method==="POST"){const body=JSON.parse(options.body);posts.set(table,body);return new Response(null,{status:201});}
+  return Response.json(posts.get(table));
+ }});
+ assert.equal(r.ok,true,JSON.stringify(r));assert.equal(r.synced,1);
+ assert.equal(r.degraded,true);assert.equal(r.quarantined_snapshot_rows,1);
+ assert.deepEqual(acked,["USA"]);assert.equal(posts.get("snapshots")[0].entity_id,"USA");
+ assert.ok(posts.get("signals").every(x=>x.country_iso3==="USA"));
 });
