@@ -95,8 +95,8 @@ describe("founder-locked USD prices: precise output fields per product",()=>{
     expect(standard.customer_receives).toContain("risk_gate[*].tiered_product.category_fact_sheets");
     expect(standard.customer_receives).toContain("risk_gate[*].tiered_product.source_references");
     expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.gro_signature.signature");
-    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.seven_day_corridor_friction_history");
-    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.seven_day_country_risk_history");
+    expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.seven_day_verified_subject_history");
+    
     expect(complex.customer_receives).toContain("risk_gate[*].tiered_product.b2_archive.b2_archive_link");
     for(const result of [basic,standard,complex]){
       expect(result.included_signed_gro_fee).toBe("INCLUDED_NO_DOUBLE_CHARGE");
