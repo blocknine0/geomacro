@@ -296,8 +296,13 @@ async function pollOne(env,row,{fetchImpl,now}){
   return {source_id:config.source_id,state:"DOMAIN_BACKOFF",accepted:0};
  }
  const lock=await env.DB.prepare(
-  'UPDATE source_registry SET next_poll_at=? WHERE source_id=? AND next_poll_at=? AND enabled=1'
- ).bind(lockedUntil,row.source_id,row.next_poll_at).run();
+  // Atomic source-level CAS remains mandatory with at-least-once queue
+  // delivery, including the new v2 bundled-dispatch lease protocol.
+  // Explicit sourceIds may contain a re-delivered message with a future due
+  // time: never acquire that poll early or double-fetch a source.
+  'UPDATE source_registry SET next_poll_at=? WHERE source_id=? '+
+  'AND next_poll_at=? AND next_poll_at<=? AND enabled=1'
+ ).bind(lockedUntil,row.source_id,row.next_poll_at,iso(now)).run();
  if(lock.meta?.changes!==1)return {source_id:row.source_id,state:'NOT_DUE'};
  let result;
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
