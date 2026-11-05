@@ -216,8 +216,9 @@ export function composeRiskGateThreeTierResponse({
   observedQualified?calculateUnifiedRisk(observedProof.categoryScores).unifiedScore:null;
  const factsheets=CATEGORIES.map(category=>({
   category,verified_category_score_0_100:
-   qualified?boundedScore(scores[category]*100):null,
-  evidence_status:qualified?"VERIFIED_CORROBORATED":"NOT_FULLY_VERIFIED",
+   signedQualified&&Number.isFinite(scores[category])?
+    boundedScore(scores[category]*100):null,
+  evidence_status:signedQualified?"VERIFIED_CORROBORATED":"NOT_FULLY_VERIFIED",
   observed_count:categoryRows.find(r=>r.category===category)?.observed_count??0,
  }));
  if(tier==="standard"){
@@ -238,12 +239,18 @@ export function composeRiskGateThreeTierResponse({
  }
  const archived=verified_gro?archiveLocation(archive_proof,verified_gro):null;
  const friction=sevenDays(history,now,subject);
- const ready=qualified&&archived!==null&&
+ // Complex is never eligible from observed/provisional corroboration alone.
+ // Only a previously Ed25519-verified GRO with all 3 category scores,
+ // independent same-event evidence, exact archive readback and ALL 7
+ // signed daily snapshots can qualify; country and corridor use the same gate.
+ const ready=signedQualified&&archived!==null&&
   verified_gro.integrity?.signature_scheme==="Ed25519"&&
   typeof verified_gro.integrity.signature==="string"&&
   verified_gro.integrity.signature.length>=40&&
   HEX.test(String(verified_gro.integrity.payload_hash??""))&&
-  subject.type==="CORRIDOR"&&friction.verified_score_days>=2&&
+  Number.isFinite(verified_gro.risk?.score)&&
+  verified_gro.risk.score>=0&&verified_gro.risk.score<=100&&
+  friction.verified_score_days===7&&
   friction.trend!=="INSUFFICIENT_VERIFIED_HISTORY";
  return {...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
   chargeable:ready,
@@ -263,7 +270,8 @@ export function composeRiskGateThreeTierResponse({
    generated_at:verified_gro.generated_at,
    expires_at:verified_gro.expires_at,
   }:null,
-  seven_day_corridor_friction_history:ready?friction:null,
+  seven_day_corridor_friction_history:ready&&subject.type==="CORRIDOR"?friction:null,
+  seven_day_country_risk_history:ready&&subject.type==="COUNTRY"?friction:null,
   raw_evidence_chain:ready?{
    gro_object_id:verified_gro.object_id,
    evidence_references:references,
