@@ -1421,13 +1421,13 @@ export default {
     }
     // D1-first daily 06 UTC, two of twelve corridors per 5-minute slot.
     // Slots repeat after 30 minutes to retry interrupted batches for free-tier CPU.
-    if(utc.getUTCHours()===6&&utc.getUTCMinutes()%5===0&&env?.DB?.prepare)
+    if(env?.RISK_GATE_COUNTRY_SCOPE!=="HOT50"&&utc.getUTCHours()===6&&utc.getUTCMinutes()%5===0&&env?.DB?.prepare)
       ctx.waitUntil(runDailyRiskGates(env,{now:utc.getTime(),corridors:
         DAILY_RG_CORRIDORS.slice(Math.floor((utc.getUTCMinutes()%30)/5)*2,
           Math.floor((utc.getUTCMinutes()%30)/5)*2+2)})
         .then(r=>{if(!r.ok)console.error("RG_DAILY_GENERATION_INCOMPLETE");})
         .catch(()=>console.error("RG_DAILY_GENERATION_UNAVAILABLE")));
-    if(utc.getUTCMinutes()%15===9&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+    if(env?.RISK_GATE_COUNTRY_SCOPE!=="HOT50"&&utc.getUTCMinutes()%15===9&&env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
       ctx.waitUntil(syncDailyRiskToSupabase(env,{now:utc.getTime()})
         .then(r=>{if(!r.ok)console.error("RG_DAILY_SUPABASE_SYNC_DEFERRED");})
         .catch(()=>console.error("RG_DAILY_SUPABASE_SYNC_DEFERRED")));
@@ -1877,7 +1877,7 @@ export default {
             const inProcess=new Request(new URL("/v1/risk-gate/unified/evaluate",request.url),{
               method:"POST",headers:{"Authorization":"Bearer "+privateToken,
                 "Content-Type":"application/json"},
-              body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",
+              body:JSON.stringify({target_type:"COUNTRY",target_id:env.RISK_GATE_COUNTRY_SCOPE==="HOT50"?"CHN":"TWN",
                 client_policy:"STRICT"})});
             const probe=await unifiedRiskGateEvaluate(inProcess,env);
             const body=await probe.json();
