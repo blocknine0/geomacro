@@ -10,6 +10,14 @@ from urllib.parse import urljoin, urlparse
 
 EXPECTED = os.environ.get("GITHUB_SHA", "").strip().lower()
 SITES = ("https://geomacro.live", "https://geomacro.lovable.app")
+# Existing daily no-funds acceptance now checks the full publicly navigable site.
+# Exactly one bounded GET per route/origin; no Ask query, account, pay, D1 write,
+# or upstream source fetch is initiated by this checker.
+PUBLIC_PAGE_CHECKS = (
+    "/intelligence", "/risk-indices", "/ask-geomacro", "/docs",
+    "/institutional", "/contact", "/research", "/about", "/roadmap",
+    "/ecosystem", "/risk-gate", "/global-risk",
+)
 HEADERS = {"User-Agent": "GeoMacro-frontend-acceptance/2.0", "Cache-Control": "no-cache", "Accept": "application/json,text/html,*/*"}
 SHA = re.compile(r"^[0-9a-f]{40}$")
 failures, observations = [], []
@@ -34,7 +42,7 @@ if not SHA.fullmatch(EXPECTED):
     failures.append("GITHUB_SHA is missing or not an exact 40-character commit SHA")
 
 for site in SITES:
-    record = {"site": site, "build_sha": None, "root_status": None, "pricing_status": None}
+    record = {"site": site, "build_sha": None, "root_status": None, "pricing_status": None, "public_routes": {}}
     try:
         raw, status, content_type, final_url = get(site + "/.well-known/geomacro-build.json?acceptance=1", 16384)
         doc = json.loads(raw)
@@ -84,6 +92,25 @@ for site in SITES:
             record[field + "_sha256"] = hashlib.sha256(body).hexdigest()
         except Exception as exc:
             failures.append(f"{site}{path}: {type(exc).__name__}: {exc}")
+    # Check every remaining public route in the same daily acceptance run.
+    # A route is not healthy merely because navigation contains its link.
+    for path in PUBLIC_PAGE_CHECKS:
+        try:
+            body, status, mime, final_url = get(site + path)
+            record["public_routes"][path] = status
+            html = body.decode("utf-8", "replace")
+            if status != 200 or "html" not in mime.lower():
+                failures.append(f"{site}{path}: invalid HTML status={status}")
+            if not allowed_final_host(site, final_url):
+                failures.append(f"{site}{path}: unexpected cross-domain redirect")
+            if urlparse(final_url).path != path:
+                failures.append(f"{site}{path}: unexpected canonical route redirect")
+            if not re.search(r"<h1\b", html, re.I) or not re.search(r"<title\b", html, re.I):
+                failures.append(f"{site}{path}: missing SSR heading or page title")
+        except Exception as exc:
+            record["public_routes"][path] = "UNAVAILABLE"
+            failures.append(f"{site}{path}: {type(exc).__name__}: {exc}")
+
     observations.append(record)
 
 if len(observations) == 2 and observations[0]["build_sha"] != observations[1]["build_sha"]:
