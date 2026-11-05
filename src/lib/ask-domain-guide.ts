@@ -54,7 +54,9 @@ function crossDomainGuideAnswer(question: string, domains: readonly AskDomain[])
   // This is a timeless risk mechanism, not a sourced current shortage claim.
   const requestedMineral = /\b(?:copper|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|praseodymium|tungsten|antimony|manganese|vanadium|scandium|tantalum|niobium|yttrium)\b/iu.exec(question)?.[0];
   if (requestedMineral && domains.includes("rare_earth")) {
-    parts.push("For " + requestedMineral.toLowerCase() +
+    // Public chat compacts summary to 320 chars. Lead with the named
+    // mineral so the user's subject survives that existing safety boundary.
+    parts.unshift("For " + requestedMineral.toLowerCase() +
       " specifically, the potential effect depends on the affected ore, refining and shipping stages and available substitutes; a policy announcement alone does not establish a physical shortage.");
   }
   return response(parts.join(" "), {
