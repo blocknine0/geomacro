@@ -44,13 +44,17 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    });
    expect(got.summary).toBe(reply.summary);
    expect(got.evidence).toStrictEqual(a.evidence);
+   expect(got.model_rendering).toBe("assisted");
+   expect(got.model_render_cache).toBe("miss");
    expect(mock).toHaveBeenCalledTimes(1);
    const sent=JSON.parse(String(mock.mock.calls[0][1].body));
    expect(mock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/chat/completions");
    expect(sent.model).toBe("openai/gpt-oss-20b");
    expect(sent.response_format).toEqual({type:"json_object"});
    expect(JSON.stringify(sent)).not.toMatch(/osint_feed_observed_unverified|api\.openai\.com|source_url/);
-   await enhanceAskWithFreeGroq(q,a,"other-client-2499",{fetchImpl:mock as any});
+   const cached=await enhanceAskWithFreeGroq(q,a,"other-client-2499",{fetchImpl:mock as any});
+   expect(cached.model_rendering).toBe("assisted");
+   expect(cached.model_render_cache).toBe("hit");
    expect(mock).toHaveBeenCalledTimes(1);
  });
  it("cannot turn insufficient research into a confirmed fact or signed score",async()=>{
