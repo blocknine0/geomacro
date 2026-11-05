@@ -579,7 +579,7 @@ export async function runUnifiedRiskSevenDayRollup(env,{
   // Return only an allowlisted symbolic code to the owner-authenticated caller;
   // never expose provider response bodies, URLs, SQL, or secret material.
   const raw=String(error?.message??"");
-  const diagnostic=/^[A-Z0-9_]{1,80}$/.test(raw)?raw:"RISK_GATE_7D_ROLLUP_UNCLASSIFIED";
+  const diagnostic=/^[A-Z0-9_-]{1,100}$/.test(raw)?raw:"RISK_GATE_7D_ROLLUP_UNCLASSIFIED";
   return {ok:false,error:"RISK_GATE_7D_ROLLUP_FAILED",diagnostic};
  }
 }
