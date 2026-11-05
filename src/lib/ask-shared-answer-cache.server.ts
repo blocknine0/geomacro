@@ -41,7 +41,7 @@ function tillNextUtcDay(now:number):number{
 }
 export function askAnswerTtlMs(question:string,answer:HybridAskAnswer,now=Date.now()):number{
  if(!safeSharedQuestion(question)||!Number.isFinite(now)||answer.insufficient_evidence||
-   answer.low_confidence||answer.gri!==null||answer.signed_gro_generated===true||
+   answer.low_confidence||answer.gri!==null||(answer as {signed_gro_generated?:boolean}).signed_gro_generated===true||
    /(?:^|\b)(?:risk indices?|gri|signed gro|live score|risk gate|forecast)\b/iu.test(question))
   return 0;
  // Cached content must still be the EXACT canonical public-shaped result.

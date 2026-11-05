@@ -16,7 +16,7 @@ const MAX_OUTPUT_TOKENS=700;
 let inflight=0,minute={until:0,count:0},day={until:0,count:0};
 const clients=new Map<string,{until:number,count:number}>();
 function eligible(c:HybridAskAnswer):boolean{
- if(c.gri!==null||c.signed_gro_generated===true||c.answer_kind==="public_info"||
+ if(c.gri!==null||(c as {signed_gro_generated?:boolean}).signed_gro_generated===true||c.answer_kind==="public_info"||
    c.real_time_message==="CURRENT_SIGNED_RISK_INDEX_UNAVAILABLE"||
    c.insufficient_evidence||c.low_confidence||
    c.evidence.some(x=>x.eventId==="live:official:numeric"))return false;
