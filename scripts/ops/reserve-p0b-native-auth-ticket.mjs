@@ -62,6 +62,8 @@ function executeRemote(sql){
   const diagnostic=classifyP0bWranglerD1Failure(r);
   console.error("P0B_D1_WRANGLER_DIAGNOSTIC="+diagnostic);
   if(Number.isInteger(r.status))console.error("P0B_D1_WRANGLER_EXIT_STATUS="+r.status);
+  const hint=safeP0bWranglerD1Hint(r,Object.values(process.env));
+  if(hint)console.error("P0B_D1_WRANGLER_SAFE_HINT="+hint);
   fail("P0B_B2_NATIVE_AUTH_D1_EXECUTION_FAILED");
  }
  try{return JSON.parse(r.stdout)}catch{fail("P0B_B2_NATIVE_AUTH_D1_INVALID_JSON")}
