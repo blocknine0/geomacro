@@ -64,6 +64,20 @@ describe("Ask GeoMacro free-form three-category routing", () => {
     }
   });
 
+  it("keeps named material in Why/impact/outlook chat wording as well as How prompts", () => {
+    for (const question of [
+      "Why do sanctions affect inflation and copper supply?",
+      "How do export controls affect interest rates and lithium?",
+      "What is the impact of sanctions on inflation and copper supply?",
+    ]) {
+      const original = domainGuideAnswer(question)!;
+      const publicAnswer = toCommercialAskBrief(original, question);
+      expect(publicAnswer.summary).toMatch(/For (?:copper|lithium) specifically/);
+      expect(publicAnswer.summary).toContain("does not establish a physical shortage");
+      expect(publicAnswer.evidence).toEqual([]);
+    }
+  });
+
   it("keeps mixed current/country/forecast questions on verified retrieval", () => {
     for (const question of [
       "How are sanctions affecting inflation and lithium prices in China today?",

@@ -72,6 +72,15 @@ export function directAnswerForQuestion(answer: AskAnswer, question = ""): strin
   const q = question.toLowerCase();
   if ("answer_kind" in answer && answer.answer_kind === "guidance") return answer.summary;
 
+  // Named-mineral cross-domain explainers are synthesized as timeless mechanisms.
+  // Keep the explicitly named subject ahead of generic "why"/"impact"/"outlook"
+  // reshaping. Otherwise chat compaction drops "copper" even when internal
+  // research understood the user and the summary correctly names it.
+  if ("answer_kind" in answer && answer.answer_kind === "explainer" &&
+      /^For [a-z]+ specifically,/iu.test(answer.summary)) {
+    return concise(firstUseful(answer.summary), 2, 420);
+  }
+
   // Exact independent Risk Index questions are category-specific, including
   // an honest no-current-signed-reading answer. A generic "what changed"
   // sentence may never displace the category name from the chat response.
