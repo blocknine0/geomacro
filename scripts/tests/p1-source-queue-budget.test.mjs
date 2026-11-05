@@ -75,7 +75,8 @@ test("monthly ledger rolls over without modifying the previous month's reservati
   assert.deepEqual(rows.map(x=>x.operations_reserved),[5,5]);
  }finally{f.close()}
 });
-\ntest("central $5 budget manifest pins exact source Queue monthly reservation and keeps payments off",()=>{
+
+test("central $5 budget manifest pins exact source Queue monthly reservation and keeps payments off",()=>{
  assert.equal(centralBudget.schema,"geomacro.cloudflare-five-usd-central-budget.v1");
  assert.equal(centralBudget.monthly_guardrail_targets_not_provider_hard_caps.queues_standard_operations,
   P1_MONTHLY_OPERATIONS_MAX);
@@ -84,4 +85,4 @@ test("monthly ledger rolls over without modifying the previous month's reservati
  assert.equal(centralBudget.automatic_paid_activation,false);
  assert.equal(centralBudget.automatic_cloudflare_subscription_changes,false);
  assert.equal(centralBudget.commercial_payment_switch_unchanged,true);
-});\n
+});
