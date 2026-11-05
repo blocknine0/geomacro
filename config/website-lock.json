@@ -1193,12 +1193,12 @@
   },
   "approved_public_sitemap_canonical_20261106": {
     "approval": "On 2026-11-06 the founder instructed a full geomacro.live cross-check and permanent fixes. This exact-blob approval repairs indexable canonical risk URLs in the sitemap without changing protected site presentation.",
-    "approved_source_commit": "0efec9dbd43edbfe48abe25c9fcc4aa009655582",
+    "approved_source_commit": "2eddf61353b38cb8c487f19594b05e23de48a76a",
     "approved_paths": [
       "public/sitemap.xml"
     ],
     "exact_blob_lock": true,
-    "scope": "Only replace redirect-only /data-api with canonical /risk-indices and /global-risk entries in public/sitemap.xml; no other public assets or UI routes approved.",
+    "scope": "Only remove redirect-only /data-api from the public sitemap and include the indexable canonical /risk-indices; founder-retired /global-risk remains excluded and still redirects under existing policy. No other public assets or UI routes approved.",
     "global_risk_final_lock_unmodified": true,
     "homepage_finds_permanent_removal_unchanged": true,
     "pricing_unchanged": true,
