@@ -22,7 +22,7 @@ const CATS=["geopolitics","macro","rare_earth"];
 const mainOnly=process.env.GITHUB_ACTIONS==="true"&&
  process.env.GITHUB_REPOSITORY==="blocknine0/geomacro"&&
  process.env.GITHUB_REF==="refs/heads/main"&&
- ["schedule","workflow_dispatch"].includes(process.env.GITHUB_EVENT_NAME);
+ ["schedule","workflow_dispatch","push"].includes(process.env.GITHUB_EVENT_NAME);
 if(!mainOnly)throw Error("DERIVED_DISCOVERY_PROTECTED_MAIN_ONLY");
 const token=deriveControlPlaneRootToken(
  process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN);
@@ -31,7 +31,7 @@ const headers={
  "Cache-Control":"no-store",
 };
 const stats=Object.fromEntries(DERIVED_DISCOVERY_LANES.map(lane=>[lane,{
- scanned:0,admitted:0,pages:0,retention_gaps:0,
+ scanned:0,admitted:0,pages:0,retention_gaps:0,complete:false,error:null,
  categories:Object.fromEntries(CATS.map(c=>[c,0])),
 }]));
 async function call(method,url,body){
@@ -97,8 +97,34 @@ function review(page,lane){
   commercialEligible:false,
  }));
 }
+function safeError(error){
+ const value=String(error?.message??"FAILED");
+ return /^[A-Z][A-Z0-9_]{3,100}$/u.test(value)?value:
+  "DERIVED_DISCOVERY_UNEXPECTED_FAILURE";
+}
+function emitSummary(ok,error=null,retentionVerified=false){
+ const summary={
+  schema:"geomacro.derived-risk-discovery-20m-cycle.v1",
+  ok,root_admin_only:true,
+  original_content_exported:false,independent_event_verified:false,
+  commercial_activation:false,paid_delivery:false,signed_gro:false,
+  new_publisher_fetches:0,discovery_retention_hours:72,
+  retention_verified:retentionVerified,categories_covered:CATS,
+  all_lanes_processed:DERIVED_DISCOVERY_LANES.every(lane=>stats[lane].complete),
+  failed_lanes:DERIVED_DISCOVERY_LANES.filter(lane=>stats[lane].error!==null),
+  error,per_lane:stats,
+ };
+ const output=process.env.GEOMACRO_DERIVED_DISCOVERY_SUMMARY_PATH;
+ if(output){
+  const p=resolve(output);
+  mkdirSync(dirname(p),{recursive:true});
+  writeFileSync(p,JSON.stringify(summary,null,2)+"\n",{mode:0o600});
+ }
+ console.log(JSON.stringify(summary));
+}
 async function run(){
  for(const lane of DERIVED_DISCOVERY_LANES){
+  try{
   let finished=false;
   for(let pageNo=0;pageNo<PAGE_CAP;pageNo++){
    const page=await call("GET",ROOT+PATH+"?lane="+lane);
@@ -123,7 +149,18 @@ async function run(){
    for(const x of page.records)total.categories[x.category]++;
    if(!page.has_more){finished=true;break;}
   }
-  if(!finished)throw Error("DERIVED_DISCOVERY_LANE_PAGE_CAP_EXCEEDED_"+lane);
+  if(!finished)throw Error("DERIVED_DISCOVERY_LANE_PAGE_CAP_EXCEEDED");
+  stats[lane].complete=true;
+  }catch(error){
+   // Cursors advance only after the existing exact atomic ACK. A failed
+   // source lane must not prevent unrelated healthy lanes from progressing.
+   stats[lane].error=safeError(error);
+  }
+ }
+ if(DERIVED_DISCOVERY_LANES.some(lane=>stats[lane].error)){
+  emitSummary(false,"DERIVED_DISCOVERY_LANES_INCOMPLETE");
+  process.exitCode=1;
+  return;
  }
  const pruned=await call("POST",ROOT+PATH,{
   schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA,operation:"PRUNE_DISCOVERY_72H",
@@ -131,29 +168,12 @@ async function run(){
  if(pruned.pruned_retention_hours!==72||pruned.expired_rows_remaining!==0||
     pruned.raw_archives_modified!==false||pruned.commercialEligible!==false)
   throw Error("DERIVED_DISCOVERY_PRUNE_UNVERIFIED");
- const summary={
-  schema:"geomacro.derived-risk-discovery-20m-cycle.v1",
-  ok:true,root_admin_only:true,
-  original_content_exported:false,independent_event_verified:false,
-  commercial_activation:false,paid_delivery:false,signed_gro:false,
-  new_publisher_fetches:0,discovery_retention_hours:72,
-  categories_covered:CATS,
-  all_lanes_processed:true,
-  per_lane:stats,
- };
- const output=process.env.GEOMACRO_DERIVED_DISCOVERY_SUMMARY_PATH;
- if(output){
-  const p=resolve(output);
-  mkdirSync(dirname(p),{recursive:true});
-  writeFileSync(p,JSON.stringify(summary,null,2)+"\n",{mode:0o600});
- }
- console.log(JSON.stringify(summary));
+ emitSummary(true,null,true);
 }
 run().catch(error=>{
  // Print bounded error codes only, never URLs/bodies/private source identity.
- const value=String(error?.message??"FAILED");
- const safe=/^[A-Z][A-Z0-9_]{3,100}$/u.test(value)?value:
-  "DERIVED_DISCOVERY_UNEXPECTED_FAILURE";
+ const safe=safeError(error);
+ emitSummary(false,safe);
  console.error(safe);
  process.exitCode=1;
 });

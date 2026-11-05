@@ -4,6 +4,17 @@ on:
   schedule:
     - cron: "*/20 * * * *"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
+      - "scripts/tests/derived-risk-gate-runner-isolation.test.mjs"
+      - ".github/workflows/derived-risk-gate-discovery-20m.yml"
+  pull_request:
+    paths:
+      - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
+      - "scripts/tests/derived-risk-gate-runner-isolation.test.mjs"
+      - ".github/workflows/derived-risk-gate-discovery-20m.yml"
 
 permissions:
   contents: read
@@ -13,14 +24,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  failure-isolation-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/derived-risk-gate-runner-isolation.test.mjs
   protected-five-lane-intake:
+    needs: failure-isolation-regression
     runs-on: ubuntu-latest
     timeout-minutes: 14
     environment: production
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -30,7 +53,8 @@ jobs:
           node-version: "22"
       - name: Test rights and ingestion bridge before processing
         run: |
-          node --test scripts/lib/derived-risk-gate-review-loop.test.mjs \
+          node --test scripts/tests/derived-risk-gate-runner-isolation.test.mjs \
+            scripts/lib/derived-risk-gate-review-loop.test.mjs \
             scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs \
             scripts/tests/derived-risk-gate-discovery-bridge.test.mjs \
             scripts/tests/derived-risk-gate-website-raw.test.mjs
@@ -40,10 +64,10 @@ jobs:
           GEOMACRO_DERIVED_DISCOVERY_SUMMARY_PATH: artifacts/derived-risk-gate-discovery/latest.json
         run: node scripts/ops/ingest-derived-risk-gate-discovery.mjs
       - name: Upload aggregate metadata receipt only
-        if: success()
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: derived-risk-gate-discovery-counts
           path: artifacts/derived-risk-gate-discovery/latest.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 7
