@@ -37,8 +37,8 @@ function selectOfficialNewsCategories(question: string): OfficialNewsCategory[] 
     { category: "rare_earth", test: /\b(critical minerals?|rare earths?|rare-earths?)\b/i },
   ];
   const matches = patterns.filter(item => item.test.test(q));
-  const genericNews = /^(?:what (?:has )?changed today|what is new today|latest news|latest developments)\??$/i.test(q);
-  const looksLikeNews = /\b(latest|recent|current|new|updates?|developments?|releases?|news|changed|changing)\b/i.test(q);
+  const genericNews = /^(?:what (?:has )?changed today|what (?:is|'s) new today|what happened today|what(?: is|'s) happening today|latest news|latest developments|(?:give me )?(?:the )?(?:news|updates) today)\??$/i.test(q);
+  const looksLikeNews = /\b(latest|recent|current|new|updates?|developments?|releases?|news|changed|changing|happened|happening|today)\b/i.test(q);
   if (!looksLikeNews || matches.length > 1 || (matches.length === 0 && !genericNews))
     return [];
   const rest = q
