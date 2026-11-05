@@ -9,7 +9,7 @@ const DOMAINS=Object.freeze(["geopolitics","macro","rare_earth"]);
 const STEP_MS=15*60_000;
 const HOT50_KEYWORDS=Object.freeze({
  geopolitics:'("sanctions" OR "ceasefire" OR "military" OR "border security" OR "diplomatic" OR "conflict" OR "export ban" OR "election")',
- macro:'("central bank" OR "inflation" OR "interest rates" OR "GDP" OR "currency" OR "sovereign debt" OR "trade balance" OR "capital controls")',
+ macro:'("central bank" OR "monetary policy" OR "policy rate" OR "interest rate" OR "rate decision" OR CPI OR "consumer price index" OR inflation OR "employment rate" OR unemployment OR payroll OR jobs OR wages OR "labour market" OR "labor market" OR GDP OR currency OR "sovereign debt" OR "trade balance" OR "capital controls")',
  rare_earth:'("critical minerals" OR "rare earth" OR "lithium" OR "copper" OR "cobalt" OR "nickel" OR "gallium" OR "germanium" OR "graphite" OR "mineral export")',
 });
 const escapeName=name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"';
