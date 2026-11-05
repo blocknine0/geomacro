@@ -122,7 +122,7 @@ test("Standard accepts full-text independent-source corroboration from auto-enri
  assert.equal(r.source_references.length,3);
  assert.deepEqual(r.source_references[0].source_ids,["source-one","source-two"]);
 });
-test("Complex requires signed qualified GRO, exact B2 archive readback and corridor scope",()=>{
+test("Complex requires signed GRO, exact B2 archive readback and complete history",()=>{
  const missing=render("complex_full",{verified_gro:gro()});
  assert.equal(missing.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
  assert.equal(missing.gro_signature,null);
@@ -140,12 +140,39 @@ test("Complex requires signed qualified GRO, exact B2 archive readback and corri
  assert.equal(country.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
 });
 test("Complex verified signature, 7-day signed-history holes and private B2 reference",()=>{
- const days=[
-  {entity_type:"CORRIDOR",entity_id:"hormuz",day_utc:"2026-11-03",
-   snapshot:{unified_risk_score:0.55},content_sha256:"a".repeat(64),proof_verified:true},
-  {entity_type:"CORRIDOR",entity_id:"hormuz",day_utc:"2026-11-04",
-   snapshot:{unified_risk_score:0.35},content_sha256:"b".repeat(64),proof_verified:true},
- ];
+ const days=["2026-10-29","2026-10-30","2026-10-31","2026-11-01",
+  "2026-11-02","2026-11-03","2026-11-04"].map((day_utc,i)=>({
+   entity_type:"CORRIDOR",entity_id:"hormuz",day_utc,
+   snapshot:{unified_risk_score:[0.55,0.51,0.48,0.44,0.4,0.38,0.35][i],
+    verified_unified_risk_score:[0.55,0.51,0.48,0.44,0.4,0.38,0.35][i],
+    signed_gro_payload_sha256:"d".repeat(64)},
+   content_sha256:(i+1).toString(16).repeat(64),proof_verified:true,
+  }));
+ const incomplete=render("complex_full",{
+  verified_gro:gro(),archive_proof:archive,history:days.slice(-2)});
+ assert.equal(incomplete.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(incomplete.chargeable,false);
+ assert.equal(incomplete.gro_signature,null);
+ const provisionalFallback=days.map(x=>({...x,
+  snapshot:{...x.snapshot,verified_unified_risk_score:null,
+   signed_gro_payload_sha256:null,unified_risk_score:0.9}}));
+ const fakeVerifiedHistory=render("complex_full",{
+  verified_gro:gro(),archive_proof:archive,history:provisionalFallback});
+ assert.equal(fakeVerifiedHistory.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(fakeVerifiedHistory.chargeable,false);
+ const unsignedPastDay=days.map((x,i)=>i===3?{...x,
+  snapshot:{...x.snapshot,signed_gro_payload_sha256:null}}:x);
+ assert.equal(render("complex_full",{
+  verified_gro:gro(),archive_proof:archive,history:unsignedPastDay}).status,
+  "SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ const unsigned=gro();
+ unsigned.attribution.pop();
+ const withIncompleteGro=render("complex_full",{
+  verified_gro:unsigned,archive_proof:archive,history:days});
+ assert.equal(withIncompleteGro.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(withIncompleteGro.chargeable,false);
+ assert.equal(withIncompleteGro.category_fact_sheets[2].verified_category_score_0_100,null);
+ assert.equal(withIncompleteGro.category_fact_sheets[2].evidence_status,"NOT_FULLY_VERIFIED");
  const r=render("complex_full",{verified_gro:gro(),archive_proof:archive,history:days});
  assert.equal(r.status,"READY");
  assert.equal(r.price.usd_per_call,"0.25");
@@ -155,13 +182,35 @@ test("Complex verified signature, 7-day signed-history holes and private B2 refe
  assert.equal(r.gro_signature.payload_sha256,"d".repeat(64));
  assert.equal(r.seven_day_corridor_friction_history.window_days,7);
  assert.equal(r.seven_day_corridor_friction_history.points.length,7);
- assert.equal(r.seven_day_corridor_friction_history.verified_score_days,2);
+ assert.equal(r.seven_day_corridor_friction_history.verified_score_days,7);
+ assert.equal(r.seven_day_verified_subject_history.verified_score_days,7);
  assert.equal(r.seven_day_corridor_friction_history.trend,"FALLING");
  assert.equal(r.seven_day_corridor_friction_history.latest_minus_earliest,-20);
  assert.equal(r.b2_archive.b2_archive_link,
   "b2://geomacro-private-archive/geomacro-evidence/v1/private/verified/gro-hormuz-1.json");
  assert.equal(r.b2_archive.archive_sha256,"e".repeat(64));
  assert.equal(r.b2_archive.public_download_url,null);
+ assert.equal(r.execution_authorized,false);
+ assert.equal(r.charged,false);
+});
+test("Country Complex is allowed only after 7 signed country days with verified GRO + archive",()=>{
+ const days=["2026-10-29","2026-10-30","2026-10-31","2026-11-01",
+  "2026-11-02","2026-11-03","2026-11-04"].map((day_utc,i)=>({
+  entity_type:"COUNTRY",entity_id:"USA",day_utc,
+  snapshot:{unified_risk_score:(45+i)/100,
+   verified_unified_risk_score:(45+i)/100,
+   signed_gro_payload_sha256:"d".repeat(64)},
+  content_sha256:(i+2).toString(16).repeat(64),proof_verified:true,
+ }));
+ const r=composeRiskGateThreeTierResponse({
+  tier:"complex_full",now:NOW,verified_gro:gro(),archive_proof:archive,
+  snapshot:{...snapshot,target_type:"COUNTRY",target_id:"USA"},
+  observations,history:days});
+ assert.equal(r.status,"READY");
+ assert.equal(r.chargeable,true);
+ assert.equal(r.seven_day_country_risk_history.verified_score_days,7);
+ assert.equal(r.seven_day_verified_subject_history.verified_score_days,7);
+ assert.equal(r.seven_day_corridor_friction_history,null);
  assert.equal(r.execution_authorized,false);
  assert.equal(r.charged,false);
 });
