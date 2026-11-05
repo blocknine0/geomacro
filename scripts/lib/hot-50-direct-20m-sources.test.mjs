@@ -71,3 +71,13 @@ test("20m workflow has 3 cron offsets per hour, production guard, canonical D1 w
  assert.doesNotMatch(file,/private-osint-15m-tick\.ts/);
  assert.doesNotMatch(file,/workflow_run:/);
 });
+
+test("source and spool workflows keep valid event paths and secret-free if contexts",()=>{
+ for(const path of ["../../.github/workflows/hot50-direct-original-news-20m.yml","../../.github/workflows/p0b-admission-tests.yml"]){
+  const file=readFileSync(new URL(path,import.meta.url),"utf8");
+  // GitHub rejects the whole workflow before any job when secrets is used
+  // directly in an if condition or a quoted path contains literal newlines.
+  assert.doesNotMatch(file,/^\s*if:.*\bsecrets\./m);
+  assert.doesNotMatch(file,/['"]\\n\s*-\s*['"]/);
+ }
+});
