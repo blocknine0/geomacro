@@ -31,8 +31,8 @@ const env=(rows:unknown[]=[],count=1)=>({PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,
       throw Error("UNEXPECTED_BUDGET_SQL");
      return {request_count:count};
     },
-    all:async()=>({results:rows.slice(Number(params.at(-2))||0,
-     (Number(params.at(-2))||0)+251).map(story=>({
+    all:async()=>({results:rows.slice(Number(params[2])||0,
+     (Number(params[2])||0)+251).map(story=>({
       story_json:JSON.stringify(story)}))})
    })
   })),
