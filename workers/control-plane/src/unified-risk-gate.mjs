@@ -6,6 +6,8 @@ import {PHASE2H_COUNTRIES_195,phase2hCountry,phase2hHeadlineCountryCandidate}
  from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
+import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
+import {readIntradayFlashOverride} from "./risk-gate-flash-override.mjs";
 import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
 import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bridge.mjs";
@@ -859,13 +861,20 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    included_in_daily_snapshot_hmac:false,
    commercial_action_authorized:false,
   };
-  const customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
+  let customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
    groVerified:!!gro,confidence:gro?.confidence??null,
    policy:payload.approved_thresholds
   }):x.snapshot.tiers;
   const lenient=payload.client_policy==="LENIENT"&&payload.override_acknowledged===true;
-  const clientPolicyDecision=lenient?
+  let clientPolicyDecision=lenient?
    customTiers.policy.lenient_mode_outcome:customTiers.core.gate_decision;
+  const flash=gro?await readIntradayFlashOverride(env.DB,gro,{type:target.type,id:target.id},now):{available:true,active:false};
+  const flashApplies=(flash.active||flash.available===false)&&["GATE_PASS","OVERRIDE_PASS"].includes(clientPolicyDecision);
+  if(flashApplies){
+   customTiers={...customTiers,core:{...customTiers.core,gate_decision:"GATE_HOLD",evidence_state:"INTRADAY_MATERIAL_FLASH_OVERRIDE"}};
+   if(lenient)customTiers={...customTiers,policy:{...customTiers.policy,lenient_mode_outcome:"OVERRIDE_HOLD"}};
+   clientPolicyDecision="GATE_HOLD";
+  }
   let tiered_product=null;
   if(payload.product_tier!==undefined){
    const page=await env.DB.prepare(
@@ -954,11 +963,16 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
     tier:payload.product_tier,snapshot:x.snapshot,observations,
     verified_gro:gro,archive_proof,history,now,
    });
+   tiered_product.intraday_override=flash.active===true;
+   tiered_product.flash_check_available=flash.available===true;
+   if(flash.active)tiered_product.flash_details=flash;
   }
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
    ...(tiered_product?{tiered_product}:{}),
    client_policy:payload.client_policy??"STRICT",
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
+   intraday_override:flash.active===true,flash_check_available:flash.available===true,
+   ...(flash.active?{flash_details:flash}:{}),
    policy_evaluation_proof_scope:"NOT_INCLUDED_IN_DAILY_SNAPSHOT_HMAC",
    policy_evaluation_has_verified_gro:!!gro,
    verified_live_scoring:verifiedLiveScoring,
