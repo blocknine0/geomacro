@@ -83,3 +83,15 @@ test("regular backlog sync advances valid rows without acknowledging a corrupt o
  assert.deepEqual(acked,["USA"]);assert.equal(posts.get("snapshots")[0].entity_id,"USA");
  assert.ok(posts.get("signals").every(x=>x.country_iso3==="USA"));
 });
+
+test("Hot50 deployment never calls the incompatible 207-target reconciliation",()=>{
+ const workflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+ const deployment=workflow.slice(workflow.indexOf("  bootstrap-deploy-accept:"));
+ assert.match(deployment,/RISK_GATE_COUNTRY_SCOPE: HOT50/);
+ assert.match(deployment,/config.vars.RISK_GATE_COUNTRY_SCOPE !== process.env.RISK_GATE_COUNTRY_SCOPE/);
+ const step=deployment.slice(deployment.indexOf("      - name: Reconcile current-day 207"));
+ const gate=step.slice(0,step.indexOf("        shell:"));
+ assert.match(gate,/if: env.RISK_GATE_COUNTRY_SCOPE != 'HOT50'/);
+ const config=JSON.parse(readFileSync(new URL("../../workers/control-plane/wrangler.example.jsonc",import.meta.url)));
+ assert.equal(config.vars.RISK_GATE_COUNTRY_SCOPE,"HOT50");
+});
