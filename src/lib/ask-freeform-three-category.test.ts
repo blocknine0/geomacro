@@ -37,6 +37,17 @@ describe("Ask GeoMacro free-form three-category routing", () => {
     expect(answer?.real_time_message).toContain("no live observation");
   });
 
+  it("answers the named mineral instead of dropping it in a cross-sector explainer", () => {
+    const answer = domainGuideAnswer("How do sanctions affect inflation and copper supply?");
+    expect(answer?.summary).toContain("For copper specifically");
+    expect(answer?.summary).toContain("physical shortage");
+    expect(answer?.evidence).toEqual([]);
+    expect(answer?.gri).toBeNull();
+    const lithium = domainGuideAnswer("How do export controls affect interest rates and lithium?");
+    expect(lithium?.summary).toContain("For lithium specifically");
+    expect(lithium?.insufficient_evidence).toBe(false);
+  });
+
   it("keeps mixed current/country/forecast questions on verified retrieval", () => {
     for (const question of [
       "How are sanctions affecting inflation and lithium prices in China today?",
