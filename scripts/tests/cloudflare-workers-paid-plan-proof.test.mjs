@@ -69,6 +69,10 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.equal(grant.critical,true);
  assert.equal(grant.state,"CRITICAL_ONLY");
  assert.equal(grant.paid_capacity_verified_by_provider,true);
+ assert.equal(grant.source_intake,true);
+ assert.ok(grant.source_intake_max_new_rows>=3&&grant.source_intake_max_new_rows<=100);
+ assert.equal(grant.phase2h_raw_archive,true);
+ assert.equal(grant.phase2h_raw_archive_requires_atomic_b2_quota,true);
  assert.equal(grant.research,false);
  assert.equal(grant.maintenance,false);
  assert.equal(grant.snapshot_refresh,false);
@@ -76,6 +80,12 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_read<=18_000_000);
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
+ const tight=planD1BundledWork(usage(5_763_167,140_000),
+  {now,paidProof:proof,spendGuardProof});
+ assert.equal(tight.critical,true);
+ assert.equal(tight.source_intake,false);
+ assert.equal(tight.source_intake_max_new_rows,0);
+ assert.equal(tight.phase2h_raw_archive,false);
  assert.equal(planD1BundledWork(usage(19_000_000,50_000),
   {now,paidProof:proof,spendGuardProof}).critical,false);
  assert.equal(planD1BundledWork(usage(5_763_167,181_000),

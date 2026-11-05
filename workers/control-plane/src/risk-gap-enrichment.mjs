@@ -2,6 +2,7 @@
 import {PHASE2H_COUNTRIES_195} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {CATEGORY_SPECS,CATEGORIES} from "./unified-risk-categories.mjs";
 import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
+import {hot50RiskGateEnabled,isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
 
 const BATCH=12, SHA=/^[a-f0-9]{64}$/u;
 const TIER_ONE_HOSTS=["apnews.com","bbc.com","dw.com","aljazeera.com","france24.com","theguardian.com","reuters.com","npr.org"];
@@ -92,7 +93,8 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
  if(!env?.DB?.prepare||!env?.DB?.batch||!Number.isFinite(now))
   return {ok:false,error:"RISK_GAP_D1_UNAVAILABLE"};
  try{
-  const all=targets(),cutoff=iso(now-12*3600000);
+  const all=targets().filter(x=>!hot50RiskGateEnabled(env)||
+   x.type==="COUNTRY"&&isHot50RiskCountry(x.id)),cutoff=iso(now-12*3600000);
   const recent=await env.DB.prepare(
    "SELECT entity_type,entity_id,category,MAX(discovered_at) AS last_input "+
    "FROM unverified_observations WHERE discovered_at>=? "+

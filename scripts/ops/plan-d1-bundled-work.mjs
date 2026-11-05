@@ -266,17 +266,32 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
       Math.max(0,Math.min(1,elapsed)));
     const admitted=snapshot.observed_rows_read<dailyReads&&
       snapshot.observed_rows_written<dailyWrites;
+    const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
+    const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
+    const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
+    // Reserve ALL existing source producers through UTC reset, not merely
+    // this caller. Paid entitlement previously granted critical=true while
+    // source_intake=false, permanently starving the actual news collector.
+    const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
+    const rowsPerSlot=Math.min(100,Math.floor((writeRoom-
+      D1_BUNDLE_LANES.critical.write_reserve-slots*40-1500)/(slots*16)));
+    const sourceIntake=admitted&&rowsPerSlot>=3&&
+      readRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
+    const archive=sourceIntake&&writeRoom>
+      D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+900;
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
       reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
-      phase2h_raw_archive:false,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:false,governed_measurement:false,historical_recovery:false,
-      historical_recovery_max_rows:0,source_intake_interval_minutes:null,
+      phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
+      source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
+      phase2h_raw_archive_max_rows_per_slot:300,
+      phase2h_raw_archive_requires_atomic_b2_quota:true,
+      historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
       registered_private_max_new_rows:0,
-      source_intake_max_new_rows:0,snapshot_refresh:false,
+      source_intake_max_new_rows:sourceIntake?rowsPerSlot:0,snapshot_refresh:false,
       structural_snapshot:false,
       structural_snapshot_max_b2_network_attempts:0,
       structural_snapshot_requires_atomic_b2_account_reservation:true,
