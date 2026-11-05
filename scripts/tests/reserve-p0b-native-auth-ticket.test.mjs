@@ -56,3 +56,19 @@ test("only an exact D1 row-read 7500 diagnostic is classified for reset",()=>{
    stderr:"D1 operation failed with provider code 7500 but unknown reason"}),
    "D1_DAILY_ROW_READ_LIMIT_7500");
 });
+
+test("D1 bootstrap config survives until native-auth ticket then is cleaned",async()=>{
+ const fs=await import("node:fs");
+ const flow=fs.readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
+ const a=flow.indexOf("      - name: Bootstrap the D1 quota schema required by the B2 preflight");
+ const b=flow.indexOf("      - name: Reserve and read back native-auth quota directly in canonical D1",a);
+ const c=flow.indexOf("      - name: Verify actual B2 key scope and derive allowed private spool prefix",b);
+ assert.ok(a>0&&b>a&&c>b);
+ const bootstrap=flow.slice(a,b),ticket=flow.slice(b,c);
+ assert.ok(bootstrap.includes("fs.writeFileSync('wrangler.quota-bootstrap.jsonc'"));
+ assert.ok(!bootstrap.includes("trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT"));
+ assert.ok(ticket.includes("test -s wrangler.quota-bootstrap.jsonc"));
+ assert.ok(ticket.includes("trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT"));
+ assert.ok(ticket.includes("node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs"));
+ assert.ok(ticket.indexOf("trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT")<ticket.indexOf("node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs"));
+});
