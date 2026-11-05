@@ -381,8 +381,14 @@ function supabaseCfg(env){
  return /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)&&key.length>=32?{url,key}:null;
 }
 async function remote(cfg,path,{method="GET",body,headers={}}={},fetcher=fetch){
+ const requestHeaders={apikey:cfg.key,Accept:"application/json",...headers};
+ // New Supabase sb_secret keys are opaque, not JWTs; sending them as Bearer
+ // makes the gateway reject them as an invalid JWT. Legacy service_role keys
+ // remain JWTs and keep the Authorization header for compatibility.
+ if(!cfg.key.startsWith("sb_secret_"))
+  requestHeaders.Authorization="Bearer "+cfg.key;
  const r=await fetcher(cfg.url+path,{method,body,redirect:"manual",signal:AbortSignal.timeout(8000),
-  headers:{apikey:cfg.key,Authorization:"Bearer "+cfg.key,Accept:"application/json",...headers}});
+  headers:requestHeaders});
  if(!r.ok||r.status>=300)throw Error("UNIFIED_SUPABASE_HTTP_FAILED");
  return r;
 }
