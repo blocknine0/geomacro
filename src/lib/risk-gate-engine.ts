@@ -246,6 +246,8 @@ export function evaluateRiskGate(
       }));
 
   return {
+    intraday_override: false,
+    flash_check_available: true,
     schema_version:
       RISK_GATE_SCHEMA_VERSION,
     request_id:
