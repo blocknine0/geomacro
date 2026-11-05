@@ -213,7 +213,7 @@ test("P1 source poll CAS rejects duplicate queue message before next due clock",
   assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
   const t=Date.parse("2026-10-04T02:00:00Z");
   const poll=at=>pollP0aSources(env,{now:at,limit:1,
-   sourceIds:["src_p1_due_cas"],fetchImpl:async()=>{
+   sourceIds:["src_p1_due_cas"],requireDue:true,fetchImpl:async()=>{
     requests++;return body(news);
    }});
   assert.equal((await poll(t)).receipts[0].state,"OBSERVED");
