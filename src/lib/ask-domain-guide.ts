@@ -41,7 +41,7 @@ function response(summary: string, extra: Partial<HybridAskAnswer> = {}): Hybrid
 }
 
 /** Timeless cross-sector mechanics, not an answer about a named event or live score. */
-function crossDomainGuideAnswer(domains: readonly AskDomain[]): HybridAskAnswer {
+function crossDomainGuideAnswer(question: string, domains: readonly AskDomain[]): HybridAskAnswer {
   const parts: string[] = [];
   if (domains.includes("geopolitics") && domains.includes("macro"))
     parts.push("Policy restrictions, conflict and shipping disruption can transmit into trade costs, inflation expectations, capital flows and exchange rates.");
@@ -49,6 +49,14 @@ function crossDomainGuideAnswer(domains: readonly AskDomain[]): HybridAskAnswer 
     parts.push("Export controls, sanctions and transport restrictions can constrain access to mineral inputs; exposure depends on mining, refining and downstream manufacturing locations.");
   if (domains.includes("macro") && domains.includes("rare_earth"))
     parts.push("Interest rates, currency moves and industrial demand affect mineral project financing and input costs, while physical output depends on processing capacity and qualification.");
+  // Reflect an explicitly named mineral instead of silently answering a
+  // copper/lithium/cobalt question with generic "mineral inputs" wording.
+  // This is a timeless risk mechanism, not a sourced current shortage claim.
+  const requestedMineral = /\b(?:copper|lithium|cobalt|nickel|graphite|gallium|germanium|neodymium|dysprosium|terbium|praseodymium|tungsten|antimony|manganese|vanadium|scandium|tantalum|niobium|yttrium)\b/iu.exec(question)?.[0];
+  if (requestedMineral && domains.includes("rare_earth")) {
+    parts.push("For " + requestedMineral.toLowerCase() +
+      " specifically, the potential effect depends on the affected ore, refining and shipping stages and available substitutes; a policy announcement alone does not establish a physical shortage.");
+  }
   return response(parts.join(" "), {
     answer_kind:"explainer",
     why_it_matters:"The link is conditional: the size and direction of any real-world effect depend on specific actors, products, timing and measurable exposure.",
@@ -89,7 +97,7 @@ export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   if (!/^(?:what (?:is|are|does)|how (?:do|does|can)|why (?:do|does|can)|explain|summarize|define|compare|difference|tell me about)\b/i.test(q)) return null;
   // Never answer a 2–3-domain causal question using a one-topic canned guide.
   // Mixed current, numeric, country or predictive questions took the governed path above.
-  if (domains.length > 1) return crossDomainGuideAnswer(domains);
+  if (domains.length > 1) return crossDomainGuideAnswer(q, domains);
   const guide = GUIDES.find(item => item.match.test(q));
   if (!guide) return null;
   return response(guide.explanation, {why_it_matters:guide.mechanism,geomacro_view:guide.watch,
