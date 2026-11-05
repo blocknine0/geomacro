@@ -362,7 +362,8 @@ jobs:
             d1_databases:[{...db,database_id:id}]};
           fs.writeFileSync('wrangler.quota-bootstrap.jsonc',JSON.stringify(config,null,2));
           NODE
-          trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT
+          # This config is consumed by the NEXT step in the same job.
+          # Cleaning it on bootstrap EXIT broke the native D1 ticket preflight.
           npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
             --config wrangler.quota-bootstrap.jsonc \
             --file migrations/0014_b2_account_daily_request_quota.sql >/dev/null
@@ -389,7 +390,16 @@ jobs:
         env:
           P0B_QUOTA_WRANGLER_CONFIG: wrangler.quota-bootstrap.jsonc
         shell: bash
-        run: node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs
+        run: |
+          set -euo pipefail
+          # Exact same already-verified ephemeral D1 binding; no token in file.
+          test -s wrangler.quota-bootstrap.jsonc || {
+            echo "::error::P0B_QUOTA_BOOTSTRAP_CONFIG_MISSING"
+            exit 2
+          }
+          # Clean up only AFTER the ticket's three D1 operations finish.
+          trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT
+          node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs
 
       - name: Verify actual B2 key scope and derive allowed private spool prefix
         if: env.P0B_ACTIVATE == '1'
