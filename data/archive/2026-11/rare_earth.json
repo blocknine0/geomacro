@@ -2,8 +2,25 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-05T06:52:08.282Z",
+  "updated_at": "2026-11-05T17:27:23.972Z",
   "signals": [
+    {
+      "id": "rare_earth-7be2e943",
+      "category": "rare_earth",
+      "title": "Geomacro finds Ministry of Mines: launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform · India",
+      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
+      "what_changed": "Ministry of Mines launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform. Country or region mentioned: India.",
+      "geography": "India",
+      "development_type": "approval",
+      "topic": "critical-minerals policy",
+      "published_at": "2026-11-05T11:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-caff1e6a",
       "category": "rare_earth",
