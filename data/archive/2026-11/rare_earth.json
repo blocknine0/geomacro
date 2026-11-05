@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-05T03:10:31.442Z",
+  "updated_at": "2026-11-05T06:52:08.282Z",
   "signals": [
+    {
+      "id": "rare_earth-caff1e6a",
+      "category": "rare_earth",
+      "title": "Geomacro finds Adani Enterprises Kutch Copper set Capacity Utilization And Raw Material Supply Targets - Sahi",
+      "what_changed": "A monitored source feed reports: Adani Enterprises Kutch Copper set Capacity Utilization And Raw Material Supply Targets - Sahi. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T03:56:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-cd1b8e05",
       "category": "rare_earth",
