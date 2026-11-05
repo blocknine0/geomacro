@@ -42,6 +42,14 @@ test("owner-only 18-page SHA repair route is behind existing admin auth and cove
  assert.match(daily,/remote_hash_matches == 207/);
 });
 
+test("Supabase opaque secret keys use apikey only while legacy service_role keeps Bearer auth",()=>{
+ const riskGate=readFileSync(new URL("../../workers/control-plane/src/unified-risk-gate.mjs",import.meta.url),"utf8");
+ assert.match(riskGate,/requestHeaders=\{apikey:cfg\.key/);
+ assert.match(riskGate,/if\(!cfg\.key\.startsWith\("sb_secret_"\)\)/);
+ assert.match(riskGate,/requestHeaders\.Authorization="Bearer "\+cfg\.key/);
+ assert.match(riskGate,/opaque, not JWTs/);
+});
+
 test("seven-day rollup has a separate daily schedule and authenticated history backfill",()=>{
  const authAt=source.indexOf("const auth = authorized(request, env)");
  const backfillAt=source.indexOf('url.pathname==="/v1/internal/risk-gate/7d-rollup"');
