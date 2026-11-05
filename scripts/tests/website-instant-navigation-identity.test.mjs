@@ -164,15 +164,21 @@ test("sitemap advertises canonical indexable risk pages, never redirect-only /da
   const sitemap=read("public/sitemap.xml");
   const locs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
   assert.equal(new Set(locs).size,locs.length,"duplicate sitemap URL");
-  assert.ok(locs.includes("https://geomacro.live/risk-indices"));
-  assert.ok(!locs.includes("https://geomacro.live/global-risk"),
+  // Parse and compare the COMPLETE origin and path. URL substring matches
+  // can be spoofed by another hostname or a longer URL (CodeQL warning).
+  const urls=locs.map(loc=>new URL(loc));
+  assert.ok(urls.every(url=>url.origin==="https://geomacro.live" &&
+    url.search==="" && url.hash===""),"sitemap escaped canonical origin");
+  const paths=new Set(urls.map(url=>url.pathname));
+  assert.ok(paths.has("/risk-indices"));
+  assert.ok(!paths.has("/global-risk"),
     "Founder-retired redirect must not appear in sitemap");
-  assert.ok(locs.includes("https://geomacro.live/pricing"));
-  assert.ok(!locs.includes("https://geomacro.live/data-api"),
+  assert.ok(paths.has("/pricing"));
+  assert.ok(!paths.has("/data-api"),
     "Redirect-only alias cannot be advertised as a canonical URL");
   const page=read("src/routes/risk-indices.tsx");
   assert.match(page,/name: "robots", content: "index, follow/);
-  assert.ok(page.includes("https://geomacro.live/risk-indices"));
+  assert.match(page,/const URL = "https:\/\/geomacro\.live\/risk-indices";/);
   const retired=read("server/middleware/05-retire-noncommercial-surfaces.ts");
   assert.ok(retired.includes('["/global-risk", "/intelligence"]'));
   assert.ok(retired.includes('setResponseHeader(event, "X-Robots-Tag", "noindex, nofollow, noarchive")'));
