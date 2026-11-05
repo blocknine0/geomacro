@@ -72,7 +72,9 @@ export type RiskGateReasonCode =
   | "risk_object_stale"
   | "risk_object_incomplete"
   | "risk_object_expired"
-  | "risk_object_unverifiable";
+  | "risk_object_unverifiable"
+  | "intraday_material_flash_override"
+  | "flash_check_unavailable";
 
 export type RiskGateResponse = {
   schema_version:
@@ -134,6 +136,8 @@ export type RiskGateResponse = {
   primary_driver: string;
   affected_domain: "geopolitics" | "macro_fx" | "critical_minerals";
   severity_score: number;
+  intraday_override?: boolean;
+  flash_check_available?: boolean;
   suggested_mitigation: {
     exposure_cap_ratio: number;
     settlement_delay_hours: number;
