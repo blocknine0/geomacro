@@ -489,7 +489,8 @@ export async function pollP0aSources(env,{
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
  const polled=await Promise.all(rows.map(async row=>{
   try{return await pollOne(env,row,{fetchImpl,now,requireDue})}
-  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0}}
+  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0,
+   storage_readback_verified:false}}
  }));
  const plans=polled.filter(x=>x._p0b_deferred);
  if(plans.length){
