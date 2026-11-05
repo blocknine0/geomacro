@@ -126,17 +126,26 @@ function sevenDays(rows,now,subject){
   if(!ISO.test(row?.day_utc)||indexed.has(row.day_utc)||
     row.entity_type!==subject.type||row.entity_id!==subject.id||
     row.proof_verified!==true)continue;
-  const score=row.snapshot?.unified_risk_score;
-  const numeric=typeof score==="number"&&score>=0&&score<=1?
-    boundedScore(score*100):null;
+  // The generic unified_risk_score may contain a Basic provisional
+  // fallback even in an HMAC-valid D1 snapshot. Complex history must NEVER
+  // interpret that fallback as a verified/signed institutional score.
+  const score=row.snapshot?.verified_unified_risk_score;
+  const groHash=row.snapshot?.signed_gro_payload_sha256;
+  const snapshotHash=HEX.test(String(row.content_sha256??""))?
+   row.content_sha256:null;
+  const numeric=Number.isFinite(score)&&score>=0&&score<=1&&
+   HEX.test(String(groHash??""))&&snapshotHash?
+   boundedScore(score*100):null;
   indexed.set(row.day_utc,{score:numeric,
-   snapshot_sha256:HEX.test(row.content_sha256)?row.content_sha256:null});
+   snapshot_sha256:numeric===null?null:snapshotHash,
+   signed_gro_sha256:numeric===null?null:groHash});
  }
  const observations=[];
  for(let age=6;age>=0;age--){
   const day=dayDate(now,age),row=indexed.get(day);
   observations.push({day_utc:day,friction_score_0_100:row?.score??null,
    snapshot_sha256:row?.snapshot_sha256??null,
+   signed_gro_sha256:row?.signed_gro_sha256??null,
    data_status:row&&row.score!==null?"SIGNED_SCORE_IN_DAILY_SNAPSHOT":
     "NO_VERIFIED_HISTORICAL_FRICTION_SCORE"});
  }
