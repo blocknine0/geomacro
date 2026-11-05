@@ -282,7 +282,7 @@ export function p1SourceContentFingerprintFields(row){
  return title&&url?title+"\n"+url:null;
 }
 
-async function pollOne(env,row,{fetchImpl,now}){
+async function pollOne(env,row,{fetchImpl,now,requireDue=false}){
  const config={...fromRow(row),poll_etag:row.poll_etag??null,
   poll_last_modified:row.poll_last_modified??null};
  const lockedUntil=iso(now+120000);
@@ -295,9 +295,15 @@ async function pollOne(env,row,{fetchImpl,now}){
    "AND next_poll_at<=?").bind(gate.until,config.source_id,iso(now)).run();
   return {source_id:config.source_id,state:"DOMAIN_BACKOFF",accepted:0};
  }
+ // Source Queue V1/V2 enforces due-time CAS to reject redeliveries,
+ // while the separate authenticated admin manual poll retains its explicit
+ // forced-source behavior. No cursor advances before durable admission.
  const lock=await env.DB.prepare(
-  'UPDATE source_registry SET next_poll_at=? WHERE source_id=? AND next_poll_at=? AND enabled=1'
- ).bind(lockedUntil,row.source_id,row.next_poll_at).run();
+  'UPDATE source_registry SET next_poll_at=? WHERE source_id=? '+
+  'AND next_poll_at=? AND enabled=1'+
+  (requireDue?' AND next_poll_at<=?':'')
+ ).bind(lockedUntil,row.source_id,row.next_poll_at,
+   ...(requireDue?[iso(now)]:[])).run();
  if(lock.meta?.changes!==1)return {source_id:row.source_id,state:'NOT_DUE'};
  let result;
  try{result=await fetchP0aSource(config,{fetchImpl,now})}
@@ -464,9 +470,9 @@ async function finishP0bSource(env,plan,now,admissions){
   used_fallback:result.used_fallback===true,p0b_failure_codes};
 }
 export async function pollP0aSources(env,{
- fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL,sourceIds=null,producerManager=null
+ fetchImpl=fetch,now=Date.now(),limit=MAX_SOURCES_PER_POLL,sourceIds=null,producerManager=null,requireDue=false
 }={}){
- if(!env?.DB||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
+ if(!env?.DB||typeof requireDue!=='boolean'||!Number.isSafeInteger(limit)||limit<1||limit>MAX_SOURCES_PER_POLL||
   (sourceIds!==null&&(!Array.isArray(sourceIds)||sourceIds.length<1||
     sourceIds.length>MAX_SOURCES_PER_POLL||sourceIds.some(x=>!SOURCE.test(x))||
     new Set(sourceIds).size!==sourceIds.length)))
@@ -482,8 +488,9 @@ export async function pollP0aSources(env,{
   rows=q.results??[];
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
  const polled=await Promise.all(rows.map(async row=>{
-  try{return await pollOne(env,row,{fetchImpl,now})}
-  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0}}
+  try{return await pollOne(env,row,{fetchImpl,now,requireDue})}
+  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0,
+   storage_readback_verified:false}}
  }));
  const plans=polled.filter(x=>x._p0b_deferred);
  if(plans.length){

@@ -8,6 +8,7 @@
  * 15 source attempts max per consumer invocation.
  */
 import {pollP0aSources} from "./p0a-source-registry.mjs";
+import {dispatchP1BundledDueSources,verifiedP1BundledLeasePairs} from "./p1-source-bundled-dispatch.mjs";
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u,ISO3=/^[A-Z]{3}$/u;
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
 const MAX_DUE=108,SHARDS=10,BATCH=15;
@@ -29,6 +30,10 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
     !Number.isSafeInteger(limit)||limit<1||limit>MAX_DUE||
     !Number.isFinite(now))
   return {status:"P1_DISPATCH_BINDING_UNAVAILABLE",selected:0,queued:0};
+ // Existing 1077-source fanout stays enabled, but one bundled lease row
+ // replaces up to 108 physical per-source dispatcher lease writes.
+ if(env.GEOMACRO_P1_BUNDLED_LEASES_ENABLED==="1")
+  return dispatchP1BundledDueSources(env,{now,limit,shardOf:p1Shard});
  const clock=nowIso(now);
  let rows;
  try{
@@ -107,33 +112,62 @@ export async function consumeP1SourcePollBatch(batch,env,{
  const expected=[];
  for(const msg of batch.messages){
   const item=msg.body;
-  if(item?.kind!=="P1_SOURCE_POLL_V1"||!SOURCE.test(item?.source_id??"")||
+  if(!["P1_SOURCE_POLL_V1","P1_SOURCE_POLL_V2"].includes(item?.kind)||
+     !SOURCE.test(item?.source_id??"")||
      !/^[a-f0-9-]{36}$/iu.test(item?.lease_token??"")||
      p1Shard(item.source_id)!==item.shard||
      typeof item.scheduled_at!=="string"||
      !Number.isFinite(Date.parse(item.scheduled_at))){
    msg.ack();continue;
   }
-  expected.push({msg,source_id:item.source_id,token:item.lease_token});
+  expected.push({msg,source_id:item.source_id,token:item.lease_token,
+   scheduled_at:item.scheduled_at,kind:item.kind});
  }
  if(!expected.length)return {status:"P1_CONSUME_EMPTY",attempted:0};
+ // The new batch lease needs one bounded indexed D1 read for all <=15 queue
+ // IDs, not 15 individual source registry queries. Preserve old V1 leases
+ // during the existing 2-minute rolling Worker deployment window.
+ const v2=expected.filter(x=>x.kind==="P1_SOURCE_POLL_V2");
+ let verified=new Set();
+ if(v2.length){
+  try{verified=await verifiedP1BundledLeasePairs(env,v2,now)}
+  catch{
+   for(const x of expected)x.msg.retry({delaySeconds:30});
+   return {status:"P1_CONSUME_BUNDLE_LEASE_D1_UNAVAILABLE",attempted:0};
+  }
+ }
  const current=new Map();
- // Claim lookup by UUID in D1, bounded 15 IDs, never client-supplied URL.
  for(const item of expected){
-  const r=await env.DB.prepare(
-   "SELECT source_id,poll_dispatch_token,poll_dispatch_lease_until "+
-   "FROM source_registry WHERE source_id=? AND enabled=1"
-  ).bind(item.source_id).first();
-  if(r?.poll_dispatch_token===item.token&&r.poll_dispatch_lease_until>nowIso(now))
-   current.set(item.source_id,item);
-  else item.msg.ack();
+  let eligible=false;
+  if(item.kind==="P1_SOURCE_POLL_V2")
+   eligible=verified.has(item.token+"|"+item.source_id);
+  else{
+   try{
+    const r=await env.DB.prepare(
+     "SELECT source_id,poll_dispatch_token,poll_dispatch_lease_until "+
+     "FROM source_registry WHERE source_id=? AND enabled=1"
+    ).bind(item.source_id).first();
+    eligible=r?.poll_dispatch_token===item.token&&
+      r.poll_dispatch_lease_until>nowIso(now);
+   }catch{
+    item.msg.retry({delaySeconds:30});continue;
+   }
+  }
+  if(!eligible){item.msg.ack();continue}
+  if(current.has(item.source_id)){
+   // Queue is at-least-once. Let one validated item retain the actual
+   // poll CAS; duplicate messages are retried without false poll receipts.
+   item.msg.retry({delaySeconds:30});continue;
+  }
+  current.set(item.source_id,item);
  }
  const ids=[...current.keys()];
  if(!ids.length)return {status:"P1_CONSUME_LEASE_EXPIRED",attempted:0};
  let result;
  try{
   result=await poll({DB:env.DB,...env},{now,fetchImpl,sourceIds:ids,
-   limit:ids.length,...(producerManager?{producerManager}:{})});
+   limit:ids.length,requireDue:true,
+   ...(producerManager?{producerManager}:{})});
  }catch{
   for(const item of current.values())item.msg.retry({delaySeconds:30});
   return {status:"P1_CONSUME_SOURCE_QUERY_FAILED",attempted:0};
@@ -145,10 +179,16 @@ export async function consumeP1SourcePollBatch(batch,env,{
  const outcomes=new Map(result.receipts.map(x=>[x.source_id,x]));
  let attempts=0,failed=0;
  for(const [id,item] of current){
-  if(!outcomes.has(id)||outcomes.get(id)?.state==="NOT_DUE"){
+  const resultForSource=outcomes.get(id);
+  if(!resultForSource||
+     (resultForSource.state==="NOT_DUE"&&item.kind!=="P1_SOURCE_POLL_V2")||
+     resultForSource.storage_readback_verified===false){
+   // Never ACK an attempted source whose D1 state/readback is unverified.
+   // Cron will reschedule after the short dispatch lease expires.
    item.msg.retry({delaySeconds:30});failed++;continue;
   }
-  item.msg.ack();attempts++;
+  item.msg.ack();
+  if(resultForSource.state!=="NOT_DUE")attempts++;
  }
  return {status:failed?"P1_CONSUME_PARTIAL":"P1_CONSUME_POLLED",
   requested:ids.length,attempts,failed,

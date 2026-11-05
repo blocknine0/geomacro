@@ -10,6 +10,8 @@ on:
       - 'scripts/tests/p0a-source-item-bundled-write.test.mjs'
       - 'workers/control-plane/src/index.mjs'
       - 'workers/control-plane/src/p1-source-fanout.mjs'
+      - 'workers/control-plane/src/p1-source-bundled-dispatch.mjs'
+      - 'workers/control-plane/migrations/0127_p1_bundled_source_dispatch.sql'
       - 'workers/control-plane/migrations/0119_p1_source_fanout_585.sql'
       - 'scripts/tests/p1-source-fanout.test.mjs'
       - 'scripts/ops/seed-p1-1077-source-registry.mjs'
@@ -42,5 +44,6 @@ jobs:
           node --check workers/control-plane/src/p0a-source-item-bundled-write.mjs
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/p1-source-fanout.mjs
+          node --check workers/control-plane/src/p1-source-bundled-dispatch.mjs
       - name: P0-A D1 migration and HTTP/format regression tests
         run: node --test scripts/tests/p0a-source-registry-engine.test.mjs scripts/tests/p0a-source-item-bundled-write.test.mjs scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs

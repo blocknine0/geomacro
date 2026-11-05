@@ -11,7 +11,8 @@
     "RISK_GATE_SUPABASE_URL": "https://ymjuwuvbialsevfawvvq.supabase.co",
     "EMAIL_FROM_ADDRESS": "auth@geomacro.live",
     "GEOMACRO_P0B_ADMISSION_ACTIVE": "0",
-    "GEOMACRO_P1_FANOUT_ENABLED": "1"
+    "GEOMACRO_P1_FANOUT_ENABLED": "1",
+    "GEOMACRO_P1_BUNDLED_LEASES_ENABLED": "0"
   },
   "triggers": {
     "crons": [
