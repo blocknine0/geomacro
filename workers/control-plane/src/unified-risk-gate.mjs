@@ -567,8 +567,12 @@ export async function runUnifiedRiskSevenDayRollup(env,{
    risk_signal_rows:signals,corridor_rows:corridors,assessment_rows:0,
    assessment_status:signedGroRows?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO",
    hmac_verified:true};
- }catch{
-  return {ok:false,error:"RISK_GATE_7D_ROLLUP_FAILED"};
+ }catch(error){
+  // Return only an allowlisted symbolic code to the owner-authenticated caller;
+  // never expose provider response bodies, URLs, SQL, or secret material.
+  const raw=String(error?.message??"");
+  const diagnostic=/^[A-Z0-9_]{1,80}$/.test(raw)?raw:"RISK_GATE_7D_ROLLUP_UNCLASSIFIED";
+  return {ok:false,error:"RISK_GATE_7D_ROLLUP_FAILED",diagnostic};
  }
 }
 /** Bounded D1-to-Supabase immutable snapshot delivery.
