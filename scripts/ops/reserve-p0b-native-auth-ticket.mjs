@@ -48,9 +48,11 @@ export function safeP0bWranglerD1Hint(r,secrets=[]){
   .replace(/\b[0-9a-f-]{36}\b/giu,"[ID]")
   .replace(/[A-Za-z0-9_./+=-]{40,}/gu,"[REDACTED]");
  const lines=text.split(/\r?\n/u).filter(line=>
-  /(error|failed|denied|invalid|exception|not found)/iu.test(line)&&
-  !line.includes("--command"));
- return (lines.at(-1)??"").trim().slice(0,180);
+  line.trim()&&!line.includes("--command")&&
+  !/^\s*(node|npx)\s/u.test(line)&&
+  !/\b(select|insert|update|returning)\b/iu.test(line));
+ const errorLine=lines.find(line=>/(error|failed|denied|invalid|exception|not found)/iu.test(line));
+ return (errorLine??lines[0]??"").trim().slice(0,140);
 }
 function executeRemote(sql){
  const config=String(process.env.P0B_QUOTA_WRANGLER_CONFIG??""),version=String(process.env.WRANGLER_VERSION??"");
