@@ -20,9 +20,12 @@ const news='<rss><channel><item><title>Central bank raises policy interest rates
  '<link>https://gov.example.org/article/1</link>'+
  '<pubDate>Sun, 04 Oct 2026 01:00:00 GMT</pubDate></item></channel></rss>';
 
-function dbMock(){
+function dbMock(withP1=false){
  const db=new DatabaseSync(':memory:');
  db.exec(readFileSync(new URL('../../workers/control-plane/migrations/0113_p0a_source_registry.sql',
+  import.meta.url),'utf8'));
+ if(withP1)db.exec(readFileSync(new URL(
+  '../../workers/control-plane/migrations/0119_p1_source_fanout_585.sql',
   import.meta.url),'utf8'));
  const wrap=(sql,args=[])=>({
    bind(...next){return wrap(sql,next)},
@@ -158,5 +161,44 @@ test('D1 upsert/readback, private staging, failure isolation and subsequent 304 
   assert.equal(second.receipts.length,1);
   assert.equal(second.receipts[0].state,'UNCHANGED');
   assert.equal(db.prepare('SELECT count(*) AS n FROM p0a_normalized_source_items').get().n,1);
+ }finally{db.close()}
+});
+
+test('identical source-registry reseed changes zero physical SQLite rows',async()=>{
+ const {db,env}=dbMock();
+ try{
+  const cfg=source('src_identical');
+  assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
+  const before=db.prepare('SELECT total_changes() AS n').get().n;
+  assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
+  assert.equal(db.prepare('SELECT total_changes() AS n').get().n-before,0);
+  const changed={...cfg,polling_interval_sec:600};
+  assert.equal((await upsertP0aSourceRegistry(env,{sources:[changed]})).status,200);
+  assert.equal(db.prepare("SELECT polling_interval_sec FROM source_registry WHERE source_id='src_identical'").get().polling_interval_sec,600);
+ }finally{db.close()}
+});
+test('P1 repeated official RSS poll uses bundled item dedupe and six-hour refresh',async()=>{
+ const {db,env}=dbMock(true);
+ env.GEOMACRO_P1_FANOUT_ENABLED='1';
+ try{
+  const cfg=source('src_p1_bulk');
+  assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
+  const start=Date.parse('2026-10-04T02:00:00Z');
+  const poll=at=>pollP0aSources(env,{now:at,limit:1,
+   sourceIds:['src_p1_bulk'],fetchImpl:async()=>body(news)});
+  const first=await poll(start);
+  assert.equal(first.receipts[0].state,'OBSERVED');
+  const initial=db.prepare('SELECT first_seen_at,last_seen_at,item_id FROM p0a_normalized_source_items').get();
+  assert.ok(initial);
+  assert.equal((await poll(start+6*60000)).receipts[0].state,'OBSERVED');
+  const same=db.prepare('SELECT first_seen_at,last_seen_at,item_id FROM p0a_normalized_source_items').get();
+  assert.deepEqual(same,initial);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM p0a_normalized_source_items').get().n,1);
+  const later=start+7*3600000;
+  assert.equal((await poll(later)).receipts[0].state,'OBSERVED');
+  const refreshed=db.prepare('SELECT first_seen_at,last_seen_at,item_id FROM p0a_normalized_source_items').get();
+  assert.equal(refreshed.first_seen_at,initial.first_seen_at);
+  assert.equal(refreshed.item_id,initial.item_id);
+  assert.equal(refreshed.last_seen_at,new Date(later).toISOString());
  }finally{db.close()}
 });
