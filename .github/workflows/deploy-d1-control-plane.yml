@@ -66,6 +66,8 @@ on:
       - "workers/control-plane/migrations/0110_unified_private_osint_evidence_index.sql"
       - "workers/control-plane/migrations/0119_p1_source_fanout_585.sql"
       - "workers/control-plane/src/p1-source-fanout.mjs"
+      - "workers/control-plane/src/p1-source-bundled-dispatch.mjs"
+      - "workers/control-plane/migrations/0127_p1_bundled_source_dispatch.sql"
       - "scripts/tests/p1-source-fanout.test.mjs"
       - "scripts/ops/seed-p1-1077-source-registry.mjs"
       - "scripts/tests/p1-source-registry-seed.test.mjs"
@@ -477,10 +479,12 @@ jobs:
             if(!hasPollProducer||!hasPollConsumer)
               throw Error('P1_SOURCE_POLL_QUEUE_CONFIG_UNVERIFIED');
             config.vars.GEOMACRO_P1_FANOUT_ENABLED='1';
+            config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='1';
           }else{
             delete config.queues;
             config.vars.GEOMACRO_P0B_ADMISSION_ACTIVE='0';
             config.vars.GEOMACRO_P1_FANOUT_ENABLED='0';
+            config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='0';
           }
           // Public verification material ONLY. No private signer reaches the Worker.
           const keys=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON||'{}');
