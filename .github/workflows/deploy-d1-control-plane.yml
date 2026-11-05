@@ -772,6 +772,16 @@ jobs:
           fi
           echo "PASS: live Taiwan China Bab-el-Mandeb 3-category D1 and private Supabase hash readback; no funds."
 
+      - name: Set up pinned Bun for seven-day risk rollup bootstrap
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.2'
+
+      - name: Backfill retained seven-day Risk Gate rollups (no funds)
+        env:
+          GEOMACRO_CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        run: bun scripts/bootstrap-7day-rollup.ts
+
       - name: Reconcile current-day 207 exact private Supabase SHA receipts when D1 census is complete
         shell: bash
         run: |
