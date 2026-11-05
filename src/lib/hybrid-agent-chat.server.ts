@@ -10,6 +10,7 @@ import { prepareHybridAgentContext } from "./hybrid-agent-context";
 import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import { COUNTRIES_195 } from "./canonical-country-registry-195";
 import { planAskOfficialNumeric } from "./ask-official-numeric.server";
+import { enhanceAskWithOpenAI } from "./ask-openai-grounded.server";
 
 type HybridChatMode = "grounded_ask" | "bounded_follow_up";
 
@@ -130,6 +131,7 @@ export async function executeHybridChatTurn(
   mode: HybridChatMode;
   resolved_question: string;
 }> {
+  const startedAt=Date.now();
   const parsed = prepareHybridAgentContext(input.question, input.history);
   if (!parsed.ok) throw new Error(parsed.code);
   if (parsed.question.length > ASK_GEOMACRO_MAX_LENGTH) {
@@ -162,9 +164,15 @@ export async function executeHybridChatTurn(
   const localized = interpretation
     ? await localizeStaticAskAnswer(answer, interpretation.language)
     : answer;
+  // The browser's 17s SSE deadline covers both source verification and AI.
+  // Source latency has precedence; the optional language model never keeps
+  // an already-verified response hostage or bypasses the existing quotas.
+  const composed = Date.now()-startedAt < 10_000
+    ? await enhanceAskWithOpenAI(resolved.question, localized, clientKey)
+    : localized;
   return {
     answer: /^(?:please\s+)?(?:(?:make it |be )?(?:shorter)|summari[sz]e(?: that| it)?)[.!?]*$/i.test(rawQuestion)
-      ? {...localized, what_changed:"", why_it_matters:"", geomacro_view:""} : localized,
+      ? {...composed, what_changed:"", why_it_matters:"", geomacro_view:""} : composed,
     context_turns: parsed.history.length,
     mode: resolved.mode,
     resolved_question: resolved.question,
