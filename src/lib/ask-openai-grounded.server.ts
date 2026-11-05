@@ -90,7 +90,7 @@ export function safeGroundedOpenAIOutput(
     canonical.why_it_matters,canonical.geomacro_view].join(" ");
   const approved=new Set(numbers(reference));
   if(numbers(Object.values(fields).join(" ")).some(n=>!approved.has(n)))return null;
-  if(canonical.insufficient_evidence&&
+  if((canonical.insufficient_evidence||canonical.low_confidence)&&
     /\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\b/iu
       .test(Object.values(fields).join(" ")))return null;
   return {...canonical,...fields,source_identity_exposed:false,
@@ -134,7 +134,7 @@ export async function enhanceAskWithOpenAI(
       "Return ONLY a JSON object with exactly summary, what_changed, why_it_matters, geomacro_view as strings. "+
       "Answer naturally in the user's language; keep the named country, mineral and requested topic in summary.";
     const payload={
-      model:MODEL,store:false,temperature:0,max_output_tokens:MAX_OUTPUT_TOKENS,
+      model:MODEL,store:false,reasoning:{effort:"none"},temperature:0,max_output_tokens:MAX_OUTPUT_TOKENS,
       instructions:instruction,
       input:JSON.stringify({
         user_question:question,
