@@ -422,7 +422,9 @@ async function pollOne(env,row,{fetchImpl,now}){
   return {source_id:config.source_id,state,accepted,parsed:result.records?.length??0,
     status:result.status??null,used_fallback:result.used_fallback===true,
     p0b_failure_codes};
- }catch{
+ }catch(error){
+  if(env.GEOMACRO_P0A_TEST_DIAGNOSTICS==='1')
+   console.error('P0A_POLL_TEST_ERROR_CLASS_'+String(error?.message??'UNKNOWN').slice(0,120));
   await env.DB.prepare('UPDATE source_registry SET next_poll_at=?,last_state=?,'+
    'consecutive_failures=consecutive_failures+1 WHERE source_id=?')
     .bind(iso(now+Math.max(config.polling_interval_sec*1000,60000)),
