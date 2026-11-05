@@ -105,13 +105,31 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
   reads++;
   if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
   if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
+  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
+   success:true,result:["workers","durable_objects"].map((product_id,i)=>({
+    id:"block-"+i,product_id,enabled:true,action:"usage_block",
+    threshold_cents:1,version:1,current_state:{status:"below_limit"},
+   })),
+  })};
   throw Error("UNEXPECTED_PROVIDER");
  };
  const granted=await checkD1BundledWork({env,now,fetchImpl});
- assert.equal(reads,2);
+ assert.equal(reads,3);
  assert.equal(granted.critical,true);
  assert.equal(granted.d1_queries,0);
  assert.equal(granted.paid_calls,0);
+ const blocked=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
+  if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
+  if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
+  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
+   success:true,result:[{id:"not-a-lock",product_id:"workers",
+    enabled:true,action:"notification",threshold_cents:1,version:1,
+    current_state:{status:"below_limit"}}],
+  })};
+  throw Error("UNEXPECTED_PROVIDER");
+ }});
+ assert.equal(blocked.critical,false);
+ assert.equal(blocked.state,"HELD");
  const free=await checkD1BundledWork({
   env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
   now,fetchImpl});
