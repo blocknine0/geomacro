@@ -166,7 +166,8 @@ export async function consumeP1SourcePollBatch(batch,env,{
  let result;
  try{
   result=await poll({DB:env.DB,...env},{now,fetchImpl,sourceIds:ids,
-   limit:ids.length,...(producerManager?{producerManager}:{})});
+   limit:ids.length,requireDue:true,
+   ...(producerManager?{producerManager}:{})});
  }catch{
   for(const item of current.values())item.msg.retry({delaySeconds:30});
   return {status:"P1_CONSUME_SOURCE_QUERY_FAILED",attempted:0};
