@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
-import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket} from "../ops/reserve-p0b-native-auth-ticket.mjs";
+import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure} from "../ops/reserve-p0b-native-auth-ticket.mjs";
 test("native auth quota ticket reuses canonical atomic account ledger",()=>{
  const q=buildP0bNativeAuthTicketSql(new Date("2026-11-05T11:00:00.000Z"));
  assert.match(q.quotaSql,/ON CONFLICT\(day_utc\) DO UPDATE/u);
@@ -15,3 +15,9 @@ test("D1 reservation requires the atomic ticket and receipt readback",async()=>{
  assert.equal(result.reserved,true);assert.equal(result.readback_verified,true);assert.equal(result.b2_operation_performed,false);assert.equal(calls.length,3);
 });
 test("quota refusal stops before receipt creation",async()=>{let n=0;await assert.rejects(()=>reserveP0bNativeAuthTicket({execute:async()=>{n++;return {results:[]}}}),/P0B_B2_NATIVE_AUTH_D1_RESERVATION_REFUSED/u);assert.equal(n,1);});
+test("Wrangler D1 failures expose only a safe diagnostic class",()=>{
+ assert.equal(classifyP0bWranglerD1Failure({stderr:"no such table: b2_account_daily_request_quota"}),"SQL");
+ assert.equal(classifyP0bWranglerD1Failure({stderr:"Error 10000: unauthorized"}),"AUTH");
+ assert.equal(classifyP0bWranglerD1Failure({error:{code:"ETIMEDOUT"}}),"TIMEOUT");
+ assert.equal(classifyP0bWranglerD1Failure({stderr:"opaque"}),"UNKNOWN");
+});

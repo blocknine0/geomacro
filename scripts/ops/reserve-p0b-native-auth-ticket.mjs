@@ -22,11 +22,26 @@ export async function reserveP0bNativeAuthTicket({execute,now=new Date()}={}){
  if(!receipt||!Number.isSafeInteger(Number(receipt.requests))||Number(receipt.requests)<1)fail("P0B_B2_NATIVE_AUTH_D1_READBACK_FAILED");
  return {ok:true,reserved:true,day_utc:q.day,kind:"NATIVE_AUTH",readback_verified:true,b2_operation_performed:false,chargeable:false};
 }
+export function classifyP0bWranglerD1Failure(r){
+ if(r?.error?.code==="ETIMEDOUT")return "TIMEOUT";
+ if(r?.error?.code==="ENOENT")return "WRANGLER_EXECUTABLE_MISSING";
+ const text=String(r?.stderr??r?.stdout??"").replace(/\u001b\[[0-9;]*m/gu,"").toLowerCase();
+ if(/no such table|no such column|sqlite_error|syntax error/u.test(text))return "SQL";
+ if(/permission|unauthorized|forbidden|authentication|not authorized/u.test(text))return "AUTH";
+ if(/database is locked|sqlite_busy|too many requests|rate limit/u.test(text))return "TRANSIENT";
+ if(/database.*not found|unknown database|not_found/u.test(text))return "DATABASE";
+ return "UNKNOWN";
+}
 function executeRemote(sql){
  const config=String(process.env.P0B_QUOTA_WRANGLER_CONFIG??""),version=String(process.env.WRANGLER_VERSION??"");
  if(!config||!/^\d+\.\d+\.\d+$/u.test(version))fail("P0B_QUOTA_WRANGLER_CONFIG_MISSING");
  const r=spawnSync("npx",["-y","wrangler@"+version,"d1","execute","DB","--remote","--json","--config",config,"--command",sql],{encoding:"utf8",timeout:120000,maxBuffer:1024*1024});
- if(r.error||r.status!==0)fail("P0B_B2_NATIVE_AUTH_D1_EXECUTION_FAILED");
+ if(r.error||r.status!==0){
+  const diagnostic=classifyP0bWranglerD1Failure(r);
+  console.error("P0B_D1_WRANGLER_DIAGNOSTIC="+diagnostic);
+  if(Number.isInteger(r.status))console.error("P0B_D1_WRANGLER_EXIT_STATUS="+r.status);
+  fail("P0B_B2_NATIVE_AUTH_D1_EXECUTION_FAILED");
+ }
  try{return JSON.parse(r.stdout)}catch{fail("P0B_B2_NATIVE_AUTH_D1_INVALID_JSON")}
 }
 if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
