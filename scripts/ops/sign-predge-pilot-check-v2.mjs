@@ -8,7 +8,7 @@
  */
 import {createPrivateKey,createPublicKey,sign as signBytes} from "node:crypto";
 import {writeFileSync} from "node:fs";
-import {fetchProtectedPilot} from "./predge-pilot-http-retry.mjs";
+import {fetchProtectedPilot,safePilotHttpFailureCode} from "./predge-pilot-http-retry.mjs";
 import {buildUnsignedPilotCheck,signablePilotCheck,toBytes,sha256,
   PINNED_PUBLIC_SPKI,MAX_WIRE_BYTES,verifySignedPilotCheck}
   from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
@@ -27,7 +27,14 @@ async function main(){
   const r=await fetchProtectedPilot(BASE+"/v1/partner/predge/derived-structural-72h",{
     headers:{authorization:"Bearer "+token,accept:"application/json"},
     redirect:"error",cache:"no-store"});
-  if(r.status!==200)throw Error("AUTHENTICATED_RESEARCH_FEED_UNAVAILABLE_"+r.status);
+  if(r.status!==200){
+    const code=await safePilotHttpFailureCode(r,[
+      "PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE","PREDGE_RESEARCH_D1_UNAVAILABLE",
+      "PREDGE_RESEARCH_CONTRACT_UNAVAILABLE","PREDGE_RESEARCH_RECORD_NOT_ALLOWED",
+      "PREDGE_RESEARCH_AUTH_UNCONFIGURED","PREDGE_RESEARCH_DAILY_LIMIT",
+      "PREDGE_RESEARCH_PILOT_WINDOW_EXPIRED"]);
+    throw Error("AUTHENTICATED_RESEARCH_FEED_UNAVAILABLE_"+r.status+"_"+code);
+  }
   if(Number(r.headers.get("content-length")??0)>4_000_000)throw Error("FEED_OVERSIZE");
   const content=await r.text();
   if(Buffer.byteLength(content,"utf8")>4_000_000)throw Error("FEED_OVERSIZE");
