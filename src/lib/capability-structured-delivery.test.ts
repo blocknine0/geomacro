@@ -30,6 +30,7 @@ function fixture(){return {
       source_references:[{event_reference:"case-1",content_sha256:["d".repeat(64)]}],
       gro_signature:{signature:"sign",payload_sha256:"d".repeat(64)},
       seven_day_corridor_friction_history:{points:[{day_utc:"2026-10-23"}]},
+      seven_day_verified_subject_history:{points:[{day_utc:"2026-10-23",snapshot_sha256:"d".repeat(64)}]},
       raw_evidence_chain:{gro_object_id:"proof"},
       b2_archive:{b2_archive_link:"b2://geomacro-private-archive/evidence.json"},
     },
