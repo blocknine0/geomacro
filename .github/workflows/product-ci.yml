@@ -34,7 +34,7 @@ jobs:
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
-        run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs
+        run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
 
       - name: Daily official Finds original-date, attribution and no-OSINT contracts
         run: node --test scripts/tests/public-daily-official-finds.test.mjs
