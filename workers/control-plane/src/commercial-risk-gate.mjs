@@ -131,6 +131,7 @@ export async function commercialRiskGateEvaluate(request,env){
    row.status==='OBSERVED_UNVERIFIED'?'OBSERVED':'NO_VERIFIED_SIGNAL';
  }
  const bodyOut={provider:'GeoMacro Risk Intelligence',
+  evaluated_at:timestamp,
   subject:{type:body.target_type,id:body.target_id},
   metric_id:`GSRM-${body.target_id}-${new Date().toISOString().slice(0,10).replaceAll('-','')}`,
   tier:deliveredRule.label,requested_tier:TIERS[tier].label,delivered_tier:deliveredRule.label,
