@@ -11,7 +11,7 @@ import {pollP0aSources} from "./p0a-source-registry.mjs";
 import {dispatchP1BundledDueSources,verifiedP1BundledLeasePairs} from "./p1-source-bundled-dispatch.mjs";
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u,ISO3=/^[A-Z]{3}$/u;
 const CATEGORIES=new Set(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
-const MAX_DUE=108,SHARDS=10,BATCH=15;
+const MAX_DUE=105,SHARDS=10,BATCH=15;
 const nowIso=(ms)=>new Date(ms).toISOString();
 const response=(body,code=200)=>Response.json(body,{status:code,headers:{
  "Cache-Control":"private, no-store","X-Robots-Tag":"noindex,nofollow"}});
@@ -103,12 +103,85 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
   logical_shards:SHARDS,source_per_minute_cap:MAX_DUE,
   no_source_payloads_or_urls_in_queue:true};
 }
+/**
+ * V3 one-message/15-source queue consumer. A single D1 lease page authenticates
+ * the entire source-ID set; any unverified D1 response retries the WHOLE
+ * message. Already-committed sources become NOT_DUE on replay, so one bundle
+ * retry never re-invents a poll receipt or duplicates ingest.
+ */
+export async function consumeP1SourcePollBundleMessage(msg,env,{
+ now=Date.now(),fetchImpl=fetch,producerManager=null,poll=pollP0aSources
+}={}){
+ const item=msg?.body,ids=item?.source_ids;
+ if(item?.kind!=="P1_SOURCE_POLL_V3"||
+    !Array.isArray(ids)||ids.length<1||ids.length>BATCH||
+    ids.some(x=>!SOURCE.test(x))||new Set(ids).size!==ids.length||
+    Object.keys(item).sort().join(",")!=="kind,lease_token,scheduled_at,source_ids"||
+    !/^[a-f0-9-]{36}$/iu.test(item.lease_token??"")||
+    typeof item.scheduled_at!=="string"||
+    !Number.isFinite(Date.parse(item.scheduled_at))){
+  msg.ack();return {status:"P1_V3_INVALID_MESSAGE",attempted:0};
+ }
+ const expected=ids.map(source_id=>({
+  source_id,token:item.lease_token,scheduled_at:item.scheduled_at,
+ }));
+ let leases;
+ try{leases=await verifiedP1BundledLeasePairs(env,expected,now)}
+ catch{
+  msg.retry({delaySeconds:30});
+  return {status:"P1_V3_D1_LEASE_UNAVAILABLE",attempted:0};
+ }
+ if(expected.some(x=>!leases.has(x.token+"|"+x.source_id))){
+  // Expired/invalid lease is not authorization; the canonical source due
+  // state remains scheduled for a new dispatch after bundle expiry.
+  msg.ack();
+  return {status:"P1_V3_LEASE_EXPIRED",attempted:0};
+ }
+ let result;
+ try{
+  result=await poll({DB:env.DB,...env},{now,fetchImpl,
+   sourceIds:ids,limit:ids.length,requireDue:true,
+   ...(producerManager?{producerManager}:{})});
+ }catch{
+  msg.retry({delaySeconds:30});
+  return {status:"P1_V3_SOURCE_POLL_FAILED",attempted:0};
+ }
+ if(result?.ok!==true||!Array.isArray(result.receipts)){
+  msg.retry({delaySeconds:30});
+  return {status:"P1_V3_SOURCE_RECEIPTS_UNVERIFIED",attempted:0};
+ }
+ const receipts=new Map(result.receipts.map(x=>[x.source_id,x]));
+ if(receipts.size!==ids.length||ids.some(id=>{
+  const receipt=receipts.get(id);
+  return !receipt||receipt.storage_readback_verified===false;
+ })){
+  msg.retry({delaySeconds:30});
+  return {status:"P1_V3_SOURCE_READBACK_UNVERIFIED",attempted:0};
+ }
+ msg.ack();
+ return {status:"P1_V3_POLLED",requested:ids.length,
+  attempts:ids.filter(id=>receipts.get(id).state!=="NOT_DUE").length,
+  physically_billed_queue_messages:1,source_ids_in_message:ids.length,
+  rights_promoted:false};
+}
 export async function consumeP1SourcePollBatch(batch,env,{
  now=Date.now(),fetchImpl=fetch,producerManager=null,poll=pollP0aSources
 }={}){
  if(batch?.queue!=="geomacro-source-poll"||!Array.isArray(batch.messages)||
     batch.messages.length>BATCH||!env?.DB?.prepare)
   throw Error("P1_QUEUE_CONSUMER_BINDING_INVALID");
+ // Paid-mode runtime sets max_batch_size:1 so a single invocation processes
+ // at most 15 source polls. Legacy V1/V2 messages remain compatible.
+ if(batch.messages.length===1&&
+    batch.messages[0]?.body?.kind==="P1_SOURCE_POLL_V3")
+  return consumeP1SourcePollBundleMessage(batch.messages[0],env,{
+    now,fetchImpl,producerManager,poll});
+ if(batch.messages.some(msg=>msg?.body?.kind==="P1_SOURCE_POLL_V3")){
+  // The deployment must never open a 15-message * 15-source CPU burst.
+  // Keep bundles intact, recover via provider retry when batch config lags.
+  for(const msg of batch.messages)msg.retry({delaySeconds:30});
+  return {status:"P1_V3_CONSUMER_BATCH_SIZE_HELD",attempted:0};
+ }
  const expected=[];
  for(const msg of batch.messages){
   const item=msg.body;
