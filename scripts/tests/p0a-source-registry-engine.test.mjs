@@ -224,3 +224,24 @@ test("P1 source poll CAS rejects duplicate queue message before next due clock",
   assert.equal(requests,1);
  }finally{db.close()}
 });
+
+test("source-poll lock D1 quota failure is marked unverified, never a durable ACK",async()=>{
+ const {db,env}=dbMock(true);
+ env.GEOMACRO_P1_FANOUT_ENABLED="1";
+ try{
+  assert.equal((await upsertP0aSourceRegistry(env,{
+   sources:[source("src_quota_fail")]})).status,200);
+  const original=env.DB.prepare;
+  env.DB.prepare=(sql)=>{
+   if(sql.startsWith("UPDATE source_registry SET next_poll_at=? WHERE source_id=?"))
+    return {bind:()=>({run:async()=>{throw Error("D1_FREE_WRITE_LIMIT_7500")}})};
+   return original(sql);
+  };
+  const r=await pollP0aSources(env,{now:Date.parse("2026-10-04T02:00:00Z"),
+   sourceIds:["src_quota_fail"],requireDue:true,limit:1});
+  assert.equal(r.ok,true);
+  assert.equal(r.receipts[0].state,"UNAVAILABLE");
+  assert.equal(r.receipts[0].storage_readback_verified,false);
+  assert.equal(r.receipts[0].accepted,0);
+ }finally{db.close()}
+});
