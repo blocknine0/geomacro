@@ -23,13 +23,19 @@ function signal(i:number){
 }
 const env=(rows:unknown[]=[],count=1)=>({PREDGE_RESEARCH_NEWS_TOKEN:TOKEN,
  DB:{
-  batch:vi.fn(async()=>[
-   {success:true,results:[{request_count:count}]},
-   {success:true,results:[{request_count:count}]},
-  ]),
-  prepare:vi.fn(()=>({bind:(_since:any,_first:any,offset:number)=>({
-   all:async()=>({results:rows.slice(offset||0,(offset||0)+251).map(story=>({story_json:JSON.stringify(story)}))})
-  })})),
+  batch:vi.fn(async()=>{throw Error("PREDGE_MUST_NOT_USE_TWO_WRITES")}),
+  prepare:vi.fn((sql:string)=>({
+   bind:(...params:any[])=>({
+    first:async()=>{
+     if(!sql.includes("INSERT INTO central_security_budget"))
+      throw Error("UNEXPECTED_BUDGET_SQL");
+     return {request_count:count};
+    },
+    all:async()=>({results:rows.slice(Number(params.at(-2))||0,
+     (Number(params.at(-2))||0)+251).map(story=>({
+      story_json:JSON.stringify(story)}))})
+   })
+  })),
  }});
 describe("one grant for all qualifying Predge research news, still no resale",()=>{
  it("is authenticated and returns exactly the same D1 IDs without per-item approvals",async()=>{
@@ -54,7 +60,9 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   expect(response.headers.get("vary")).toBe("Authorization");
   expect(data.daily_utc_request_hard_cap).toBe(500);
   expect(data.distributed_rate_governor).toBe("ATOMIC_CLOUDFLARE_D1_FAIL_CLOSED");
-  expect(seeded.DB.batch).toHaveBeenCalledTimes(1);
+  expect(seeded.DB.batch).not.toHaveBeenCalled();
+  expect(seeded.DB.prepare.mock.calls.filter(([sql])=>
+   String(sql).includes("INSERT INTO central_security_budget"))).toHaveLength(1);
  });
  it("gates invalid/missing token, malformed key and missing config",async()=>{
   const e=env([signal(0)]);
@@ -65,7 +73,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
   }
   const none=await predgeResearchDerivedNewsFeed(make(),{...e,PREDGE_RESEARCH_NEWS_TOKEN:""},NOW);
   expect(none.status).toBe(503);
-  expect(e.DB.batch).not.toHaveBeenCalled();
+  expect(e.DB.prepare).not.toHaveBeenCalled();
   const post=new Request(make().url,{method:"POST",headers:{authorization:"Bearer "+TOKEN}});
   expect((await predgeResearchDerivedNewsFeed(post,e,NOW)).status).toBe(405);
   expect(e.DB.batch).not.toHaveBeenCalled();
@@ -85,7 +93,7 @@ describe("one grant for all qualifying Predge research news, still no resale",()
  });
  it("denies protected reads on governor outage and never drops into public fallback",async()=>{
   const broken=env([signal(0)]);
-  broken.DB.batch=vi.fn(async()=>{throw Error("D1 quota outage")});
+  broken.DB.prepare=vi.fn(()=>{throw Error("D1 quota outage")});
   const r=await predgeResearchDerivedNewsFeed(make(),broken,NOW);
   expect(r.status).toBe(503);
   expect((await r.json()).error).toBe("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE");
