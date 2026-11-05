@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
+      RISK_GATE_COUNTRY_SCOPE: HOT50
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+      HOT50_TIER_FULL_CENSUS: "1"
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       WORKER_URL: https://geomacro-control-plane.daspallab202391.workers.dev
     steps:
@@ -27,7 +31,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Verify all Hot50 countries across three prices with exact downstream replay
+        run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
       - name: Reconcile exact 207 current-day D1 HMAC snapshots against private Supabase SHA (no funds)
+        if: env.RISK_GATE_COUNTRY_SCOPE != 'HOT50'
         shell: bash
         run: |
           set -euo pipefail
@@ -39,6 +46,7 @@ jobs:
           export CONTROL_PLANE_TOKEN
           node scripts/ops/reconcile-unified-risk-207-production.mjs
       - name: Verify owner-only daily D1 and Supabase 207-snapshot receipts
+        if: env.RISK_GATE_COUNTRY_SCOPE != 'HOT50'
         shell: bash
         run: |
           set -euo pipefail
