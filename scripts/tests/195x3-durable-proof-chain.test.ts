@@ -152,7 +152,22 @@ test("archive failures disclose only safe class, never credential/endpoint conte
  expect(classifyGlobalProofArchiveFailure(Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED")))
    .toBe("GLOBAL_PROOF_PUBLISH_B2_SHARED_QUOTA_HELD");
  expect(classifyGlobalProofArchiveFailure(Error("B2_GET_FAILED_403_AccessDenied_secret")))
-   .toBe("GLOBAL_PROOF_PUBLISH_B2_ACCESS_DENIED");
+   .toBe("GLOBAL_PROOF_PUBLISH_B2_READ_ACCESS_DENIED");
+ expect(classifyGlobalProofArchiveFailure(Error("B2_PUT_FAILED_403_AccessDenied")))
+   .toBe("GLOBAL_PROOF_PUBLISH_B2_WRITE_ACCESS_DENIED");
  const text="response includes private-token-should-not-appear";
  expect(classifyGlobalProofArchiveFailure(Error(text))).not.toContain(text);
+});
+
+test("dedicated archive writer must have paired credentials and independent reader",async()=>{
+ const b2=memoryStore();
+ await expect(archiveGlobalCountryAudit({
+  audit:makeAudit(false),env:{...ENV,B2_ARCHIVE_WRITE_KEY_ID:"writer-only"},
+  b2,now:new Date(clock),
+ })).rejects.toThrow("DEDICATED_WRITER_CREDENTIAL_PAIR_INCOMPLETE");
+ await expect(archiveGlobalCountryAudit({
+  audit:makeAudit(false),env:{...ENV,B2_ARCHIVE_WRITE_KEY_ID:ENV.B2_ARCHIVE_READ_KEY_ID,
+    B2_ARCHIVE_WRITE_APPLICATION_KEY:"separate-secret"},
+  b2,now:new Date(clock),
+ })).rejects.toThrow("DEDICATED_WRITER_AND_READER_MUST_DIFFER");
 });

@@ -28,6 +28,14 @@ function config(env=process.env){
      !env.B2_ARCHIVE_READ_KEY_ID||!env.B2_ARCHIVE_READ_APPLICATION_KEY||
      env.B2_ARCHIVE_READ_KEY_ID===env.B2_KEY_ID)
     fail("GOVERNED_MAIN_CREDENTIALS_REQUIRED");
+  // Dedicated archive writer may be scoped narrowly to this proof prefix.
+  // Reject incomplete pairs and never weaken independent readback.
+  const writerId=String(env.B2_ARCHIVE_WRITE_KEY_ID??"").trim();
+  const writerSecret=String(env.B2_ARCHIVE_WRITE_APPLICATION_KEY??"").trim();
+  if(Boolean(writerId)!==Boolean(writerSecret))
+    fail("DEDICATED_WRITER_CREDENTIAL_PAIR_INCOMPLETE");
+  if(writerId && env.B2_ARCHIVE_READ_KEY_ID===writerId)
+    fail("DEDICATED_WRITER_AND_READER_MUST_DIFFER");
   return env;
 }
 export async function archiveGlobalCountryAudit({
@@ -49,7 +57,8 @@ export async function archiveGlobalCountryAudit({
   }
   const client=b2??createB2Client({
     endpointUrl:"https://s3.us-east-005.backblazeb2.com",
-    accessKey:env.B2_KEY_ID,secretKey:env.B2_APPLICATION_KEY,
+    accessKey:env.B2_ARCHIVE_WRITE_KEY_ID?.trim()||env.B2_KEY_ID,
+    secretKey:env.B2_ARCHIVE_WRITE_APPLICATION_KEY?.trim()||env.B2_APPLICATION_KEY,
     readAccessKey:env.B2_ARCHIVE_READ_KEY_ID,
     readSecretKey:env.B2_ARCHIVE_READ_APPLICATION_KEY,
     bucket:"geomacro-private-archive",
@@ -124,9 +133,12 @@ export function classifyGlobalProofArchiveFailure(err){
     /^B2_REQUEST_BUDGET_EXHAUSTED$/u.test(m)||
     /^B2_(?:TRANSACTION_CAP_EXCEEDED|DOWNLOAD_CAP_EXCEEDED)$/u.test(m))
    return "GLOBAL_PROOF_PUBLISH_B2_SHARED_QUOTA_HELD";
- if(/^B2_(?:GET|PUT|HEAD)_FAILED_403_/u.test(m)||
-    /^B2_NATIVE_(?:AUTHORIZE|GET)_FAILED_403_/u.test(m))
-   return "GLOBAL_PROOF_PUBLISH_B2_ACCESS_DENIED";
+ if(/^B2_PUT_FAILED_403_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_WRITE_ACCESS_DENIED";
+ if(/^B2_(?:GET|HEAD)_FAILED_403_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_READ_ACCESS_DENIED";
+ if(/^B2_NATIVE_(?:AUTHORIZE|GET)_FAILED_403_/u.test(m))
+   return "GLOBAL_PROOF_PUBLISH_B2_NATIVE_READ_ACCESS_DENIED";
  if(/^B2_(?:GET|PUT|HEAD)_FAILED_429_/u.test(m)||
     m==="B2_PROVIDER_THROTTLED")
    return "GLOBAL_PROOF_PUBLISH_B2_THROTTLED";
