@@ -43,8 +43,8 @@ test("owner-only 18-page SHA repair route is behind existing admin auth and cove
 });
 
 test("deploy workflow binds the configured Risk Gate Supabase secret",()=>{
- assert.match(workflow,/RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: \\$\\{\\{ secrets\\.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY \\}\\}/);
- assert.doesNotMatch(workflow,/RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: \\$\\{\\{ secrets\\.SUPABASE_SERVICE_ROLE_KEY \\}\\}/);
+ assert.ok(workflow.includes("RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY }}"));
+ assert.ok(!workflow.includes("RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"));
 });
 
 test("Supabase opaque secret keys use apikey only while legacy service_role keeps Bearer auth",()=>{
