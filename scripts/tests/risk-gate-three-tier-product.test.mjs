@@ -183,6 +183,7 @@ test("Complex verified signature, 7-day signed-history holes and private B2 refe
  assert.equal(r.seven_day_corridor_friction_history.window_days,7);
  assert.equal(r.seven_day_corridor_friction_history.points.length,7);
  assert.equal(r.seven_day_corridor_friction_history.verified_score_days,7);
+ assert.equal(r.seven_day_verified_subject_history.verified_score_days,7);
  assert.equal(r.seven_day_corridor_friction_history.trend,"FALLING");
  assert.equal(r.seven_day_corridor_friction_history.latest_minus_earliest,-20);
  assert.equal(r.b2_archive.b2_archive_link,
@@ -208,6 +209,7 @@ test("Country Complex is allowed only after 7 signed country days with verified 
  assert.equal(r.status,"READY");
  assert.equal(r.chargeable,true);
  assert.equal(r.seven_day_country_risk_history.verified_score_days,7);
+ assert.equal(r.seven_day_verified_subject_history.verified_score_days,7);
  assert.equal(r.seven_day_corridor_friction_history,null);
  assert.equal(r.execution_authorized,false);
  assert.equal(r.charged,false);
