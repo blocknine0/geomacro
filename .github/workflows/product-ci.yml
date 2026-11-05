@@ -129,6 +129,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Predge research D1 503 recovery - exact one-row shared quota (offline)
+        run: node --test scripts/tests/predge-research-one-row-d1.test.mjs
+
       - name: Launch news taxonomy and bounded discovery (offline)
         run: node --test scripts/tests/launch-news-coverage.test.mjs
 
