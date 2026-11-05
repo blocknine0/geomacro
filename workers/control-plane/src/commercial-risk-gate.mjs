@@ -17,13 +17,14 @@ const sha=async value=>Array.from(new Uint8Array(await crypto.subtle.digest(
  'SHA-256',new TextEncoder().encode(value))),x=>x.toString(16).padStart(2,'0')).join('');
 const validTier=t=>Object.hasOwn(TIERS,t);
 
-async function evaluateInternal(request,env,target,tier){
+async function evaluateInternal(request,env,target,tier,approvedThresholds=null){
  const token=String(env?.RISK_GATE_TIERED_TOKEN??'');
  if(!HASH.test(token))return {response:json({ok:false,error:'RISK_GATE_INTERNAL_UNAVAILABLE'},503)};
  const internal=new Request(new URL('/v1/risk-gate/unified/evaluate',request.url),{
   method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${token}`},
   body:JSON.stringify({target_type:target.target_type,target_id:target.target_id,
-   product_tier:tier,client_policy:'STRICT'}),
+   product_tier:tier,client_policy:'STRICT',
+   ...(approvedThresholds?{approved_thresholds:approvedThresholds}:{})}),
  });
  const response=await unifiedRiskGateEvaluate(internal,env);
  let payload;try{payload=await response.json()}catch{return {response:json({ok:false,error:'RISK_GATE_RESPONSE_INVALID'},503)}}
@@ -71,10 +72,16 @@ export async function commercialRiskGateEvaluate(request,env){
   body=JSON.parse(raw);
  }catch{return json({ok:false,error:'INVALID_JSON'},400)}
  if(!body||typeof body!=='object'||Array.isArray(body)||
-   Object.keys(body).some(k=>!['target_type','target_id','tier','request_id'].includes(k))||
+   Object.keys(body).some(k=>!['target_type','target_id','tier','request_id','approved_thresholds'].includes(k))||
    !['COUNTRY','CORRIDOR'].includes(body.target_type)||typeof body.target_id!=='string'||
    body.target_id.length>64||!validTier(body.tier))
   return json({ok:false,error:'INVALID_RISK_GATE_REQUEST'},400);
+ const approved=body.approved_thresholds;
+ if(approved!==undefined&&(!approved||typeof approved!=='object'||Array.isArray(approved)||
+   Object.keys(approved).some(k=>!['block_at','pass_below','minimum_confidence'].includes(k))||
+   ![approved.block_at,approved.pass_below,approved.minimum_confidence].every(x=>typeof x==='number'&&Number.isFinite(x)&&x>=0&&x<=1)||
+   approved.pass_below>=approved.block_at))
+  return json({ok:false,error:'INVALID_POLICY_PROFILE'},400);
  const requestId=body.request_id??request.headers.get('idempotency-key');
  if(typeof requestId!=='string'||!REQUEST_ID.test(requestId))
   return json({ok:false,error:'IDEMPOTENCY_KEY_REQUIRED'},400);
@@ -83,7 +90,7 @@ export async function commercialRiskGateEvaluate(request,env){
  try{principal=await authorizeCanonicalCustomerPaid(env.DB,env,apiKey,requested.capability)}
  catch(error){if(error instanceof CustomerPaidError)return json({ok:false,error:error.code},error.status);return json({ok:false,error:'CUSTOMER_PAID_AUTHORIZATION_UNAVAILABLE'},503)}
  const target={target_type:body.target_type,target_id:body.target_id};
- let evaluated=await evaluateInternal(request,env,target,tier);
+ let evaluated=await evaluateInternal(request,env,target,tier,approved??null);
  if(evaluated.response)return evaluated.response;
  if(evaluated.status<200||evaluated.status>=300||evaluated.payload?.ok!==true)
   return json({ok:false,error:evaluated.payload?.error??'RISK_GATE_EVALUATION_FAILED',chargeable:false},evaluated.status||503);
@@ -93,7 +100,7 @@ export async function commercialRiskGateEvaluate(request,env){
   try{deliveredEntitlement=await authorizeCanonicalCustomerPaid(env.DB,env,apiKey,TIERS.basic_focused.capability)}
   catch(error){if(error instanceof CustomerPaidError)return json({ok:false,error:'COMPLEX_UNAVAILABLE_BASIC_ENTITLEMENT_REQUIRED',requested_tier:tier,chargeable:false},error.status);return json({ok:false,error:'CUSTOMER_PAID_AUTHORIZATION_UNAVAILABLE'},503)}
   delivered='basic_focused';
-  evaluated=await evaluateInternal(request,env,target,delivered);
+  evaluated=await evaluateInternal(request,env,target,delivered,approved??null);
   if(evaluated.response)return evaluated.response;
   if(evaluated.status<200||evaluated.status>=300||evaluated.payload?.ok!==true)
    return json({ok:false,error:'BASIC_DOWNGRADE_EVALUATION_FAILED',chargeable:false},evaluated.status||503);
@@ -134,6 +141,26 @@ export async function commercialRiskGateEvaluate(request,env){
   chargeable:true,cost_usd:Number((deliveredRule.price/100).toFixed(2)),
   request_id:requestId,usage_ledger_id:logged.entry.ledger_id,
   downgraded:delivered!==tier,tiered_product:product,
+  policy_profile_applied:approved??null,
+  advisory_decision:evaluated.payload.client_policy_decision==="GATE_PASS"?"CONTINUE":
+   evaluated.payload.client_policy_decision==="GATE_BLOCKED"?"PAUSE":
+   evaluated.payload.client_policy_decision==="GATE_HOLD"?"REQUIRE_APPROVAL":"REQUIRE_APPROVAL",
+  reason_codes:product.status==="READY"?["VERIFIED_TIER_DELIVERED"]:["TIER_EVIDENCE_NOT_READY"],
+  primary_driver:snapshot.dominant_risk??"NO_DOMINANT_DRIVER",
+  affected_domain:categoryRows.find(row=>String(row.category).toLowerCase().includes(String(snapshot.dominant_risk??"").toLowerCase()))?.category??null,
+  severity_score:product.risk_score_0_100??snapshot.verified_live_scoring?.verified_score_0_100??null,
+  suggested_mitigation:evaluated.payload.intraday_override?{exposure_cap_ratio:0,settlement_delay_hours:24}:
+   evaluated.payload.client_policy_decision==="GATE_HOLD"?{exposure_cap_ratio:0,settlement_delay_hours:24}:
+   evaluated.payload.client_policy_decision==="GATE_BLOCKED"?{exposure_cap_ratio:0,settlement_delay_hours:0}:
+   {exposure_cap_ratio:1,settlement_delay_hours:0},
+  intraday_override:evaluated.payload.intraday_override===true,
+  audit_receipt_hash:snapshot.audit_receipt_hash,
+  audit_receipt_signature:snapshot.audit_receipt_signature,
+  audit_receipt_signature_key_id:snapshot.audit_receipt_signature_key_id,
+  audit_receipt_signature_scheme:snapshot.audit_receipt_signature_scheme,
+  audit_receipt_signature_scope:snapshot.audit_receipt_signature_scope,
+  audit_receipt_response_hash:snapshot.audit_receipt_response_hash??null,
+  execution_authorized:false,
  };
  return json(bodyOut,200,{'X-GeoMacro-Provider':'GeoMacro Risk Intelligence',
   'X-GeoMacro-Metric-ID':bodyOut.metric_id,'X-GeoMacro-Tier':bodyOut.tier,
