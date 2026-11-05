@@ -56,6 +56,7 @@
     "category-endpoint-live-acceptance.yml",
     "circle-x402-prelaunch-readiness.yml",
     "cloud-historical-gri-b2-restore.yml",
+    "cloudflare-five-usd-spend-blocks.yml",
     "codeql-alert-location-readback.yml",
     "codeql-security.yml",
     "coinbase-x402-base-sepolia.yml",
@@ -401,6 +402,7 @@
   "criticalWorkflowFiles": [
     "auto-ingest-news.yml",
     "b2-raw-storage-maintenance.yml",
+    "cloudflare-five-usd-spend-blocks.yml",
     "codeql-security.yml",
     "commercial-api-production-acceptance.yml",
     "current-original-private-signing-intake.yml",
@@ -472,7 +474,8 @@
     "ingest-reliefweb-live.yml": "Ingest ReliefWeb live metadata into canonical private D1",
     "rss-private-d1-15m.yml": "RSS canonical private D1 originals every 15 minutes",
     "part2-source-d1-acceptance.yml": "Part 2 Source D1 and Rights Acceptance",
-    "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)"
+    "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)",
+    "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -522,6 +525,12 @@
       "- cron: \"6,26,46 * * * *\"",
       "group: geomacro-permanent-news-publication",
       "scripts/ops/phase2i-source-only-raw-tick.ts"
+    ],
+    "cloudflare-five-usd-spend-blocks.yml": [
+      "workflow_dispatch:",
+      "LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE",
+      "environment: production",
+      "node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply"
     ]
   },
   "predgeBlobSha1": {
