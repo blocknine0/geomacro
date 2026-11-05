@@ -233,7 +233,7 @@ export const GEOMACRO_VARIANT_STRUCTURED_OUTPUTS={
         "risk_gate[*].tiered_product.seven_day_verified_subject_history.points[*].snapshot_sha256"],
       description:"Complex / Full: proprietary institutional score from verified Ed25519 GRO, complete seven-day country risk or corridor friction timeline, underlying evidence chain and private B2 archive locator; HIGH / CRYPTO_SIGNED confidence.",
       prerequisites:["CURRENT_ED25519_GRO_AND_B2_READBACK",
-        "D1_HMAC_VERIFIED_SEVEN_DAY_CORRIDOR_HISTORY"],
+        "D1_HMAC_VERIFIED_SEVEN_DAY_COUNTRY_OR_CORRIDOR_HISTORY"],
     },
   },
 } as const satisfies Record<PricedCapability,Record<string,VariantSpec>>;
