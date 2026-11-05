@@ -902,10 +902,10 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    included_in_daily_snapshot_hmac:false,
    commercial_action_authorized:false,
   };
-  let customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
+  let customTiers=generateCommercialTiers(independentScore,{
    groVerified:!!gro,confidence:gro?.confidence??null,
-   policy:payload.approved_thresholds
-  }):x.snapshot.tiers;
+   ...(payload.approved_thresholds?{policy:payload.approved_thresholds}:{})
+  });
   const lenient=payload.client_policy==="LENIENT"&&payload.override_acknowledged===true;
   let clientPolicyDecision=lenient?
    customTiers.policy.lenient_mode_outcome:customTiers.core.gate_decision;
