@@ -3,7 +3,7 @@ export type GateCheck={
  request_id:string;subject:{type:"country"|"corridor";id:string};decision:GateState;
  execution_authorized:false;audit_receipt_hash:string;audit_receipt_signature:string;
  audit_receipt_signature_scheme:"HMAC-SHA256";audit_receipt_signature_key_id:string;
- risk?:{score:number;confidence:number;generated_at:string;expires_at:string};
+ valid_until?:string|null;risk?:{score:number;confidence:number;generated_at:string;expires_at:string};
 };
 export type HistoricalTransaction={id:string;subject:{type:"country"|"corridor";id:string};occurred_at:string;amount?:number};
 export type HistoricalCheck=GateCheck&{evaluated_at:string};
@@ -13,14 +13,14 @@ export class GeoMacroRiskGateClient{
  }
  async evaluate(input:Record<string,unknown>):Promise<GateCheck>{
   const f=this.opts.fetcher??fetch;
-  const res=await f(this.opts.baseUrl.replace(/\/$/,"")+"/v1/risk-gate/tiered/evaluate",{
+  const res=await f(this.opts.baseUrl.replace(/\/$/,"")+"/v1/risk-gate/commercial/evaluate",{
    method:"POST",headers:{Authorization:"Bearer "+this.opts.apiKey,"Content-Type":"application/json"},
    body:JSON.stringify(input),redirect:"error",
   });
   const body=await res.json();
   if(!res.ok||body?.execution_authorized!==false||
     typeof body?.audit_receipt_hash!=="string"||
-    typeof body?.audit_receipt_signature!=="string")throw Error("RISK_GATE_CHECK_FAILED");
+    typeof body?.audit_receipt_signature!=="string"||typeof body?.advisory_decision!=="string")throw Error("RISK_GATE_CHECK_FAILED");
   return body as GateCheck;
  }
  simulateHistorical(transactions:HistoricalTransaction[],checks:HistoricalCheck[]){
@@ -29,8 +29,8 @@ export class GeoMacroRiskGateClient{
   const rows=transactions.map(tx=>{
    const at=Date.parse(tx.occurred_at);
    const check=sorted.filter(c=>c.subject.type===tx.subject.type&&c.subject.id===tx.subject.id&&
-    Date.parse(c.evaluated_at)<=at&&Date.parse(c.risk?.expires_at??"")>at).at(-1)??null;
-   return {transaction_id:tx.id,matched:!!check,decision:check?.decision??"NO_HISTORICAL_CHECK",
+    Date.parse(c.evaluated_at)<=at&&Date.parse(c.valid_until??c.risk?.expires_at??"9999-12-31T23:59:59.999Z")>at).at(-1)??null;
+   return {transaction_id:tx.id,matched:!!check,decision:check?.advisory_decision??"NO_HISTORICAL_CHECK",
     advisory_exposure_ratio:check?.decision==="PAUSE"?0:check?.decision==="REQUIRE_APPROVAL"?0:
      check?.decision==="REDUCE_LIMIT"?0.5:1,execution_authorized:false as const};
   });
