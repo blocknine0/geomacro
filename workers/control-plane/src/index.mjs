@@ -1819,8 +1819,11 @@ export default {
               risk_unverified_safe:r.snapshot.tiers.core.gate_decision==="GATE_INSUFFICIENT_EVIDENCE"||
                 r.snapshot.tiers.core.gate_decision==="GATE_HOLD",
               snapshot_integrity_verified:true,existing:r.existing});
-          }catch{
-            receipts.push({target,ok:false,error:"UNIFIED_CANARY_TARGET_FAILED"});
+          }catch(error){
+            const rawCode=String(error?.message??"");
+            const errorCode=/^[A-Z][A-Z0-9_]{2,80}$/.test(rawCode)
+              ?rawCode:"UNIFIED_CANARY_TARGET_FAILED";
+            receipts.push({target,ok:false,error:errorCode});
           }
         }
         // Protect acceptance against a large unrelated daily D1 backlog:
@@ -1835,7 +1838,12 @@ export default {
             const check=await generateUnifiedSnapshot(env,row.target);
             row.supabase_synced=check.supabase_synced===true;
             row.snapshot_integrity_verified=!!check.audit_proof;
-          }catch{row.ok=false;row.supabase_synced=false}
+          }catch(error){
+            const rawCode=String(error?.message??"");
+            row.ok=false;row.supabase_synced=false;
+            row.error=/^[A-Z][A-Z0-9_]{2,80}$/.test(rawCode)
+              ?rawCode:"UNIFIED_CANARY_TARGET_READBACK_FAILED";
+          }
         }
         // Exercise the production customer route handler with the existing
         // private tiered credential, without transmitting it over the network.
@@ -1862,7 +1870,7 @@ export default {
         return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
           authenticated_unified_api_200,
           checked_targets:receipts,protected_supabase_sync:{
-            ok:sync.ok,synced:sync.synced??0,
+            ok:sync.ok,synced:sync.synced??0,error:sync.error??null,
             hash_readback_verified:sync.hash_readback_verified===true||
               sync.ok&&sync.synced===0&&receipts.every(x=>x.supabase_synced)},
           no_funds:true,commercial_activation:false},ok?200:503);
