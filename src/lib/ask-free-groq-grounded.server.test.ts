@@ -43,7 +43,7 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
        official_release_context:[]}),
    });
    expect(got.summary).toBe(reply.summary);
-   expect(got.evidence).toBe(a.evidence);
+   expect(got.evidence).toStrictEqual(a.evidence);
    expect(mock).toHaveBeenCalledTimes(1);
    const sent=JSON.parse(String(mock.mock.calls[0][1].body));
    expect(mock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/chat/completions");

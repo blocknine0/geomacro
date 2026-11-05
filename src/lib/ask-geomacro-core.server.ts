@@ -61,7 +61,7 @@ export async function executeAskGeomacro(
         if (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(clientKey))
           throw new AskGeomacroRateLimitError();
         return publicAskResearchProjection(
-          toCommercialAskBrief(await answerAskQuestion(data.question),data.question)
+          toCommercialAskBrief(await answerAskQuestion(data.question), data.question)
         ) as AskAnswer;
       }),
       14_000,
