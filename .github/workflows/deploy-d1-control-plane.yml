@@ -592,6 +592,29 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
 
+      - name: Verify bundled P1 D1 dispatch schema before enabling fanout V2
+        if: env.P0B_ACTIVATE == '1'
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.runtime.jsonc \
+            --command "SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('p1_source_poll_bundles','p1_source_poll_dispatch_mutex')) AS table_count, (SELECT COUNT(*) FROM p1_source_poll_dispatch_mutex WHERE singleton=1) AS gate_count;")"
+          printf '%s' "$proof" | node -e '
+            let raw="";
+            process.stdin.on("data",x=>raw+=x);
+            process.stdin.on("end",()=>{
+              const parsed=JSON.parse(raw);
+              const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
+                x?.results??x?.result?.results??[]);
+              if(Number(rows[0]?.table_count)!==2||
+                 Number(rows[0]?.gate_count)!==1)
+                throw Error("P1_BUNDLED_D1_SCHEMA_NOT_READY");
+              console.log("P1_BUNDLED_D1_SCHEMA_READBACK=true");
+            });
+          '
+
       - name: Generate deterministic P1 1077 source-category registry SQL
         if: env.P0B_ACTIVATE == '1'
         shell: bash
