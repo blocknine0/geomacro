@@ -5,6 +5,7 @@
  */
 import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
+import {readIntradayFlashOverride} from "./risk-gate-flash-override.mjs";
 import {phase2hHeadlineCountryCandidate,phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 
 export const CONTROLLED_GATE_SCHEMA="geomacro.risk-gate-controlled-bypass.v1";
@@ -146,10 +147,11 @@ async function freshGRO(db,env,subject,now){
    .bind(subject.id,iso,iso).first();
  return row?verifyHotGRO(row,env,subject,now):null;
 }
-export function determineControlledGate({request,observed,verified_decision=null,gro=null}){
+export function determineControlledGate({request,observed,verified_decision=null,gro=null,flash={available:true,active:false}}){
  const verified=!!gro&&["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(verified_decision);
- const gate=verified?(verified_decision==="CONTINUE"?"GATE_PASS":
-  verified_decision==="PAUSE"?"GATE_BLOCKED":"GATE_ADVISORY"):
+ const effectiveDecision=(flash.active||flash.available===false)&&verified_decision==="CONTINUE"?"REQUIRE_APPROVAL":verified_decision;
+ const gate=verified?(effectiveDecision==="CONTINUE"?"GATE_PASS":
+  effectiveDecision==="PAUSE"?"GATE_BLOCKED":"GATE_ADVISORY"):
   request.product_tier==="CORE"||request.product_tier==="POLICY"&&request.policy_mode==="STRICT"?"GATE_INSUFFICIENT_EVIDENCE":"GATE_ADVISORY";
  const override=request.policy_mode==="LENIENT";
  const official=observed.authoritative_first_party_publications>0;
@@ -168,7 +170,14 @@ export function determineControlledGate({request,observed,verified_decision=null
   event_truth_verified:verified,wire_syndication_not_independent_proof:true
  },client_override_applied:override,
   client_policy_decision:override?(request.client_override.action==="PASS"?"OVERRIDE_PASS":"OVERRIDE_HOLD"):null,
-  decision_reason:override?"CLIENT_POLICY_OVERRIDE":verified?"VERIFIED_GRO_EVALUATION":"OBSERVATION_ONLY",
+  decision_reason:flash.active?"INTRADAY_MATERIAL_FLASH_OVERRIDE":flash.available===false?"FLASH_CHECK_UNAVAILABLE":override?"CLIENT_POLICY_OVERRIDE":verified?"VERIFIED_GRO_EVALUATION":"OBSERVATION_ONLY",
+  primary_driver:flash.active?"INTRADAY_MATERIAL_FLASH_OVERRIDE":verified?String(gro.attribution?.[0]?.driver??"VERIFIED_GRO_RISK_SCORE").toUpperCase():"OBSERVATION_ONLY",
+  affected_domain:flash.active?String(gro.attribution?.[0]?.driver??"geopolitics"):"unknown",
+  severity_score:verified?Number(gro.risk.score.toFixed(2)):null,
+  suggested_mitigation:effectiveDecision==="REDUCE_LIMIT"?{exposure_cap_ratio:0.5,settlement_delay_hours:24}:
+   effectiveDecision==="REQUIRE_APPROVAL"?{exposure_cap_ratio:0,settlement_delay_hours:24}:
+   effectiveDecision==="PAUSE"?{exposure_cap_ratio:0,settlement_delay_hours:0}:{exposure_cap_ratio:1,settlement_delay_hours:0},
+  intraday_override:flash.active===true,flash_check_available:flash.available===true,
   execution_authorized:false,
   billing:{tier:request.product_tier,product_name:CONTROLLED_GATE_PRODUCTS[request.product_tier].name,
    quoted_price_usd:CONTROLLED_GATE_PRODUCTS[request.product_tier].price_usd,
@@ -253,7 +262,8 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
    await observationsForSubject(env.DB,parsed.subject,now));
   const gro=await freshGRO(env.DB,env,parsed.subject,now);
   const verified_decision=await canonicalDecision(gro,parsed,now);
-  const result=determineControlledGate({request:parsed,observed:observations,verified_decision,gro:verified_decision?gro:null});
+  const flash=gro?await readIntradayFlashOverride(env.DB,gro,parsed.subject,now):{available:true,active:false};
+  const result=determineControlledGate({request:parsed,observed:observations,verified_decision,gro:verified_decision?gro:null,flash});
   const audit_proof=await signedObservation(env,parsed,result,observations,now);
   const body={ok:true,schema:CONTROLLED_GATE_SCHEMA,request_id:parsed.request_id,
    subject:parsed.subject,product_tier:parsed.product_tier,policy_mode:parsed.policy_mode,
@@ -268,6 +278,10 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
    evaluated_at:ts,response:body
   });
   body.audit_receipt_hash=receipt.audit_receipt_hash;
+  body.audit_receipt_signature=receipt.audit_receipt_signature;
+  body.audit_receipt_signature_key_id=receipt.signature_key_id;
+  body.audit_receipt_signature_scheme=receipt.signature_scheme;
+  body.audit_receipt_signature_scope=receipt.signature_scope;
   await env.DB.prepare("INSERT OR IGNORE INTO risk_gate_tiered_requests (client_id,request_id,request_hash,state,created_at) VALUES (?,?,?,'PENDING',?)")
    .bind("tiered-private-v1",parsed.request_id,request_hash,ts).run();
   const claim=await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='CLAIMED',claimed_at=? WHERE client_id=? AND request_id=? AND request_hash=? AND (state='PENDING' OR (state='CLAIMED' AND claimed_at<?)) RETURNING request_id")
