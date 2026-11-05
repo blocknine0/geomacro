@@ -82,7 +82,7 @@ export function verifiedP0bD1ReadQuotaExhaustion(proof){
    proof?.remaining_rows_read===0 &&
    Number.isSafeInteger(proof?.observed_rows_read) &&
    proof.observed_rows_read>=D1_FREE_DAILY.rows_read &&
-   /^\\d{4}-\\d{2}-\\d{2}$/.test(proof?.day_utc??"");
+   /^\d{4}-\d{2}-\d{2}$/.test(proof?.day_utc??"");
 }
 if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
  try{const x=await reserveP0bNativeAuthTicket({execute:async sql=>executeRemote(sql)});console.log("P0B_B2_NATIVE_AUTH_D1_RESERVATION_VERIFIED="+x.readback_verified);if(process.env.GITHUB_OUTPUT)await import("node:fs/promises").then(fs=>fs.appendFile(process.env.GITHUB_OUTPUT,"reserved=true\n"));}
