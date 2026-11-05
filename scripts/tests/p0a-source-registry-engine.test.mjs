@@ -31,6 +31,7 @@ function dbMock(withP1=false){
  const wrap=(sql,args=[])=>({
    bind(...next){return wrap(sql,next)},
    async all(){try{return {results:db.prepare(sql).all(...args)}}catch(err){errors.push({code:err.message,sql:sql.slice(0,90)});throw err}},
+   async first(){return db.prepare(sql).get(...args)??null},
    async run(){try{const result=db.prepare(sql).run(...args);return {meta:{changes:result.changes}}}catch(err){errors.push({code:err.message,sql:sql.slice(0,90)});throw err}},
    get sql(){return sql},get args(){return args},
  });
