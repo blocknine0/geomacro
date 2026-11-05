@@ -55,7 +55,7 @@ test("scheduler outside windows never triggers D1",async()=>{
 });
 
 test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC",async()=>{
- const now=Date.parse("2026-11-03T05:00:00Z"),days="2026-11-03",store=new Map(),categories=[];
+ const now=Date.parse("2026-11-03T05:00:00Z"),days="2026-11-03",store=new Map(),auditReceipts=new Map(),categories=[];
  const rss='<rss><channel><item><title>Taiwan naval blockade alert - Example Wire</title>'+
   '<link>https://news.google.com/rss/articles/verified-link-no-event-proof</link>'+
   '<pubDate>Tue, 03 Nov 2026 04:00:00 GMT</pubDate>'+
@@ -67,6 +67,9 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
    async first(){
     if(sql.startsWith("SELECT snapshot_json"))return store.get(params[0]+"|"+params[1]+"|"+params[2])??null;
     if(sql.startsWith("SELECT * FROM country_gro_verified_hot"))return null;
+    if(sql.startsWith("SELECT receipt_id,client_id,request_id")){
+      return auditReceipts.get(params[0])??null;
+    }
     return null;
    },
    async all(){if(sql.includes("FROM phase2h_private_raw_news"))return {results:[]};return {results:[]}},
@@ -76,6 +79,14 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
       const [entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at]=params;
       store.set(entity_type+"|"+entity_id+"|"+day_utc,
        {snapshot_json,audit_proof_json,content_sha256,generated_at,supabase_synced_at:null});
+    }
+    if(sql.startsWith("INSERT OR IGNORE INTO risk_gate_audit_receipts")){
+      const [receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
+       decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
+       audit_receipt_hash,created_at,signature_key_id,signature_scheme,audit_receipt_signature]=params;
+      auditReceipts.set(receipt_id,{receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
+       decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
+       audit_receipt_hash,signature_key_id,signature_scheme,audit_receipt_signature});
     }
     return {success:true};
    }
