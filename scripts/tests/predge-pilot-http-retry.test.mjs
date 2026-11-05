@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {fetchProtectedPilot} from "../ops/predge-pilot-http-retry.mjs";
+import {fetchProtectedPilot,safePilotHttpFailureCode} from "../ops/predge-pilot-http-retry.mjs";
 const URL="https://control.example/v1/internal/predge-pilot-news-context-publish";
 const response=(status,onCancel=()=>{})=>({status,body:{cancel:async()=>onCancel()}});
 test("transient 503 retries once with the identical protected request",async()=>{
@@ -44,4 +44,18 @@ test("retry budget cannot be raised by callers",async()=>{
  await assert.rejects(()=>fetchProtectedPilot(URL,{},{
    attempts:999,fetchImpl:()=>{throw Error("must not fetch");}}),
    /PREDGE_PILOT_RETRY_CONFIGURATION_INVALID/);
+});
+
+test("only explicitly allowlisted Worker error codes may reach diagnostic log",async()=>{
+ const recognized=await safePilotHttpFailureCode({status:503,
+   json:async()=>({error:"PILOT_SAMPLE_D1_WRITE_UNAVAILABLE",secret:"never"})},
+   ["PILOT_SAMPLE_D1_WRITE_UNAVAILABLE"]);
+ assert.equal(recognized,"PILOT_SAMPLE_D1_WRITE_UNAVAILABLE");
+ const hidden=await safePilotHttpFailureCode({status:503,
+   json:async()=>({error:"TOP_SECRET_USER_PAYLOAD"})},
+   ["PILOT_SAMPLE_D1_WRITE_UNAVAILABLE"]);
+ assert.equal(hidden,"HTTP_503");
+ const malformed=await safePilotHttpFailureCode({status:503,json:async()=>{
+   throw Error("confidential parsing error");}},[]);
+ assert.equal(malformed,"HTTP_503");
 });
