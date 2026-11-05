@@ -48,6 +48,11 @@ export function assertPublicPriceManifest(manifest, expected, version) {
   return {capabilities: expected.length, price_variants: count};
 }
 
+function hasExactUsdAmount(article, amount) {
+  // "$9" must never match "$99", "$9.99" or other higher-priced offers.
+  return new RegExp("\\$" + String(amount) + "(?![0-9.])", "u").test(article);
+}
+
 function offerArticle(html, attribute, id) {
   const marker = attribute + '="' + id + '"';
   const start = html.indexOf(marker);
@@ -67,13 +72,13 @@ export function assertLockedStorefront(html, plans, packs) {
     throw Error("PUBLIC_STORE_LOCKED_PRESENTATION_MISMATCH");
   for (const plan of plans) {
     const article = offerArticle(html, "data-plan-id", plan.id);
-    if (!article.includes("$" + plan.price_usd) ||
+    if (!hasExactUsdAmount(article, plan.price_usd) ||
         !article.includes(plan.credits_per_30_days.toLocaleString("en-US")))
       throw Error("PUBLIC_STORE_PLAN_PRICE_MISMATCH:" + plan.id);
   }
   for (const pack of packs) {
     const article = offerArticle(html, "data-pack-id", pack.id);
-    if (!article.includes("$" + pack.price_usd) ||
+    if (!hasExactUsdAmount(article, pack.price_usd) ||
         !article.includes(pack.credits.toLocaleString("en-US")))
       throw Error("PUBLIC_STORE_PACK_PRICE_MISMATCH:" + pack.id);
   }
