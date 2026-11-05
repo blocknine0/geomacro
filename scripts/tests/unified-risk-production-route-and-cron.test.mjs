@@ -66,7 +66,7 @@ test("seven-day rollup has a separate daily schedule and authenticated history b
  assert.match(riskGate,/\["DAILY","BACKFILL"\]/);
  assert.match(riskGate,/assessment_status:signedGroRows\?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO"/);
  assert.match(workflow,/Backfill retained seven-day Risk Gate rollups \(no funds\)/);
- assert.match(workflow,/run scripts\/bootstrap-7day-rollup\.ts/);
+ assert.ok(workflow.includes("run: bun scripts/bootstrap-7day-rollup.ts"));
  const script=readFileSync(new URL("../bootstrap-7day-rollup.ts",import.meta.url),"utf8");
  assert.match(script,/mode:"BACKFILL"/);
  assert.match(script,/commercial_activation!==false/);
