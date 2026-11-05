@@ -307,28 +307,6 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Verify actual B2 key scope and derive allowed private spool prefix
-        if: env.P0B_ACTIVATE == '1'
-        shell: bash
-        run: node scripts/ops/p0b-b2-scope-preflight.mjs
-
-      - name: Verify unified cron failure visibility and production API route contracts
-        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
-
-      - name: Verify P0-1 D1 quota and public-only cache contracts offline
-        run: node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
-
-      - name: Verify one-news-to-five-part newsroom contract offline (no funds)
-        run: node --test scripts/tests/three-domain-machine-delivery-live.test.mjs
-
-      - name: Test all-news signed publication integrity and source-proof boundaries offline
-        run: node --test scripts/tests/public-signed-news.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs
-      - name: Verify pinned independent Facts and Rights signature replay for GRI v1.2 (no live keys)
-        run: node --test scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
-
-      - name: Test private source-handoff acceptance contracts without network
-        run: node --test scripts/tests/verify-private-handoff-production.test.mjs
-
       - name: Discover or create the single production D1 database
         id: d1
         shell: bash
@@ -363,6 +341,68 @@ jobs:
           echo "database_id=$DB_ID" >> "$GITHUB_OUTPUT"
           echo "created=$CREATED" >> "$GITHUB_OUTPUT"
           echo "Resolved D1 database: $D1_DATABASE_NAME (created=$CREATED)"
+
+      - name: Bootstrap the D1 quota schema required by the B2 preflight
+        if: env.P0B_ACTIVATE == '1'
+        env:
+          D1_DATABASE_ID: ${{ steps.d1.outputs.database_id }}
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const source=JSON.parse(fs.readFileSync('wrangler.example.jsonc','utf8'));
+          const id=String(process.env.D1_DATABASE_ID||'').trim();
+          if(!/^[0-9a-f-]{20,}$/i.test(id))throw Error('INVALID_D1_DATABASE_ID');
+          const db=(source.d1_databases||[]).find(x=>x.binding==='DB');
+          if(!db)throw Error('D1_BINDING_TEMPLATE_MISSING');
+          const config={name:source.name,main:source.main,
+            compatibility_date:source.compatibility_date,
+            d1_databases:[{...db,database_id:id}]};
+          fs.writeFileSync('wrangler.quota-bootstrap.jsonc',JSON.stringify(config,null,2));
+          NODE
+          trap 'rm -f wrangler.quota-bootstrap.jsonc' EXIT
+          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
+            --config wrangler.quota-bootstrap.jsonc \
+            --file migrations/0014_b2_account_daily_request_quota.sql >/dev/null
+          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.quota-bootstrap.jsonc \
+            --command "SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type='table' AND name IN ('b2_account_daily_request_quota','b2_request_quota_workflow_receipt');")"
+          printf '%s' "$proof" | node -e '
+            let raw="";
+            process.stdin.on("data",x=>raw+=x);
+            process.stdin.on("end",()=>{
+              const parsed=JSON.parse(raw);
+              const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
+                x?.results??x?.result?.results??[]);
+              if(Number(rows[0]?.table_count)!==2)
+                throw Error("B2_QUOTA_SCHEMA_BOOTSTRAP_READBACK_FAILED");
+              console.log("B2_QUOTA_SCHEMA_BOOTSTRAP_READBACK=true");
+            });
+          '
+
+      - name: Verify actual B2 key scope and derive allowed private spool prefix
+        if: env.P0B_ACTIVATE == '1'
+        shell: bash
+        run: node scripts/ops/p0b-b2-scope-preflight.mjs
+
+      - name: Verify unified cron failure visibility and production API route contracts
+        run: node --test scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
+
+      - name: Verify P0-1 D1 quota and public-only cache contracts offline
+        run: node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
+
+      - name: Verify one-news-to-five-part newsroom contract offline (no funds)
+        run: node --test scripts/tests/three-domain-machine-delivery-live.test.mjs
+
+      - name: Test all-news signed publication integrity and source-proof boundaries offline
+        run: node --test scripts/tests/public-signed-news.test.mjs scripts/tests/signed-news-owner-race-reconcile.test.mjs
+      - name: Verify pinned independent Facts and Rights signature replay for GRI v1.2 (no live keys)
+        run: node --test scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs
+
+      - name: Test private source-handoff acceptance contracts without network
+        run: node --test scripts/tests/verify-private-handoff-production.test.mjs
 
       - name: Build ephemeral Wrangler production config
         env:
