@@ -161,7 +161,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'schedule'
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     environment: production
@@ -195,7 +195,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'schedule' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       needs.quota-admission.result == 'success' &&
       needs.quota-admission.outputs.source_intake == 'true'
     # Shared with both existing 15-minute private original producer and the
@@ -282,7 +282,7 @@ jobs:
       needs.source-contract.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'schedule' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
       (needs.quota-admission.result == 'success' ||
        needs.quota-admission.result == 'failure') &&
       needs.quota-admission.outputs.source_intake != 'true'
