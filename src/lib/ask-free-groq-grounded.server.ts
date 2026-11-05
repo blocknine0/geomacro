@@ -91,7 +91,10 @@ async function requestFreeGroq(
    };
    const text=envelope.choices?.[0]?.message?.content;
    if(typeof text!=="string")return canonical;
-   return safeGroundedOpenAIOutput(text,canonical,question)??canonical;
+   const validated=safeGroundedOpenAIOutput(text,canonical,question);
+   // A verified formatter completion changes only presentation, never evidence.
+   // The signal is set ONLY after upstream 200 and exact safe-output validation.
+   return validated?{...validated,model_rendering:"assisted"}:canonical;
  }catch{return canonical;}
  finally{inflight=Math.max(0,inflight-1);}
 }
@@ -105,6 +108,11 @@ export async function enhanceAskWithFreeGroq(
    process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED!=="true"||
    !process.env.GROQ_API_KEY||process.env.GROQ_API_KEY.length<20||
    !eligible(canonical))return canonical;
- return cachedGroqAnswer(question,canonical,
-   ()=>requestFreeGroq(question,canonical,clientKey,dependencies));
+ let cacheStatus:"hit"|"miss"|"coalesced"|"bypassed"="bypassed";
+ const result=await cachedGroqAnswer(question,canonical,
+   ()=>requestFreeGroq(question,canonical,clientKey,dependencies),
+   status=>{cacheStatus=status;});
+ return {...result,
+   model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
+   model_render_cache:cacheStatus};
 }
