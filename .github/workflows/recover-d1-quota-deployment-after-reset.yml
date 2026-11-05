@@ -157,11 +157,13 @@ jobs:
             echo "retry=true" >> "$GITHUB_OUTPUT"
           elif [[ "${p0b_ticket_conclusion:-}" == "failure" ]] &&
                { grep -aFq "P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED" "$log_text" ||
-                 grep -aFq "P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_READ_LIMIT_7500" "$log_text"; }; then
+                 grep -aFq "P0B_D1_PROVIDER_ROW_WRITE_LIMIT_REACHED_VERIFIED" "$log_text" ||
+                 grep -aFq "P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_READ_LIMIT_7500" "$log_text" ||
+                 grep -aFq "P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_WRITE_LIMIT_7500" "$log_text"; }; then
             # Only an exact provider quota signature from the failed native
             # D1 ticket step allows the next-UTC-day retry. Never treat
             # UNKNOWN/SQL/AUTH/B2 quota failures as D1 row-read exhaustion.
-            echo "Provider-verified D1 native-auth ticket read quota reached; eligible after UTC reset."
+            echo "Provider-verified D1 native-auth ticket daily row-read/write cap reached; eligible after UTC reset."
             echo "retry=true" >> "$GITHUB_OUTPUT"
           elif [[ "${b2_scope_conclusion:-}" == "failure" ]] &&
                grep -aFq "P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429" "$log_text"; then

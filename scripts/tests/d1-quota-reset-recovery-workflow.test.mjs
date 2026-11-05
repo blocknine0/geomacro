@@ -144,3 +144,11 @@ test("provider-confirmed native-auth D1 ticket failure becomes eligible after UT
  assert.ok(recovery.includes('cron: "10 0 * * *"'));
  assert.doesNotMatch(recovery,/P0B_D1_WRANGLER_DIAGNOSTIC=UNKNOWN.*retry=true/);
 });
+
+test("only provider-confirmed daily row-write exhaustion permits next-reset recovery",()=>{
+ assert.ok(recovery.includes("P0B_D1_PROVIDER_ROW_WRITE_LIMIT_REACHED_VERIFIED"));
+ assert.ok(recovery.includes("P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_WRITE_LIMIT_7500"));
+ assert.ok(recovery.includes("p0b_ticket_conclusion"));
+ assert.ok(recovery.includes('cron: "10 0 * * *"'));
+ assert.ok(!recovery.includes('P0B_D1_WRANGLER_DIAGNOSTIC=UNKNOWN" "$log_text"; }; then'));
+});

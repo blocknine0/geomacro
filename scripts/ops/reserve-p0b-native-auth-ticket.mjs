@@ -84,6 +84,14 @@ export function verifiedP0bD1ReadQuotaExhaustion(proof){
    proof.observed_rows_read>=D1_FREE_DAILY.rows_read &&
    /^\d{4}-\d{2}-\d{2}$/.test(proof?.day_utc??"");
 }
+export function verifiedP0bD1WriteQuotaExhaustion(proof){
+ return proof?.provider_graphql_usage_observed===true &&
+   proof?.limits?.rows_written===D1_FREE_DAILY.rows_written &&
+   proof?.remaining_rows_written===0 &&
+   Number.isSafeInteger(proof?.observed_rows_written) &&
+   proof.observed_rows_written>=D1_FREE_DAILY.rows_written &&
+   /^\d{4}-\d{2}-\d{2}$/.test(proof?.day_utc??"");
+}
 if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
  try{const x=await reserveP0bNativeAuthTicket({execute:async sql=>executeRemote(sql)});console.log("P0B_B2_NATIVE_AUTH_D1_RESERVATION_VERIFIED="+x.readback_verified);if(process.env.GITHUB_OUTPUT)await import("node:fs/promises").then(fs=>fs.appendFile(process.env.GITHUB_OUTPUT,"reserved=true\n"));}
  catch(e){
@@ -92,8 +100,10 @@ if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
    try{
      const proof=await readCloudflareD1AccountQuota();
      console.error(verifiedP0bD1ReadQuotaExhaustion(proof)
-       ?"P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED"
-       :"P0B_D1_PROVIDER_READ_LIMIT_NOT_CONFIRMED");
+       ?"P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED":
+       verifiedP0bD1WriteQuotaExhaustion(proof)
+       ?"P0B_D1_PROVIDER_ROW_WRITE_LIMIT_REACHED_VERIFIED"
+       :"P0B_D1_PROVIDER_DAILY_QUOTA_NOT_CONFIRMED");
    }catch{console.error("P0B_D1_PROVIDER_QUOTA_METRICS_UNAVAILABLE");}
  }
  console.error(/^P0B_[A-Z0-9_]+$/u.test(c)?c:"P0B_B2_NATIVE_AUTH_D1_RESERVATION_FAILED");
