@@ -423,8 +423,16 @@ async function signedSnapshotRows(env,whereSql,binds){
  for(const row of out.results){
   let snapshot,proof;try{snapshot=JSON.parse(row.snapshot_json);proof=JSON.parse(row.audit_proof_json)}catch{throw Error("RISK_GATE_7D_D1_JSON_INVALID")}
   if(snapshot?.target_type!==row.entity_type||snapshot?.target_id!==row.entity_id||
-     snapshot?.day_utc!==row.day_utc||row.content_sha256!==proof?.content_sha256||
-     !await verifySnapshot(snapshot,proof,env))throw Error("RISK_GATE_7D_D1_HMAC_INVALID");
+     snapshot?.day_utc!==row.day_utc||row.content_sha256!==proof?.content_sha256)
+   throw Error("RISK_GATE_7D_D1_IDENTITY_OR_HASH_INVALID");
+  if(!await verifySnapshot(snapshot,proof,env)){
+   // Entity and date are safe, bounded diagnostic fields for the owner-only
+   // backfill route; no snapshot payload or signing material is returned.
+   const entityType=row.entity_type==="COUNTRY"?"COUNTRY":"OTHER";
+   const entityId=/^[A-Z0-9-]{1,40}$/.test(String(row.entity_id))?row.entity_id:"UNKNOWN";
+   const day=/^\d{4}-\d{2}-\d{2}$/.test(String(row.day_utc))?row.day_utc:"UNKNOWN";
+   throw Error(["RISK_GATE_7D_D1_HMAC_INVALID",entityType,entityId,day].join("_"));
+  }
   rows.push({...row,snapshot,proof});
  }
  return rows;
