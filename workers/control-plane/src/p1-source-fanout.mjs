@@ -1,11 +1,11 @@
 /**
  * P1 source fan-out on the EXISTING private Cloudflare control-plane Worker.
  *
- * Every minute: one D1 indexed due-page read (<=108), one idempotent D1
+ * Every minute: one D1 indexed due-page read (<=105), one idempotent D1
  * lease write and ten deterministic shards to a separate source-poll Queue.
  * Payloads contain source IDs ONLY, never arbitrary caller-supplied URLs.
  * Queues independently autoscale up to configured max_concurrency=10;
- * 15 source attempts max per consumer invocation.
+ * One V3 message contains <=15 source IDs; one message per consumer invocation.
  */
 import {pollP0aSources} from "./p0a-source-registry.mjs";
 import {dispatchP1BundledDueSources,verifiedP1BundledLeasePairs} from "./p1-source-bundled-dispatch.mjs";
