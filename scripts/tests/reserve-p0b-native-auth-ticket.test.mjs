@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
-import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure} from "../ops/reserve-p0b-native-auth-ticket.mjs";
+import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure,safeP0bWranglerD1Hint} from "../ops/reserve-p0b-native-auth-ticket.mjs";
 test("native auth quota ticket reuses canonical atomic account ledger",()=>{
  const q=buildP0bNativeAuthTicketSql(new Date("2026-11-05T11:00:00.000Z"));
  assert.match(q.quotaSql,/ON CONFLICT\(day_utc\) DO UPDATE/u);
@@ -24,4 +24,10 @@ test("Wrangler D1 failures expose only a safe diagnostic class",()=>{
  assert.equal(classifyP0bWranglerD1Failure({error:{code:"E2BIG"}}),"SPAWN_E2BIG");
  assert.equal(classifyP0bWranglerD1Failure({status:1,stdout:"",stderr:""}),"NO_OUTPUT");
  assert.equal(classifyP0bWranglerD1Failure({stderr:"opaque"}),"UNKNOWN");
+});
+
+test("Wrangler D1 hint strips credentials, URLs and identifiers",()=>{
+ const hint=safeP0bWranglerD1Hint({stderr:"Error: token secret-token-123 failed at https://api.example.test/accounts/abc"},["secret-token-123"]);
+ assert.doesNotMatch(hint,/secret-token-123|https?:\/\//u);
+ assert.match(hint,/Error: token \[REDACTED\] failed at \[URL\]/u);
 });
