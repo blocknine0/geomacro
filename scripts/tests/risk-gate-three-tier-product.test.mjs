@@ -143,7 +143,9 @@ test("Complex verified signature, 7-day signed-history holes and private B2 refe
  const days=["2026-10-29","2026-10-30","2026-10-31","2026-11-01",
   "2026-11-02","2026-11-03","2026-11-04"].map((day_utc,i)=>({
    entity_type:"CORRIDOR",entity_id:"hormuz",day_utc,
-   snapshot:{unified_risk_score:[0.55,0.51,0.48,0.44,0.4,0.38,0.35][i]},
+   snapshot:{unified_risk_score:[0.55,0.51,0.48,0.44,0.4,0.38,0.35][i],
+    verified_unified_risk_score:[0.55,0.51,0.48,0.44,0.4,0.38,0.35][i],
+    signed_gro_payload_sha256:"d".repeat(64)},
    content_sha256:(i+1).toString(16).repeat(64),proof_verified:true,
   }));
  const incomplete=render("complex_full",{
@@ -151,6 +153,18 @@ test("Complex verified signature, 7-day signed-history holes and private B2 refe
  assert.equal(incomplete.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
  assert.equal(incomplete.chargeable,false);
  assert.equal(incomplete.gro_signature,null);
+ const provisionalFallback=days.map(x=>({...x,
+  snapshot:{...x.snapshot,verified_unified_risk_score:null,
+   signed_gro_payload_sha256:null,unified_risk_score:0.9}}));
+ const fakeVerifiedHistory=render("complex_full",{
+  verified_gro:gro(),archive_proof:archive,history:provisionalFallback});
+ assert.equal(fakeVerifiedHistory.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(fakeVerifiedHistory.chargeable,false);
+ const unsignedPastDay=days.map((x,i)=>i===3?{...x,
+  snapshot:{...x.snapshot,signed_gro_payload_sha256:null}}:x);
+ assert.equal(render("complex_full",{
+  verified_gro:gro(),archive_proof:archive,history:unsignedPastDay}).status,
+  "SIGNED_GRO_OR_ARCHIVE_NOT_READY");
  const unsigned=gro();
  unsigned.attribution.pop();
  const withIncompleteGro=render("complex_full",{
@@ -182,7 +196,9 @@ test("Country Complex is allowed only after 7 signed country days with verified 
  const days=["2026-10-29","2026-10-30","2026-10-31","2026-11-01",
   "2026-11-02","2026-11-03","2026-11-04"].map((day_utc,i)=>({
   entity_type:"COUNTRY",entity_id:"USA",day_utc,
-  snapshot:{unified_risk_score:(45+i)/100},
+  snapshot:{unified_risk_score:(45+i)/100,
+   verified_unified_risk_score:(45+i)/100,
+   signed_gro_payload_sha256:"d".repeat(64)},
   content_sha256:(i+2).toString(16).repeat(64),proof_verified:true,
  }));
  const r=composeRiskGateThreeTierResponse({
