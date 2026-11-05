@@ -273,12 +273,23 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     // this caller. Paid entitlement previously granted critical=true while
     // source_intake=false, permanently starving the actual news collector.
     const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
-    const rowsPerSlot=Math.min(100,Math.floor((writeRoom-
-      D1_BUNDLE_LANES.critical.write_reserve-slots*40-1500)/(slots*16)));
+    const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
+    const futureWriteRoom=Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
+    const futureReadRoom=Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
+    // Future slots use the full-day ceiling; this slot still uses its paced
+    // allowance. Reserving tomorrow's work from today's early-hour allowance
+    // would incorrectly stop intake immediately after every UTC reset.
+    const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
+      D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
     const sourceIntake=admitted&&rowsPerSlot>=3&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
+      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
+      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
+      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
     const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+900;
+      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
+      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
@@ -593,19 +604,28 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // Optional READ-only provider billing evidence. If the account has not
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.
-    let paidProof=null,spendGuardProof=null;
-    if(env.CLOUDFLARE_BILLING_READ_TOKEN){
+    let paidProof=null,spendGuardProof=null,paidProbe="NO_ACCOUNT_TOKEN";
+    // An existing account token may already have Billing Read permission.
+    // Try its read-only provider endpoints before requiring another secret;
+    // a 403, missing policy or ambiguous proof still cannot unlock capacity.
+    const billingEnv=env.CLOUDFLARE_BILLING_READ_TOKEN?env:
+      {...env,CLOUDFLARE_BILLING_READ_TOKEN:env.CLOUDFLARE_API_TOKEN};
+    if(billingEnv.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
-        const candidate=await readCloudflareWorkersPaidProof({env,fetchImpl,now});
+        const candidate=await readCloudflareWorkersPaidProof({env:billingEnv,fetchImpl,now});
         // The $5 subscription is NOT a spending limit. The Paid source lane
         // stays on the Free-plan quota unless BOTH provider-side usage_block
         // policies (Workers and Durable Objects) are independently verified.
         // This protects paid admission, not ungoverned D1/other operations.
-        const guard=await readFiveUsdSpendGuard({env,fetchImpl,now});
-        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;}
-      }catch{/* missing/inactive/ambiguous budget policies => Free admission */}
+        const guard=await readFiveUsdSpendGuard({env:billingEnv,fetchImpl,now});
+        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
+      }catch(error){
+        const code=String(error?.message??"");
+        paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
+      }
     }
-    return planD1BundledWork(quota,{now,paidProof,spendGuardProof});
+    return {...planD1BundledWork(quota,{now,paidProof,spendGuardProof}),
+      paid_capacity_probe_status:paidProbe};
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }

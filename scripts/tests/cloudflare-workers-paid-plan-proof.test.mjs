@@ -80,6 +80,13 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_read<=18_000_000);
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
+ const reset=new Date("2026-10-27T00:00:00.000Z");
+ const atReset=planD1BundledWork(usage(0,0),{now:reset,
+  paidProof:{...proof,observed_at:reset.toISOString()},
+  spendGuardProof:{...spendGuardProof,observed_at:reset.toISOString()}});
+ assert.equal(atReset.source_intake,true);
+ assert.ok(atReset.source_intake_max_new_rows>=3);
+ assert.equal(atReset.phase2h_raw_archive,true);
  const tight=planD1BundledWork(usage(5_763_167,140_000),
   {now,paidProof:proof,spendGuardProof});
  assert.equal(tight.critical,true);
@@ -150,15 +157,17 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  }});
  assert.equal(blocked.critical,false);
  assert.equal(blocked.state,"HELD");
- const free=await checkD1BundledWork({
+ const existingToken=await checkD1BundledWork({
   env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
   now,fetchImpl});
- assert.equal(free.critical,false);
- assert.equal(free.reason,"D1_FREE_RESERVE_REACHED");
+ assert.equal(existingToken.critical,true);
+ assert.equal(existingToken.paid_capacity_verified_by_provider,true);
+ assert.equal(existingToken.paid_capacity_probe_status,"VERIFIED");
  const denied=await checkD1BundledWork({
   env,now,fetchImpl:async(url,init)=>
    url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:
    {status:403,json:async()=>({})},
  });
  assert.equal(denied.critical,false);
+ assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_REJECTED");
 });
