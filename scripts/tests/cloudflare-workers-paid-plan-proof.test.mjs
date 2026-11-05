@@ -80,6 +80,13 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_read<=18_000_000);
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
+ const reset=new Date("2026-10-27T00:00:00.000Z");
+ const atReset=planD1BundledWork(usage(0,0),{now:reset,
+  paidProof:{...proof,observed_at:reset.toISOString()},
+  spendGuardProof:{...spendGuardProof,observed_at:reset.toISOString()}});
+ assert.equal(atReset.source_intake,true);
+ assert.ok(atReset.source_intake_max_new_rows>=3);
+ assert.equal(atReset.phase2h_raw_archive,true);
  const tight=planD1BundledWork(usage(5_763_167,140_000),
   {now,paidProof:proof,spendGuardProof});
  assert.equal(tight.critical,true);

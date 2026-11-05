@@ -273,12 +273,23 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     // this caller. Paid entitlement previously granted critical=true while
     // source_intake=false, permanently starving the actual news collector.
     const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
-    const rowsPerSlot=Math.min(100,Math.floor((writeRoom-
-      D1_BUNDLE_LANES.critical.write_reserve-slots*40-1500)/(slots*16)));
+    const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
+    const futureWriteRoom=Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
+    const futureReadRoom=Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
+    // Future slots use the full-day ceiling; this slot still uses its paced
+    // allowance. Reserving tomorrow's work from today's early-hour allowance
+    // would incorrectly stop intake immediately after every UTC reset.
+    const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
+      D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
     const sourceIntake=admitted&&rowsPerSlot>=3&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
+      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
+      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
+      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
     const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+900;
+      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
+      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
