@@ -112,12 +112,14 @@ export async function dispatchP1BundledDueSources(env,{
 export async function verifiedP1BundledLeasePairs(env,items,now){
  if(!env?.DB?.prepare||!Array.isArray(items)||items.length<1||
     items.length>15||!valid(now)||items.some(x=>
-     !SOURCE.test(x?.source_id??"")||!UUID.test(x?.token??"")))
+     !SOURCE.test(x?.source_id??"")||!UUID.test(x?.token??"")||
+     typeof x?.scheduled_at!=="string"||
+     !Number.isFinite(Date.parse(x.scheduled_at))))
   throw Error("P1_BUNDLE_CONSUMER_INPUT_INVALID");
  const tokens=[...new Set(items.map(x=>x.token))];
  const sourceIds=[...new Set(items.map(x=>x.source_id))];
  const r=await env.DB.prepare(
-  "SELECT b.bundle_id,j.value AS source_id "+
+  "SELECT b.bundle_id,b.leased_at,j.value AS source_id "+
   "FROM p1_source_poll_bundles b,json_each(b.source_ids_json) j "+
   "WHERE b.bundle_id IN (SELECT value FROM json_each(?)) "+
   "AND b.expires_at>? "+
@@ -125,13 +127,15 @@ export async function verifiedP1BundledLeasePairs(env,items,now){
  ).bind(JSON.stringify(tokens),iso(now),JSON.stringify(sourceIds)).all();
  if(!Array.isArray(r?.results)||r.results.length>MAX_DUE)
   throw Error("P1_BUNDLE_CONSUMER_READBACK_INVALID");
- const allowed=new Set(items.map(x=>x.token+"|"+x.source_id));
+ const allowed=new Map(items.map(x=>[x.token+"|"+x.source_id,
+  x.scheduled_at]));
  const verified=new Set();
  for(const row of r.results){
   const k=row.bundle_id+"|"+row.source_id;
   if(!allowed.has(k)||verified.has(k))
    throw Error("P1_BUNDLE_CONSUMER_LEASE_CONFLICT");
-  verified.add(k);
+  // A queue token cannot authorize a different schedule clock.
+  if(row.leased_at===allowed.get(k))verified.add(k);
  }
  return verified;
 }
