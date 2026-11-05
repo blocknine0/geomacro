@@ -1,0 +1,49 @@
+{
+  "schema": "geomacro.cloudflare-five-usd-central-budget.v1",
+  "owner_policy": "CLOUDFLARE_WORKERS_PAID_MINIMUM_5_USD_NO_INTENTIONAL_OVERAGE",
+  "minimum_monthly_plan_usd": 5,
+  "absolute_invoice_cap_guaranteed": false,
+  "product_scope": "ONE_EXISTING_CLOUDFLARE_ACCOUNT",
+  "provider_enforced_usage_blocks": {
+    "workers": {
+      "action": "usage_block",
+      "threshold_cents": 1
+    },
+    "durable_objects": {
+      "action": "usage_block",
+      "threshold_cents": 1
+    },
+    "notes": "Minimum permitted 1-cent provider overage threshold. Metering is asynchronous and does not cover D1/Queues/KV/R2."
+  },
+  "paid_admission": {
+    "require_verified_workers_paid_subscription": true,
+    "require_both_provider_usage_blocks": true,
+    "fallback_when_unverified": "CONSERVATIVE_FREE_QUOTA_OR_HOLD",
+    "d1_source_daily_soft_rows_read_max": 18000000,
+    "d1_source_daily_soft_rows_written_max": 180000,
+    "d1_account_wide_atomic_guarantee": false
+  },
+  "monthly_guardrail_targets_not_provider_hard_caps": {
+    "workers_requests": 8000000,
+    "workers_cpu_ms": 24000000,
+    "d1_rows_read": 20000000000,
+    "d1_rows_written": 40000000,
+    "d1_stored_gb": 4,
+    "durable_objects_requests": 800000,
+    "queues_standard_operations": 800000,
+    "r2_standard_stored_gb": 8,
+    "r2_class_a_operations": 800000,
+    "r2_class_b_operations": 8000000,
+    "kv_writes": 800000
+  },
+  "automatic_paid_activation": false,
+  "automatic_cloudflare_subscription_changes": false,
+  "commercial_payment_switch_unchanged": true,
+  "must_verify_all_cloudflare_products_before_claiming_invoiced_5_usd": true,
+  "warnings": [
+    "Provider 1-cent usage blocks cannot promise zero excess charges.",
+    "D1, Queues, KV, R2, storage, taxes and independent provider bills are not controlled by Workers/DO spend blocks.",
+    "Soft quotas can be bypassed by independent Workers, cron, GitHub Actions, third-party clients and delayed provider counters unless individually integrated.",
+    "A strict never-exceed-$5 invoice cannot be guaranteed with a metered Workers Paid account."
+  ]
+}
