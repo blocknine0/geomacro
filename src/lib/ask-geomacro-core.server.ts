@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
+import { publicAskResearchProjection } from "./ask-public-research-projection";
 import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.server";
 import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
@@ -55,7 +56,7 @@ export async function executeAskGeomacro(
 
   try {
     return await withPublicRuntimeTimeout(
-      (async () => toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer)(),
+      (async () => publicAskResearchProjection(toCommercialAskBrief(await answerAskQuestion(data.question), data.question)) as AskAnswer)(),
       14_000,
       "ASK_RESEARCH_DEADLINE",
     );
