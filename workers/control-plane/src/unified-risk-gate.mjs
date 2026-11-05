@@ -524,6 +524,47 @@ async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher){
  }
  return {risk_signal_rows:signals.length,corridor_rows:countries.length?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
 }
+/** Daily seven-day rollup, separate from retention cleanup.
+ * Every source row is HMAC-verified from D1 before any derived upsert.
+ * BACKFILL writes each retained snapshot day; DAILY writes only the latest
+ * available snapshot day. No assessment is fabricated when no signed GRO
+ * hash is present in the verified snapshot.
+ */
+export async function runUnifiedRiskSevenDayRollup(env,{
+ now=Date.now(),fetcher=fetch,mode="DAILY",
+}={}){
+ const cfg=supabaseCfg(env);
+ if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
+ if(!["DAILY","BACKFILL"].includes(mode))
+  return {ok:false,error:"RISK_GATE_7D_ROLLUP_MODE_INVALID"};
+ try{
+  const today=iso(now).slice(0,10);
+  const from=iso(Date.parse(today+"T00:00:00.000Z")-6*DAY).slice(0,10);
+  const rows=await signedSnapshotRows(env,
+   "entity_type='COUNTRY' AND day_utc>=? AND day_utc<=?",[from,today]);
+  const days=[...new Set(rows.map(x=>x.day_utc))].sort();
+  if(!days.length)return {ok:true,mode,from_day:from,to_day:null,
+   snapshot_rows:0,rollup_days:0,risk_signal_rows:0,corridor_rows:0,
+   assessment_rows:0,assessment_status:"BLOCKED_NO_SIGNED_GRO"};
+  const rollupDays=mode==="BACKFILL"?days:[days.at(-1)];
+  let signals=0,corridors=0;
+  for(const day of rollupDays){
+   const result=await syncRiskGateSevenDayOutputs(env,cfg,
+    rows.filter(x=>x.day_utc===day),now,fetcher);
+   signals+=result.risk_signal_rows;
+   corridors+=result.corridor_rows;
+  }
+  const signedGroRows=rows.filter(x=>hex.test(
+   String(x.snapshot?.signed_gro_payload_sha256??""))).length;
+  return {ok:true,mode,from_day:from,to_day:rollupDays.at(-1),
+   snapshot_rows:rows.length,rollup_days:rollupDays.length,
+   risk_signal_rows:signals,corridor_rows:corridors,assessment_rows:0,
+   assessment_status:signedGroRows?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO",
+   hmac_verified:true};
+ }catch{
+  return {ok:false,error:"RISK_GATE_7D_ROLLUP_FAILED"};
+ }
+}
 /** Bounded D1-to-Supabase immutable snapshot delivery.
  * BACKLOG is scheduled and strictly oldest-first (12 rows per run).
  * CANARY_EXACT is owner-only production acceptance: re-post EXACTLY its
