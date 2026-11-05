@@ -8,6 +8,7 @@ import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator
 import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride} from "./risk-gate-flash-override.mjs";
+import {materializeRiskGateAssessments} from "./risk-gate-assessment-buffer.mjs";
 import {CATEGORIES,CATEGORY_SPECS,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk,generateCommercialTiers,categoryView} from "./unified-risk-engine.mjs";
 import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bridge.mjs";
@@ -633,12 +634,12 @@ export async function runUnifiedRiskSevenDayRollup(env,{
    signals+=result.risk_signal_rows;
    corridors+=result.corridor_rows;
   }
-  const signedGroRows=rows.filter(x=>hex.test(
-   String(x.snapshot?.signed_gro_payload_sha256??""))).length;
+  const assessments=await materializeRiskGateAssessments(env,rows,{
+   now,remote:(path,options)=>remote(cfg,path,options,fetcher),
+  });
   return {ok:true,mode,from_day:from,to_day:rollupDays.at(-1),
    snapshot_rows:rows.length,rollup_days:rollupDays.length,
-   risk_signal_rows:signals,corridor_rows:corridors,assessment_rows:0,
-   assessment_status:signedGroRows?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO",
+   risk_signal_rows:signals,corridor_rows:corridors,...assessments,
    hmac_verified:true,quarantined_snapshot_rows:quarantined.length,
    degraded:quarantined.length>0};
  }catch(error){
@@ -772,6 +773,36 @@ export async function syncUnifiedRiskSupabase(env,{
    canonical_page_count:canonicalPage?rows.length:null,
    remote_rows_repaired:canonicalPage?needsWrite.length:null};
  }catch{return {ok:false,error:"UNIFIED_SUPABASE_SYNC_FAILED"}}
+}
+/** Queue-less 20m assessment refresh. An empty current-GRO probe costs one
+ * indexed D1 read and cannot produce an assessment or a replacement score. */
+export async function runUnifiedRiskAssessmentTick(env,{now=Date.now(),fetcher=fetch}={}){
+ const cfg=supabaseCfg(env);
+ if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
+ try{
+  const allowed=activeRiskTargets(env,CANONICAL_UNIFIED_TARGETS).filter(x=>x.type==="COUNTRY").map(x=>x.id);
+  const ids=[];
+  for(let offset=0;offset<allowed.length;offset+=50){
+   const batch=allowed.slice(offset,offset+50);
+   const out=await env.DB.prepare("SELECT country_iso3 FROM country_gro_verified_hot WHERE country_iso3 IN ("+
+    batch.map(()=>"?").join(",")+") AND generated_at<=? AND expires_at>? LIMIT 51")
+    .bind(...batch,iso(now),iso(now)).all();
+   if(!Array.isArray(out?.results)||out.results.length>50)throw Error("RISK_ASSESSMENT_HOT_READ_INVALID");
+   for(const row of out.results)if(batch.includes(row.country_iso3))ids.push(row.country_iso3);
+  }
+  if(!ids.length)return {ok:true,assessment_rows:0,assessment_status:"BLOCKED_NO_SIGNED_GRO"};
+  if(new Set(ids).size!==ids.length)throw Error("RISK_ASSESSMENT_HOT_DUPLICATE");
+  const rows=[],quarantined=[];
+  for(let offset=0;offset<ids.length;offset+=50){
+   const batch=ids.slice(offset,offset+50);
+   rows.push(...await signedSnapshotRows(env,"entity_type='COUNTRY' AND entity_id IN ("+
+    batch.map(()=>"?").join(",")+") AND day_utc>=? AND day_utc<=?",[
+     ...batch,iso(now-6*DAY).slice(0,10),iso(now).slice(0,10)],quarantined));
+  }
+  return {ok:true,...await materializeRiskGateAssessments(env,rows,{
+   now,countryIds:ids,remote:(path,options)=>remote(cfg,path,options,fetcher),
+  }),quarantined_snapshot_rows:quarantined.length};
+ }catch{return {ok:false,error:"RISK_ASSESSMENT_TICK_UNAVAILABLE"}}
 }
 /** One strictly bounded, fresh remote D1-to-Supabase daily hash census.
  * It is not enough that D1 remembers a previous successful write:

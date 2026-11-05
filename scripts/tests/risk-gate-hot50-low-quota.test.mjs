@@ -33,7 +33,7 @@ function signedRow(id){
 }
 test("150 category signals use one authenticated D1 history read and bounded exact remote chunks",async()=>{
  let reads=0,posts=[],last=[];
- const env={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_GATE_OBSERVATION_HMAC_KEY:secret,RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",RISK_GATE_SUPABASE_URL:"https://test.supabase.co",RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-only-service-role-32-character-secret",DB:{prepare(sql){reads++;assert.match(sql,/entity_id IN/);return {bind(){return {all:async()=>({results:RISK_GATE_HOT50.map(signedRow)})}}}}}};
+ const env={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_GATE_OBSERVATION_HMAC_KEY:secret,RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",RISK_GATE_SUPABASE_URL:"https://test.supabase.co",RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-only-service-role-32-character-secret",DB:{prepare(sql){reads++;assert.match(sql,/entity_id IN|country_iso3 IN/);return {bind(){return {all:async()=>({results:RISK_GATE_HOT50.map(signedRow)})}}}}}};
  const fetcher=async(url,options)=>{
   assert.ok(url.length<2400);
   assert.match(url,/geomacro_risk_signal_7d/);
@@ -41,7 +41,7 @@ test("150 category signals use one authenticated D1 history read and bounded exa
   return Response.json(last);
  };
  const result=await runUnifiedRiskSevenDayRollup(env,{now,fetcher,mode:"BACKFILL"});
- assert.equal(result.ok,true,JSON.stringify(result));assert.equal(reads,1);
+ assert.equal(result.ok,true,JSON.stringify(result));assert.equal(reads,2);
  assert.equal(result.risk_signal_rows,150);assert.equal(result.corridor_rows,0);
  assert.equal(posts.length,7);assert.ok(posts.every(x=>x.length<=24));
  assert.equal(result.assessment_status,"BLOCKED_NO_SIGNED_GRO");

@@ -5,7 +5,7 @@ import {checkGeomacroMachineOriginalRightsPreflight,
   type MachineOriginalWithRegistry} from "./geomacro-machine-source-rights.server";
 import type {B2CommercialSourceRight} from "./b2-live.server";
 import type {CountryRiskEventInput} from "./country-risk-engine";
-import {scoreAndSignQualifiedOnDemandCountry,
+import {scoreAndSignQualifiedOnDemandCountry,scoreAndSignQualifiedThreeCategoryCountry,
   type OnDemandCountryScoringInput,
   type VerifiedOnDemandEvidenceReceipt} from "./on-demand-qualified-country-risk.server";
 
@@ -266,5 +266,24 @@ export async function prepareGeomacroMachineCommercialGRO(
     signingMaterial:deps.signingMaterial,
     verificationKeys:deps.verificationKeys,
     qualifyEvidence:createGeomacroMachineCommercialQualifier(bundle,deps),
+  });
+}
+
+/** No new authority: all three immutable groups require their own existing
+ * pinned Facts/Policy attestations and original-byte re-read verification. */
+export async function prepareGeomacroMachineCommercialCountryGRO(
+ input:{country_iso3:string;country_name?:string|null;now?:Date;
+  groups:Array<{category:Category;events:CountryRiskEventInput[];bundle:PrivateBundle}>},
+ deps:PrivateDependencies & Readonly<{signingMaterial:RiskObjectSigningMaterial;
+  verificationKeys:RiskObjectVerificationKeys}>,
+){
+ if(!Array.isArray(input.groups)||input.groups.length!==3||
+    new Set(input.groups.map(x=>x.category)).size!==3)throw Error(FAIL);
+ const qualifiers=new Map(input.groups.map(group=>[
+  group.category,createGeomacroMachineCommercialQualifier(group.bundle,deps)]));
+ return scoreAndSignQualifiedThreeCategoryCountry({...input,
+  groups:input.groups.map(({category,events})=>({category,events}))},{
+   signingMaterial:deps.signingMaterial,verificationKeys:deps.verificationKeys,
+   qualifyEvidence:async scope=>qualifiers.get(scope.category)?.(scope)??null,
   });
 }

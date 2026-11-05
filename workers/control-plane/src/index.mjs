@@ -32,7 +32,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1413,6 +1413,12 @@ export default {
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
         ctx.waitUntil(runUnifiedRiskSevenDayRollup(env,{now:utc.getTime(),mode:"DAILY"})
           .then(r=>{if(!r.ok)throw Error("RISK_GATE_7D_ROLLUP_DEFERRED:"+r.error)}));
+      // Current qualified GROs can arrive after the immutable daily snapshot.
+      // Refresh only their supplementary assessment hashes every 20 minutes.
+      if(utc.getUTCMinutes()%20===7&&
+         env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+        ctx.waitUntil(runUnifiedRiskAssessmentTick(env,{now:utc.getTime()})
+          .then(r=>{if(!r.ok)throw Error("RISK_GATE_ASSESSMENT_TICK_DEFERRED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
