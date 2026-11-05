@@ -18,6 +18,13 @@ export type ConversationalPlan = {
 export function needsConversationInterpretation(question: string, ambiguous = false): boolean {
   if (ambiguous) return true;
   if (/[^\x00-\x7f]/u.test(question)) return true;
+  // Free-form English such as "What is OPEC doing?" or "Why is the Red
+  // Sea affected?" should not be rejected solely for omitting a category
+  // label. The optional interpreter may route it, but never supplies facts.
+  // Generic "what changed today" uses the already-governed three-lane reader.
+  if (!askDomains(question).length && !/\bgeomacro\b/i.test(question) &&
+      !/^(?:what (?:has )?changed today|what happened today|what(?: is|'s) new today|latest (?:news|developments))\??$/i.test(question.trim()))
+    return true;
   // Code-mixed romanized Bengali/Hindi questions can lack every English keyword.
   if (/\b(?:keno|kemon|kivabe|ki\s+(?:hochhe|ache|achhe)|batao|kaise|kyun|kya\s+(?:hai|asar)|samjhao|ekhon|somporke|niyontron|niyantran|probhab|prabhab|bolo|bolun|hocche|kothay|kotota|kaisa|kitna|ke\s+baare)\b/i.test(question) ||
       /\bki\s*[?!।]*$/iu.test(question))

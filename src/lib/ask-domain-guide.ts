@@ -3,10 +3,12 @@ import { COUNTRIES_195 } from "./canonical-country-registry-195";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 
 export type AskDomain = "geopolitics" | "macro" | "rare_earth";
+/** Shared category vocabulary for free-form Ask and bounded research discovery.
+ * These are ROUTING hints only, never proof of a current observation. */
 const DOMAIN_RULES: readonly [AskDomain, RegExp][] = [
-  ["geopolitics", /\b(?:geopolitic\w*|sanctions?|diplomac\w*|conflicts?|wars?|ceasefire|tariffs?|trade|elections?|security|shipping|strait|sovereignty|nato|defen[cs]e|export controls?)\b/i],
-  ["macro", /\b(?:macro\w*|gri|risk indices|risk index|econom\w*|inflation|deflation|disinflation|gdp|recession|interest rates?|central banks?|monetary|fiscal|currency|currencies|forex|fx|exchange rates?|bonds?|yields?|debt|employment|unemployment|gold|silver|oil|dollar|fed|ecb|bank of|growth)\b/i],
-  ["rare_earth", /\b(?:rare[- ]earths?|critical[- ]minerals?|minerals?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|magnets?|mining|refining|supply chains?)\b/i],
+  ["geopolitics", /\b(?:geopolitic\w*|sanctions?|embargo(?:es)?|diplomac\w*|conflicts?|wars?|ceasefires?|tariffs?|trade|elections?|security|shipping|straits?|sovereignty|nato|defen[cs]e|export controls?|militar\w*|border\w*|tensions?|treat(?:y|ies)|foreign polic(?:y|ies)|ofac|unsc|red sea|south china sea|taiwan|peace talks?)\b/i],
+  ["macro", /\b(?:macro\w*|gri|risk indices|risk index|econom\w*|inflation|deflation|disinflation|cpi|pmi|gdp|recession|interest rates?|central banks?|monetary|fiscal|currenc(?:y|ies)|forex|fx|exchange rates?|bonds?|yields?|debt|employment|unemployment|gold|silver|oil|dollar|fed|ecb|bank of|growth|opec\+?|imf|world bank|wto|oecd|rate cuts?|rate hikes?|quantitative easing|commodity prices?|trade deficit|current account)\b/i],
+  ["rare_earth", /\b(?:rare[- ]earths?|critical[- ]minerals?|critical raw materials?|strategic minerals?|minerals?|lithium|cobalt|nickel|graphite|copper|gallium|germanium|neodymium|dysprosium|terbium|praseodymium|tungsten|antimony|manganese|vanadium|scandium|tantalum|niobium|yttrium|magnets?|mining|refining|supply chains?|battery materials?|mineral processing|separation capacity)\b/i],
 ];
 export function askDomains(question: string): AskDomain[] {
   return DOMAIN_RULES.filter(([, rule]) => rule.test(question)).map(([domain]) => domain);
@@ -38,6 +40,23 @@ function response(summary: string, extra: Partial<HybridAskAnswer> = {}): Hybrid
     answer_kind:"guidance",...extra};
 }
 
+/** Timeless cross-sector mechanics, not an answer about a named event or live score. */
+function crossDomainGuideAnswer(domains: readonly AskDomain[]): HybridAskAnswer {
+  const parts: string[] = [];
+  if (domains.includes("geopolitics") && domains.includes("macro"))
+    parts.push("Policy restrictions, conflict and shipping disruption can transmit into trade costs, inflation expectations, capital flows and exchange rates.");
+  if (domains.includes("geopolitics") && domains.includes("rare_earth"))
+    parts.push("Export controls, sanctions and transport restrictions can constrain access to mineral inputs; exposure depends on mining, refining and downstream manufacturing locations.");
+  if (domains.includes("macro") && domains.includes("rare_earth"))
+    parts.push("Interest rates, currency moves and industrial demand affect mineral project financing and input costs, while physical output depends on processing capacity and qualification.");
+  return response(parts.join(" "), {
+    answer_kind:"explainer",
+    why_it_matters:"The link is conditional: the size and direction of any real-world effect depend on specific actors, products, timing and measurable exposure.",
+    geomacro_view:"For a current-country assessment, specify the location, mineral and time window. This explanation is not a current event confirmation, numerical forecast or signed risk score.",
+    real_time_message:"General cross-category mechanism only; no live observation or signed risk assessment.",
+  });
+}
+
 export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   const q = question.trim();
   const publicInfo = geomacroPublicAnswer(q);
@@ -47,8 +66,18 @@ export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   if (/\b(?:football|cricket|sports?|recipes?|cake|poems?|songs?|javascript|python|diagnos(?:e|is)|symptoms?|horoscope)\b/i.test(q))
     return response("I cover Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Please ask a research question within these three categories.");
   const domains = askDomains(q);
-  const generic = /^(?:what (?:has )?changed today|what is new today|latest (?:news|developments)|what is (?:happening|driving risk)(?: today)?)\??$/i.test(q);
-  const countrySpecific = COUNTRIES_195.some(country => [country.name].some(name => new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(q)));
+  const generic = /^(?:what (?:has )?changed today|what (?:is|'s) new today|what happened today|what(?: is|'s) happening today|latest (?:news|developments)|(?:give me )?(?:the )?(?:news|updates) today|what is (?:happening|driving risk)(?: today)?)\??$/i.test(q);
+  // Country names and common abbreviated mentions are in scope even when
+  // the user does not spell out "geopolitics" or "macroeconomics".
+  const countrySpecific = COUNTRIES_195.some(country =>
+    [...new Set([country.name, ...country.aliases])].some(name => {
+      if (!name || name.length < 2) return false;
+      const expression = new RegExp("\\b" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", name.length <= 3 ? "" : "i");
+      return expression.test(q);
+    }) ||
+    (country.iso3 === "USA" && /\b(?:US|U\.S\.)\b/.test(q)) ||
+    (country.iso3 === "GBR" && /\b(?:UK|U\.K\.)\b/.test(q))
+  );
   if (!domains.length && !generic && !countrySpecific)
     return response("Ask Geomacro covers Geopolitics, Macro Economics and Critical Minerals / Rare Earths. Please ask a question in one of these three areas—for example, how interest rates affect currencies or how export controls affect mineral supply.");
   // Explicit unrelated tasks must not be laundered through an in-scope keyword.
@@ -58,6 +87,9 @@ export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   // use governed retrieval. Editorial knowledge never fills a current-data gap.
   if (countrySpecific || /\b(?:today|latest|current|now|yesterday|this (?:week|month|year)|in 20\d\d|forecast|predict|price|how much|how many|what.{0,12}rate)\b/i.test(q) || /\b(?:news|updates?|announced|happened|changed)\b/i.test(q)) return null;
   if (!/^(?:what (?:is|are|does)|how (?:do|does|can)|why (?:do|does|can)|explain|summarize|define|compare|difference|tell me about)\b/i.test(q)) return null;
+  // Never answer a 2–3-domain causal question using a one-topic canned guide.
+  // Mixed current, numeric, country or predictive questions took the governed path above.
+  if (domains.length > 1) return crossDomainGuideAnswer(domains);
   const guide = GUIDES.find(item => item.match.test(q));
   if (!guide) return null;
   return response(guide.explanation, {why_it_matters:guide.mechanism,geomacro_view:guide.watch,

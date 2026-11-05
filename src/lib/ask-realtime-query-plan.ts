@@ -1,15 +1,16 @@
 import { freshnessMaxAgeHours } from "./ask-freshness";
+import { askDomains, type AskDomain } from "./ask-domain-guide";
 
 export type RealtimeAskCategory = "GEOPOLITICS" | "MACRO" | "CRITICAL_MINERALS";
 
 const ALL_CATEGORIES: readonly RealtimeAskCategory[] =
   ["GEOPOLITICS", "MACRO", "CRITICAL_MINERALS"];
 
-const CATEGORY_INTENT: ReadonlyArray<{ category: RealtimeAskCategory; match: RegExp }> = [
-  { category: "GEOPOLITICS", match: /\b(?:geopolitic(?:s|al)?|diplomac(?:y|ies)|foreign policy|sanctions?|conflict|elections?)\b/i },
-  { category: "MACRO", match: /\b(?:macro(?:economics?|economic)?|fx|foreign exchange|inflation|currency|interest rates?|central bank|gdp|recession)\b/i },
-  { category: "CRITICAL_MINERALS", match: /\b(?:critical[- ]minerals?|rare[- ]earths?|lithium|cobalt|nickel|graphite|copper|gallium|germanium)\b/i },
-];
+const CATEGORY_FOR_DOMAIN: Record<AskDomain, RealtimeAskCategory> = {
+  geopolitics: "GEOPOLITICS",
+  macro: "MACRO",
+  rare_earth: "CRITICAL_MINERALS",
+};
 
 const BROAD_CURRENT_RE =
   /\b(?:what changed|what happened|what(?: is|'s) changing|what(?: is|'s) happening|today|latest|current developments?|recent developments?|right now)\b/i;
@@ -26,8 +27,7 @@ export function buildRealtimeSearchPlan(question: string) {
   const age = freshnessMaxAgeHours(question);
   const broad = BROAD_CURRENT_RE.test(question) || age !== null ||
     clean.split(/\s+/u).length <= 3;
-  const targeted = CATEGORY_INTENT.filter(rule => rule.match.test(question))
-    .map(rule => rule.category);
+  const targeted = askDomains(question).map(domain => CATEGORY_FOR_DOMAIN[domain]);
   return {
     broad,
     maxAgeHours: age ?? (broad ? 48 : 7 * 24),

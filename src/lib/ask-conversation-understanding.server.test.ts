@@ -50,7 +50,7 @@ describe("Ask multilingual grounded conversation adapter", () => {
     expect(needsConversationInterpretation("Russia ka Europe par kya asar hai?")).toBe(true);
     expect(needsConversationInterpretation("What are China's rare earth export controls?")).toBe(false);
     expect(needsConversationInterpretation("Why do muscles ache after exercise?")).toBe(true); // generic ambiguous English follow-up policy
-    expect(needsConversationInterpretation("Explain muscle ache after exercise")).toBe(false);
+    expect(needsConversationInterpretation("Explain muscle ache after exercise")).toBe(true); // send unclassified free-form text only to a scope-checking interpreter
   });
 
   it("resolves an English language switch using the Bengali user topic", async () => {
