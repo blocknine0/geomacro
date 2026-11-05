@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Owner-only publication of one already signed and pinned pilot envelope.
 import {readFileSync} from "node:fs";
-import {fetchProtectedPilot} from "./predge-pilot-http-retry.mjs";
+import {fetchProtectedPilot,safePilotHttpFailureCode} from "./predge-pilot-http-retry.mjs";
 import {verifySignedPilotCheck,MAX_WIRE_BYTES,PINNED_PUBLIC_SPKI}
  from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
 const BASE="https://geomacro-control-plane.daspallab202391.workers.dev";
@@ -21,7 +21,15 @@ async function main(){
  const put=await fetchProtectedPilot(BASE+"/v1/internal/predge-pilot-news-context-publish",{
   method:"PUT",headers:{"authorization":"Bearer "+token,"content-type":"application/json"},
   body:raw,redirect:"error"});
- if(put.status!==200)throw Error("OWNER_PUBLISH_FAILED_"+put.status);
+ if(put.status!==200){
+   const code=await safePilotHttpFailureCode(put,[
+     "OWNER_UNAUTHORIZED","PILOT_WINDOW_EXPIRED",
+     "PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE",
+     "PILOT_CHECK_D1_UNAVAILABLE","PILOT_SAMPLE_D1_WRITE_UNAVAILABLE",
+     "PILOT_SAMPLE_D1_WRITE_UNCONFIRMED",
+     "PILOT_SAMPLE_SIGNATURE_OR_SCHEMA_INVALID","PILOT_SAMPLE_TOO_LARGE"]);
+   throw Error("OWNER_PUBLISH_FAILED_"+put.status+"_"+code);
+ }
  const receipt=await put.json();
  if(receipt.ok!==true||receipt.received_hash!==obj.integrity.payload_hash)
   throw Error("OWNER_PUBLISH_RECEIPT_INVALID");
@@ -30,7 +38,13 @@ async function main(){
  const get=await fetchProtectedPilot(BASE+"/v1/internal/predge-pilot-news-context-publish",{
    headers:{"authorization":"Bearer "+token},
    redirect:"error"});
- if(get.status!==200)throw Error("PILOT_READBACK_FAILED_"+get.status);
+ if(get.status!==200){
+   const code=await safePilotHttpFailureCode(get,[
+     "PILOT_WINDOW_EXPIRED","PILOT_CHECK_ACTIVE_KEY_REGISTRY_UNAVAILABLE",
+     "PILOT_CHECK_D1_UNAVAILABLE","SIGNED_PILOT_SAMPLE_NOT_PUBLISHED",
+     "SIGNED_PILOT_SAMPLE_NOT_VERIFIED","SIGNED_PILOT_SAMPLE_OVERSIZE"]);
+   throw Error("PILOT_READBACK_FAILED_"+get.status+"_"+code);
+ }
  const actual=await get.json();
  await verifySignedPilotCheck(actual);
  if(actual.integrity.payload_hash!==obj.integrity.payload_hash)
