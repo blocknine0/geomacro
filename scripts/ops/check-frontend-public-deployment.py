@@ -18,6 +18,8 @@ PUBLIC_PAGE_CHECKS = (
     "/institutional", "/contact", "/research", "/about", "/roadmap",
     "/ecosystem", "/risk-gate", "/global-risk",
 )
+# The founder-retired historical Global Risk page is intentionally redirected.
+PUBLIC_CANONICAL_REDIRECTS = {"/global-risk": "/intelligence"}
 HEADERS = {"User-Agent": "GeoMacro-frontend-acceptance/2.0", "Cache-Control": "no-cache", "Accept": "application/json,text/html,*/*"}
 SHA = re.compile(r"^[0-9a-f]{40}$")
 failures, observations = [], []
@@ -104,8 +106,9 @@ for site in SITES:
                 failures.append(f"{site}{path}: invalid HTML status={status}")
             if not allowed_final_host(site, final_url):
                 failures.append(f"{site}{path}: unexpected cross-domain redirect")
-            if urlparse(final_url).path != path:
-                failures.append(f"{site}{path}: unexpected canonical route redirect")
+            expected_path = PUBLIC_CANONICAL_REDIRECTS.get(path, path)
+            if urlparse(final_url).path != expected_path:
+                failures.append(f"{site}{path}: unexpected canonical route redirect to {urlparse(final_url).path}; expected {expected_path}")
             if not re.search(r"<h1\b", html, re.I) or not re.search(r"<title\b", html, re.I):
                 failures.append(f"{site}{path}: missing SSR heading or page title")
         except Exception as exc:
