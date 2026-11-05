@@ -1871,6 +1871,7 @@ export default {
         // Exercise the production customer route handler with the existing
         // private tiered credential, without transmitting it over the network.
         let authenticated_unified_api_200=false;
+        let authenticated_unified_api_error=null;
         const privateToken=String(env.RISK_GATE_TIERED_TOKEN??"");
         if(/^[a-f0-9]{64}$/.test(privateToken)){
           try{
@@ -1881,8 +1882,11 @@ export default {
                 client_policy:"STRICT"})});
             const probe=await unifiedRiskGateEvaluate(inProcess,env);
             const body=await probe.json();
+            const code=String(body?.error??"");
+            if(/^[A-Z0-9_]{1,100}$/.test(code))authenticated_unified_api_error=code;
             authenticated_unified_api_200=probe.status===200&&body.ok===true&&
-              body?.tiers?.core?.gate_decision==="GATE_INSUFFICIENT_EVIDENCE"&&
+              body.execution_authorized===false&&
+              ["GATE_INSUFFICIENT_EVIDENCE","GATE_HOLD","GATE_PASS","GATE_BLOCKED"].includes(body?.tiers?.core?.gate_decision)&&
               Object.keys(body.categories??{}).length===3&&
               /^hmac_sha256:[a-f0-9]{64}$/.test(body?.audit_proof?.signature??"");
           }catch{/* no successful proof */}
@@ -1892,6 +1896,7 @@ export default {
           sync.ok&&authenticated_unified_api_200;
         return json({ok,schema:"geomacro.unified-risk-production-acceptance.v1",
           authenticated_unified_api_200,
+          authenticated_unified_api_error,
           checked_targets:receipts,protected_supabase_sync:{
             ok:sync.ok,synced:sync.synced??0,error:sync.error??null,
             hash_readback_verified:sync.hash_readback_verified===true||

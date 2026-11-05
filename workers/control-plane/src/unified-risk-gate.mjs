@@ -902,10 +902,10 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    included_in_daily_snapshot_hmac:false,
    commercial_action_authorized:false,
   };
-  let customTiers=payload.approved_thresholds?generateCommercialTiers(independentScore,{
+  let customTiers=generateCommercialTiers(independentScore,{
    groVerified:!!gro,confidence:gro?.confidence??null,
-   policy:payload.approved_thresholds
-  }):x.snapshot.tiers;
+   ...(payload.approved_thresholds?{policy:payload.approved_thresholds}:{})
+  });
   const lenient=payload.client_policy==="LENIENT"&&payload.override_acknowledged===true;
   let clientPolicyDecision=lenient?
    customTiers.policy.lenient_mode_outcome:customTiers.core.gate_decision;
@@ -1030,7 +1030,10 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    client_override_applied:lenient,execution_authorized:false};
   const requestHash=await hash(JSON.stringify(payload));
   const receipt=await persistRiskGateAuditReceipt(env.DB,{
-   client_id:"unified-risk-gate-v1",request_id:String(payload.request_id??"rg-"+requestHash.slice(0,40)),
+   // This endpoint evaluates current evidence on every call and accepts no
+   // caller idempotency key. Identical bodies at different times are distinct
+   // evaluations; a body-derived ID collides with the append-only old receipt.
+   client_id:"unified-risk-gate-v1",request_id:"rg-"+crypto.randomUUID(),
    request_hash:requestHash,subject_type:target.type.toLowerCase(),subject_id:target.id,
    decision:clientPolicyDecision,policy_id:payload.approved_thresholds?"approved-thresholds":"default-policy",
    policy_version:payload.approved_thresholds?"caller-approved-v1":"unified-v1",

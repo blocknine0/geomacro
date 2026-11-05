@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash,createHmac} from "node:crypto";
 import {PHASE2H_COUNTRIES_195} from "../../scripts/lib/phase2h-country-originals-195.mjs";
 import {DAILY_RG_CORRIDORS} from "../../workers/control-plane/src/daily-risk-gate-generator.mjs";
 import {CATEGORIES,validatedSignedCategoryScores} from "../../workers/control-plane/src/unified-risk-categories.mjs";
@@ -84,7 +85,7 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
       const [receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
        decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
        audit_receipt_hash,created_at,signature_key_id,signature_scheme,audit_receipt_signature]=params;
-      auditReceipts.set(receipt_id,{receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
+      if(!auditReceipts.has(receipt_id))auditReceipts.set(receipt_id,{receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
        decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
        audit_receipt_hash,signature_key_id,signature_scheme,audit_receipt_signature});
     }
@@ -125,6 +126,48 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
  const again=await generateUnifiedSnapshot(env,{type:"COUNTRY",id:"TWN"},{now,fetcher});
  assert.equal(again.existing,true);
  assert.equal(store.size,1);
+ // Match the production INSERT OR IGNORE constraint and repeat the actual
+ // route at new timestamps. Neither a new daily snapshot nor live source
+ // refetch is needed for a fresh, independently auditable evaluation.
+ let clock=now;
+ for(const product_tier of [undefined,"basic_focused","standard","complex_full"]){
+  for(let repeat=0;repeat<2;repeat++){
+   clock+=1000;
+   const response=await unifiedRiskGateEvaluate(new Request("https://example.org/v1/risk-gate/unified/evaluate",{
+    method:"POST",headers:{authorization:"Bearer "+"a".repeat(64)},
+    body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",client_policy:"STRICT",
+     ...(product_tier?{product_tier}:{})})
+   }),env,{now:clock,fetcher:async()=>{throw Error("UNEXPECTED_PUBLISHER_REFETCH")}});
+   assert.equal(response.status,200,await response.clone().text());
+   assert.equal((await response.json()).execution_authorized,false);
+  }
+ }
+ assert.equal(auditReceipts.size,9);
+ assert.equal(new Set([...auditReceipts.values()].map(x=>x.request_id)).size,9);
+ assert.equal(store.size,1);
+ // A valid daily HMAC may preserve an earlier PASS. Its old verdict cannot
+ // authorize a current call when the current pinned GRO is absent/expired.
+ const storedRow=store.get("COUNTRY|TWN|"+days);
+ const historical=JSON.parse(storedRow.snapshot_json),proof=JSON.parse(storedRow.audit_proof_json);
+ historical.tiers.core.gate_decision="GATE_PASS";
+ storedRow.snapshot_json=JSON.stringify(historical);
+ storedRow.content_sha256=createHash("sha256").update(storedRow.snapshot_json).digest("hex");
+ proof.content_sha256=storedRow.content_sha256;
+ proof.signature="hmac_sha256:"+createHmac("sha256",env.RISK_GATE_OBSERVATION_HMAC_KEY).update(JSON.stringify({
+  schema:historical.schema,schema_epoch:proof.schema_epoch,key_id:proof.key_id,
+  content_sha256:proof.content_sha256,timestamp_utc:proof.timestamp_utc
+ })).digest("hex");
+ storedRow.audit_proof_json=JSON.stringify(proof);
+ const expired=await unifiedRiskGateEvaluate(new Request("https://example.org/v1/risk-gate/unified/evaluate",{
+  method:"POST",headers:{authorization:"Bearer "+"a".repeat(64)},
+  body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",client_policy:"STRICT"})
+ }),env,{now:clock+1000,fetcher});
+ assert.equal(expired.status,200);
+ const current=await expired.json();
+ assert.equal(current.client_policy_decision,"GATE_INSUFFICIENT_EVIDENCE");
+ assert.equal(current.tiers.core.gate_decision,"GATE_INSUFFICIENT_EVIDENCE");
+ assert.equal(current.verified_live_scoring.trusted_signed_gro_verified,false);
+ assert.equal(auditReceipts.size,10);
 });
 test("lenient override requires explicit client acknowledgment",async()=>{
  const token="a".repeat(64),env={RISK_GATE_TIERED_TOKEN:token};
