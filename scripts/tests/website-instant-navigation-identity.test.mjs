@@ -75,3 +75,64 @@ test("Home remains instant with client-only public-static highlights and no bloc
   assert.match(lockVerifier, /approved_permanent_home_finds_removal_20261102/);
   assert.deepEqual(lock.approved_home_navigation_20261101.approved_paths, ["src/routes/index.tsx"]);
 });
+
+test("live website audit compares only active catalog rows, not retired prices", async () => {
+  const {assertPublicPriceManifest} = await import("../lib/website-live-audit-contract.mjs");
+  const catalog=[{
+    capability:"intelligence_query",launch_status:"ELIGIBILITY_GATED",
+    new_sales_allowed:true,variants:[{variant:"focused",amount_usdc:"0.02",amount_atomic:"20000"}],
+  }];
+  const manifest={
+    pricing_version:"geomacro.capability-usdc.v2",capability_count:1,price_variant_count:1,
+    capabilities:[{capability:"intelligence_query",launch_status:"ELIGIBILITY_GATED",
+      new_sales_allowed:true,variants:[{variant:"focused",price_usdc:"0.02",
+        amount_atomic:"20000",currency:"USDC",
+        nonpayable_network_previews:[{payable_offer_issued:false}]}]}],
+    payment_authorized:false,money_transferred:false,
+    x402_payment_requirement_issued:false,live_commercial_product_available_by_price_listing:false,
+  };
+  assert.deepEqual(assertPublicPriceManifest(manifest,catalog,"geomacro.capability-usdc.v2"),
+    {capabilities:1,price_variants:1});
+  assert.throws(()=>assertPublicPriceManifest({...manifest,price_variant_count:14},catalog,
+    "geomacro.capability-usdc.v2"),/PUBLIC_PRICE_CATALOG_SCOPE_MISMATCH/);
+  assert.throws(()=>assertPublicPriceManifest({...manifest,money_transferred:true},catalog,
+    "geomacro.capability-usdc.v2"),/PUBLIC_PRICE_DISCOVERY_PAYMENT_BOUNDARY_BROKEN/);
+  assert.throws(()=>assertPublicPriceManifest({...manifest,capabilities:[
+    ...manifest.capabilities,{...manifest.capabilities[0],capability:"gri_read"}]},catalog,
+    "geomacro.capability-usdc.v2"),/PUBLIC_PRICE_CATALOG_SCOPE_MISMATCH/);
+});
+
+test("outside-in Store check verifies actual plans, packs and locked checkout", async () => {
+  const {assertLockedStorefront} = await import("../lib/website-live-audit-contract.mjs");
+  const html=String.raw`<main>Payments locked · no charge Live checkout locked · no charge
+    PayPal / card checkout Manual transfer / QR
+    <article data-plan-id="starter_dev"><span>$9</span><span>1,000 credits</span></article>
+    <article data-pack-id="starter_pack"><span>$5</span><span>100 credits</span></article>
+  </main>`;
+  const plans=[{id:"starter_dev",price_usd:9,credits_per_30_days:1000}];
+  const packs=[{id:"starter_pack",price_usd:5,credits:100}];
+  assert.deepEqual(assertLockedStorefront(html,plans,packs),
+    {plans:1,packs:1,checkout_locked:true});
+  assert.throws(()=>assertLockedStorefront(html.replace("$9","$99"),plans,packs),
+    /PUBLIC_STORE_PLAN_PRICE_MISMATCH/);
+  assert.throws(()=>assertLockedStorefront(html.replace("Payments locked · no charge",""),plans,packs),
+    /PUBLIC_STORE_LOCKED_PRESENTATION_MISMATCH/);
+});
+
+test("legacy /data-api redirect, exact build SHA and static audit scope are enforced", async () => {
+  const {assertStoreAlias,assertBuildMarker} = await import("../lib/website-live-audit-contract.mjs");
+  assert.equal(assertStoreAlias({status:307,location:"/pricing"}),"HTTP_REDIRECT");
+  assert.throws(()=>assertStoreAlias({status:302,location:"https://other.test/pricing"}),
+    /PUBLIC_DATA_API_ALIAS_REDIRECT_MISMATCH/);
+  const sha="a".repeat(40);
+  const build={schema_version:"geomacro.deployment-build.v1",
+    canonical_repository:"blocknine0/geomacro",canonical_main_sha:sha};
+  assert.deepEqual(assertBuildMarker(build,sha),{website_sha:sha,exact_sha_checked:true});
+  assert.throws(()=>assertBuildMarker(build,"b".repeat(40)),/PUBLIC_WEBSITE_EXACT_SHA_MISMATCH/);
+  const audit=read("scripts/ops/verify-live-website-contract.mjs");
+  assert.match(audit,/publicCapabilityPricingCatalog\(\)/);
+  assert.match(audit,/assertStoreAlias/);
+  assert.match(audit,/assertLockedStorefront/);
+  assert.doesNotMatch(audit,/data-capability="[^"]*"\s*\+/);
+  assert.doesNotMatch(audit,/price_variants:14/);
+});
