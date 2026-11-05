@@ -6,7 +6,7 @@ test("native auth quota ticket reuses canonical atomic account ledger",()=>{
  const q=buildP0bNativeAuthTicketSql(new Date("2026-11-05T11:00:00.000Z"));
  assert.match(q.quotaSql,/ON CONFLICT\(day_utc\) DO UPDATE/u);
  assert.match(q.quotaSql,/native_auth_requests = native_auth_requests \+ excluded.native_auth_requests/u);
- assert.match(q.quotaSql,/native_auth_requests < 40/u);
+ assert.match(q.quotaSql,/native_auth_requests \\+ excluded\\.native_auth_requests <= 40/u);
  assert.match(q.receiptSql,/p0b_b2_scope_preflight/u);
  assert.match(q.readbackSql,/2026-11-05/u);assert.equal(q.quotaSql.includes("?"),false);assert.equal(B2_DAILY_LIMITS.NATIVE_AUTH,40);
 });
