@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-04T23:42:31.224Z",
+  "checked_at": "2026-11-05T00:30:55.852Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 351,
+  "item_count": 361,
   "counts": {
-    "geopolitics": 148,
+    "geopolitics": 147,
     "macro": 162,
-    "rare_earth": 41
+    "rare_earth": 52
   },
-  "source_native_ids_sha256": "6e118c0ed3383e2089d43856d8b23b942566046d2120542fea452efb60d81735",
+  "source_native_ids_sha256": "b505d7869c36fb3fe1c802a23e22257ef6b251994f9c7ee5ce78178248324d93",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,215 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-750bacc0",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad copper expansion - The Northern Miner",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad copper expansion - The Northern Miner. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T17:00:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3b64d137",
+      "category": "macro",
+      "title": "Geomacro finds Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin",
+      "what_changed": "A monitored source feed reports: Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:43:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-78cf1bde",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:17:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-628705fd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express",
+      "what_changed": "A monitored source feed reports: Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:00:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5c6a6e2b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:32:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-757f2e98",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:32:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6613a8fb",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:10:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9483cd3f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:03:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-65ae2f81",
+      "category": "rare_earth",
+      "title": "Geomacro finds Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand",
+      "what_changed": "A monitored source feed reports: Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T12:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3eec9cd1",
+      "category": "rare_earth",
+      "title": "Geomacro finds India approved $297 million incentive policy for lithium, nickel processing - Reuters",
+      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for lithium, nickel processing - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T11:04:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-37d08d10",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine",
+      "what_changed": "A monitored source feed reports: Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T10:19:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-0da8c86b",
       "category": "rare_earth",
@@ -43,6 +252,44 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ac664ba2",
+      "category": "macro",
+      "title": "Geomacro finds Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance",
+      "what_changed": "A monitored source feed reports: Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T09:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-93e2bfbb",
+      "category": "rare_earth",
+      "title": "Geomacro finds India approved $297 million incentive policy for critical minerals processing - TradingView",
+      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for critical minerals processing - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T09:37:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -6636,63 +6883,6 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-040d0cb9",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran warned about 'longer' war after Trump threatens strikes",
-      "what_changed": "A monitored source feed reports: Iran warned about 'longer' war after Trump threatens strikes. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T00:13:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.rte.ie"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1308f623",
-      "category": "macro",
-      "title": "Geomacro finds Bank of Japan held at 1.25%, Hints at December Rate Hike; Dollar-Yen Likely Stuck in Upper 156 Range - BigGo Finance",
-      "what_changed": "A monitored source feed reports: Bank of Japan held at 1.25%, Hints at December Rate Hike; Dollar-Yen Likely Stuck in Upper 156 Range - BigGo Finance. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T00:11:22.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-fa28cf1e",
-      "category": "macro",
-      "title": "Geomacro finds EU: launched safeguard investigation on certain new hybrid vehicles · European Union",
-      "why_it_matters": "An original trade-policy notice may affect cross-border market access and supply chains. Enforceability, tariff magnitude, country impact and FX direction are not established by the announcement alone.",
-      "what_changed": "EU launched safeguard investigation on certain new hybrid vehicles. Country or region mentioned: European Union.",
-      "geography": "European Union",
-      "development_type": "official update",
-      "topic": "international trade measures and disputes",
-      "published_at": "2026-11-02T00:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "WTO news"
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }

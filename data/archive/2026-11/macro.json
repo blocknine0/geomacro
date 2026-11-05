@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-04T14:20:06.468Z",
+  "updated_at": "2026-11-05T00:30:55.852Z",
   "signals": [
+    {
+      "id": "macro-3b64d137",
+      "category": "macro",
+      "title": "Geomacro finds Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin",
+      "what_changed": "A monitored source feed reports: Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:43:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ac664ba2",
+      "category": "macro",
+      "title": "Geomacro finds Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance",
+      "what_changed": "A monitored source feed reports: Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T09:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-202c1363",
       "category": "macro",

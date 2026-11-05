@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-04T23:42:31.224Z",
+  "checked_at": "2026-11-05T00:30:55.852Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,215 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-750bacc0",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad copper expansion - The Northern Miner",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad copper expansion - The Northern Miner. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T17:00:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3b64d137",
+      "category": "macro",
+      "title": "Geomacro finds Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin",
+      "what_changed": "A monitored source feed reports: Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:43:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-78cf1bde",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:17:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-628705fd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express",
+      "what_changed": "A monitored source feed reports: Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T15:00:37.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-5c6a6e2b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:32:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-757f2e98",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:32:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6613a8fb",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:10:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-9483cd3f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T13:03:16.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-65ae2f81",
+      "category": "rare_earth",
+      "title": "Geomacro finds Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand",
+      "what_changed": "A monitored source feed reports: Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T12:59:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3eec9cd1",
+      "category": "rare_earth",
+      "title": "Geomacro finds India approved $297 million incentive policy for lithium, nickel processing - Reuters",
+      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for lithium, nickel processing - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T11:04:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-37d08d10",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine",
+      "what_changed": "A monitored source feed reports: Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T10:19:07.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-0da8c86b",
       "category": "rare_earth",
@@ -24,6 +233,44 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ac664ba2",
+      "category": "macro",
+      "title": "Geomacro finds Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance",
+      "what_changed": "A monitored source feed reports: Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T09:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-93e2bfbb",
+      "category": "rare_earth",
+      "title": "Geomacro finds India approved $297 million incentive policy for critical minerals processing - TradingView",
+      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for critical minerals processing - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-04T09:37:36.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -3866,63 +4113,6 @@
       "severity": null
     },
     {
-      "id": "macro-73b2e90e",
-      "category": "macro",
-      "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T16:32:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a87ae3a2",
-      "category": "macro",
-      "title": "Geomacro finds U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan",
-      "what_changed": "A monitored source feed reports: U.S.-Backed Consortium proposed $4.4 Billion LNG Terminal in Pakistan. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T16:30:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: oilprice.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4b11f571",
-      "category": "macro",
-      "title": "Geomacro finds ShaQ Express unveiled advisory board to strengthen growth agenda",
-      "what_changed": "A monitored source feed reports: ShaQ Express unveiled advisory board to strengthen growth agenda. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T16:11:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "geopolitics-5847a0ad",
       "category": "geopolitics",
       "title": "Geomacro finds MCK raised alarm over rising attacks on journalists ahead of 2027 polls",
@@ -3942,63 +4132,6 @@
       "severity": null
     },
     {
-      "id": "macro-62a3e613",
-      "category": "macro",
-      "title": "Geomacro finds Newsom proposed $1 billion California film and TV tax credit - Politico",
-      "what_changed": "A monitored source feed reports: Newsom proposed $1 billion California film and TV tax credit - Politico. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T16:04:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8d1f1dfd",
-      "category": "macro",
-      "title": "Geomacro finds Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK",
-      "what_changed": "A monitored source feed reports: Brent And WTI Crude Oil Price forecast Face A New Test As Peace Hopes Cut Prices - Exchange Rates UK. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "FX and external balances",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T16:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7da82b35",
-      "category": "macro",
-      "title": "Geomacro finds Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com",
-      "what_changed": "A monitored source feed reports: Goldman Sachs raised Oil Price Forecasts, Sees Brent Upside at $140 a Barrel - EnergyNow.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T15:43:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-fdf76bdb",
       "category": "rare_earth",
       "title": "Geomacro finds GIADEC and RUSAL agreed to build and jointly operate a bauxite-to-alumina refinery in Ghana",
@@ -4012,25 +4145,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.myjoyonline.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ec3ce4a5",
-      "category": "macro",
-      "title": "Geomacro finds OCBC cut Gold Price Forecasts To US$4,250 On Fed Tightening Fears - BusinessToday Malaysia",
-      "what_changed": "A monitored source feed reports: OCBC cut Gold Price Forecasts To US$4,250 On Fed Tightening Fears - BusinessToday Malaysia. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T15:06:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4069,25 +4183,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-7b180e28",
-      "category": "macro",
-      "title": "Geomacro finds Anthropic said revenue surged 1100 per cent ahead of IPO",
-      "what_changed": "A monitored source feed reports: Anthropic said revenue surged 1100 per cent ahead of IPO. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T14:50:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.channelnewsasia.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
@@ -4474,82 +4569,6 @@
       "severity": null
     },
     {
-      "id": "geopolitics-b5837320",
-      "category": "geopolitics",
-      "title": "Geomacro finds Russia said stepping up diplomatic efforts to normalize situation around Iran crucial",
-      "what_changed": "A monitored source feed reports: Russia said stepping up diplomatic efforts to normalize situation around Iran crucial. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:59:49.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: tass.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-89a48432",
-      "category": "geopolitics",
-      "title": "Geomacro finds China urged dialogue, political settlement to Middle East conflict - China Daily",
-      "what_changed": "A monitored source feed reports: China urged dialogue, political settlement to Middle East conflict - China Daily. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:54:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-d4d8ed80",
-      "category": "geopolitics",
-      "title": "Geomacro finds Mhlauli urged young people to participate in local government elections",
-      "what_changed": "A monitored source feed reports: Mhlauli urged young people to participate in local government elections. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:33:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.sanews.gov.za"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-40b7b2c2",
-      "category": "geopolitics",
-      "title": "Geomacro finds N. Bahr El Ghazal approved $80,000 health budget for elections",
-      "what_changed": "A monitored source feed reports: N. Bahr El Ghazal approved $80,000 health budget for elections. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T11:21:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.radiotamazuj.org"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
       "id": "rare_earth-0a68e230",
       "category": "rare_earth",
       "title": "Geomacro finds Citi cut lithium price outlook on weaker demand",
@@ -4620,25 +4639,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-fdc500b9",
-      "category": "geopolitics",
-      "title": "Geomacro finds Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Washington Post",
-      "what_changed": "A monitored source feed reports: Ukraine and Russia reported fake emergency alerts after cyberattack targets apps - The Washington Post. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-02T10:42:20.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
