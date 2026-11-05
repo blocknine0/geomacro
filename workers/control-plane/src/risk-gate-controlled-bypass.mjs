@@ -173,7 +173,7 @@ export function determineControlledGate({request,observed,verified_decision=null
   decision_reason:flash.active?"INTRADAY_MATERIAL_FLASH_OVERRIDE":flash.available===false?"FLASH_CHECK_UNAVAILABLE":override?"CLIENT_POLICY_OVERRIDE":verified?"VERIFIED_GRO_EVALUATION":"OBSERVATION_ONLY",
   primary_driver:flash.active?"INTRADAY_MATERIAL_FLASH_OVERRIDE":verified?String(gro.attribution?.[0]?.driver??"VERIFIED_GRO_RISK_SCORE").toUpperCase():"OBSERVATION_ONLY",
   affected_domain:flash.active?String(gro.attribution?.[0]?.driver??"geopolitics"):"unknown",
-  severity_score:verified?Number(gro.risk.score.toFixed(2)):null,
+  severity_score:verified&&Number.isFinite(gro?.risk?.score)?Number(gro.risk.score.toFixed(2)):null,
   suggested_mitigation:effectiveDecision==="REDUCE_LIMIT"?{exposure_cap_ratio:0.5,settlement_delay_hours:24}:
    effectiveDecision==="REQUIRE_APPROVAL"?{exposure_cap_ratio:0,settlement_delay_hours:24}:
    effectiveDecision==="PAUSE"?{exposure_cap_ratio:0,settlement_delay_hours:0}:{exposure_cap_ratio:1,settlement_delay_hours:0},
