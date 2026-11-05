@@ -239,6 +239,15 @@ test("P1 V2 rejects unknown/expired lease without polling and retries D1 read fa
   const b=await consumeP1SourcePollBatch({queue:"geomacro-source-poll",
    messages:[bad]},env,{now:now+15000,poll:async()=>{calls++;throw Error("SHOULD_NOT_POLL")}});
   assert.equal(b.status,"P1_CONSUME_LEASE_EXPIRED");assert.equal(bad.acked,1);
+  const alteredClock={body:{...msgs[0].body,
+    scheduled_at:new Date(now-60000).toISOString()},
+    acked:0,ack(){this.acked++},retry(){throw Error("UNEXPECTED_CLOCK_RETRY")}};
+  const changed=await consumeP1SourcePollBatch({
+    queue:"geomacro-source-poll",messages:[alteredClock]
+  },env,{now:now+15000,poll:async()=>{calls++;throw Error("SHOULD_NOT_POLL")}});
+  assert.equal(changed.status,"P1_CONSUME_LEASE_EXPIRED");
+  assert.equal(alteredClock.acked,1);
+  assert.equal(calls,0);
   const failure={body:msgs[0].body,acked:0,retries:0,ack(){this.acked++},
    retry(){this.retries++}};
   const unavailable=await consumeP1SourcePollBatch({queue:"geomacro-source-poll",
