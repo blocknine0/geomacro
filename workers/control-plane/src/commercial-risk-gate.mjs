@@ -160,6 +160,7 @@ export async function commercialRiskGateEvaluate(request,env){
   audit_receipt_signature_scheme:snapshot.audit_receipt_signature_scheme,
   audit_receipt_signature_scope:snapshot.audit_receipt_signature_scope,
   audit_receipt_response_hash:snapshot.audit_receipt_response_hash??null,
+  valid_until:snapshot.verified_live_scoring?.gro_expires_at??null,
   execution_authorized:false,
  };
  return json(bodyOut,200,{'X-GeoMacro-Provider':'GeoMacro Risk Intelligence',
