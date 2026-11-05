@@ -51,3 +51,16 @@ test("corrupt history never reaches Supabase",async()=>{
  const env={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_GATE_OBSERVATION_HMAC_KEY:secret,RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",RISK_GATE_SUPABASE_URL:"https://test.supabase.co",RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:secret,DB:{prepare(){return {bind(){return {all:async()=>({results:[row]})}}}}}};
  const r=await runUnifiedRiskSevenDayRollup(env,{now,fetcher:()=>assert.fail("unverified history left runtime")});assert.equal(r.ok,false);
 });
+test("a corrupt historical row cannot block other verified countries or be forwarded",async()=>{
+ const broken=signedRow("CHN");broken.audit_proof_json='{"signature":"forged"}';
+ const valid=signedRow("USA");let posted=[];
+ const env={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_GATE_OBSERVATION_HMAC_KEY:secret,RISK_GATE_SUPABASE_ACCEPTANCE:"ACCEPTED_PRIVATE_RISK_GATE_DAILY",RISK_GATE_SUPABASE_URL:"https://test.supabase.co",RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:secret,DB:{prepare(){return {bind(){return {all:async()=>({results:[broken,valid]})}}}}}};
+ const r=await runUnifiedRiskSevenDayRollup(env,{now,mode:"BACKFILL",fetcher:async(url,options)=>{
+  if(options.method==="POST"){posted=JSON.parse(options.body);return new Response(null,{status:201});}
+  return Response.json(posted);
+ }});
+ assert.equal(r.ok,true);assert.equal(r.degraded,true);
+ assert.equal(r.quarantined_snapshot_rows,1);assert.equal(r.snapshot_rows,1);
+ assert.equal(r.risk_signal_rows,3);assert.ok(posted.every(x=>x.country_iso3==="USA"));
+ assert.equal(r.assessment_rows,0);assert.equal(broken.audit_proof_json,'{"signature":"forged"}');
+});
