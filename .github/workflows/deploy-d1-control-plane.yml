@@ -475,7 +475,7 @@ jobs:
             const hasPollProducer=config.queues?.producers?.some(x=>
               x.binding==='SOURCE_POLL_QUEUE'&&x.queue==='geomacro-source-poll');
             const hasPollConsumer=config.queues?.consumers?.some(x=>
-              x.queue==='geomacro-source-poll'&&x.max_batch_size===15);
+              x.queue==='geomacro-source-poll'&&x.max_batch_size===1&&x.max_retries===1);
             if(!hasPollProducer||!hasPollConsumer)
               throw Error('P1_SOURCE_POLL_QUEUE_CONFIG_UNVERIFIED');
             config.vars.GEOMACRO_P1_FANOUT_ENABLED='1';
