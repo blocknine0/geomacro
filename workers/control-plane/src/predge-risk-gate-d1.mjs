@@ -6,6 +6,7 @@
 // Load the canonical TS engine lazily only after signed GRO acceptance.\n// The D1 Worker is also imported by Node ESM ops tests without TS extension resolution.
 
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
+import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -274,6 +275,8 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
 
    const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
    const result=evaluateRiskGate(parsed,gro,new Date(now));
+   const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
+   applyIntradayFlashDecision(result,flash);
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const response={ok:true,risk_gate:result,context:{
       subject:parsed.subject,source:"cloudflare-d1-verified-hot",
@@ -287,6 +290,10 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
      policy_version:parsed.policy.policy_version,evaluated_at:nowIso,response
    });
    response.audit_receipt_hash=receipt.audit_receipt_hash;
+   response.audit_receipt_signature=receipt.audit_receipt_signature;
+   response.audit_receipt_signature_key_id=receipt.signature_key_id;
+   response.audit_receipt_signature_scheme=receipt.signature_scheme;
+   response.audit_receipt_signature_scope=receipt.signature_scope;
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?
