@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
-import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure,safeP0bWranglerD1Hint} from "../ops/reserve-p0b-native-auth-ticket.mjs";
+import {buildP0bNativeAuthTicketSql,reserveP0bNativeAuthTicket,classifyP0bWranglerD1Failure,safeP0bWranglerD1Hint,verifiedP0bD1ReadQuotaExhaustion} from "../ops/reserve-p0b-native-auth-ticket.mjs";
 test("native auth quota ticket reuses canonical atomic account ledger",()=>{
  const q=buildP0bNativeAuthTicketSql(new Date("2026-11-05T11:00:00.000Z"));
  assert.match(q.quotaSql,/ON CONFLICT\(day_utc\) DO UPDATE/u);
@@ -34,4 +34,25 @@ test("Wrangler D1 hint strips credentials, URLs and identifiers",()=>{
 
 test("Wrangler hint has a sanitized fallback when no error word is present",()=>{
  assert.equal(safeP0bWranglerD1Hint({stdout:"A bounded provider diagnostic"}),"A bounded provider diagnostic");
+});
+
+test("exact Cloudflare D1 row-read ceiling is independently confirmed",()=>{
+ const base={provider_graphql_usage_observed:true,
+  day_utc:"2026-11-05",observed_rows_read:5_000_000,remaining_rows_read:0,
+  limits:{rows_read:5_000_000}};
+ assert.equal(verifiedP0bD1ReadQuotaExhaustion(base),true);
+ for(const altered of [
+  {observed_rows_read:4_999_999},{remaining_rows_read:1},
+  {provider_graphql_usage_observed:false},{limits:{rows_read:5_000_001}},
+  {day_utc:"bad"}]){
+  assert.equal(verifiedP0bD1ReadQuotaExhaustion({...base,...altered}),false);
+ }
+});
+test("only an exact D1 row-read 7500 diagnostic is classified for reset",()=>{
+ assert.equal(classifyP0bWranglerD1Failure({
+   stderr:"Your account has exceeded D1's free tier daily row read limit [code: 7500]"}),
+   "D1_DAILY_ROW_READ_LIMIT_7500");
+ assert.notEqual(classifyP0bWranglerD1Failure({
+   stderr:"D1 operation failed with provider code 7500 but unknown reason"}),
+   "D1_DAILY_ROW_READ_LIMIT_7500");
 });
