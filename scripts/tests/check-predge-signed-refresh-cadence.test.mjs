@@ -4,9 +4,9 @@ import {assessSignedRefreshCadence,MAX_SIGNED_RUNS_PER_UTC_DAY} from "../ops/che
 const REPO="blocknine0/geomacro";
 const NOW=Date.parse("2026-11-01T11:30:00Z");
 const stepName="Generate, locally verify, publish and independently read back real signed envelope";
-const makeRun=(id,minutesAgo,{signed=true,event="schedule",createdAt=null}={})=>{
+const makeRun=(id,minutesAgo,{signed=true,event="schedule",createdAt=null,conclusion="success"}={})=>{
  const when=createdAt||new Date(NOW-minutesAgo*60000).toISOString();
- return {id,event,head_branch:"main",status:"completed",conclusion:"success",
+ return {id,event,head_branch:"main",status:"completed",conclusion,
    created_at:when,updated_at:when,signed};
 };
 function mockGitHub(runs,{apiStatus=200}={}){
@@ -22,8 +22,9 @@ function mockGitHub(runs,{apiStatus=200}={}){
    const run=runs.find(x=>x.id===Number(match[1]));
    assert.ok(run);
    return {status:200,json:async()=>({jobs:[{name:"refresh",
-     conclusion:"success",
-     steps:[{name:stepName,conclusion:run.signed?"success":"skipped"}]
+     conclusion:run.conclusion,
+     steps:[{name:stepName,conclusion:run.signed?"success":
+       run.conclusion==="failure"?"failure":"skipped"}]
    }]})};
  };
  return {fetchImpl,urls};
@@ -94,4 +95,20 @@ test("previous UTC day's signed envelope avoids midnight duplicate",async()=>{
  assert.equal(x.should_run,false);
  assert.equal(x.reason,"RECENT_SIGNED_READBACK_EXISTS");
  assert.equal(x.signedToday,0);
+});
+
+test("failed verified signing attempt imposes 15-minute D1 cooldown",async()=>{
+ const x=await decide([makeRun(105,5,{signed:false,conclusion:"failure"})]);
+ assert.equal(x.should_run,false);
+ assert.equal(x.reason,"RECENT_FAILED_SIGNING_COOLDOWN");
+ assert.equal(x.signedToday,0);
+});
+test("failed signing older than cooldown is retried automatically",async()=>{
+ const x=await decide([makeRun(105,17,{signed:false,conclusion:"failure"})]);
+ assert.equal(x.should_run,true);
+ assert.equal(x.reason,"SIGNING_DUE");
+});
+test("successful workflow no-op is not mistaken for a failed live attempt",async()=>{
+ const x=await decide([makeRun(105,5,{signed:false})]);
+ assert.equal(x.should_run,true);
 });
