@@ -10,6 +10,7 @@ import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
+import {readFiveUsdSpendGuard} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -558,8 +559,15 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // original conservative Free plan guard. No magic paid-mode env switch.
     let paidProof=null;
     if(env.CLOUDFLARE_BILLING_READ_TOKEN){
-      try{paidProof=await readCloudflareWorkersPaidProof({env,fetchImpl,now});}
-      catch{/* ambiguous entitlement always uses Free quota admission */}
+      try{
+        const candidate=await readCloudflareWorkersPaidProof({env,fetchImpl,now});
+        // The $5 subscription is NOT a spending limit. The Paid source lane
+        // stays on the Free-plan quota unless BOTH provider-side usage_block
+        // policies (Workers and Durable Objects) are independently verified.
+        // This protects paid admission, not ungoverned D1/other operations.
+        const guard=await readFiveUsdSpendGuard({env,fetchImpl,now});
+        if(guard.verified===true)paidProof=candidate;
+      }catch{/* missing/inactive/ambiguous budget policies => Free admission */}
     }
     return planD1BundledWork(quota,{now,paidProof});
   }catch{
