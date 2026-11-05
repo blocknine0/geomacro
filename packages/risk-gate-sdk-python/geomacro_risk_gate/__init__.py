@@ -17,7 +17,7 @@ class GeoMacroRiskGateClient:
     def evaluate(self, request: dict[str, Any]) -> dict[str, Any]:
         body = json.dumps(request, separators=(",", ":")).encode()
         req = urllib.request.Request(
-            self.base_url + "/v1/risk-gate/tiered/evaluate", data=body,
+            self.base_url + "/v1/risk-gate/commercial/evaluate", data=body,
             headers={"Authorization": "Bearer " + self.api_key,
                      "Content-Type": "application/json"}, method="POST")
         try:
@@ -25,7 +25,7 @@ class GeoMacroRiskGateClient:
                 payload = json.loads(response.read())
         except (urllib.error.URLError, urllib.error.HTTPError) as exc:
             raise RuntimeError("RISK_GATE_CHECK_FAILED") from exc
-        if payload.get("execution_authorized") is not False or not payload.get("audit_receipt_hash") or not payload.get("audit_receipt_signature"):
+        if payload.get("execution_authorized") is not False or not payload.get("audit_receipt_hash") or not payload.get("audit_receipt_signature") or not payload.get("advisory_decision"):
             raise RuntimeError("RISK_GATE_CHECK_UNVERIFIABLE")
         return payload
 
@@ -40,9 +40,9 @@ def simulate_historical(transactions: list[dict[str, Any]], checks: list[dict[st
         matches = [c for c in ordered
                    if c.get("subject") == tx.get("subject")
                    and datetime.fromisoformat(c["evaluated_at"].replace("Z", "+00:00")) <= at
-                   and datetime.fromisoformat(c.get("risk", {}).get("expires_at", "1970-01-01T00:00:00+00:00").replace("Z", "+00:00")) > at]
+                   and datetime.fromisoformat(c.get("valid_until") or c.get("risk", {}).get("expires_at", "9999-12-31T23:59:59+00:00").replace("Z", "+00:00")) > at]
         check = matches[-1] if matches else None
-        decision = check.get("decision") if check else "NO_HISTORICAL_CHECK"
+        decision = check.get("advisory_decision") if check else "NO_HISTORICAL_CHECK"
         ratio = 0 if decision in ("REQUIRE_APPROVAL", "PAUSE") else 0.5 if decision == "REDUCE_LIMIT" else 1
         rows.append({"transaction_id": tx.get("id"), "matched": bool(check),
                      "decision": decision, "advisory_exposure_ratio": ratio,
