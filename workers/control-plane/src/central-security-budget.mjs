@@ -14,6 +14,46 @@ export const SECURITY_CLIENT_COUNTER_SQL=SECURITY_COUNTER_SQL.replace(
  'VALUES (?,?,?,?,1)',
  "VALUES (?,?,?,(SELECT window_start FROM central_security_budget WHERE route_class=? AND bucket_kind='global' AND bucket_key='all'),1)"
 );
+/**
+ * Predge research has ONE authenticated purpose-scoped bearer and ONE fixed
+ * global 500/UTC-day limit. There is no need to update a second client bucket
+ * for each successful read. A single atomic UPSERT/RETURNING on the existing
+ * global row preserves the exact *shared* ceiling (including any other caller
+ * of the central-security budget route) with HALF the D1 physical writes.
+ *
+ * This is not a fallback that can overrun the limit or serve unmetered news.
+ * On D1 outage, unknown receipt, SQL error or unexpected policy drift the
+ * caller still returns HTTP 503 and does not query the research journal.
+ */
+export async function consumePredgeResearchDailyBudget(db,{now=Date.now()}={}){
+ const route="predge_research_news",policy=CENTRAL_SECURITY_POLICIES[route];
+ if(!Number.isSafeInteger(now)||now<0||!db?.prepare||
+    policy?.windowSeconds!==86400||policy.global!==500||
+    policy.perClient!==500||policy.failClosed!==true||
+    policy.distributed!==true)
+  throw Error("PREDGE_RESEARCH_GOVERNOR_CONFIGURATION_UNAVAILABLE");
+ const start=Math.floor(now/(86400*1000))*86400;
+ // Shared global slot is also incremented by the existing central security
+ // /v1/security/budget route, so a second route cannot evade the 500/day cap.
+ let row;
+ try{
+  row=await db.prepare(SECURITY_COUNTER_SQL)
+   .bind(route,"global","all",start,policy.global+1).first();
+ }catch{
+  // Preserve a fixed public failure while allowing callers to log a bounded
+  // safe provider error class without leaking raw D1, SQL or credentials.
+  throw Error("PREDGE_RESEARCH_GOVERNOR_ATOMIC_D1_UNAVAILABLE");
+ }
+ if(!Number.isSafeInteger(row?.request_count)||row.request_count<1||
+    row.request_count>policy.global+1)
+  throw Error("PREDGE_RESEARCH_GOVERNOR_D1_READBACK_INVALID");
+ return {ok:true,schema:"geomacro.central-security-budget.v1",store:"d1",
+  route_class:route,allowed:row.request_count<=policy.global,
+  retry_after_seconds:Math.max(1,Math.ceil(start+86400-now/1000)),
+  atomic_global_slot:true,physical_d1_counter_rows_written:1,
+  daily_utc_request_hard_cap:500};
+}
+
 export async function consumeCentralSecurityBudget(db,body,{now=Date.now()}={}){
  const route=body?.route_class,key=body?.client_key;
  if(!Object.hasOwn(CENTRAL_SECURITY_POLICIES,route??'')||
