@@ -430,7 +430,7 @@ async function signedSnapshotRows(env,whereSql,binds){
    // backfill route; no snapshot payload or signing material is returned.
    const entityType=row.entity_type==="COUNTRY"?"COUNTRY":"OTHER";
    const entityId=/^[A-Z0-9-]{1,40}$/.test(String(row.entity_id))?row.entity_id:"UNKNOWN";
-   const day=/^\\d{4}-\\d{2}-\\d{2}$/.test(String(row.day_utc))?row.day_utc:"UNKNOWN";
+   const day=/^\d{4}-\d{2}-\d{2}$/.test(String(row.day_utc))?row.day_utc:"UNKNOWN";
    throw Error(["RISK_GATE_7D_D1_HMAC_INVALID",entityType,entityId,day].join("_"));
   }
   rows.push({...row,snapshot,proof});
