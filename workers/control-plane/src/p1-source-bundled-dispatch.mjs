@@ -104,7 +104,8 @@ export async function dispatchP1BundledDueSources(env,{
  }
  return {status:failed?"P1_BUNDLE_QUEUED_PARTIAL":"P1_BUNDLE_QUEUED",
   selected:ids.length,queued,failed,
-  physical_dispatch_lease_rows:1,physical_mutex_rows:1,
+  base_table_dispatch_lease_rows:1,base_table_mutex_rows:1,
+  provider_billed_index_write_overhead_unmeasured:true,
   logical_shards:SHARDS,source_per_minute_cap:MAX_DUE,
   queue_at_least_once:true,private_source_ids_only:true};
 }
