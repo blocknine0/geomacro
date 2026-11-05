@@ -54,13 +54,21 @@ describe("#1827 actual D1 account-wide before-source-recovery quota audit",()=>{
  it("bounded retries recover genuine transient Cloudflare 503 usage evidence without spending D1 rows",async()=>{
   const env={CLOUDFLARE_API_TOKEN:"x".repeat(24),CLOUDFLARE_ACCOUNT_ID:"a".repeat(32)};
   let calls=0;
-  const fetchImpl=vi.fn(async()=>{
+  const fetchImpl=vi.fn(async(url:string,_opts:any)=>{
+   if(!url.endsWith("/graphql"))return {ok:false,status:403};
    calls++;
    if(calls===1)return {ok:false,status:503};
    return {ok:true,status:200,json:async()=>mk(100,5)};
   });
   const out=await checkD1BundledWork({env,fetchImpl,now:new Date(today+"T12:00:00Z")});
-  expect(fetchImpl).toHaveBeenCalledTimes(2);
+  expect(calls).toBe(2);
+  expect(fetchImpl.mock.calls.map(([url])=>url)).toEqual([
+   "https://api.cloudflare.com/client/v4/graphql",
+   "https://api.cloudflare.com/client/v4/graphql",
+   "https://api.cloudflare.com/client/v4/accounts/"+env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions?per_page=100",
+  ]);
+  expect(fetchImpl.mock.calls[2][1].method).toBe("GET");
+  expect(out.paid_capacity_probe_status).toBe("WORKERS_PAID_BILLING_READ_REJECTED");
   expect(out.reason).not.toBe("D1_ACCOUNT_QUOTA_PROBE_FAILED");
   expect(out.d1_queries).toBe(0);
   expect(out.predge_request_governor_is_separate_and_unchanged).toBe(true);
