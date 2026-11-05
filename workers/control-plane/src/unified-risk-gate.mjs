@@ -16,6 +16,8 @@ import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
  from "./risk-gate-three-tier-product.mjs";
 import {RISK_GATE_CORRIDOR_MEMBERS,RISK_GATE_CORRIDOR_WEIGHTS}
  from "./risk-gate-corridor-members.mjs";
+import {activeRiskTargets,hot50RiskGateEnabled,isHot50RiskCountry,HOT50_RISK_SQL}
+ from "./risk-gate-hot50-scope.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
 export const UNIFIED_SNAPSHOT_EPOCH="v2";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
@@ -474,10 +476,10 @@ async function signedSnapshotRows(env,whereSql,binds){
  }
  return rows;
 }
-async function projectCountryRiskSignal7d(env,latest){
+async function projectCountryRiskSignal7d(env,latest,verifiedRows=null){
  if(latest.entity_type!=="COUNTRY")return [];
  const day=latest.day_utc,from=iso(Date.parse(day+"T00:00:00.000Z")-6*DAY).slice(0,10);
- const rows=await signedSnapshotRows(env,"entity_type='COUNTRY' AND entity_id=? AND day_utc>=? AND day_utc<=?",
+ const rows=verifiedRows?.filter(x=>x.entity_type==='COUNTRY'&&x.entity_id===latest.entity_id&&x.day_utc>=from&&x.day_utc<=day)??await signedSnapshotRows(env,"entity_type='COUNTRY' AND entity_id=? AND day_utc>=? AND day_utc<=?",
   [latest.entity_id,from,day]);
  const projected=[];
  for(const [category,domain] of Object.entries(COUNTRY_SIGNAL_DOMAIN)){
@@ -501,13 +503,13 @@ async function projectCountryRiskSignal7d(env,latest){
  }
  return projected;
 }
-async function projectCorridorCandidate7d(env,day,now){
+async function projectCorridorCandidate7d(env,day,now,verifiedRows=null){
  const corridors=Object.entries(RISK_GATE_CORRIDOR_MEMBERS);
  const members=[...new Set(corridors.flatMap(([,list])=>list))];
  const from=iso(Date.parse(day+"T00:00:00.000Z")-6*DAY).slice(0,10);
- const rows=members.length?await signedSnapshotRows(env,
+ const rows=verifiedRows?.filter(x=>members.includes(x.entity_id)&&x.day_utc>=from&&x.day_utc<=day)??(members.length?await signedSnapshotRows(env,
   "entity_type='COUNTRY' AND entity_id IN ("+members.map(()=>"?").join(",")+") AND day_utc>=? AND day_utc<=?",
-  [...members,from,day]):[];
+  [...members,from,day]):[]);
  const byCountryDay=new Map();
  for(const row of rows){
   const verified=row.snapshot?.verified_unified_risk_score;
@@ -544,22 +546,34 @@ async function projectCorridorCandidate7d(env,day,now){
  }
  return output;
 }
-async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher){
+async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher,verifiedRows=null){
  const countries=latestRows.filter(x=>x.entity_type==="COUNTRY");
- const signals=(await Promise.all(countries.map(x=>projectCountryRiskSignal7d(env,x)))).flat();
- if(signals.length){
+ if(countries.length&&verifiedRows===null){
+  const ids=[...new Set([...countries.map(x=>x.entity_id),
+   ...(hot50RiskGateEnabled(env)?[]:Object.values(RISK_GATE_CORRIDOR_MEMBERS).flat())])];
+  const days=countries.map(x=>x.day_utc).sort(),last=days.at(-1);
+  const from=iso(Date.parse(days[0]+"T00:00:00.000Z")-6*DAY).slice(0,10);
+  verifiedRows=await signedSnapshotRows(env,
+   "entity_type='COUNTRY' AND entity_id IN ("+ids.map(()=>"?").join(",")+") AND day_utc>=? AND day_utc<=?",
+   [...ids,from,last]);
+ }
+ const signals=(await Promise.all(countries.map(x=>projectCountryRiskSignal7d(env,x,verifiedRows)))).flat();
+ // Keep both the upsert and exact hash-readback URL bounded. A whole
+ // 195x3 day's IDs can exceed provider HTTP request-line limits.
+ for(let offset=0;offset<signals.length;offset+=24){
+  const chunk=signals.slice(offset,offset+24);
   await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?on_conflict=event_sha256,country_iso3,domain",{
    method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
-   body:JSON.stringify(signals)},fetcher);
-  const ids=signals.map(x=>x.event_sha256);
+   body:JSON.stringify(chunk)},fetcher);
+  const ids=chunk.map(x=>x.event_sha256);
   const read=await (await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?select=event_sha256,country_iso3,domain,source_snapshot_sha256&event_sha256=in.("+ids.join(",")+")",{},fetcher)).json();
-  if(!Array.isArray(read)||read.length!==signals.length||signals.some(x=>!read.some(y=>
+  if(!Array.isArray(read)||read.length!==chunk.length||chunk.some(x=>!read.some(y=>
    y.event_sha256===x.event_sha256&&y.country_iso3===x.country_iso3&&y.domain===x.domain&&
    y.source_snapshot_sha256===x.source_snapshot_sha256)))throw Error("RISK_SIGNAL_7D_READBACK_MISMATCH");
  }
- if(countries.length){
+ if(countries.length&&!hot50RiskGateEnabled(env)){
   const day=countries.map(x=>x.day_utc).sort().at(-1);
-  const outputs=await projectCorridorCandidate7d(env,day,now);
+  const outputs=await projectCorridorCandidate7d(env,day,now,verifiedRows);
   if(outputs.length){
    await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?on_conflict=corridor_id,day_utc",{
     method:"POST",headers:{"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},
@@ -573,7 +587,7 @@ async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher){
     throw Error("CORRIDOR_CANDIDATE_7D_READBACK_MISMATCH");
   }
  }
- return {risk_signal_rows:signals.length,corridor_rows:countries.length?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
+ return {risk_signal_rows:signals.length,corridor_rows:countries.length&&!hot50RiskGateEnabled(env)?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
 }
 /** Daily seven-day rollup, separate from retention cleanup.
  * Every source row is HMAC-verified from D1 before any derived upsert.
@@ -592,7 +606,7 @@ export async function runUnifiedRiskSevenDayRollup(env,{
   const today=iso(now).slice(0,10);
   const from=iso(Date.parse(today+"T00:00:00.000Z")-6*DAY).slice(0,10);
   const rows=await signedSnapshotRows(env,
-   "entity_type='COUNTRY' AND day_utc>=? AND day_utc<=?",[from,today]);
+   (hot50RiskGateEnabled(env)?HOT50_RISK_SQL:"entity_type='COUNTRY'")+" AND day_utc>=? AND day_utc<=?",[from,today]);
   const days=[...new Set(rows.map(x=>x.day_utc))].sort();
   if(!days.length)return {ok:true,mode,from_day:from,to_day:null,
    snapshot_rows:0,rollup_days:0,risk_signal_rows:0,corridor_rows:0,
@@ -601,7 +615,7 @@ export async function runUnifiedRiskSevenDayRollup(env,{
   let signals=0,corridors=0;
   for(const day of rollupDays){
    const result=await syncRiskGateSevenDayOutputs(env,cfg,
-    rows.filter(x=>x.day_utc===day),now,fetcher);
+    rows.filter(x=>x.day_utc===day),now,fetcher,rows);
    signals+=result.risk_signal_rows;
    corridors+=result.corridor_rows;
   }
@@ -660,7 +674,7 @@ export async function syncUnifiedRiskSupabase(env,{
      "ORDER BY entity_type,entity_id LIMIT 12 OFFSET ?")
      .bind(day,page*12).all())?.results??[]:
     (await env.DB.prepare(select+
-     "WHERE supabase_synced_at IS NULL ORDER BY generated_at LIMIT 12").all())?.results??[];
+     "WHERE supabase_synced_at IS NULL "+(hot50RiskGateEnabled(env)?"AND "+HOT50_RISK_SQL+" ":"")+"ORDER BY generated_at LIMIT 12").all())?.results??[];
   if(canonicalPage&&(
    rows.length!==pageTargets.length||
    rows.some((r,i)=>r.entity_type!==pageTargets[i].type||
@@ -821,6 +835,8 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
   !basePolicy(payload))return reply({ok:false,error:"UNIFIED_INVALID_REQUEST"},400);
  const target=parseTarget(payload);
  if(!target)return reply({ok:false,error:"UNKNOWN_COUNTRY_OR_CORRIDOR"},400);
+ if(hot50RiskGateEnabled(env)&&(target.type!=="COUNTRY"||!isHot50RiskCountry(target.id)))
+  return reply({ok:false,error:"RISK_GATE_OUTSIDE_HOT50_SCOPE",chargeable:false},400);
  try{
   const x=await generateUnifiedSnapshot(env,target,opts);
   // Daily record is integrity-signed observation; no unsigned client threshold
@@ -1006,14 +1022,14 @@ export const CANONICAL_UNIFIED_TARGETS=Object.freeze([
  ...DAILY_RG_CORRIDORS.map(c=>Object.freeze({type:"CORRIDOR",id:c.id}))
 ]);
 const identity=x=>x.type+"|"+x.id;
-export function selectUnifiedRecoveryTarget(completed,attempts,now){
+export function selectUnifiedRecoveryTarget(completed,attempts,now,targets=CANONICAL_UNIFIED_TARGETS){
  const minute=new Date(now).getUTCHours()*60+new Date(now).getUTCMinutes();
  if(minute<512||minute>=1095)return null;
  const done=new Set(completed.map(x=>x.entity_type+"|"+x.entity_id));
  const byId=new Map(attempts.map(x=>[x.entity_type+"|"+x.entity_id,x]));
- const start=(minute-512)%CANONICAL_UNIFIED_TARGETS.length;
- for(let i=0;i<CANONICAL_UNIFIED_TARGETS.length;i++){
-  const target=CANONICAL_UNIFIED_TARGETS[(start+i)%CANONICAL_UNIFIED_TARGETS.length];
+ const start=(minute-512)%targets.length;
+ for(let i=0;i<targets.length;i++){
+  const target=targets[(start+i)%targets.length];
   if(done.has(identity(target)))continue;
   const prev=byId.get(identity(target));
   if(prev&&(Number(prev.attempt_count)>=3||
@@ -1027,12 +1043,15 @@ export function selectUnifiedRecoveryTarget(completed,attempts,now){
  */
 export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
  const d=new Date(now),minute=d.getUTCHours()*60+d.getUTCMinutes(),countryIdx=minute-300;
+ const scoped=hot50RiskGateEnabled(env),targets=activeRiskTargets(env,CANONICAL_UNIFIED_TARGETS);
  let target=null;
- if(countryIdx>=0&&countryIdx<PHASE2H_COUNTRIES_195.length)
-  target=CANONICAL_UNIFIED_TARGETS[countryIdx];
- else if(minute>=500&&minute<512)
+ if(countryIdx>=0&&countryIdx<(scoped?50:PHASE2H_COUNTRIES_195.length))
+  target=targets[countryIdx];
+ else if(!scoped&&minute>=500&&minute<512)
   target=CANONICAL_UNIFIED_TARGETS[195+minute-500];
  else if(minute>=512&&minute<1095){
+  // Fifty daily subjects need bounded catch-up, not 583 duplicate census scans.
+  if(scoped&&minute%20!==0)return {ok:true,not_due:true};
   if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_RECOVERY_D1_UNAVAILABLE"};
   try{
    const day=iso(now).slice(0,10);
@@ -1040,7 +1059,7 @@ export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
     env.DB.prepare("SELECT entity_type,entity_id FROM unified_risk_snapshots WHERE day_utc=?").bind(day).all(),
     env.DB.prepare("SELECT entity_type,entity_id,attempt_count,next_retry_at FROM unified_risk_generation_attempts WHERE day_utc=?").bind(day).all()
    ]);
-   target=selectUnifiedRecoveryTarget(completed?.results??[],attempts?.results??[],now);
+   target=selectUnifiedRecoveryTarget(completed?.results??[],attempts?.results??[],now,targets);
   }catch{return {ok:false,error:"UNIFIED_RECOVERY_CENSUS_UNAVAILABLE"}}
  }
  if(!target)return {ok:true,not_due:true};

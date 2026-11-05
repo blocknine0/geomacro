@@ -59,7 +59,7 @@ const hot50Direct20m=sourceMode==="HOT50_DIRECT_20M";
 const threeDomainDirect20m=sourceMode==="THREE_DOMAIN_DIRECT_20M";
 if(sourceMode&&!hot50Direct20m&&!threeDomainDirect20m)
  throw Error("UNKNOWN_PRIVATE_SOURCE_REGISTRY_MODE");
-if((hot50Direct20m||threeDomainDirect20m)&&env.GITHUB_EVENT_NAME!=="schedule")
+if((hot50Direct20m||threeDomainDirect20m)&&!["schedule","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME??""))
  throw Error("THREE_DOMAIN_DIRECT20M_SCHEDULE_ONLY");
 const direct20m=hot50Direct20m?hot50Direct20mPublisherRegistry():
  threeDomainDirect20m?threeDomainGlobal20mPublisherRegistry(now):null;

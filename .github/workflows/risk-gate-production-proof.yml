@@ -1,6 +1,17 @@
 name: Risk Gate production proof
 
 on:
+  schedule:
+    - cron: "17,37,57 * * * *"
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - "scripts/ops/verify-hot50-risk-gate-tiers.mjs"
+      - "scripts/tests/risk-gate-hot50-low-quota.test.mjs"
+      - ".github/workflows/risk-gate-production-proof.yml"
   workflow_dispatch:
     inputs:
       country_iso3:
@@ -14,6 +25,7 @@ permissions:
 
 jobs:
   proof:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: production
@@ -137,3 +149,52 @@ jobs:
           path: risk-gate-production-proof.json
           if-no-files-found: warn
           retention-days: 30
+
+  hot50-three-price-acceptance:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: geomacro-hot50-three-price-proof
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify scoped scheduling, tamper rejection and one-read rollups
+        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs
+      - name: Observe account quota before authenticated API proofs
+        id: quota
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+        run: node scripts/ops/plan-d1-bundled-work.mjs
+      - name: Check all three actual tier responses (full Hot50 after deploy, rotating country each 20m)
+        if: steps.quota.outputs.critical == 'true'
+        env:
+          RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+          HOT50_TIER_FULL_CENSUS: ${{ github.event_name != 'schedule' && '1' || '0' }}
+        run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
+      - name: Quota held cannot be accepted as ready
+        if: steps.quota.outputs.critical != 'true'
+        run: |
+          echo "::error::HOT50_THREE_PRICE_PROOF_HELD_BY_ACCOUNT_QUOTA"
+          exit 1
+      - name: Retain counts and symbolic tier states only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hot50-three-price-production-proof
+          path: artifacts/hot50-risk-gate/latest.json
+          if-no-files-found: warn
+          retention-days: 7
