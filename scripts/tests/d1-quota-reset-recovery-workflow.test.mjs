@@ -141,6 +141,6 @@ test("provider-confirmed native-auth D1 ticket failure becomes eligible after UT
  assert.match(recovery,/p0b_ticket_conclusion:-.*failure/u);
  assert.match(recovery,/P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED/u);
  assert.match(recovery,/P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_READ_LIMIT_7500/u);
- assert.match(recovery,/cron: "10 0 \\* \\* \\*"/u);
+ assert.ok(recovery.includes('cron: "10 0 * * *"'));
  assert.doesNotMatch(recovery,/P0B_D1_WRANGLER_DIAGNOSTIC=UNKNOWN.*retry=true/);
 });
