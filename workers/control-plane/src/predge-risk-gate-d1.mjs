@@ -281,7 +281,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
       payment_authorized:false
    },execution_authorized:false};
    const receipt=await persistRiskGateAuditReceipt(env.DB,{
-     client_id:client,request_id:parsed.request_id,request_hash:requestHash,
+     client_id:client,request_id:parsed.request_id,request_hash:requestHash,env,
      subject_type:parsed.subject.type,subject_id:parsed.subject.id,
      decision:result.decision,policy_id:parsed.policy.policy_id,
      policy_version:parsed.policy.policy_version,evaluated_at:nowIso,response
