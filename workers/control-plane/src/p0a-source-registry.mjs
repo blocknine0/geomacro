@@ -422,9 +422,7 @@ async function pollOne(env,row,{fetchImpl,now}){
   return {source_id:config.source_id,state,accepted,parsed:result.records?.length??0,
     status:result.status??null,used_fallback:result.used_fallback===true,
     p0b_failure_codes};
- }catch(error){
-  if(env.GEOMACRO_P0A_TEST_DIAGNOSTICS==='1')
-   console.error('P0A_POLL_TEST_ERROR_CLASS_'+String(error?.message??'UNKNOWN').slice(0,120));
+ }catch{
   await env.DB.prepare('UPDATE source_registry SET next_poll_at=?,last_state=?,'+
    'consecutive_failures=consecutive_failures+1 WHERE source_id=?')
     .bind(iso(now+Math.max(config.polling_interval_sec*1000,60000)),
@@ -485,11 +483,7 @@ export async function pollP0aSources(env,{
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
  const polled=await Promise.all(rows.map(async row=>{
   try{return await pollOne(env,row,{fetchImpl,now})}
-  catch(error){
-   if(env.GEOMACRO_P0A_TEST_DIAGNOSTICS==='1')
-    console.error('P0A_SOURCE_FIXTURE_ERROR_'+String(error?.message??'UNKNOWN').slice(0,120));
-   return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0};
-  }
+  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0}}
  }));
  const plans=polled.filter(x=>x._p0b_deferred);
  if(plans.length){
