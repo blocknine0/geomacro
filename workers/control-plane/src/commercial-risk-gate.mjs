@@ -1,6 +1,7 @@
 import {authorizeCanonicalCustomerPaid,CustomerPaidError,CUSTOMER_RISK_GATE_USAGE_USD_CENTS}
  from './customer-paid-ledger.mjs';
 import {unifiedRiskGateEvaluate} from './unified-risk-gate.mjs';
+import {persistRiskGateAuditReceipt} from './risk-gate-audit-receipt.mjs';
 
 const TIERS=Object.freeze({
  basic_focused:{capability:'risk_gate_basic_focused',price:CUSTOMER_RISK_GATE_USAGE_USD_CENTS.risk_gate_basic_focused,label:'BASIC_0_10'},
@@ -115,11 +116,7 @@ export async function commercialRiskGateEvaluate(request,env){
   snapshot.content_sha256:await sha(JSON.stringify(snapshot));
  const deliveredRule=TIERS[delivered],timestamp=new Date().toISOString();
  const policyHash=await sha(JSON.stringify(approved??null));
- const logged=await postUsage(env.DB,{request_id:requestId,principal_id:principal.principal_id,
-  key_id:principal.key_id,subject_type:body.target_type,subject_id:body.target_id,
-  requested_tier:tier,delivered_tier:delivered,amount_usd_cents:deliveredRule.price,
-  snapshot_sha256:snapshotHash,created_at:timestamp,policy_hash:policyHash});
- if(!logged.ok)return json({ok:false,error:'USAGE_LEDGER_READBACK_FAILED',chargeable:false},503);
+ const usageLedgerId=await sha(['geomacro-risk-gate-usage-v1',principal.key_id,requestId].join('\0'));
  const confidence=product.confidence?.verification==='CRYPTO_SIGNED'?'HIGH / CRYPTO_SIGNED':
   product.confidence?.verification==='VERIFIED'?'MEDIUM / VERIFIED':'LOW / PROVISIONAL';
  const categoryRows=product.category_fact_sheets??product.category_observations??[];
@@ -142,7 +139,7 @@ export async function commercialRiskGateEvaluate(request,env){
    ed25519_payload_sha256:product.gro_signature?.payload_sha256??null,
    source_references:product.source_references??[]},
   chargeable:true,cost_usd:Number((deliveredRule.price/100).toFixed(2)),
-  request_id:requestId,usage_ledger_id:logged.entry.ledger_id,
+  request_id:requestId,usage_ledger_id:usageLedgerId,
   downgraded:delivered!==tier,tiered_product:product,
   policy_profile_applied:approved??null,
   advisory_decision:evaluated.payload.client_policy_decision==="GATE_PASS"?"CONTINUE":
@@ -166,6 +163,28 @@ export async function commercialRiskGateEvaluate(request,env){
   valid_until:snapshot.verified_live_scoring?.gro_expires_at??null,
   execution_authorized:false,
  };
+ const responseHash=await sha(JSON.stringify({request_id:requestId,request:body,
+  delivered_tier:delivered,snapshot_hash:snapshotHash}));
+ const receipt=await persistRiskGateAuditReceipt(env.DB,{
+  client_id:"commercial-risk-gate:"+principal.key_id,request_id:requestId,
+  request_hash:responseHash,subject_type:body.target_type.toLowerCase(),
+  subject_id:body.target_id,decision:bodyOut.advisory_decision,
+  policy_id:approved?"approved-thresholds":"tier-default",
+  policy_version:approved?"caller-approved-v1":"tier-policy-v1",
+  evaluated_at:timestamp,response:bodyOut,env
+ });
+ bodyOut.audit_receipt_hash=receipt.audit_receipt_hash;
+ bodyOut.audit_receipt_signature=receipt.audit_receipt_signature;
+ bodyOut.audit_receipt_signature_key_id=receipt.signature_key_id;
+ bodyOut.audit_receipt_signature_scheme=receipt.signature_scheme;
+ bodyOut.audit_receipt_signature_scope=receipt.signature_scope;
+ bodyOut.audit_receipt_response_hash=receipt.response_hash;
+ const logged=await postUsage(env.DB,{request_id:requestId,principal_id:principal.principal_id,
+  key_id:principal.key_id,subject_type:body.target_type,subject_id:body.target_id,
+  requested_tier:tier,delivered_tier:delivered,amount_usd_cents:deliveredRule.price,
+  snapshot_sha256:snapshotHash,created_at:timestamp,policy_hash:policyHash});
+ if(!logged.ok||logged.entry.ledger_id!==usageLedgerId)
+  return json({ok:false,error:'USAGE_LEDGER_READBACK_FAILED',chargeable:false},503);
  return json(bodyOut,200,{'X-GeoMacro-Provider':'GeoMacro Risk Intelligence',
   'X-GeoMacro-Metric-ID':bodyOut.metric_id,'X-GeoMacro-Tier':bodyOut.tier,
   'X-GeoMacro-Confidence':confidence,'X-GeoMacro-Chargeable':'true',
