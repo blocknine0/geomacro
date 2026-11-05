@@ -279,6 +279,7 @@ export function composeRiskGateThreeTierResponse({
    generated_at:verified_gro.generated_at,
    expires_at:verified_gro.expires_at,
   }:null,
+  seven_day_verified_subject_history:ready?friction:null,
   seven_day_corridor_friction_history:ready&&subject.type==="CORRIDOR"?friction:null,
   seven_day_country_risk_history:ready&&subject.type==="COUNTRY"?friction:null,
   raw_evidence_chain:ready?{
