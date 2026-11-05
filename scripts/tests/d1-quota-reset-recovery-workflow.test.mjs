@@ -134,3 +134,13 @@ test("main push of facts-only commercial rights or GRI proof wakes guarded Worke
  }
  assert.match(deploy,/DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS/u);
 });
+
+test("provider-confirmed native-auth D1 ticket failure becomes eligible after UTC reset",()=>{
+ assert.match(recovery,/Reserve and read back native-auth quota directly in canonical D1/);
+ assert.match(recovery,/p0b_ticket_conclusion/u);
+ assert.match(recovery,/p0b_ticket_conclusion:-.*failure/u);
+ assert.match(recovery,/P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED/u);
+ assert.match(recovery,/P0B_D1_WRANGLER_DIAGNOSTIC=D1_DAILY_ROW_READ_LIMIT_7500/u);
+ assert.match(recovery,/cron: "10 0 \\* \\* \\*"/u);
+ assert.doesNotMatch(recovery,/P0B_D1_WRANGLER_DIAGNOSTIC=UNKNOWN.*retry=true/);
+});
