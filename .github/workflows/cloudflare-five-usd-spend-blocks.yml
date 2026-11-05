@@ -6,6 +6,14 @@ on:
         description: "Type LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE"
         required: true
         type: string
+  # One-time, founder-authorized activation (2026-11-05). The push trigger
+  # only watches THIS workflow; the job below also requires the exact
+  # protected main merge-commit title. Future ordinary pushes cannot apply
+  # or weaken a Cloudflare spending policy.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloudflare-five-usd-spend-blocks.yml"
 
 permissions:
   contents: read
@@ -16,14 +24,21 @@ concurrency:
 
 jobs:
   apply-product-spend-blocks:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        startsWith(github.event.head_commit.message,
+         'ops(cost): founder-authorized one-time central quota activation')))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_BILLING_WRITE_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_WRITE_TOKEN }}
-      GEOMACRO_CLOUDFLARE_COST_GUARD_CONFIRM: ${{ inputs.confirmation }}
+      GEOMACRO_CLOUDFLARE_COST_GUARD_CONFIRM: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation || 'LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE' }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -38,5 +53,39 @@ jobs:
           }
       - name: Verify cost guard offline before changing provider configuration
         run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
+      - name: Verify existing Workers Paid subscription from Cloudflare Billing (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readCloudflareWorkersPaidProof}
+            from './scripts/lib/cloudflare-workers-paid-plan-proof.mjs';
+          const readToken=process.env.CLOUDFLARE_BILLING_READ_TOKEN ||
+            process.env.CLOUDFLARE_BILLING_WRITE_TOKEN;
+          const proof=await readCloudflareWorkersPaidProof({
+            env:{...process.env,CLOUDFLARE_BILLING_READ_TOKEN:readToken}
+          });
+          if(proof.verified!==true)throw Error('CLOUDFLARE_WORKERS_PAID_PLAN_NOT_VERIFIED');
+          console.log('CLOUDFLARE_WORKERS_PAID_PROVIDER_VERIFIED=true');
+          NODE
       - name: Create only missing provider Workers/DO usage_block policies, read them back
         run: node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply
+      - name: Read back active 1-cent Workers and Durable Objects usage blocks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFiveUsdSpendGuard}
+            from './scripts/lib/cloudflare-five-usd-spend-guard.mjs';
+          const readToken=process.env.CLOUDFLARE_BILLING_READ_TOKEN ||
+            process.env.CLOUDFLARE_BILLING_WRITE_TOKEN;
+          const proof=await readFiveUsdSpendGuard({
+            env:{...process.env,CLOUDFLARE_BILLING_READ_TOKEN:readToken}
+          });
+          if(proof.verified!==true||
+             proof.products.length!==2||
+             proof.usage_block_threshold_cents!==1)
+            throw Error('CLOUDFLARE_CENTRAL_QUOTA_PROVIDER_READBACK_FAILED');
+          console.log('CLOUDFLARE_WORKERS_AND_DO_MINIMUM_USAGE_BLOCKS_VERIFIED=true');
+          console.log('CLOUDFLARE_ACCOUNT_WIDE_5_USD_HARD_CAP=false');
+          NODE
