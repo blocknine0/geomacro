@@ -36,20 +36,20 @@ async function postUsage(db,record){
  try{
   await db.prepare(`INSERT INTO risk_gate_usage_ledger
    (ledger_id,request_id,principal_id,key_id,subject_type,subject_id,requested_tier,
-    delivered_tier,amount_usd_cents,snapshot_sha256,entry_status,created_at)
-   VALUES(?,?,?,?,?,?,?,?,?,?,'POSTED',?)
+    delivered_tier,amount_usd_cents,snapshot_sha256,entry_status,created_at,policy_hash)
+   VALUES(?,?,?,?,?,?,?,?,?,?,'POSTED',?,?)
    ON CONFLICT(key_id,request_id) DO NOTHING`).bind(id,record.request_id,
     record.principal_id,record.key_id,record.subject_type,record.subject_id,
     record.requested_tier,record.delivered_tier,record.amount_usd_cents,
-    record.snapshot_sha256,record.created_at).run();
+    record.snapshot_sha256,record.created_at,record.policy_hash).run();
   const saved=await db.prepare(`SELECT ledger_id,request_id,principal_id,key_id,
     subject_type,subject_id,requested_tier,delivered_tier,amount_usd_cents,
-    snapshot_sha256,entry_status,created_at FROM risk_gate_usage_ledger
+    snapshot_sha256,entry_status,created_at,policy_hash FROM risk_gate_usage_ledger
     WHERE key_id=? AND request_id=?`).bind(record.key_id,record.request_id).first();
   if(!saved||saved.ledger_id!==id||saved.subject_type!==record.subject_type||
     saved.subject_id!==record.subject_id||saved.requested_tier!==record.requested_tier||
     saved.delivered_tier!==record.delivered_tier||saved.amount_usd_cents!==record.amount_usd_cents||
-    saved.snapshot_sha256!==record.snapshot_sha256)
+    saved.snapshot_sha256!==record.snapshot_sha256||saved.policy_hash!==record.policy_hash)
    return {ok:false};
   return {ok:true,entry:saved};
  }catch{return {ok:false}}
@@ -114,10 +114,11 @@ export async function commercialRiskGateEvaluate(request,env){
  const snapshotHash=typeof snapshot.content_sha256==='string'&&HASH.test(snapshot.content_sha256)?
   snapshot.content_sha256:await sha(JSON.stringify(snapshot));
  const deliveredRule=TIERS[delivered],timestamp=new Date().toISOString();
+ const policyHash=await sha(JSON.stringify(approved??null));
  const logged=await postUsage(env.DB,{request_id:requestId,principal_id:principal.principal_id,
   key_id:principal.key_id,subject_type:body.target_type,subject_id:body.target_id,
   requested_tier:tier,delivered_tier:delivered,amount_usd_cents:deliveredRule.price,
-  snapshot_sha256:snapshotHash,created_at:timestamp});
+  snapshot_sha256:snapshotHash,created_at:timestamp,policy_hash:policyHash});
  if(!logged.ok)return json({ok:false,error:'USAGE_LEDGER_READBACK_FAILED',chargeable:false},503);
  const confidence=product.confidence?.verification==='CRYPTO_SIGNED'?'HIGH / CRYPTO_SIGNED':
   product.confidence?.verification==='VERIFIED'?'MEDIUM / VERIFIED':'LOW / PROVISIONAL';
@@ -130,6 +131,7 @@ export async function commercialRiskGateEvaluate(request,env){
    row.status==='OBSERVED_UNVERIFIED'?'OBSERVED':'NO_VERIFIED_SIGNAL';
  }
  const bodyOut={provider:'GeoMacro Risk Intelligence',
+  subject:{type:body.target_type,id:body.target_id},
   metric_id:`GSRM-${body.target_id}-${new Date().toISOString().slice(0,10).replaceAll('-','')}`,
   tier:deliveredRule.label,requested_tier:TIERS[tier].label,delivered_tier:deliveredRule.label,
   unified_risk_score:product.risk_score_0_100,confidence_grade:confidence,coverage,
