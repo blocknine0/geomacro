@@ -69,10 +69,18 @@ export async function verifyContinuityRuntime(){
    'Statistics Canada','Natural Resources Canada'][i]],
   status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null}));
  let quotaCalls=0;
- const env={PREDGE_RESEARCH_NEWS_TOKEN:token,DB:{batch:async()=>{quotaCalls++;
-  return [{success:true,results:[{request_count:1}]},{success:true,results:[{request_count:1}]}];},
-  prepare:sql=>({bind:(...args)=>({all:async()=>({results:sql.includes('pipeline_checkpoint')?[]:
-   rows.slice(args[2]??0,(args[2]??0)+251).map(story=>({story_json:JSON.stringify(story)}))})})})}};
+ const env={PREDGE_RESEARCH_NEWS_TOKEN:token,DB:{
+  // One purpose-scoped partner bearer now needs ONE atomic global D1 counter,
+  // not two global/client rows. Fail-closed ceiling remains exactly 500/day.
+  prepare:sql=>({bind:(...args)=>({
+   first:async()=>{if(!sql.includes('INSERT INTO central_security_budget'))
+    throw Error('UNEXPECTED_D1_GOVERNOR_SQL');
+    quotaCalls++;return {request_count:1};},
+   all:async()=>({results:sql.includes('pipeline_checkpoint')?[]:
+    rows.slice(args[2]??0,(args[2]??0)+251).map(story=>({
+     story_json:JSON.stringify(story)}))})
+  })})
+ }};
  const url='https://fixture.invalid/v1/partner/predge/derived-structural-72h';
  const anonymous=await predgeResearchDerivedNewsFeed(new Request(url),env,now);
  const response=await predgeResearchDerivedNewsFeed(new Request(url,{headers:{authorization:'Bearer '+token}}),env,now);
