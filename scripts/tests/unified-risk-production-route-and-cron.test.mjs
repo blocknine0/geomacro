@@ -42,6 +42,18 @@ test("owner-only 18-page SHA repair route is behind existing admin auth and cove
  assert.match(daily,/remote_hash_matches == 207/);
 });
 
+test("invalid D1 daily snapshots are quarantined before same-key supersede and readback",()=>{
+ const riskGate=readFileSync(new URL("../../workers/control-plane/src/unified-risk-gate.mjs",import.meta.url),"utf8");
+ const repair=readFileSync(new URL("../../workers/control-plane/migrations/0125_risk_snapshot_quarantine.sql",import.meta.url),"utf8");
+ assert.match(repair,/CREATE TABLE IF NOT EXISTS d1_snapshot_repair_log/);
+ assert.match(riskGate,/INSERT OR IGNORE INTO d1_snapshot_repair_log/);
+ assert.match(riskGate,/await env\.DB\.batch\(\[audit,replace\]\)/);
+ assert.match(riskGate,/supabase_synced_at=NULL/);
+ assert.match(riskGate,/logged\.corrupted_payload!==oldRow\.snapshot_json/);
+ assert.match(riskGate,/QUARANTINED_AND_SUPERSEDED/);
+ assert.match(riskGate,/REPAIR_SUPERSEDES_RUN_41992309131/);
+});
+
 test("production deployment requires TLS authenticated domain census and anonymous evaluation refusal",()=>{
   assert.match(workflow,/https:\/\/api\.geomacro\.live\/v1\/internal\/risk-gate\/unified-census/);
   assert.match(workflow,/API_CUSTOM_DOMAIN_DNS_TLS_AUTH_OR_CENSUS_UNVERIFIED/);
