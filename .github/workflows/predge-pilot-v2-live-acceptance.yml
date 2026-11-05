@@ -4,6 +4,8 @@ on:
     paths:
       - "scripts/ops/verify-predge-pilot-v2-live.mjs"
       - "scripts/tests/verify-predge-pilot-v2-live.test.mjs"
+      - "scripts/ops/verify-predge-owner-partner-signed-parity.mjs"
+      - "scripts/tests/verify-predge-owner-partner-signed-parity.test.mjs"
       - ".github/workflows/predge-pilot-v2-live-acceptance.yml"
   push:
     branches:
@@ -11,6 +13,8 @@ on:
     paths:
       - "scripts/ops/verify-predge-pilot-v2-live.mjs"
       - "scripts/tests/verify-predge-pilot-v2-live.test.mjs"
+      - "scripts/ops/verify-predge-owner-partner-signed-parity.mjs"
+      - "scripts/tests/verify-predge-owner-partner-signed-parity.test.mjs"
       - ".github/workflows/predge-pilot-v2-live-acceptance.yml"
   workflow_dispatch:
 permissions:
@@ -31,6 +35,7 @@ jobs:
         run: |
           node --check scripts/ops/verify-predge-pilot-v2-live.mjs
           node --test scripts/tests/verify-predge-pilot-v2-live.test.mjs
+          node --test scripts/tests/verify-predge-owner-partner-signed-parity.test.mjs
   public-live:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-24.04
@@ -66,3 +71,32 @@ jobs:
             echo "::error::Protected Predge research token is not configured"; exit 2;
           }
           node scripts/ops/verify-predge-pilot-v2-live.mjs
+
+  signed-owner-partner-parity-once:
+    # Explicit founder-authorized, no-funds, ONE partner GET on the canonical
+    # main merge commit only. Never on an arbitrary contributor PR/push.
+    # This checks one real current D1 sample instead of calling a successful
+    # *owner-only* signer run proof of partner-facing readiness.
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'blocknine0/geomacro' &&
+      startsWith(github.event.head_commit.message,
+        'fix(predge): one-time owner-versus-partner signed response parity check')
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 5
+    env:
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify owner-versus-partner signed parity, stale replica and quota boundary offline
+        run: node --test scripts/tests/verify-predge-owner-partner-signed-parity.test.mjs
+      - name: Verify one real partner-facing signed GET matches independent owner D1 readback
+        run: node scripts/ops/verify-predge-owner-partner-signed-parity.mjs
