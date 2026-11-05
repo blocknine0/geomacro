@@ -131,5 +131,12 @@ export type RiskGateResponse = {
     policy_id: string;
     policy_version: string;
   };
+  primary_driver: string;
+  affected_domain: "geopolitics" | "macro_fx" | "critical_minerals";
+  severity_score: number;
+  suggested_mitigation: {
+    exposure_cap_ratio: number;
+    settlement_delay_hours: number;
+  };
   execution_authorized: false;
 };
