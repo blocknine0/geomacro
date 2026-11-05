@@ -202,15 +202,77 @@ async function stored(env,target,day){
  return env.DB.prepare("SELECT snapshot_json,audit_proof_json,content_sha256,generated_at,supabase_synced_at FROM unified_risk_snapshots WHERE entity_type=? AND entity_id=? AND day_utc=?")
   .bind(target.type,target.id,day).first();
 }
-async function verifiedStored(env,target,day){
- const r=await stored(env,target,day);
- if(!r)return null;
+async function verifyStoredRecord(r,env,target,day){
+ if(!r)return {valid:false,reason:"UNIFIED_D1_STORED_ROW_MISSING"};
  try{
   const snapshot=JSON.parse(r.snapshot_json),audit_proof=JSON.parse(r.audit_proof_json);
-  if(r.content_sha256!==audit_proof.content_sha256||
-    !await verifySnapshot(snapshot,audit_proof,env))return null;
-  return {snapshot,audit_proof,supabase_synced:!!r.supabase_synced_at};
- }catch{return null}
+  if(snapshot?.target_type!==target.type||snapshot?.target_id!==target.id||
+     snapshot?.day_utc!==day)
+   return {valid:false,reason:"UNIFIED_D1_STORED_IDENTITY_MISMATCH"};
+  if(r.content_sha256!==audit_proof?.content_sha256)
+   return {valid:false,reason:"UNIFIED_D1_STORED_PROOF_HASH_MISMATCH"};
+  if(await hash(JSON.stringify(snapshot))!==r.content_sha256)
+   return {valid:false,reason:"UNIFIED_D1_STORED_CONTENT_HASH_MISMATCH"};
+  if(!await verifySnapshot(snapshot,audit_proof,env))
+   return {valid:false,reason:"UNIFIED_D1_STORED_HMAC_INVALID"};
+  return {valid:true,value:{snapshot,audit_proof,supabase_synced:!!r.supabase_synced_at}};
+ }catch{return {valid:false,reason:"UNIFIED_D1_STORED_ROW_UNPARSEABLE"}}
+}
+async function verifiedStored(env,target,day){
+ const r=await stored(env,target,day);
+ const checked=await verifyStoredRecord(r,env,target,day);
+ return checked.valid?checked.value:null;
+}
+async function quarantineAndSupersedeSnapshot(env,target,day,oldRow,failureCode,
+ snapshot,audit_proof,content_sha256,now){
+ if(!env?.DB?.batch)throw Error("UNIFIED_D1_REPAIR_TRANSACTION_UNAVAILABLE");
+ const repairedByRun=target.type==="COUNTRY"&&target.id==="CHN"&&day==="2026-11-05"
+  ?"run_41992309131":"worker_quarantine_supersede";
+ const repairId=await hash(["d1_snapshot_repair_v1",target.type,target.id,day,
+  String(oldRow.content_sha256??""),content_sha256].join("\\0"));
+ const audit=env.DB.prepare(
+  "INSERT OR IGNORE INTO d1_snapshot_repair_log "+
+  "(repair_id,target_table,entity_type,entity_id,day_utc,corrupted_payload,"+
+  "corrupted_audit_proof_json,corrupted_content_sha256,failure_code,action_taken,"+
+  "repaired_by_run,replacement_content_sha256,created_at) "+
+  "SELECT ?, 'unified_risk_snapshots', entity_type,entity_id,day_utc,snapshot_json,"+
+  "audit_proof_json,content_sha256,?,'QUARANTINED_AND_SUPERSEDED',?,?,? "+
+  "FROM unified_risk_snapshots WHERE entity_type=? AND entity_id=? AND day_utc=? "+
+  "AND content_sha256=?"
+ ).bind(repairId,failureCode,repairedByRun,content_sha256,iso(now),
+  target.type,target.id,day,oldRow.content_sha256);
+ const replace=env.DB.prepare(
+  "UPDATE unified_risk_snapshots SET snapshot_json=?,audit_proof_json=?,content_sha256=?,"+
+  "generated_at=?,supabase_synced_at=NULL WHERE entity_type=? AND entity_id=? AND day_utc=? "+
+  "AND content_sha256=?"
+ ).bind(JSON.stringify(snapshot),JSON.stringify(audit_proof),content_sha256,
+  iso(now),target.type,target.id,day,oldRow.content_sha256);
+ const results=await env.DB.batch([audit,replace]);
+ if(!Array.isArray(results)||results.length!==2)
+  throw Error("UNIFIED_D1_REPAIR_TRANSACTION_INVALID");
+ const changes=Number(results[1]?.meta?.changes??0);
+ if(changes!==1){
+  const concurrent=await verifiedStored(env,target,day);
+  if(concurrent)return concurrent;
+  throw Error("UNIFIED_D1_REPAIR_COMPARE_AND_SWAP_FAILED");
+ }
+ const logged=await env.DB.prepare(
+  "SELECT repair_id,target_table,entity_type,entity_id,day_utc,corrupted_payload,"+
+  "corrupted_audit_proof_json,corrupted_content_sha256,failure_code,action_taken,"+
+  "repaired_by_run,replacement_content_sha256,created_at FROM d1_snapshot_repair_log "+
+  "WHERE repair_id=?"
+ ).bind(repairId).first();
+ if(!logged||logged.target_table!=="unified_risk_snapshots"||
+   logged.entity_type!==target.type||logged.entity_id!==target.id||logged.day_utc!==day||
+   logged.corrupted_payload!==oldRow.snapshot_json||
+   logged.corrupted_audit_proof_json!==oldRow.audit_proof_json||
+   logged.corrupted_content_sha256!==oldRow.content_sha256||
+   logged.failure_code!==failureCode||logged.action_taken!=="QUARANTINED_AND_SUPERSEDED"||
+   logged.replacement_content_sha256!==content_sha256)
+  throw Error("UNIFIED_D1_REPAIR_AUDIT_READBACK_FAILED");
+ const checked=await verifiedStored(env,target,day);
+ if(!checked)throw Error("UNIFIED_D1_REPAIR_SNAPSHOT_READBACK_FAILED");
+ return checked;
 }
 /** One subject at a time, ≤3 D1 category scans, ≤3 parallel RSS gap fills. */
 export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetcher=fetch}={}){
@@ -218,8 +280,10 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  const reg=registry(type,id);
  if(!reg)throw Error("UNIFIED_TARGET_INVALID");
  const target={type,id,...reg},day=iso(now).slice(0,10);
- const prior=await verifiedStored(env,target,day);
- if(prior)return {...prior,existing:true};
+ const priorRow=await stored(env,target,day);
+ const priorCheck=await verifyStoredRecord(priorRow,env,target,day);
+ if(priorCheck.valid)return {...priorCheck.value,existing:true};
+ const priorFailure=priorRow?priorCheck.reason:null;
  const gro=await signedGro(env,target,now);
  const signedCategoryScores=validatedSignedCategoryScores(gro);
  const readings=await Promise.all(CATEGORIES.map(async category=>{
@@ -297,10 +361,17 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
   corridor_spillover_multiplier:1,spillover_status:"NO_VERIFIED_TARGET_EXPOSURE_MAPPING",
   signed_gro_object_id:gro?.object_id??null,tiers,
   chargeable:basicUnifiedScore!==null,execution_authorized:false,customer_paid:false};
+ if(priorRow&&priorFailure){
+  snapshot.provenance_override=target.type==="COUNTRY"&&target.id==="CHN"&&day==="2026-11-05"
+   ?"REPAIR_SUPERSEDES_RUN_41992309131":"QUARANTINE_SUPERSEDES_INVALID_D1_SNAPSHOT";
+ }
  const {content_sha256,proof}=await signSnapshot(snapshot,env,now);
- await env.DB.prepare("INSERT OR IGNORE INTO unified_risk_snapshots(entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at) VALUES(?,?,?,?,?,?,?)")
-  .bind(type,id,day,JSON.stringify(snapshot),JSON.stringify(proof),content_sha256,iso(now)).run();
- const checked=await verifiedStored(env,target,day);
+ const checked=priorRow&&priorFailure?
+  await quarantineAndSupersedeSnapshot(env,target,day,priorRow,priorFailure,
+   snapshot,proof,content_sha256,now):
+  (await env.DB.prepare("INSERT OR IGNORE INTO unified_risk_snapshots(entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,content_sha256,generated_at) VALUES(?,?,?,?,?,?,?)")
+   .bind(type,id,day,JSON.stringify(snapshot),JSON.stringify(proof),content_sha256,iso(now)).run(),
+   await verifiedStored(env,target,day));
  if(!checked)throw Error("UNIFIED_D1_HASH_OR_HMAC_READBACK_FAILED");
  return {...checked,existing:false};
 }
@@ -452,6 +523,47 @@ async function syncRiskGateSevenDayOutputs(env,cfg,latestRows,now,fetcher){
   }
  }
  return {risk_signal_rows:signals.length,corridor_rows:countries.length?Object.keys(RISK_GATE_CORRIDOR_MEMBERS).length:0};
+}
+/** Daily seven-day rollup, separate from retention cleanup.
+ * Every source row is HMAC-verified from D1 before any derived upsert.
+ * BACKFILL writes each retained snapshot day; DAILY writes only the latest
+ * available snapshot day. No assessment is fabricated when no signed GRO
+ * hash is present in the verified snapshot.
+ */
+export async function runUnifiedRiskSevenDayRollup(env,{
+ now=Date.now(),fetcher=fetch,mode="DAILY",
+}={}){
+ const cfg=supabaseCfg(env);
+ if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
+ if(!["DAILY","BACKFILL"].includes(mode))
+  return {ok:false,error:"RISK_GATE_7D_ROLLUP_MODE_INVALID"};
+ try{
+  const today=iso(now).slice(0,10);
+  const from=iso(Date.parse(today+"T00:00:00.000Z")-6*DAY).slice(0,10);
+  const rows=await signedSnapshotRows(env,
+   "entity_type='COUNTRY' AND day_utc>=? AND day_utc<=?",[from,today]);
+  const days=[...new Set(rows.map(x=>x.day_utc))].sort();
+  if(!days.length)return {ok:true,mode,from_day:from,to_day:null,
+   snapshot_rows:0,rollup_days:0,risk_signal_rows:0,corridor_rows:0,
+   assessment_rows:0,assessment_status:"BLOCKED_NO_SIGNED_GRO"};
+  const rollupDays=mode==="BACKFILL"?days:[days.at(-1)];
+  let signals=0,corridors=0;
+  for(const day of rollupDays){
+   const result=await syncRiskGateSevenDayOutputs(env,cfg,
+    rows.filter(x=>x.day_utc===day),now,fetcher);
+   signals+=result.risk_signal_rows;
+   corridors+=result.corridor_rows;
+  }
+  const signedGroRows=rows.filter(x=>hex.test(
+   String(x.snapshot?.signed_gro_payload_sha256??""))).length;
+  return {ok:true,mode,from_day:from,to_day:rollupDays.at(-1),
+   snapshot_rows:rows.length,rollup_days:rollupDays.length,
+   risk_signal_rows:signals,corridor_rows:corridors,assessment_rows:0,
+   assessment_status:signedGroRows?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO",
+   hmac_verified:true};
+ }catch{
+  return {ok:false,error:"RISK_GATE_7D_ROLLUP_FAILED"};
+ }
 }
 /** Bounded D1-to-Supabase immutable snapshot delivery.
  * BACKLOG is scheduled and strictly oldest-first (12 rows per run).

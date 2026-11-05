@@ -32,7 +32,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
-import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,verifyUnifiedRiskDailyRemoteCensus} from "./unified-risk-gate.mjs";
+import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
 import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-inputs.ts';
@@ -1408,6 +1408,11 @@ export default {
       if(utc.getUTCMinutes()%2===1)
         ctx.waitUntil(backfillRiskCountryIndex(env,{now:utc.getTime()})
           .then(r=>{if(!r.ok)throw Error("RISK_COUNTRY_INDEX_BACKFILL_FAILED:"+r.error)}));
+      // Dedicated daily rollup at 00:15 UTC; retention purge remains separate.
+      if(utc.getUTCHours()===0&&utc.getUTCMinutes()===15&&
+         env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
+        ctx.waitUntil(runUnifiedRiskSevenDayRollup(env,{now:utc.getTime(),mode:"DAILY"})
+          .then(r=>{if(!r.ok)throw Error("RISK_GATE_7D_ROLLUP_DEFERRED:"+r.error)}));
       // Run hourly at :35 UTC to enforce the seven-day rolling retention bound.
       if(utc.getUTCMinutes()===35&&
          env?.RISK_GATE_SUPABASE_ACCEPTANCE==="ACCEPTED_PRIVATE_RISK_GATE_DAILY")
@@ -1711,6 +1716,24 @@ export default {
       // PREDGE or paid delivery. All lanes come from existing ingested D1 rows.
       if(url.pathname==="/v1/internal/risk-gate/derived-discovery")
         return handleDerivedRiskGateDiscovery(request,env);
+      // Owner-only replay of retained, HMAC-verified daily snapshots into 7-day tables.
+      if(request.method==="POST"&&url.pathname==="/v1/internal/risk-gate/7d-rollup"&&!url.search){
+        let body;
+        try{
+          const raw=await request.text();
+          if(raw.length>64)throw Error("INVALID_SIZE");
+          body=JSON.parse(raw||"{}");
+        }catch{return json({ok:false,error:"RISK_GATE_7D_ROLLUP_INVALID_REQUEST"},400);}
+        if(!body||typeof body!=="object"||Array.isArray(body)||
+          Object.keys(body).some(k=>k!=="mode")||
+          !["DAILY","BACKFILL"].includes(body.mode??"BACKFILL"))
+          return json({ok:false,error:"RISK_GATE_7D_ROLLUP_INVALID_MODE"},400);
+        const mode=body.mode??"BACKFILL";
+        const receipt=await runUnifiedRiskSevenDayRollup(env,{mode});
+        return json({schema:"geomacro.risk-gate-7d-rollup.v1",
+          ...receipt,no_funds:true,commercial_activation:false},
+          receipt.ok?200:503);
+      }
       // Owner-only, strictly bounded current-day canonical reconciliation.
       // Page is the sole permitted input: 18 immutable ID-ordered pages
       // of 12/last 3 real records. No arbitrary target, day, source fetch,
