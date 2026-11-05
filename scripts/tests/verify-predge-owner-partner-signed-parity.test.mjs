@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {verifyPredgeOwnerPartnerSignedParity}
  from "../ops/verify-predge-owner-partner-signed-parity.mjs";
 const NOW=Date.parse("2026-11-05T18:20:00Z");
@@ -86,4 +87,22 @@ test("bad news count and unknown category cannot qualify",async()=>{
  await assert.rejects(()=>verifyPredgeOwnerPartnerSignedParity({...args,
   fetchImpl:bad.fetchImpl,verify:async()=>true}),
   /NEWS_CONTEXT_DELIVERY_COUNTS_INVALID/);
+});
+
+test("production paired readback requires main-only one-time commit and protected secrets",()=>{
+ const workflow=readFileSync(new URL(
+  "../../.github/workflows/predge-pilot-v2-live-acceptance.yml",
+  import.meta.url),"utf8");
+ assert.ok(workflow.includes("signed-owner-partner-parity-once:"));
+ assert.ok(workflow.includes("github.ref == 'refs/heads/main'"));
+ assert.ok(workflow.includes("github.repository == 'blocknine0/geomacro'"));
+ assert.ok(workflow.includes("startsWith(github.event.head_commit.message,"));
+ assert.ok(workflow.includes(
+  "fix(predge): one-time owner-versus-partner signed response parity check"));
+ assert.ok(workflow.includes("environment: production"));
+ assert.ok(workflow.includes("secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN"));
+ assert.ok(workflow.includes("secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"));
+ assert.ok(workflow.includes("node scripts/ops/verify-predge-owner-partner-signed-parity.mjs"));
+ assert.ok(!workflow.includes("workflow_dispatch:"+
+  "\\n    inputs:\\n      allow_unsigned"));
 });
