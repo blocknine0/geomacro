@@ -98,6 +98,16 @@ export function assertStoreAlias({status, location, html}, base = "https://geoma
   throw Error("PUBLIC_DATA_API_ALIAS_UNVERIFIED");
 }
 
+/** The founder-retired legacy URL must never become an indexable live page. */
+export function assertRetiredGlobalRiskRedirect({status,location,robots},base="https://geomacro.live") {
+  const directives = new Set(String(robots ?? "").split(",").map(x=>x.trim().toLowerCase()));
+  if (status!==308 || !location ||
+      new URL(location,base).href!==base+"/intelligence" ||
+      !["noindex","nofollow","noarchive"].every(directive=>directives.has(directive)))
+    throw Error("FOUNDER_RETIRED_GLOBAL_RISK_REDIRECT_BROKEN");
+  return "RETIRED_308_NOINDEX";
+}
+
 export function assertBuildMarker(build, expectedSha) {
   if (build?.schema_version !== "geomacro.deployment-build.v1" ||
       build?.canonical_repository !== "blocknine0/geomacro" ||
