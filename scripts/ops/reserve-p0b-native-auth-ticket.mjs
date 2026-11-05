@@ -30,6 +30,6 @@ function executeRemote(sql){
  try{return JSON.parse(r.stdout)}catch{fail("P0B_B2_NATIVE_AUTH_D1_INVALID_JSON")}
 }
 if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
- try{const x=await reserveP0bNativeAuthTicket({execute:async sql=>executeRemote(sql)});console.log("P0B_B2_NATIVE_AUTH_D1_RESERVATION_VERIFIED="+x.readback_verified);if(process.env.GITHUB_OUTPUT)await import("node:fs/promises").then(fs=>fs.appendFile(process.env.GITHUB_OUTPUT,"reserved=true\\n"));}
+ try{const x=await reserveP0bNativeAuthTicket({execute:async sql=>executeRemote(sql)});console.log("P0B_B2_NATIVE_AUTH_D1_RESERVATION_VERIFIED="+x.readback_verified);if(process.env.GITHUB_OUTPUT)await import("node:fs/promises").then(fs=>fs.appendFile(process.env.GITHUB_OUTPUT,"reserved=true\n"));}
  catch(e){const c=e instanceof Error?e.message:"";console.error(/^P0B_[A-Z0-9_]+$/u.test(c)?c:"P0B_B2_NATIVE_AUTH_D1_RESERVATION_FAILED");process.exitCode=1}
 }
