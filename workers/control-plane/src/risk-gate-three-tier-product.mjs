@@ -40,10 +40,11 @@ function observedByCategory(snapshot,rows,now){
   let payload;try{payload=JSON.parse(r.evidence_payload)}catch{continue}
   if(payload?.schema!=="geomacro.risk-observation.v1"||!Array.isArray(payload.sources)||
     payload.sources.length>40)continue;
-  const alerts=payload.sources.slice(0,6).filter(s=>
+  const fresh=payload.sources.filter(s=>
     typeof s.published_at==="string"&&Number.isFinite(Date.parse(s.published_at))&&
     Date.parse(s.published_at)>=now-86400000&&Date.parse(s.published_at)<=now+60000&&
-    HEX.test(String(s.title_hash??""))).map(s=>({
+    HEX.test(String(s.title_hash??"")));
+  const alerts=fresh.slice(0,6).map(s=>({
     title_sha256:s.title_hash,
     observed_at:s.published_at,
     source_type:String(s.origin??"OBSERVED_METADATA").slice(0,60),
@@ -51,11 +52,12 @@ function observedByCategory(snapshot,rows,now){
     category:r.category,
     status:"OBSERVED_UNVERIFIED",
   }));
-  found.set(r.category,{count,alerts});
+  found.set(r.category,{count:Math.min(count,new Set(fresh.map(s=>s.title_hash)).size),alerts});
  }
  return CATEGORIES.map(category=>{
-  const count=found.get(category)?.count??Math.max(0,
-    Math.min(40,Number(snapshot?.categories?.[category]?.source_count??0)));
+  // A once/day counter alone cannot prove that any observation is still
+  // within the live publication window at query time.
+  const count=found.get(category)?.count??0;
   return {category,observed_count:count,
    observed_alerts:found.get(category)?.alerts??[],
    status:count>0?"OBSERVED_UNVERIFIED":"NO_OBSERVATION"};

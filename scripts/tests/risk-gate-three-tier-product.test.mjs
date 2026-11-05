@@ -76,6 +76,15 @@ test("No observed source is not silently scored as zero or billed",()=>{
  assert.equal(r.confidence,null);
  assert.equal(r.charged,false);
 });
+test("Basic expired, future and counter-only daily observations cannot stay READY",()=>{
+ for(const published_at of ["2026-11-03T17:59:00Z","2026-11-05T18:00:00Z"]){
+  const r=render("basic_focused",{observations:[{...observations[0],
+   evidence_payload:JSON.stringify({schema:"geomacro.risk-observation.v1",
+    sources:[{id:"old",title_hash:SHA,published_at}]})}]});
+  assert.equal(r.status,"NO_OBSERVED_SIGNAL");assert.equal(r.chargeable,false);
+ }
+ assert.equal(render("basic_focused",{observations:[]}).status,"NO_OBSERVED_SIGNAL");
+});
 test("Standard blocks two unrelated or unverified observations and requires three categories",()=>{
  const missing=render("standard");
  assert.equal(missing.status,"INSUFFICIENT_CORROBORATION");
