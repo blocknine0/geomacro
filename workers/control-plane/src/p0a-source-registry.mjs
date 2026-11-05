@@ -353,7 +353,7 @@ async function pollOne(env,row,{fetchImpl,now}){
     const content=p1SourceContentFingerprintFields(item);
     const fingerprint=content?await sha(content):null;
     const identity=await sha([config.source_id,
-      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\\n'));
+      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\n'));
     hashes.push(identity);
     if(env.GEOMACRO_P1_FANOUT_ENABLED==='1'){
      // Real multi-item D1 statement; repeated observations preserve immutable
