@@ -122,6 +122,14 @@ test("outside-in Store check verifies actual plans, packs and locked checkout", 
 test("legacy /data-api redirect, exact build SHA and static audit scope are enforced", async () => {
   const {assertStoreAlias,assertBuildMarker} = await import("../lib/website-live-audit-contract.mjs");
   assert.equal(assertStoreAlias({status:307,location:"/pricing"}),"HTTP_REDIRECT");
+  const {assertRetiredGlobalRiskRedirect}=await import("../lib/website-live-audit-contract.mjs");
+  const retired={status:308,location:"/intelligence",robots:"noindex, nofollow, noarchive"};
+  assert.equal(assertRetiredGlobalRiskRedirect(retired),"RETIRED_308_NOINDEX");
+  assert.throws(()=>assertRetiredGlobalRiskRedirect({...retired,status:200}),
+    /FOUNDER_RETIRED_GLOBAL_RISK_REDIRECT_BROKEN/);
+  assert.throws(()=>assertRetiredGlobalRiskRedirect({...retired,location:"/pricing"}),
+    /FOUNDER_RETIRED_GLOBAL_RISK_REDIRECT_BROKEN/);
+
   assert.throws(()=>assertStoreAlias({status:302,location:"https://other.test/pricing"}),
     /PUBLIC_DATA_API_ALIAS_REDIRECT_MISMATCH/);
   const sha="a".repeat(40);
@@ -132,6 +140,7 @@ test("legacy /data-api redirect, exact build SHA and static audit scope are enfo
   const audit=read("scripts/ops/verify-live-website-contract.mjs");
   assert.match(audit,/publicCapabilityPricingCatalog\(\)/);
   assert.match(audit,/assertStoreAlias/);
+  assert.match(audit,/assertRetiredGlobalRiskRedirect/);
   assert.match(audit,/assertLockedStorefront/);
   assert.doesNotMatch(audit,/data-capability="[^"]*"\s*\+/);
   assert.doesNotMatch(audit,/price_variants:14/);
@@ -156,15 +165,17 @@ test("sitemap advertises canonical indexable risk pages, never redirect-only /da
   const locs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
   assert.equal(new Set(locs).size,locs.length,"duplicate sitemap URL");
   assert.ok(locs.includes("https://geomacro.live/risk-indices"));
-  assert.ok(locs.includes("https://geomacro.live/global-risk"));
+  assert.ok(!locs.includes("https://geomacro.live/global-risk"),
+    "Founder-retired redirect must not appear in sitemap");
   assert.ok(locs.includes("https://geomacro.live/pricing"));
   assert.ok(!locs.includes("https://geomacro.live/data-api"),
     "Redirect-only alias cannot be advertised as a canonical URL");
-  for(const route of ["risk-indices","global-risk"]) {
-    const page=read("src/routes/" + route + ".tsx");
-    assert.match(page,/name: "robots", content: "index, follow/);
-    assert.ok(page.includes('https://geomacro.live/' + route));
-  }
+  const page=read("src/routes/risk-indices.tsx");
+  assert.match(page,/name: "robots", content: "index, follow/);
+  assert.ok(page.includes("https://geomacro.live/risk-indices"));
+  const retired=read("server/middleware/05-retire-noncommercial-surfaces.ts");
+  assert.ok(retired.includes('["/global-risk", "/intelligence"]'));
+  assert.ok(retired.includes('setResponseHeader(event, "X-Robots-Tag", "noindex, nofollow, noarchive")'));
   const approval=lock.approved_public_sitemap_canonical_20261106;
   assert.deepEqual(approval.approved_paths,["public/sitemap.xml"]);
   assert.equal(approval.exact_blob_lock,true);
