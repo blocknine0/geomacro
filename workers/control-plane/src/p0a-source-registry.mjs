@@ -4,6 +4,7 @@
  * Neither private staged headlines nor source configuration are publicly served.
  */
 import {normalizeP0aPayload,P0A_MAX_COMPRESSED_BYTES} from './p0a-source-format.mjs';
+import {p0aBuildBundledItemStatements} from './p0a-source-item-bundled-write.mjs';
 import {processFetchedBatch} from '../../../src/workers/ingest-producer.ts';
 import {canonicalJson} from '../../../src/lib/canonical-json.ts';
 
@@ -347,36 +348,36 @@ async function pollOne(env,row,{fetchImpl,now}){
    const candidates=result.records;
    if(candidates.length>MAX_NEW_ITEMS_PER_SOURCE)state='CAPACITY_DEFERRED';
    const staged=candidates.slice(0,MAX_NEW_ITEMS_PER_SOURCE),statements=[];
-   const timestamp=iso(now),hashes=[];
+   const timestamp=iso(now),hashes=[],bulk=[];
    for(const item of staged){
     const content=p1SourceContentFingerprintFields(item);
     const fingerprint=content?await sha(content):null;
     const identity=await sha([config.source_id,
-      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\n'));
+      fingerprint??item.source_record_id??item.original_url??item.title??''].join('\\n'));
     hashes.push(identity);
-    if(env.GEOMACRO_P1_FANOUT_ENABLED==='1')
-     statements.push(env.DB.prepare(
-      'INSERT INTO p0a_normalized_source_items '+
-      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
-      'source_record_id,native_published_at,first_seen_at,last_seen_at,'+
-      'observed_at,clock_provenance,content_sha256) '+
-      'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET '+
-      'last_seen_at=excluded.last_seen_at'
-     ).bind(identity,config.source_id,config.intended_category,config.country_iso3,
-      config.rights_tier,item.title,item.original_url,item.source_record_id,
-      item.native_published_at,timestamp,timestamp,item.observed_at??timestamp,
-      item.clock_provenance??'INGESTION_OBSERVED',fingerprint));
-    else statements.push(env.DB.prepare(
+    if(env.GEOMACRO_P1_FANOUT_ENABLED==='1'){
+     // Real multi-item D1 statement; repeated observations preserve immutable
+     // metadata and refresh last_seen at most once per six hours.
+     bulk.push([identity,config.source_id,config.intended_category,
+      config.country_iso3,config.rights_tier,item.title,item.original_url,
+      item.source_record_id,item.native_published_at,timestamp,timestamp,
+      item.observed_at??timestamp,
+      item.clock_provenance??'INGESTION_OBSERVED',fingerprint]);
+    }else statements.push(env.DB.prepare(
      'INSERT INTO p0a_normalized_source_items '+
      '(item_id,source_id,intended_category,country_iso3,rights_tier,title,original_url,'+
      'source_record_id,native_published_at,first_seen_at,last_seen_at) '+
      'VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(item_id) DO NOTHING'
     ).bind(identity,config.source_id,config.intended_category,config.country_iso3,
-     config.rights_tier,item.title,item.original_url,item.source_record_id,
-     item.native_published_at,timestamp,timestamp));
+      config.rights_tier,item.title,item.original_url,item.source_record_id,
+      item.native_published_at,timestamp,timestamp));
    }
+   if(bulk.length)statements.push(...p0aBuildBundledItemStatements(env.DB,bulk,now));
    if(statements.length){
-    await env.DB.batch(statements);
+    const written=await env.DB.batch(statements);
+    if(!Array.isArray(written)||written.length!==statements.length||
+       written.some(r=>r?.success===false))
+      throw Error('P0A_D1_ITEM_BUNDLE_WRITE_FAILED');
     const seen=await env.DB.prepare(
      'SELECT item_id FROM p0a_normalized_source_items WHERE item_id IN ('+
      hashes.map(()=>'?').join(',')+')').bind(...hashes).all();
