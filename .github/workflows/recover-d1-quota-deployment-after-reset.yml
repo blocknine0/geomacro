@@ -118,7 +118,7 @@ jobs:
           migration_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Apply committed D1 migrations remotely") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           schema_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify D1 schema directly") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           b2_scope_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Verify actual B2 key scope and derive allowed private spool prefix") | .conclusion' "$jobs_file" 2>/dev/null || true)"
-          p0b_ticket_conclusion="$(jq -r \'[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Reserve and read back native-auth quota directly in canonical D1") | .conclusion\' "$jobs_file" 2>/dev/null || true)"
+          p0b_ticket_conclusion="$(jq -r '[.jobs[] | select(.name == "bootstrap-deploy-accept")][0].steps[] | select(.name == "Reserve and read back native-auth quota directly in canonical D1") | .conclusion' "$jobs_file" 2>/dev/null || true)"
           if [[ -z "$job_id" ]] || [[ "$migration_conclusion" != "failure" && "$schema_conclusion" != "failure" && "$b2_scope_conclusion" != "failure" && "$p0b_ticket_conclusion" != "failure" ]]; then
             echo "Latest deployment did not fail at protected D1 migration/schema or B2 key-scope steps; no automatic retry."
             echo "retry=false" >> "$GITHUB_OUTPUT"
