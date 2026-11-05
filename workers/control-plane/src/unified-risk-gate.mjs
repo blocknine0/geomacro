@@ -967,6 +967,19 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    requested_lenient_override:lenient,
    override_acknowledged:payload.override_acknowledged===true,
    client_override_applied:lenient,execution_authorized:false};
+  const requestHash=await hash(JSON.stringify(payload));
+  const receipt=await persistRiskGateAuditReceipt(env.DB,{
+   client_id:"unified-risk-gate-v1",request_id:String(payload.request_id??"rg-"+requestHash.slice(0,40)),
+   request_hash:requestHash,subject_type:target.type.toLowerCase(),subject_id:target.id,
+   decision:clientPolicyDecision,policy_id:payload.approved_thresholds?"approved-thresholds":"default-policy",
+   policy_version:payload.approved_thresholds?"caller-approved-v1":"unified-v1",
+   evaluated_at:iso(now),response:body,env,
+  });
+  body.audit_receipt_hash=receipt.audit_receipt_hash;
+  body.audit_receipt_signature=receipt.audit_receipt_signature;
+  body.audit_receipt_signature_key_id=receipt.signature_key_id;
+  body.audit_receipt_signature_scheme=receipt.signature_scheme;
+  body.audit_receipt_signature_scope=receipt.signature_scope;
   return reply({ok:true,...body});
  }catch{return reply({ok:false,error:"UNIFIED_PRODUCTION_EVIDENCE_OR_STORAGE_UNAVAILABLE",chargeable:false},503)}
 }
