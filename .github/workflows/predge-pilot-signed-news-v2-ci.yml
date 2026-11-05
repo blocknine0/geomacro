@@ -4,6 +4,9 @@ on:
     paths:
       - "workers/control-plane/src/predge-pilot-news-context-v2.mjs"
       - "workers/control-plane/src/predge-pilot-check-v2.mjs"
+      - "workers/control-plane/src/predge-research-derived-news.mjs"
+      - "workers/control-plane/src/central-security-budget.mjs"
+      - "scripts/tests/predge-research-one-row-d1.test.mjs"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/migrations/0088_predge_pilot_signed_news_context.sql"
       - "scripts/ops/check-predge-signed-refresh-cadence.mjs"
@@ -43,4 +46,5 @@ jobs:
           node --test scripts/tests/predge-pilot-http-retry.test.mjs
           node --test scripts/tests/check-predge-signed-refresh-cadence.test.mjs
           node --test scripts/tests/predge-pilot-check-v2.test.mjs
+          node --test scripts/tests/predge-research-one-row-d1.test.mjs
           node --test scripts/tests/predge-owner-readback-quota.test.mjs
