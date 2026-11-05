@@ -150,3 +150,25 @@ test("scheduled frontend acceptance covers all distinct public routes without wr
   assert.match(script,/missing SSR heading or page title/);
   assert.doesNotMatch(script,/urllib\.request\.Request\([^)]*method="POST"/);
 });
+
+test("sitemap advertises canonical indexable risk pages, never redirect-only /data-api", () => {
+  const sitemap=read("public/sitemap.xml");
+  const locs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
+  assert.equal(new Set(locs).size,locs.length,"duplicate sitemap URL");
+  assert.ok(locs.includes("https://geomacro.live/risk-indices"));
+  assert.ok(locs.includes("https://geomacro.live/global-risk"));
+  assert.ok(locs.includes("https://geomacro.live/pricing"));
+  assert.ok(!locs.includes("https://geomacro.live/data-api"),
+    "Redirect-only alias cannot be advertised as a canonical URL");
+  for(const route of ["risk-indices","global-risk"]) {
+    const page=read("src/routes/" + route + ".tsx");
+    assert.match(page,/name: "robots", content: "index, follow/);
+    assert.ok(page.includes('https://geomacro.live/' + route));
+  }
+  const approval=lock.approved_public_sitemap_canonical_20261106;
+  assert.deepEqual(approval.approved_paths,["public/sitemap.xml"]);
+  assert.equal(approval.exact_blob_lock,true);
+  assert.equal(approval.payment_authorized,false);
+  assert.equal(approval.global_risk_final_lock_unmodified,true);
+  assert.match(lockVerifier,/approved_public_sitemap_canonical_20261106/);
+});
