@@ -11,22 +11,15 @@
  * score, funds, risk-gate decisions, or trading authorization.
  */
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
-import {consumeCentralSecurityBudget} from "./central-security-budget.mjs";
+import {consumePredgeResearchDailyBudget} from "./central-security-budget.mjs";
 
 export const PREDGE_RESEARCH_PILOT_END_UTC="2027-01-17T00:00:00.000Z";
-const PREDGE_BUDGET_ROUTE="predge_research_news";
 const PREDGE_DAY_CAP=500;
 const HEADERS={"Cache-Control":"private, no-store","Pragma":"no-cache",
   "Vary":"Authorization","X-Content-Type-Options":"nosniff",
   "Referrer-Policy":"no-referrer"};
 const fail=(error,status)=>Response.json({ok:false,error,chargeable:false,
   partner_redistribution_authorized:false},{status,headers:HEADERS});
-async function tokenBudgetKey(token){
-  // Only an opaque hash-derived six-hex D1 client bucket is retained;
-  // the auth token, root secret, client IP and original upstream data never enter D1.
-  const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(token));
-  return [...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,"0")).join("");
-}
 function equalsToken(value,expected){
   if(typeof value!=="string"||typeof expected!=="string"||
      !/^[a-f0-9]{64}$/.test(expected)||value.length!==expected.length)return false;
@@ -62,12 +55,12 @@ export async function predgeResearchDerivedNewsFeed(
      (query.has("domain")&&
       !["geopolitics","macro","rare_earth"].includes(query.get("domain"))))
     return fail("PREDGE_RESEARCH_QUERY_INVALID",400);
-  if(!env?.DB?.batch)return fail("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE",503);
+  if(!env?.DB?.prepare)return fail("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE",503);
   let budget;
   try{
-    budget=await consumeCentralSecurityBudget(env.DB,{
-      route_class:PREDGE_BUDGET_ROUTE,client_key:await tokenBudgetKey(expected),
-    },{now});
+    // Existing D1 global counter is the single authority for this one
+    // authenticated bearer: one physical row update, exact 500/day.
+    budget=await consumePredgeResearchDailyBudget(env.DB,{now});
   }catch{
     // Never fall back to unmetered partner access on D1 failure.
     return fail("PREDGE_RESEARCH_RATE_GOVERNOR_UNAVAILABLE",503);
