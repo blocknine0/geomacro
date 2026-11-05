@@ -25,11 +25,14 @@ export async function reserveP0bNativeAuthTicket({execute,now=new Date()}={}){
 export function classifyP0bWranglerD1Failure(r){
  if(r?.error?.code==="ETIMEDOUT")return "TIMEOUT";
  if(r?.error?.code==="ENOENT")return "WRANGLER_EXECUTABLE_MISSING";
- const text=String(r?.stderr??r?.stdout??"").replace(/\u001b\[[0-9;]*m/gu,"").toLowerCase();
+ const text=[r?.stderr,r?.stdout].filter(Boolean).join("\\n")
+  .replace(/\\u001b\\[[0-9;]*m/gu,"").toLowerCase();
  if(/no such table|no such column|sqlite_error|syntax error/u.test(text))return "SQL";
  if(/permission|unauthorized|forbidden|authentication|not authorized/u.test(text))return "AUTH";
- if(/database is locked|sqlite_busy|too many requests|rate limit/u.test(text))return "TRANSIENT";
- if(/database.*not found|unknown database|not_found/u.test(text))return "DATABASE";
+ if(/database is locked|sqlite_busy|too many requests|rate limit|\\b429\\b/u.test(text))return "TRANSIENT";
+ if(/database.*not found|unknown database|no database|binding.*not found|not_found/u.test(text))return "DATABASE";
+ if(/unknown argument|invalid argument|unexpected argument/u.test(text))return "CLI";
+ if(/http \\d{3}|status code \\d{3}|error \\d{4,}|request failed/u.test(text))return "API";
  return "UNKNOWN";
 }
 function executeRemote(sql){
