@@ -27,3 +27,13 @@ export async function fetchProtectedPilot(url,options={},{
  }
  throw Error("PREDGE_PILOT_RETRY_EXHAUSTED");
 }
+
+/** Return only one explicitly known, public Worker error constant. No raw
+ * response body, URL, token or incident payload is ever included in logs. */
+export async function safePilotHttpFailureCode(response,known=[]){
+ const fallback="HTTP_"+String(response?.status??"UNKNOWN");
+ let body;
+ try{body=await response.json();}catch{return fallback;}
+ return body&&typeof body.error==="string"&&known.includes(body.error)
+   ?body.error:fallback;
+}
