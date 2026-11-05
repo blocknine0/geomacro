@@ -181,6 +181,7 @@ test('identical source-registry reseed changes zero physical SQLite rows',async(
 test('P1 repeated official RSS poll uses bundled item dedupe and six-hour refresh',async()=>{
  const {db,env,errors}=dbMock(true);
  env.GEOMACRO_P1_FANOUT_ENABLED='1';
+ env.GEOMACRO_P0A_TEST_DIAGNOSTICS='1';
  try{
   const cfg=source('src_p1_bulk');
   assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
