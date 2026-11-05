@@ -159,7 +159,7 @@ test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per
   const first=await dispatchP1DueSources(env,{now});
   assert.equal(first.status,"P1_BUNDLE_QUEUED");
   assert.equal(first.selected,105);
-  assert.equal(first.queued,108);
+  assert.equal(first.queued,105);
   assert.equal(first.base_table_dispatch_lease_rows,1);
   assert.equal(first.base_table_mutex_rows,1);
   assert.equal(first.provider_billed_index_write_overhead_unmeasured,true);
@@ -175,27 +175,31 @@ test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per
    const t=now+minute*60000,before=minute===0?0:batches.length;
    if(minute>0){
     const result=await dispatchP1DueSources(env,{now:t});
-    assert.ok(result.queued<=108);assert.equal(result.selected,result.queued);
+    assert.ok(result.queued<=105);assert.equal(result.selected,result.queued);
    }
    const start=minute===0?0:before;
    const parts=batches.slice(start);
    for(const part of parts){
-    const messages=part.map(x=>({body:x.body,ackCount:0,
-     ack(){this.ackCount++},retry(){throw Error("UNEXPECTED_V2_RETRY")}}));
-    const res=await consumeP1SourcePollBatch({
-     queue:"geomacro-source-poll",messages
-    },env,{now:t,poll:async(_, {sourceIds})=>{
-     const stmt=f.db.prepare("UPDATE source_registry SET last_polled_at=?,next_poll_at=? WHERE source_id=?");
-     const receipts=[];
-     for(const id of sourceIds){
-      stmt.run(new Date(t).toISOString(),new Date(t+3600000).toISOString(),id);
-      processed++;
-      receipts.push({source_id:id,state:"UNCHANGED"});
-     }
-     return {ok:true,receipts};
-    }});
-    assert.equal(res.attempts,messages.reduce((n,m)=>n+(m.body.source_ids?.length??1),0));
-    assert.ok(messages.every(m=>m.ackCount===1));
+    // Real configured consumer has max_batch_size=1: one physical message
+    // per invocation, even when the producer used a sendBatch transport.
+    for(const x of part){
+     const messages=[{body:x.body,ackCount:0,
+      ack(){this.ackCount++},retry(){throw Error("UNEXPECTED_V3_RETRY")}}];
+     const res=await consumeP1SourcePollBatch({
+      queue:"geomacro-source-poll",messages
+     },env,{now:t,poll:async(_, {sourceIds})=>{
+      const stmt=f.db.prepare("UPDATE source_registry SET last_polled_at=?,next_poll_at=? WHERE source_id=?");
+      const receipts=[];
+      for(const id of sourceIds){
+       stmt.run(new Date(t).toISOString(),new Date(t+3600000).toISOString(),id);
+       processed++;
+       receipts.push({source_id:id,state:"UNCHANGED"});
+      }
+      return {ok:true,receipts};
+     }});
+     assert.equal(res.attempts,x.body.source_ids.length);
+     assert.ok(messages.every(m=>m.ackCount===1));
+    }
    }
   }
   assert.equal(processed,1077);
