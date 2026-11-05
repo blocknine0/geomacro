@@ -122,6 +122,14 @@ test("outside-in Store check verifies actual plans, packs and locked checkout", 
 test("legacy /data-api redirect, exact build SHA and static audit scope are enforced", async () => {
   const {assertStoreAlias,assertBuildMarker} = await import("../lib/website-live-audit-contract.mjs");
   assert.equal(assertStoreAlias({status:307,location:"/pricing"}),"HTTP_REDIRECT");
+  const {assertRetiredGlobalRiskRedirect}=await import("../lib/website-live-audit-contract.mjs");
+  const retired={status:308,location:"/intelligence",robots:"noindex, nofollow, noarchive"};
+  assert.equal(assertRetiredGlobalRiskRedirect(retired),"RETIRED_308_NOINDEX");
+  assert.throws(()=>assertRetiredGlobalRiskRedirect({...retired,status:200}),
+    /FOUNDER_RETIRED_GLOBAL_RISK_REDIRECT_BROKEN/);
+  assert.throws(()=>assertRetiredGlobalRiskRedirect({...retired,location:"/pricing"}),
+    /FOUNDER_RETIRED_GLOBAL_RISK_REDIRECT_BROKEN/);
+
   assert.throws(()=>assertStoreAlias({status:302,location:"https://other.test/pricing"}),
     /PUBLIC_DATA_API_ALIAS_REDIRECT_MISMATCH/);
   const sha="a".repeat(40);
@@ -132,6 +140,7 @@ test("legacy /data-api redirect, exact build SHA and static audit scope are enfo
   const audit=read("scripts/ops/verify-live-website-contract.mjs");
   assert.match(audit,/publicCapabilityPricingCatalog\(\)/);
   assert.match(audit,/assertStoreAlias/);
+  assert.match(audit,/assertRetiredGlobalRiskRedirect/);
   assert.match(audit,/assertLockedStorefront/);
   assert.doesNotMatch(audit,/data-capability="[^"]*"\s*\+/);
   assert.doesNotMatch(audit,/price_variants:14/);
@@ -149,4 +158,34 @@ test("scheduled frontend acceptance covers all distinct public routes without wr
   assert.match(script,/record\["public_routes"\]\[path\]/);
   assert.match(script,/missing SSR heading or page title/);
   assert.doesNotMatch(script,/urllib\.request\.Request\([^)]*method="POST"/);
+});
+
+test("sitemap advertises canonical indexable risk pages, never redirect-only /data-api", () => {
+  const sitemap=read("public/sitemap.xml");
+  const locs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
+  assert.equal(new Set(locs).size,locs.length,"duplicate sitemap URL");
+  // Parse and compare the COMPLETE origin and path. URL substring matches
+  // can be spoofed by another hostname or a longer URL (CodeQL warning).
+  const urls=locs.map(loc=>new URL(loc));
+  assert.ok(urls.every(url=>url.origin==="https://geomacro.live" &&
+    url.search==="" && url.hash===""),"sitemap escaped canonical origin");
+  const paths=new Set(urls.map(url=>url.pathname));
+  assert.ok(paths.has("/risk-indices"));
+  assert.ok(!paths.has("/global-risk"),
+    "Founder-retired redirect must not appear in sitemap");
+  assert.ok(paths.has("/pricing"));
+  assert.ok(!paths.has("/data-api"),
+    "Redirect-only alias cannot be advertised as a canonical URL");
+  const page=read("src/routes/risk-indices.tsx");
+  assert.match(page,/name: "robots", content: "index, follow/);
+  assert.match(page,/const URL = "https:\/\/geomacro\.live\/risk-indices";/);
+  const retired=read("server/middleware/05-retire-noncommercial-surfaces.ts");
+  assert.ok(retired.includes('["/global-risk", "/intelligence"]'));
+  assert.ok(retired.includes('setResponseHeader(event, "X-Robots-Tag", "noindex, nofollow, noarchive")'));
+  const approval=lock.approved_public_sitemap_canonical_20261106;
+  assert.deepEqual(approval.approved_paths,["public/sitemap.xml"]);
+  assert.equal(approval.exact_blob_lock,true);
+  assert.equal(approval.payment_authorized,false);
+  assert.equal(approval.global_risk_final_lock_unmodified,true);
+  assert.match(lockVerifier,/approved_public_sitemap_canonical_20261106/);
 });
