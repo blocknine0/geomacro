@@ -1,0 +1,42 @@
+name: Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-cloudflare-five-usd-provider-spend-blocks
+  cancel-in-progress: false
+
+jobs:
+  apply-product-spend-blocks:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_WRITE_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_WRITE_TOKEN }}
+      GEOMACRO_CLOUDFLARE_COST_GUARD_CONFIRM: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Exact explicit founder confirmation (no payment activation)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GEOMACRO_CLOUDFLARE_COST_GUARD_CONFIRM" = "LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE" || {
+            echo "::error::CLOUDFLARE_SPEND_POLICY_CONFIRMATION_REQUIRED"
+            exit 2
+          }
+      - name: Verify cost guard offline before changing provider configuration
+        run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
+      - name: Create only missing provider Workers/DO usage_block policies, read them back
+        run: node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply
