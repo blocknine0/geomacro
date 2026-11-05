@@ -287,7 +287,7 @@ jobs:
        needs.quota-admission.result == 'failure') &&
       needs.quota-admission.outputs.source_intake != 'true'
     concurrency:
-      group: geomacro-private-osint-held-publisher-fetch
+      group: geomacro-hot50-held-publisher-fetch
       cancel-in-progress: false
     permissions:
       contents: read
