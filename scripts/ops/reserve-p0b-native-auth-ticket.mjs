@@ -43,11 +43,11 @@ export function safeP0bWranglerD1Hint(r,secrets=[]){
  let text=[r?.stderr,r?.stdout].filter(Boolean).join("\n")
   .replaceAll(String.fromCharCode(27),"");
  for(const secret of secrets)if(typeof secret==="string"&&secret.length>=8)text=text.replaceAll(secret,"[REDACTED]");
- text=text.replace(/Bearer\\s+[^\\s]+/giu,"Bearer [REDACTED]")
-  .replace(/https?:\\/\\/[^\\s)]+/giu,"[URL]")
-  .replace(/\\b[0-9a-f-]{36}\\b/giu,"[ID]")
+ text=text.replace(/Bearer\s+[^\s]+/giu,"Bearer [REDACTED]")
+  .replace(/https?:\/\/[^\s)]+/giu,"[URL]")
+  .replace(/\b[0-9a-f-]{36}\b/giu,"[ID]")
   .replace(/[A-Za-z0-9_./+=-]{40,}/gu,"[REDACTED]");
- const lines=text.split(/\\r?\\n/u).filter(line=>
+ const lines=text.split(/\r?\n/u).filter(line=>
   /(error|failed|denied|invalid|exception|not found)/iu.test(line)&&
   !line.includes("--command"));
  return (lines.at(-1)??"").trim().slice(0,180);
