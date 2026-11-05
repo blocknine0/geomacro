@@ -100,7 +100,17 @@ export async function upsertP0aSourceRegistry(env,body){
     // Changing the origin/format invalidates its old conditional-fetch cursor.
     'last_cursor=CASE WHEN source_registry.canonical_endpoint<>excluded.canonical_endpoint OR '+
     'source_registry.parser_type<>excluded.parser_type THEN excluded.last_cursor '+
-    'ELSE source_registry.last_cursor END,updated_at=CURRENT_TIMESTAMP')
+    'ELSE source_registry.last_cursor END,updated_at=CURRENT_TIMESTAMP '+
+    // Identical manifest re-seeding must not write every source row again.
+    // D1 Free charges physical modified rows even inside one db.batch().
+    'WHERE source_registry.canonical_endpoint<>excluded.canonical_endpoint OR '+
+    'source_registry.parser_type<>excluded.parser_type OR '+
+    'source_registry.intended_category<>excluded.intended_category OR '+
+    'source_registry.country_iso3<>excluded.country_iso3 OR '+
+    'source_registry.rights_tier<>excluded.rights_tier OR '+
+    'source_registry.polling_interval_sec<>excluded.polling_interval_sec OR '+
+    'source_registry.rate_limit_backoff<>excluded.rate_limit_backoff OR '+
+    'source_registry.fallback_endpoint IS NOT excluded.fallback_endpoint')
     .bind(s.source_id,s.canonical_endpoint,s.parser_type,s.intended_category,
      s.country_iso3,s.rights_tier,s.polling_interval_sec,JSON.stringify(s.rate_limit_backoff),
      s.fallback_endpoint,s.last_cursor));
