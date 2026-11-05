@@ -31,3 +31,7 @@ test("Wrangler D1 hint strips credentials, URLs and identifiers",()=>{
  assert.doesNotMatch(hint,/secret-token-123|https?:\/\//u);
  assert.match(hint,/Error: token \[REDACTED\] failed at \[URL\]/u);
 });
+
+test("Wrangler hint has a sanitized fallback when no error word is present",()=>{
+ assert.equal(safeP0bWranglerD1Hint({stdout:"A bounded provider diagnostic"}),"A bounded provider diagnostic");
+});
