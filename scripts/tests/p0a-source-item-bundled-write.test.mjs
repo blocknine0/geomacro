@@ -16,6 +16,7 @@ function fixture(){
  db.exec("ALTER TABLE p0a_normalized_source_items ADD COLUMN observed_at TEXT;");
  db.exec("ALTER TABLE p0a_normalized_source_items ADD COLUMN clock_provenance TEXT;");
  db.exec("ALTER TABLE p0a_normalized_source_items ADD COLUMN content_sha256 TEXT;");
+ db.prepare("INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,country_iso3,rights_tier,polling_interval_sec,rate_limit_backoff) VALUES (?,?,?,?,?,?,?,?)").run("source_100","https://example.org/source","RSS_2","GEOPOLITICS","GLOBAL","RESEARCH_ONLY",1200,JSON.stringify({max_retries:0,base_delay_ms:100,respect_retry_after:true}));
  const adapter={prepare:sql=>({bind:(...args)=>({sql,args})})};
  function apply(statements){
   let changes=0;
@@ -31,7 +32,7 @@ function fixture(){
 function rows(n,now,headline="Official news release"){
  const at=new Date(now).toISOString();
  return Array.from({length:n},(_,i)=>[
-  "id-"+String(i).padStart(4,"0"),"source_100","GEOPOLITICS","GLOBAL",
+  String(i).padStart(64,"0"),"source_100","GEOPOLITICS","GLOBAL",
   "RESEARCH_ONLY",headline,"https://example.org/official/"+i,
   "item-"+i,"2026-11-05T09:00:00.000Z",at,at,at,
   "SOURCE_NATIVE","a".repeat(64)
@@ -55,13 +56,13 @@ test("unchanged 100 records create zero physical row changes on 20-minute repoll
  const f=fixture();
  try{
   assert.equal(f.apply(p0aBuildBundledItemStatements(f.adapter,rows(100,START),START)),100);
-  const first=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='id-0000'").get();
+  const first=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='0000000000000000000000000000000000000000000000000000000000000000'").get();
   assert.equal(f.apply(p0aBuildBundledItemStatements(f.adapter,rows(100,START+20*60000),START+20*60000)),0);
-  const again=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='id-0000'").get();
+  const again=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='0000000000000000000000000000000000000000000000000000000000000000'").get();
   assert.deepEqual(again,first);
   const later=START+P0A_DUPLICATE_REFRESH_MS+60000;
   assert.equal(f.apply(p0aBuildBundledItemStatements(f.adapter,rows(100,later),later)),100);
-  const refreshed=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='id-0000'").get();
+  const refreshed=f.db.prepare("SELECT first_seen_at,last_seen_at,native_published_at FROM p0a_normalized_source_items WHERE item_id='0000000000000000000000000000000000000000000000000000000000000000'").get();
   assert.equal(refreshed.first_seen_at,first.first_seen_at);
   assert.equal(refreshed.native_published_at,first.native_published_at);
   assert.equal(refreshed.last_seen_at,new Date(later).toISOString());
