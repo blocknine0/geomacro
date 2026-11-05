@@ -24,7 +24,7 @@ const now=new Date(),root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
 const threeDomain20m=process.env.GEOMACRO_SOURCE_REGISTRY_MODE==="THREE_DOMAIN_DIRECT_20M";
 if(process.env.GEOMACRO_SOURCE_REGISTRY_MODE&&!threeDomain20m)
  throw Error("OSINT_HELD_SOURCE_MODE_UNRECOGNIZED");
-if(threeDomain20m&&process.env.GITHUB_EVENT_NAME!=="schedule")
+if(threeDomain20m&&!["schedule","workflow_dispatch"].includes(process.env.GITHUB_EVENT_NAME??""))
  throw Error("OSINT_DIRECT_20M_HELD_SCHEDULE_ONLY");
 const sources=threeDomain20m?threeDomainGlobal20mPublisherRegistry(now).registry:
  privateOsintRuntimeSources(now,privateOsintGlobalSources(),
