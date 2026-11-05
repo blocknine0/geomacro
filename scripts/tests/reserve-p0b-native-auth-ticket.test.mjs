@@ -21,5 +21,7 @@ test("Wrangler D1 failures expose only a safe diagnostic class",()=>{
  assert.equal(classifyP0bWranglerD1Failure({stderr:"Error 10000: unauthorized"}),"AUTH");
  assert.equal(classifyP0bWranglerD1Failure({stdout:"Error 10000: unauthorized"}),"AUTH");
  assert.equal(classifyP0bWranglerD1Failure({error:{code:"ETIMEDOUT"}}),"TIMEOUT");
+ assert.equal(classifyP0bWranglerD1Failure({error:{code:"E2BIG"}}),"SPAWN_E2BIG");
+ assert.equal(classifyP0bWranglerD1Failure({status:1,stdout:"",stderr:""}),"NO_OUTPUT");
  assert.equal(classifyP0bWranglerD1Failure({stderr:"opaque"}),"UNKNOWN");
 });

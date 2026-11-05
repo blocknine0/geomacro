@@ -23,10 +23,14 @@ export async function reserveP0bNativeAuthTicket({execute,now=new Date()}={}){
  return {ok:true,reserved:true,day_utc:q.day,kind:"NATIVE_AUTH",readback_verified:true,b2_operation_performed:false,chargeable:false};
 }
 export function classifyP0bWranglerD1Failure(r){
- if(r?.error?.code==="ETIMEDOUT")return "TIMEOUT";
- if(r?.error?.code==="ENOENT")return "WRANGLER_EXECUTABLE_MISSING";
- const text=[r?.stderr,r?.stdout].filter(Boolean).join(" ")
-  .replaceAll(String.fromCharCode(27),"").toLowerCase();
+ const spawnCode=String(r?.error?.code??"").toUpperCase();
+ if(spawnCode==="ETIMEDOUT")return "TIMEOUT";
+ if(spawnCode==="ENOENT")return "WRANGLER_EXECUTABLE_MISSING";
+ if(spawnCode&&/^[A-Z0-9_]+$/u.test(spawnCode))return "SPAWN_"+spawnCode;
+ const output=[r?.stderr,r?.stdout].filter(Boolean).join(" ")
+  .replaceAll(String.fromCharCode(27),"");
+ if(!output.trim()&&Number.isInteger(r?.status)&&r.status!==0)return "NO_OUTPUT";
+ const text=output.toLowerCase();
  if(text.includes("no such table")||text.includes("no such column")||text.includes("sqlite_error")||text.includes("syntax error"))return "SQL";
  if(text.includes("permission")||text.includes("unauthorized")||text.includes("forbidden")||text.includes("authentication")||text.includes("not authorized"))return "AUTH";
  if(text.includes("database is locked")||text.includes("sqlite_busy")||text.includes("too many requests")||text.includes("rate limit")||text.includes("429"))return "TRANSIENT";
