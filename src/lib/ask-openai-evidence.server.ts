@@ -10,7 +10,7 @@ import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
  */
 export type AskModelContext = {
   categories: string[];
-  verified_fact_count: number;
+  canonical_evidence_items: number;
   research_activity_by_category: Array<{ category: string; count: number }>;
   official_release_context: Array<{ category: string; topic: string; published_at: string }>;
 };
@@ -27,7 +27,7 @@ export async function collectAskModelContext(
   const categories=detected.length?detected:["geopolitics","macro","rare_earth"];
   const result:AskModelContext={
     categories:[...categories],
-    verified_fact_count:Math.min(5,Math.max(0,answer.evidence?.length??0)),
+    canonical_evidence_items:Math.min(5,Math.max(0,answer.evidence?.length??0)),
     research_activity_by_category:[],official_release_context:[],
   };
   const maxAge=freshnessMaxAgeHours(question);

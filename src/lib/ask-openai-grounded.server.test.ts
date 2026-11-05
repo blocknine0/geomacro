@@ -43,7 +43,7 @@ describe("GeoMacro private research + approved OpenAI composer",()=>{
     });
     expect(ctx.research_activity_by_category).toEqual([{category:"rare_earth",count:1}]);
     expect(JSON.stringify(ctx)).not.toContain("osint_feed_observed_unverified");
-    expect(ctx.verified_fact_count).toBe(0);
+    expect(ctx.canonical_evidence_items).toBe(0);
   });
   it("rejects fabricated figures and internal lane terms rather than changing evidence",()=>{
     const generated=JSON.stringify({
@@ -80,7 +80,7 @@ describe("GeoMacro private research + approved OpenAI composer",()=>{
     const result=await enhanceAskWithOpenAI("Explain sanctions and copper",answer,"user-unique-test",
       {fetchImpl:request as unknown as typeof fetch,
        readContext:async()=>({
-         categories:["geopolitics","rare_earth"],verified_fact_count:0,
+         categories:["geopolitics","rare_earth"],canonical_evidence_items:0,
          research_activity_by_category:[{category:"rare_earth",count:2}],
          official_release_context:[],
        })});

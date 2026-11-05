@@ -61,7 +61,7 @@ function allowed(question:string,answer:HybridAskAnswer):boolean{
      answer.evidence.some(x=>x.eventId==="live:official:numeric"))
     return false;
   // Do not make a confirmed incident out of insufficient or research-only data.
-  if(answer.insufficient_evidence&&answer.answer_kind!=="explainer")return false;
+  if((answer.insufficient_evidence||answer.low_confidence)&&answer.answer_kind!=="explainer")return false;
   return [answer.summary,answer.what_changed,answer.why_it_matters,answer.geomacro_view]
     .every(value=>text(value,1800)!==null);
 }
@@ -100,7 +100,7 @@ function safeContext(context:AskModelContext):AskModelContext{
   // No publisher identity, article text, source URL or private item IDs.
   return {
     categories:context.categories,
-    verified_fact_count:context.verified_fact_count,
+    canonical_evidence_items:context.canonical_evidence_items,
     research_activity_by_category:context.research_activity_by_category.slice(0,3),
     official_release_context:context.official_release_context.slice(0,3),
   };
