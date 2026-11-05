@@ -289,10 +289,21 @@ test("P1 V2 protected deploy requires canonical D1 schema readback",()=>{
   import.meta.url),"utf8");
  assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_bundles"));
  assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_dispatch_mutex"));
+ const queueBudgetMigration=readFileSync(new URL(
+  "../../workers/control-plane/migrations/0128_cloudflare_queue_monthly_source_budget.sql",
+  import.meta.url),"utf8");
+ assert.ok(queueBudgetMigration.includes("CREATE TABLE IF NOT EXISTS cloudflare_source_poll_queue_budget"));
+ const config=JSON.parse(readFileSync(new URL(
+  "../../workers/control-plane/wrangler.example.jsonc",import.meta.url),"utf8"));
+ const sourceQueue=config.queues.consumers.find(q=>q.queue==="geomacro-source-poll");
+ assert.equal(sourceQueue.max_batch_size,1);
+ assert.equal(sourceQueue.max_retries,1);
+
  const workflow=readFileSync(new URL(
   "../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
  assert.ok(workflow.includes("Verify bundled P1 D1 dispatch schema before enabling fanout V2"));
  assert.ok(workflow.includes("P1_BUNDLED_D1_SCHEMA_READBACK=true"));
+ assert.ok(workflow.includes("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_READBACK=true"));
  assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='1'"));
  assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='0'"));
  assert.ok(workflow.indexOf("Apply committed D1 migrations remotely")<
