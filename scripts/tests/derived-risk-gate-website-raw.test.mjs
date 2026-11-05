@@ -85,9 +85,9 @@ class D1 {
     }
     if(sql.includes("FROM website_derived_intelligence")&&
        sql.includes("ORDER BY first_seen_at ASC,id ASC")){
-     const [nativeCutoff,firstCutoff,until,cursorAt,,cursorId]=state.args;
+     const [nativeCutoff,exactCutoff,firstCutoff,until,cursorAt,,cursorId]=state.args;
      return {results:[...db.journal.values()].filter(r=>
-       r.published_at>=nativeCutoff&&
+       r.published_at>=nativeCutoff&&Date.parse(r.published_at)>=Date.parse(exactCutoff)&&
        r.first_seen_at>=firstCutoff&&r.first_seen_at<=until&&
        (r.first_seen_at>cursorAt||
         r.first_seen_at===cursorAt&&r.id>cursorId))
@@ -262,4 +262,27 @@ test("72h protected prune removes only old derived signal refs, never website jo
  assert.equal(r.status,200);
  assert.equal(db.websiteSignals.size,0);
  assert.equal(db.journal.size,1);
+});
+
+for(const precision of ["day","exact"])test("stale "+precision+" publication on cutoff day cannot poison current website page",async()=>{
+ const old=story("macro",800),fresh=story("macro",801);
+ const cutoff=NOW-72*3600000;
+ old.date_precision=precision;
+ old.published_at=precision==="day"?new Date(cutoff).toISOString().slice(0,10):new Date(cutoff-3600000).toISOString();
+ assert.equal(verifyDerivedStory(old,NOW),true,"30-day website journal accepts this story");
+ const db=new D1([stored(old),stored(fresh)]);
+ const response=await get(db,"?lane=website_intelligence");
+ assert.equal(response.status,200);
+ const page=await response.json();
+ assert.equal(page.records.length,1);
+ assert.equal(page.records[0].website_story_id,fresh.id);
+ assert.ok(db.journal.has(old.id),"original website journal is untouched");
+});
+test("exact publication at the 72h cutoff remains eligible",async()=>{
+ const boundary=story("macro",802);
+ boundary.published_at=new Date(NOW-72*3600000).toISOString();
+ const db=new D1([stored(boundary)]);
+ const response=await get(db,"?lane=website_intelligence");
+ assert.equal(response.status,200);
+ assert.equal((await response.json()).records[0].website_story_id,boundary.id);
 });

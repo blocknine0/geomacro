@@ -83,10 +83,13 @@ export async function websiteRiskRawPage(env,now=Date.now()){
  const results=await env.DB.prepare(
   "SELECT id,category,published_at,date_precision,story_json,first_seen_at "+
   "FROM website_derived_intelligence WHERE published_at>=? "+
+  // The day prefix is only the indexed coarse filter. A recently ingested
+  // story can have an older native publication time on that same day.
+  "AND julianday(published_at)>=julianday(?) "+
   "AND first_seen_at>=? AND first_seen_at<=? "+
   "AND (first_seen_at>? OR (first_seen_at=? AND id>?)) "+
   "ORDER BY first_seen_at ASC,id ASC LIMIT 101"
- ).bind(cutoff.slice(0,10),cutoff,new Date(now).toISOString(),
+ ).bind(cutoff.slice(0,10),cutoff,cutoff,new Date(now).toISOString(),
    cursorAt,cursorAt,cursorId).all();
  if(!Array.isArray(results?.results)||results.results.length>101)
   throw Error("WEBSITE_RISK_RAW_D1_READ_UNVERIFIED");

@@ -295,6 +295,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     environment: production
+    env:
+      GEOMACRO_HELD_R2_CONFIGURED: ${{ secrets.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID != '' && secrets.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY != '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -312,7 +314,7 @@ jobs:
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
       - name: Mirror held ciphertext to dedicated private R2 when configured
-        if: vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' && secrets.GEOMACRO_PRIVATE_OSINT_R2_ACCESS_KEY_ID != '' && secrets.GEOMACRO_PRIVATE_OSINT_R2_SECRET_ACCESS_KEY != ''
+        if: vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' && env.GEOMACRO_HELD_R2_CONFIGURED == 'true'
         env:
           GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
           GEOMACRO_PRIVATE_OSINT_R2_BUCKET: ${{ vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET }}
