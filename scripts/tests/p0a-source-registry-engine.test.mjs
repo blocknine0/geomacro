@@ -27,13 +27,14 @@ function dbMock(withP1=false){
  if(withP1)db.exec(readFileSync(new URL(
   '../../workers/control-plane/migrations/0119_p1_source_fanout_585.sql',
   import.meta.url),'utf8'));
+ const errors=[];
  const wrap=(sql,args=[])=>({
    bind(...next){return wrap(sql,next)},
-   async all(){return {results:db.prepare(sql).all(...args)}},
-   async run(){const result=db.prepare(sql).run(...args);return {meta:{changes:result.changes}}},
+   async all(){try{return {results:db.prepare(sql).all(...args)}}catch(err){errors.push({code:err.message,sql:sql.slice(0,90)});throw err}},
+   async run(){try{const result=db.prepare(sql).run(...args);return {meta:{changes:result.changes}}}catch(err){errors.push({code:err.message,sql:sql.slice(0,90)});throw err}},
    get sql(){return sql},get args(){return args},
  });
- return {db,env:{DB:{prepare:sql=>wrap(sql),async batch(statements){
+ return {db,errors,env:{DB:{prepare:sql=>wrap(sql),async batch(statements){
   const output=[];
   db.exec('BEGIN');
   try{
@@ -178,7 +179,7 @@ test('identical source-registry reseed changes zero physical SQLite rows',async(
  }finally{db.close()}
 });
 test('P1 repeated official RSS poll uses bundled item dedupe and six-hour refresh',async()=>{
- const {db,env}=dbMock(true);
+ const {db,env,errors}=dbMock(true);
  env.GEOMACRO_P1_FANOUT_ENABLED='1';
  try{
   const cfg=source('src_p1_bulk');
@@ -187,7 +188,7 @@ test('P1 repeated official RSS poll uses bundled item dedupe and six-hour refres
   const poll=at=>pollP0aSources(env,{now:at,limit:1,
    sourceIds:['src_p1_bulk'],fetchImpl:async()=>body(news)});
   const first=await poll(start);
-  assert.equal(first.receipts[0].state,'OBSERVED');
+  assert.equal(first.receipts[0].state,'OBSERVED',JSON.stringify(errors));
   const initial=db.prepare('SELECT first_seen_at,last_seen_at,item_id FROM p0a_normalized_source_items').get();
   assert.ok(initial);
   assert.equal((await poll(start+6*60000)).receipts[0].state,'OBSERVED');
