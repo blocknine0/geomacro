@@ -990,6 +990,7 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    evaluated_at:iso(now),response:body,env,
   });
   body.audit_receipt_hash=receipt.audit_receipt_hash;
+  body.audit_receipt_response_hash=receipt.response_hash;
   body.audit_receipt_signature=receipt.audit_receipt_signature;
   body.audit_receipt_signature_key_id=receipt.signature_key_id;
   body.audit_receipt_signature_scheme=receipt.signature_scheme;
