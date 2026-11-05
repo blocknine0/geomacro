@@ -5,12 +5,12 @@
  * must preserve their own D1 caps; unknown metrics are a strict HOLD.
  * Maintains separate protected original ingestion and discretionary research.
  */
-import {appendFileSync} from "node:fs";
+import {appendFileSync,readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
-import {readFiveUsdSpendGuard} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -37,6 +37,14 @@ export const D1_BUNDLE_LANES=Object.freeze({
     read_opening_burst:250_000,write_opening_burst:2_500}),
 });
 const DAY_MS=86_400_000;
+const FIVE_USD_BUDGET=JSON.parse(readFileSync(
+  new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
+if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==18_000_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
+   FIVE_USD_BUDGET.provider_enforced_usage_blocks?.durable_objects?.threshold_cents!==1)
+  throw Error("CLOUDFLARE_CENTRAL_FIVE_USD_POLICY_WEAKENED");
 /** Daily shaping is monotonic and resets only with the provider UTC clock. */
 export function d1LanePacedCeiling(lane,now){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
@@ -211,7 +219,7 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
-export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendGuardProof=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -230,7 +238,16 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   // account-wide DAILY soft budget (well below official monthly allotments).
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
-  const paid=paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
+  const paid=spendGuardProof?.schema===FIVE_USD_SPEND_GUARD_SCHEMA&&
+    spendGuardProof.verified===true&&
+    spendGuardProof.usage_block_threshold_cents===1&&
+    Array.isArray(spendGuardProof.products)&&
+    spendGuardProof.products.join(",")==="workers,durable_objects"&&
+    spendGuardProof.source==="CLOUDFLARE_ACCOUNT_READONLY_SPEND_POLICIES"&&
+    Number.isFinite(Date.parse(spendGuardProof.observed_at))&&
+    Date.parse(spendGuardProof.observed_at)<=now.getTime()&&
+    now.getTime()-Date.parse(spendGuardProof.observed_at)<=5*60_000&&
+    paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
     paidProof.verified===true&&
     paidProof.source==="CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ"&&
     paidProof.subscription_changed===false&&
@@ -241,8 +258,12 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
   if(paid){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const dailyReads=Math.floor(4_000_000+14_000_000*Math.max(0,Math.min(1,elapsed)));
-    const dailyWrites=Math.floor(40_000+140_000*Math.max(0,Math.min(1,elapsed)));
+    const dailyReads=Math.floor(4_000_000+
+      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-4_000_000)*
+      Math.max(0,Math.min(1,elapsed)));
+    const dailyWrites=Math.floor(40_000+
+      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-40_000)*
+      Math.max(0,Math.min(1,elapsed)));
     const admitted=snapshot.observed_rows_read<dailyReads&&
       snapshot.observed_rows_written<dailyWrites;
     return Object.freeze({
@@ -557,7 +578,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // Optional READ-only provider billing evidence. If the account has not
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.
-    let paidProof=null;
+    let paidProof=null,spendGuardProof=null;
     if(env.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
         const candidate=await readCloudflareWorkersPaidProof({env,fetchImpl,now});
@@ -566,10 +587,10 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         // policies (Workers and Durable Objects) are independently verified.
         // This protects paid admission, not ungoverned D1/other operations.
         const guard=await readFiveUsdSpendGuard({env,fetchImpl,now});
-        if(guard.verified===true)paidProof=candidate;
+        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;}
       }catch{/* missing/inactive/ambiguous budget policies => Free admission */}
     }
-    return planD1BundledWork(quota,{now,paidProof});
+    return planD1BundledWork(quota,{now,paidProof,spendGuardProof});
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }
