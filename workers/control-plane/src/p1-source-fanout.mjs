@@ -121,7 +121,7 @@ export async function consumeP1SourcePollBatch(batch,env,{
    msg.ack();continue;
   }
   expected.push({msg,source_id:item.source_id,token:item.lease_token,
-   kind:item.kind});
+   scheduled_at:item.scheduled_at,kind:item.kind});
  }
  if(!expected.length)return {status:"P1_CONSUME_EMPTY",attempted:0};
  // The new batch lease needs one bounded indexed D1 read for all <=15 queue
