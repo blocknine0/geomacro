@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { askDomains, domainGuideAnswer } from "./ask-domain-guide";
 import { buildRealtimeSearchPlan } from "./ask-realtime-query-plan";
 import { needsConversationInterpretation } from "./ask-conversation-understanding.server";
+import { toCommercialAskBrief } from "./ask-commercial-brief";
 
 describe("Ask GeoMacro free-form three-category routing", () => {
   it.each([
@@ -46,6 +47,35 @@ describe("Ask GeoMacro free-form three-category routing", () => {
     const lithium = domainGuideAnswer("How do export controls affect interest rates and lithium?");
     expect(lithium?.summary).toContain("For lithium specifically");
     expect(lithium?.insufficient_evidence).toBe(false);
+  });
+
+  it("preserves the exact named mineral in the real public compacted answer, not only the internal guide", () => {
+    for (const [question, mineral] of [
+      ["How do sanctions affect inflation and copper supply?", "copper"],
+      ["How do export controls affect interest rates and lithium?", "lithium"],
+    ] as const) {
+      const guide = domainGuideAnswer(question)!;
+      const publicAnswer = toCommercialAskBrief(guide, question);
+      expect(publicAnswer.summary).toContain("For " + mineral + " specifically");
+      expect(publicAnswer.summary).toContain("does not establish a physical shortage");
+      expect(publicAnswer.summary.length).toBeLessThanOrEqual(320);
+      expect(publicAnswer.evidence).toEqual([]);
+      expect(publicAnswer.gri).toBeNull();
+    }
+  });
+
+  it("keeps named material in Why/impact/outlook chat wording as well as How prompts", () => {
+    for (const question of [
+      "Why do sanctions affect inflation and copper supply?",
+      "How do export controls affect interest rates and lithium?",
+      "What is the impact of sanctions on inflation and copper supply?",
+    ]) {
+      const original = domainGuideAnswer(question)!;
+      const publicAnswer = toCommercialAskBrief(original, question);
+      expect(publicAnswer.summary).toMatch(/For (?:copper|lithium) specifically/);
+      expect(publicAnswer.summary).toContain("does not establish a physical shortage");
+      expect(publicAnswer.evidence).toEqual([]);
+    }
   });
 
   it("keeps mixed current/country/forecast questions on verified retrieval", () => {
