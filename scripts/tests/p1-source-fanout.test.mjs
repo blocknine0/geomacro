@@ -160,7 +160,9 @@ test("P1 V2 leases 108 sources with two physical row changes, never 108 row leas
   assert.equal(first.status,"P1_BUNDLE_QUEUED");
   assert.equal(first.selected,108);
   assert.equal(first.queued,108);
-  assert.equal(first.physical_dispatch_lease_rows,1);
+  assert.equal(first.base_table_dispatch_lease_rows,1);
+  assert.equal(first.base_table_mutex_rows,1);
+  assert.equal(first.provider_billed_index_write_overhead_unmeasured,true);
   assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n-baseline,2);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE poll_dispatch_token IS NOT NULL").get().n,0);
   assert.ok(batches.flat().every(m=>m.body.kind==="P1_SOURCE_POLL_V2"));
@@ -263,4 +265,20 @@ test("P1 consumer never acknowledges unverified source storage",async()=>{
   assert.equal(result.status,"P1_CONSUME_PARTIAL");
   assert.equal(item.acked,0);assert.equal(item.retries,1);
  }finally{f.close()}
+});
+
+test("P1 V2 protected deploy requires canonical D1 schema readback",()=>{
+ const migration=readFileSync(new URL(
+  "../../workers/control-plane/migrations/0127_p1_bundled_source_dispatch.sql",
+  import.meta.url),"utf8");
+ assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_bundles"));
+ assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_dispatch_mutex"));
+ const workflow=readFileSync(new URL(
+  "../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
+ assert.ok(workflow.includes("Verify bundled P1 D1 dispatch schema before enabling fanout V2"));
+ assert.ok(workflow.includes("P1_BUNDLED_D1_SCHEMA_READBACK=true"));
+ assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='1'"));
+ assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='0'"));
+ assert.ok(workflow.indexOf("Apply committed D1 migrations remotely")<
+           workflow.indexOf("Verify bundled P1 D1 dispatch schema before enabling fanout V2"));
 });
