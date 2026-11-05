@@ -4,6 +4,7 @@ import {assessProviderWorkersPaidSubscription,readCloudflareWorkersPaidProof,
  WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {planD1BundledWork,checkD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
+import {assessFiveUsdSpendPolicies} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
 const now=new Date("2026-10-27T18:00:00.000Z");
 const paid={success:true,errors:[],result:[{
@@ -55,7 +56,16 @@ test("Free cap stays hard fail-closed without real paid proof",()=>{
 });
 test("fresh authentic Workers Paid proof admits ONLY critical source work under account daily soft limit",()=>{
  const proof=assessProviderWorkersPaidSubscription(paid,now);
- const grant=planD1BundledWork(usage(5_763_167,25_745),{now,paidProof:proof});
+ const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
+  ...["workers","durable_objects"].map((product_id,i)=>({
+   id:"lock-"+i,product_id,action:"usage_block",enabled:true,
+   threshold_cents:1,version:1,current_state:{status:"below_limit"},
+  })),
+ ]},now);
+ assert.equal(planD1BundledWork(usage(5_763_167,25_745),
+  {now,paidProof:proof}).critical,false);
+ const grant=planD1BundledWork(usage(5_763_167,25_745),
+  {now,paidProof:proof,spendGuardProof});
  assert.equal(grant.critical,true);
  assert.equal(grant.state,"CRITICAL_ONLY");
  assert.equal(grant.paid_capacity_verified_by_provider,true);
@@ -67,9 +77,9 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
  assert.equal(planD1BundledWork(usage(19_000_000,50_000),
-  {now,paidProof:proof}).critical,false);
+  {now,paidProof:proof,spendGuardProof}).critical,false);
  assert.equal(planD1BundledWork(usage(5_763_167,181_000),
-  {now,paidProof:proof}).critical,false);
+  {now,paidProof:proof,spendGuardProof}).critical,false);
 });
 test("Billing Read uses account-scoped Cloudflare GET and never updates a subscription",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
