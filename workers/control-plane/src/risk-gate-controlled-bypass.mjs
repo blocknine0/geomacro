@@ -261,7 +261,7 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
   // D1 immutable replay and isolated per-day quota. No attempted customer debit.
   const ts=new Date(now).toISOString();
   const receipt=await persistRiskGateAuditReceipt(env.DB,{
-   client_id:"tiered-private-v1",request_id:parsed.request_id,request_hash:request_hash,
+   client_id:"tiered-private-v1",request_id:parsed.request_id,request_hash:request_hash,env,
    subject_type:parsed.subject.type,subject_id:parsed.subject.id,
    decision:result.client_policy_decision??result.gate_decision,
    policy_id:parsed.risk_policy?.policy_id??null,policy_version:parsed.risk_policy?.policy_version??null,
