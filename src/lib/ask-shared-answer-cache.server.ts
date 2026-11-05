@@ -11,6 +11,7 @@ import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
  * an answer from masquerading as new current intelligence after a refresh.
  */
 type CacheEntry<T>={value:T;expiresAt:number};
+export type AskModelCacheStatus="hit"|"miss"|"coalesced"|"bypassed";
 const CACHE_MAX=192;
 const PENDING_MAX=48;
 const answers=new Map<string,CacheEntry<HybridAskAnswer>>();
@@ -79,13 +80,15 @@ function shared<T extends HybridAskAnswer>(
   fingerprint:string,
   compute:()=>Promise<T>,
   ttl:(answer:T)=>number,
+ onStatus?:(status:AskModelCacheStatus)=>void,
 ):Promise<T>{
  const now=Date.now();
  const hit=get(cache,fingerprint,now);
- if(hit)return Promise.resolve(hit as T);
+ if(hit){onStatus?.("hit");return Promise.resolve(hit as T);}
  const existing=flights.get(fingerprint);
- if(existing)return existing.then(clone) as Promise<T>;
- if(flights.size>=PENDING_MAX)return compute();
+ if(existing){onStatus?.("coalesced");return existing.then(clone) as Promise<T>;}
+ if(flights.size>=PENDING_MAX){onStatus?.("bypassed");return compute();}
+ onStatus?.("miss");
  let job!:Promise<HybridAskAnswer>;
  job=(async()=>{
    try{
@@ -114,8 +117,11 @@ export function cachedCanonicalAsk<T extends HybridAskAnswer>(
  * language (as reflected in question/summary), and backend model version. */
 export function cachedGroqAnswer<T extends HybridAskAnswer>(
  question:string,canonical:T,compute:()=>Promise<T>,
+ onStatus?:(status:AskModelCacheStatus)=>void,
 ):Promise<T>{
- if(!safeSharedQuestion(question)||!askModelTtlMs(question,canonical))return compute();
+ if(!safeSharedQuestion(question)||!askModelTtlMs(question,canonical)){
+   onStatus?.("bypassed");return compute();
+ }
  const revision=JSON.stringify({
    question:normalized(question),summary:canonical.summary,
    what_changed:canonical.what_changed,why_it_matters:canonical.why_it_matters,
@@ -123,5 +129,5 @@ export function cachedGroqAnswer<T extends HybridAskAnswer>(
    evidence:canonical.evidence,kind:canonical.answer_kind,
  });
  return shared(modelAnswers,modelPending,key("groq-gpt-oss-20b-v1",revision),
-  compute,(answer)=>answer===canonical?0:askModelTtlMs(question,canonical));
+  compute,(answer)=>answer===canonical?0:askModelTtlMs(question,canonical),onStatus);
 }
