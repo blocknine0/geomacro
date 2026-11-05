@@ -42,6 +42,21 @@ test("owner-only 18-page SHA repair route is behind existing admin auth and cove
  assert.match(daily,/remote_hash_matches == 207/);
 });
 
+test("seven-day rollup has a separate daily schedule and authenticated history backfill",()=>{
+ const authAt=source.indexOf("const auth = authorized(request, env)");
+ const backfillAt=source.indexOf('url.pathname==="/v1/internal/risk-gate/7d-rollup"');
+ assert.ok(authAt>=0&&backfillAt>authAt,"backfill route must be owner-admin protected");
+ assert.match(source,/runUnifiedRiskSevenDayRollup\(env,\{now:utc\.getTime\(\),mode:"DAILY"\}\)/);
+ assert.match(source,/utc\.getUTCHours\(\)===0&&utc\.getUTCMinutes\(\)===15/);
+ const riskGate=readFileSync(new URL("../../workers/control-plane/src/unified-risk-gate.mjs",import.meta.url),"utf8");
+ assert.match(riskGate,/signedSnapshotRows\(env,/);
+ assert.match(riskGate,/\["DAILY","BACKFILL"\]/);
+ assert.match(riskGate,/assessment_status:signedGroRows\?"NOT_IMPLEMENTED_FOR_ROLLUP":"BLOCKED_NO_SIGNED_GRO"/);
+ const script=readFileSync(new URL("../bootstrap-7day-rollup.ts",import.meta.url),"utf8");
+ assert.match(script,/mode:"BACKFILL"/);
+ assert.match(script,/commercial_activation!==false/);
+});
+
 test("invalid D1 daily snapshots are quarantined before same-key supersede and readback",()=>{
  const riskGate=readFileSync(new URL("../../workers/control-plane/src/unified-risk-gate.mjs",import.meta.url),"utf8");
  const repair=readFileSync(new URL("../../workers/control-plane/migrations/0125_risk_snapshot_quarantine.sql",import.meta.url),"utf8");
