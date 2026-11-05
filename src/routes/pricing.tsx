@@ -5,11 +5,14 @@ import { ArrowRight, ArrowUpRight, Braces, CheckCircle2, Code2, Database, Globe2
 import { ApiKeysNotice } from "@/components/api-keys-notice";
 import { CategoryApiPricing } from "@/components/category-api-pricing";
 import { GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
+import { publicRiskGateThreeTierProducts, GEOMACRO_CAPABILITY_PRICING_VERSION } from "@/lib/capability-pricing-catalog";
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
   "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, locked PayPal/card and Base/Polygon USDC checkout previews, and evidence-gated x402.";
 const URL = "https://geomacro.live/pricing";
+const riskGateTiers = publicRiskGateThreeTierProducts();
+
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
   { label: "Macro / FX", icon: Database },
@@ -100,6 +103,7 @@ function PricingPage() {
           {[
             ["#plans", "Plans & credits"],
             ["#payment-checkout", "Payment methods"],
+            ["#risk-gate-pricing", "Risk Gate pricing"],
             ["#api-endpoints", "Endpoints"],
             ["#prepare", "Try a request"],
             ["#developer-access", "Get access"],
@@ -123,16 +127,63 @@ function PricingPage() {
         <LowBarrierPricing />
       </section>
 
+      <section id="risk-gate-pricing" data-pricing-version={GEOMACRO_CAPABILITY_PRICING_VERSION} className="scroll-mt-40 pt-14 sm:pt-20">
+        <div className="mb-6 max-w-3xl">
+          <p className="gm-eyebrow">Commercial Risk Gate · published price schedule</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Three levels of risk intelligence.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            Approved USD-equivalent per-call prices for Basic / Focused, Standard, and
+            Complex / Full Risk Gate. Each price covers one eligible, successfully
+            delivered result, including its signed audit receipt where applicable.
+            Failed, unavailable, or ineligible results are not chargeable.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {riskGateTiers.map((tier) => (
+            <article key={tier.id} data-risk-gate-tier={tier.id} data-price-usd={tier.usd_per_call}
+              className="flex flex-col rounded-2xl border border-border bg-card p-6">
+              <p className="text-sm font-semibold">{tier.name}</p>
+              <div className="mt-4 flex flex-wrap items-baseline gap-2">
+                <span className="text-3xl font-semibold tracking-tight">${tier.usd_per_call}</span>
+                <span className="text-xs text-muted-foreground">USD per successful call</span>
+              </div>
+              <p className="mt-4 text-xs font-semibold tracking-wide text-muted-foreground">
+                {tier.confidence}
+              </p>
+              <ul className="mt-5 space-y-2 text-sm leading-6 text-muted-foreground">
+                {tier.deliverables.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-auto border-t border-border pt-5 text-xs font-medium text-muted-foreground">
+                Private Pilot · Coming soon · No payable checkout
+              </p>
+            </article>
+          ))}
+        </div>
+        <p className="mt-5 max-w-4xl text-xs leading-6 text-muted-foreground">
+          These are product prices, not GeoMacro infrastructure costs. Publishing a price
+          does not activate checkout, issue an API key, guarantee source coverage, or
+          authorize payment. Risk Gate remains an eligibility-gated Private Pilot.
+          Credit-to-USD deductions are not specified by this per-call schedule.
+        </p>
+      </section>
+
       <section id="api-endpoints" className="scroll-mt-40 pt-14 sm:pt-20">
         <div className="mb-6">
           <p className="gm-eyebrow">Developer integration</p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
             Geopolitics, Macro / FX and Critical Minerals share one intelligence engine.
-            Production paid API delivery is not yet active. This section lists endpoints, not purchasable per-delivery products.
+            Production paid API delivery is not yet active. Prices and endpoints are published for reference, not purchasable per-delivery products.
           </p>
         </div>
-        <CategoryApiPricing />
+        <CategoryApiPricing showPrices />
       </section>
 
       <section id="prepare" className="scroll-mt-40 pt-14 sm:pt-20">

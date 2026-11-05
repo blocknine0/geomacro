@@ -1190,5 +1190,18 @@
     "predge_unmodified": true,
     "payments_unchanged": true,
     "production_deploy_acceptance_required": true
+  },
+  "approved_risk_gate_store_prices_20261105": {
+    "approval": "Founder explicitly instructed in ChatGPT on 2026-11-05 that Basic / Focused, Standard, and Complex / Full Risk Gate per-call prices must also appear on the GeoMacro website pricing page.",
+    "approved_paths": [
+      "src/routes/pricing.tsx"
+    ],
+    "approved_source_commit": "583474c4056094bea7cac04e2e93f9b5c0683c23",
+    "exact_blob_lock": true,
+    "purpose": "Publish canonical Risk Gate $0.10/$0.15/$0.25 pricing and existing category API price variants in Store UI, without activating payments, altering product prices or any other presentation.",
+    "previous_baseline_sha": "c2bb76f4657f17db132b740e675a22bb42754fd7",
+    "global_risk_final_lock_unmodified": true,
+    "payment_authorized": false,
+    "approved_ui_publish_required": true
   }
 }
