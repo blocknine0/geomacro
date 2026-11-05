@@ -8,7 +8,7 @@ import {p1SourceContentFingerprintFields,fetchP0aSource,
  listP0aSourceRegistry} from "../../workers/control-plane/src/p0a-source-registry.mjs";
 import {normalizeP0aPayload} from "../../workers/control-plane/src/p0a-source-format.mjs";
 const now=Date.parse("2026-11-04T16:10:00.000Z"),last=()=>new Date(now).toISOString();
-const migrations=["0113_p0a_source_registry.sql","0119_p1_source_fanout_585.sql","0127_p1_bundled_source_dispatch.sql"];
+const migrations=["0113_p0a_source_registry.sql","0119_p1_source_fanout_585.sql","0127_p1_bundled_source_dispatch.sql","0128_cloudflare_queue_monthly_source_budget.sql"];
 function fixture(count=0){
  const db=new DatabaseSync(":memory:");
  for(const name of migrations)db.exec(readFileSync(
@@ -60,7 +60,7 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
-  for(let minute=0;minute<10;minute++){
+  for(let minute=0;minute<11;minute++){
    const t=now+minute*60000,before=batches.length;
    const r=await dispatchP1DueSources(env,{now:t});
    assert.ok(r.queued<=108);assert.equal(r.queued,r.selected);
@@ -92,7 +92,7 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
   }
   assert.equal(attempted,1077);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE last_polled_at IS NOT NULL").get().n,1077);
-  const idle=await dispatchP1DueSources(env,{now:now+10*60000});
+  const idle=await dispatchP1DueSources(env,{now:now+11*60000});
   assert.equal(idle.queued,0);
   const listing=await listP0aSourceRegistry({DB:f.DB},new URLSearchParams({limit:"250"}));
   const list=await listing.json();
@@ -149,7 +149,7 @@ test("P1 transport refuses HTML soft 404 masquerading as RSS without promoting a
    original_url:"https://example.org/item"}));
 });
 
-test("P1 V2 leases 108 sources with two physical row changes, never 108 row leases",async()=>{
+test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per-source dispatcher leases",async()=>{
  const f=fixture(1077),batches=[];let processed=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
@@ -158,41 +158,48 @@ test("P1 V2 leases 108 sources with two physical row changes, never 108 row leas
   const baseline=f.db.prepare("SELECT total_changes() AS n").get().n;
   const first=await dispatchP1DueSources(env,{now});
   assert.equal(first.status,"P1_BUNDLE_QUEUED");
-  assert.equal(first.selected,108);
-  assert.equal(first.queued,108);
+  assert.equal(first.selected,105);
+  assert.equal(first.queued,105);
   assert.equal(first.base_table_dispatch_lease_rows,1);
   assert.equal(first.base_table_mutex_rows,1);
   assert.equal(first.provider_billed_index_write_overhead_unmeasured,true);
-  assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n-baseline,2);
+  assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n-baseline,4);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE poll_dispatch_token IS NOT NULL").get().n,0);
-  assert.ok(batches.flat().every(m=>m.body.kind==="P1_SOURCE_POLL_V2"));
+  assert.ok(batches.flat().every(m=>m.body.kind==="P1_SOURCE_POLL_V3"));
+  assert.equal(first.queue_messages_reserved,7);
+  assert.equal(first.queue_operations_reserved,35);
+  assert.ok(batches.flat().every(m=>m.body.source_ids.length<=15));
   const same=await dispatchP1DueSources(env,{now});
   assert.equal(same.status,"P1_BUNDLE_DISPATCH_BUSY");
-  for(let minute=0;minute<10;minute++){
+  for(let minute=0;minute<11;minute++){
    const t=now+minute*60000,before=minute===0?0:batches.length;
    if(minute>0){
     const result=await dispatchP1DueSources(env,{now:t});
-    assert.ok(result.queued<=108);assert.equal(result.selected,result.queued);
+    assert.ok(result.queued<=105);assert.equal(result.selected,result.queued);
    }
    const start=minute===0?0:before;
    const parts=batches.slice(start);
    for(const part of parts){
-    const messages=part.map(x=>({body:x.body,ackCount:0,
-     ack(){this.ackCount++},retry(){throw Error("UNEXPECTED_V2_RETRY")}}));
-    const res=await consumeP1SourcePollBatch({
-     queue:"geomacro-source-poll",messages
-    },env,{now:t,poll:async(_, {sourceIds})=>{
-     const stmt=f.db.prepare("UPDATE source_registry SET last_polled_at=?,next_poll_at=? WHERE source_id=?");
-     const receipts=[];
-     for(const id of sourceIds){
-      stmt.run(new Date(t).toISOString(),new Date(t+3600000).toISOString(),id);
-      processed++;
-      receipts.push({source_id:id,state:"UNCHANGED"});
-     }
-     return {ok:true,receipts};
-    }});
-    assert.equal(res.attempts,messages.length);
-    assert.ok(messages.every(m=>m.ackCount===1));
+    // Real configured consumer has max_batch_size=1: one physical message
+    // per invocation, even when the producer used a sendBatch transport.
+    for(const x of part){
+     const messages=[{body:x.body,ackCount:0,
+      ack(){this.ackCount++},retry(){throw Error("UNEXPECTED_V3_RETRY")}}];
+     const res=await consumeP1SourcePollBatch({
+      queue:"geomacro-source-poll",messages
+     },env,{now:t,poll:async(_, {sourceIds})=>{
+      const stmt=f.db.prepare("UPDATE source_registry SET last_polled_at=?,next_poll_at=? WHERE source_id=?");
+      const receipts=[];
+      for(const id of sourceIds){
+       stmt.run(new Date(t).toISOString(),new Date(t+3600000).toISOString(),id);
+       processed++;
+       receipts.push({source_id:id,state:"UNCHANGED"});
+      }
+      return {ok:true,receipts};
+     }});
+     assert.equal(res.attempts,x.body.source_ids.length);
+     assert.ok(messages.every(m=>m.ackCount===1));
+    }
    }
   }
   assert.equal(processed,1077);
@@ -201,7 +208,7 @@ test("P1 V2 leases 108 sources with two physical row changes, never 108 row leas
  }finally{f.close()}
 });
 
-test("P1 V2 failed queue send retains short lease then automatically re-dispatches",async()=>{
+test("P1 V3 failed Queue batch retains short lease then automatically re-dispatches",async()=>{
  const f=fixture(1);let sent=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
@@ -220,7 +227,7 @@ test("P1 V2 failed queue send retains short lease then automatically re-dispatch
  }finally{f.close()}
 });
 
-test("P1 V2 rejects unknown/expired lease without polling and retries D1 read failures",async()=>{
+test("P1 V3 rejects unknown/expired bundle lease and retries D1 read failures",async()=>{
  const f=fixture(1),msgs=[];
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
@@ -232,20 +239,20 @@ test("P1 V2 rejects unknown/expired lease without polling and retries D1 read fa
    retry(){throw Error("UNEXPECTED_EXPIRED_RETRY")}};
   const r=await consumeP1SourcePollBatch({queue:"geomacro-source-poll",
    messages:[expired]},env,{now:now+121000,poll:async()=>{calls++;throw Error("SHOULD_NOT_POLL")}});
-  assert.equal(r.status,"P1_CONSUME_LEASE_EXPIRED");assert.equal(expired.acked,1);
+  assert.equal(r.status,"P1_V3_LEASE_EXPIRED");assert.equal(expired.acked,1);
   assert.equal(calls,0);
   const bad={body:{...msgs[0].body,lease_token:"00000000-0000-4000-8000-000000000000"},
    acked:0,ack(){this.acked++},retry(){throw Error("UNEXPECTED_TAMPER_RETRY")}};
   const b=await consumeP1SourcePollBatch({queue:"geomacro-source-poll",
    messages:[bad]},env,{now:now+15000,poll:async()=>{calls++;throw Error("SHOULD_NOT_POLL")}});
-  assert.equal(b.status,"P1_CONSUME_LEASE_EXPIRED");assert.equal(bad.acked,1);
+  assert.equal(b.status,"P1_V3_LEASE_EXPIRED");assert.equal(bad.acked,1);
   const alteredClock={body:{...msgs[0].body,
     scheduled_at:new Date(now-60000).toISOString()},
     acked:0,ack(){this.acked++},retry(){throw Error("UNEXPECTED_CLOCK_RETRY")}};
   const changed=await consumeP1SourcePollBatch({
     queue:"geomacro-source-poll",messages:[alteredClock]
   },env,{now:now+15000,poll:async()=>{calls++;throw Error("SHOULD_NOT_POLL")}});
-  assert.equal(changed.status,"P1_CONSUME_LEASE_EXPIRED");
+  assert.equal(changed.status,"P1_V3_LEASE_EXPIRED");
   assert.equal(alteredClock.acked,1);
   assert.equal(calls,0);
   const failure={body:msgs[0].body,acked:0,retries:0,ack(){this.acked++},
@@ -253,7 +260,7 @@ test("P1 V2 rejects unknown/expired lease without polling and retries D1 read fa
   const unavailable=await consumeP1SourcePollBatch({queue:"geomacro-source-poll",
    messages:[failure]},{DB:{prepare(){throw Error("D1_UNAVAILABLE")}}},
    {now:now+15000});
-  assert.equal(unavailable.status,"P1_CONSUME_BUNDLE_LEASE_D1_UNAVAILABLE");
+  assert.equal(unavailable.status,"P1_V3_D1_LEASE_UNAVAILABLE");
   assert.equal(failure.acked,0);assert.equal(failure.retries,1);
  }finally{f.close()}
 });
@@ -271,7 +278,7 @@ test("P1 consumer never acknowledges unverified source storage",async()=>{
    messages:[item]},env,{now,poll:async()=>({ok:true,
     receipts:[{source_id:msgs[0].body.source_id,state:"UNAVAILABLE",
       storage_readback_verified:false}]})});
-  assert.equal(result.status,"P1_CONSUME_PARTIAL");
+  assert.equal(result.status,"P1_V3_SOURCE_READBACK_UNVERIFIED");
   assert.equal(item.acked,0);assert.equal(item.retries,1);
  }finally{f.close()}
 });
@@ -282,10 +289,21 @@ test("P1 V2 protected deploy requires canonical D1 schema readback",()=>{
   import.meta.url),"utf8");
  assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_bundles"));
  assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS p1_source_poll_dispatch_mutex"));
+ const queueBudgetMigration=readFileSync(new URL(
+  "../../workers/control-plane/migrations/0128_cloudflare_queue_monthly_source_budget.sql",
+  import.meta.url),"utf8");
+ assert.ok(queueBudgetMigration.includes("CREATE TABLE IF NOT EXISTS cloudflare_source_poll_queue_budget"));
+ const config=JSON.parse(readFileSync(new URL(
+  "../../workers/control-plane/wrangler.example.jsonc",import.meta.url),"utf8"));
+ const sourceQueue=config.queues.consumers.find(q=>q.queue==="geomacro-source-poll");
+ assert.equal(sourceQueue.max_batch_size,1);
+ assert.equal(sourceQueue.max_retries,1);
+
  const workflow=readFileSync(new URL(
   "../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
  assert.ok(workflow.includes("Verify bundled P1 D1 dispatch schema before enabling fanout V2"));
  assert.ok(workflow.includes("P1_BUNDLED_D1_SCHEMA_READBACK=true"));
+ assert.ok(workflow.includes("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_READBACK=true"));
  assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='1'"));
  assert.ok(workflow.includes("config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='0'"));
  assert.ok(workflow.indexOf("Apply committed D1 migrations remotely")<

@@ -8,9 +8,11 @@
  * pollP0aSources remains mandatory for duplicate consumer safety.
  * Private research only. No article text or arbitrary URL in queue payloads.
  */
+import {reserveP1SourceQueueMessages,P1_BUNDLE_SOURCE_IDS_MAX}
+ from "./p1-queue-monthly-budget.mjs";
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const UUID=/^[a-f0-9-]{36}$/iu;
-const MAX_DUE=108,SHARDS=10,BATCH=15;
+const MAX_DUE=105,SHARDS=10,BATCH=P1_BUNDLE_SOURCE_IDS_MAX;
 const iso=at=>new Date(at).toISOString();
 const valid=x=>Number.isSafeInteger(x)&&x>=0;
 export const P1_BUNDLED_SOURCE_DUE_SQL=
@@ -76,25 +78,37 @@ export async function dispatchP1BundledDueSources(env,{
      receipt?.leased_at!==clock||receipt?.expires_at!==expires)
    throw Error("P1_BUNDLE_INSERT_READBACK_INVALID");
  }catch{return {status:"P1_BUNDLE_D1_LEASE_UNVERIFIED",selected:0,queued:0}}
- const groups=Array.from({length:SHARDS},()=>[]);
- for(const sourceId of ids){
-  const shard=shardOf(sourceId);
-  if(!Number.isSafeInteger(shard)||shard<0||shard>=SHARDS)
+ // V3 is ACTUAL message bundling: 15 source IDs inside ONE queue message.
+ // A sendBatch of 15 independent messages is not a 15-source cost reduction.
+ // Each V3 payload carries no URL, content, secret or caller input.
+ const messages=[];
+ for(let i=0;i<ids.length;i+=BATCH){
+  const source_ids=ids.slice(i,i+BATCH);
+  if(source_ids.some(x=>!Number.isSafeInteger(shardOf(x))||
+     shardOf(x)<0||shardOf(x)>=SHARDS))
    return {status:"P1_BUNDLE_SHARD_INVALID",selected:ids.length,queued:0};
-  groups[shard].push({body:{kind:"P1_SOURCE_POLL_V2",
-   source_id:sourceId,shard,lease_token:token,scheduled_at:clock}});
+  const body={kind:"P1_SOURCE_POLL_V3",source_ids,
+   lease_token:token,scheduled_at:clock};
+  // Cloudflare bills another 64KB operation for each additional 64KB.
+  // Intentionally refuse a message whose encoded body plus metadata could
+  // reach that boundary, preserving the 5-op reservation estimate.
+  if(new TextEncoder().encode(JSON.stringify(body)).byteLength+512>=64000)
+   return {status:"P1_BUNDLE_MESSAGE_TOO_LARGE",selected:ids.length,queued:0};
+  messages.push({body});
  }
- const result=await Promise.all(groups.map(async messages=>{
-  let queued=0,failed=0;
-  for(let i=0;i<messages.length;i+=BATCH){
-   const piece=messages.slice(i,i+BATCH);
-   try{await env.SOURCE_POLL_QUEUE.sendBatch(piece);queued+=piece.length}
-   catch{failed+=piece.length}
-  }
-  return {queued,failed};
- }));
- const queued=result.reduce((n,x)=>n+x.queued,0);
- const failed=result.reduce((n,x)=>n+x.failed,0);
+ // One atomic monthly D1 reservation before ANY Queue send. The reservation
+ // assumes one retry and optional DLQ write; ambiguous sends are not refunded.
+ const budget=await reserveP1SourceQueueMessages(env.DB,{
+  now,messages:messages.length});
+ if(!budget.admitted)return {status:budget.reason,selected:ids.length,
+  queued:0,failed:0,budget_held:true};
+ let queued=0,failed=0;
+ // <=7 actual messages for a <=105-source page, no per-source sendBatch.
+ // On partial failure retry only after the short D1 lease expires.
+ try{
+  await env.SOURCE_POLL_QUEUE.sendBatch(messages);
+  queued=ids.length;
+ }catch{failed=ids.length}
  // Only expired bundle receipts are removed. Failed sends leave one
  // short lease and automatically become eligible after 2m, not false ACKs.
  if(new Date(now).getUTCMinutes()%10===0){
@@ -106,7 +120,12 @@ export async function dispatchP1BundledDueSources(env,{
   selected:ids.length,queued,failed,
   base_table_dispatch_lease_rows:1,base_table_mutex_rows:1,
   provider_billed_index_write_overhead_unmeasured:true,
+  queue_messages_reserved:messages.length,
+  queue_operations_reserved:budget.reservation_operations,
+  queue_operations_month_total:budget.operations_reserved,
+  queue_budget_not_account_wide:true,
   logical_shards:SHARDS,source_per_minute_cap:MAX_DUE,
+  actual_source_ids_per_message_max:BATCH,
   queue_at_least_once:true,private_source_ids_only:true};
 }
 export async function verifiedP1BundledLeasePairs(env,items,now){

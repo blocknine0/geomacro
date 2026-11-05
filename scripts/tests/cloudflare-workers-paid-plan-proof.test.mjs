@@ -4,6 +4,7 @@ import {assessProviderWorkersPaidSubscription,readCloudflareWorkersPaidProof,
  WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {planD1BundledWork,checkD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
+import {assessFiveUsdSpendPolicies} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
 const now=new Date("2026-10-27T18:00:00.000Z");
 const paid={success:true,errors:[],result:[{
@@ -55,7 +56,16 @@ test("Free cap stays hard fail-closed without real paid proof",()=>{
 });
 test("fresh authentic Workers Paid proof admits ONLY critical source work under account daily soft limit",()=>{
  const proof=assessProviderWorkersPaidSubscription(paid,now);
- const grant=planD1BundledWork(usage(5_763_167,25_745),{now,paidProof:proof});
+ const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
+  ...["workers","durable_objects"].map((product_id,i)=>({
+   id:"lock-"+i,product_id,action:"usage_block",enabled:true,
+   threshold_cents:1,version:1,current_state:{status:"below_limit"},
+  })),
+ ]},now);
+ assert.equal(planD1BundledWork(usage(5_763_167,25_745),
+  {now,paidProof:proof}).critical,false);
+ const grant=planD1BundledWork(usage(5_763_167,25_745),
+  {now,paidProof:proof,spendGuardProof});
  assert.equal(grant.critical,true);
  assert.equal(grant.state,"CRITICAL_ONLY");
  assert.equal(grant.paid_capacity_verified_by_provider,true);
@@ -67,9 +77,9 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
  assert.equal(planD1BundledWork(usage(19_000_000,50_000),
-  {now,paidProof:proof}).critical,false);
+  {now,paidProof:proof,spendGuardProof}).critical,false);
  assert.equal(planD1BundledWork(usage(5_763_167,181_000),
-  {now,paidProof:proof}).critical,false);
+  {now,paidProof:proof,spendGuardProof}).critical,false);
 });
 test("Billing Read uses account-scoped Cloudflare GET and never updates a subscription",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
@@ -105,13 +115,31 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
   reads++;
   if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
   if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
+  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
+   success:true,result:["workers","durable_objects"].map((product_id,i)=>({
+    id:"block-"+i,product_id,enabled:true,action:"usage_block",
+    threshold_cents:1,version:1,current_state:{status:"below_limit"},
+   })),
+  })};
   throw Error("UNEXPECTED_PROVIDER");
  };
  const granted=await checkD1BundledWork({env,now,fetchImpl});
- assert.equal(reads,2);
+ assert.equal(reads,3);
  assert.equal(granted.critical,true);
  assert.equal(granted.d1_queries,0);
  assert.equal(granted.paid_calls,0);
+ const blocked=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
+  if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
+  if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
+  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
+   success:true,result:[{id:"not-a-lock",product_id:"workers",
+    enabled:true,action:"notification",threshold_cents:1,version:1,
+    current_state:{status:"below_limit"}}],
+  })};
+  throw Error("UNEXPECTED_PROVIDER");
+ }});
+ assert.equal(blocked.critical,false);
+ assert.equal(blocked.state,"HELD");
  const free=await checkD1BundledWork({
   env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
   now,fetchImpl});

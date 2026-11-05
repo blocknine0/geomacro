@@ -59,9 +59,9 @@
       },
       {
         "queue": "geomacro-source-poll",
-        "max_batch_size": 15,
+        "max_batch_size": 1,
         "max_batch_timeout": 2,
-        "max_retries": 5,
+        "max_retries": 1,
         "dead_letter_queue": "geomacro-source-poll-dlq",
         "retry_delay": 30,
         "max_concurrency": 10
