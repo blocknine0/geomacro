@@ -7,6 +7,8 @@ import {
  P1_QUEUE_RESERVED_OPS_PER_MESSAGE,
 } from "../../workers/control-plane/src/p1-queue-monthly-budget.mjs";
 
+const centralBudget=JSON.parse(readFileSync(new URL(
+ "../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 const now=Date.parse("2026-11-05T16:00:00.000Z");
 function fixture(){
  const db=new DatabaseSync(":memory:");
@@ -73,3 +75,13 @@ test("monthly ledger rolls over without modifying the previous month's reservati
   assert.deepEqual(rows.map(x=>x.operations_reserved),[5,5]);
  }finally{f.close()}
 });
+\ntest("central $5 budget manifest pins exact source Queue monthly reservation and keeps payments off",()=>{
+ assert.equal(centralBudget.schema,"geomacro.cloudflare-five-usd-central-budget.v1");
+ assert.equal(centralBudget.monthly_guardrail_targets_not_provider_hard_caps.queues_standard_operations,
+  P1_MONTHLY_OPERATIONS_MAX);
+ assert.equal(centralBudget.minimum_monthly_plan_usd,5);
+ assert.equal(centralBudget.absolute_invoice_cap_guaranteed,false);
+ assert.equal(centralBudget.automatic_paid_activation,false);
+ assert.equal(centralBudget.automatic_cloudflare_subscription_changes,false);
+ assert.equal(centralBudget.commercial_payment_switch_unchanged,true);
+});\n
