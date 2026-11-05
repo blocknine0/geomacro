@@ -485,7 +485,11 @@ export async function pollP0aSources(env,{
  }catch{return {ok:false,error:'P0A_SOURCE_REGISTRY_UNAVAILABLE'}}
  const polled=await Promise.all(rows.map(async row=>{
   try{return await pollOne(env,row,{fetchImpl,now})}
-  catch{return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0}}
+  catch(error){
+   if(env.GEOMACRO_P0A_TEST_DIAGNOSTICS==='1')
+    console.error('P0A_SOURCE_FIXTURE_ERROR_'+String(error?.message??'UNKNOWN').slice(0,120));
+   return {source_id:row.source_id,state:'UNAVAILABLE',accepted:0};
+  }
  }));
  const plans=polled.filter(x=>x._p0b_deferred);
  if(plans.length){
