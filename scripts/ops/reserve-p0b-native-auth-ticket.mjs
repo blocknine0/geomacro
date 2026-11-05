@@ -25,11 +25,14 @@ export async function reserveP0bNativeAuthTicket({execute,now=new Date()}={}){
 export function classifyP0bWranglerD1Failure(r){
  if(r?.error?.code==="ETIMEDOUT")return "TIMEOUT";
  if(r?.error?.code==="ENOENT")return "WRANGLER_EXECUTABLE_MISSING";
- const text=String(r?.stderr??r?.stdout??"").replace(/\u001b\[[0-9;]*m/gu,"").toLowerCase();
- if(/no such table|no such column|sqlite_error|syntax error/u.test(text))return "SQL";
- if(/permission|unauthorized|forbidden|authentication|not authorized/u.test(text))return "AUTH";
- if(/database is locked|sqlite_busy|too many requests|rate limit/u.test(text))return "TRANSIENT";
- if(/database.*not found|unknown database|not_found/u.test(text))return "DATABASE";
+ const text=[r?.stderr,r?.stdout].filter(Boolean).join(" ")
+  .replaceAll(String.fromCharCode(27),"").toLowerCase();
+ if(text.includes("no such table")||text.includes("no such column")||text.includes("sqlite_error")||text.includes("syntax error"))return "SQL";
+ if(text.includes("permission")||text.includes("unauthorized")||text.includes("forbidden")||text.includes("authentication")||text.includes("not authorized"))return "AUTH";
+ if(text.includes("database is locked")||text.includes("sqlite_busy")||text.includes("too many requests")||text.includes("rate limit")||text.includes("429"))return "TRANSIENT";
+ if(text.includes("database not found")||text.includes("unknown database")||text.includes("no database")||text.includes("binding not found"))return "DATABASE";
+ if(text.includes("unknown argument")||text.includes("invalid argument")||text.includes("unexpected argument"))return "CLI";
+ if(text.includes("http 4")||text.includes("http 5")||text.includes("status code")||text.includes("error 100")||text.includes("request failed"))return "API";
  return "UNKNOWN";
 }
 function executeRemote(sql){
