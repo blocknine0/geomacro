@@ -3,6 +3,7 @@ import { getRequestIP } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
+import { publicAskResearchProjection } from "./ask-public-research-projection";
 import { assertPublicReadOrigin } from "./origin-guard";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
 import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.server";
@@ -31,5 +32,5 @@ export const askGeomacro = createServerFn({ method: "POST" })
         (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(ip))) {
       throw new Error("Too many requests. Please wait a moment.");
     }
-    return toCommercialAskBrief(await answerAskQuestion(data.question), data.question) as AskAnswer;
+    return publicAskResearchProjection(toCommercialAskBrief(await answerAskQuestion(data.question), data.question)) as AskAnswer;
   });
