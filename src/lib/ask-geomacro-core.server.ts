@@ -4,6 +4,7 @@ import { z } from "zod";
 import { answerAskQuestion } from "./ask-answer.server";
 import { toCommercialAskBrief } from "./ask-commercial-brief";
 import { publicAskResearchProjection } from "./ask-public-research-projection";
+import { cachedCanonicalAsk } from "./ask-shared-answer-cache.server";
 import { checkAskRateLimit, checkAskOriginalBudget } from "./ask-rate-limit.server";
 import { planAskOriginalQuestion } from "./ask-on-demand-original.server";
 import type { HybridAskAnswer } from "./hybrid-ask-intelligence.server";
@@ -49,14 +50,20 @@ export async function executeAskGeomacro(
 ): Promise<AskAnswer> {
   const data = parseAskGeomacroInput(input);
 
-  if (!checkAskRateLimit(clientKey) ||
-      (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(clientKey))) {
-    throw new AskGeomacroRateLimitError();
-  }
+  // Every request still pays the abuse-rate budget, including cache hits.
+  if (!checkAskRateLimit(clientKey)) throw new AskGeomacroRateLimitError();
 
   try {
     return await withPublicRuntimeTimeout(
-      (async () => publicAskResearchProjection(toCommercialAskBrief(await answerAskQuestion(data.question), data.question)) as AskAnswer)(),
+      cachedCanonicalAsk(data.question, async () => {
+        // Expensive publisher discovery is charged once per cache MISS and
+        // only once per same-question in-flight computation.
+        if (planAskOriginalQuestion(data.question) && !checkAskOriginalBudget(clientKey))
+          throw new AskGeomacroRateLimitError();
+        return publicAskResearchProjection(
+          toCommercialAskBrief(await answerAskQuestion(data.question), data.question)
+        ) as AskAnswer;
+      }),
       14_000,
       "ASK_RESEARCH_DEADLINE",
     );
