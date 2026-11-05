@@ -9,8 +9,8 @@ const DOMAINS=Object.freeze(["geopolitics","macro","rare_earth"]);
 const STEP_MS=15*60_000;
 const HOT50_KEYWORDS=Object.freeze({
  geopolitics:'("sanctions" OR "ceasefire" OR "military" OR "border security" OR "diplomatic" OR "conflict" OR "export ban" OR "election")',
- macro:'("central bank" OR "monetary policy" OR "policy rate" OR "interest rate" OR "rate decision" OR CPI OR "consumer price index" OR HICP OR PPI OR inflation OR "employment rate" OR unemployment OR payroll OR jobs OR wages OR "labour force" OR "labor force" OR GDP OR currency OR "sovereign debt" OR "trade balance" OR "capital controls")',
- rare_earth:'("critical minerals" OR "rare earth" OR mining OR mines OR "mineral production" OR lithium OR copper OR cobalt OR nickel OR gallium OR germanium OR graphite OR "mine permit" OR "mineral export" OR "export ban")',
+ macro:'("central bank" OR "central bank decision" OR "monetary policy" OR "monetary-policy decision" OR "policy rate" OR "interest rate decision" OR "rate decision" OR "benchmark rate" OR "key rate" OR "repo rate" OR "discount rate" OR CPI OR "consumer price index" OR "consumer price inflation" OR HICP OR PPI OR "inflation rate" OR "inflation data" OR "CPI release" OR "price statistics" OR "employment rate" OR employment OR unemployment OR "jobless rate" OR payroll OR jobs OR wages OR "labour force" OR "labor force" OR "labour market" OR "labor market" OR "employment report" OR "jobs report" OR GDP OR currency OR "sovereign debt" OR "trade balance" OR "capital controls")',
+ rare_earth:'("critical minerals" OR "critical raw materials" OR "rare earth" OR "rare-earth elements" OR mining OR mine OR mines OR miner OR "mineral production" OR "mine production" OR "mineral output" OR "mine project" OR "mining project" OR "mine permit" OR "mining licence" OR "mining license" OR exploration OR "mine expansion" OR "mine closure" OR "mine shutdown" OR "mineral processing" OR smelting OR refining OR lithium OR copper OR cobalt OR nickel OR graphite OR gallium OR germanium OR antimony OR manganese OR tungsten OR tin OR bauxite OR uranium OR "mineral export" OR "mineral exports" OR "export ban" OR "export restriction" OR royalty OR concession OR tailings OR strike)',
 });
 const escapeName=name=>'"'+name.replace(/["\\\r\n]/gu," ").trim()+'"';
 export function hot50GoogleCategorySource(country,category,legacyAllDomainTerms=null){
@@ -36,6 +36,18 @@ export function hot50GoogleCategorySource(country,category,legacyAllDomainTerms=
   url:url.toString(),categories:Object.freeze([...DOMAINS]),
   index_query_focus_category:category,
   google_news_category_specific:true,
+  index_query_metric_focus:category==="macro"?Object.freeze([
+   "central_bank_and_monetary_policy",
+   "policy_and_interest_rate_decisions",
+   "CPI_HICP_PPI_and_inflation_releases",
+   "employment_unemployment_jobs_wages_and_labour_force",
+   "GDP_currency_debt_and_trade",
+  ]):category==="rare_earth"?Object.freeze([
+   "mine_and_mineral_project_events",
+   "exploration_production_processing_and_refining",
+   "permits_closures_strikes_and_tailings",
+   "critical_mineral_exports_and_restrictions",
+  ]):Object.freeze(["geopolitical_events"]),
   original_publisher_verified:false,
   original_article_clock_verified:false,
   country_event_attribution_verified:false,
