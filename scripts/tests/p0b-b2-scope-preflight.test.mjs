@@ -59,3 +59,18 @@ test('P0-B preflight stops before Backblaze if the D1 quota governor refuses',as
  },append:()=>{throw Error('SHOULD_NOT_WRITE')}}),/P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_429/u);
  assert.equal(count,1);
 });
+
+test('P0-B uses an owner D1 ticket after its atomic reservation is verified, without calling the stale Worker route twice',async()=>{
+ const called=[],written=[];
+ const env={ROOT_LEDGER_TOKEN:'R'.repeat(48),P0B_B2_KEY_ID:'keyid-test',
+  P0B_B2_APPLICATION_KEY:'long-test-credential-secret',P0B_B2_BUCKET:bucket,
+  GITHUB_ENV:'/fake/github_env',P0B_B2_NATIVE_AUTH_PRE_RESERVED:'true',
+  P0B_B2_NATIVE_AUTH_PRE_RESERVATION_CONFIRMED:'true'};
+ const receipt=await runP0bB2Preflight(env,{fetchImpl:async(url,opts)=>{
+  called.push({url,opts});
+  assert.equal(url,'https://api.backblazeb2.com/b2api/v4/b2_authorize_account');
+  return Response.json(auth(''));
+ },append:(p,s)=>written.push(s)});
+ assert.equal(receipt.ok,true);
+ assert.equal(called.length,1);
+});

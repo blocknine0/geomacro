@@ -47,13 +47,18 @@ export async function runP0bB2Preflight(env,{fetchImpl=fetch,append=appendFileSy
   authorization:'Bearer '+bearer,'content-type':'application/json'},
   body:JSON.stringify({kind:'NATIVE_AUTH',workflow_id:'p0b_b2_scope_preflight'}),
   signal:AbortSignal.timeout(20000)};
- const reserved=await fetchImpl(
-  'https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve',
-  request);
- if(!reserved.ok)
-  fail('P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_'+reserved.status);
- if((await reserved.json())?.reserved!==true)
-  fail('P0B_B2_NATIVE_AUTH_NOT_RESERVED');
+ if(env.P0B_B2_NATIVE_AUTH_PRE_RESERVED==="true"){
+  if(env.P0B_B2_NATIVE_AUTH_PRE_RESERVATION_CONFIRMED!=="true")
+   fail('P0B_B2_NATIVE_AUTH_PRE_RESERVATION_UNVERIFIED');
+ }else{
+  const reserved=await fetchImpl(
+   'https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve',
+   request);
+  if(!reserved.ok)
+   fail('P0B_B2_NATIVE_AUTH_RESERVATION_HTTP_'+reserved.status);
+  if((await reserved.json())?.reserved!==true)
+   fail('P0B_B2_NATIVE_AUTH_NOT_RESERVED');
+ }
  const auth=Buffer.from(env.P0B_B2_KEY_ID+':'+env.P0B_B2_APPLICATION_KEY).toString('base64');
  const response=await fetchImpl(
   'https://api.backblazeb2.com/b2api/v4/b2_authorize_account',

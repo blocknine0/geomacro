@@ -382,9 +382,21 @@ jobs:
             });
           '
 
+      - name: Reserve and read back native-auth quota directly in canonical D1
+        id: p0b_ticket
+        if: env.P0B_ACTIVATE == '1'
+        working-directory: workers/control-plane
+        env:
+          P0B_QUOTA_WRANGLER_CONFIG: wrangler.quota-bootstrap.jsonc
+        shell: bash
+        run: node ../../scripts/ops/reserve-p0b-native-auth-ticket.mjs
+
       - name: Verify actual B2 key scope and derive allowed private spool prefix
         if: env.P0B_ACTIVATE == '1'
         shell: bash
+        env:
+          P0B_B2_NATIVE_AUTH_PRE_RESERVED: ${{ steps.p0b_ticket.outputs.reserved == 'true' && 'true' || 'false' }}
+          P0B_B2_NATIVE_AUTH_PRE_RESERVATION_CONFIRMED: ${{ steps.p0b_ticket.outputs.reserved == 'true' && 'true' || 'false' }}
         run: node scripts/ops/p0b-b2-scope-preflight.mjs
 
       - name: Verify unified cron failure visibility and production API route contracts
