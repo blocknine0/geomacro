@@ -150,15 +150,17 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  }});
  assert.equal(blocked.critical,false);
  assert.equal(blocked.state,"HELD");
- const free=await checkD1BundledWork({
+ const existingToken=await checkD1BundledWork({
   env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
   now,fetchImpl});
- assert.equal(free.critical,false);
- assert.equal(free.reason,"D1_FREE_RESERVE_REACHED");
+ assert.equal(existingToken.critical,true);
+ assert.equal(existingToken.paid_capacity_verified_by_provider,true);
+ assert.equal(existingToken.paid_capacity_probe_status,"VERIFIED");
  const denied=await checkD1BundledWork({
   env,now,fetchImpl:async(url,init)=>
    url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:
    {status:403,json:async()=>({})},
  });
  assert.equal(denied.critical,false);
+ assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_REJECTED");
 });

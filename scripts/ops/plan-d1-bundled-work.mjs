@@ -593,19 +593,28 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // Optional READ-only provider billing evidence. If the account has not
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.
-    let paidProof=null,spendGuardProof=null;
-    if(env.CLOUDFLARE_BILLING_READ_TOKEN){
+    let paidProof=null,spendGuardProof=null,paidProbe="NO_ACCOUNT_TOKEN";
+    // An existing account token may already have Billing Read permission.
+    // Try its read-only provider endpoints before requiring another secret;
+    // a 403, missing policy or ambiguous proof still cannot unlock capacity.
+    const billingEnv=env.CLOUDFLARE_BILLING_READ_TOKEN?env:
+      {...env,CLOUDFLARE_BILLING_READ_TOKEN:env.CLOUDFLARE_API_TOKEN};
+    if(billingEnv.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
-        const candidate=await readCloudflareWorkersPaidProof({env,fetchImpl,now});
+        const candidate=await readCloudflareWorkersPaidProof({env:billingEnv,fetchImpl,now});
         // The $5 subscription is NOT a spending limit. The Paid source lane
         // stays on the Free-plan quota unless BOTH provider-side usage_block
         // policies (Workers and Durable Objects) are independently verified.
         // This protects paid admission, not ungoverned D1/other operations.
-        const guard=await readFiveUsdSpendGuard({env,fetchImpl,now});
-        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;}
-      }catch{/* missing/inactive/ambiguous budget policies => Free admission */}
+        const guard=await readFiveUsdSpendGuard({env:billingEnv,fetchImpl,now});
+        if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
+      }catch(error){
+        const code=String(error?.message??"");
+        paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
+      }
     }
-    return planD1BundledWork(quota,{now,paidProof,spendGuardProof});
+    return {...planD1BundledWork(quota,{now,paidProof,spendGuardProof}),
+      paid_capacity_probe_status:paidProbe};
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }
