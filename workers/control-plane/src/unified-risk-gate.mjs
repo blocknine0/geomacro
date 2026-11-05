@@ -975,8 +975,14 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
      history.push({...r,snapshot:hist,proof_verified:true});
     }
    }
+   // Standard must see today's newly corroborated events immediately,
+   // rather than the facts frozen into the first immutable daily snapshot.
+   // These query-time facts remain outside that snapshot's HMAC scope.
+   const productSnapshot=payload.product_tier==="standard"?
+    {...x.snapshot,corroborated_risk_facts:await corroboratedGapFacts(env,
+      {...target,...registry(target.type,target.id)},now)}:x.snapshot;
    tiered_product=composeRiskGateThreeTierResponse({
-    tier:payload.product_tier,snapshot:x.snapshot,observations,
+    tier:payload.product_tier,snapshot:productSnapshot,observations,
     verified_gro:gro,archive_proof,history,now,
    });
    tiered_product.intraday_override=flash.active===true;

@@ -1,5 +1,6 @@
 /** Protected production acceptance, counts and symbolic states only. */
 import {writeFileSync,mkdirSync} from "node:fs";
+import {createHmac} from "node:crypto";
 import {RISK_GATE_HOT50} from "../../workers/control-plane/src/risk-gate-hot50-scope.mjs";
 import {RISK_GATE_PRODUCT_TIERS} from "../../workers/control-plane/src/risk-gate-three-tier-product.mjs";
 const token=process.env.RISK_GATE_TIERED_TOKEN;
@@ -7,6 +8,22 @@ if(!/^[a-f0-9]{64}$/.test(token??""))throw Error("HOT50_TIER_PROOF_SECRET_MISSIN
 const full=process.env.HOT50_TIER_FULL_CENSUS==="1";
 const ids=full?RISK_GATE_HOT50:[RISK_GATE_HOT50[Math.floor(Date.now()/1200000)%50]];
 const receipts=[];
+let rollup=null;
+if(full){
+ const root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
+ if(typeof root!=="string"||root.length<32)throw Error("HOT50_ROLLUP_OWNER_SECRET_MISSING");
+ const control=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+ try{
+  const response=await fetch("https://api.geomacro.live/v1/internal/risk-gate/7d-rollup",{
+   method:"POST",redirect:"error",signal:AbortSignal.timeout(45000),
+   headers:{Authorization:"Bearer "+control,"Content-Type":"application/json"},
+   body:JSON.stringify({mode:"BACKFILL"})});
+  const body=await response.json();
+  rollup={ok:response.status===200&&body.ok===true,
+   risk_signal_rows:Number(body.risk_signal_rows)||0,
+   hmac_verified:body.hmac_verified===true};
+ }catch{rollup={ok:false};}
+}
 for(const id of ids)for(const [tier,price] of Object.entries(RISK_GATE_PRODUCT_TIERS)){
  let receipt={country_iso3:id,tier,ready:false,status:"TRANSPORT_UNAVAILABLE"};
  try{
@@ -27,7 +44,7 @@ for(const id of ids)for(const [tier,price] of Object.entries(RISK_GATE_PRODUCT_T
 const report={schema:"geomacro.hot50-three-price-production-acceptance.v1",generated_at:new Date().toISOString(),
  scope:"HOT50",full_census:full,countries_checked:ids.length,categories_per_country:3,
  expected_tiers:3,checked:receipts.length,ready:receipts.filter(x=>x.ready).length,
- complete:receipts.every(x=>x.ready),no_funds:true,receipts};
+ complete:receipts.every(x=>x.ready)&&(!full||rollup?.ok===true),no_funds:true,rollup,receipts};
 mkdirSync("artifacts/hot50-risk-gate",{recursive:true});
 writeFileSync("artifacts/hot50-risk-gate/latest.json",JSON.stringify(report,null,2));
 console.log(JSON.stringify({schema:report.schema,countries_checked:report.countries_checked,checked:report.checked,ready:report.ready,complete:report.complete}));

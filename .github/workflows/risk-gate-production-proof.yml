@@ -183,6 +183,7 @@ jobs:
         if: steps.quota.outputs.critical == 'true'
         env:
           RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
           HOT50_TIER_FULL_CENSUS: ${{ github.event_name != 'schedule' && '1' || '0' }}
         run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
       - name: Quota held cannot be accepted as ready
