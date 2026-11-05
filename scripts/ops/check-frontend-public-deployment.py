@@ -22,9 +22,9 @@ HEADERS = {"User-Agent": "GeoMacro-frontend-acceptance/2.0", "Cache-Control": "n
 SHA = re.compile(r"^[0-9a-f]{40}$")
 failures, observations = [], []
 
-def get(url, limit=2000000):
+def get(url, limit=2000000, timeout=25):
     req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=25) as response:
+    with urllib.request.urlopen(req, timeout=timeout) as response:
         body = response.read(limit + 1)
         if len(body) > limit:
             raise ValueError("response exceeds size limit")
@@ -96,7 +96,8 @@ for site in SITES:
     # A route is not healthy merely because navigation contains its link.
     for path in PUBLIC_PAGE_CHECKS:
         try:
-            body, status, mime, final_url = get(site + path)
+            body, status, mime, final_url = get(site + path, limit=1000000,
+                                               timeout=10 if path == "/intelligence" else 7)
             record["public_routes"][path] = status
             html = body.decode("utf-8", "replace")
             if status != 200 or "html" not in mime.lower():
