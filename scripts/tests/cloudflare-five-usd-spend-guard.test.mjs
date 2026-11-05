@@ -1,4 +1,5 @@
 import test from "node:test";
+import {readFileSync} from "node:fs";
 import assert from "node:assert/strict";
 import {
  FIVE_USD_SPEND_GUARD_SCHEMA,assessFiveUsdSpendPolicies,readFiveUsdSpendGuard,
@@ -103,4 +104,29 @@ test("provisioning sends exactly 2 product-specific 1-cent POSTs, then GET readb
  assert.equal(result.created,2);
  assert.equal(result.invoice_5_usd_guaranteed,false);
  assert.equal(result.plan_changed,false);
+});
+
+test("founder-authorized one-time Cloudflare provider activation retains production security fence",()=>{
+ const workflow=readFileSync(new URL(
+  "../../.github/workflows/cloudflare-five-usd-spend-blocks.yml",
+  import.meta.url),"utf8");
+ assert.ok(workflow.includes("workflow_dispatch:"));
+ assert.ok(workflow.includes("branches: [main]"));
+ assert.ok(workflow.includes('".github/workflows/cloudflare-five-usd-spend-blocks.yml"'));
+ assert.ok(workflow.includes("github.repository == 'blocknine0/geomacro'"));
+ assert.ok(workflow.includes("github.ref == 'refs/heads/main'"));
+ assert.ok(workflow.includes("github.event_name == 'workflow_dispatch'"));
+ assert.ok(workflow.includes("github.event_name == 'push'"));
+ assert.ok(workflow.includes(
+  "ops(cost): founder-authorized one-time central quota activation"));
+ assert.ok(workflow.includes("environment: production"));
+ assert.ok(workflow.includes("CLOUDFLARE_BILLING_WRITE_TOKEN"));
+ assert.ok(workflow.includes("CLOUDFLARE_BILLING_READ_TOKEN"));
+ assert.ok(workflow.includes("CLOUDFLARE_WORKERS_PAID_PROVIDER_VERIFIED=true"));
+ assert.ok(workflow.includes(
+  "node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply"));
+ assert.ok(workflow.includes("CLOUDFLARE_WORKERS_AND_DO_MINIMUM_USAGE_BLOCKS_VERIFIED=true"));
+ assert.ok(workflow.includes("CLOUDFLARE_ACCOUNT_WIDE_5_USD_HARD_CAP=false"));
+ assert.ok(workflow.indexOf("CLOUDFLARE_WORKERS_PAID_PROVIDER_VERIFIED=true") <
+  workflow.indexOf("node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply"));
 });
