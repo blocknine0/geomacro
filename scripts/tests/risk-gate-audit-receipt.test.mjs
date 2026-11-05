@@ -16,7 +16,7 @@ function memoryDb({corrupt=false}={}){
    return {success:true};
   },
   async first(){return rows.get(values[0])??null;}
- }};}}};
+ };}};}};
 }
 const input={client_id:"pilot-v1",request_id:"r-001",request_hash:"a".repeat(64),
  subject_type:"country",subject_id:"USA",decision:"REQUIRE_APPROVAL",

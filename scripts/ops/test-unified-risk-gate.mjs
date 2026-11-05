@@ -84,7 +84,7 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
       const [receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
        decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
        audit_receipt_hash,created_at,signature_key_id,signature_scheme,audit_receipt_signature]=params;
-      auditReceipts.set(receipt_id,{receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
+      if(!auditReceipts.has(receipt_id))auditReceipts.set(receipt_id,{receipt_id,client_id,request_id,request_hash,subject_type,subject_id,
        decision,policy_id,policy_version,evaluated_at,response_hash,execution_authorized,
        audit_receipt_hash,signature_key_id,signature_scheme,audit_receipt_signature});
     }
@@ -124,6 +124,25 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
  assert.match(data.audit_proof.signature,/^hmac_sha256:[a-f0-9]{64}$/);
  const again=await generateUnifiedSnapshot(env,{type:"COUNTRY",id:"TWN"},{now,fetcher});
  assert.equal(again.existing,true);
+ assert.equal(store.size,1);
+ // Match the production INSERT OR IGNORE constraint and repeat the actual
+ // route at new timestamps. Neither a new daily snapshot nor live source
+ // refetch is needed for a fresh, independently auditable evaluation.
+ let clock=now;
+ for(const product_tier of [undefined,"basic_focused","standard","complex_full"]){
+  for(let repeat=0;repeat<2;repeat++){
+   clock+=1000;
+   const response=await unifiedRiskGateEvaluate(new Request("https://example.org/v1/risk-gate/unified/evaluate",{
+    method:"POST",headers:{authorization:"Bearer "+"a".repeat(64)},
+    body:JSON.stringify({target_type:"COUNTRY",target_id:"TWN",client_policy:"STRICT",
+     ...(product_tier?{product_tier}:{})})
+   }),env,{now:clock,fetcher:async()=>{throw Error("UNEXPECTED_PUBLISHER_REFETCH")}});
+   assert.equal(response.status,200,await response.clone().text());
+   assert.equal((await response.json()).execution_authorized,false);
+  }
+ }
+ assert.equal(auditReceipts.size,9);
+ assert.equal(new Set([...auditReceipts.values()].map(x=>x.request_id)).size,9);
  assert.equal(store.size,1);
 });
 test("lenient override requires explicit client acknowledgment",async()=>{
