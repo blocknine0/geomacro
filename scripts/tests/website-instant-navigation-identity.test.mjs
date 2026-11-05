@@ -136,3 +136,17 @@ test("legacy /data-api redirect, exact build SHA and static audit scope are enfo
   assert.doesNotMatch(audit,/data-capability="[^"]*"\s*\+/);
   assert.doesNotMatch(audit,/price_variants:14/);
 });
+
+test("scheduled frontend acceptance covers all distinct public routes without writes", () => {
+  const script=read("scripts/ops/check-frontend-public-deployment.py");
+  assert.match(script,/PUBLIC_PAGE_CHECKS\s*=\s*\(/);
+  for(const path of ["/intelligence","/risk-indices","/ask-geomacro","/docs",
+    "/institutional","/contact","/research","/about","/roadmap",
+    "/ecosystem","/risk-gate","/global-risk"]) {
+    assert.ok(script.includes('"' + path + '"'),"missing outside-in route: " + path);
+  }
+  assert.match(script,/for path in PUBLIC_PAGE_CHECKS:/);
+  assert.match(script,/record\["public_routes"\]\[path\]/);
+  assert.match(script,/missing SSR heading or page title/);
+  assert.doesNotMatch(script,/urllib\.request\.Request\([^)]*method="POST"/);
+});
