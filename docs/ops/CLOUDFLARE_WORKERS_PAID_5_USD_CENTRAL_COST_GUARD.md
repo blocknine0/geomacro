@@ -30,15 +30,21 @@ https://developers.cloudflare.com/queues/platform/pricing/
 6. Verify actual stored data, Queues operations, D1 GraphQL metrics, Workers request/CPU metrics, R2/KV usage and any other metered products **before activating the paid plan**. The safe account totals must have room for every existing producer (manual scripts, Workers, GitHub workflows, scheduled jobs, website traffic, external clients). No code assumes all independent producers are covered by the source-intake gate.
 7. Run the read-only provider lock check in a protected runner; require actual positive readback and no excess monthly usage before approving any broader capacity use. Keep **customer USDC checkout and the master commercial launch gate locked** until separate acceptance.
 
-## Queue cost warning: actual design review required
+## P1 source polling — implemented V3 queue bundling, pending live acceptance
 
-`p1-source-bundled-dispatch.mjs` currently bundles **D1 leases**, but its queue `sendBatch` still emits a **separate message for each source**, billed per message, not per `sendBatch` API call. At 1,077 sources every 20 minutes for 30 days:
+Source queue V2 billed one message for each source ID. V3 now places up to **15 source IDs in one actual Queue message**, not 15 separate messages inside a single `sendBatch`. The production source-poll consumer has **max_batch_size=1**, **max_retries=1** with an existing DLQ, and accepts existing V1/V2 messages for upgrade continuity. Each consumer invocation polls at most 15 sources and checks their original durable D1 lease before making outbound fetches.
 
-* 1,077 × 72 × 30 = **2,326,320 source messages**.
-* Without retries and assuming each is small enough to count as one operation per leg, write + read + delete ≈ **6,978,960 queue operations**.
-* Cloudflare Queues Paid currently includes 1M operations/month; this pattern alone would exceed the included quota by **~5.98M operations**, or **~$2.39** at $0.40/M.
+Dispatcher selects up to **105 sources per minute** (exactly seven 15-source messages at full pages), keeps the existing 2-minute D1 lease/at-least-once retry behaviour, and issues an atomic pre-send D1 operation reservation in `cloudflare_source_poll_queue_budget`. Unknown budget or D1 errors **HELD**; reservation is conservatively *not* refunded on ambiguous Queue failures.
 
-These are **scenario estimates, not observed production costs**. To avoid queue overage, message-level bundling / another quota-governed transport or verified counter-backed throttling must be implemented and tested **before** claiming $5-only 1,077-source always-on ingestion.
+**Illustrative full-load 30-day scenario**, only source-poll queue, 1,077 sources exactly once per 20-minute slot:
+
+* Source polls = 1,077 × 72 × 30 = **2,326,320**.
+* Up to 72 physical V3 Queue messages per 1,077-source sweep = **155,520 messages/month**.
+* Write/read/delete on success ≈ **466,560 billed Queue operations**, before retries.
+* Reservation plans five operations per message for a retry and optional DLQ, up to **777,600 internally reserved operations/month**, below the **800,000 reserved-source target** (paid queue allowance: 1,000,000).
+* The D1 monthly ledger is an **internal, UTC-calendar-month source queue admission**, not account-wide billing. Other queues (including the P0-B ingest queue), product usage, additional producer traffic, provider billing-cycle alignment, replays and retries are NOT comprehensively governed. **Do not claim an account-wide $5 hard lock.**
+
+Files: `workers/control-plane/src/p1-source-bundled-dispatch.mjs`, `workers/control-plane/src/p1-source-fanout.mjs`, `workers/control-plane/src/p1-queue-monthly-budget.mjs`, `workers/control-plane/migrations/0128_cloudflare_queue_monthly_source_budget.sql`, and pinned Wrangler config. Both offline tests and authenticated production D1 migration readback are required before V3 deployment is accepted.
 
 ## Production acceptance required (not yet done)
 
@@ -48,4 +54,4 @@ These are **scenario estimates, not observed production costs**. To avoid queue 
 - Test one real paid-period billing cycle against Cloudflare's actual invoice, accepting that $5 + tax/overages remains possible and independent provider bills are separate.
 - Never promise strict provider-enforced $5 maximum unless the provider exposes and confirms a **true account-wide hard cap** that includes all enabled metered products.
 
-Status: **STAGED CODE SAFEGUARD, NOT AN ACTIVE PROVIDER ACCOUNT LOCK.** Never report this PR as Cloudflare billing configured.
+Status: **STAGED CODE SAFEGUARD AND V3 BUNDLING, NOT AN ACTIVE PROVIDER ACCOUNT LOCK.** Offline CI and actual provider acceptance are distinct. Never report this PR as Cloudflare billing configured.
