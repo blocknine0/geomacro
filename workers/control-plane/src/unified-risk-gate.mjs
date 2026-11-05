@@ -15,6 +15,7 @@ import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
 import {RISK_GATE_CORRIDOR_MEMBERS,RISK_GATE_CORRIDOR_WEIGHTS}
  from "./risk-gate-corridor-members.mjs";
 export const UNIFIED_SCHEMA="geomacro.unified-risk-gate.v1";
+export const UNIFIED_SNAPSHOT_EPOCH="v2";
 const enc=new TextEncoder(),DAY=86400000,SEVEN=7*DAY;
 const iso=n=>new Date(n).toISOString();
 const hash=async s=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(s))),
@@ -175,28 +176,62 @@ function compactEvidence(items){
  }
  return out;
 }
+function observationHmacKeys(env){
+ const keys=new Map(),active=String(env?.RISK_GATE_OBSERVATION_HMAC_KEY??"");
+ const activeId=String(env?.RISK_GATE_OBSERVATION_HMAC_KEY_ID??"obs-hmac-v2");
+ if(active.length>=32&&/^[A-Za-z0-9._:-]{1,96}$/.test(activeId))keys.set(activeId,active);
+ const raw=String(env?.RISK_GATE_OBSERVATION_HMAC_KEYS_JSON??"").trim();
+ if(raw){
+  let parsed;try{parsed=JSON.parse(raw)}catch{throw Error("UNIFIED_HMAC_KEYRING_INVALID")}
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))throw Error("UNIFIED_HMAC_KEYRING_INVALID");
+  for(const [id,value] of Object.entries(parsed)){
+   const secret=typeof value==="string"?value:value?.secret;
+   if(!/^[A-Za-z0-9._:-]{1,96}$/.test(id)||typeof secret!=="string"||enc.encode(secret).length<32)
+    throw Error("UNIFIED_HMAC_KEYRING_INVALID");
+   keys.set(id,secret);
+  }
+ }
+ return {keys,activeId,active};
+}
 async function signSnapshot(snapshot,env,now){
- const secret=String(env?.RISK_GATE_OBSERVATION_HMAC_KEY??"");
- if(enc.encode(secret).length<32)throw Error("UNIFIED_SIGNING_KEY_MISSING");
+ const {activeId,active}=observationHmacKeys(env);
+ if(enc.encode(active).length<32)throw Error("UNIFIED_SIGNING_KEY_MISSING");
+ snapshot.schema_epoch=UNIFIED_SNAPSHOT_EPOCH;
  const content_sha256=await hash(JSON.stringify(snapshot));
- const timestamp_utc=iso(now),input=JSON.stringify({schema:UNIFIED_SCHEMA,content_sha256,timestamp_utc});
- const k=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+ const timestamp_utc=iso(now),schema_epoch=UNIFIED_SNAPSHOT_EPOCH,key_id=activeId;
+ const input=JSON.stringify({schema:UNIFIED_SCHEMA,schema_epoch,key_id,content_sha256,timestamp_utc});
+ const k=await crypto.subtle.importKey("raw",enc.encode(active),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
  const signed=await crypto.subtle.sign("HMAC",k,enc.encode(input));
  const signature="hmac_sha256:"+Array.from(new Uint8Array(signed),n=>n.toString(16).padStart(2,"0")).join("");
- return {content_sha256,proof:{content_sha256,timestamp_utc,signature,
+ return {content_sha256,proof:{schema_epoch,key_id,content_sha256,timestamp_utc,signature,
   signature_scope:"SNAPSHOT_INTEGRITY_NOT_EVENT_VERIFICATION"}};
 }
 async function verifySnapshot(snapshot,proof,env){
  if(await hash(JSON.stringify(snapshot))!==proof.content_sha256)return false;
  if(proof.signature_scope!=="SNAPSHOT_INTEGRITY_NOT_EVENT_VERIFICATION"||
    !/^hmac_sha256:[a-f0-9]{64}$/.test(proof.signature))return false;
- const secret=String(env?.RISK_GATE_OBSERVATION_HMAC_KEY??"");
- if(enc.encode(secret).length<32)return false;
- const k=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["verify"]);
+ const epoch=proof.schema_epoch??snapshot.schema_epoch??"v1";
+ if(!["v1","v2"].includes(epoch)||proof.schema_epoch&&snapshot.schema_epoch!==proof.schema_epoch)return false;
+ let config;try{config=observationHmacKeys(env)}catch{return false;}
+ const legacy=!proof.schema_epoch&&!snapshot.schema_epoch;
+ const keyId=proof.key_id;
+ let candidates;
+ if(legacy)candidates=[...config.keys.values()];
+ else{
+  if(epoch!=="v2"||typeof keyId!=="string"||!config.keys.has(keyId))return false;
+  candidates=[config.keys.get(keyId)];
+ }
  const bytes=Uint8Array.from(proof.signature.slice(12).match(/.{2}/g),x=>parseInt(x,16));
- return crypto.subtle.verify("HMAC",k,bytes,enc.encode(JSON.stringify({
-  schema:UNIFIED_SCHEMA,content_sha256:proof.content_sha256,timestamp_utc:proof.timestamp_utc
- })));
+ for(const secret of candidates){
+  if(enc.encode(secret).length<32)continue;
+  try{
+   const k=await crypto.subtle.importKey("raw",enc.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["verify"]);
+   const message=legacy?{schema:UNIFIED_SCHEMA,content_sha256:proof.content_sha256,timestamp_utc:proof.timestamp_utc}:
+    {schema:UNIFIED_SCHEMA,schema_epoch:epoch,key_id:keyId,content_sha256:proof.content_sha256,timestamp_utc:proof.timestamp_utc};
+   if(await crypto.subtle.verify("HMAC",k,bytes,enc.encode(JSON.stringify(message))))return true;
+  }catch{return false;}
+ }
+ return false;
 }
 async function stored(env,target,day){
  return env.DB.prepare("SELECT snapshot_json,audit_proof_json,content_sha256,generated_at,supabase_synced_at FROM unified_risk_snapshots WHERE entity_type=? AND entity_id=? AND day_utc=?")
@@ -345,7 +380,7 @@ export async function generateUnifiedSnapshot(env,{type,id},{now=Date.now(),fetc
  const hasObservedBaseline=CATEGORIES.some(category=>Number(categories[category].source_count??0)>0);
  const basicUnifiedScore=hasObservedBaseline?basicScore.unifiedScore:null;
  const tiers=generateCommercialTiers(score,{groVerified:!!gro,confidence:gro?.confidence??null});
- const snapshot={schema:UNIFIED_SCHEMA,target_type:type,target_id:id,day_utc:day,generated_at:iso(now),
+ const snapshot={schema:UNIFIED_SCHEMA,schema_epoch:UNIFIED_SNAPSHOT_EPOCH,target_type:type,target_id:id,day_utc:day,generated_at:iso(now),
   categories,unified_risk_score:score.unifiedScore??basicUnifiedScore,
   verified_unified_risk_score:score.unifiedScore,
   signed_gro_payload_sha256:hex.test(String(gro?.integrity?.payload_hash??""))?

@@ -5,6 +5,8 @@
  */
 // Load the canonical TS engine lazily only after signed GRO acceptance.\n// The D1 Worker is also imported by Node ESM ops tests without TS extension resolution.
 
+import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
+
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
 const KEY_ID=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
@@ -278,6 +280,13 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
       verified_signed_gro:true,commercial_eligible:true,
       payment_authorized:false
    },execution_authorized:false};
+   const receipt=await persistRiskGateAuditReceipt(env.DB,{
+     client_id:client,request_id:parsed.request_id,request_hash:requestHash,
+     subject_type:parsed.subject.type,subject_id:parsed.subject.id,
+     decision:result.decision,policy_id:parsed.policy.policy_id,
+     policy_version:parsed.policy.policy_version,evaluated_at:nowIso,response
+   });
+   response.audit_receipt_hash=receipt.audit_receipt_hash;
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?

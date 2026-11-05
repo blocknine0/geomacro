@@ -4,6 +4,7 @@
  * No Predge price, token, signed verdict, research or x402 mutation.
  */
 import {verifyHotGRO} from "./predge-risk-gate-d1.mjs";
+import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {phase2hHeadlineCountryCandidate,phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 
 export const CONTROLLED_GATE_SCHEMA="geomacro.risk-gate-controlled-bypass.v1";
@@ -259,6 +260,14 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
    ...result,audit_proof,chargeable:false};
   // D1 immutable replay and isolated per-day quota. No attempted customer debit.
   const ts=new Date(now).toISOString();
+  const receipt=await persistRiskGateAuditReceipt(env.DB,{
+   client_id:"tiered-private-v1",request_id:parsed.request_id,request_hash:request_hash,
+   subject_type:parsed.subject.type,subject_id:parsed.subject.id,
+   decision:result.client_policy_decision??result.gate_decision,
+   policy_id:parsed.risk_policy?.policy_id??null,policy_version:parsed.risk_policy?.policy_version??null,
+   evaluated_at:ts,response:body
+  });
+  body.audit_receipt_hash=receipt.audit_receipt_hash;
   await env.DB.prepare("INSERT OR IGNORE INTO risk_gate_tiered_requests (client_id,request_id,request_hash,state,created_at) VALUES (?,?,?,'PENDING',?)")
    .bind("tiered-private-v1",parsed.request_id,request_hash,ts).run();
   const claim=await env.DB.prepare("UPDATE risk_gate_tiered_requests SET state='CLAIMED',claimed_at=? WHERE client_id=? AND request_id=? AND request_hash=? AND (state='PENDING' OR (state='CLAIMED' AND claimed_at<?)) RETURNING request_id")
