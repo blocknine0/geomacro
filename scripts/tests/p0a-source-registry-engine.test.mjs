@@ -204,3 +204,23 @@ test('P1 repeated official RSS poll uses bundled item dedupe and six-hour refres
   assert.equal(refreshed.last_seen_at,new Date(later).toISOString());
  }finally{db.close()}
 });
+
+test("P1 source poll CAS rejects duplicate queue message before next due clock",async()=>{
+ const {db,env}=dbMock(true);let requests=0;
+ env.GEOMACRO_P1_FANOUT_ENABLED="1";
+ try{
+  const cfg=source("src_p1_due_cas");
+  assert.equal((await upsertP0aSourceRegistry(env,{sources:[cfg]})).status,200);
+  const t=Date.parse("2026-10-04T02:00:00Z");
+  const poll=at=>pollP0aSources(env,{now:at,limit:1,
+   sourceIds:["src_p1_due_cas"],fetchImpl:async()=>{
+    requests++;return body(news);
+   }});
+  assert.equal((await poll(t)).receipts[0].state,"OBSERVED");
+  const next=db.prepare("SELECT next_poll_at FROM source_registry WHERE source_id=?")
+   .get("src_p1_due_cas").next_poll_at;
+  assert.ok(Date.parse(next)>t+60000);
+  assert.equal((await poll(t+60000)).receipts[0].state,"NOT_DUE");
+  assert.equal(requests,1);
+ }finally{db.close()}
+});
