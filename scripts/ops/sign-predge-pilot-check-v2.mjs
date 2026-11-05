@@ -8,6 +8,7 @@
  */
 import {createPrivateKey,createPublicKey,sign as signBytes} from "node:crypto";
 import {writeFileSync} from "node:fs";
+import {fetchProtectedPilot} from "./predge-pilot-http-retry.mjs";
 import {buildUnsignedPilotCheck,signablePilotCheck,toBytes,sha256,
   PINNED_PUBLIC_SPKI,MAX_WIRE_BYTES,verifySignedPilotCheck}
   from "../../workers/control-plane/src/predge-pilot-news-context-v2.mjs";
@@ -23,9 +24,9 @@ async function main(){
   const key=createPrivateKey({key:Buffer.from(keyString,"base64"),format:"der",type:"pkcs8"});
   const derived=createPublicKey(key).export({format:"der",type:"spki"}).toString("base64");
   if(derived!==PINNED_PUBLIC_SPKI)throw Error("SIGNER_NOT_PINNED_ACTIVE_PRODUCTION_KEY");
-  const r=await fetch(BASE+"/v1/partner/predge/derived-structural-72h",{
+  const r=await fetchProtectedPilot(BASE+"/v1/partner/predge/derived-structural-72h",{
     headers:{authorization:"Bearer "+token,accept:"application/json"},
-    redirect:"error",signal:AbortSignal.timeout(20000),cache:"no-store"});
+    redirect:"error",cache:"no-store"});
   if(r.status!==200)throw Error("AUTHENTICATED_RESEARCH_FEED_UNAVAILABLE_"+r.status);
   if(Number(r.headers.get("content-length")??0)>4_000_000)throw Error("FEED_OVERSIZE");
   const content=await r.text();
