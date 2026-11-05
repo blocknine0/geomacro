@@ -1,5 +1,6 @@
 import {spawnSync} from "node:child_process";
 import {ATOMIC_B2_QUOTA_SQL,B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
+import {readCloudflareD1AccountQuota,D1_FREE_DAILY} from "./audit-d1-account-daily-quota-readonly.mjs";
 const fail=code=>{throw Error(code)};
 function sqlLiteral(v){if(typeof v==="number"&&Number.isFinite(v))return String(v);if(typeof v!=="string")fail("P0B_D1_SQL_VALUE_INVALID");return "'"+v.replaceAll("'","''")+"'";}
 function bind(sql,values){let i=0;const out=sql.replace(/\?/gu,()=>sqlLiteral(values[i++]));if(i!==values.length||out.includes("?"))fail("P0B_D1_SQL_BINDING_INVALID");return out;}
@@ -31,6 +32,10 @@ export function classifyP0bWranglerD1Failure(r){
   .replaceAll(String.fromCharCode(27),"");
  if(!output.trim()&&Number.isInteger(r?.status)&&r.status!==0)return "NO_OUTPUT";
  const text=output.toLowerCase();
+ if(text.includes("your account has exceeded d1's free tier daily row read limit")&&
+    text.includes("7500"))return "D1_DAILY_ROW_READ_LIMIT_7500";
+ if(text.includes("your account has exceeded d1's free tier daily row write limit")&&
+    text.includes("7500"))return "D1_DAILY_ROW_WRITE_LIMIT_7500";
  if(text.includes("no such table")||text.includes("no such column")||text.includes("sqlite_error")||text.includes("syntax error"))return "SQL";
  if(text.includes("permission")||text.includes("unauthorized")||text.includes("forbidden")||text.includes("authentication")||text.includes("not authorized"))return "AUTH";
  if(text.includes("database is locked")||text.includes("sqlite_busy")||text.includes("too many requests")||text.includes("rate limit")||text.includes("429"))return "TRANSIENT";
@@ -68,7 +73,30 @@ function executeRemote(sql){
  }
  try{return JSON.parse(r.stdout)}catch{fail("P0B_B2_NATIVE_AUTH_D1_INVALID_JSON")}
 }
+// Provider GraphQL is independent of the D1 SQL path. A failed native-auth
+// reservation cannot be retried as "quota exhausted" unless exact provider
+// metrics confirm the account's daily read ceiling; unknown errors stay held.
+export function verifiedP0bD1ReadQuotaExhaustion(proof){
+ return proof?.provider_graphql_usage_observed===true &&
+   proof?.limits?.rows_read===D1_FREE_DAILY.rows_read &&
+   proof?.remaining_rows_read===0 &&
+   Number.isSafeInteger(proof?.observed_rows_read) &&
+   proof.observed_rows_read>=D1_FREE_DAILY.rows_read &&
+   /^\d{4}-\d{2}-\d{2}$/.test(proof?.day_utc??"");
+}
 if(process.argv[1]?.endsWith("/reserve-p0b-native-auth-ticket.mjs")){
  try{const x=await reserveP0bNativeAuthTicket({execute:async sql=>executeRemote(sql)});console.log("P0B_B2_NATIVE_AUTH_D1_RESERVATION_VERIFIED="+x.readback_verified);if(process.env.GITHUB_OUTPUT)await import("node:fs/promises").then(fs=>fs.appendFile(process.env.GITHUB_OUTPUT,"reserved=true\n"));}
- catch(e){const c=e instanceof Error?e.message:"";console.error(/^P0B_[A-Z0-9_]+$/u.test(c)?c:"P0B_B2_NATIVE_AUTH_D1_RESERVATION_FAILED");process.exitCode=1}
+ catch(e){
+ const c=e instanceof Error?e.message:"";
+ if(c==="P0B_B2_NATIVE_AUTH_D1_EXECUTION_FAILED"){
+   try{
+     const proof=await readCloudflareD1AccountQuota();
+     console.error(verifiedP0bD1ReadQuotaExhaustion(proof)
+       ?"P0B_D1_PROVIDER_ROW_READ_LIMIT_REACHED_VERIFIED"
+       :"P0B_D1_PROVIDER_READ_LIMIT_NOT_CONFIRMED");
+   }catch{console.error("P0B_D1_PROVIDER_QUOTA_METRICS_UNAVAILABLE");}
+ }
+ console.error(/^P0B_[A-Z0-9_]+$/u.test(c)?c:"P0B_B2_NATIVE_AUTH_D1_RESERVATION_FAILED");
+ process.exitCode=1;
+}
 }
