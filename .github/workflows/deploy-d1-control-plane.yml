@@ -229,6 +229,7 @@ jobs:
     timeout-minutes: 15
     environment: production
     env:
+      RISK_GATE_COUNTRY_SCOPE: HOT50
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
@@ -445,6 +446,8 @@ jobs:
           if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('INVALID_DEPLOY_SOURCE_SHA');
           const config = JSON.parse(output);
           config.vars = { ...(config.vars ?? {}), GEOMACRO_SOURCE_SHA: sourceSha };
+          if(config.vars.RISK_GATE_COUNTRY_SCOPE !== process.env.RISK_GATE_COUNTRY_SCOPE)
+            throw new Error('RISK_GATE_DEPLOY_SCOPE_MISMATCH');
           // Existing production jobs remain unchanged until B2 activation.
           if(process.env.P0B_ACTIVATE==='1'){
             const bucket=String(process.env.P0B_B2_BUCKET||'').trim();
@@ -894,6 +897,11 @@ jobs:
         run: bun scripts/bootstrap-7day-rollup.ts
 
       - name: Reconcile current-day 207 exact private Supabase SHA receipts when D1 census is complete
+        # The owner paused the global Risk Gate. Canonical-page sync is
+        # restricted to the selected scope; never run its 207-target caller
+        # against a Hot50-only deployment. The dedicated three-tier proof
+        # checks actual Hot50 readiness after successful deployment.
+        if: env.RISK_GATE_COUNTRY_SCOPE != 'HOT50'
         shell: bash
         run: |
           set -euo pipefail
