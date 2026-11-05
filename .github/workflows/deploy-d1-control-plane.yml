@@ -615,6 +615,28 @@ jobs:
             });
           '
 
+      - name: Verify Cloudflare source Queue budget ledger migration before enabling V3
+        if: env.P0B_ACTIVATE == '1'
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type='table' AND name='cloudflare_source_poll_queue_budget';")"
+          printf '%s' "$proof" | node -e '
+            let raw="";
+            process.stdin.on("data",x=>raw+=x);
+            process.stdin.on("end",()=>{
+              const parsed=JSON.parse(raw);
+              const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
+                x?.results??x?.result?.results??[]);
+              if(Number(rows[0]?.table_count)!==1)
+                throw Error("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_MISSING");
+              console.log("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_READBACK=true");
+            });
+          '
+
       - name: Generate deterministic P1 1077 source-category registry SQL
         if: env.P0B_ACTIVATE == '1'
         shell: bash
