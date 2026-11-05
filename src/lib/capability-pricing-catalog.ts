@@ -95,15 +95,19 @@ export const GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS=[
   {id:"basic_focused",name:"Basic / Focused",variant:"existing_proof_preflight",
    score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
    confidence:"LOW / PROVISIONAL",
-   deliverables:["Indicative Risk Score (0–100)","Fast signal alerts"]},
+   deliverables:["Observed activity signal (provisional)","Machine-readable reason codes",
+    "Material flash override flag","Signed cryptographic audit receipt"]},
   {id:"standard",name:"Standard",variant:"standard",
    score_kind:"CORROBORATED_RISK_SCORE",confidence:"MEDIUM / VERIFIED",
-   deliverables:["Corroborated Risk Score","Three-category fact sheets","Source references"]},
+   deliverables:["Corroborated Risk Score","Three-category fact sheets","Source references",
+    "Custom policy profile","Machine-readable reason codes","Flash override","Signed audit receipt"]},
   {id:"complex_full",name:"Complex / Full",variant:"complex_multi_source",
    score_kind:"PROPRIETARY_INSTITUTIONAL_SIGNED_SCORE",
    confidence:"HIGH / CRYPTO_SIGNED",
    deliverables:["Institutional Risk Score","Ed25519 signature",
-     "7-day corridor friction history","B2 archive reference","Evidence chain"]},
+     "7-day corridor friction history","B2 archive reference","Evidence chain",
+     "Custom policy profile","Historical replay SDK","Reason codes and mitigation",
+     "Material flash override","Signed audit receipt"]},
 ] as const;
 export function publicRiskGateThreeTierProducts(){
  return GEOMACRO_RISK_GATE_THREE_TIER_PRODUCTS.map(tier=>{

@@ -246,6 +246,8 @@ export function evaluateRiskGate(
       }));
 
   return {
+    intraday_override: false,
+    flash_check_available: true,
     schema_version:
       RISK_GATE_SCHEMA_VERSION,
     request_id:
@@ -296,6 +298,20 @@ export function evaluateRiskGate(
       policy_version:
         request.policy.policy_version,
     },
+    primary_driver:
+      topDrivers[0]?.driver.toUpperCase() ?? reasonCodes[0]?.toUpperCase() ?? "NO_DOMINANT_DRIVER",
+    affected_domain: topDrivers[0]?.driver === "rare_earth_supply" ||
+      topDrivers[0]?.driver === "critical_minerals" ? "critical_minerals" :
+      ["monetary_policy","inflation","labor_market","currency_fx","macro_stress"].includes(topDrivers[0]?.driver ?? "") ?
+       "macro_fx" : "geopolitics",
+    severity_score: Number(gro.risk.score.toFixed(2)),
+    suggested_mitigation: decision === "CONTINUE" ?
+      {exposure_cap_ratio:1,settlement_delay_hours:0} :
+      decision === "REDUCE_LIMIT" ?
+       {exposure_cap_ratio:0.5,settlement_delay_hours:24} :
+       decision === "REQUIRE_APPROVAL" ?
+        {exposure_cap_ratio:0,settlement_delay_hours:24} :
+        {exposure_cap_ratio:0,settlement_delay_hours:0},
     execution_authorized:
       false,
   };
