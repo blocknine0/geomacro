@@ -9,6 +9,9 @@ test("two bounded UTC daily observations retry after quota reset without unsigne
  assert.match(workflow,/cron: "37 0 \* \* \*"/u);
  assert.match(workflow,/cron: "27 6 \* \* \*"/u);
  assert.match(workflow,/group: geomacro-global-country-readiness-audit/u);
+ assert.doesNotMatch(workflow,/^  (?:push|workflow_run):/mu);
+ assert.match(workflow,/github.event_name == 'schedule' \|\| github.event_name == 'workflow_dispatch'/u);
+ assert.match(workflow,/195x3-public-runtime-read.test.mjs/u);
  assert.match(workflow,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/u);
  assert.match(workflow,/B2_ACCOUNT_QUOTA_WORKFLOW_ID: global_195_audit/u);
  assert.match(workflow,/B2_REQUEST_BUDGET: "12"/u);
