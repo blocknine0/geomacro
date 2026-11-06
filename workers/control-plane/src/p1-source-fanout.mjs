@@ -179,6 +179,13 @@ export async function consumeP1SourcePollBatch(batch,env,{
  if(batch?.queue!=="geomacro-source-poll"||!Array.isArray(batch.messages)||
     batch.messages.length>BATCH||!env?.DB?.prepare)
   throw Error("P1_QUEUE_CONSUMER_BINDING_INVALID");
+ if(env.GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED!=="true"||
+    env.GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED!=="true"||
+    env.GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX!=="120000"){
+  for(const msg of batch.messages)msg.retry({delaySeconds:30});
+  return {status:"P1_CONSUMER_ACCOUNT_D1_GOVERNOR_HELD",
+   retried:batch.messages.length,d1_reads:0,d1_writes:0};
+ }
  // Paid-mode runtime sets max_batch_size:1 so a single invocation processes
  // at most 15 source polls. Legacy V1/V2 messages remain compatible.
  if(batch.messages.length===1&&
