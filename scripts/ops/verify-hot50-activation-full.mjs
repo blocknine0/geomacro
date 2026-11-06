@@ -155,44 +155,66 @@ async function listB2(){
  }while(token!==null);
  return {keys,requests};
 }
-const indexKey=process.env.GEOMACRO_INDEX_ISSUER_PUBLIC_KEY_SPKI_B64;
-const reviewerKey=process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM;
-function checkDetachedSignature(publicKey,message,raw){
- if(!publicKey||!raw||!/^[A-Za-z0-9+/]+={0,2}$/.test(raw))return false;
- try{return verify(null,message,createPublicKey(publicKey),Buffer.from(raw,"base64"))}
- catch{return false}
+function canonical(v){
+ if(v===null||typeof v==="string"||typeof v==="boolean")return JSON.stringify(v);
+ if(typeof v==="number"&&Number.isFinite(v))return JSON.stringify(v);
+ if(Array.isArray(v))return "["+v.map(canonical).join(",")+"]";
+ if(v&&typeof v==="object"){
+  if(Object.keys(v).includes("__proto__"))fail("SIGNED_JSON_FORBIDDEN_KEY");
+  return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}";
+ }
+ fail("SIGNED_PAYLOAD_NON_JSON");
 }
 async function signedIndices(){
- const {data,response}=await read(EDGE);
- const arr=data?.data?.indices;
- if(data?.schema!=="geomacro.public-risk-indices-live.v1"||
-    !Array.isArray(arr)||arr.length!==3||
-    new Set(arr.map(x=>x.key)).size!==3||
-    !["geopolitics","macro","critical_minerals"].every(k=>arr.some(x=>x.key===k&&
-      x.status==="available"&&Number.isFinite(x.score)&&x.score>=0&&x.score<=100)))
-  fail("CERTIFIED_THREE_INDEX_PAYLOAD_INVALID");
- // An authority header, B2 hash or self-issued HMAC is not an independently
- // verifiable reviewer certification. Demand TWO detached Ed25519 signatures
- // over the exact canonical HTTP JSON document, pinned to distinct keys.
- const digest=sha(JSON.stringify(data));
- const issuerSig=response.headers.get("x-geomacro-index-ed25519-signature");
- const reviewerSig=response.headers.get("x-geomacro-reviewer-ed25519-signature");
- const issuer=indexKey?{key:Buffer.from(indexKey,"base64"),format:"der",type:"spki"}:null;
- const pin=String(process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256??"");
- if(!HASH.test(pin)||!reviewerKey||!issuer)fail("APPROVED_REVIEWER_OR_ISSUER_KEY_UNAVAILABLE");
- const reviewer=createPublicKey(reviewerKey),iss=createPublicKey(issuer);
- if(reviewer.asymmetricKeyType!=="ed25519"||iss.asymmetricKeyType!=="ed25519")
-   fail("INDEX_OR_REVIEWER_NOT_ED25519");
+ const issuerB64=String(process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
+ const reviewerPem=String(process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM??"");
+ const reviewerPin=String(process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256??"");
+ if(!issuerB64||!reviewerPem||!HASH.test(reviewerPin))
+   fail("APPROVED_REVIEWER_OR_ISSUER_PUBLIC_PIN_MISSING");
+ const issuer=createPublicKey({key:Buffer.from(issuerB64,"base64"),format:"der",type:"spki"});
+ const reviewer=createPublicKey(reviewerPem);
  const reviewerDer=reviewer.export({format:"der",type:"spki"});
- const issuerDer=iss.export({format:"der",type:"spki"});
- if(sha(reviewerDer)!==pin||reviewerDer.equals(issuerDer))
-   fail("REVIEWER_PIN_MISMATCH_OR_SAME_SIGNING_IDENTITY");
- if(!checkDetachedSignature(issuer,Buffer.from(digest,"hex"),issuerSig)||
-    !checkDetachedSignature(reviewerKey,Buffer.from(digest,"hex"),reviewerSig))
-  fail("CERTIFIED_REVIEWER_OR_ISSUER_SIGNATURE_UNVERIFIED");
- if(response.headers.get("x-geomacro-authority")!=="backblaze-b2-risk-indices-edge")
-  fail("RISK_INDEX_AUTHORITY_INVALID");
- return {three_domains:true,sha256:digest,reviewer_and_issuer_signatures_verified:true};
+ if(issuer.asymmetricKeyType!=="ed25519"||reviewer.asymmetricKeyType!=="ed25519"||
+    sha(reviewerDer)!==reviewerPin||
+    issuer.export({format:"der",type:"spki"}).equals(reviewerDer))
+   fail("REVIEWER_AUTHORITY_OR_DISTINCT_SIGNER_INVALID");
+ const source=(await read(CONTROL+"/v1/public/reviewed-risk-indices")).data;
+ const publicKey=(await read(CONTROL+"/v1/public/risk-gate-decision-key")).data;
+ if(source.ok!==true||source.schema!=="geomacro.reviewed-indices-signed-delivery.v1"||
+    source.signature_scheme!=="Ed25519"||
+    source.signature_key_id!==publicKey.key_id||
+    publicKey.public_key_spki_b64!==issuerB64 ||
+    !/^[A-Za-z0-9+/]+={0,2}$/.test(source.signature_b64??""))
+   fail("REVIEWED_INDEX_DELIVERY_ENVELOPE_INVALID");
+ const payload=source.signed_payload;
+ if(payload?.schema!=="geomacro.reviewed-indices-issuer-delivery.v1"||
+    payload.signature_proves!=="ISSUER_DELIVERY_INTEGRITY_NOT_REVIEWER_IDENTITY"||
+    payload.reviewer_source!=="EXISTING_PROTECTED_GRI_V1_2_PUBLISHER")
+   fail("REVIEWED_INDEX_SOURCE_PROOF_INVALID");
+ const bytes=Buffer.from(canonical(payload));
+ if(sha(bytes)!==source.payload_sha256||
+    !verify(null,bytes,issuer,Buffer.from(source.signature_b64,"base64")))
+   fail("REVIEWED_INDEX_ED25519_INVALID");
+ const app=(await read("https://geomacro.live/api/public/reviewed-risk-indices")).data;
+ const arr=app?.data?.indices;
+ const now=Date.now();
+ if(app.ok!==true||app.meta?.signature_verified!==true||
+    app.meta?.signature_scheme!=="Ed25519"||
+    app.meta?.public_key_trust!=="separately_pinned"||
+    app.meta?.payload_sha256!==source.payload_sha256||
+    app?.data?.proofHash!==payload.data?.proofHash ||
+    !Array.isArray(arr)||arr.length!==3 ||
+    new Set(arr.map(x=>x.key)).size!==3 ||
+    !["geopolitics","macro","critical_minerals"].every(k=>arr.some(x=>
+      x.key===k&&x.status==="available"&&Number.isFinite(x.score)&&
+      x.score>=0&&x.score<=100&&x.readingStatus==="current"&&
+      Number.isFinite(Date.parse(x.readingAsOf??""))&&
+      now-Date.parse(x.readingAsOf)<=60*60000)))
+   fail("THREE_CURRENT_REVIEWED_SIGNED_INDICES_UNAVAILABLE");
+ return {three_domains:true,issuer_delivery_ed25519_verified:true,
+   reviewer_public_authority_pinned_and_distinct:true,
+   reviewed_gri_source:"EXISTING_PROTECTED_GRI_V1_2_PUBLISHER",
+   payload_sha256:source.payload_sha256};
 }
 const ASK_CASES=[
  ["geopolitics","What is the current Geopolitical Risk Index?"],
