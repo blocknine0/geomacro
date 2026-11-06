@@ -5,6 +5,7 @@ import {
   RISK_INDICES_VISIBLE_REFRESH_MS,
   riskIndicesRefreshDelay,
   riskIndicesResumeDelay,
+  riskIndicesSignedSourceRemainingMs,
 } from "./risk-indices-browser-cadence";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -300,7 +301,7 @@ export function useRiskIndices(refreshMs = RISK_INDICES_VISIBLE_REFRESH_MS) {
   useEffect(() => {
     let cancelled = false;
     let inFlight = false;
-    let scheduled: ReturnType<typeof setTimeout> | undefined;
+    let scheduled: number | undefined;
     let lastStartedAt = 0;
     let nextCadenceMs = riskIndicesRefreshDelay(false, refreshMs);
 
@@ -310,13 +311,36 @@ export function useRiskIndices(refreshMs = RISK_INDICES_VISIBLE_REFRESH_MS) {
         scheduled = undefined;
       }
     }
+    function remainingSignedValidityMs(): number | null {
+      const previous = lastCurrent.current;
+      if (!previous) return null;
+      return riskIndicesSignedSourceRemainingMs(
+        previous.snapshotAsOf,
+        previous.indices.map(index => index.readingAsOf),
+      );
+    }
+    function revokeExpiredCurrent(): boolean {
+      if (remainingSignedValidityMs() !== 0) return false;
+      // Fail closed immediately on real source expiry, not up to one browser
+      // polling period later. This never substitutes a historical score.
+      lastCurrent.current = null;
+      hasData.current = false;
+      setData(null);
+      setStatus("error");
+      return true;
+    }
     function scheduleNext(delayMs: number) {
       stopTimer();
       if (cancelled || document.visibilityState === "hidden") return;
+      const sourceRemaining = remainingSignedValidityMs();
+      const boundedDelay = sourceRemaining === null
+        ? delayMs
+        : Math.min(delayMs, sourceRemaining);
       scheduled = window.setTimeout(() => {
         scheduled = undefined;
+        revokeExpiredCurrent();
         void load(true);
-      }, delayMs);
+      }, boundedDelay);
     }
     async function load(forceRefresh = false) {
       if (cancelled || inFlight || document.visibilityState === "hidden") return;
@@ -361,7 +385,7 @@ export function useRiskIndices(refreshMs = RISK_INDICES_VISIBLE_REFRESH_MS) {
         nextCadenceMs = riskIndicesRefreshDelay(false, refreshMs);
       } finally {
         inFlight = false;
-        if (!cancelled && document.visibilityState !== "hidden") {
+        if (!cancelled && !document.hidden) {
           scheduleNext(riskIndicesResumeDelay(lastStartedAt, Date.now(), nextCadenceMs));
         }
       }
@@ -374,8 +398,9 @@ export function useRiskIndices(refreshMs = RISK_INDICES_VISIBLE_REFRESH_MS) {
         return;
       }
       if (inFlight) return;
+      const justExpired = revokeExpiredCurrent();
       const remaining = riskIndicesResumeDelay(lastStartedAt, Date.now(), nextCadenceMs);
-      if (remaining === 0) {
+      if (justExpired || remaining === 0) {
         stopTimer();
         void load(true);
       } else {
