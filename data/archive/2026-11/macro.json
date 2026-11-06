@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-05T17:27:23.972Z",
+  "updated_at": "2026-11-06T00:05:28.339Z",
   "signals": [
+    {
+      "id": "macro-c2bfefb4",
+      "category": "macro",
+      "title": "Geomacro finds Bawumia urged government to prioritise gold reserves over trading - MyJoyOnline",
+      "what_changed": "A monitored source feed reports: Bawumia urged government to prioritise gold reserves over trading - MyJoyOnline. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T16:37:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-070b065d",
+      "category": "macro",
+      "title": "Geomacro finds Caledonia signed $150m financing for Bilboes Gold Project",
+      "what_changed": "A monitored source feed reports: Caledonia signed $150m financing for Bilboes Gold Project. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T13:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-32bfcb16",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Official-Sector Anchor held Fast While Retail Demand Slips Away - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Official-Sector Anchor held Fast While Retail Demand Slips Away - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T07:10:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-3b64d137",
       "category": "macro",

@@ -2,8 +2,141 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-05T17:27:23.972Z",
+  "updated_at": "2026-11-06T00:05:28.339Z",
   "signals": [
+    {
+      "id": "rare_earth-e17bb9c2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Resolution Copper Mining approved $144m investment in Arizona project",
+      "what_changed": "A monitored source feed reports: Resolution Copper Mining approved $144m investment in Arizona project. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T22:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-b77caa47",
+      "category": "rare_earth",
+      "title": "Geomacro finds LibertyStream announced Lithium Carbonate Sales Contract with International Battery Material Maker Covering 2027, 2031 Supply - Batteries News",
+      "what_changed": "A monitored source feed reports: LibertyStream announced Lithium Carbonate Sales Contract with International Battery Material Maker Covering 2027, 2031 Supply - Batteries News. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T21:48:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-1a7c2643",
+      "category": "rare_earth",
+      "title": "Geomacro finds Lundin cut copper outlook again as Chile weather bites - The Northern Miner",
+      "what_changed": "A monitored source feed reports: Lundin cut copper outlook again as Chile weather bites - The Northern Miner. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T17:26:52.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-df100b2c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Benchmark launched consultation on increasing publishing frequency of synthetic and natural graphite price grades to every two weeks - Benchmark Mineral Intelligence",
+      "what_changed": "A monitored source feed reports: Benchmark launched consultation on increasing publishing frequency of synthetic and natural graphite price grades to every two weeks - Benchmark Mineral Intelligence. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T15:32:48.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d2cadc5b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Lundin cut copper outlook again as wild Chile weather bites - Mining.com",
+      "what_changed": "A monitored source feed reports: Lundin cut copper outlook again as wild Chile weather bites - Mining.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T15:30:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d14948c0",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper held Near $14,000 as US Import Pullback Meets Supply Tightness - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Copper held Near $14,000 as US Import Pullback Meets Supply Tightness - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T14:31:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-ea57e49f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Viridis signed binding rare earths supply contract with Solvay",
+      "what_changed": "A monitored source feed reports: Viridis signed binding rare earths supply contract with Solvay. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T13:09:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-7be2e943",
       "category": "rare_earth",
@@ -18,6 +151,63 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-956ca29b",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cabinet approved scheme to promote processing of critical minerals - Manorama Yearbook",
+      "what_changed": "A monitored source feed reports: Cabinet approved scheme to promote processing of critical minerals - Manorama Yearbook. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T11:04:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-89384b69",
+      "category": "rare_earth",
+      "title": "Geomacro finds Morgan Stanley warned about copper scarcity: Why US stockpiling threatens global supply - The Financial Express",
+      "what_changed": "A monitored source feed reports: Morgan Stanley warned about copper scarcity: Why US stockpiling threatens global supply - The Financial Express. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T10:25:33.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-8640ee3c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport announced plans to boost US copper and molybdenum production - Global Mining Review",
+      "what_changed": "A monitored source feed reports: Freeport announced plans to boost US copper and molybdenum production - Global Mining Review. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-05T09:09:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
