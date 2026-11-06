@@ -36,8 +36,40 @@ jobs:
       - name: Bundle actual Cloudflare Worker without credentials
         working-directory: services/commercial-api
         run: npx --yes wrangler@4.136.3 deploy --dry-run --outdir /tmp/commercial-api-worker
+  postgres-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres_ephemeral_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - working-directory: services/commercial-api
+        run: npm ci --ignore-scripts
+      - name: Verify actual concurrent PostgreSQL sessions on a disposable CI database
+        working-directory: services/commercial-api
+        env:
+          PG_LOCAL: 'true'
+          GEOMACRO_CONCURRENCY_DATABASE_URL: postgresql://postgres:postgres_ephemeral_ci_only@localhost:5432/postgres
+        run: |
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/schema.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/functions.sql
+          node --test test/concurrency.test.mjs
   deploy:
-    needs: test
+    needs: [test, postgres-concurrency]
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15

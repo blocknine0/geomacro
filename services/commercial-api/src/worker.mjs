@@ -50,8 +50,8 @@ export default {
    deployed_sha:env.DEPLOYED_SHA??null,paypal_configured:!!runtime.paypal,x402_configured:!!runtime.x402,
    ledger_configured:!!runtime.pool,signer_configured:!!runtime.publicKey,blockers:runtime.blockers});
   if(request.method==='GET'&&url.pathname==='/v1/readiness'){
-   let ledger=false;try{ledger=(await runtime.pool?.call('health'))?.ready===true;}catch{}
-   return response({ok:ledger,ledger_verified:ledger,blockers:runtime.blockers},ledger?200:503);
+   let ledger=false,ledgerError=null;try{ledger=(await runtime.pool?.call('health'))?.ready===true;}catch(e){ledgerError=e.code??'LEDGER_READ_FAILED';}
+   return response({ok:ledger,ledger_verified:ledger,ledger_error:ledgerError,blockers:runtime.blockers},ledger?200:503);
   }
   if(request.method==='GET'&&url.pathname==='/.well-known/jwks.json'){
    if(!runtime.publicKey)return response({error:'SIGNER_UNAVAILABLE'},503);
