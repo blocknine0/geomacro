@@ -15,11 +15,13 @@ base.d1_databases[0].database_id=db;
 const writerIntegration=JSON.parse(readFileSync(
  'config/phase1-writer-integration.json','utf8'));
 if(writerIntegration?.schema!=='geomacro.phase1.d1-writer-integration.v1'||
- writerIntegration.account_wide_governor_verified!==true)
- throw Error('CANARY_ACCOUNT_WIDE_D1_GOVERNOR_NOT_VERIFIED');
+ writerIntegration.account_wide_governor_verified!==true||
+ writerIntegration.account_wide_read_cap_verified!==true||
+ writerIntegration.daily_soft_rows_read_max!==120000)
+ throw Error('CANARY_ACCOUNT_WIDE_D1_READ_WRITE_GOVERNOR_NOT_VERIFIED');
 base.vars={...base.vars,GEOMACRO_SOURCE_SHA:sha,
  GEOMACRO_D1_READ_HOTSPOT_V2:'1',GEOMACRO_D1_READ_METRICS_SAMPLE:'1',
- GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:'true'};
+ GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:'true',\n GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED:'true'};
 if(base.vars.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE)
  throw Error('CANARY_PAYMENT_RUNTIME_MUST_REMAIN_UNACCEPTED');
 const source=JSON.stringify(base,null,2)+'\n';
