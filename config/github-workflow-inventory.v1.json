@@ -65,6 +65,7 @@
     "commerce-freeze-quarantine-drill.yml",
     "commerce-safety-drill-acceptance.yml",
     "commercial-api-production-acceptance.yml",
+    "commercial-api-worker.yml",
     "commercial-coordinated-launch-preflight.yml",
     "commercial-corridor-census.yml",
     "commercial-country-pilot-acceptance.yml",
