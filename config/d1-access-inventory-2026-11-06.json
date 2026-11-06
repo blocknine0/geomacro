@@ -588,6 +588,61 @@
   "limits_of_evidence": [
     "Static classification proves file-level D1 access candidates, not runtime call frequency or exact rows scanned.",
     "The scan was emitted by Product CI on the PR merge ref; it is not a production telemetry census.",
-    "All 80 candidates remain ungoverned until each D1 query is admitted before execution by an account-wide design and the provider quota is independently read back."
-  ]
+    "All 80 candidates remain ungoverned until each D1 query is admitted before execution by an account-wide design and the provider quota is independently read back.",
+    "Tracked templates identify at least two logical D1 databases, but production UUIDs and the live account's complete database census are not exposed by repository files.",
+    "The x402 ledger has an independent D1 template and no control-plane service binding in that template; its calls cannot be assumed covered by the control-plane governor."
+  ],
+  "database_binding_topology": {
+    "evidence_basis": "tracked Wrangler configs and operations documentation; this does not assert live deployed UUIDs",
+    "logical_databases": [
+      {
+        "database_name": "geomacro-control-plane",
+        "binding": "DB",
+        "config_path": "workers/control-plane/wrangler.example.jsonc",
+        "configured_id": "REPLACE_WITH_D1_DATABASE_ID",
+        "runtime_id_status": "NOT_PRESENT_IN_TRACKED_CONFIG; must be independently read back from Cloudflare",
+        "sha1_blob": "8fdf2f2bd80fed03856ff1058f86da0347e2b69f"
+      },
+      {
+        "database_name": "geomacro-x402-ledger",
+        "binding": "DB",
+        "config_path": "workers/x402-ledger/wrangler.template.jsonc",
+        "configured_id": "REPLACE_WITH_D1_DATABASE_ID",
+        "runtime_id_status": "NOT_PRESENT_IN_TRACKED_CONFIG; separate DB from control-plane in the template",
+        "sha1_blob": "b0793d0325c02aa1904d6ef81c9fa3bded267d83"
+      }
+    ],
+    "service_bound_workers": [
+      {
+        "worker": "geomacro-global-risk",
+        "config_path": "workers/global-risk-edge/wrangler.jsonc",
+        "binding": "CONTROL_PLANE",
+        "service": "geomacro-control-plane",
+        "sha1_blob": "6b6c240534695cbdc45452c65f86ba4b39f476dc"
+      },
+      {
+        "worker": "geomacro-intelligence",
+        "config_path": "workers/intelligence-edge/wrangler.jsonc",
+        "binding": "CONTROL_PLANE",
+        "service": "geomacro-control-plane",
+        "sha1_blob": "e3f8657b9543393b6aba92e16ae594c6d2bec265"
+      },
+      {
+        "worker": "geomacro-risk-indices",
+        "config_path": "workers/risk-indices-edge/wrangler.jsonc",
+        "binding": "CONTROL_PLANE",
+        "service": "geomacro-control-plane",
+        "sha1_blob": "4d35c7a99e23f42a5fa624d2165ade7b03bb7e9f"
+      }
+    ],
+    "evidence_doc": {
+      "path": "docs/ops/CUSTOMER_D1_CANONICAL_CUTOVER_3295.md",
+      "sha1_blob": "e2805236c9294d8769f93f40ed4018d57ec97810",
+      "states_production_control_plane_is_named_existing_db_but_does_not_expose_uuid": true
+    },
+    "known_implication": "At least two distinct logical D1 databases are represented in tracked Worker configs. Account-wide 120,000-row read governance must aggregate both logical DBs; the x402 template has no shared service binding to the control-plane governor, so its admission path is not proven to use a central reservation.",
+    "actual_cloudflare_database_uuid_count": "UNKNOWN",
+    "actual_deployed_worker_binding_readback": "NOT_VERIFIED",
+    "account_wide_governor_verified": false
+  }
 }
