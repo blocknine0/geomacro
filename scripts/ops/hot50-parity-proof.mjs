@@ -12,7 +12,14 @@ export function parseBucketList(bytes,prefix){
  const truncated=one("IsTruncated");
  if(!["true","false"].includes(truncated))throw Error("B2_LIST_TRUNCATION_INVALID");
  const decodeXml=s=>s.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
- const keys=[...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map(m=>decodeURIComponent(decodeXml(m[1])));
+ // EncodingType=url percent-encodes S3 object keys. An XML entity in a
+ // Key makes the wire representation ambiguous; fail closed instead of
+ // recursively interpreting XML entities and URL escapes.
+ const keys=[...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map(([,encoded])=>{
+   if(encoded.includes("&"))throw Error("B2_LIST_KEY_ENTITY_INVALID");
+   try{return decodeURIComponent(encoded)}
+   catch{throw Error("B2_LIST_KEY_PERCENT_ENCODING_INVALID")}
+ });
  if(keys.some(k=>!k.startsWith(prefix))||new Set(keys).size!==keys.length)
    throw Error("B2_LIST_SCOPE_OR_DUPLICATE_INVALID");
  if(Number(one("KeyCount"))!==keys.length)throw Error("B2_LIST_KEYCOUNT_INVALID");
