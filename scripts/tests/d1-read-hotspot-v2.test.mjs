@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {withPublicEdgeCache} from "../../workers/control-plane/src/cache-middleware.mjs";
 import {readHot50MaterializedNews} from "../../workers/control-plane/src/hot50-materialized-news.mjs";
+import {readDerivedStories,readDerivedStoriesBundle} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {readCachedSignedGro} from "../../workers/control-plane/src/signed-gro-read-cache.mjs";
 
 const url="https://geomacro.example/v1/public/website-derived-news-bundle";
@@ -91,4 +92,79 @@ test("production routing uses explicit opt-in, and existing private/paid gates r
  assert.match(source,/idx_private_osint_country_category_clock_v2/);
  assert.match(worker,/return predgeResearchDerivedNewsFeed\(request,env\);/);
  assert.match(worker,/return handlePrivateOsint15m\(request,env\)/);
+});
+
+
+test("unmigrated or empty CQRS table transparently falls back to canonical journal with identical JSON and headers",async()=>{
+ const now=Date.parse("2026-11-06T07:00:00.000Z");
+ const signal={
+  id:"macro-00000001",category:"macro",
+  title:"Geomacro finds original official policy change in the observed sector",
+  what_changed:"An official publisher released a new statement about a policy development in the observed sector.",
+  why_it_matters:"This release may affect operating assumptions but actual consequences require independent confirmation.",
+  topic:"monetary policy",development_type:"policy update",geography:null,
+  published_at:"2026-11-06T06:00:00.000Z",date_precision:"exact",observed_release_count:1,
+  sources_credited:[],status:"official_release_observed_unscored",
+  same_event_corrob_verified:false,severity:null
+ };
+ const canonicalRow={story_json:JSON.stringify(signal),first_seen_at:"2026-11-06T06:05:00.000Z"};
+ const sqlReads=[];
+ function fixture(cacheMode,flag){
+  const env={GEOMACRO_D1_READ_HOTSPOT_V2:flag,DB:{
+   prepare(sql){
+    sqlReads.push(sql);
+    if(sql.includes("materialized_cache")){
+     if(cacheMode==="absent")throw Error("D1_ERROR: no such table: materialized_cache");
+     return {bind(){return {all:async()=>({
+      results:cacheMode==="empty"?[]:[{payload:null,updated_at:now}],
+      meta:{rows_read:1,rows_written:0}
+     })}}};
+    }
+    if(sql.includes("website_derived_materialized")){
+     return {all:async()=>{throw Error("no such table: website_derived_materialized_pages_v1")}};
+    }
+    if(sql.includes("website_derived_intelligence")){
+     return {bind(){return {all:async()=>({results:[canonicalRow]})}}};
+    }
+    throw Error("UNEXPECTED_SQL "+sql);
+   }
+  }};
+  return env;
+ }
+ for(const mode of ["absent","empty","null-payload"]){
+  const env=fixture(mode,"1");
+  const canonical=fixture(mode,"0");
+  const [live,baseline]=await Promise.all([
+   readDerivedStories(env,now,0,0,true),
+   readDerivedStories(canonical,now,0,0,true)
+  ]);
+  assert.equal(live.status,200,mode);
+  assert.deepEqual(await live.json(),await baseline.json(),mode);
+  assert.equal(live.headers.get("Cache-Control"),baseline.headers.get("Cache-Control"));
+  assert.equal(live.headers.get("ETag"),baseline.headers.get("ETag"));
+  assert.equal(live.headers.get("X-GeoMacro-Public-Offload"),baseline.headers.get("X-GeoMacro-Public-Offload"));
+  const [bundle,oldBundle]=await Promise.all([
+   readDerivedStoriesBundle(env,now,true),
+   readDerivedStoriesBundle(canonical,now,true),
+  ]);
+  assert.equal(bundle.status,200,mode);
+  assert.deepEqual(await bundle.json(),await oldBundle.json(),mode);
+  assert.equal(bundle.headers.get("Cache-Control"),oldBundle.headers.get("Cache-Control"));
+ }
+ assert.ok(sqlReads.some(q=>q.includes("materialized_cache")),"feature gate exercises CQRS");
+ assert.ok(sqlReads.some(q=>q.includes("website_derived_intelligence")),"fallback exercises canonical SQL");
+});
+test("the disabled flag never attempts the optional single-row materialization",async()=>{
+ let calls=0;
+ const now=Date.parse("2026-11-06T07:00:00.000Z");
+ const env={GEOMACRO_D1_READ_HOTSPOT_V2:"0",DB:{prepare(sql){
+  if(sql.includes("materialized_cache"))throw Error("MUST_NOT_QUERY_CQRS");
+  calls++;
+  return {bind(){return {all:async()=>({results:[]})}}};
+ }}};
+ const page=await readDerivedStories(env,now,0,0,false);
+ assert.equal(page.status,200);
+ const bundle=await readDerivedStoriesBundle(env,now,false);
+ assert.equal(bundle.status,200);
+ assert.equal(calls,2);
 });
