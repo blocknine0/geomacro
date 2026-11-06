@@ -74,19 +74,19 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect(B2_PUBLIC_EDGE_GLOBAL_GET_CEILING).toBe(10);
     expect(B2_APP_STRUCTURAL_SHARED_GET_CEILING).toBe(10);
     expect(B2_APP_PRIVATE_METADATA_SHARED_GET_CEILING).toBe(18);
-    expect(B2_DAILY_LIMITS).toEqual({total:720,GET:340,PUT:380,HEAD:40,NATIVE_AUTH:40});
+    expect(B2_DAILY_LIMITS).toEqual({total:4080,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:40});
   });
 
   it("enforces a single account cap across 6 workflows under concurrent reservation", async () => {
     const {db,counters,byWorkflow}=fakeD1();
-    const results = await Promise.all(Array.from({length:410},(_,i)=>
+    const results = await Promise.all(Array.from({length:2025},(_,i)=>
       reserveB2AccountQuota(db,{kind:"PUT",workflow_id:"archive_"+(i%6)},{now:date})));
-    expect(results.filter(x=>x.ok)).toHaveLength(380);
-    expect(results.filter(x=>!x.ok)).toHaveLength(30);
+    expect(results.filter(x=>x.ok)).toHaveLength(2000);
+    expect(results.filter(x=>!x.ok)).toHaveLength(25);
     expect(results.filter(x=>!x.ok).every(x=>x.error==="B2_GLOBAL_DAILY_QUOTA_EXHAUSTED")).toBe(true);
-    expect(counters.get("2026-10-09")?.put_requests).toBe(380);
+    expect(counters.get("2026-10-09")?.put_requests).toBe(2000);
     expect(byWorkflow.size).toBe(6);
-    expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(380);
+    expect(Array.from(byWorkflow.values()).reduce((a,b)=>a+b,0)).toBe(2000);
   });
 
   it("separately enforces GET and total hard caps, and starts a new day with fresh tickets", async () => {
@@ -104,7 +104,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
     expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"writer_two"},{now:date})).ok)
       .toBe(false);
     const status=await readB2AccountQuota(db,{now:date});
-    expect(status.used).toEqual({total:720,GET:340,PUT:380,HEAD:0,NATIVE_AUTH:0});
+    expect(status.used).toEqual({total:4000,GET:2000,PUT:2000,HEAD:0,NATIVE_AUTH:0});
     const next=await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"reader_one"},
       {now:new Date("2026-10-10T00:00:01Z")});
     expect(next.ok).toBe(true);
@@ -161,7 +161,7 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
       kind:"GET",workflow_id:"historical_gri_version_recovery"},{now:date})));
     expect(historical.every(x=>x.ok)).toBe(true);
     expect(byWorkflow.get("2026-10-09|historical_gri_version_recovery|GET")).toBe(3);
-    // Other admitted producers retain the updated 340-GET hard safety cap.
+    // Other admitted producers retain the account-wide 2,000-GET hard cap.
     const producer=await Promise.all(Array.from({length:B2_DAILY_LIMITS.GET},()=>reserveB2AccountQuota(db,{
       kind:"GET",workflow_id:"gri_reviewed_current"},{now:date})));
     expect(producer.filter(x=>x.ok)).toHaveLength(B2_DAILY_LIMITS.GET-13);
