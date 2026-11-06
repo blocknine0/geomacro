@@ -42,7 +42,8 @@ export async function settleVerifiedSuccess(pool, {
   apiKey, requestId, subject, requestedTier, availableTiers, riskByTier,
   privateKey, publicKeyId, publicKeys, signal,
 }) {
-  if (!['basic', 'standard', 'complex'].includes(requestedTier) ||
+  if (!/^gm_live_[A-Za-z0-9_-]{43}$/.test(apiKey) ||
+      !['basic', 'standard', 'complex'].includes(requestedTier) ||
       typeof subject !== 'string' || !subject.length || !Array.isArray(availableTiers))
     throw new BillingError('INVALID_REQUEST');
   const requestHash = hash(canonicalize({ method: 'POST', path: '/v1/risk-gate', subject, tier: requestedTier }));
