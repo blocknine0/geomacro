@@ -45,6 +45,11 @@ const FIVE_USD_BUDGET=JSON.parse(readFileSync(
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==18_000_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.capacity_rows!==7_500||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.refill_rows_per_minute!==125||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.provider_counter_max_age_seconds!==120||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.durable_objects?.threshold_cents!==1)
   throw Error("CLOUDFLARE_CENTRAL_FIVE_USD_POLICY_WEAKENED");
