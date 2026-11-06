@@ -87,3 +87,27 @@ it("Stop settles independently of a buffering network proxy",async()=>{
  const pending=withAskCancellation(new Promise<never>(()=>{}),c.signal);
  c.abort();await expect(pending).rejects.toMatchObject({name:"AbortError"});
 });
+
+describe("Ask transport same-tab public cache",()=>{
+ afterEach(()=>vi.unstubAllGlobals());
+ it("returns a repeated standalone explainer without another POST, while context requests always fetch",async()=>{
+   const question="Explain geopolitical risk for simple educational demo 93420";
+   const body={summary:"Geopolitical risk arises when policies or international conflict affect trade and investment.",
+     what_changed:"General explanation only; no event was established.",
+     why_it_matters:"Trade and investment may face uncertainty.",
+     geomacro_view:"Assess concrete policy, actor and location.",
+     answer_kind:"explainer",insufficient_evidence:false,low_confidence:false,
+     evidence:[],gri:null,source_identity_exposed:false,durable_live_storage_write:false};
+   const wire="event: answer\\ndata: "+JSON.stringify({ok:true,data:body,context:{resolved_question:question}})+"\\n\\n";
+   const calls=vi.fn(async()=>new Response(wire,{headers:{"content-type":"text/event-stream"}}));
+   vi.stubGlobal("fetch",calls);
+   const first=await streamPublicAsk(question,[]);
+   const again=await streamPublicAsk(question,[]);
+   expect(first.answer.summary).toBe(body.summary);
+   expect(again.answer.cache_status).toBe("hit");
+   expect(calls).toHaveBeenCalledTimes(1);
+   const context=[{role:"user" as const,content:question}];
+   await streamPublicAsk(question,context);
+   expect(calls).toHaveBeenCalledTimes(2);
+ });
+});
