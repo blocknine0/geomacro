@@ -55,7 +55,7 @@ test("P1 private D1 migration provides exactly 195 x 3 countries and 10 logical 
    "p1_source_cell_mapping_health");
  }finally{f.close()}
 });
-test("P1 due sources defer before lease while account-wide D1 governor is unverified",async()=>{
+test("P1 due sources defer before lease while account-wide D1 read/write governor is unverified",async()=>{
  const f=fixture(1);
  try{
   const before=f.db.prepare("SELECT total_changes() AS n").get().n;
@@ -63,7 +63,7 @@ test("P1 due sources defer before lease while account-wide D1 governor is unveri
    DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(){throw Error("QUEUE_MUST_NOT_BE_CALLED")}},
   },{now});
-  assert.equal(result.status,"P1_DISPATCH_GOVERNOR_HELD");
+  assert.equal(result.status,"P1_DISPATCH_ACCOUNT_D1_GOVERNOR_HELD");
   assert.equal(result.deferred,true);
   assert.equal(result.durable_defer_state,"SOURCE_REGISTRY_DUE_ROWS");
   assert.equal(result.retry_on_next_scheduled_dispatch,true);
@@ -76,7 +76,7 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
  const f=fixture(1077),batches=[];let attempted=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
-    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
+    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",\n    GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED:"true",\n    GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX:"120000",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
   for(let minute=0;minute<11;minute++){
    const t=now+minute*60000,before=batches.length;
