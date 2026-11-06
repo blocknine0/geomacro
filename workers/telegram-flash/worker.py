@@ -1169,48 +1169,54 @@ class LenientFeedParser:
         return list(unique.values())
 
 
-def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
-    # Canada's official News API represents `publishedDate` in JSON, while its
-    # Atom variant omits <published> and supplies only <updated>. Do not
-    # mislabel that mutable update clock as original publication time. Map the
-    # API's explicit field into the common feed-entry shape, retaining its
-    # exact timezone and rejecting naive/malformed timestamps.
+def parse_official_canada_json_feed(raw: bytes) -> list[dict[str, Any]]:
+    """Map Canada News API JSON records without inventing publication clocks."""
     try:
         document = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
-        document = None
+        return []
     feed = document.get("feed") if isinstance(document, dict) else None
     json_entries = feed.get("entry") if isinstance(feed, dict) else None
-    if isinstance(json_entries, list):
-        normalized: list[dict[str, Any]] = []
-        for item in json_entries:
-            if not isinstance(item, dict):
-                continue
-            title = item.get("title")
-            published = item.get("publishedDate")
-            link = item.get("link")
-            if not all(isinstance(value, str) and value.strip()
-                       for value in (title, published, link)):
-                continue
-            try:
-                moment = datetime.fromisoformat(published.strip().replace("Z", "+00:00"))
-            except ValueError:
-                continue
-            if moment.tzinfo is None:
-                continue
-            entry: dict[str, Any] = {
-                "title": title.strip(),
-                "published": published.strip(),
-                "published_parsed": moment.astimezone(timezone.utc).utctimetuple(),
-                "link": link.strip(),
-                "id": link.strip(),
-            }
-            teaser = item.get("teaser")
-            if isinstance(teaser, str) and teaser.strip():
-                entry["summary"] = teaser.strip()
-            normalized.append(entry)
-        if normalized:
-            return normalized, "rss"
+    if not isinstance(json_entries, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in json_entries:
+        if not isinstance(item, dict):
+            continue
+        title = item.get("title")
+        published = item.get("publishedDate")
+        link = item.get("link")
+        if not all(isinstance(value, str) and value.strip()
+                   for value in (title, published, link)):
+            continue
+        try:
+            moment = datetime.fromisoformat(published.strip().replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if moment.tzinfo is None:
+            continue
+        entry: dict[str, Any] = {
+            "title": title.strip(),
+            "published": published.strip(),
+            "published_parsed": moment.astimezone(timezone.utc).utctimetuple(),
+            "link": link.strip(),
+            "id": link.strip(),
+        }
+        teaser = item.get("teaser")
+        if isinstance(teaser, str) and teaser.strip():
+            entry["summary"] = teaser.strip()
+        normalized.append(entry)
+    return normalized
+
+
+def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
+    # The Canada API's Atom view exposes <updated>, not <published>. Use its
+    # explicit JSON publishedDate field instead of treating mutable updates as
+    # original publication times.
+    canada_entries = parse_official_canada_json_feed(raw)
+    if canada_entries:
+        return canada_entries, "rss"
 
     parsed = feedparser.parse(raw)
     if parsed.entries:
