@@ -17,7 +17,9 @@ function fixture(){
  const sqlite=new DatabaseSync(":memory:");
  sqlite.exec(readFileSync(new URL("../../workers/control-plane/migrations/0201_progressive_risk_gate_facts.sql",import.meta.url),"utf8"));
  sqlite.exec(`CREATE TABLE unverified_observations (
-   event_id TEXT, entity_type TEXT, entity_id TEXT, event_at TEXT
+   event_id TEXT, entity_type TEXT, entity_id TEXT, event_at TEXT,
+   status TEXT, fact_basis TEXT, original_page_fetched INTEGER,
+   independent_source_count INTEGER, source_host TEXT
  )`);
  return {sqlite,env:{DB:{prepare(query){return {bind(...args){const stmt=sqlite.prepare(query);return {
    run:async()=>stmt.run(...args),first:async()=>stmt.get(...args),
@@ -66,8 +68,8 @@ test("Google-index attribution never becomes verified source corroboration",asyn
 test("existing continuously polled news index produces Basic without a signed GRO",async()=>{
  const {sqlite,env}=fixture();
  try{
-   sqlite.prepare("INSERT INTO unverified_observations VALUES (?,?,?,?)")
-     .run("index-event-1","COUNTRY","IND",at);
+   sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)")
+     .run("index-event-1","COUNTRY","IND",at,"OBSERVED","SEARCH_TITLE_ONLY",0,1,"reuters.com");
    const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
    assert.equal(observed.distinct_events,1);
    const provisional=provisionalRiskGate({
@@ -77,6 +79,18 @@ test("existing continuously polled news index produces Basic without a signed GR
    assert.ok(Number.isFinite(provisional.risk.score));
    assert.equal(provisional.execution_authorized,false);
    assert.equal(provisional.risk_metric_semantics,"OBSERVATION_DENSITY_PROXY");
+ }finally{sqlite.close()}
+});
+test("native original-page corroboration from the existing 20m collector auto-promotes Standard",async()=>{
+ const {sqlite,env}=fixture();
+ try{
+   const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)");
+   add.run("native-event-1","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
+   add.run("native-event-1","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"aninews.in");
+   const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+   assert.equal(observed.corroboration_sources_count,2);
+   assert.equal(observed.standard_ready,true);
+   assert.equal(progressiveTierMatrix(observed,false,false).standard.active,true);
  }finally{sqlite.close()}
 });
 test("zero news returns numeric no-data sentinel without granting execution",async()=>{
