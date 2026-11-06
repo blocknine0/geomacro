@@ -34,9 +34,9 @@ export type AskAnswer = HybridAskAnswer;
 
 /** Honest, complete public fallback after the bounded evidence deadline. */
 export function timedOutAskAnswer(question:string):AskAnswer {
-  const scope=/\\bgeopolitical\\s+risk\\s+index\\b/iu.test(question)?"Geopolitical Risk Index":
-    /\\bmacroeconomic\\s+risk\\s+index\\b/iu.test(question)?"Macroeconomic Risk Index":
-    /\\bcritical\\s+minerals?\\s+risk\\s+index\\b/iu.test(question)?"Critical Minerals Risk Index":
+  const scope=/\bgeopolitical\s+risk\s+index\b/iu.test(question)?"Geopolitical Risk Index":
+    /\bmacroeconomic\s+risk\s+index\b/iu.test(question)?"Macroeconomic Risk Index":
+    /\bcritical\s+minerals?\s+risk\s+index\b/iu.test(question)?"Critical Minerals Risk Index":
     "The requested GeoMacro research";
   return {
     summary:scope+" is temporarily unavailable because the evidence check exceeded its deadline.",
