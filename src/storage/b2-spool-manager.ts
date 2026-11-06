@@ -124,7 +124,9 @@ export class B2SpoolManager {
  constructor(env:B2SpoolEnv,opts:SpoolDependencies={}){
   const {endpoint,region,prefix}=validateEnv(env);
   this.env=env;this.endpoint=endpoint;this.region=region;this.prefix=prefix;
-  this.fetchImpl=opts.fetchImpl??fetch;
+  // Workerd's native fetch requires the global receiver. Calling it as a
+  // class property otherwise throws before any B2 HTTP request is sent.
+  this.fetchImpl=opts.fetchImpl??globalThis.fetch.bind(globalThis);
   this.now=opts.now??(()=>new Date());
   this.sleep=opts.sleep??(ms=>new Promise(resolve=>setTimeout(resolve,ms)));
   this.random=opts.random??Math.random;

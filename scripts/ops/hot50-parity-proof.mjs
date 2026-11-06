@@ -31,7 +31,8 @@ export function currentParityReceipt(b,{census,origin,head,run,now=Date.now()}){
  b.stable_d1_manifest_verified===true&&/^[a-f0-9]{64}$/.test(b.d1_manifest_sha256??"")&&
  b.independent_s3_get_sha256_aes_gcm_restoration===true&&
  b.physical_bucket_list_complete===true&&b.bidirectional_parity_pass===true&&
- b.checked_archived_bundles===b.d1_archived&&
+ b.checked_archived_bundles>0&&b.pending_outbox_batches===0&&
+ census?.backlog?.outbox===0&&b.checked_archived_bundles===b.d1_archived&&
  b.d1_archived===census?.backlog?.archived_outboxes&&
  census?.backlog?.exact_bundle_journal_mismatch===0;
 }
