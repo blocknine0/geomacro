@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
-import {mintApiKey,hash} from "../../services/commercial-api/src/metering.mjs";
+import {mintApiKey,hash,settleVerifiedSuccess} from "../../services/commercial-api/src/metering.mjs";
 import {parseBucketList} from "../ops/hot50-parity-proof.mjs";
 
 test("stored API-key lookups retain SHA-256 compatibility for 256-bit CSPRNG tokens",()=>{
@@ -16,6 +16,16 @@ test("stored API-key lookups retain SHA-256 compatibility for 256-bit CSPRNG tok
   assert.equal(stored,hash(secret));
   assert(!secrets.has(secret));
   secrets.add(secret);
+ }
+});
+
+test("low-entropy or malformed keys fail before database/financial I/O",async()=>{
+ const pool={connect(){throw Error("DATABASE_MUST_NOT_BE_TOUCHED")}};
+ for(const apiKey of ["password123", "gm_live_"+"a".repeat(42), "", null]){
+  await assert.rejects(settleVerifiedSuccess(pool,{
+   apiKey,requestId:"00000000-0000-4000-8000-000000000000",subject:"USA",
+   requestedTier:"basic",availableTiers:["basic"],riskByTier:{}
+  }),error=>error.code==="INVALID_REQUEST");
  }
 });
 
