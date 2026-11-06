@@ -71,7 +71,10 @@ let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = nu
  * unverified reading, and never substitute a legacy GRI for news severity. */
 async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<PublicRiskIndices> {
   if (!forceRefresh && lastCertifiedRead &&
-      Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS) {
+      Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS &&
+      Date.now()-Date.parse(lastCertifiedRead.data.snapshotAsOf)<=60*60000 &&
+      lastCertifiedRead.data.indices.every(index=>index.readingAsOf &&
+        Date.now()-Date.parse(index.readingAsOf)<=60*60000)) {
     return lastCertifiedRead.data;
   }
   // Require real reviewer-gated GRI v1.2 publication; never self-certified news severity.
@@ -306,7 +309,16 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
         "refreshing the verified public risk indices",
       );
       setError(userError);
-      setStatus(hasData.current ? "ready" : "error");
+      // A stale verified reading cannot remain presented as CURRENT. Keep
+      // only in-window previously reviewed scores during transient failures.
+      const previousIsCurrent=data!==null &&
+        Number.isFinite(Date.parse(data.snapshotAsOf)) &&
+        Date.now()-Date.parse(data.snapshotAsOf)<=60*60000 &&
+        data.indices.every(index=>index.readingAsOf &&
+          Number.isFinite(Date.parse(index.readingAsOf)) &&
+          Date.now()-Date.parse(index.readingAsOf)<=60*60000);
+      if(!previousIsCurrent){hasData.current=false;setData(null);}
+      setStatus(previousIsCurrent ? "ready" : "error");
     }
 
     // Always fetch on first client mount. Follow-up retries are automatic and
