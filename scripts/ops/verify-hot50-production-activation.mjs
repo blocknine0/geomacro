@@ -94,6 +94,41 @@ async function d1Cache(){
    return {pass:false,reason:"D1_CACHE_HIT_READBACK_UNPROVEN"};
  return {pass:true,reason:"EXACT_COLD_MISS_WRITE_HIT"};
 }
+async function providerQueueDepth(){
+ const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??"");
+ const token=String(process.env.CLOUDFLARE_API_TOKEN??"");
+ if(!/^[a-f0-9]{32}$/i.test(account)||token.length<25)
+  return {verified:false,reason:"PROTECTED_CLOUDFLARE_QUEUE_METADATA_UNAVAILABLE"};
+ const api="https://api.cloudflare.com/client/v4/accounts/"+account+"/queues";
+ async function read(url){
+  const r=await fetch(url,{method:"GET",redirect:"manual",
+    headers:{Authorization:"Bearer "+token,Accept:"application/json"},
+    signal:AbortSignal.timeout(9000)});
+  if(r.status!==200||r.redirected)throw Error("PROVIDER_QUEUES_HTTP");
+  const text=await r.text();if(text.length>100000)throw Error("PROVIDER_QUEUES_OVERSIZED");
+  const data=JSON.parse(text);
+  if(data?.success!==true)throw Error("PROVIDER_QUEUES_DENIED");
+  return data;
+ }
+ const list=await read(api+"?per_page=100");
+ if(list.result_info?.total_pages!==1||!Array.isArray(list.result))
+  return {verified:false,reason:"PROVIDER_QUEUES_PAGINATION_INCOMPLETE"};
+ const names=["geomacro-ingestion-spool","geomacro-ingestion-dead-letter",
+   "geomacro-source-poll","geomacro-source-poll-dlq"];
+ const refs=names.map(name=>list.result.find(q=>q.queue_name===name));
+ if(refs.some(x=>!x||!/^[a-f0-9]{32}$/i.test(x.queue_id??"")))
+  return {verified:false,reason:"PROVIDER_QUEUES_MISSING"};
+ const readings=[];
+ for(const ref of refs){
+  const answer=await read(api+"/"+ref.queue_id+"/metrics");
+  const count=answer?.result?.backlog_count;
+  if(!Number.isSafeInteger(count)||count<0)
+   return {verified:false,reason:"PROVIDER_BACKLOG_METRICS_INVALID"};
+  readings.push({name:ref.queue_name,backlog:count});
+ }
+ return {verified:true,zero:readings.every(x=>x.backlog===0),
+  readings,reason:"CLOUDFLARE_FOUR_QUEUES_BEST_EFFORT_SNAPSHOT"};
+}
 async function main(){
  let census=null,redrive=null;
  if(!SHA.test(OWNER)){gate("Backlog Census",false,"OWNER_TOKEN_UNAVAILABLE");
@@ -110,10 +145,18 @@ async function main(){
      if(result.status!==200||result.json.ok!==true)throw Error("D1_COMPLETE_CENSUS_UNAVAILABLE");
      census=result.json;
      const b=census.backlog;
-     gate("Backlog Census",b?.zero_unhandled_proven===true,
-       b?.zero_unhandled_proven?"ZERO_PENDING_PROVIDER_ACK_VERIFIED":"UNHANDLED_OR_PROVIDER_QUEUE_NOT_PROVEN",
+     let provider={verified:false,reason:"PROVIDER_METRIC_NOT_CHECKED"};
+     try{provider=await providerQueueDepth()}catch{
+       provider={verified:false,reason:"PROVIDER_METRIC_TRANSPORT_UNAVAILABLE"}}
+     const zero=Number.isSafeInteger(b?.total_unhandled)&&b.total_unhandled===0&&
+       b.exact_bundle_journal_mismatch===0&&provider.verified===true&&provider.zero===true;
+     gate("Backlog Census",zero,
+       zero?"D1_ZERO_AND_FOUR_QUEUE_BEST_EFFORT_ZERO":"UNHANDLED_OR_PROVIDER_QUEUE_NOT_PROVEN",
        {total_unhandled:b?.total_unhandled??null,
-        provider_queue_backlog:b?.provider_queue_backlog??null});
+        provider_queue_backlog:b?.provider_queue_backlog??null,
+        four_queue_metrics_verified:provider.verified===true,
+        cloudflare_queues:provider.readings??[],
+        provider_metrics_are_best_effort:true});
      const c=census.coverage;
      gate("Hot 50 Coverage",c?.complete_metadata_coverage===true&&
        c?.original_dated_cells===150&&c?.multi_publisher_cells===150,
