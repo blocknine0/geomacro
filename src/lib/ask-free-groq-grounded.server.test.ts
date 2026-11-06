@@ -49,6 +49,9 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(mock).toHaveBeenCalledTimes(1);
    const sent=JSON.parse(String(mock.mock.calls[0][1].body));
    expect(mock.mock.calls[0][0]).toBe("https://api.groq.com/openai/v1/chat/completions");
+   expect(mock.mock.calls[0][1].redirect).toBe("manual");
+   expect(mock.mock.calls[0][1].cache).toBeUndefined();
+   expect(mock.mock.calls[0][1].headers["Cache-Control"]).toBe("no-store");
    expect(sent.model).toBe("openai/gpt-oss-20b");
    expect(sent.response_format).toEqual({type:"json_object"});
    expect(JSON.stringify(sent)).not.toMatch(/osint_feed_observed_unverified|api\.openai\.com|source_url/);
@@ -56,6 +59,35 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(cached.model_rendering).toBe("assisted");
    expect(cached.model_render_cache).toBe("hit");
    expect(mock).toHaveBeenCalledTimes(1);
+ });
+ it("never follows a Groq redirect that might forward an API credential",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const f=vi.fn(async (_:string,options:RequestInit)=>{
+     expect(options.redirect).toBe("manual");
+     return new Response(null,{status:302,headers:{Location:"https://elsewhere.example/steal"}});
+   });
+   const result=await enhanceAskWithFreeGroq("Explain mineral financing redirect safety 9271",a,
+     "redirect-safety-9271",{fetchImpl:f as unknown as typeof fetch,readContext:async()=>({
+     categories:["rare_earth"],canonical_evidence_items:0,
+     research_activity_by_category:[],official_release_context:[]})});
+   expect(result.model_rendering).toBe("canonical");
+   expect(result.model_render_failure).toBe("upstream_other");
+   expect(result.summary).toBe(a.summary);
+   expect(f).toHaveBeenCalledTimes(1);
+ });
+ it("accepts three eligible questions per client then bounds the fourth",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const f=vi.fn(async()=>new Response(null,{status:429}));
+   for(let i=0;i<4;i++){
+      const result=await enhanceAskWithFreeGroq("Explain mining geopolitical supply risk budget "+(9300+i),a,
+       "three-category-client-budget-9300",{fetchImpl:f as unknown as typeof fetch,
+       readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+       research_activity_by_category:[],official_release_context:[]})});
+      expect(result.model_render_failure).toBe(i===3?"budget_limited":"upstream_429");
+   }
+   expect(f).toHaveBeenCalledTimes(3);
  });
  it("classifies an upstream free-plan 429 without leaking credentials or changing facts",async()=>{
    process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
