@@ -9,7 +9,11 @@ const [quota,paidProof,spendGuardProof]=await Promise.all([
  readFiveUsdSpendGuard({now})]);
 const e=assessPaidEnvelope(quota,{now,paidProof,spendGuardProof});
 console.log(JSON.stringify({day_utc:e.day_utc,observed_rows_written:e.observed_rows_written,
- observed_rows_read:e.observed_rows_read,internal_soft_rows_written:e.internal_soft_rows_written,
- soft_write_headroom:e.soft_write_headroom,state:e.state,reason:e.reason}));
-if(e.state!=='SOURCE_BUNDLE_ELIGIBLE_NONATOMIC'||e.soft_write_headroom<15000)
+ observed_rows_read:e.observed_rows_read,internal_soft_rows_read:e.internal_soft_rows_read,
+ internal_soft_rows_written:e.internal_soft_rows_written,
+ soft_read_headroom:e.soft_read_headroom,soft_write_headroom:e.soft_write_headroom,
+ critical_eligible:e.critical_eligible,source_intake_eligible:e.source_intake_eligible,
+ state:e.state,reason:e.reason}));
+if(e.internal_soft_rows_read!==120000||!e.critical_eligible||
+   e.soft_read_headroom<15300||e.soft_write_headroom<15000)
  throw Error('CANARY_D1_INTERNAL_SOFT_BUDGET_HELD');
