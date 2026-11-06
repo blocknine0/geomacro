@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
+import {generateKeyPairSync,verify} from "node:crypto";
 import {buildProgressiveGateState} from "../../workers/control-plane/src/risk-gate-progressive-state.mjs";
 import {signRiskGateFastTick} from "../../workers/control-plane/src/risk-gate-fast-tick-sign.mjs";
 import {partitionRiskGateSubjects,runRiskGatePartitioned}
@@ -58,6 +59,20 @@ test("fast-tick fails honestly when no separately provisioned Ed25519 key exists
  assert.equal(x.ed25519_signature,null);
  assert.match(x.canonical_hash,/^sha256:[a-f0-9]{64}$/);
  assert.equal(x.signature_scope,"RESPONSE_AUTHENTICITY_NOT_SOURCE_VERIFICATION");
+});
+test("Fast-Tick signs a canonical progressive receipt with actual Ed25519; pinned public key verifies",async()=>{
+ const {privateKey,publicKey}=generateKeyPairSync("ed25519");
+ const env={RISK_GATE_FAST_TICK_KEY_ID:"fast-tick-fixture-v1",
+  RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64:privateKey.export({type:"pkcs8",format:"der"}).toString("base64"),
+  RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64:publicKey.export({type:"spki",format:"der"}).toString("base64")};
+ const state=buildProgressiveGateState(input());
+ const result=await signRiskGateFastTick(state,env);
+ assert.equal(result.status,"SIGNED");
+ assert.equal(result.signer,"did:geomacro:authority:fast-tick-fixture-v1");
+ const message=Buffer.from("geomacro.risk-gate-fast-tick.v1\\n"+result.canonical_hash.slice(7));
+ assert.equal(verify(null,message,publicKey,
+  Buffer.from(result.ed25519_signature,"base64")),true);
+ assert.equal(result.signature_scope,"RESPONSE_AUTHENTICITY_NOT_SOURCE_VERIFICATION");
 });
 test("exact 207 nodes run in ten 20-21 subject partitions; one exception does not halt unrelated slots",async()=>{
  const subjects=[...Array.from({length:195},(_,i)=>({type:"COUNTRY",id:"C"+String(i).padStart(3,"0")})),
