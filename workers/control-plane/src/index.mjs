@@ -46,6 +46,7 @@ import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
 import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {runRiskGateAutonomousCorroborator} from "./risk-gate-autonomous-corrob.mjs";
+import {runRiskGateIncompleteWatchdog} from "./risk-gate-incomplete-watchdog.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
@@ -1325,13 +1326,17 @@ export default {
     // Rotating 12-cell search page every 20 minutes across the 195x3 matrix
     // and registered corridors. Results remain unverified observations.
     if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%20===0)
-      ctx.waitUntil(riskGapEnrichmentTick(env,{now:utc.getTime()}).then(async r=>{
+      ctx.waitUntil((async()=>{
+        // Self-healing missing/stale queue precedes the same tick's searches.
+        const watched=await runRiskGateIncompleteWatchdog(env,{now:utc.getTime()});
+        if(!watched.ok)console.error("RISK_GATE_WATCHDOG_DEFERRED");
+        const r=await riskGapEnrichmentTick(env,{now:utc.getTime()});
         if(!r.ok){console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE");return;}
         // Event-driven after genuine D1 observation ACK, not before commit.
         // Independent signed-GRO issuer and B2 outbox remain separate.
         const proof=await runRiskGateAutonomousCorroborator(env,{now:utc.getTime()});
         if(!proof.ok)console.error("RISK_AUTONOMOUS_CORROBORATOR_DEFERRED");
-      }).catch(()=>console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE")));
+      })().catch(()=>console.error("RISK_GAP_OR_WATCHDOG_UNAVAILABLE")));
     // Reclaim 2-minute processing leases after crashes and poll remaining
     // independent original-page evidence. One bounded 20-event page per slot.
     if(env?.DB?.prepare&&utc.getUTCMinutes()%5===1)
