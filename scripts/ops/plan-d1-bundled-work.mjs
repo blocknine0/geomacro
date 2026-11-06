@@ -45,7 +45,10 @@ const FIVE_USD_BUDGET=JSON.parse(readFileSync(
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==120_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.schema!=="geomacro.d1-read-pacing-policy.v1"||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.daily_soft_rows_read_max!==120_000||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.rolling_capacity_rows!==20_000||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||\n   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.schema!=="geomacro.d1-read-pacing-policy.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.daily_soft_rows_read_max!==120_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.rolling_capacity_rows!==20_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||\n   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.daily_soft_rows_written_max!==180_000||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.capacity_rows!==7_500||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.refill_rows_per_minute!==125||
@@ -73,14 +76,12 @@ export function d1LanePacedCeiling(lane,now){
   });
 }
 const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
-// Minimum Free/bundled envelope for the EXISTING fifteen-minute private
-// source lane. A fixed five-original maximum gives the three news categories
-// a 2/2/1 fair share without opening a parallel expensive research pipeline.
+// Daily 120k-read plan for the existing fifteen-minute private-source lane.
+// One serialized five-item bundle carries all three category lanes.
 // This is a DAILY worst-case reserve, not an atomic Cloudflare reservation:
 // no source intake is allowed when actual provider headroom is insufficient.
-// Reserve up to three independent capped D1 producers per 15-minute slot:
-// the five-minute fastlane, private source-only writer and optionally
-// five-item AES-GCM replay when research headroom is separately admitted.
+// Reserve one bounded D1 producer per slot; parallel readers require their
+// own verified admission before activation.
 // This avoids treating a GitHub concurrency mutex as a total daily
 // call-count guarantee. The five-minute fastlane uses the intake clock and
 // must honor the interval returned here, not run an extra D1 write every 5m.
@@ -384,7 +385,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
-  // safety and PREDGE reserves, BEFORE granting 25k reads / 500 writes for
+  // safety and PREDGE reserves, BEFORE granting 3k reads / 500 writes for
   // both compact checkpoints and atomically ticketed B2 GET/PUT operations.
   // This is not maintenance, signing, research, website or PREDGE admission.
   // The measurement workflow also enforces its own 20-B2-request cap.
@@ -397,7 +398,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
       registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
-  // Separate from source intake/signing; reserve 250k read and 5k write rows
+  // Separate from source intake/signing; reserve 5k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_read+
