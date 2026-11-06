@@ -217,30 +217,18 @@ test("cleanup cannot exceed provider grant or borrow critical capacity",async()=
    fetchImpl:db.fetchImpl}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
 });
 
-test("both guarded Phase2H B2 writer identities can verify real-provider-shaped lifecycle receipts",async()=>{
+test("Phase2H lifecycle verifier requires console proof and performs no B2 bucket listing",async()=>{
  for(const workflowId of ["derived_news_backup","registered_original_archive"]){
-  const calls=[];
+  let calls=0;
   const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:workflowId,
    B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key",
   };
-  const got=await verifyPhase2hB2Lifecycle({env,
-   governor:{reserve:async kind=>{calls.push(kind);}},
-   fetchImpl:async url=>{
-    if(String(url).endsWith("b2_authorize_account"))
-     return Response.json({authorizationToken:"provider-token",accountId:"account123",
-      apiInfo:{storageApi:{apiUrl:"https://api001.backblazeb2.com",
-       allowed:{capabilities:["listBuckets"]}}}});
-    if(String(url).includes("b2_list_buckets"))
-     return Response.json({buckets:[{bucketName:"geomacro-private-archive",
-      lifecycleRules:[]}]});
-    throw Error("UNEXPECTED_PROVIDER_ENDPOINT");
-   },
-  });
-  assert.equal(got.phase2h_raw_prefix_verified,true);
-  assert.equal(got.auto_deletion_paused,true);
-  assert.deepEqual(calls,["NATIVE_AUTH","GET"]);
+  await assert.rejects(verifyPhase2hB2Lifecycle({env,
+   fetchImpl:async()=>{calls+=1;throw Error("B2 must not be called");},
+  }),/CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED/u);
+  assert.equal(calls,0);
  }
 });
 test("arbitrary B2 identity remains rejected before native HTTP calls",async()=>{
@@ -250,7 +238,7 @@ test("arbitrary B2 identity remains rejected before native HTTP calls",async()=>
    GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"untrusted_actor",
    B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key"},
-  governor:{reserve:async()=>{called=true;}},
- }),/PHASE2H_B2_72H_PROTECTED_GOVERNED_MAIN_REQUIRED/u);
+   fetchImpl:async()=>{called=true;throw Error("B2 must not be called");},
+ }),/PHASE2H_B2_72H_CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED/u);
  assert.equal(called,false);
 });

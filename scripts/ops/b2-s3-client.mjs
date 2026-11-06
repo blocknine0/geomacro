@@ -284,7 +284,6 @@ export function createB2Client({
       allowNotFound = false,
       extraSignedHeaders = null,
       metadataOnly = false,
-      listing = null,
     } = {},
   ) {
     const normalizedKey = String(key ?? "");
@@ -301,14 +300,12 @@ export function createB2Client({
       !/^[A-Za-z0-9_./-]+$/.test(normalizedKey) ||
       normalizedKey.includes("..") ||
       normalizedKey.startsWith("/") ||
-      (!listing && normalizedKey.endsWith("/"))
+      normalizedKey.endsWith("/")
     ) {
       throw new Error("B2_ARCHIVE_KEY_INVALID");
     }
-    const path = listing ? `/${bucket}` : `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
-    const encode = value => encodeURIComponent(value).replace(/[!'()*]/g, c=>"%"+c.charCodeAt(0).toString(16).toUpperCase());
-    const query = listing ? Object.entries({"encoding-type":"url","list-type":"2","max-keys":"1000",prefix:normalizedKey,
-      ...(listing.cursor?{"continuation-token":listing.cursor}:{})}).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encode(k)+"="+encode(v)).join("&") : "";
+    const path = `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
+    const query = "";
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
     const credentialCandidates =
@@ -332,7 +329,7 @@ export function createB2Client({
       const credential = credentialCandidates[credentialIndex];
       const fingerprint = nativeCredentialFingerprint(credential);
 
-      if (method === "GET" && !listing && nativePreferredCredentials.has(fingerprint)) {
+      if (method === "GET" && nativePreferredCredentials.has(fingerprint)) {
         try {
           return await nativeRead(credential, normalizedKey, { allowNotFound });
         } catch (nativeCause) {
@@ -430,9 +427,8 @@ export function createB2Client({
           if (credentialIndex < credentialCandidates.length - 1) break;
           throw lastAccessDenied;
         }
-        if (listing && result.status === 403 && errorCode === "AccessDenied" && credentialIndex < credentialCandidates.length-1) break;
         if (
-          method === "GET" && !listing &&
+          method === "GET" &&
           result.status === 403 &&
           errorCode === "AccessDenied"
         ) {
@@ -548,9 +544,8 @@ export function createB2Client({
   }
 
   return {
-    // Lists use the same per-attempt account reservation and request budget.
-    // No native GET fallback is permitted for a bucket-list operation.
-    list: (prefix, cursor="") => request("GET", prefix, Buffer.alloc(0), {listing:{cursor}}),
+    // Object and bucket listing are disabled. D1 is the only metadata index.
+    list: () => { throw new Error("B2_LIST_OPERATIONS_DISABLED_USE_D1_INDEX"); },
     put: (key, bytes) => request("PUT", key, bytes),
     putWithMetadataVerification,
     get: (key) => readSingleFlight(key, false),

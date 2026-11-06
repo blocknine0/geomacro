@@ -34,9 +34,9 @@ export function decideGriHistoryQuotaAdmission({rows,now=new Date()}={}){
  }
  if(counters.GET+counters.PUT+counters.HEAD+counters.NATIVE_AUTH!==counters.total)
    throw Error("GRI_HISTORY_QUOTA_SUM_INVALID");
- // Maximum original immutable-version restore needs: 1 native authorize,
- // 1 optional bucket listing + 1 version listing + 1 exact version download.
- // It must reserve all four on the SHARED D1 ledger, never borrow edge tickets.
+ // Maximum D1-indexed immutable-version restore needs: 1 native authorize
+ // plus exact-version GET/readback retries. Physical bucket/version census is
+ // disabled under the zero-list policy and cannot be treated as a proof.
  const remaining={total:LIMITS.total-counters.total,
    GET:LIMITS.GET-counters.GET,
    NATIVE_AUTH:LIMITS.NATIVE_AUTH-counters.NATIVE_AUTH};

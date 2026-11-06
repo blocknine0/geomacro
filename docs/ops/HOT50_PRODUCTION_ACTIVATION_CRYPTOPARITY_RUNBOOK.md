@@ -43,7 +43,7 @@ Never print the bearer, ciphertext, raw articles, B2 credentials or publisher id
 
 The live producer is `src/workers/ingest-producer.ts`, consumer `src/workers/ingest-bundle-consumer.ts`, outbox `src/workers/p0b-transactional-outbox.ts`, and B2 implementation `src/storage/b2-spool-manager.ts`. Producer first journals encrypted pending D1 state, then encrypted B2 PUT followed by independently fetched S3 GET and SHA-256, AES-GCM decrypt, gzip restoration and member-identity check. It commits canonical item/bundle D1 rows idempotently (unique candidate fingerprints), re-reads exact persisted D1 state and only then ACKs Queue messages. On failure, keep pending lease or retry; never ACK on unverifiable object.
 
-The independent **physical** audit is read-only and uses the existing `scripts/ops/b2-s3-client.mjs` with the shared B2 D1 quota governor. Full bucket listing is mandatory for 100% *bidirectional* parity; a D1 pointer table is **not** the B2 bucket manifest. The audit now obtains every `ListObjectsV2` page directly through the same governed client; externally supplied or manually marked manifests are not accepted. Every list attempt consumes a shared GET ticket. Listing and read credentials must have prefix-scoped list/download permissions.
+The production application must never enumerate a B2 bucket. The D1 `files` manifest is the only index; the audit checks each indexed object by exact-key S3 GET and verifies its D1 SHA-256. It reports this as **D1-indexed readback**, not physical or bidirectional parity. Orphan/unindexed B2 objects cannot be proven absent under the zero-list rule, so any workflow that requires a full physical census remains FAIL and must not grant a parity PASS.
 
 ```sh
 export B2_ACCOUNT_QUOTA_REQUIRED=1
@@ -119,7 +119,7 @@ node scripts/ops/verify-hot50-production-activation.mjs
 
 ### Final acceptance contract
 
-Report exactly five statuses: **Backlog Census, B2-D1 Parity, Hot 50 Coverage, Index Signing, Ask GeoMacro Retrieval**. A missing provider backlog reading, missing B2 ListObjectsV2 manifest, insufficient B2 GET quota, missing original-dated Hot-50 cell, stale reviewed GRI score, absent independent reviewer certificate, stale deployed website or failed cache proof must produce **FAIL**, never synthetic **PASS**. A successful `git merge`, a new Worker URL or source registry seed alone does not prove production end-to-end coverage.
+Report exactly five statuses: **Backlog Census, D1-indexed B2 Readback, Hot 50 Coverage, Index Signing, Ask GeoMacro Retrieval**. A missing D1 manifest, failed exact-key GET/SHA readback, insufficient B2 GET quota, missing original-dated Hot-50 cell, stale reviewed GRI score, absent independent reviewer certificate, stale deployed website or failed cache proof must produce **FAIL**, never synthetic **PASS**. Do not call D1-indexed readback physical or bidirectional parity. A successful `git merge`, a new Worker URL or source registry seed alone does not prove production end-to-end coverage.
 
 ## 6. Protected automated report
 

@@ -3,7 +3,6 @@
  * No updateBucket, no new B2 PUT, no PREDGE or other bucket lifecycle rules.
  * Both B2 native read attempts use the EXISTING atomic D1 quota governor.
  */
-import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 export const PHASE2H_B2_PREFIX="geomacro-evidence/v1/private/phase2h-raw-news/";
 const fail=code=>{throw Error("PHASE2H_B2_72H_"+code)};
 export function assertPhase2hB2Lifecycle(rules){
@@ -51,60 +50,13 @@ export function assertPhase2hB2ManualRetention(rules){
  });
 }
 async function readPrivateB2LifecycleRules({
- env=process.env,fetchImpl=fetch,
- governor=createB2D1AccountGovernor({env,fetchImpl}),
+ env=process.env,
 }={}){
- if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
-    env.GITHUB_REF!=="refs/heads/main"||
-    env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
-    env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
-    !["derived_news_backup","registered_original_archive"].includes(
-      env.B2_ACCOUNT_QUOTA_WORKFLOW_ID)||
-    typeof env.B2_KEY_ID!=="string"||env.B2_KEY_ID.length<12||
-    typeof env.B2_APPLICATION_KEY!=="string"||env.B2_APPLICATION_KEY.length<16)
-  fail("PROTECTED_GOVERNED_MAIN_REQUIRED");
- // Prefer the already-configured read-only archive principal for
- // lifecycle verification. The upload principal may intentionally lack
- // listBuckets, while archive PUT remains restricted to its original key.
- const hasReadId=(env.B2_ARCHIVE_READ_KEY_ID??"").length>0;
- const hasReadSecret=(env.B2_ARCHIVE_READ_APPLICATION_KEY??"").length>0;
- if(hasReadId!==hasReadSecret)fail("ARCHIVE_READ_PAIR_INCOMPLETE");
- const credentialId=hasReadId?env.B2_ARCHIVE_READ_KEY_ID:env.B2_KEY_ID;
- const credentialSecret=hasReadSecret?env.B2_ARCHIVE_READ_APPLICATION_KEY:env.B2_APPLICATION_KEY;
- if((credentialId??"").length<12||(credentialSecret??"").length<16)
-  fail("PROVIDER_READ_CREDENTIAL_MISSING");
- const json=async(url,kind,headers)=>{
-  await governor.reserve(kind);
-  let res;
-  try{res=await fetchImpl(url,{method:"GET",redirect:"error",cache:"no-store",
-    headers,signal:AbortSignal.timeout(12000)})}
-  catch{fail("PROVIDER_UNAVAILABLE")}
-  if(res.status!==200||res.redirected)fail("PROVIDER_RESPONSE_INVALID");
-  let data;try{data=await res.json()}catch{fail("PROVIDER_JSON_INVALID")}
-  return data;
- };
- const auth=await json("https://api.backblazeb2.com/b2api/v4/b2_authorize_account",
-  "NATIVE_AUTH",{Authorization:"Basic "+Buffer.from(
-   credentialId+":"+credentialSecret).toString("base64")});
- const storage=auth?.apiInfo?.storageApi;
- if(typeof auth.authorizationToken!=="string"||
-    typeof auth.accountId!=="string"||
-    !/^[a-zA-Z0-9_-]{6,128}$/u.test(auth.accountId)||
-    !Array.isArray(storage?.allowed?.capabilities)||
-    !storage.allowed.capabilities.includes("listBuckets"))
-  fail("READ_BUCKET_LIFECYCLE_CAPABILITY_MISSING");
- const api=String(storage.apiUrl??"");
- if(!/^https:\/\/api\d+\.backblazeb2\.com$/u.test(api))
-  fail("STORAGE_API_ORIGIN_INVALID");
- const url=new URL(api+"/b2api/v4/b2_list_buckets");
- url.searchParams.set("accountId",auth.accountId);
- url.searchParams.set("bucketName","geomacro-private-archive");
- const list=await json(url.href,"GET",{Authorization:auth.authorizationToken});
- const buckets=list?.buckets;
- if(!Array.isArray(buckets))fail("BUCKET_LIST_UNVERIFIED");
- const selected=buckets.filter(b=>b.bucketName==="geomacro-private-archive");
- if(selected.length!==1)fail("EXACT_BUCKET_NOT_VERIFIED");
- return selected[0].lifecycleRules;
+ // B2 bucket/key listing is disabled by policy. Lifecycle settings must be
+ // applied and verified in the Backblaze Console; no provider list API is
+ // called from application code.
+ void env;
+ fail("CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED");
 }
 /** Separate strict 72h ciphertext-only queue prefix; never alter raw B2 rules. */
 export const PHASE2I_SOURCE_QUEUE_B2_PREFIX=
