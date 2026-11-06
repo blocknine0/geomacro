@@ -7,7 +7,10 @@
 // Ambiguous requests are counted and never refunded. Each network attempt
 // still requires the existing same-D1 atomic reservation.
 export const B2_DAILY_LIMITS = Object.freeze({
-  total: 720, GET: 340, PUT: 380, HEAD: 40, NATIVE_AUTH: 40,
+  // The shared D1 governor is the account-wide serialization point. Keep each
+  // B2 transaction class below the free-account guardrail: PUT/Class A 2,000;
+  // GET+HEAD/Class B 2,040; native authorization/Class C 40; no list tickets.
+  total: 4_080, GET: 2_000, PUT: 2_000, HEAD: 40, NATIVE_AUTH: 40,
 });
 // Preserve the existing TEN shared public cold-read tickets per UTC day.
 // The expanded private producer/restore capacity cannot be drained by public

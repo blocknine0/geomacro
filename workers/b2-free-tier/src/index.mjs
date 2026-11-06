@@ -1,3 +1,5 @@
+import { reserveB2AccountQuota, B2_DAILY_LIMITS } from "../../control-plane/src/b2-account-quota.mjs";
+
 const HARD_STORAGE_BYTES = 9_200_000_000;
 const CLEAN_TARGET_BYTES = 8_500_000_000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
@@ -139,7 +141,11 @@ async function blockForToday(env, reason, now = new Date()) {
 }
 
 async function reserveClassA(env, { upload = false, now = new Date() } = {}) {
-  if (upload) return; // The INSERT trigger reserved this upload and its Class-A ticket atomically.
+  const shared = await reserveB2AccountQuota(env.DB, {
+    kind: "PUT", workflow_id: "b2_free_tier_gateway",
+  }, { now });
+  if (!shared.ok || !shared.reserved) throw new Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED");
+  if (upload) return; // The INSERT trigger separately reserved this upload request and gateway-local count.
   const day = dayUtc(now);
   const timestamp = now.toISOString();
   const row = await env.DB.prepare(`
@@ -152,6 +158,10 @@ async function reserveClassA(env, { upload = false, now = new Date() } = {}) {
 }
 
 async function reserveClassB(env, now = new Date()) {
+  const shared = await reserveB2AccountQuota(env.DB, {
+    kind: "GET", workflow_id: "b2_free_tier_gateway",
+  }, { now });
+  if (!shared.ok || !shared.reserved) throw new Error("B2_GLOBAL_DAILY_QUOTA_EXHAUSTED");
   const day = dayUtc(now);
   const timestamp = now.toISOString();
   const row = await env.DB.prepare(`
@@ -272,6 +282,18 @@ async function upload(request, env) {
     throw error;
   }
 
+  // The gateway and existing GeoMacro B2 edge workers share this atomic D1
+  // account ledger. No upload reaches B2 until both gateway-local and shared
+  // Class-A reservations have succeeded.
+  try {
+    await reserveClassA(env, { upload: true });
+  } catch (error) {
+    await env.DB.prepare("DELETE FROM files WHERE id=? AND status='pending'").bind(id).run().catch(() => {});
+    const message = String(error?.message ?? error);
+    if (message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED") return json({ error: message }, 429);
+    return json({ error: "B2_QUOTA_LEDGER_UNAVAILABLE" }, 503);
+  }
+
   try {
     const response = await s3Request(env, "PUT", key, { body: bytes, contentType: mimeType });
     await handleProviderResponse(env, response);
@@ -368,9 +390,10 @@ export const limits = Object.freeze({
   hardStorageBytes: HARD_STORAGE_BYTES,
   cleanTargetBytes: CLEAN_TARGET_BYTES,
   dailyUploadLimit: DAILY_UPLOAD_LIMIT,
-  dailyClassALimit: DAILY_CLASS_A_LIMIT,
-  dailyClassBLimit: DAILY_CLASS_B_LIMIT,
-  dailyClassCLimit: 0,
+  dailyClassALimit: B2_DAILY_LIMITS.PUT,
+  dailyClassBLimit: B2_DAILY_LIMITS.GET + B2_DAILY_LIMITS.HEAD,
+  dailyClassCLimit: B2_DAILY_LIMITS.NATIVE_AUTH,
+  dailyClassCListLimit: 0,
   cacheSeconds: CACHE_SECONDS,
   managedPrefix: MANAGED_PREFIX,
   emptySha256: EMPTY_SHA256,

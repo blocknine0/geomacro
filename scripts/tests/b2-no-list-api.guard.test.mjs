@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readdir,readFile} from "node:fs/promises";
 import {join,relative} from "node:path";
 
-const roots=["scripts/ops","workers"];
+const roots=["scripts","workers","src","server"];
 const forbidden=/\b(?:ListObjects(?:V2)?|b2_list_file_names|b2_list_file_versions|b2_list_buckets)\b|list-type=2/iu;
 
 async function sourceFiles(path){
@@ -11,7 +11,7 @@ async function sourceFiles(path){
  for(const entry of await readdir(path,{withFileTypes:true})){
   const child=join(path,entry.name);
   if(entry.isDirectory()) out.push(...await sourceFiles(child));
-  else if(/\.(?:mjs|cjs|js|ts)$/u.test(entry.name)&&!entry.name.endsWith(".test.mjs")) out.push(child);
+  else if(/\.(?:mjs|cjs|js|ts|tsx)$/u.test(entry.name)&&!/\.test\.(?:mjs|cjs|js|ts|tsx)$/u.test(entry.name)) out.push(child);
  }
  return out;
 }

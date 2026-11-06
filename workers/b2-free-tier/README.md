@@ -7,13 +7,21 @@ B2 URLs.
 
 ## Guardrails in this implementation
 
-- D1 reserves the upload row, bytes, upload count, and one Class-A ticket in a
-  single SQLite trigger before the Worker can call `PutObject`.
+- D1 reserves the upload row, bytes, and upload-request ticket in one SQLite
+  trigger. The Worker then reserves the shared account-wide Class-A ticket
+  before it can call `PutObject`.
 - The hard D1-managed storage ceiling is 9,200,000,000 bytes. An upload is
   rejected unless the account-wide starting storage baseline has been verified.
-- Upload and Class-A requests are capped at 2,000 per UTC day. Class-B origin
-  GETs are capped at 2,000 per UTC day. The Worker exposes no Class-C operation;
-  its Class-C request count is therefore zero.
+- Upload requests are capped at 2,000 per UTC day. Class-A writes (uploads and
+  exact-version deletes) are capped at 2,000 account-wide per UTC day. Class-B
+  reads use the same existing D1 account governor (2,000 GET plus at most 40
+  HEAD requests). Existing native authorization calls are capped at 40 per day;
+  all listing calls remain disabled, so their Class-C list count is zero.
+- The gateway calls `reserveB2AccountQuota` from the existing control-plane
+  module before each origin GET, PUT, and DELETE. This shares the same atomic
+  D1 ledger used by GeoMacro's existing Cloudflare edge readers; the local
+  gateway counters are an additional per-gateway limit, not the account-wide
+  source of truth.
 - Backblaze class mapping: S3 `PutObject` and `DeleteObject` are Class A;
   `GetObject`/`HeadObject` are Class B; object listings and account/key
   administration are Class C. Uploads are not Class C. The request's 2,000
@@ -135,8 +143,9 @@ prefix must remain intact. Confirm the saved prefix and rule in the console.
       an account-wide lock.
 - [ ] Confirm the only gateway S3 methods are `PUT`, `GET`, and exact-version
       `DELETE`; verify no list, bucket, or key-management method exists.
-- [ ] Verify D1 daily counters never exceed 2,000 uploads/Class-A calls or
-      2,000 Class-B origin reads; Class-C calls remain 0.
+- [ ] Verify the shared D1 ledger never exceeds 2,000 uploads/Class-A calls,
+      2,000 Class-B GETs plus 40 HEADs, and 40 Class-C native authorization calls;
+      listing operations remain disabled.
 - [ ] Run a controlled upload, confirm the D1 `b2_file_id` equals B2's
       `x-amz-version-id`, fetch twice through one Cloudflare POP, and verify
       the second response is a cache hit with no new D1/B2 origin reservation.

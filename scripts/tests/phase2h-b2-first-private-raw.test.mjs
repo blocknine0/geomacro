@@ -23,7 +23,7 @@ const rows=buildPhase2hPrivateRawRecords([{
 }],{now,derive:()=>[]}).records;
 const sufficient={
  ok:true,used:{total:0,GET:0,PUT:0,HEAD:0,NATIVE_AUTH:0},
- limits:{total:720,GET:340,PUT:380,HEAD:40,NATIVE_AUTH:40},
+  limits:{total:4080,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:40},
 };
 const verifiedLifecycle={
  phase2h_raw_prefix_verified:true,auto_deletion_paused:true,no_bucket_mutation:true,
@@ -87,7 +87,7 @@ test("quota hold cannot PUT B2 or manufacture verified storage",async()=>{
  let calls=0;
  const receipt=await stageB2FirstPrivateOriginals({
   rows,now,env,
-  governorFactory:()=>({status:async()=>({...sufficient,used:{...sufficient.used,total:719}})}),
+  governorFactory:()=>({status:async()=>({...sufficient,used:{...sufficient.used,total:4070}})}),
   b2Factory:()=>{calls++;throw Error("UNEXPECTED_B2");},
  });
  assert.equal(receipt.storage_confirmed,false);
