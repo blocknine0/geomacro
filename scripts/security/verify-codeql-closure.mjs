@@ -1,14 +1,14 @@
 /**
- * Strict code-scanning acceptance for Geomacro's three high-severity alerts.
+ * Strict code-scanning acceptance for Geomacro's five high-severity alerts.
  *
  * This queries GitHub's authoritative Code Scanning REST API after CodeQL SARIF
  * processing on the exact main commit. A successful scanner process is NOT
- * evidence that alert #107, #115 and #120 are fixed. Dismissal is not a fix.
+ * evidence that alerts #107, #115, #120, #137 and #138 are fixed. Dismissal is not a fix.
  * The workflow never modifies alerts, bypasses a security gate, or logs tokens.
  */
 import {pathToFileURL} from "node:url";
 
-export const REMEDIATED_ALERT_NUMBERS = Object.freeze([107, 115, 120]);
+export const REMEDIATED_ALERT_NUMBERS = Object.freeze([107, 115, 120, 137, 138]);
 export const CODEQL_REPOSITORY = "blocknine0/geomacro";
 export const CODEQL_REF = "refs/heads/main";
 const SHA = /^[a-f0-9]{40}$/u;
@@ -84,7 +84,7 @@ export async function verifyCodeqlClosure({
       throw new Error("CODEQL_ALERT_DISMISSED_NOT_FIXED");
     if(alerts.every(a=>a.state==="fixed")) {
       return {ok:true,main_sha:sha,analysis_verified:true,
-        alerts,open:0,dismissed:0,fixed:3,proof:"AUTHORITATIVE_GITHUB_CODE_SCANNING_API"};
+        alerts,open:0,dismissed:0,fixed:REMEDIATED_ALERT_NUMBERS.length,proof:"AUTHORITATIVE_GITHUB_CODE_SCANNING_API"};
     }
     if(attempt===maxPolls) {
       // Keep failed checks actionable. Do not mark an open alert as green.
