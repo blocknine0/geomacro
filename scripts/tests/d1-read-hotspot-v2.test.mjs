@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {withPublicEdgeCache} from "../../workers/control-plane/src/cache-middleware.mjs";
+import {withPublicEdgeCache,publicEdgeCacheEligible} from "../../workers/control-plane/src/cache-middleware.mjs";
 import {readHot50MaterializedNews} from "../../workers/control-plane/src/hot50-materialized-news.mjs";
 import {readDerivedStories,readDerivedStoriesBundle} from "../../workers/control-plane/src/website-derived-intelligence.mjs";
 import {readCachedSignedGro} from "../../workers/control-plane/src/signed-gro-read-cache.mjs";
@@ -215,4 +215,12 @@ test("warm single-row CQRS returns the exact canonical page/bundle contracts",as
   assert.deepEqual([...fromCache.headers.entries()], [...canonical.headers.entries()]);
  }
  assert.equal(cachedRead,2);
+});
+
+test("SWR middleware honors explicit max-age=0 and Pragma no-cache",()=>{
+ for(const headers of [{"Cache-Control":"max-age=0"},{"Cache-Control":"max-age = 0"},
+  {"Pragma":"no-cache"},{Authorization:"Bearer private"},{Cookie:"sid=private"}]){
+  assert.equal(publicEdgeCacheEligible(new Request(url,{headers})),false);
+ }
+ assert.equal(publicEdgeCacheEligible(new Request(url)),true);
 });
