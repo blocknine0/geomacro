@@ -66,8 +66,8 @@ describe("public risk runtime resilience", () => {
     expect(retainedBranch).not.toContain("setData(null)");
     // Retain only genuinely current signed GRI values. On expiry, clearing
     // the stale score is the required security behavior, not a resilience bug.
-    expect(indicesCatch).toContain('const previous=lastCurrent.current');
-    expect(indicesCatch).toContain('if(!previousIsCurrent)');
+    expect(indicesCatch).toContain('const previous = lastCurrent.current');
+    expect(indicesCatch).toContain('if (!previousIsCurrent)');
     expect(indicesCatch).toContain('setData(null)');
   });
 

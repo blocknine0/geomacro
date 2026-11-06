@@ -16,7 +16,7 @@ describe("separate public risk indices contract", () => {
     expect(workspace).not.toContain('index.observedSeverity?.[window]');
     expect(worker).toContain('observedSeveritySeries(news,now,"72H")');
     expect(worker).toContain('observedSeveritySeries(news,now,"48H")');
-    expect(hook).toContain('const data = await readCurrentReviewedSignedIndices()');
+    expect(hook).toContain('const pending = readCurrentReviewedSignedIndices().then(data => {');
     expect(hook).toContain('GEOMACRO_NEWS_GRI_HISTORY_BUCKET_INVALID');
   });
 
@@ -154,9 +154,9 @@ describe("separate public risk indices contract", () => {
     const worker=read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
     const signed=read("workers/control-plane/src/reviewed-risk-indices-delivery.mjs");
     const view=read("src/components/risk-indices/risk-indices-workspace.tsx");
-    expect(hook).toContain("const data = await readCurrentReviewedSignedIndices()");
-    expect(hook).toContain("readCachedCertifiedNewsRisk(forceRefresh || attempt > 0)");
-    expect(hook).toContain("CERTIFIED_RETRY_DELAYS_MS");
+    expect(hook).toContain("const pending = readCurrentReviewedSignedIndices().then(data => {");
+    expect(hook).toContain("readCachedCertifiedNewsRisk(forceRefresh)");
+    expect(hook).toContain("riskIndicesRefreshDelay(false, refreshMs)");
     expect(hook).toContain("GEOMACRO_CERTIFIED_NEWS_GRI_URL");
     expect(worker).toContain('NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0"');
     expect(worker).toContain("source_event_facts_independently_verified:false");

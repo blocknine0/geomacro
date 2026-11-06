@@ -1,4 +1,12 @@
 import { withPublicRuntimeTimeout } from "./public-runtime-timeout";
+import {
+  RISK_INDICES_REQUEST_TIMEOUT_MS,
+  RISK_INDICES_VERIFIED_CACHE_MS,
+  RISK_INDICES_VISIBLE_REFRESH_MS,
+  riskIndicesRefreshDelay,
+  riskIndicesResumeDelay,
+  riskIndicesSignedSourceRemainingMs,
+} from "./risk-indices-browser-cadence";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   PUBLIC_RISK_INDICES_CONTRACT_VERSION,
@@ -30,9 +38,8 @@ type RiskIndicesReadTarget =
   | { kind: "edge"; url: string }
   | { kind: "app"; url: string };
 
-const REQUEST_TIMEOUT_MS = 8_000;
-const CERTIFIED_RETRY_DELAYS_MS = [350, 900] as const;
-const VERIFIED_READ_CACHE_MS = 60_000;
+const REQUEST_TIMEOUT_MS = RISK_INDICES_REQUEST_TIMEOUT_MS;
+const VERIFIED_READ_CACHE_MS = RISK_INDICES_VERIFIED_CACHE_MS;
 const REVIEWED_SIGNED_RISK_INDICES_APP_URL="/api/public/reviewed-risk-indices";
 type SignedReviewedIndicesResponse={
   ok:boolean;data?:PublicRiskIndices;
@@ -66,9 +73,12 @@ async function readCurrentReviewedSignedIndices():Promise<PublicRiskIndices>{
 }
 
 let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = null;
+// One in-flight read per browser JS context even when both Risk Indices and
+// Intelligence panels mount concurrently. No failure response is cached as a
+// certified reading, and no immediate 503 retry burst is permitted.
+let inFlightCertifiedRead: Promise<PublicRiskIndices> | null = null;
 
-/** Cache only a fully validated, issuer-pinned document. Never cache a failed or
- * unverified reading, and never substitute a legacy GRI for news severity. */
+/** Cache only fully validated Ed25519-reviewed current data. */
 async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<PublicRiskIndices> {
   if (!forceRefresh && lastCertifiedRead &&
       Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS &&
@@ -77,10 +87,18 @@ async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<Publi
         Date.now()-Date.parse(index.readingAsOf)<=60*60000)) {
     return lastCertifiedRead.data;
   }
-  // Require real reviewer-gated GRI v1.2 publication; never self-certified news severity.
-  const data = await readCurrentReviewedSignedIndices();
-  lastCertifiedRead = { loadedAt: Date.now(), data };
-  return data;
+  if (inFlightCertifiedRead) return inFlightCertifiedRead;
+  // Genuine reviewed GRI v1.2 only, never self-certified news severity.
+  const pending = readCurrentReviewedSignedIndices().then(data => {
+    lastCertifiedRead = { loadedAt: Date.now(), data };
+    return data;
+  });
+  inFlightCertifiedRead = pending;
+  try {
+    return await pending;
+  } finally {
+    if (inFlightCertifiedRead === pending) inFlightCertifiedRead = null;
+  }
 }
 const EDGE_AUTHORITY = "backblaze-b2-risk-indices-edge";
 const EDGE_SCHEMA = "geomacro.public-risk-indices-live.v1";
@@ -270,7 +288,7 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
   return doc.data;
 }
 
-export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
+export function useRiskIndices(refreshMs = RISK_INDICES_VISIBLE_REFRESH_MS) {
   const [data, setData] = useState<PublicRiskIndices | null>(null);
   const [status, setStatus] = useState<RiskIndicesStatus>("loading");
   const [error, setError] = useState<UserError | null>(null);
@@ -282,55 +300,124 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
 
   useEffect(() => {
     let cancelled = false;
+    let inFlight = false;
+    let scheduled: number | undefined;
+    let lastStartedAt = 0;
+    let nextCadenceMs = riskIndicesRefreshDelay(false, refreshMs);
 
+    function stopTimer() {
+      if (scheduled !== undefined) {
+        window.clearTimeout(scheduled);
+        scheduled = undefined;
+      }
+    }
+    function remainingSignedValidityMs(): number | null {
+      const previous = lastCurrent.current;
+      if (!previous) return null;
+      return riskIndicesSignedSourceRemainingMs(
+        previous.snapshotAsOf,
+        previous.indices.map(index => index.readingAsOf),
+      );
+    }
+    function revokeExpiredCurrent(): boolean {
+      if (remainingSignedValidityMs() !== 0) return false;
+      // Fail closed immediately on real source expiry, not up to one browser
+      // polling period later. This never substitutes a historical score.
+      lastCurrent.current = null;
+      hasData.current = false;
+      setData(null);
+      setStatus("error");
+      return true;
+    }
+    function scheduleNext(delayMs: number) {
+      stopTimer();
+      if (cancelled || document.visibilityState === "hidden") return;
+      const sourceRemaining = remainingSignedValidityMs();
+      const boundedDelay = sourceRemaining === null
+        ? delayMs
+        : Math.min(delayMs, sourceRemaining);
+      scheduled = window.setTimeout(() => {
+        scheduled = undefined;
+        revokeExpiredCurrent();
+        void load(true);
+      }, boundedDelay);
+    }
     async function load(forceRefresh = false) {
+      if (cancelled || inFlight || document.visibilityState === "hidden") return;
+      stopTimer();
+      inFlight = true;
+      lastStartedAt = Date.now();
       setStatus(hasData.current ? "updating" : "loading");
-      let lastFailure: unknown = new Error("GEOMACRO_NEWS_GRI_UNAVAILABLE");
-      for (let attempt = 0; attempt <= CERTIFIED_RETRY_DELAYS_MS.length; attempt++) {
+      try {
+        // Exactly ONE bounded read per attempt. A missing signed GRI (HTTP
+        // 503) does not justify the previous 350/900ms triple-read burst.
+        const response = await readCachedCertifiedNewsRisk(forceRefresh);
         if (cancelled) return;
-        try {
-          const response = await readCachedCertifiedNewsRisk(forceRefresh || attempt > 0);
-          if (cancelled) return;
-          hasData.current = true;
-          lastCurrent.current = response;
-          setData(response);
-          setError(null);
-          setStatus("ready");
-          return;
-        } catch (caught) {
-          lastFailure = caught;
-          if (attempt < CERTIFIED_RETRY_DELAYS_MS.length) {
-            await new Promise(resolve => window.setTimeout(resolve, CERTIFIED_RETRY_DELAYS_MS[attempt]));
-          }
+        hasData.current = true;
+        lastCurrent.current = response;
+        setData(response);
+        setError(null);
+        setStatus("ready");
+        nextCadenceMs = riskIndicesRefreshDelay(true, refreshMs);
+      } catch (caught) {
+        if (cancelled) return;
+        const userError = reportError(
+          "useRiskIndices",
+          caught,
+          "refreshing the verified public risk indices",
+        );
+        setError(userError);
+        // Never present a previous verified score as CURRENT once its real
+        // source-native 60-minute certification window is exhausted.
+        const previous = lastCurrent.current;
+        const previousIsCurrent = previous !== null &&
+          Number.isFinite(Date.parse(previous.snapshotAsOf)) &&
+          Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000 &&
+          previous.indices.every(index => index.readingAsOf &&
+            Number.isFinite(Date.parse(index.readingAsOf)) &&
+            Date.now()-Date.parse(index.readingAsOf)<=60*60000);
+        if (!previousIsCurrent) {
+          hasData.current = false;
+          lastCurrent.current = null;
+          setData(null);
+        }
+        setStatus(previousIsCurrent ? "ready" : "error");
+        nextCadenceMs = riskIndicesRefreshDelay(false, refreshMs);
+      } finally {
+        inFlight = false;
+        if (!cancelled && !document.hidden) {
+          scheduleNext(riskIndicesResumeDelay(lastStartedAt, Date.now(), nextCadenceMs));
         }
       }
-      if (cancelled) return;
-      const userError = reportError(
-        "useRiskIndices",
-        lastFailure,
-        "refreshing the verified public risk indices",
-      );
-      setError(userError);
-      // A stale verified reading cannot remain presented as CURRENT. Keep
-      // only in-window previously reviewed scores during transient failures.
-      const previous=lastCurrent.current;
-      const previousIsCurrent=previous!==null &&
-        Number.isFinite(Date.parse(previous.snapshotAsOf)) &&
-        Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000 &&
-        previous.indices.every(index=>index.readingAsOf &&
-          Number.isFinite(Date.parse(index.readingAsOf)) &&
-          Date.now()-Date.parse(index.readingAsOf)<=60*60000);
-      if(!previousIsCurrent){hasData.current=false;lastCurrent.current=null;setData(null);}
-      setStatus(previousIsCurrent ? "ready" : "error");
     }
 
-    // Always fetch on first client mount. Follow-up retries are automatic and
-    // bounded; refresh/retry requests bypass the minute-long positive cache.
-    void load(reloadKey > 0);
-    const timer = window.setInterval(() => void load(true), refreshMs);
+    function resumeVisibleBrowser() {
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") {
+        stopTimer();
+        return;
+      }
+      if (inFlight) return;
+      const justExpired = revokeExpiredCurrent();
+      const remaining = riskIndicesResumeDelay(lastStartedAt, Date.now(), nextCadenceMs);
+      if (justExpired || remaining === 0) {
+        stopTimer();
+        void load(true);
+      } else {
+        scheduleNext(remaining);
+      }
+    }
+
+    document.addEventListener("visibilitychange", resumeVisibleBrowser);
+    window.addEventListener("focus", resumeVisibleBrowser);
+    // First visible page mount is immediate; subsequent timer ticks are
+    // completion-aware and cannot overlap slow 8-second network reads.
+    if (document.visibilityState !== "hidden") void load(reloadKey > 0);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      stopTimer();
+      document.removeEventListener("visibilitychange", resumeVisibleBrowser);
+      window.removeEventListener("focus", resumeVisibleBrowser);
     };
   }, [refreshMs, reloadKey]);
 

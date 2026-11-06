@@ -106,7 +106,8 @@ describe("production website runtime contract", () => {
       expect(surface).toContain("withPublicRuntimeTimeout");
     }
     expect(risk).toContain("AbortSignal.timeout(REQUEST_TIMEOUT_MS)");
-    expect(risk).toContain("const REQUEST_TIMEOUT_MS = 8_000");
+    expect(risk).toContain("const REQUEST_TIMEOUT_MS = RISK_INDICES_REQUEST_TIMEOUT_MS");
+    expect(read("src/lib/risk-indices-browser-cadence.ts")).toContain("RISK_INDICES_REQUEST_TIMEOUT_MS = 8_000");
   });
 
   it("keeps route loaders fail-closed without collapsing the whole page", () => {
