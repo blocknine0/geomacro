@@ -1622,6 +1622,18 @@ export default {
       return publishPredgePilotCheckV2(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
+    // Public verification material only; private signer remains protected.
+    if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-decision-key"&&!url.search){
+      const id=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
+      const spki=String(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
+      if(!/^[A-Za-z0-9._:-]{4,120}$/.test(id)||
+         !/^[A-Za-z0-9+/]{55,120}={0,2}$/.test(spki))
+        return json({ok:false,error:"RISK_GATE_DECISION_KEY_UNAVAILABLE"},503);
+      return Response.json({ok:true,schema:"geomacro.risk-gate-decision-key.v1",
+        key_id:id,scheme:"Ed25519",public_key_spki_b64:spki},{
+        status:200,headers:{"Cache-Control":"public, max-age=120",
+          "X-Content-Type-Options":"nosniff"}});
+    }
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
       return predgeRiskGateD1Readiness(env);
     // Distinct risk-gate credential and D1 quota; never inherit root admin auth.
