@@ -15,6 +15,7 @@ export const PUBLIC_FREE_D1_TTL_SECONDS = 45;
 export const PUBLIC_FREE_D1_DERIVED_TTL_SECONDS = 300;
 export const PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS = 60;
 const PATHS = new Set([
+  "/api/v1/feed",
   "/api/v1/feed/geopolitics",
   "/api/v1/feed/macro",
   "/api/v1/feed/rare_earth",
@@ -56,6 +57,7 @@ const ttlForPath=pathname=>
   pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
   HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:
   PUBLIC_FREE_D1_TTL_SECONDS;
+const UNIFIED_EVENT_QUERY=/^category=(conflict|macro_economics|commodities|sanctions|macro|geopolitics|critical_minerals|rare_earth)&min_credibility=(0\.1|0\.5|0\.7|1)$/u;
 // Per-isolate single-flight avoids the D1 read stampede between a cache miss
 // and the cache PUT. Cache API remains authoritative across requests/POPs.
 const inFlightPublicReads=new Map();
@@ -88,6 +90,8 @@ export function eligiblePublicFreeD1CacheRequest(request){
       if(!categoryQuery(raw))return false;
     }else if(url.pathname==="/v1/public/source-runtime-context"){
       if(!CONTEXT_QUERIES.has(raw))return false;
+    }else if(url.pathname==="/api/v1/feed"){
+      if(!UNIFIED_EVENT_QUERY.test(raw))return false;
     }else if(PAGED_NEWS_PATHS.has(url.pathname)){
       if(!CANONICAL_OFFSETS.has(raw))return false;
     }else return false;

@@ -50,6 +50,7 @@ import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvi
 import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
+import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -1406,6 +1407,11 @@ export default {
     if(env?.DB?.prepare&&utc.getUTCMinutes()===47)
       ctx.waitUntil(pruneExpiredGroEvidence(env,utc.getTime())
        .catch(()=>console.error("GRO_EVIDENCE_TTL_UNAVAILABLE")));
+    // Unified live index has a seven-day cap. Delete only rows with an exact
+    // acknowledged hourly archive pointer, in one bounded statement/hour.
+    if(env?.DB?.prepare&&utc.getUTCMinutes()===44)
+      ctx.waitUntil(pruneUnifiedEvents(env,utc.getTime(),500)
+       .catch(()=>console.error("UNIFIED_EVENT_TTL_UNAVAILABLE")));
     // 195 country/day (one country/minute 05:00-08:14 UTC), then 12
     // separate strategic corridors (08:20-08:31 UTC); D1-first/no funds.
     // Successful generated snapshots are immutable per UTC day.
@@ -1570,6 +1576,8 @@ export default {
        /^\/api\/v1\/feed\/(geopolitics|macro|rare_earth)$/u.test(url.pathname)&&!url.search)
       return publicReadCache(()=>readIncrementalWebsiteCategoryFeed(
        env,url.pathname.slice("/api/v1/feed/".length)));
+    if(request.method==="GET"&&url.pathname==="/api/v1/feed")
+      return publicReadCache(()=>readUnifiedEvents(env,url));
     if(request.method==="GET"&&url.pathname==="/v1/public/macro-fastlane"&&!url.search)return publicReadCache(()=>readPublicMacro(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/source-runtime"&&!url.search)return publicReadCache(()=>getSourceRuntimeStatus(env));
     if(request.method==="GET"&&url.pathname==="/v1/public/reusable-source-news")
@@ -2013,6 +2021,24 @@ export default {
             return phase2hPrivateRawMarkArchived(env,body);
         }
         return json({ok:false,error:"PRIVATE_RAW_METHOD_INVALID"},405);
+      }
+      if(request.method==="PUT"&&url.pathname==="/v1/internal/unified-events"&&!url.search){
+        const body=await readJson(request,1048576);
+        return putUnifiedEvents(env,body);
+      }
+      if(request.method==="GET"&&url.pathname==="/v1/internal/unified-events/archive"){
+        const limit=Number(url.searchParams.get("limit")||"500");
+        return exportUnifiedEvents(env,limit);
+      }
+      if(request.method==="POST"&&url.pathname==="/v1/internal/unified-events/archive-slot"&&!url.search){
+        return reserveUnifiedEventArchiveSlot(env,await readJson(request,1024));
+      }
+      if(request.method==="POST"&&url.pathname==="/v1/internal/unified-events/archive-verify"&&!url.search){
+        return verifyUnifiedB2Archive(env,await readJson(request,2048));
+      }
+      if(request.method==="PUT"&&url.pathname==="/v1/internal/unified-events/archive-ack"&&!url.search){
+        const body=await readJson(request,64000);
+        return ackUnifiedEventsArchive(env,body);
       }
       if(request.method==='GET'&&url.pathname==='/v1/internal/website-derived-news-bundle'&&!url.search){
         const direct=await readDerivedStoriesBundle(env,Date.now(),false);
