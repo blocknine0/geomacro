@@ -1,0 +1,593 @@
+{
+  "schema": "geomacro.d1-access-inventory.v1",
+  "status": "DISCOVERED_NOT_GOVERNED",
+  "pr": 3636,
+  "pr_head_sha": "d1b065d42ed1c515db441a765cdc60ac44c377e5",
+  "pr_merge_sha": "ff3fd7df1966ddd7644a4989f8b01f0678dbaac4",
+  "product_ci_run_id": 42251759888,
+  "inventory_gate_job_id": 128008400938,
+  "scan": {
+    "method": "static source/config/workflow scan with D1 binding, alias, database-parameter, REST endpoint and Wrangler D1 execute detection",
+    "files": [
+      {
+        "path": "scripts/day6-direct-live-federico-gro.ts",
+        "sha256": "69affe5392d025f2227b0054f73dd0020991b463973eb311237af5b7e0e561ea",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "scripts/lib/d1-control-plane-state.mjs",
+        "sha256": "1079f35d091181148a635e6e69c0adaa665d8f9fc7e0bd3ac1f39a526e3be0b2",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "scripts/ops/audit-country-gro-d1-hot-readonly.ts",
+        "sha256": "c895daf9b2442dcff8dd6dd4bdb2b2586e8ec0e575ce5af7c4135c4dc60fd5ad",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "scripts/ops/publish-country-gro-hot-bundle.ts",
+        "sha256": "9cceb50ff334bb2d6312fde17d5db8af69ae566d3961dc4fa341cf2f65a66ac8",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "scripts/ops/verify-production-b2-d1-runtime-acceptance.mjs",
+        "sha256": "700b454abe7853d0fdee4e061d0e9eadd1a9d1ffbd8ad11e491977def62ecebc",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "src/storage/p0b-r2-fallback.ts",
+        "sha256": "80fb17705d97093f390444c4f56ea19c108575ae47ff687b25eeba01ff307fd5",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "src/workers/backlog-drain-cron.ts",
+        "sha256": "fd9a24e752e5fa5ed4d7a3adf9d0da78cd9d3cf286f3284cfdfd04f229a862d4",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "src/workers/ingest-bundle-consumer.ts",
+        "sha256": "3804f26c9ef5b6566f5d5f240fd680bd5e6390da528120e8a0b37a1ece7c114e",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "src/workers/ingest-consumer.ts",
+        "sha256": "542c15ce16e1977e200e9774e69ce029a4ff5a2bf85e894b67d3b8e0665fa6ec",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "src/workers/ingest-producer.ts",
+        "sha256": "f5154dcf4ec1b3a417995b0175a30fa4bbf1c18688d2e837c32236f4f2a84a3e",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/ask-public-model-cache.mjs",
+        "sha256": "a71572fa3cbcb2dd46a4745def106125eab203b2d883be335e6314488fa506cf",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/automated-finds.ts",
+        "sha256": "180bc47419d691d446020c6d4da419d72f027c055095229c39deff2bcfb654c5",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/automated-intelligence-inputs.ts",
+        "sha256": "ab548bb7e4affc9d6a59fd0e3956c91df7eaabc3f8294503893596667bd114cd",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/b2-account-quota.mjs",
+        "sha256": "0cc131d10bbd60db1044415c83cb4f846caef7666999032db419f0a3d4fffe29",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/central-security-budget.mjs",
+        "sha256": "ad2af4908ba7fff7edee2acd716257625932bfe246a480e892b45964f7c0104e",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/commercial-risk-gate.mjs",
+        "sha256": "96730e19651d953b31ad92d60984720ca9b42f7d8d39bf677244d1639db5031e",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-crypto-individual-research.mjs",
+        "sha256": "5dd7fb9ec58c798fd71c0a7a7340dcb96e2416f2fd8bd53b1d051a081a5d3b3f",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-native-news.mjs",
+        "sha256": "3725a4344c8f06038c07a109eb0dd046488ba3bea76cd7f36ac59ea371526ebd",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-official-reference.mjs",
+        "sha256": "53a33ae3d8685d72bcb666475c21bb3a5efdcfaf20e56bc323ac4c775daa844a",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-pipeline-health.mjs",
+        "sha256": "fcc8d7dc848e0b6de9053424b709ea55faea17be829b573f91e6a5ead0b72672",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-private-research.mjs",
+        "sha256": "3fe54ddef4b88fd97350969539c59ac9123f78d0ad840a56df76ed77a84758e4",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-risk-gate-jit.mjs",
+        "sha256": "83b428c4f03ada2a3f17720a6edf8ab0b279bc435599307bb01844cf52b59b2d",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-risk-gate-source-pack.mjs",
+        "sha256": "716ac900c51cfd595abd70fac40d244137350ab47ce063b2d1453082477592f8",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/corridor-seven-day-cache.mjs",
+        "sha256": "f1b00c6a79e5ec069ced8592968adf67a91a8c2104c871f472a1d6e18eced22b",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/customer-paid-ledger.mjs",
+        "sha256": "503e3bd97df94c8f91013b65b4228791fa84ebd4c17255588490716d6c61efd3",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/customer-paypal-funding.mjs",
+        "sha256": "0c2e7248f37220fb7ea20b20d765254e7f7d3d7c6ed9d8b14a70996bf276936f",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/customer-paypal-refund.mjs",
+        "sha256": "ddfbd5e160699958e04c10ae6d71048d943eda77a68f237b7a6da73d6ed5120d",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/customer-runtime.mjs",
+        "sha256": "749792cfe05a2180ab6e770b808de82c97da018c1fb0f9e979c5732ef8dc7c31",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/d1-read-soft-budget.mjs",
+        "sha256": "a3073310c7c0523858a098b92ad5d1c560d0e283cd5059eee49a67df9734b49c",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/d1-soft-budget.mjs",
+        "sha256": "d1bcfddd6ff9250e47e3ed48224422af8312a26ac107baa69eaf30424db99693",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/daily-risk-gate-generator.mjs",
+        "sha256": "8d7b9344db6806ea77cea9b88aa263ffd0d70fb02306eac3b0d224e0031f8044",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/derived-news-qualification-status.mjs",
+        "sha256": "59574bdad7352d1766d9783195e05ae0d7edfb865c69a3e7a49f5e90880f58e5",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs",
+        "sha256": "3e400ba024a006832e26663508bbd1c10ca192a43ffd93da622f708f1b9194a2",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/derived-risk-gate-website-raw.mjs",
+        "sha256": "cf51f3919ea3c1aa3f4ee3eb6954bc14dc61e6bb3eddaeae4c7ed3230a3ac778",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/gro-auto-signing-health.mjs",
+        "sha256": "ddb6367daeac0fa885d37538bc57dd0fe701c09cf1dba87784982ab58c27fdaf",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/gro-evidence-enrichment.mjs",
+        "sha256": "8c272f9bafe9638ca7825fc3d82148fd2f8ee2df45050a704d0191fc114245f8",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/hot50-materialized-news.mjs",
+        "sha256": "a2c15387d243e163b0ef1043700e2954bd70ad598c4de6b9ffa47434a043b7a6",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/hot50-production-activation-census.mjs",
+        "sha256": "57894c3c77c2dfa01a30cd467dc1c52b648fc8efc85f3eb18d7cdeab284a5753",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/index.mjs",
+        "sha256": "765aa688775bd2c54bd32dc41f30c8272b48b5fc3bd28af503bf8f0df1a1d7bd",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/internal-signed-news-scores.ts",
+        "sha256": "456205281bc3f4714fd09f061c7026df6b72780122151719272a5231305777e4",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/low-source-reviews.ts",
+        "sha256": "ff871f32af411aef481210fb894602b9bd5f59a58b69ceab14dc211bb7c1bec7",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/macro-fastlane.mjs",
+        "sha256": "8bd98995f817805c0c1283760cc2d9784f5276cf4f5b487e2e78cfdd6068eebe",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/materialized-public-news-pages.mjs",
+        "sha256": "74181ebcb5167abff610136bb018de610aac23a315cce0bdb406033a954bc1c3",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/news-intake-policy.mjs",
+        "sha256": "a48936c905d0e35428094729d170913d2a746287f60fd846f7baa2b68a1b38ed",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/news-product-factory.mjs",
+        "sha256": "927bec3ea1156b251f81113580f09b456a75c7c31de5bb5a5745ebea6901dcaf",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p0a-source-item-bundled-write.mjs",
+        "sha256": "b35297c4dcd8ee6b4a93f4be625ab57432a11c3bc7e0fb72443659e8bef2bef5",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p0a-source-registry.mjs",
+        "sha256": "eb0fabdba00694cb0e0eb5f6c57004cbc7d79ef67498fe6f4ae11df5097d70bf",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p0b-ingestion-status.mjs",
+        "sha256": "b8084461794f16fea78f5f5f3b71e17c88da51e2d37f6b31cb3546a25822ab57",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p0b-production-verifier.mjs",
+        "sha256": "b9cdf8145c9bf870ac08c5adbbd6353a2ffeccdea608ddd1859165cec0e14190",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p1-queue-monthly-budget.mjs",
+        "sha256": "f3fecab96d75a049b1aed1a06ad44154f59af428e83aefc937c9a1fa4bbfa5cb",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p1-source-bundled-dispatch.mjs",
+        "sha256": "fc1313d7e02793eb6280916897cbd6471a90b700e4dd4542070dd8fd9e10aea7",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/p1-source-fanout.mjs",
+        "sha256": "c358e6d9745e50657ae6d677ab6b675bbb7d110fee3b92d088974e8e6d4ec854",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/phase2h-private-raw-news.mjs",
+        "sha256": "c67cec5c662d5a79ea13e094ec283481c895b3a717f445cee30783370e243789",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/phase2h-risk-country-index.mjs",
+        "sha256": "900e4ffb7404dce3b44a4fd86497981d181dabe3005c6b82a0c100f5e06d45b3",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/predge-pilot-check-v2.mjs",
+        "sha256": "0d56f3f101c9200f2039c116e1ec46873c5a492f874db2cd6682b3b2e21d06ca",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/predge-risk-gate-d1.mjs",
+        "sha256": "a07495ecbd8c0e39672a22b86b917613c02899d7a594ebb9431291237107db52",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/private-osint-15m.mjs",
+        "sha256": "744a60a61176e88db087c3c1c06164d387a942768bffe3f31e13c2e3910a6c47",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/private-osint-bundle.mjs",
+        "sha256": "033d64325c7a4146e856e3d23771be7fbae085b9591a5cc92bbed220911e870a",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/private-source-directory.mjs",
+        "sha256": "f93a0e72aae8d50e47b0f12f23fdf4ff2372cbe409bda32c1d0944c929d8a1c1",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/private-source-handoffs.ts",
+        "sha256": "973b431bea96f5009da83af3050302b6fde9261532f0485c0e8c190d1f336c80",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/progressive-risk-gate.mjs",
+        "sha256": "f42a0ab021a500fcb4099d582e5a72907f810cdc4a71acf86efd015ad100941c",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/public-signed-news.mjs",
+        "sha256": "0d50f90ec6a8618dd7ef5aec78ec10b84f9ba705670067d237fb37a69b0d44ea",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/reusable-source-news.mjs",
+        "sha256": "f50303ab5229646931a8fcc91fa32d0a8a6d0ae1fbcb8d25737c0c42338379b9",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gap-enrichment.mjs",
+        "sha256": "73f37065f16c5061ebd222d5923acb178776b209dea75a9623af05918e4b0233",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gate-assessment-buffer.mjs",
+        "sha256": "f8c8981f76041de4d399ffaf05fc3d9a99bbf08a394d7d600a3508aa66f7fb3e",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gate-audit-receipt.mjs",
+        "sha256": "f3819360f021dabf7b0d7acc0d6d00b36e8bd016ba0b98c4a244e175cc514214",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gate-controlled-bypass.mjs",
+        "sha256": "f1fca896f365cfa9005f008c52313d4a604c29830e92794817f79ca993fd57f1",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gate-flash-override.mjs",
+        "sha256": "0f964c7c441be7620399f50223d75e9b459cf1331363c86b136276b7b5847552",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/risk-gate-gdelt-event-index.mjs",
+        "sha256": "a60070ba1618d5ae338189fdc43325053bb9538474cf46d0e337efdaaa46cf49",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/source-runtime-status.mjs",
+        "sha256": "61abda2f660eb0c30368bf21b334991f4229fcb9f5721a4dbca0aa8fece880da",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/telegram-export-derived-json.mjs",
+        "sha256": "5e23ed0d30a7c4251080e44fb0bb95bae1441d22ca4065671d70607b81b5c43c",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/telegram-free-live-research.mjs",
+        "sha256": "50a3a4e8a6abf0325ffcc08d7bb3a9c6dd592d31733ffdebc891f05591b69cdb",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/telegram-research-json.mjs",
+        "sha256": "108102774fd544ce675acd9c1d45e0459f5e3f8c45939d596b8fd2d7b67044f3",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/three-domain-evidence-continuity.mjs",
+        "sha256": "ab1b5429aed0031a54403a25b14836aeeae08f5b3746d9f43d48929e8add3772",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/unified-risk-gate.mjs",
+        "sha256": "0223f074fc80cd1611f5197acf010accbaf138fa0e7047ed451df3bcafcc5728",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/unified-risk-private-osint-bridge.mjs",
+        "sha256": "dbcf5a1cf9b3effc54f91e5d3839a87bf16df287fecb683e8dbd25b867a67c56",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/website-derived-cap-compaction.mjs",
+        "sha256": "52aac24975769ac4916700dff2c23df3b73823479918f902f894f7201b118445",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/website-derived-intelligence.mjs",
+        "sha256": "db7aba83076b4ccc3faea82fc7e5fc2dfa8b713e7bcbbc54ca0ae1b51e5dcd01",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/control-plane/src/website-incremental-feed.mjs",
+        "sha256": "dd8d8a4e01cfecfa680168887808ac4828f0baa91309a1f9a39db7895b721717",
+        "reads_d1": true,
+        "writes_d1": false,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      },
+      {
+        "path": "workers/x402-ledger/src/index.mjs",
+        "sha256": "c8eded77e552b1e88a872055697baa6626f3685cafb59ab26f1f0b23fdf3eee9",
+        "reads_d1": true,
+        "writes_d1": true,
+        "classification": "UNREVIEWED_FOR_ACCOUNT_WIDE_ADMISSION"
+      }
+    ],
+    "count": 80,
+    "reads": 80,
+    "writes": 60,
+    "unknown_access_shapes": 0
+  },
+  "controls": {
+    "daily_soft_rows_read_max": 120000,
+    "daily_soft_rows_written_max": 180000,
+    "account_wide_read_governor_verified": false,
+    "account_wide_write_governor_verified": false,
+    "migrations_applied": false,
+    "cloudflare_deployment_performed": false,
+    "canary_hold_preserved": true,
+    "production_funds_authorized": false
+  },
+  "limits_of_evidence": [
+    "Static classification proves file-level D1 access candidates, not runtime call frequency or exact rows scanned.",
+    "The scan was emitted by Product CI on the PR merge ref; it is not a production telemetry census.",
+    "All 80 candidates remain ungoverned until each D1 query is admitted before execution by an account-wide design and the provider quota is independently read back."
+  ]
+}
