@@ -10,7 +10,28 @@ import {join,relative,sep} from 'node:path';
 
 const SCAN_ROOTS=Object.freeze(['.']);
 const SOURCE=/\.(?:mjs|js|cjs|ts|tsx|jsx|py|sh|bash|ps1|ya?ml|json|jsonc)$/u;
-const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query)/iu;
+const D1_BINDING_METHOD=/\b(?:DB|D1|db|d1|database)\s*(?:\?\.)?\.\s*(?:prepare|batch|exec)\s*\(/iu;
+const D1_BINDING_ALIAS=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*(?:\?\.)?\.\s*(?:DB|D1)\b/gu;
+const D1_ALIAS_ASSIGNMENT=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gu;
+const D1_REST_ENDPOINT=/(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query/iu;
+function accessesD1(source){
+ if(D1_BINDING_METHOD.test(source)||D1_REST_ENDPOINT.test(source))return true;
+ const aliases=new Set(['DB','D1','db','d1','database']);
+ let changed=true;
+ while(changed){
+  changed=false;
+  D1_BINDING_ALIAS.lastIndex=0;
+  for(const match of source.matchAll(D1_BINDING_ALIAS))
+   if(!aliases.has(match[1])){aliases.add(match[1]);changed=true;}
+  D1_ALIAS_ASSIGNMENT.lastIndex=0;
+  for(const match of source.matchAll(D1_ALIAS_ASSIGNMENT))
+   if(aliases.has(match[2])&&!aliases.has(match[1])){aliases.add(match[1]);changed=true;}
+ }
+ return [...aliases].some(alias=>{
+  const escaped=alias.replace(/[.*+?^${}()|[\\]\\]/gu,'\\\\const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query)/iu;');
+  return new RegExp('\\\\b'+escaped+'\\\\s*(?:\\\\?\\.)?\\\\.\\\\s*(?:prepare|batch|exec)\\\\s*\\(', 'u').test(source);
+ });
+}
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
 const SQL_READ=/\bSELECT\b/iu;
 const D1_READ_METHOD=/\.\s*(?:all|first|raw|run|batch|exec|query)\s*\(/iu;
@@ -36,7 +57,7 @@ for(const root of SCAN_ROOTS){
  for(const path of filesUnder(root)){
   let source;
   try{source=readFileSync(path,'utf8')}catch{throw Error('CANARY_WRITER_SCAN_READ_FAILED:'+path)}
-  const d1Access=D1_API.test(source)||DIRECT_D1_COMMAND.test(source);
+  const d1Access=accessesD1(source)||DIRECT_D1_COMMAND.test(source);
   const write=d1Access&&SQL_WRITE.test(source);
   const read=d1Access&&SQL_READ.test(source)&&
     (D1_READ_METHOD.test(source)||DIRECT_D1_COMMAND.test(source)||D1_API.test(source));
