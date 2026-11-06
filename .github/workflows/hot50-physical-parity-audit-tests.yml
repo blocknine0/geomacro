@@ -1,0 +1,29 @@
+name: Hot50 full physical parity regression
+on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/hot50-verified-parity-page.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "scripts/tests/hot50-verified-parity-page.test.mjs"
+      - "scripts/ops/verify-hot50-activation-full.mjs"
+      - ".github/workflows/hot50-physical-parity-audit-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-no-mock-success:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.16.0"
+      - name: Check protected handler syntax and CLI
+        run: |
+          node --check workers/control-plane/src/hot50-verified-parity-page.mjs
+          node --check scripts/ops/verify-hot50-activation-full.mjs
+      - name: Tampering, ACK, pagination and no-fabricated-PASS checks
+        run: node --experimental-strip-types --test scripts/tests/hot50-verified-parity-page.test.mjs
