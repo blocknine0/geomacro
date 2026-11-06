@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import {verifyLiveAskFreeGroq,readAsk} from "./verify-live-free-groq-ask.mjs";
 const questionBodies=[];
 function mockFetch(url,options){
+ if(url==="https://geomacro.live/.well-known/geomacro-build.json")
+   return Promise.resolve(new Response(JSON.stringify({canonical_repository:"blocknine0/geomacro",
+     canonical_main_sha:"a".repeat(40)}),{status:200,headers:{"content-type":"application/json"}}));
  assert.equal(url,"https://geomacro.live/api/ask/v2/turn");
  assert.equal(options.method,"POST");
  assert.equal(options.headers.Origin,"https://geomacro.live");
