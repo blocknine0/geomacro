@@ -18,7 +18,7 @@ test("48 originals form exactly ONE all-or-none D1 UPDATE RETURNING statement wi
  assert.equal(plan.sql.match(/\bUPDATE\b/gu).length,1);
  assert.equal(plan.sql.match(/\bRETURNING\b/gu).length,1);
  assert.match(plan.sql,/AS MATERIALIZED/gu);
- assert.match(plan.sql,/JOIN expected AS e ON r\.record_id=e\.record_id AND r\.raw_sha256=e\.raw_sha256/u);
+ assert.match(plan.sql,/r\.record_id=e\.record_id AND r\.raw_sha256=e\.raw_sha256/u);
  assert.match(plan.sql,/AND \(SELECT total FROM eligible\)=\?/u);
  const result={results:items.map(x=>({...x,b2_object_sha256:objectSha}))};
  const receipt=assertPhase2hBulkArchiveAckReturning(result,items,objectSha);
@@ -40,4 +40,35 @@ test("reject duplicate IDs, hash collision, missing rows and wrong B2 receipt",(
   /PHASE2H_BULK_ACK_ATOMIC_RETURNING_ID_HASH_MISMATCH/);
  assert.throws(()=>assertPhase2hBulkArchiveAckReturning({results:[...x.slice(0,2),x[0]].map(y=>({...y,b2_object_sha256:objectSha}))},x,objectSha),
   /PHASE2H_BULK_ACK_ATOMIC_RETURNING_ID_HASH_MISMATCH/);
+});
+
+test("real SQLite bounds ACK lookups by expected IDs and preserves atomic mismatch refusal",async()=>{
+ const {DatabaseSync}=await import('node:sqlite');
+ const db=new DatabaseSync(':memory:');
+ db.exec(`CREATE TABLE phase2h_private_raw_news(record_id TEXT PRIMARY KEY,
+ raw_sha256 TEXT,b2_object_sha256 TEXT,b2_archived_at TEXT,first_ingested_at TEXT);
+ CREATE INDEX idx_phase2h_unarchived ON phase2h_private_raw_news
+ (b2_object_sha256,first_ingested_at,record_id);`);
+ const insert=db.prepare('INSERT INTO phase2h_private_raw_news VALUES(?,?,NULL,NULL,?)');
+ db.exec('BEGIN');
+ for(let i=1;i<=10000;i++)insert.run(sha(i),sha(i+9000),now.toISOString());
+ db.exec('COMMIT');
+ const execute=items=>{
+  const p=phase2hAtomicBulkArchiveAck(items,objectSha,now);
+  const details=db.prepare('EXPLAIN QUERY PLAN '+p.sql).all(...p.params).map(x=>x.detail).join('\n');
+  assert.match(details,/USING INTEGER PRIMARY KEY/);
+  assert.match(details,/USING INDEX sqlite_autoindex_phase2h_private_raw_news_1/);
+  assert.doesNotMatch(details,/USING (?:COVERING )?INDEX idx_phase2h_unarchived/);
+  return db.prepare(p.sql).all(...p.params);
+ };
+ try{
+  assert.equal(execute(rows(48)).length,48);
+  assert.equal(execute([{record_id:sha(49),raw_sha256:sha(9049)},
+   {record_id:sha(50),raw_sha256:sha(999999)}]).length,0);
+  assert.equal(execute([{record_id:sha(49),raw_sha256:sha(9049)},
+   {record_id:sha(10001),raw_sha256:sha(19001)}]).length,0);
+  assert.equal(execute([{record_id:sha(49),raw_sha256:sha(9049)},rows(1)[0]]).length,0);
+  assert.equal(execute([{record_id:sha(49),raw_sha256:sha(9049)}]).length,1);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL').get().n,49);
+ }finally{db.close()}
 });
