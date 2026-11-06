@@ -13,11 +13,11 @@ const DAY=/^\d{4}-\d{2}-\d{2}$/u;
 const D1_BUCKET_CAPACITY_MILLI=7_500_000;
 const D1_REFILL_MILLI_ROWS_PER_MINUTE=125_000;
 
-export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimatedRows,limit=180000,observedAt}={}){
- if(!db?.batch||!DAY.test(dayUtc??"")||![providerObserved,estimatedRows,limit].every(Number.isSafeInteger)||
+export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimatedRows,limit=180000,observedAt,nowMs=Date.now()}={}){
+ if(!db?.batch||!DAY.test(dayUtc??"")||![providerObserved,estimatedRows,limit,nowMs].every(Number.isSafeInteger)||
     providerObserved<0||estimatedRows<2||estimatedRows>1000||limit!==180000)
   throw new D1BudgetHold("D1_WRITE_ADMISSION_INVALID");
- const currentMs=Date.now();
+ const currentMs=nowMs;
  const reportedMs=Date.parse(observedAt??'');
  if(dayUtc!==new Date(currentMs).toISOString().slice(0,10)||
    !Number.isFinite(reportedMs)||reportedMs>currentMs||
