@@ -38,21 +38,34 @@ test("D1 token bucket enforces 7500-row burst and 125-row/minute refill",async()
  const f=fixture();
  const t=Date.parse("2026-11-06T09:00:00.000Z");
  try{
-  const first=await reserveD1PhysicalRows(f.DB,{
-   dayUtc:day(t),providerObserved:170000,estimatedRows:2000,
+  let grant;
+  for(let i=0;i<7;i++)grant=await reserveD1PhysicalRows(f.DB,{
+   dayUtc:day(t),providerObserved:i*1000,estimatedRows:1000,
    observedAt:iso(t),nowMs:t,
   });
-  assert.equal(first.reserved_rows,2000);
-  assert.equal(first.bucket_capacity_rows,7500);
-  assert.equal(first.refill_rows_per_minute,125);
-  assert.equal(first.tokens_milli,5500000);
-  const second=await reserveD1PhysicalRows(f.DB,{
-   dayUtc:day(t),providerObserved:172002,estimatedRows:500,
+  assert.equal(grant.reserved_rows,7000);
+  assert.equal(grant.bucket_capacity_rows,7500);
+  assert.equal(grant.refill_rows_per_minute,125);
+  assert.equal(grant.tokens_milli,500000);
+  await assert.rejects(()=>reserveD1PhysicalRows(f.DB,{
+   dayUtc:day(t),providerObserved:7000,estimatedRows:501,
+   observedAt:iso(t),nowMs:t,
+  }),D1BudgetHold);
+  const afterMinute=await reserveD1PhysicalRows(f.DB,{
+   dayUtc:day(t),providerObserved:7000,estimatedRows:500,
    observedAt:iso(t+60000),nowMs:t+60000,
   });
-  assert.equal(second.reserved_rows,2500);
-  assert.equal(second.provider_highwater,172002);
-  assert.equal(second.tokens_milli,5125000);
+  assert.equal(afterMinute.reserved_rows,7500);
+  assert.equal(afterMinute.tokens_milli,125000);
+  const drained=await reserveD1PhysicalRows(f.DB,{
+   dayUtc:day(t),providerObserved:7500,estimatedRows:125,
+   observedAt:iso(t+60000),nowMs:t+60000,
+  });
+  assert.equal(drained.tokens_milli,0);
+  await assert.rejects(()=>reserveD1PhysicalRows(f.DB,{
+   dayUtc:day(t),providerObserved:7625,estimatedRows:2,
+   observedAt:iso(t+60000),nowMs:t+60000,
+  }),D1BudgetHold);
  }finally{f.close()}
 });
 
@@ -66,7 +79,7 @@ test("cumulative daily soft ceiling blocks even when token balance remains",asyn
   });
   assert.equal(allowed.reserved_rows,1000);
   await assert.rejects(()=>reserveD1PhysicalRows(f.DB,{
-   dayUtc:day(t),providerObserved:179000,estimatedRows:1,
+   dayUtc:day(t),providerObserved:179000,estimatedRows:2,
    observedAt:iso(t+1000),nowMs:t+1000,
   }),D1BudgetHold);
   assert.equal(f.db.prepare(
