@@ -75,7 +75,7 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
     GROUP_CONCAT(DISTINCT category) AS categories
     FROM (
       SELECT country_iso3,category,event_fingerprint,
-        COUNT(DISTINCT publisher_domain) AS publisher_count,
+        COUNT(DISTINCT CASE WHEN clock_basis='ORIGINAL_PUBLICATION' THEN publisher_domain END) AS publisher_count,
         MAX(event_clock) AS last_event_clock
       FROM progressive_risk_gate_facts
       WHERE country_iso3 IN (${whereIds}) AND event_clock>=? AND event_clock<=?
