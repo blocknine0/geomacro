@@ -37,6 +37,8 @@ jobs:
       - run: node --test scripts/ops/verify-live-free-groq-ask.test.mjs
       - name: Observe published SHA without provider calls or activation
         run: node --input-type=module -e 'import {readPublishedBuild} from "./scripts/ops/verify-live-free-groq-ask.mjs"; const b=await readPublishedBuild("https://geomacro.live"); console.log(JSON.stringify({published_build_status:b.status,canonical_sha:b.sha}));'
+      - name: Observe one synthetic live Ask rendering status (no credentials)
+        run: node --input-type=module -e 'import {readAsk} from "./scripts/ops/verify-live-free-groq-ask.mjs"; try { const a=await readAsk("https://geomacro.live","Explain geopolitical risk"); console.log(JSON.stringify({ask_rendering:a.rendering,ask_render_cache:a.cache,answer_kind:a.answer_kind})); } catch(e) { console.log(JSON.stringify({ask_probe_error:e.message})); }'
   live-production:
     needs: offline-contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
