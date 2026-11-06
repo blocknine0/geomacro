@@ -3,7 +3,7 @@ import {PaymentError,readJsonResponse,requireValue} from './common.mjs';
 export class SupabaseRpcPool {
  constructor({url,key,fetchImpl=fetch}){
   const parsed=new URL(url);requireValue(parsed.protocol==='https:'&&parsed.origin===url,'RPC_ORIGIN_INVALID',500);
-  Object.assign(this,{url,key:requireValue(key,'RPC_KEY_REQUIRED',500),fetch:fetchImpl});
+  Object.assign(this,{url,key:requireValue(key,'RPC_KEY_REQUIRED',500),fetch:fetchImpl.bind(globalThis)});
  }
  async call(operation,args=[]){
   const headers={apikey:this.key,'Content-Type':'application/json',Accept:'application/json'};

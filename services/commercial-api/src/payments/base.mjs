@@ -91,7 +91,7 @@ export class BaseVerifier {
 export class Facilitator {
  constructor({url,headers={},fetchImpl=fetch}) {
   const parsed=new URL(url);requireValue(parsed.protocol==='https:'&&!parsed.username&&!parsed.password&&!parsed.search&&!parsed.hash,'HTTPS_FACILITATOR_REQUIRED',500);
-  Object.assign(this,{url:url.replace(/\/$/,''),headers,fetch:fetchImpl});
+  Object.assign(this,{url:url.replace(/\/$/,''),headers,fetch:fetchImpl.bind(globalThis)});
  }
  async call(operation,payment,expected) {
   requireValue(['verify','settle'].includes(operation),'INVALID_FACILITATOR_OPERATION',500);

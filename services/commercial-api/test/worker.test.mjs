@@ -51,3 +51,10 @@ test('deployed worker health truthfully exposes activation blockers without secr
   method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}),env);
  assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).execution_authorized,false);
 });
+
+test('Worker global fetch receiver is bound to globalThis, never a client instance',async()=>{
+ const pool=new SupabaseRpcPool({url:'https://project.supabase.co',key:'sb_secret_TEST',fetchImpl:async function(){
+  assert.equal(this,globalThis,'Cloudflare global fetch requires its global receiver');return Response.json({ready:true});
+ }});
+ assert.equal((await pool.call('health')).ready,true);
+});
