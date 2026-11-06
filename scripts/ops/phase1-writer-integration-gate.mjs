@@ -8,8 +8,8 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {join,relative,sep} from 'node:path';
 
-const SCAN_ROOTS=Object.freeze(['workers','src','scripts']);
-const SOURCE=/\.(?:mjs|js|cjs|ts|sh|ya?ml)$/u;
+const SCAN_ROOTS=Object.freeze(['.']);
+const SOURCE=/\.(?:mjs|js|cjs|ts|tsx|jsx|py|sh|bash|ps1|ya?ml|json|jsonc)$/u;
 const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
 const SQL_READ=/\bSELECT\b/iu;
@@ -21,7 +21,7 @@ function filesUnder(root){
   let entries;
   try{entries=readdirSync(dir,{withFileTypes:true})}catch{return}
   for(const entry of entries){
-   if(entry.name==='node_modules'||entry.name==='vendor'||entry.name.startsWith('.'))continue;
+   if(['.git','node_modules','vendor','dist','build','coverage','.next','.wrangler'].includes(entry.name))continue;
    const path=join(dir,entry.name);
    if(entry.isDirectory()){walk(path);continue}
    if(!entry.isFile()||!SOURCE.test(entry.name)||/(?:^|[./_-])test(?:[./_-]|$)|__tests__/iu.test(path))continue;
@@ -36,12 +36,14 @@ for(const root of SCAN_ROOTS){
  for(const path of filesUnder(root)){
   let source;
   try{source=readFileSync(path,'utf8')}catch{throw Error('CANARY_WRITER_SCAN_READ_FAILED:'+path)}
-  const write=(D1_API.test(source)||DIRECT_D1_COMMAND.test(source))&&SQL_WRITE.test(source);
-  const read=(D1_API.test(source)||DIRECT_D1_COMMAND.test(source))&&
-    SQL_READ.test(source)&&(D1_READ_METHOD.test(source)||DIRECT_D1_COMMAND.test(source));
-  if(!write&&!read)continue;
+  const d1Access=D1_API.test(source)||DIRECT_D1_COMMAND.test(source);
+  const write=d1Access&&SQL_WRITE.test(source);
+  const read=d1Access&&SQL_READ.test(source)&&
+    (D1_READ_METHOD.test(source)||DIRECT_D1_COMMAND.test(source)||D1_API.test(source));
+  const unknown=d1Access&&!write&&!read;
+  if(!d1Access)continue;
   const normalized=relative('.',path).split(sep).join('/');
-  candidates.set(normalized,{sha256:createHash('sha256').update(source).digest('hex'),write,read});
+  candidates.set(normalized,{sha256:createHash('sha256').update(source).digest('hex'),write,read,unknown});
  }
 }
 
@@ -85,7 +87,7 @@ for(const p of doc.readers){
   throw Error('CANARY_READER_ATOMIC_ADMISSION_DRIFT:'+p.path);
 }
 const uncovered=[...candidates].filter(([path,c])=>
- (c.write&&!seen.has(path))||(c.read&&!readerSeen.has(path)));
+ (c.write&&!seen.has(path))||(c.read&&!readerSeen.has(path))||c.unknown);
 if(uncovered.length){
  console.log(JSON.stringify({schema:'geomacro.phase1.d1-access-scan.v1',verified:false,
   candidate_count:candidates.size,
