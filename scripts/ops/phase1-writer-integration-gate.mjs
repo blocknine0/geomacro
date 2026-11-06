@@ -13,7 +13,7 @@ const SOURCE=/\.(?:mjs|js|cjs|ts|sh|ya?ml)$/u;
 const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
 const SQL_READ=/\bSELECT\b/iu;
-const D1_READ_METHOD=/\.\s*(?:all|first|raw)\s*\(/iu;
+const D1_READ_METHOD=/\.\s*(?:all|first|raw|run|batch|exec|query)\s*\(/iu;
 const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+(?:execute|migrations)\b/iu;
 function filesUnder(root){
  const out=[];
