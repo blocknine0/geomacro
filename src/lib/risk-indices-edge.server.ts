@@ -57,7 +57,7 @@ export function validatePublicRiskIndices(data: PublicRiskIndices | null | undef
     if (!expected.delete(index.key)) return false;
     if (
       index.status !== "available" ||
-      !Number.isFinite(Number(index.score)) ||
+      (typeof index.score !== "number" || !Number.isFinite(index.score) || index.score < 0 || index.score > 100) ||
       !Array.isArray(index.series?.["7D"]?.buckets) ||
       index.series["7D"].buckets.length < 2 ||
       !Array.isArray(index.series?.["30D"]?.buckets) ||
