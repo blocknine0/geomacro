@@ -275,6 +275,19 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     // conservative soft envelope, and each writer must reserve atomically.
     return paidBundleContract(assessPaidEnvelope(snapshot,{now,paidProof,spendGuardProof}));
   }
+  // Clamp every autonomous Free-plan lane to GeoMacro's internal budget,
+  // regardless of Cloudflare's larger provider allowance. Preserve the
+  // provider headroom separately for diagnostics.
+  const providerRemainingRowsRead=snapshot.remaining_rows_read;
+  const providerRemainingRowsWritten=snapshot.remaining_rows_written;
+  snapshot={...snapshot,
+    remaining_rows_read:Math.min(providerRemainingRowsRead,Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-
+        snapshot.observed_rows_read)),
+    remaining_rows_written:Math.min(providerRemainingRowsWritten,Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-
+        snapshot.observed_rows_written)),
+  };
   const paced=Object.fromEntries(Object.keys(D1_BUNDLE_LANES).map(lane=>[
     lane,d1LanePacedCeiling(lane,now),
   ]));
@@ -463,6 +476,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     observed_rows_written:snapshot.observed_rows_written,
     remaining_rows_read:snapshot.remaining_rows_read,
     remaining_rows_written:snapshot.remaining_rows_written,
+    provider_remaining_rows_read:providerRemainingRowsRead,
+    provider_remaining_rows_written:providerRemainingRowsWritten,
     // A throttled lane preserves next-hour capacity for actual future events.
     // These are non-atomic provider usage ceilings, not D1 reservations.
     admission_paced_to_utc_day:true,
@@ -487,6 +502,8 @@ export function phase2fQuotaDiagnostic(plan){
   const readReserve=D1_BUNDLE_LANES.critical.read_reserve;
   const writeReserve=D1_BUNDLE_LANES.critical.write_reserve;
   const physical=valid&&
+    (plan.provider_remaining_rows_read===0||plan.provider_remaining_rows_written===0);
+  const internalSoft=valid&&
     (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
   const protectedReserve=valid&&
     (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
@@ -495,6 +512,7 @@ export function phase2fQuotaDiagnostic(plan){
      plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
     physical?"PHYSICAL_FREE_LIMIT_REACHED":
+    internalSoft?"GEOMACRO_INTERNAL_SOFT_DAILY_CAP_REACHED":
     protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
     plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
     plan.source_intake===true?"BOUNDED_ORIGINAL_SOURCE_INTAKE_ONLY":
@@ -510,6 +528,7 @@ export function phase2fQuotaDiagnostic(plan){
     remaining_rows_read:valid?plan.remaining_rows_read:null,
     remaining_rows_written:valid?plan.remaining_rows_written:null,
     physical_free_limit_reached:valid?physical:null,
+    geomacro_internal_soft_daily_cap_reached:valid?internalSoft:null,
     protected_critical_predge_reserve_held:valid?protectedReserve:null,
     utc_critical_pacing_held:valid?pacing:null,
     critical_read_reserve_rows:readReserve,
