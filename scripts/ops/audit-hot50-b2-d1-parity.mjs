@@ -23,7 +23,8 @@ if(!/^https:\/\/[a-z0-9.-]+\.workers\.dev$/iu.test(ORIGIN)||
   !/^[a-f0-9]{64}$/u.test(TOKEN)||
   !Number.isSafeInteger(LIMIT)||LIMIT<1||LIMIT>250||
   !/^(?:[A-Za-z0-9._+-]+\/)*spool\/$/u.test(ALLOWED)||
-  String(process.env.B2_SPOOL_ENCRYPTION_KEY??"").length<32)
+  String(process.env.B2_SPOOL_ENCRYPTION_KEY??"").length<32||
+  process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1")
  fail("CONFIG_UNAVAILABLE");
 const b2=createB2Client({endpointUrl:ENDPOINT,bucket:BUCKET,
  accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
@@ -81,8 +82,7 @@ async function main(){
  let physical=null;
  if(manifestPath){
    const input=JSON.parse(readFileSync(manifestPath,"utf8"));
-   if(!input?.IsTruncated===false)fail("BUCKET_LIST_INCOMPLETE");
-   if(input?.IsTruncated!==false||!Array.isArray(input?.Contents))
+     if(input?.IsTruncated!==false||!Array.isArray(input?.Contents))
      fail("BUCKET_LIST_INCOMPLETE");
    physical=new Set(input.Contents.map(item=>item?.Key)
      .filter(k=>typeof k==="string"&&k.startsWith(ALLOWED)));
