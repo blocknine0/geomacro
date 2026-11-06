@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: geomacro-unified-ingestor
+    runtime: python
+    plan: free
+    rootDir: workers/unified-ingestor
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn ingestor:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: GEOMACRO_INGEST_WORKER_URL
+        value: https://geomacro-control-plane.daspallab202391.workers.dev
+      - key: POLL_SECONDS
+        value: "900"
+      - key: B2_REGION
+        value: us-east-005
+      - key: B2_S3_ENDPOINT
+        value: https://s3.us-east-005.backblazeb2.com
+      - key: B2_BUCKET_NAME
+        value: geomacro-private-archive
+      - key: GEOMACRO_INGEST_WORKER_TOKEN
+        sync: false
+      - key: GEOMACRO_RAW_INGEST_TOKEN
+        sync: false
+      - key: B2_APPLICATION_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false

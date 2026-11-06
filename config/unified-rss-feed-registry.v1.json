@@ -1,0 +1,223 @@
+{
+  "schema": "geomacro.unified-rss-feed-registry.v1",
+  "feed_count": 31,
+  "sources": [
+    {
+      "name": "un_all_documents_rss",
+      "url": "https://docs.un.org/rss/allundocs.xml",
+      "source_type": "official",
+      "credibility_score": 0.982,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "un_human_rights_council_rss",
+      "url": "https://docs.un.org/rss/hrc.xml",
+      "source_type": "official",
+      "credibility_score": 0.982,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "un_geneva_press_rss",
+      "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "un_security_council_docs_rss",
+      "url": "https://docs.un.org/rss/scdocs.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.982,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "eu_council_press_rss",
+      "url": "https://www.consilium.europa.eu/en/rss/pressreleases.ashx",
+      "source_type": "official",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "ecb_press_rss",
+      "url": "https://www.ecb.europa.eu/rss/press.html",
+      "source_type": "verified_media",
+      "credibility_score": 0.982,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "ecb_market_information_rss",
+      "url": "https://mid.ecb.europa.eu/rss/mid.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.982,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "un_geneva_meeting_summaries_rss",
+      "url": "https://www.ungeneva.org/news-media/meeting-summaries-list/rss.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "aljazeera_rss",
+      "url": "https://www.aljazeera.com/xml/rss/all.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.73,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "bbc_world_rss",
+      "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.865,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "xinhua_english_china_rss",
+      "url": "https://www.xinhuanet.com/english/rss/chinarss.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.91,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "scmp_china_rss",
+      "url": "https://www.scmp.com/rss/4/feed",
+      "source_type": "verified_media",
+      "credibility_score": 0.82,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "federal_reserve_press_rss",
+      "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+      "source_type": "official",
+      "credibility_score": 0.955,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "forexlive_rss",
+      "url": "https://www.forexlive.com/feed/news",
+      "source_type": "verified_media",
+      "credibility_score": 0.685,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "bis_rss_media_releases",
+      "url": "https://www.bis.org/doclist/all_pressrels.rss",
+      "source_type": "verified_media",
+      "credibility_score": 0.982,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "bis_rss_central_banker_speeches",
+      "url": "https://www.bis.org/doclist/cbspeeches.rss",
+      "source_type": "official",
+      "credibility_score": 0.955,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "nrcan_news_atom",
+      "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=json&atomtitle=Natural%20Resources%20Canada",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "doe_critical_materials_rss",
+      "url": "https://www.energy.gov/rss/energygov/2193718",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "mining_com_critical_minerals_rss",
+      "url": "https://www.mining.com/feed/",
+      "source_type": "verified_media",
+      "credibility_score": 0.685,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "usgs_minerals_news_rss",
+      "url": "https://www.usgs.gov/news/minerals/feed",
+      "source_type": "verified_media",
+      "credibility_score": 0.91,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "uk_fcdo_ogl_official_atom",
+      "url": "https://www.gov.uk/government/organisations/foreign-commonwealth-development-office.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "uk_hmt_ogl_official_atom",
+      "url": "https://www.gov.uk/government/organisations/hm-treasury.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "uk_dbt_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-and-trade.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "uk_desnz_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-energy-security-and-net-zero.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "india_pib_licensed_minerals_rss",
+      "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "uk_mod_ogl_security_atom",
+      "url": "https://www.gov.uk/government/organisations/ministry-of-defence.atom",
+      "source_type": "official",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "uk_cabinet_ogl_security_atom",
+      "url": "https://www.gov.uk/government/organisations/cabinet-office.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "uk_obr_ogl_macro_atom",
+      "url": "https://www.gov.uk/government/organisations/office-for-budget-responsibility.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "macro_economics"
+    },
+    {
+      "name": "uk_bist_ogl_minerals_atom",
+      "url": "https://www.gov.uk/government/organisations/department-for-business-innovation-science-and-trade.atom",
+      "source_type": "verified_media",
+      "credibility_score": 0.955,
+      "risk_category": "commodities"
+    },
+    {
+      "name": "un_hq_official_press_rss",
+      "url": "https://press.un.org/en/rss.xml",
+      "source_type": "official",
+      "credibility_score": 0.964,
+      "risk_category": "conflict"
+    },
+    {
+      "name": "wto_global_trade_rss",
+      "url": "https://www.wto.org/library/rss/latest_news_e.xml",
+      "source_type": "verified_media",
+      "credibility_score": 0.964,
+      "risk_category": "macro_economics"
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 24568)
+Total output lines: 1661
+
 name: Deploy D1 Control Plane
 # P0: main redeploy after read-only observer clock-order correction; no budget override.
 # P0 post-reset operational redeploy: production bootstrap remains fully gated.
@@ -100,6 +103,13 @@ on:
       - "scripts/tests/geomacro-news-severity-gri.test.mjs"
       - "scripts/ops/verify-live-geomacro-news-gri.mjs"
       - "workers/control-plane/src/public-free-d1-cache.mjs"
+      - "workers/control-plane/src/unified-event-stream.mjs"
+      - "workers/control-plane/src/unified-event-stream.test.mjs"
+      - "workers/control-plane/migrations/0205_unified_event_stream.sql"
+      - "workers/unified-ingestor/**"
+      - "config/unified-rss-feed-registry.v1.json"
+      - "config/country-iso2-names.v1.json"
+      - "render.yaml"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
       - "scripts/tests/d1-quota-reset-recovery-workflow.test.mjs"
       # Source/provenance and B2 archive correctness can change without Worker
@@ -111,6 +121,13 @@ on:
       - "scripts/ops/phase2h-archive-private-raw-news.mjs"
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
+      - "workers/control-plane/src/unified-event-stream.mjs"
+      - "workers/control-plane/src/unified-event-stream.test.mjs"
+      - "workers/control-plane/migrations/0205_unified_event_stream.sql"
+      - "workers/unified-ingestor/**"
+      - "config/unified-rss-feed-registry.v1.json"
+      - "config/country-iso2-names.v1.json"
+      - "render.yaml"
       - "scripts/tests/materialized-public-news-pages.test.mjs"
       - "scripts/tests/website-derived-cap-compaction.test.mjs"
       - "scripts/ops/verify-private-source-directory-production.mjs"
@@ -259,6 +276,12 @@ jobs:
           node-version: "24"
       - name: Test complete Hot50 D1 census, fail-closed certification and parity cursors
         run: node --test scripts/tests/hot50-production-activation.test.mjs
+
+      - name: Verify unified event batch ingestion, query, quota slot and retention contracts
+        run: |
+          node --test workers/control-plane/src/unified-event-stream.test.mjs
+          node --check workers/control-plane/src/index.mjs
+          python -m py_compile workers/unified-ingestor/ingestor.py
 
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/lib/hot50-production-proof.test.mjs scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
@@ -637,292 +660,7 @@ jobs:
         if: env.P0B_ACTIVATE == '1'
         shell: bash
         run: |
-          set -euo pipefail
-          # Probe each queue with the supported pinned Wrangler 4 info command.
-          for queue in geomacro-ingestion-spool geomacro-ingestion-dead-letter geomacro-source-poll geomacro-source-poll-dlq; do
-            if npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null 2>&1; then
-              echo "P0B_QUEUE_PRESENT:$queue"
-            else
-              npx -y "wrangler@${WRANGLER_VERSION}" queues create "$queue" >/dev/null
-              npx -y "wrangler@${WRANGLER_VERSION}" queues info "$queue" >/dev/null
-              echo "P0B_QUEUE_CREATED_AND_READBACK_VERIFIED:$queue"
-            fi
-          done
-
-      - name: Apply committed D1 migrations remotely
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
-
-      - name: Confirm progressive Risk Gate D1 fact tables are durable before deployment
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          data="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
-            --config wrangler.runtime.jsonc \
-            --command "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('progressive_risk_gate_facts','progressive_risk_gate_cell_state');")"
-          printf '%s' "$data" | node -e '
-            let raw="";process.stdin.on("data",x=>raw+=x);
-            process.stdin.on("end",()=>{
-              const records=JSON.parse(raw);
-              const rows=(Array.isArray(records)?records:[records]).flatMap(x=>x?.results??x?.result?.results??[]);
-              if(Number(rows[0]?.n)!==2)throw Error("PROGRESSIVE_FACT_TABLES_REMOTE_MISSING");
-              console.log("PROGRESSIVE_FACT_TABLES_REMOTE_READBACK=true");
-            });'
-
-      - name: Verify bundled P1 D1 dispatch schema before enabling fanout V2
-        if: env.P0B_ACTIVATE == '1'
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
-            --config wrangler.runtime.jsonc \
-            --command "SELECT (SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('p1_source_poll_bundles','p1_source_poll_dispatch_mutex')) AS table_count, (SELECT COUNT(*) FROM p1_source_poll_dispatch_mutex WHERE singleton=1) AS gate_count;")"
-          printf '%s' "$proof" | node -e '
-            let raw="";
-            process.stdin.on("data",x=>raw+=x);
-            process.stdin.on("end",()=>{
-              const parsed=JSON.parse(raw);
-              const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
-                x?.results??x?.result?.results??[]);
-              if(Number(rows[0]?.table_count)!==2||
-                 Number(rows[0]?.gate_count)!==1)
-                throw Error("P1_BUNDLED_D1_SCHEMA_NOT_READY");
-              console.log("P1_BUNDLED_D1_SCHEMA_READBACK=true");
-            });
-          '
-
-      - name: Verify Cloudflare source Queue budget ledger migration before enabling V3
-        if: env.P0B_ACTIVATE == '1'
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          proof="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
-            --config wrangler.runtime.jsonc \
-            --command "SELECT COUNT(*) AS table_count FROM sqlite_master WHERE type='table' AND name='cloudflare_source_poll_queue_budget';")"
-          printf '%s' "$proof" | node -e '
-            let raw="";
-            process.stdin.on("data",x=>raw+=x);
-            process.stdin.on("end",()=>{
-              const parsed=JSON.parse(raw);
-              const rows=(Array.isArray(parsed)?parsed:[parsed]).flatMap(x=>
-                x?.results??x?.result?.results??[]);
-              if(Number(rows[0]?.table_count)!==1)
-                throw Error("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_MISSING");
-              console.log("GEOMACRO_QUEUE_BUDGET_LEDGER_REMOTE_READBACK=true");
-            });
-          '
-
-      - name: Generate deterministic P1 1077 source-category registry SQL
-        if: env.P0B_ACTIVATE == '1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          node scripts/ops/seed-p1-1077-source-registry.mjs
-          test -s workers/control-plane/generated/p1-1077-seed.sql
-      - name: Seed P1 actual research source/category lanes into canonical D1
-        if: env.P0B_ACTIVATE == '1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote \
-            --config workers/control-plane/wrangler.runtime.jsonc \
-            --file workers/control-plane/generated/p1-1077-seed.sql >/dev/null
-          echo "P1_SOURCE_CATEGORY_SEED_APPLIED=true"
-      - name: Require exact P1 source manifest remote D1 readback
-        if: env.P0B_ACTIVATE == '1'
-        shell: bash
-        run: |
-          set -euo pipefail
-          RAW="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
-            --config workers/control-plane/wrangler.runtime.jsonc \
-            --command "SELECT COUNT(*) AS n FROM p1_source_seed_manifest;")"
-          printf '%s' "$RAW" | node -e '
-            let s="";process.stdin.on("data",d=>s+=d);
-            process.stdin.on("end",()=>{
-              const j=JSON.parse(s);
-              const data=Array.isArray(j)?j:[j];
-              const n=data[0]?.results?.[0]?.n??data[0]?.result?.results?.[0]?.n;
-              if(n!==1077)throw Error("P1_REMOTE_1077_REGISTRY_UNVERIFIED:"+n);
-              console.log("P1_REMOTE_1077_SOURCE_LANES_CONFIGURED=true");
-            });'
-      - name: Seed pinned private source registry with exact D1 readback
-        if: env.P0B_ACTIVATE == '1'
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          SQL_FILE="p0b-seed.generated.sql"
-          trap 'rm -f "$SQL_FILE"' EXIT
-          node ../../scripts/ops/seed-p0b-pinned-registry.mjs
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --file "$SQL_FILE" >/dev/null
-          CENSUS="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT intended_category,COUNT(*) AS n FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;")"
-          for category in CRITICAL_MINERALS GEOPOLITICS MACRO_FX; do
-            printf '%s' "$CENSUS" | grep -q "$category" || {
-              echo "::error::P0B_REGISTERED_CATEGORY_MISSING_$category"; exit 19;
-            }
-          done
-          echo "P0B_PINNED_SOURCE_REGISTRY_REMOTE_READBACK=true"
-
-      - name: Verify D1 schema directly
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          OUT="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT version FROM schema_meta WHERE name='control-plane' AND version>=3;")"
-          printf '%s' "$OUT" | grep -q '1' || { echo "D1 schema verification failed"; exit 4; }
-          # Do not claim country-first lookup until both remote indexes exist.
-          RISK_INDEX="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT name FROM sqlite_master WHERE type='index' AND name IN ('idx_phase2h_risk_country_category_clock','idx_phase2h_risk_country_unindexed_recent') ORDER BY name;")"
-          printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_category_clock' || { echo "::error::RISK_COUNTRY_INDEX_REMOTE_MISSING"; exit 26; }
-          printf '%s' "$RISK_INDEX" | grep -q 'idx_phase2h_risk_country_unindexed_recent' || { echo "::error::RISK_COUNTRY_BACKFILL_INDEX_REMOTE_MISSING"; exit 27; }
-
-      - name: Observe actual remote P0-B D1 registry and queue states
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "P0B_ACTIVATION_REQUESTED=${P0B_ACTIVATE:-0}"
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
-            --command "SELECT intended_category, COUNT(*) AS source_configs FROM source_registry WHERE enabled=1 GROUP BY intended_category ORDER BY intended_category;"
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
-            --command "SELECT state, COUNT(*) AS queue_items FROM ingestion_spool_queue GROUP BY state ORDER BY state;"
-          npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --config wrangler.runtime.jsonc \
-            --command "SELECT COUNT(*) AS admitted_metadata_rows FROM normalized_articles;"
-          echo "P0B_REMOTE_CENSUS_COLLECTED=true"
-          echo "P0B_GENUINE_B2_PARITY_REQUIRES_REAL_RECEIPT=true"
-
-      - name: Derive domain-separated control-plane token
-        # Optionally accept an existing purpose-scoped token issued by Predge.
-        # The server-only secret is never sent to the PR, logs or operator UI.
-        env:
-          PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE: ${{ secrets.PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          CONTROL_PLANE_TOKEN="$(node -e "const c=require('crypto'); process.stdout.write(c.createHmac('sha256', process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
-          test "${#CONTROL_PLANE_TOKEN}" -eq 64 || { echo "Control-plane token derivation failed"; exit 5; }
-          echo "::add-mask::$CONTROL_PLANE_TOKEN"
-          echo "CONTROL_PLANE_TOKEN=$CONTROL_PLANE_TOKEN" >> "$GITHUB_ENV"
-          # Distinct HMAC namespace: sharing Predge's research token never
-          # shares the control-plane admin or commercial ledger secret.
-          # Revoke the old 19-Oct deterministic HMAC research Bearer.
-          # Never re-enable this fallback: an emailed credential may be exposed.
-          PREDGE_REVOKED_OLD_TOKEN="$(node -e "const c=require('node:crypto'); process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-predge-72h-research-only-v1').digest('hex'))")"
-          echo "::add-mask::$PREDGE_REVOKED_OLD_TOKEN"
-          if test -n "${PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE:-}"; then
-            PREDGE_RESEARCH_NEWS_TOKEN="$PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE"
-            if ! [[ "$PREDGE_RESEARCH_NEWS_TOKEN" =~ ^[a-f0-9]{64}$ ]]; then
-              echo "::error::PREDGE_RESEARCH_OVERRIDE_INVALID_FORMAT"; exit 5
-            fi
-            if test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$ROOT_LEDGER_TOKEN" ||
-               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
-               test "$PREDGE_RESEARCH_NEWS_TOKEN" = "$PREDGE_REVOKED_OLD_TOKEN"; then
-              echo "::error::PREDGE_RESEARCH_PRIVILEGED_CREDENTIAL_REUSE_FORBIDDEN"; exit 5
-            fi
-            echo "PREDGE_RESEARCH_GRANT_MODE=PROTECTED_ROTATED_TOKEN" >> "$GITHUB_ENV"
-          else
-            # Deliberately invalid Worker token disables authenticated research
-            # until the owner provisions a fresh purpose-scoped secret.
-            # This overwrites any previously deployed deterministic token.
-            PREDGE_RESEARCH_NEWS_TOKEN="REVOKED_ROTATION_REQUIRED"
-            echo "PREDGE_RESEARCH_GRANT_MODE=REVOKED_PENDING_OWNER_ROTATION" >> "$GITHUB_ENV"
-            echo "::warning::PREDGE_RESEARCH_ROTATION_REQUIRED_PRIVATE_FEED_CLOSED"
-          fi
-          echo "::add-mask::$PREDGE_RESEARCH_NEWS_TOKEN"
-          echo "PREDGE_RESEARCH_NEWS_TOKEN=$PREDGE_RESEARCH_NEWS_TOKEN" >> "$GITHUB_ENV"
-          if test -n "${PREDGE_RISK_GATE_TOKEN:-}"; then
-            if ! [[ "$PREDGE_RISK_GATE_TOKEN" =~ ^[a-f0-9]{64}$ ]] ||
-               test "$PREDGE_RISK_GATE_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
-               test "$PREDGE_RISK_GATE_TOKEN" = "$PREDGE_RESEARCH_NEWS_TOKEN" ||
-               test "$PREDGE_RISK_GATE_TOKEN" = "$ROOT_LEDGER_TOKEN"; then
-              echo "::error::PREDGE_RISK_GATE_SECRET_INVALID_OR_REUSED"; exit 5
-            fi
-            echo "::add-mask::$PREDGE_RISK_GATE_TOKEN"
-            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
-          else
-            echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
-            echo "::warning::PREDGE_RISK_GATE_TOKEN missing; new endpoint fails closed until protected secret provisioned"
-          fi
-          if test -n "${RISK_OBJECT_VERIFY_KEYS_JSON:-}"; then
-            node -e 'const d=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON); if(!d||typeof d!=="object"||Array.isArray(d))process.exit(3)'
-            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=true" >> "$GITHUB_ENV"
-          else
-            echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=false" >> "$GITHUB_ENV"
-            echo "::warning::RISK_OBJECT_VERIFY_KEYS_JSON missing; signed GRO verification fails closed"
-          fi
-
-      - name: Deploy D1 control-plane Worker with pinned Wrangler
-        id: deploy
-        working-directory: workers/control-plane
-        shell: bash
-        run: |
-          set -euo pipefail
-          # An unrelated source/publication deployment must never overwrite
-          # an existing partner credential with the rotation sentinel. Stop
-          # before any deployment or secret mutation when rotation is absent.
-          test "$PREDGE_RESEARCH_NEWS_TOKEN" != "REVOKED_ROTATION_REQUIRED" || {
-            echo "::error::PREDGE_PROTECTED_ROTATED_TOKEN_REQUIRED_BEFORE_DEPLOY"; exit 5;
-          }
-          DEPLOY_LOG="$(mktemp)"
-          npx -y "wrangler@${WRANGLER_VERSION}" deploy --config wrangler.runtime.jsonc 2>&1 | tee "$DEPLOY_LOG"
-          DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
-          test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
-          printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
-          # A purpose-specific HMAC of the existing GitHub Groq secret is used
-          # by the existing Lovable SSR Groq runtime for public-answer cache only.
-          # Never deploy the raw Groq API key to Cloudflare or display it.
-          test "${#GROQ_API_KEY_FOR_ASK_CACHE}" -ge 20 || {
-            echo "::error::ASK_GLOBAL_CACHE_EXISTING_GROQ_SECRET_MISSING"; exit 5;
-          }
-          ASK_PUBLIC_MODEL_CACHE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.GROQ_API_KEY_FOR_ASK_CACHE).update('geomacro-ask-public-model-cache-v1').digest('hex'))")"
-          test "${#ASK_PUBLIC_MODEL_CACHE_TOKEN}" -eq 64 || exit 5
-          echo "::add-mask::$ASK_PUBLIC_MODEL_CACHE_TOKEN"
-          printf '%s' "$ASK_PUBLIC_MODEL_CACHE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put ASK_PUBLIC_MODEL_CACHE_TOKEN --config wrangler.runtime.jsonc >/dev/null
-          echo "ASK_PUBLIC_MODEL_CACHE_TOKEN_PROVISIONED=true"
-          # One intentionally tiny, source-free D1 write/readback is required
-          # before counting the shared model cache as production activated.
-          export ASK_PUBLIC_MODEL_CACHE_TOKEN DEPLOYMENT_URL
-          node --input-type=module <<'NODE'
-          import assert from "node:assert/strict";
-          import {createHash} from "node:crypto";
-          const target=process.env.DEPLOYMENT_URL+"/v1/internal/ask/public-model-cache";
-          const key=createHash("sha256").update("geomacro-public-model-cache-canary:"+process.env.GITHUB_SHA).digest("hex");
-          const headers={Authorization:"Bearer "+process.env.ASK_PUBLIC_MODEL_CACHE_TOKEN,Accept:"application/json"};
-          const fields={summary:"Inflation refers to a broad price level increase.",
-            what_changed:"General explanation only; no current event established.",
-            why_it_matters:"Prices affect household purchasing power.",
-            geomacro_view:"Compare the same period and base for sound interpretation."};
-          const put=await fetch(target,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},
-            body:JSON.stringify({key,fields,expires_at:Math.floor(Date.now()/1000)+300}),
-            signal:AbortSignal.timeout(12000)});
-          assert.equal(put.status,200,"ASK_CACHE_PUT_NOT_200");
-          const p=await put.json();assert.equal(p.ok,true,"ASK_CACHE_PUT_FAILED");
-          const get=await fetch(target+"?key="+key,{headers,signal:AbortSignal.timeout(12000)});
-          assert.equal(get.status,200,"ASK_CACHE_GET_NOT_200");
-          const g=await get.json();
-          assert.equal(g.ok,true,"ASK_CACHE_READ_FAILED");
-          assert.equal(g.hit,true,"ASK_CACHE_READ_MISS");
-          assert.deepEqual(g.fields,fields,"ASK_CACHE_READBACK_FIELDS_DIFFER");
-          console.log("ASK_PUBLIC_MODEL_CACHE_AUTH_D1_WRITE_READBACK_PASS=true");
-          NODE
-          printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
-          # Install an approved ReliefWeb appname only if provisioned.
-          # Never silently substitute an unapproved catalogue identifier.
-          if test -n "${RELIEFWEB_APPROVED_APPNAME:-}"; then
-            [[ "$RELIEFWEB_APPROVED_APPNAME" =~ ^[A-Za-z][A-Za-z0-9_.-]{7,100}$ ]] || {
-              echo "::error::RELIEFWEB_APPROVED_APPNAME_INVALID"; exit 5;
-            }
-            printf '%s' "$RELIEFWEB_APPROVED_APPNAME" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RELIEFWEB_APPROVED_APPNAME --config wrangler.runtime.jsonc >/dev/null
-          else
-            echo "::warning::RELIEFWEB_APPROVED_APPNAME missing: Ukraine ReliefWeb lane remains fail-closed"
-          fi
-          # Protected credentials and trust keys are installed only when
-          # configured. No private tokens are ever emitted to logs.
+          s…4568 tokens truncated… to logs.
           if test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true"; then
             printf '%s' "$PREDGE_RISK_GATE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RISK_GATE_TOKEN --config wrangler.runtime.jsonc >/dev/null
           fi
