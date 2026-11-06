@@ -291,3 +291,13 @@ test('USD parsing accepts valid PayPal decimal formats without floating point',(
  assert.equal(cents('0.01'),1);assert.throws(()=>cents('5.001'),/INVALID_MONEY/);
  assert.throws(()=>cents('1e3'),/INVALID_MONEY/);assert.throws(()=>cents('-1.00'),/INVALID_MONEY/);
 });
+
+test('PayPal and facilitator bind fetch to the Worker global receiver',async()=>{
+ const c=new PayPalClient({mode:'sandbox',clientId:'test',clientSecret:'test',webhookId:'TESTHOOK',
+ fetchImpl:async function(url){assert.equal(this,globalThis);
+ return Response.json(url.endsWith('/token')?{access_token:'test',expires_in:3600}:{verification_status:'SUCCESS'});}});
+ await c.call('/v1/test');
+ const f=new Facilitator({url:'https://facilitator.example',fetchImpl:async function(){
+ assert.equal(this,globalThis);return Response.json({isValid:true});}});
+ await f.verify(await paymentFor(input()),requirements(150000,payee));
+});

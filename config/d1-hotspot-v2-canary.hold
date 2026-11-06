@@ -1,0 +1,8 @@
+# PR #3626: mandatory Cloudflare zero-traffic canary release gate.
+# This file intentionally blocks automatic 100% Worker deployments on main.
+# Retain until an authorized runner confirms D1 0204 migration and backup,
+# 0% version smoke, CQRS warming, 1/5/25/50/100% traffic promotion,
+# protected auth/signer/reviewer parity and Cloudflare read telemetry.
+# Only a separately reviewed acceptance change may remove this gate.
+STATE=CANARY_HOLD
+RELEASE_SOURCE=e389297ba027a29318c79ae22c3ba4ae7669e654

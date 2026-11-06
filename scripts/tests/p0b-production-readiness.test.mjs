@@ -83,7 +83,11 @@ test('supported Wrangler queue probe and protected route are in canonical deploy
  assert.doesNotMatch(deploy,/queues list --json/u);
  assert.match(deploy,/Seed pinned private source registry with exact D1 readback/u);
  assert.match(deploy,/P0B_PRODUCTION_READINESS_UNVERIFIED/u);
- assert.match(entry,/authorized\(request, env\);[\s\S]{0,1000}\/v1\/internal\/p0b\/status/u);
+ const authGuard=entry.indexOf('const auth = authorized(request, env);');
+ const deny=entry.indexOf('if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);',authGuard);
+ const statusRoute=entry.indexOf("if(url.pathname==='/v1/internal/p0b/status'");
+ assert.ok(authGuard>=0&&deny>authGuard&&statusRoute>deny,
+   'status route must remain after the actual fail-closed administrator guard');
  assert.match(entry,/\/v1\/internal\/p0b\/verify-latest/u);
  const monitor=text('.github/workflows/p0b-production-parity-hourly.yml');
  assert.match(monitor,/P0B_REAL_B2_D1_PARITY_VERIFIED/u);

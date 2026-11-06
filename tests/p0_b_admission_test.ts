@@ -616,3 +616,20 @@ test('P0-B same immutable batch and publisher clock produce exact same encrypted
   assert.equal(restores.items.length,2);
  }finally{f.close()}
 });
+
+test('default Workerd fetch keeps its global receiver for B2 PUT and independent GET',async()=>{
+ const f=fixture(),original=globalThis.fetch;
+ let calls=0;
+ globalThis.fetch=async function(url:any,opts:any){
+  assert.equal(this,globalThis,'native Workerd fetch receiver');calls++;
+  return f.fetchImpl(url,opts);
+ } as typeof fetch;
+ try{
+  const manager=new B2SpoolManager(f.env,{now:NOW_DATE,reserve:async()=>{}});
+  const c=await candidate(902);
+  const stored=await manager.spoolBundleAndVerify([{candidateSha256:c.candidateSha256,
+   sourceId:c.sourceId,rawPayload:c.raw,discoveredAt:at}]);
+  assert.equal(calls,2);assert.equal(stored.items.length,1);
+  assert.equal(f.requests[0].method,'PUT');assert.equal(f.requests[1].method,'GET');
+ }finally{globalThis.fetch=original;f.close()}
+});

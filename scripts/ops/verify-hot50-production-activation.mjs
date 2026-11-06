@@ -6,6 +6,8 @@
  */
 import {createHash,createHmac,createPublicKey,verify as edVerify} from "node:crypto";
 import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+import {currentParityReceipt} from "./hot50-parity-proof.mjs";
 import {readAsk,readPublishedBuild} from "./verify-live-free-groq-ask.mjs";
 const WORKER=String(process.env.GEOMACRO_CONTROL_PLANE_URL||
  "https://geomacro-control-plane.daspallab202391.workers.dev").replace(/\/+$/,"");
@@ -21,16 +23,28 @@ const checks=[];
 function gate(name,pass,code,details={}){
  checks.push({name,status:pass?"PASS":"FAIL",code,...details});
 }
-async function call(path,{method="GET",body=null,token=null}={}){
+async function call(path,{method="GET",body=null,token=null,timeoutMs=REQ_TIMEOUT}={}){
  const headers={Accept:"application/json"};
  if(token)headers.Authorization="Bearer "+token;
  if(body!==null)headers["Content-Type"]="application/json";
  const r=await fetch(WORKER+path,{method,headers,body:body===null?undefined:JSON.stringify(body),
-    redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(REQ_TIMEOUT)});
+    redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(timeoutMs)});
  if(r.redirected||r.status>=300&&r.status<400)throw Error("UNTRUSTED_REDIRECT");
  const data=await r.text();
  if(data.length>500000)throw Error("RESPONSE_OVERSIZED");
  return {status:r.status,headers:r.headers,json:JSON.parse(data)};
+}
+export async function observeActivation({token,redrive=false},callImpl=call){
+ let replay=null;
+ if(redrive){
+  try{const q=await callImpl("/v1/internal/activation/redrive",{
+    method:"POST",token,timeoutMs:130000});
+   replay={status:q.status,outbox:q.json?.outbox,fifo:q.json?.fifo,r2:q.json?.r2};
+  }catch{replay={status:"TRANSPORT_UNCERTAIN_LEASES_PRESERVED"}}
+ }
+ // An uncertain mutation never suppresses this independent read-only census.
+ const census=await callImpl("/v1/internal/activation/hot50-census",{token});
+ return {replay,census};
 }
 async function reviewedIndices(){
  const [r,k]=await Promise.all([
@@ -67,7 +81,35 @@ async function reviewedIndices(){
    if(!cats.delete(i.key)||i.status!=="available"||
       typeof i.score!=="number"||i.score<0||i.score>100)return false;
  }
- return cats.size===0;
+ return cats.size===0?p:null;
+}
+export async function reviewedAskContext(proof,fetchImpl=fetch){
+ if(!proof)return {pass:false,reason:"REVIEWED_INDEX_SOURCE_UNAVAILABLE"};
+ const cases=[["geopolitics","geopolitical","Geopolitical Risk Index"],
+  ["macro","macroeconomic","Macroeconomic Risk Index"],
+  ["critical_minerals","critical minerals","Critical Minerals Risk Index"]];
+ const timings=[];
+ for(const [key,question,label] of cases){
+  const began=performance.now();
+  const r=await fetchImpl(SITE+"/api/ask/v2/turn",{method:"POST",redirect:"error",
+   headers:{Origin:SITE,Accept:"text/event-stream","Content-Type":"application/json"},
+   body:JSON.stringify({question:"What is the latest "+question+" risk index?",history:[]}),
+   signal:AbortSignal.timeout(25000)});
+  if(r.status!==200||!r.headers.get("content-type")?.startsWith("text/event-stream"))
+   return {pass:false,reason:"REVIEWED_INDEX_ASK_HTTP"};
+  const body=await r.text();if(body.length>100000)throw Error("ASK_STREAM_OVERSIZED");
+  const frames=body.replace(/\r\n/g,"\n").split("\n\n").filter(x=>x.startsWith("event: answer\n"));
+  if(frames.length!==1)return {pass:false,reason:"REVIEWED_INDEX_ASK_FRAME"};
+  const packet=JSON.parse(frames[0].split("\n").find(x=>x.startsWith("data: ")).slice(6));
+  const a=packet.data,expected=proof.data.indices.find(i=>i.key===key);
+  if(packet.ok!==true||a?.real_time_message!=="CURRENT_SIGNED_REVIEWED_RISK_INDEX"||
+    a.insufficient_evidence!==false||a.answer_kind!=="public_info"||
+    !a.summary?.startsWith(label+": "+expected.score+"/100")||
+    !a.summary.includes(proof.source_as_of)||a.model_rendering==="assisted")
+   return {pass:false,reason:"REVIEWED_INDEX_CONTEXT_MISMATCH"};
+  timings.push({category:key,elapsed_ms:Math.round(performance.now()-began)});
+ }
+ return {pass:true,reason:"THREE_VERIFIED_INDEX_VALUES_MATCH_ASK",timings};
 }
 async function d1Cache(){
  const apiKey=String(process.env.GROQ_API_KEY_FOR_ASK_CACHE??process.env.GROQ_API_KEY??"");
@@ -130,21 +172,24 @@ async function providerQueueDepth(){
   readings,reason:"CLOUDFLARE_FOUR_QUEUES_BEST_EFFORT_SNAPSHOT"};
 }
 async function main(){
- let census=null,redrive=null;
+ let census=null,redrive=null,storage=null,quota=null;
  if(!SHA.test(OWNER)){gate("Backlog Census",false,"OWNER_TOKEN_UNAVAILABLE");
    gate("Hot 50 Coverage",false,"OWNER_TOKEN_UNAVAILABLE");}
  else {
    try {
-     if(process.env.ACTIVATION_RUN_IDEMPOTENT_REDRIVE==="1"){
-       const q=await call("/v1/internal/activation/redrive",{
-        method:"POST",token:OWNER});
-       redrive={status:q.status,outbox:q.json?.outbox?.status,
-         fifo:q.json?.fifo?.status};
-     }
-     const result=await call("/v1/internal/activation/hot50-census",{token:OWNER});
+     const observed=await observeActivation({token:OWNER,
+       redrive:process.env.ACTIVATION_RUN_IDEMPOTENT_REDRIVE==="1"});
+     redrive=observed.replay;
+     const result=observed.census;
      if(result.status!==200||result.json.ok!==true)throw Error("D1_COMPLETE_CENSUS_UNAVAILABLE");
      census=result.json;
      const b=census.backlog;
+     try{const q=await call("/v1/internal/p0b/status",{token:OWNER});
+       if(q.status===200&&q.json.ok===true)storage=q.json.b2_storage_guard??null;
+     }catch{}
+     try{const q=await call("/v1/b2-quota/status",{token:OWNER});
+      if(q.status===200&&q.json.ok===true)quota={day_utc:q.json.day_utc,used:q.json.used,limits:q.json.limits};
+     }catch{}
      let provider={verified:false,reason:"PROVIDER_METRIC_NOT_CHECKED"};
      try{provider=await providerQueueDepth()}catch{
        provider={verified:false,reason:"PROVIDER_METRIC_TRANSPORT_UNAVAILABLE"}}
@@ -153,6 +198,8 @@ async function main(){
      gate("Backlog Census",zero,
        zero?"D1_ZERO_AND_FOUR_QUEUE_BEST_EFFORT_ZERO":"UNHANDLED_OR_PROVIDER_QUEUE_NOT_PROVEN",
        {total_unhandled:b?.total_unhandled??null,
+        d1_stores:{outbox:b.outbox,queue:b.queue,bundles:b.bundles,r2:b.r2,historical_raw:b.historical_raw},
+        storage_guard:storage,b2_account_quota:quota,
         provider_queue_backlog:b?.provider_queue_backlog??null,
         four_queue_metrics_verified:provider.verified===true,
         cloudflare_queues:provider.readings??[],
@@ -177,15 +224,14 @@ async function main(){
    const path=String(process.env.B2_PARITY_VERIFIED_RECEIPT_JSON??"");
    if(path){
      const b=JSON.parse(readFileSync(path,"utf8"));
-     parity=b.schema==="geomacro.hot50-storage-readback.v1"&&
-       b.status==="PASS"&&b.bidirectional_parity_pass===true&&
-       b.ingestion_zero_pending_pass===true&&
-       b.checked_archived_bundles===b.d1_archived;
+     parity=currentParityReceipt(b,{census,origin:WORKER,head:process.env.GITHUB_SHA,
+       run:process.env.GITHUB_RUN_ID});
    }
  }catch{}
  gate("B2-D1 Parity",parity,parity?"PHYSICAL_B2_AND_D1_READBACK_VERIFIED":
    "FULL_B2_LIST_GET_SHA_AND_D1_PARITY_NOT_PROVEN");
- let cert=false;try{cert=await reviewedIndices()}catch{}
+ let indexProof=null;try{indexProof=await reviewedIndices()}catch{}
+ const cert=Boolean(indexProof);
  gate("Index Signing",cert,cert?"THREE_CURRENT_REVIEWED_ED25519_SIGNED":
    "AUTHENTIC_CURRENT_REVIEWED_THREE_INDEX_PROOF_UNAVAILABLE");
  let cache={pass:false,reason:"D1_CACHE_NOT_CHECKED"},site=null;
@@ -205,10 +251,14 @@ async function main(){
        deployed_exact_head_verified:build.sha===expected};
    }catch{ask=false}
  }
- gate("Ask GeoMacro Retrieval",cache.pass&&ask,
-  cache.pass&&ask?"D1_CACHE_MISS_HIT_AND_GROQ_REUSED":
+ let context={pass:false,reason:"SIGNED_INDEX_CONTEXT_NOT_CHECKED"};
+ try{context=await reviewedAskContext(indexProof)}catch{}
+ gate("Ask GeoMacro Retrieval",cache.pass&&ask&&context.pass,
+  cache.pass&&ask&&context.pass?"D1_CACHE_AND_CURRENT_REVIEWED_INDEX_RETRIEVAL_VERIFIED":
+  cache.pass&&ask?"CACHE_AND_GROQ_PASS_REVIEWED_INDEX_CONTEXT_UNAVAILABLE":
   cache.pass?"D1_CACHE_HIT_MISS_PASS_GROQ_LIVE_NOT_PROVEN":
-    cache.reason,{cache_miss_hit_verified:cache.pass,live_model:site});
+    cache.reason,{cache_miss_hit_verified:cache.pass,live_model:site,reviewed_index_available:cert,signed_index_context:context,
+    zero_latency_regression_proven:false});
  const pass=checks.every(x=>x.status==="PASS");
  console.log(JSON.stringify({schema:"geomacro.hot50-production-acceptance.v1",
   status:pass?"PASS":"FAIL",head_sha:process.env.GITHUB_SHA??null,
@@ -216,7 +266,7 @@ async function main(){
   certification_never_synthesized:true}));
  if(!pass)process.exitCode=2;
 }
-main().catch(e=>{
+if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1])main().catch(e=>{
  console.error(JSON.stringify({status:"FAIL",code:"UNEXPECTED_ACCEPTANCE_ERROR",
   no_funds:true,certification_synthesized:false}));process.exitCode=2;
 });

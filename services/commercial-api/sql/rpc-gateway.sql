@@ -1,6 +1,6 @@
 -- Service-key-only PostgREST gateway. The financial schema remains unexposed.
 BEGIN;
-CREATE FUNCTION public.geomacro_commercial_rpc(p_operation text,p_args jsonb)
+CREATE OR REPLACE FUNCTION public.geomacro_commercial_rpc(p_operation text,p_args jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 BEGIN
  IF jsonb_typeof(p_args) IS DISTINCT FROM 'array' THEN RAISE EXCEPTION 'RPC_ARGUMENTS_INVALID'; END IF;
@@ -60,6 +60,18 @@ BEGIN
   WHEN 'x402_pending' THEN
    IF jsonb_array_length(p_args)<>1 THEN RAISE EXCEPTION 'RPC_ARITY_INVALID'; END IF;
    RETURN (SELECT coalesce(jsonb_agg(x),'[]'::jsonb) FROM geomacro.x402_pending((p_args->>0)::integer) x);
+  WHEN 'authorize_credit_key' THEN
+   IF jsonb_array_length(p_args)<>1 THEN RAISE EXCEPTION 'RPC_ARITY_INVALID'; END IF;
+   RETURN to_jsonb(geomacro.authorize_credit_key((p_args->>0)::text));
+  WHEN 'prune_rate_windows' THEN
+   IF jsonb_array_length(p_args)<>0 THEN RAISE EXCEPTION 'RPC_ARITY_INVALID'; END IF;
+   RETURN to_jsonb(geomacro.prune_rate_windows());
+  WHEN 'credit_replay' THEN
+   IF jsonb_array_length(p_args)<>5 THEN RAISE EXCEPTION 'RPC_ARITY_INVALID'; END IF;
+   RETURN to_jsonb(geomacro.credit_replay((p_args->>0)::text,(p_args->>1)::uuid,(p_args->>2)::text,(p_args->>3)::text,(p_args->>4)::geomacro.tier));
+  WHEN 'list_api_keys' THEN
+   IF jsonb_array_length(p_args)<>1 THEN RAISE EXCEPTION 'RPC_ARITY_INVALID'; END IF;
+   RETURN to_jsonb(geomacro.list_api_keys((p_args->>0)::uuid));
   ELSE RAISE EXCEPTION 'RPC_OPERATION_NOT_ALLOWED';
  END CASE;
 END $$;

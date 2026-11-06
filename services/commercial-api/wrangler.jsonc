@@ -2,15 +2,27 @@
   "name": "geomacro-commercial-api",
   "main": "src/worker.mjs",
   "compatibility_date": "2026-11-06",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
   "workers_dev": true,
-  "limits": {"cpu_ms": 50},
-  "triggers": {"crons": ["* * * * *"]},
-  "version_metadata": {"binding": "WORKER_VERSION_METADATA"},
+  "limits": {
+    "cpu_ms": 50
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "version_metadata": {
+    "binding": "WORKER_VERSION_METADATA"
+  },
   "vars": {
     "SITE_ORIGIN": "https://geomacro.live",
     "COMMERCIAL_SUPABASE_URL": "https://ymjuwuvbialsevfawvvq.supabase.co",
     "PAYPAL_ENABLED": "false",
-    "X402_ENABLED": "false"
+    "X402_ENABLED": "false",
+    "PUBLIC_API_ORIGIN": "https://geomacro-commercial-api.daspallab202391.workers.dev"
   }
 }

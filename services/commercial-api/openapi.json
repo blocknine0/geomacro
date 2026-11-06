@@ -1,0 +1,276 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GeoMacro Commercial Risk Gate",
+    "version": "1.0.0",
+    "description": "Advisory country/corridor risk context. Receipt signatures prove issuer integrity. execution_authorized is always false. Availability depends on qualified evidence; provider activation is reported separately."
+  },
+  "servers": [
+    {
+      "url": "https://api.geomacro.live"
+    }
+  ],
+  "paths": {
+    "/v1/risk-gate": {
+      "post": {
+        "operationId": "geomacro_risk_gate",
+        "summary": "Get the highest available tier up to the requested tier",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed successful response; actual delivered tier charged once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedRiskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; no charge"
+          },
+          "401": {
+            "description": "Invalid or revoked API key; no charge"
+          },
+          "402": {
+            "description": "Insufficient prepaid credits or x402 payment negotiation"
+          },
+          "409": {
+            "description": "Idempotency conflict or payment processing"
+          },
+          "423": {
+            "description": "Launch freeze or provider quarantine"
+          },
+          "429": {
+            "description": "API-key rate limit; no charge"
+          },
+          "503": {
+            "description": "Unavailable evidence/service or uncertain settlement; retry the same request ID"
+          }
+        },
+        "security": [
+          {
+            "ApiKey": []
+          },
+          {
+            "X402": []
+          },
+          {}
+        ]
+      }
+    },
+    "/v1/commercial/keys": {
+      "get": {
+        "summary": "Public Ed25519 receipt issuer keys",
+        "responses": {
+          "200": {
+            "description": "JSON Web Key Set"
+          }
+        }
+      }
+    },
+    "/v1/commercial/readiness": {
+      "get": {
+        "summary": "Private ledger connectivity and provider blockers",
+        "responses": {
+          "200": {
+            "description": "Database verified; provider activation reported independently"
+          },
+          "503": {
+            "description": "Ledger unavailable"
+          }
+        }
+      }
+    },
+    "/v1/api-keys": {
+      "get": {
+        "summary": "List masked keys for a verified Supabase Auth user",
+        "security": [
+          {
+            "SupabaseUser": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Masked key metadata"
+          }
+        }
+      },
+      "post": {
+        "summary": "Provision account once and create an API key, revealed once",
+        "security": [
+          {
+            "SupabaseUser": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "API key created"
+          },
+          "401": {
+            "description": "Verified user token required"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "ApiKey": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "gm_live_<256-bit-secret>"
+      },
+      "X402": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "PAYMENT-SIGNATURE"
+      },
+      "SupabaseUser": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "Supabase Auth JWT"
+      }
+    },
+    "schemas": {
+      "RiskRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "tier"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "Hot 50 ISO3 country or recognized corridor code"
+          },
+          "tier": {
+            "enum": [
+              "basic",
+              "standard",
+              "complex"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "SignedRiskResponse": {
+        "type": "object",
+        "required": [
+          "decision",
+          "risk_score",
+          "factors",
+          "billed_tier",
+          "credits_deducted",
+          "execution_authorized",
+          "audit_receipt",
+          "metadata"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decision": {
+            "enum": [
+              "allow",
+              "review",
+              "deny"
+            ]
+          },
+          "risk_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "factors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "billed_tier": {
+            "enum": [
+              "basic",
+              "standard",
+              "complex"
+            ]
+          },
+          "credits_deducted": {
+            "type": "number",
+            "minimum": 0
+          },
+          "execution_authorized": {
+            "const": false
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "advisory_only": {
+                "const": true
+              },
+              "certified_risk_index": {
+                "const": false
+              },
+              "risk_score_kind": {
+                "type": "string"
+              }
+            }
+          },
+          "audit_receipt": {
+            "type": "object",
+            "required": [
+              "signature",
+              "public_key_id",
+              "timestamp",
+              "hash"
+            ],
+            "properties": {
+              "signature": {
+                "type": "string",
+                "contentEncoding": "base64"
+              },
+              "public_key_id": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-execution-authorized": false
+}

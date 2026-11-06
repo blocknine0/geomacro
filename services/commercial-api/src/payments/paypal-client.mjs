@@ -5,7 +5,7 @@ export class PayPalClient {
     requireValue(['sandbox','live'].includes(mode),'PAYPAL_MODE_REQUIRED',500);
     Object.assign(this,{mode,clientId:requireValue(clientId,'PAYPAL_CLIENT_ID_REQUIRED',500),
       clientSecret:requireValue(clientSecret,'PAYPAL_SECRET_REQUIRED',500),
-      webhookId:requireValue(webhookId,'PAYPAL_WEBHOOK_ID_REQUIRED',500),fetch:fetchImpl});
+      webhookId:requireValue(webhookId,'PAYPAL_WEBHOOK_ID_REQUIRED',500),fetch:fetchImpl.bind(globalThis)});
     this.origin=mode==='live'?'https://api-m.paypal.com':'https://api-m.sandbox.paypal.com';
   }
   async token() {

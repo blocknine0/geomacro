@@ -20,7 +20,7 @@ parallel canonical data source or ingest private OSINT into a public cache.
 
 ## Deliverables
 
-- `migrations/0203_d1_read_hotspot_optimization.sql`: single-row CQRS table,
+- `migrations/0204_d1_read_hotspot_optimization.sql`: single-row CQRS table,
   country/category/time keyset index, source-check covering metadata index, and
   bounded journal refresh order index.
 - `src/cache-middleware.mjs`: explicit Cache API soft/hard expiry and manual
@@ -33,7 +33,7 @@ parallel canonical data source or ingest private OSINT into a public cache.
 - `src/website-derived-intelligence.mjs`: when enabled, eligible public
   website pages and public full bundle project from the one-row snapshot,
   rechecking original native publication/72h filtering; missing/stale snapshot
-  returns 503 rather than silently rescanning all rows on every cache miss.
+  falls back to canonical journal reads, never a synthetic healthy empty response.
 - `src/private-osint-bundle.mjs`: explicit `INDEXED BY` for country and
   category ordered keyset reads; old category index retained until migration
   and runtime activation. Private projected JSON is NOT put in an index.
@@ -118,8 +118,7 @@ Set `GEOMACRO_D1_READ_HOTSPOT_V2=0` and redeploy previous behavior.
 Leave additive indexes and disposable materialized row intact until reviewed
 cleanup. Do NOT disable signer verification, Predge usage or quota ledgers,
 readback receipts, 3-hour signed object expiry, or fall back to fabricated
-Risk Indices. A 503 from a cold materialization must be visible, not returned
-as an empty/healthy source feed.
+Risk Indices. Cold/missing CQRS safely falls back to the canonical journal, which remains the source of truth; canonical read errors are not hidden.
 
 Provider details: Cloudflare Cache API does **not** automatically honor
 stale-while-revalidate on `put/match`; Cache API is POP-local. Workers KV is

@@ -36,5 +36,4 @@ stored receipts must remain verifiable under their original key IDs. The initial
 Worker key ID includes its public fingerprint. The receipt issuer is separate
 from the existing institutional GRO and provisional decision signing scopes.
 
-The qualified evidence adapter and prepaid `/v1/risk-gate` contract are Step 3.
-Until that adapter is installed, x402 refuses to settle an unqualified result.
+Step 3 supplies the qualified evidence adapter, prepaid risk endpoint and issuer-verified JSON contract. Missing qualified evidence still returns 503 without beginning a new settlement. See STEP3.md.

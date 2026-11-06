@@ -110,3 +110,50 @@ test("source code never couples reviewed numerical signing to raw news severity/
  assert.match(core,/readCurrentReviewedSignedIndices/);
  assert.doesNotMatch(api,/geomacro-news-severity-gri|unverified_observations|groq.com/);
 });
+
+test("unknown nonterminal states are counted, terminal states are excluded",async()=>{
+ const c=await json(await readHot50ActivationCensus(env(mockDb({
+  queue:[{state:"FUTURE_RETRY",n:7},{state:"ACKNOWLEDGED",n:3}],
+  bundles:[{state:"FUTURE_RETRY",n:2},{state:"D1_COMMITTED",n:9}],
+  r2:[{state:"FUTURE_RETRY",n:1},{state:"B2_VERIFIED",n:4}]
+ }),async()=>({backlogCount:0})),now));
+ assert.equal(c.backlog.total_unhandled,10);
+ assert.equal(c.backlog.d1_zero_unhandled_proven,false);
+});
+test("150 duplicate coverage cells cannot impersonate the complete matrix",async()=>{
+ const db=mockDb();const prepare=db.prepare;
+ db.prepare=q=>{const stmt=prepare(q);if(q.includes("WITH hot(iso3)"))stmt.all=async()=>result(
+  Array.from({length:150},()=>({country_iso3:"USA",category:"macro"})));
+  return stmt};
+ const r=await readHot50ActivationCensus(env(db,async()=>({backlogCount:0})),now);
+ assert.equal(r.status,503);
+});
+test("real SQLite activation views reject future evidence and count unknown debt",async()=>{
+ const {DatabaseSync}=await import("node:sqlite");
+ const {readFileSync}=await import("node:fs");
+ const db=new DatabaseSync(":memory:");
+ try{
+ db.exec(`CREATE TABLE p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count,locked_until);
+ CREATE TABLE ingestion_spool_queue(state,b2_spool_uri,d1_committed_at,acked_at,candidate_sha256,source_id);
+ CREATE TABLE normalized_articles(candidate_sha256,source_id,b2_archive_uri);
+ CREATE TABLE ingestion_spool_bundles(state,b2_spool_uri,bundle_sha256,item_count,acked_at);
+ CREATE TABLE p0b_private_r2_fallback(state);
+ CREATE TABLE phase2h_private_raw_news(b2_object_sha256);
+ CREATE TABLE progressive_risk_gate_facts(country_iso3,category,event_fingerprint,clock_basis,publisher_domain,event_clock);`);
+ db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0203_hot50_activation_fail_closed_views.sql",import.meta.url),"utf8"));
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM v_hot50_three_category_evidence").get().n,150);
+ db.exec("INSERT INTO ingestion_spool_queue(state) VALUES('UNKNOWN_DEBT'); INSERT INTO p0b_private_r2_fallback VALUES('B2_VERIFIED');");
+ assert.equal(db.prepare("SELECT queue_unhandled,r2_pending FROM v_p0b_unhandled_activation").get().queue_unhandled,1);
+ assert.equal(db.prepare("SELECT r2_pending FROM v_p0b_unhandled_activation").get().r2_pending,0);
+ db.prepare("INSERT INTO progressive_risk_gate_facts VALUES('USA','macro','event','ORIGINAL_PUBLICATION','example.org',?)").run(new Date(Date.now()+86400000).toISOString());
+ assert.equal(db.prepare("SELECT evidence_state FROM v_hot50_three_category_evidence WHERE country_iso3='USA' AND category='macro'").get().evidence_state,"EMPTY");
+ const stmt=(sql,args=[])=>({bind(...params){return stmt(sql,params)},
+  async first(){return db.prepare(sql).get(...args)},async all(){return {results:db.prepare(sql).all(...args)}}});
+ const c=await readHot50ActivationCensus({DB:{prepare:sql=>stmt(sql)}},Date.now());
+ assert.equal(c.status,200);
+ const body=await c.json();assert.equal(body.backlog.total_unhandled,1);
+ db.exec("INSERT INTO p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count) VALUES('ARCHIVED','b2://missing','abc',1)");
+ const damaged=await (await readHot50ActivationCensus({DB:{prepare:sql=>stmt(sql)}},Date.now())).json();
+ assert.equal(damaged.backlog.exact_bundle_journal_mismatch,1);
+ }finally{db.close()}
+});

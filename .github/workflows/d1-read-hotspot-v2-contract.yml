@@ -11,14 +11,14 @@ on:
       - "workers/control-plane/src/signed-gro-read-cache.mjs"
       - "workers/control-plane/src/predge-risk-gate-d1.mjs"
       - "workers/control-plane/src/index.mjs"
-      - "workers/control-plane/migrations/0203_d1_read_hotspot_optimization.sql"
+      - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/d1-read-hotspot-v2.test.mjs"
   push:
     branches: [main]
     paths:
       - ".github/workflows/d1-read-hotspot-v2-contract.yml"
       - "workers/control-plane/src/**"
-      - "workers/control-plane/migrations/0203_d1_read_hotspot_optimization.sql"
+      - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/d1-read-hotspot-v2.test.mjs"
 permissions:
   contents: read
@@ -52,7 +52,7 @@ jobs:
                     '0029_private_osint_bundle_index.sql',
                     '0032_private_osint_ring_cardinality.sql',
                     '0033_website_public_materialized_pages.sql',
-                    '0203_d1_read_hotspot_optimization.sql']:
+                    '0204_d1_read_hotspot_optimization.sql']:
               conn.executescript((d/f).read_text())
           conn.execute("INSERT INTO materialized_cache(key,payload,updated_at) VALUES(?,?,?)",
                        ('public_derived_news_hot50','{}',1000))
@@ -73,5 +73,5 @@ jobs:
           ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 101""").fetchall()
           assert any('USING COVERING INDEX idx_private_osint_country_category_clock_v2' in x[3] for x in plan),plan
           assert not any('SCAN private_osint_news_25h' in x[3] or 'USE TEMP B-TREE' in x[3] for x in plan),plan
-          print('PASS: 0203 migration and PK/composite SQLite query plans')
+          print('PASS: 0204 migration and PK/composite SQLite query plans')
           PY

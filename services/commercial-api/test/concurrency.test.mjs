@@ -43,3 +43,35 @@ test('real PostgreSQL concurrency: no overspend, no duplicate debit, no duplicat
     assert.equal(Number(row.debits),2); assert.equal(Number(row.payments),1);
   } finally { await pool.end(); }
 });
+
+test('real PostgreSQL API-key rate window cannot race past its limit', {skip:!connection},async()=>{
+ const pool=new pg.Pool({connectionString:connection,ssl:process.env.PG_LOCAL==='true'?false:{rejectUnauthorized:true}});
+ const user=randomUUID(),key=mintApiKey();
+ try{
+  await pool.query('SELECT geomacro.provision_user($1,$2)',[user,'rate-concurrency-fixture@example.test']);
+  const {rows:[{id}]}=await pool.query('SELECT geomacro.create_api_key($1,$2,$3,$4) AS id',[user,key.hash,key.prefix,'rate fixture']);
+  await pool.query('UPDATE geomacro.api_keys SET rate_limit_per_minute=2 WHERE id=$1',[id]);
+  const results=await Promise.allSettled(Array.from({length:8},()=>pool.query('SELECT geomacro.authorize_credit_key($1)',[key.hash])));
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,2);
+  for(const r of results)if(r.status==='rejected')assert.match(r.reason.message,/RATE_LIMIT_EXCEEDED/);
+  const {rows:[b]}=await pool.query('SELECT balance_units FROM geomacro.users WHERE id=$1',[user]);assert.equal(Number(b.balance_units),10000000);
+ }finally{await pool.end();}
+});
+
+test('real PostgreSQL accountless payment lease is exclusive across concurrent sessions',{skip:!connection},async()=>{
+ const pool=new pg.Pool({connectionString:connection,ssl:process.env.PG_LOCAL==='true'?false:{rejectUnauthorized:true}});
+ const id=randomUUID(),payer='0x'+'11'.repeat(20),payee='0x'+'22'.repeat(20),nonce='0x'+randomUUID().replaceAll('-','').repeat(2);
+ const payload={request_id:id,subject:'USA',requested_tier:'complex',billed_tier:'standard',
+  payment_amount_atomic:'150000',payment_rail:'base_usdc',payer,payee,payment_nonce:nonce,
+  credits_deducted:0,execution_authorized:false,public_key_id:'FIXTURE',generated_at:new Date().toISOString()};
+ try{
+  await pool.query('SELECT geomacro.x402_prepare($1::jsonb)',[JSON.stringify({
+   request_id:id,request_hash:'a'.repeat(64),subject:'USA',requested_tier:'complex',billed_tier:'standard',amount_atomic:'150000',
+   payer_address:payer,payee_address:payee,nonce,payment_hash:'b'.repeat(64),payment_payload:{fixture:true},
+   canonical_payload:JSON.stringify(payload),signature:'TEST_ONLY_NOT_A_PRODUCTION_SIGNATURE',public_key_id:'FIXTURE',scan_from_block:'1000'})]);
+  const results=await Promise.allSettled(Array.from({length:8},()=>pool.query('SELECT geomacro.x402_claim($1,$2)',[id,randomUUID()])));
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  for(const r of results)if(r.status==='rejected')assert.match(r.reason.message,/PAYMENT_PROCESSING/);
+  const {rows:[n]}=await pool.query('SELECT count(*) AS count FROM geomacro.usage_logs WHERE request_id=$1',[id]);assert.equal(Number(n.count),0);
+ }finally{await pool.end();}
+});
