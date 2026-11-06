@@ -29,8 +29,8 @@ export function assertGlobalAuditDocument(doc){
       d.country_count!==195||d.category_count!==3||d.routing_cell_count!==585||
       !goodTime(d.checked_at) ||
       typeof d.audit_ok!=="boolean" ||
-      !["GLOBAL_RUNTIME_READ_VERIFIED","SOURCE_RUNTIME_UNAVAILABLE"].includes(d.audit_state) ||
-      d.audit_ok!==(d.audit_state==="GLOBAL_RUNTIME_READ_VERIFIED") ||
+      !["GLOBAL_RUNTIME_READ_VERIFIED","SOURCE_QUIET","SOURCE_RUNTIME_UNAVAILABLE"].includes(d.audit_state) ||
+      d.audit_ok!==(d.audit_state!=="SOURCE_RUNTIME_UNAVAILABLE") ||
       d.paid_country_readiness_assessed!==false ||
       d.country_current_evidence_not_inferred_from_global_feeds!==true ||
       d.boundaries?.payments!==0||d.boundaries?.supabase_requests!==0||
@@ -45,6 +45,20 @@ export function assertGlobalAuditDocument(doc){
       d.current_signed_country_delivery_verified_count!==0 ||
       d.blocked_scope!=="GLOBAL_SOURCE_READ_NOT_PER_COUNTRY_NEGATIVE_PROOF"))
     err("FAILED_AUDIT_PROMOTED");
+  if(d.audit_state==="SOURCE_QUIET"){
+    const q=d.release_qualification;
+    if(q?.schema!=="geomacro.source-release-qualification.v1"||
+       q.status!=="NO_QUALIFIED_NEW_RELEASE"||q.complete!==true||
+       !goodTime(q.checked_at)||
+       Date.parse(q.checked_at)>Date.parse(d.checked_at)||
+       Date.parse(d.checked_at)-Date.parse(q.checked_at)>3*3600_000||
+       !Array.isArray(q.categories)||q.categories.length!==3||
+       !CATS.every(c=>q.categories.includes(c))||
+       !Array.isArray(d.source_runtime?.contexts)||
+       !d.source_runtime.contexts.every(c=>c.source_families_readable>0)||
+       !d.automated_finds_categories.every(c=>c.current_24h_count===0))
+      err("QUIET_WITHOUT_COMPLETE_FRESH_SOURCE_PROOF");
+  }
   const matrix=d.country_category_matrix;
   if(matrix?.schema!=="geomacro.country-category-coverage-matrix.v1"||
       matrix.country_count!==195||matrix.category_count!==3||matrix.cell_count!==585||
