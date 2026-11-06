@@ -73,6 +73,8 @@ jobs:
         with:
           node-version: '22'
       - run: |
+          node --check scripts/ops/bridge-gri-safe-machine-audit.mjs
+          node --test scripts/lib/gri-safe-machine-policy-bridge.test.mjs
           node --check scripts/ops/sign-gri-automated-derived-policy-readback.mjs
           node --test scripts/tests/gri-automated-derived-policy-review.test.mjs
           node --test scripts/lib/complete-intelligence-gri-review.test.mjs
@@ -158,7 +160,27 @@ jobs:
           RISK_OBJECT_VERIFY_KEYS_JSON: ${{ secrets.RISK_OBJECT_VERIFY_KEYS_JSON }}
           RISK_OBJECT_SIGNING_KEY_NOT_BEFORE: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_BEFORE }}
           RISK_OBJECT_SIGNING_KEY_NOT_AFTER: ${{ secrets.RISK_OBJECT_SIGNING_KEY_NOT_AFTER }}
+          GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH: ${{ runner.temp }}/owner-only-verification.json
         run: bun scripts/ops/verify-all-news-signed-publications.mjs
+      - name: Issue strictly source-neutral coverage receipt from verified owner-only proof
+        if: steps.optin.outputs.active == 'true'
+        env:
+          RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+          RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+        run: node scripts/ops/bridge-gri-safe-machine-audit.mjs --emit-neutral
+      - name: Hand off only signed source-neutral receipt, never owner-only source proof
+        if: steps.optin.outputs.active == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: gri-issuer-neutral-${{ github.run_id }}
+          path: ${{ runner.temp }}/gri-issuer-neutral.json
+          retention-days: 1
+          if-no-files-found: error
+      - name: Remove owner-only source proof and temporary issuer receipt
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -f -- "${RUNNER_TEMP}/owner-only-verification.json" "${RUNNER_TEMP}/gri-issuer-neutral.json"
 
   cloud-derived-only:
     needs: [contract, approve-retained-derived-inputs]
@@ -293,3 +315,67 @@ jobs:
             "$GEOMACRO_DELEGATED_RECEIPT_OUTPUT_PATH" \
             "${RUNNER_TEMP}/gri-auto-policy-derived.json" \
             "${RUNNER_TEMP}/complete-intelligence-gri-review.json"
+
+  gri-source-neutral-consented-signing:
+    # Privacy-safe independent job: receives only an issuer-signed, allowlisted
+    # count of derived signature coverage, never private original-source proof.
+    # The legacy owner-only cloud-derived-only job remains securely held.
+    needs: [contract, approve-retained-derived-inputs]
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      needs.approve-retained-derived-inputs.result == 'success' &&
+      vars.GEOMACRO_GRI_AUTO_ENROLLED == 'YES_CONSENT_ONLY' &&
+      vars.GEOMACRO_GRI_AUTO_REVOKED != 'YES'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment: production
+    concurrency:
+      group: geomacro-consented-source-neutral-gri
+      cancel-in-progress: false
+    env:
+      GEOMACRO_GRI_AUTO_ENROLLED: ${{ vars.GEOMACRO_GRI_AUTO_ENROLLED }}
+      GEOMACRO_GRI_AUTO_REVOKED: ${{ vars.GEOMACRO_GRI_AUTO_REVOKED }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64: ${{ secrets.GEOMACRO_GRI_AUTO_POLICY_ENVELOPE_B64 }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_OWNER_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_PEM }}
+      GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_DELEGATION_SUMAN_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM: ${{ secrets.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PUBLIC_PEM }}
+      GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_GRI_AUTO_OWNER_MACHINE_PRIVATE_PKCS8_B64 }}
+      GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PRIVATE_PKCS8_B64: ${{ secrets.GEOMACRO_GRI_AUTO_REVIEW_MACHINE_PRIVATE_PKCS8_B64 }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Download only the same-run issuer-authenticated source-neutral handoff
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: gri-issuer-neutral-${{ github.run_id }}
+          path: ${{ runner.temp }}/gri-neutral-artifact
+      - name: Verify issuer signature, exact commit and consent; sign with two machine roles
+        run: |
+          set -euo pipefail
+          chmod 600 "${RUNNER_TEMP}/gri-neutral-artifact/gri-issuer-neutral.json"
+          node scripts/ops/bridge-gri-safe-machine-audit.mjs --machine-sign-neutral
+      - name: Retain source-neutral machine policy signatures (not numerical GRI)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: gri-source-neutral-policy-${{ github.run_id }}
+          path: ${{ runner.temp }}/gri-machine-neutral-policy.json
+          retention-days: 3
+          if-no-files-found: error
+      - name: Delete temporary source-neutral receipts
+        if: always()
+        run: |
+          set -euo pipefail
+          rm -f -- "${RUNNER_TEMP}/gri-neutral-artifact/gri-issuer-neutral.json" "${RUNNER_TEMP}/gri-machine-neutral-policy.json"
