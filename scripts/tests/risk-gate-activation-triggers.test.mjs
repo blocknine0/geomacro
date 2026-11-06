@@ -24,7 +24,7 @@ test("Standard waits for actual independent same-event corroboration",()=>{
 test("Complex exposes distinct signed-GRO, B2 readback and seven-day triggers",()=>{
  const gro={verification:{status:"VERIFIED"},commercial_eligibility:{status:"VERIFIED"},
   generated_at:"2026-11-06T11:00:00Z",expires_at:"2026-11-06T14:00:00Z",
-  attribution:[{driver:"conflict"},{driver:"inflation"},{driver:"critical_minerals"}],
+  attribution:[{driver:"conflict",score_contribution:20},{driver:"inflation",score_contribution:30},{driver:"critical_minerals",score_contribution:40}],
   integrity:{signature_scheme:"Ed25519",signature:"x".repeat(80),
    payload_hash:"a".repeat(64)}};
  const archiveProof={archive_write_acknowledged:1,archive_readback_verified:1,
