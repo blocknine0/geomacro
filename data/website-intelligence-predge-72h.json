@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-06T01:42:17.044Z",
+  "checked_at": "2026-11-06T02:00:28.708Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 200,
+  "item_count": 199,
   "counts": {
-    "geopolitics": 67,
+    "geopolitics": 66,
     "macro": 91,
     "rare_earth": 42
   },
-  "source_native_ids_sha256": "0a0ec638334176a14a4559ef642987d86fb2b58bc486d727c445b71dcb102e01",
+  "source_native_ids_sha256": "d1df8b2f36b980ce22eaf78e847e953ef409b0e0ccfd7f4ade283ab76b66ce7a",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3801,25 +3801,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-9f96723f",
-      "category": "geopolitics",
-      "title": "Geomacro finds Zelensky said He Repeatedly Asked Trump to Lift Starshield Restrictions to Stop Russian Ballistic Attacks",
-      "what_changed": "A monitored source feed reports: Zelensky said He Repeatedly Asked Trump to Lift Starshield Restrictions to Stop Russian Ballistic Attacks. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T01:54:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.kyivpost.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
