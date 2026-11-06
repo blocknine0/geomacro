@@ -244,7 +244,7 @@ if(process.argv[1] && fileURLToPath(import.meta.url)===resolve(process.argv[1]))
  try{
   if(process.argv.slice(2).some(x=>!allowed.has(x)))fail("UNKNOWN_ARGUMENT");
   if(process.argv.includes("--redrive")){
-   const value=await redrive();record("FIFO_REDIVE_SINGLE_BOUNDED_CALL",value.ok,value);
+   const value=await redrive();record("FIFO_REDRIVE_SINGLE_BOUNDED_CALL",value.ok,value);
   }
   let c=null;
   try{
