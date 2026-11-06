@@ -2,6 +2,7 @@ import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
 import {collectAskModelContext,type AskModelContext} from "./ask-openai-evidence.server";
 import {safeGroundedOpenAIOutput} from "./ask-openai-grounded.server";
 import {cachedGroqAnswer} from "./ask-shared-answer-cache.server";
+import {readGlobalAskModelCache,writeGlobalAskModelCache} from "./ask-global-public-model-cache.server";
 
 /**
  * Free-only provider opt-in: the owner must verify Groq Free Plan, configure
@@ -185,11 +186,23 @@ export async function enhanceAskWithFreeGroq(
    !eligible(canonical))return canonical;
  let cacheStatus:"hit"|"miss"|"coalesced"|"bypassed"="bypassed";
  let diagnostic="not_attempted";
+ let globalHit=false;
  const result=await cachedGroqAnswer(question,canonical,
-   ()=>requestFreeGroq(question,canonical,clientKey,dependencies,code=>{diagnostic=code;}),
+   async()=>{
+     // Read only hashed, existing public explainer wording. Never cache a
+     // current event, score, follow-up context or source record in D1.
+     const remote=await readGlobalAskModelCache(question,canonical,dependencies.fetchImpl??fetch);
+     if(remote){globalHit=true;return remote;}
+     const rendered=await requestFreeGroq(question,canonical,clientKey,dependencies,
+       code=>{diagnostic=code;});
+     if(rendered.model_rendering==="assisted")
+       await writeGlobalAskModelCache(question,canonical,rendered,dependencies.fetchImpl??fetch);
+     return rendered;
+   },
    status=>{cacheStatus=status;});
  return {...result,
    model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
-   model_render_cache:cacheStatus,
+   model_render_cache:globalHit?"hit":cacheStatus,
+   model_render_cache_scope:globalHit?"distributed":cacheStatus==="hit"?"runtime":"none",
    ...(result.model_rendering==="assisted"?{}:{model_render_failure:diagnostic})};
 }
