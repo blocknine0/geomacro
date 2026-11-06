@@ -6,6 +6,8 @@
  * --b2-list explicitly opts into independently listing the B2 spool prefix.
  */
 import {createHash,createHmac,createPublicKey,verify} from "node:crypto";
+import {fileURLToPath} from "node:url";
+import {resolve} from "node:path";
 
 const CONTROL="https://geomacro-control-plane.daspallab202391.workers.dev";
 const EDGE="https://geomacro-risk-indices.daspallab202391.workers.dev/risk-indices";
@@ -176,6 +178,15 @@ async function signedIndices(){
  const issuerSig=response.headers.get("x-geomacro-index-ed25519-signature");
  const reviewerSig=response.headers.get("x-geomacro-reviewer-ed25519-signature");
  const issuer=indexKey?{key:Buffer.from(indexKey,"base64"),format:"der",type:"spki"}:null;
+ const pin=String(process.env.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256??"");
+ if(!HASH.test(pin)||!reviewerKey||!issuer)fail("APPROVED_REVIEWER_OR_ISSUER_KEY_UNAVAILABLE");
+ const reviewer=createPublicKey(reviewerKey),iss=createPublicKey(issuer);
+ if(reviewer.asymmetricKeyType!=="ed25519"||iss.asymmetricKeyType!=="ed25519")
+   fail("INDEX_OR_REVIEWER_NOT_ED25519");
+ const reviewerDer=reviewer.export({format:"der",type:"spki"});
+ const issuerDer=iss.export({format:"der",type:"spki"});
+ if(sha(reviewerDer)!==pin||reviewerDer.equals(issuerDer))
+   fail("REVIEWER_PIN_MISMATCH_OR_SAME_SIGNING_IDENTITY");
  if(!checkDetachedSignature(issuer,Buffer.from(digest,"hex"),issuerSig)||
     !checkDetachedSignature(reviewerKey,Buffer.from(digest,"hex"),reviewerSig))
   fail("CERTIFIED_REVIEWER_OR_ISSUER_SIGNATURE_UNVERIFIED");
@@ -206,7 +217,7 @@ async function askProof(){
  }
  return {domains:rows,zero_latency_claim:false,groq_architecture_unchanged:true};
 }
-if(import.meta.url===new URL("file://"+process.argv[1]).href){
+if(process.argv[1] && fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  const allowed=new Set(["--redrive","--b2-list"]);
  try{
   if(process.argv.slice(2).some(x=>!allowed.has(x)))fail("UNKNOWN_ARGUMENT");
