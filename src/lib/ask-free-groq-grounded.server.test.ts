@@ -1,5 +1,5 @@
 import {afterEach,describe,expect,it,vi} from "vitest";
-import {enhanceAskWithFreeGroq} from "./ask-free-groq-grounded.server";
+import {enhanceAskWithFreeGroq,repairBlankGroqFields} from "./ask-free-groq-grounded.server";
 import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
 const a={
  summary:"Sanctions may affect copper refining and transport.",
@@ -116,6 +116,44 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
          research_activity_by_category:[],official_release_context:[]})});
    expect(r.model_rendering).toBe("canonical");
    expect(r.model_render_failure).toBe("validation_forbidden_text");
+   expect(r.summary).toBe(a.summary);
+ });
+ it("fills an empty model field only with the same approved canonical value",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const reply={summary:"Copper processing may face sanctions-related constraints.",
+     what_changed:"",why_it_matters:"Refining determines access to supplies.",
+     geomacro_view:"Specific restrictions determine exposure."};
+   const normalized=repairBlankGroqFields(JSON.stringify(reply),a);
+   expect(normalized).not.toBeNull();
+   expect(normalized?.hasNewWording).toBe(true);
+   expect(JSON.parse(normalized!.text).what_changed).toBe(a.what_changed);
+   const r=await enhanceAskWithFreeGroq(
+     "Explain supply constraints in copper refining blank-field test 9412",a,
+     "blank-field-client-9412",{
+       fetchImpl:vi.fn(async()=>new Response(JSON.stringify({
+         choices:[{message:{content:JSON.stringify(reply)}}]}),{status:200})) as any,
+       readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+         research_activity_by_category:[],official_release_context:[]})});
+   expect(r.model_rendering).toBe("assisted");
+   expect(r.what_changed).toBe(a.what_changed);
+   expect(r.summary).toBe(reply.summary);
+   expect(r.evidence).toStrictEqual(a.evidence);
+ });
+ it("does not label all-blank model output as an assisted result",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const blank={summary:"",what_changed:"",why_it_matters:"",geomacro_view:""};
+   expect(repairBlankGroqFields(JSON.stringify(blank),a)?.hasNewWording).toBe(false);
+   const r=await enhanceAskWithFreeGroq(
+     "Explain mineral production budget all-blank safety test 9413",a,
+     "allblank-client-9413",{
+       fetchImpl:vi.fn(async()=>new Response(JSON.stringify({
+         choices:[{message:{content:JSON.stringify(blank)}}]}),{status:200})) as any,
+       readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+         research_activity_by_category:[],official_release_context:[]})});
+   expect(r.model_rendering).toBe("canonical");
+   expect(r.model_render_failure).toBe("model_no_change");
    expect(r.summary).toBe(a.summary);
  });
  it("cannot turn insufficient research into a confirmed fact or signed score",async()=>{
