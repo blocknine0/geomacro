@@ -53,7 +53,10 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(mock.mock.calls[0][1].cache).toBeUndefined();
    expect(mock.mock.calls[0][1].headers["Cache-Control"]).toBe("no-store");
    expect(sent.model).toBe("openai/gpt-oss-20b");
-   expect(sent.response_format).toEqual({type:"json_object"});
+   expect(sent.response_format).toMatchObject({type:"json_schema",json_schema:{
+     name:"geomacro_ask_formatter",strict:true,
+     schema:{type:"object",additionalProperties:false,
+       required:["summary","what_changed","why_it_matters","geomacro_view"]}}});
    expect(JSON.stringify(sent)).not.toMatch(/osint_feed_observed_unverified|api\.openai\.com|source_url/);
    const cached=await enhanceAskWithFreeGroq(q,a,"other-client-2499",{fetchImpl:mock as any});
    expect(cached.model_rendering).toBe("assisted");
@@ -112,7 +115,7 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
        readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
          research_activity_by_category:[],official_release_context:[]})});
    expect(r.model_rendering).toBe("canonical");
-   expect(r.model_render_failure).toBe("validation_rejected");
+   expect(r.model_render_failure).toBe("validation_forbidden_text");
    expect(r.summary).toBe(a.summary);
  });
  it("cannot turn insufficient research into a confirmed fact or signed score",async()=>{
