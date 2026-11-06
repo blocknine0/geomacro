@@ -14,13 +14,13 @@ const spendGuardProof={schema:'geomacro.cloudflare-five-usd-spend-lock.v1',verif
  observed_at:'2026-11-06T08:59:30Z',usage_block_threshold_cents:1,
  products:['workers','durable_objects']};
 const options={now,paidProof,spendGuardProof};
-test('Paid above 100k uses internal paced budget, not a provider Free hard stop',()=>{
+test('Paid intake stays inside the 120k daily read cap and 180k write cap',()=>{
  const later=new Date('2026-11-06T18:00:00Z');
  const proof={...paidProof,observed_at:'2026-11-06T17:59:30Z'};
  const guard={...spendGuardProof,observed_at:'2026-11-06T17:59:30Z'};
- const v=assessPaidEnvelope(snapshot(6_000_000,100_001),{now:later,paidProof:proof,spendGuardProof:guard});
+ const v=assessPaidEnvelope(snapshot(60_000,100_001),{now:later,paidProof:proof,spendGuardProof:guard});
  assert.equal(v.provider_daily_100k_free_limit_applicable,false);
- assert.equal(v.internal_soft_rows_written,180000);
+ assert.equal(v.internal_soft_rows_written,180000);\n  assert.equal(v.internal_soft_rows_read,120000);\n  assert.equal(v.soft_read_headroom,60000);
  assert.ok(v.max_originals_per_bounded_batch<=50);
  assert.equal(v.state,'CRITICAL_ONLY');
  assert.equal(v.source_intake_eligible,true);
