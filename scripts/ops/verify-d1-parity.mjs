@@ -68,8 +68,11 @@ try{
 }catch{fail("WRITER_INVENTORY_UNAVAILABLE")}
 if(writerInventory?.schema!=="geomacro.phase1.d1-writer-integration.v1"||
    writerInventory.account_wide_governor_verified!==true||
-   !Array.isArray(writerInventory.producers)||writerInventory.producers.length<10)
- fail("ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
+   !Array.isArray(writerInventory.producers)||writerInventory.producers.length<10||
+   writerInventory.account_wide_read_cap_verified!==true||
+   writerInventory.daily_soft_rows_read_max!==120000||
+   !Array.isArray(writerInventory.readers)||writerInventory.readers.length<1)
+ fail("ACCOUNT_WIDE_READ_WRITE_GOVERNOR_NOT_VERIFIED");
 
 const healthUrl=process.env.CONTROL_PLANE_HEALTH_URL??
  "https://geomacro-control-plane.daspallab202391.workers.dev/health";
@@ -80,6 +83,9 @@ if(!SHA40.test(String(deployedSha??"")))fail("WORKER_SHA_MISSING");
 if(deployedSha!==mainSha)fail("WORKER_MAIN_SHA_MISMATCH");
 if(health.data.account_wide_governor_verified!==true)
  fail("LIVE_GOVERNOR_READBACK_FALSE_OR_MISSING");
+if(health.data.account_wide_read_cap_verified!==true||
+   health.data.d1_daily_rows_read_soft_cap!==120000)
+ fail("LIVE_D1_READ_CAP_READBACK_FALSE_OR_MISSING");
 
 console.log(JSON.stringify({
  schema:"geomacro.phase1.d1-release-parity.v1",
@@ -89,7 +95,10 @@ console.log(JSON.stringify({
  worker_sha:deployedSha,
  exact_release_sha_parity:true,
  account_wide_governor_verified:true,
+ account_wide_read_cap_verified:true,
+ d1_daily_rows_read_soft_cap:120000,
  writer_inventory_count:writerInventory.producers.length,
+ reader_inventory_count:writerInventory.readers.length,
  worker_health_response_sha256:health.sha256,
  funds_authorized:false,
 }));
