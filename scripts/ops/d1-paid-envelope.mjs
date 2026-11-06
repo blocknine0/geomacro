@@ -4,7 +4,7 @@
  * Every producer must additionally use a shared atomic admission lease.
  */
 export const PAID_D1_INTERNAL = Object.freeze({
-  reads:18_000_000, writes:180_000,
+  reads:120_000, writes:180_000,
   safetyWrites:5_000, protectedPartnerWrites:8_000,
   worstWritesPerOriginal:16, fixedWritesPerBatch:2,
   maxOriginalsPerBatch:50,
@@ -37,7 +37,7 @@ export function assessPaidEnvelope(snapshot,{now=new Date(),paidProof,spendGuard
   const elapsedMs=now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z");
   const fraction=Math.min(1,Math.max(0,elapsedMs/86_400_000));
   // These are INTERNAL pacing watermarks, not Cloudflare Paid hard limits.
-  const pacedRead=Math.floor(4_000_000+(p.reads-4_000_000)*fraction);
+  const pacedRead=Math.floor(20_000+(p.reads-20_000)*fraction);
   const pacedWrite=Math.floor(40_000+(p.writes-40_000)*fraction);
   const writesLeft=Math.max(0,p.writes-snapshot.observed_rows_written);
   const readsLeft=Math.max(0,p.reads-snapshot.observed_rows_read);
@@ -48,17 +48,19 @@ export function assessPaidEnvelope(snapshot,{now=new Date(),paidProof,spendGuard
   // Preserve all remaining producer slots and the existing 23k critical
   // write reserve before granting a single source microbatch.
   const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
-  const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
+  const slots=Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
   const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
-  const criticalReadReserve=1_250_000, criticalWriteReserve=23_000;
-  const perSlot=Math.min(p.maxOriginalsPerBatch,Math.floor(
-    (writesLeft-criticalWriteReserve-slots*40-archiveReserve)/
-      (slots*p.worstWritesPerOriginal)));
+  const criticalReadReserve=15_000, criticalWriteReserve=23_000;
+  const perSlot=Math.min(p.maxOriginalsPerBatch,
+    Math.floor((writesLeft-criticalWriteReserve-slots*40-archiveReserve)/
+      (slots*p.worstWritesPerOriginal)),
+    Math.floor((readsLeft-criticalReadReserve-slots*300-10_000)/
+      (slots*60)));
   const maxOriginals=Math.max(0,perSlot);
   const sourceIntake=critical&&maxOriginals>=3&&
     writeRoom>criticalWriteReserve+maxOriginals*p.worstWritesPerOriginal+40&&
-    readRoom>criticalReadReserve+3200+30000&&
-    readsLeft>criticalReadReserve+slots*3200+30000;
+    readRoom>criticalReadReserve+maxOriginals*60+300&&
+    readsLeft>criticalReadReserve+slots*300+10_000;
   const archive=sourceIntake&&
     writeRoom>criticalWriteReserve+maxOriginals*p.worstWritesPerOriginal+40+900&&
     writesLeft>criticalWriteReserve+
@@ -111,7 +113,7 @@ export function paidBundleContract(envelope){
   observed_rows_written:envelope.observed_rows_written,
   soft_write_headroom:envelope.soft_write_headroom,
   predge_account_headroom_guard_enabled:false,
-  predge_account_headroom_planning_reserve:{rows_read:500000,rows_written:8000,pilot_request_cap_per_utc_day:500,basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE"},
+  predge_account_headroom_planning_reserve:{rows_read:5000,rows_written:8000,pilot_request_cap_per_utc_day:500,basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE"},
   predge_account_headroom_is_hard_partition:false,
   predge_request_governor_is_separate_and_unchanged:true,
   paid_subscription_change_performed:false,paid_billing_is_operator_controlled:true,
