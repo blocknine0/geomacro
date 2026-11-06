@@ -10,6 +10,7 @@
 import {CATEGORIES,WEIGHTS,validatedSignedCategoryScores}
  from "./unified-risk-categories.mjs";
 import {calculateUnifiedRisk} from "./unified-risk-engine.mjs";
+import {productActivationTriggers} from "./risk-gate-activation-triggers.mjs";
 
 export const RISK_GATE_PRODUCT_SCHEMA="geomacro.risk-gate-commercial-three-tier.v1";
 export const RISK_GATE_PRODUCT_TIERS=Object.freeze({
@@ -202,7 +203,7 @@ export function composeRiskGateThreeTierResponse({
   const score=provisionalScore(categoryRows);
   const alerts=categoryRows.flatMap(r=>r.observed_alerts).sort((a,b)=>
    b.observed_at.localeCompare(a.observed_at)).slice(0,12);
-  return {...base,status:score===null?"NO_OBSERVED_SIGNAL":"READY",
+  const result={...base,status:score===null?"NO_OBSERVED_SIGNAL":"READY",
    chargeable:score!==null,
    confidence:score===null?null:{level:"LOW",verification:"PROVISIONAL"},
    risk_score_0_100:score,risk_score_kind:"INDICATIVE_UNVERIFIED_ACTIVITY_PROXY",
@@ -214,6 +215,7 @@ export function composeRiskGateThreeTierResponse({
    })),
    signed_gro:null,
   };
+  return {...result,activation_triggers:productActivationTriggers(result,{tier,now})};
  }
  const scores=validatedSignedCategoryScores(verified_gro);
  const calculated=calculateUnifiedRisk(Object.fromEntries(
@@ -235,7 +237,7 @@ export function composeRiskGateThreeTierResponse({
  if(tier==="standard"){
   const standardFacts=observedQualified&&!signedQualified?observedProof.factSheets:factsheets;
   const standardReferences=signedQualified?references:observedProof?.source_references??[];
-  return {...base,status:qualified?"READY":"INSUFFICIENT_CORROBORATION",
+  const result={...base,status:qualified?"READY":"INSUFFICIENT_CORROBORATION",
    chargeable:qualified,
    confidence:qualified?{level:"MEDIUM",verification:"VERIFIED"}:null,
    risk_score_0_100:qualified?boundedScore(standardScore*100):null,
@@ -247,6 +249,8 @@ export function composeRiskGateThreeTierResponse({
    independent_corroboration_verified:qualified,
    signed_gro:null,
   };
+  return {...result,activation_triggers:productActivationTriggers(result,{tier,now,
+    verifiedGro:verified_gro})};
  }
  const archived=verified_gro?archiveLocation(archive_proof,verified_gro):null;
  const friction=sevenDays(history,now,subject);
@@ -263,7 +267,7 @@ export function composeRiskGateThreeTierResponse({
   verified_gro.risk.score>=0&&verified_gro.risk.score<=100&&
   friction.verified_score_days===7&&
   friction.trend!=="INSUFFICIENT_VERIFIED_HISTORY";
- return {...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
+ const result={...base,status:ready?"READY":"SIGNED_GRO_OR_ARCHIVE_NOT_READY",
   chargeable:ready,
   confidence:ready?{level:"HIGH",verification:"CRYPTO_SIGNED"}:null,
   risk_score_0_100:ready?boundedScore(verified_gro.risk.score):null,
@@ -291,4 +295,6 @@ export function composeRiskGateThreeTierResponse({
   }:null,
   b2_archive:ready?archived:null,
  };
+ return {...result,activation_triggers:productActivationTriggers(result,{tier,now,
+  verifiedGro:verified_gro,archiveProof:archive_proof,history})};
 }
