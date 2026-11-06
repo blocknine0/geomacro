@@ -1,3 +1,4 @@
+import {safeRiskFields,subjectTarget} from '../risk-contract.mjs';
 import { sign,createPublicKey,randomUUID } from 'node:crypto';
 import { canonicalize,hash,verifyReceipt } from '../metering.mjs';
 import { PaymentError,requireValue,rpc,uuid } from './common.mjs';
@@ -17,7 +18,7 @@ export class X402Engine {
   return {url:u.toString(),description:'GeoMacro advisory risk intelligence',mimeType:'application/json'};}
  fingerprint(input){return hash(canonicalize({method:'POST',path:'/v1/risk-gate',subject:input.subject,tier:input.tier}));}
  validateInput(input){requireValue(input&&uuid(input.request_id)&&typeof input.subject==='string'&&
-  /^[A-Z0-9][A-Z0-9:_-]{1,127}$/.test(input.subject)&&Object.hasOwn(ranks,input.tier),'INVALID_RISK_REQUEST',400);}
+  Object.hasOwn(ranks,input.tier),'INVALID_RISK_REQUEST',400);subjectTarget(input.subject);}
  challenge(input,tier,error='Payment authorization required') {
   const body={x402Version:2,error,resource:this.resource(input),accepts:[requirements(amounts[tier],this.payee)]};
   return new Response(JSON.stringify(body),{status:402,headers:{'Content-Type':'application/json','Cache-Control':'no-store','PAYMENT-REQUIRED':encoded(body)}});
@@ -59,7 +60,7 @@ export class X402Engine {
   const {authorization,payer,nonce}=await validateAuthorization(payment,expected);
   const block=await this.base.blockNumber();
   const payload={request_id:input.request_id,subject:input.subject,requested_tier:input.tier,
-   decision:risk.decision,risk_score:risk.risk_score,factors:risk.factors,billed_tier:tier,credits_deducted:0,
+   ...safeRiskFields(risk),billed_tier:tier,credits_deducted:0,
    payment_rail:'base_usdc',payment_amount_atomic:String(amounts[tier]),payer,payee:this.payee,payment_nonce:nonce,
    execution_authorized:false,generated_at:new Date().toISOString(),public_key_id:this.publicKeyId};
   const canonical=canonicalize(payload),signature=sign(null,Buffer.from(canonical),this.privateKey).toString('base64');

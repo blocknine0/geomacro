@@ -65,8 +65,13 @@ jobs:
           PG_LOCAL: 'true'
           GEOMACRO_CONCURRENCY_DATABASE_URL: postgresql://postgres:postgres_ephemeral_ci_only@localhost:5432/postgres
         run: |
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;'
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/schema.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/functions.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/payments.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/replay-ownership.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/risk-api.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/rpc-gateway.sql
           node --test test/concurrency.test.mjs
   deploy:
     needs: [test, postgres-concurrency]
@@ -95,6 +100,7 @@ jobs:
           GEOMACRO_PAYPAL_WEBHOOK_ID: ${{ secrets.GEOMACRO_PAYPAL_WEBHOOK_ID }}
           GEOMACRO_PAYPAL_MERCHANT_ID: ${{ secrets.GEOMACRO_PAYPAL_MERCHANT_ID }}
           GEOMACRO_PAYPAL_ENVIRONMENT: ${{ vars.GEOMACRO_PAYPAL_ENVIRONMENT }}
+          COMMERCIAL_VERIFY_KEYS_JSON: ${{ vars.GEOMACRO_COMMERCIAL_VERIFY_KEYS_JSON }}
           PAYPAL_CATALOG_JSON: ${{ vars.GEOMACRO_PAYPAL_CATALOG_JSON }}
           COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}

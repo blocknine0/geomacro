@@ -96,6 +96,9 @@ CREATE FUNCTION geomacro.x402_prepare(p jsonb)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE v geomacro.x402_intents; q geomacro.prices; b jsonb;
 BEGIN
+ PERFORM pg_advisory_xact_lock(hashtextextended('geomacro-commercial-request:'||(p->>'request_id'),0));
+ IF EXISTS(SELECT FROM geomacro.usage_logs WHERE request_id=(p->>'request_id')::uuid
+  AND rail<>'base_usdc') THEN RAISE EXCEPTION 'IDEMPOTENCY_CONFLICT'; END IF;
  b:=(p->>'canonical_payload')::jsonb;
  SELECT * INTO STRICT q FROM geomacro.prices WHERE tier=(p->>'billed_tier')::geomacro.tier;
  IF q.usd_micros<>(p->>'amount_atomic')::bigint OR
