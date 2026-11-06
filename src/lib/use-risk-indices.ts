@@ -276,6 +276,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
   const [error, setError] = useState<UserError | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const hasData = useRef(false);
+  const lastCurrent = useRef<PublicRiskIndices|null>(null);
 
   const retry = useCallback(() => setReloadKey((value) => value + 1), []);
 
@@ -291,6 +292,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
           const response = await readCachedCertifiedNewsRisk(forceRefresh || attempt > 0);
           if (cancelled) return;
           hasData.current = true;
+          lastCurrent.current = response;
           setData(response);
           setError(null);
           setStatus("ready");
@@ -311,13 +313,14 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
       setError(userError);
       // A stale verified reading cannot remain presented as CURRENT. Keep
       // only in-window previously reviewed scores during transient failures.
-      const previousIsCurrent=data!==null &&
-        Number.isFinite(Date.parse(data.snapshotAsOf)) &&
-        Date.now()-Date.parse(data.snapshotAsOf)<=60*60000 &&
-        data.indices.every(index=>index.readingAsOf &&
+      const previous=lastCurrent.current;
+      const previousIsCurrent=previous!==null &&
+        Number.isFinite(Date.parse(previous.snapshotAsOf)) &&
+        Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000 &&
+        previous.indices.every(index=>index.readingAsOf &&
           Number.isFinite(Date.parse(index.readingAsOf)) &&
           Date.now()-Date.parse(index.readingAsOf)<=60*60000);
-      if(!previousIsCurrent){hasData.current=false;setData(null);}
+      if(!previousIsCurrent){hasData.current=false;lastCurrent.current=null;setData(null);}
       setStatus(previousIsCurrent ? "ready" : "error");
     }
 
