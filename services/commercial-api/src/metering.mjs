@@ -1,6 +1,25 @@
-import { createHash, randomBytes, sign, verify, createPublicKey } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, sign, verify, createPublicKey } from 'node:crypto';
 
 export const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
+// SHA-256 is retained for receipt/request integrity, NOT password hashing.
+// Legacy gm_live_ credentials contain 256 CSPRNG-generated bits and use the
+// historical fingerprint for zero-downtime authentication. Newly issued
+// gm_live2_ credentials use a per-token scrypt KDF; database key_hash stays hex64.
+const LEGACY_API_KEY = /^gm_live_[A-Za-z0-9_-]{43}$/;
+const V2_API_KEY = /^gm_live2_[A-Za-z0-9_-]{43}$/;
+export const isApiKey = value => typeof value === 'string' &&
+  (LEGACY_API_KEY.test(value) || V2_API_KEY.test(value));
+export function apiKeyHash(value) {
+  if (!isApiKey(value)) throw new TypeError('API_KEY_INVALID');
+  if (LEGACY_API_KEY.test(value)) return hash(value); // Existing 256-bit tokens only.
+  const encoded = value.slice('gm_live2_'.length);
+  const salt = Buffer.from(encoded, 'base64url');
+  if (salt.length !== 32 || salt.toString('base64url') !== encoded)
+    throw new TypeError('API_KEY_INVALID');
+  return scryptSync(value, salt, 32, {
+    N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024,
+  }).toString('hex');
+}
 // Deterministic JSON for this protocol, NOT a claim of RFC 8785 conformance.
 // Store and replay these exact UTF-8 bytes; never reserialize before verifying.
 export function canonicalize(value) {
@@ -12,8 +31,8 @@ export function canonicalize(value) {
   throw new TypeError('Payload must contain JSON values only');
 }
 export function mintApiKey() {
-  const secret = `gm_live_${randomBytes(32).toString('base64url')}`;
-  return { secret, hash: hash(secret), prefix: secret.slice(0, 16) };
+  const secret = `gm_live2_${randomBytes(32).toString('base64url')}`;
+  return { secret, hash: apiKeyHash(secret), prefix: secret.slice(0, 16) };
 }
 export class BillingError extends Error {
   constructor(code, cause) { super(code, { cause }); this.code = code; }
@@ -49,7 +68,7 @@ export async function settleVerifiedSuccess(pool, {
     await db.query("SET LOCAL statement_timeout = '5000ms'");
     await db.query("SET LOCAL lock_timeout = '3000ms'");
     await db.query("SET LOCAL idle_in_transaction_session_timeout = '10000ms'");
-    const args = [hash(apiKey), requestId, requestHash, subject, requestedTier, availableTiers];
+    const args = [apiKeyHash(apiKey), requestId, requestHash, subject, requestedTier, availableTiers];
     const { rows: [{ result: q }] } = await db.query(
       'SELECT geomacro.prepare($1,$2,$3,$4,$5,$6) AS result', args);
     let result = q;
