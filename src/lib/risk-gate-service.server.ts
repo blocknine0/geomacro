@@ -106,11 +106,11 @@ export type CountryRiskGateServiceResult = {
     tier: ProgressiveRiskGateTier;
     tier_activation_matrix: RiskGateTierActivationMatrix;
   };
-  decision_signature_scheme:"Ed25519";
-  decision_signature_key_id:string;
-  decision_signature_b64:string;
-  decision_payload_sha256:string;
-  decision_signed_payload:Record<string,unknown>;
+  decision_signature_scheme?:"Ed25519";
+  decision_signature_key_id?:string;
+  decision_signature_b64?:string;
+  decision_payload_sha256?:string;
+  decision_signed_payload?:Record<string,unknown>;
 };
 
 
@@ -341,6 +341,17 @@ evaluateCountryRiskGate(
     );
   }
 
+  // Existing internal GRO consumers predate a local decision signer and
+  // must continue operating while the separate protected D1 Worker remains
+  // authoritative for universally signed multi-tier HTTP decisions.
+  const canLocallySign=Boolean(
+    process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_KEY_ID &&
+    process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64 &&
+    process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64
+  );
+  if(!groValid&&!canLocallySign)
+    throw Error("RISK_GATE_DECISION_SIGNER_UNAVAILABLE");
+
   return {
     request,
 
@@ -364,10 +375,10 @@ evaluateCountryRiskGate(
       tier,
       tier_activation_matrix:matrix,
     },
-    ...signServerRiskGateDecision({
+    ...(canLocallySign ? signServerRiskGateDecision({
       schema:"geomacro.progressive-risk-gate-decision.v1",
       request_id:requestId,country_iso3:countryIso3,tier,
       risk_gate:response,tier_activation_matrix:matrix,execution_authorized:false,
-    }),
+    }) : {}),
   };
 }
