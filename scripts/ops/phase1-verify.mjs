@@ -27,7 +27,8 @@ function insist(condition,label){if(!condition)throw Error('CANARY_'+label+'_FAI
 const h=await hit('/health');
 insist(h.code===200&&h.data.ok===true&&h.data.store==='d1'&&
  h.data.deployed_source_sha===sha&&h.data.d1_hotspot_v2_enabled===true&&
- h.data.payment_runtime_locked===true,'EXACT_VERSION_HEALTH_SHA_FLAGS_LOCK');
+ h.data.account_wide_governor_verified===true&&
+ h.data.payment_runtime_locked===true,'EXACT_VERSION_HEALTH_SHA_FLAGS_GOVERNOR_LOCK');
 const anonymous=await hit('/v1/internal/risk-gate/signing-automation');
 insist(anonymous.code===401,'ANONYMOUS_ADMIN_DENIAL');
 const signing=await hit('/v1/internal/risk-gate/signing-automation',{auth:true});
