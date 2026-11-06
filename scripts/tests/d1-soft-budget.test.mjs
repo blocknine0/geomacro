@@ -6,6 +6,8 @@ import {reserveD1PhysicalRows,D1BudgetHold} from "../../workers/control-plane/sr
 
 const migration=readFileSync(new URL(
  "../../workers/control-plane/migrations/0205_d1_internal_soft_budget.sql",import.meta.url),"utf8");
+const budget=JSON.parse(readFileSync(new URL(
+ "../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 function fixture(){
  const db=new DatabaseSync(":memory:");
  db.exec(migration);
@@ -46,6 +48,9 @@ test("D1 token bucket enforces 7500-row burst and 125-row/minute refill",async()
   assert.equal(grant.reserved_rows,7000);
   assert.equal(grant.bucket_capacity_rows,7500);
   assert.equal(grant.refill_rows_per_minute,125);
+  assert.equal(budget.paid_admission.d1_write_token_bucket.daily_soft_rows_written_max,180000);
+  assert.equal(budget.paid_admission.d1_write_token_bucket.capacity_rows,grant.bucket_capacity_rows);
+  assert.equal(budget.paid_admission.d1_write_token_bucket.refill_rows_per_minute,grant.refill_rows_per_minute);
   assert.equal(grant.tokens_milli,500000);
   await assert.rejects(()=>reserveD1PhysicalRows(f.DB,{
    dayUtc:day(t),providerObserved:7000,estimatedRows:501,
