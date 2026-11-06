@@ -160,7 +160,7 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   if(rows.length)statements.push(env.DB.prepare(
    "INSERT INTO unverified_observations(observation_id,event_id,entity_type,entity_id,category,event_at,source_id,source_host,title_sha256,impact_factor,fact_basis,original_page_fetched,status,independent_source_count,discovered_at) "+
    "SELECT json_extract(value,'$.observation_id'),json_extract(value,'$.event_id'),json_extract(value,'$.entity_type'),json_extract(value,'$.entity_id'),json_extract(value,'$.category'),json_extract(value,'$.event_at'),json_extract(value,'$.source_id'),json_extract(value,'$.source_host'),json_extract(value,'$.title_sha256'),json_extract(value,'$.impact_factor'),json_extract(value,'$.fact_basis'),json_extract(value,'$.original_page_fetched'),'OBSERVED',1,json_extract(value,'$.discovered_at') FROM json_each(?) WHERE 1 "+
-   "ON CONFLICT(event_id,source_host) DO UPDATE SET discovered_at=excluded.discovered_at,impact_factor=MAX(COALESCE(unverified_observations.impact_factor,0),COALESCE(excluded.impact_factor,0)),fact_basis=excluded.fact_basis,original_page_fetched=excluded.original_page_fetched"
+   "ON CONFLICT(event_id,source_host) DO UPDATE SET discovered_at=excluded.discovered_at,impact_factor=MAX(COALESCE(unverified_observations.impact_factor,0),COALESCE(excluded.impact_factor,0)),fact_basis=CASE WHEN unverified_observations.original_page_fetched=1 THEN unverified_observations.fact_basis ELSE excluded.fact_basis END,original_page_fetched=MAX(unverified_observations.original_page_fetched,excluded.original_page_fetched)"
   ).bind(JSON.stringify(rows)));
   // Require distinct publishers and publication times separated by six hours
   // before promoting identical event fingerprints beyond OBSERVED.
@@ -182,7 +182,7 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    throw Error();
   const storedCursor=await env.DB.prepare("SELECT next_offset,last_run_at FROM risk_gap_enrichment_cursor WHERE singleton=1").first();
   if(storedCursor?.next_offset!==next||storedCursor?.last_run_at!==iso(now))throw Error();
-  return {ok:true,schema:"geomacro.risk-gap-enrichment.v1",gap_cells:gaps.length,
+  return {ok:true,schema:"geomacro.risk-gap-enrichment.v1",gap_cells:missing.length,followup_cells:followup.length,
    searched_cells:page.length,observations:rows.length,
    fulltext_articles_fetched:results.filter(x=>x.fullText).length,
    publisher_focused_queries:Math.min(4,page.length),
