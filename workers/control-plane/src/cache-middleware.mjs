@@ -45,7 +45,7 @@ export async function withPublicEdgeCache(req,producer,{
   const hard=Number(saved.headers.get("x-geomacro-cache-hard-until"));
   if(Number.isSafeInteger(soft)&&Number.isSafeInteger(hard)&&
      soft<=hard&&instant<hard){
-    if(instant<soft)return freshResponse(saved.clone(),"HIT",ttlSeconds);
+    if(instant<soft)return freshResponse(saved.clone(),"HIT",Math.max(0,Math.ceil((soft-instant)/1000)));
     if(typeof waitUntil==="function"){
       // Stale response is safe only within explicit 5-minute max stale window.
       const task=refresh();try{waitUntil(task)}catch{/* no background task */ }
