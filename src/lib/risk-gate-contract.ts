@@ -11,6 +11,55 @@ import type {
 export const RISK_GATE_SCHEMA_VERSION =
   "risk-gate-1.0" as const;
 
+export type ProgressiveRiskGateTier =
+  | "BASIC_0_10"
+  | "STANDARD_0_15"
+  | "COMPLEX_0_25";
+
+export type RiskGateTierActivationMatrix = {
+  basic: { active: boolean; status: "ACTIVE" };
+  standard: {
+    active: boolean;
+    status: "ACTIVE" | "PENDING";
+    corroboration_sources_count: number;
+    missing?: string[];
+  };
+  complex: {
+    active: boolean;
+    status: "ACTIVE" | "LOCKED";
+    signed_gro_ready: boolean;
+    seven_day_rollup_ready: boolean;
+    missing?: string[];
+  };
+};
+
+export type SignedProgressiveRiskGateEnvelope = {
+  ok: true;
+  schema: "geomacro.progressive-risk-gate-decision.v1";
+  request_hash: string;
+  tier: ProgressiveRiskGateTier;
+  tier_activation_matrix: RiskGateTierActivationMatrix;
+  price_per_call_usd: 0.10 | 0.15 | 0.25;
+  risk_gate: RiskGateResponse;
+  context: {
+    subject: RiskGateRequest["subject"];
+    source: string;
+    verified_signed_gro: boolean;
+    commercial_eligible: boolean;
+    payment_authorized: false;
+    risk_metric_semantics: string;
+    observation_count: number;
+    latest_observation_clock: string | null;
+  };
+  execution_authorized: false;
+  decision_signed_payload: Record<string,unknown>;
+  decision_signature_scheme: "Ed25519";
+  decision_signature_key_id: string;
+  decision_signature_scope: "geomacro.progressive-risk-gate-decision.v1";
+  decision_payload_sha256: string;
+  decision_signature_b64: string;
+};
+
 export type RiskGateDecision =
   | "CONTINUE"
   | "REDUCE_LIMIT"
@@ -74,7 +123,9 @@ export type RiskGateReasonCode =
   | "risk_object_expired"
   | "risk_object_unverifiable"
   | "intraday_material_flash_override"
-  | "flash_check_unavailable";
+  | "flash_check_unavailable"
+  | "discovery_only_provisional"
+  | "no_current_evidence";
 
 export type RiskGateResponse = {
   schema_version:
