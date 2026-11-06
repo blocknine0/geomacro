@@ -49,4 +49,6 @@ jobs:
         with:
           node-version: '22'
       - name: Require live three-category completions and a real warm cache hit
+        env:
+          EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
         run: node scripts/ops/verify-live-free-groq-ask.mjs
