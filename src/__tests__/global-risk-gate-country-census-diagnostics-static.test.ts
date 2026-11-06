@@ -57,11 +57,14 @@ describe("global Risk Gate country census diagnostics", () => {
     expect(workflow).not.toContain("secrets.APP_SUPABASE_URL");
     expect(workflow).not.toContain("secrets.SUPABASE_SERVICE_ROLE_KEY");
     expect(workflow).not.toContain("secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64");
-    // Worker routes are unavailable during the source commit's deployment
-    // race; audit only after the actual D1 deploy workflow succeeds.
-    expect(workflow).toContain('workflows: ["Deploy D1 Control Plane"]');
-    expect(workflow).not.toContain('workflows: ["Geomacro Intelligence Orchestrator"]');
-    expect(workflow).toContain("github.event.workflow_run.conclusion == 'success'");
-    expect(workflow).toContain('27 6 * * *');
+    // A main-push or Worker deployment must not start another B2-backed
+    // audit while shared provider quota is exhausted. Run only two bounded
+    // UTC slots or an explicit operator dispatch after D1 deployment.
+    expect(workflow).not.toMatch(/^  (?:push|workflow_run):/m);
+    expect(workflow).toContain("workflow_dispatch: {}");
+    expect(workflow).toContain('cron: "37 0 * * *"');
+    expect(workflow).toContain('cron: "27 6 * * *"');
+    expect(workflow).toContain("github.event_name == 'schedule'");
+    expect(workflow).toContain("github.event_name == 'workflow_dispatch'");
   });
 });

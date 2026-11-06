@@ -85,3 +85,23 @@ test("wrong ref, fake 585-cell proof and missing token cannot publish",async()=>
  expect(()=>createRedactedGithubAuditWitness(JSON.stringify(incorrect),{
   sha:SHA40,runId:"123456",attempt:"1"})).toThrow();
 });
+
+test("proven quiet source state receives green digest without paid claims",()=>{
+ const doc=JSON.parse(fixture(true));
+ doc.audit_state="SOURCE_QUIET";
+ doc.source_runtime.contexts=[
+   {source_families_readable:1},{source_families_readable:1},{source_families_readable:1},
+ ];
+ doc.automated_finds_categories=[
+   {current_24h_count:0},{current_24h_count:0},{current_24h_count:0},
+ ];
+ doc.release_qualification={schema:"geomacro.source-release-qualification.v1",
+   status:"NO_QUALIFIED_NEW_RELEASE",complete:true,
+   checked_at:doc.checked_at,categories:["geopolitics","macro","rare_earth"]};
+ const receipt=createRedactedGithubAuditWitness(JSON.stringify(doc),{
+   sha:SHA40,runId:"123456",attempt:"1"});
+ expect(receipt.audit_ok).toBe(true);
+ expect(receipt.body).toContain("SOURCE_QUIET");
+ expect(receipt.body).toContain("0 claimed");
+ expect(receipt.body).toContain("not asserted by this GitHub witness");
+});

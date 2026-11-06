@@ -42,6 +42,23 @@ describe("remaining source stages run without frozen Supabase",()=>{
     expect(stored.context.checked_at).toBe(now.toISOString());expect(stored.latest_reader_status).toBe("ALL_SOURCES_UNAVAILABLE");
     expect((await (await getSourceRuntimeStatus(workerEnv(f.rows),later.getTime())).json()).status).toBe("SOURCE_LANES_DEGRADED");
   });
+  it("certifies quiet only when all three categories have complete readable no-release probes",async()=>{
+    const f=fixture();
+    f.readOpen=vi.fn(async(category:string)=>({
+      ...context(category),source_families_readable:2,source_families_unavailable:0,
+      status:"NO_QUALIFYING_CONTEXT",findings:[],
+    })) as any;
+    const r=await runSupabaseFreeSourceRuntime({...f,now});
+    expect(r.source_reads_healthy).toBe(true);
+    expect(r.release_qualification?.status).toBe("NO_QUALIFIED_NEW_RELEASE");
+    const status=await (await getSourceRuntimeStatus(workerEnv(f.rows),at)).json();
+    expect(status.status).toBe("SOURCE_QUIET");
+    expect(status.release_qualification?.complete).toBe(true);
+    const forged=f.rows.get("summary");
+    forged.payload.report.release_qualification.categories=["geopolitics"];
+    const refused=await getSourceRuntimeStatus(workerEnv(f.rows),at);
+    expect(refused.status).toBe(503);
+  });
   it("serves the actual D1 context from the existing reader without renewing its observation time",async()=>{
     const old={...context("macro-fx"),checked_at:new Date(at-3600_000).toISOString()};
     const fake=vi.fn(async(url:any)=>String(url).includes("source-runtime-context")?Response.json(old):new Response("",{status:503}));

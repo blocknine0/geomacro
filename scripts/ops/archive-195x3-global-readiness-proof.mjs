@@ -83,14 +83,20 @@ export async function archiveGlobalCountryAudit({
   if(existing && (existing.length!==bytes.length||digest(existing)!==sha))
     fail("CONTENT_ADDRESS_COLLISION");
   if(!existing){
-    await client.putWithMetadataVerification(key,bytes);
+    const receipt=await client.putWithMetadataVerification(key,bytes);
+    if(receipt?.full_body_readback_verified!==true||
+       receipt.sha256!==sha||receipt.bytes!==bytes.length)
+      fail("SNAPSHOT_RECEIPT_NOT_VERIFIED");
   }
   // putWithMetadataVerification already performed an independently
   // governed full byte readback. No duplicate GET against scarce B2 quota.
   if(existing&&(digest(existing)!==sha||existing.length!==bytes.length))
     fail("DURABLE_SNAPSHOT_READBACK_FAILED");
   const headBytes=Buffer.from(JSON.stringify(head)+"\n");
-  await client.putWithMetadataVerification(GLOBAL_PROOF_HEAD_KEY,headBytes);
+  const headReceipt=await client.putWithMetadataVerification(GLOBAL_PROOF_HEAD_KEY,headBytes);
+  if(headReceipt?.full_body_readback_verified!==true||
+     headReceipt.sha256!==digest(headBytes)||headReceipt.bytes!==headBytes.length)
+    fail("LATEST_HEAD_RECEIPT_NOT_VERIFIED");
   // The metadata-verifying PUT already independently GET-verified the head;
   // revalidate its canonical representation locally without another GET.
   const restoredHead=assertProofHead(JSON.parse(headBytes.toString("utf8")));

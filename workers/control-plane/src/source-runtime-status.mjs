@@ -32,8 +32,21 @@ export async function getSourceRuntimeStatus(env,now=Date.now()){
     const event=report.gdelt_event,gkg=report.gdelt_gkg;
     const eventOk=event?.archive_integrity_verified===true&&event.status==="STATIC_EVENT_BATCH_READ";
     const gkgOk=gkg?.archive_integrity_verified===true&&gkg.state==="CURRENT_GKG_BATCH_SCANNED_PRIVATE_DISCOVERY_ONLY";
+    const q=report.release_qualification;
+    const quiet=q!==undefined&&q!==null;
+    if(quiet&&!(
+       q.schema==="geomacro.source-release-qualification.v1"&&
+       q.status==="NO_QUALIFIED_NEW_RELEASE"&&q.complete===true&&
+       q.checked_at===report.checked_at&&eventOk&&gkgOk&&
+       Array.isArray(q.categories)&&q.categories.length===3&&
+       ["geopolitics","macro","rare_earth"].every(c=>q.categories.includes(c))&&
+       contexts.every(c=>c.source_families_attempted===c.source_families_readable&&
+         c.derived_context_count===0)))
+      throw Error("UNVERIFIED_QUIET_CENSUS");
     return json({schema:"geomacro.supabase-free-source-runtime-public.v1",ok:true,checked_at:report.checked_at,
-      status:eventOk&&gkgOk&&contexts.every(x=>x.source_families_readable>0)?"ALL_CATEGORY_LANES_READABLE":"SOURCE_LANES_DEGRADED",
+      status:quiet?"SOURCE_QUIET":
+        eventOk&&gkgOk&&contexts.every(x=>x.source_families_readable>0)?"ALL_CATEGORY_LANES_READABLE":"SOURCE_LANES_DEGRADED",
+      ...(quiet?{release_qualification:q}:{}),
       gdelt_event_static_readable:eventOk,gdelt_gkg_static_readable:gkgOk,contexts,
       gdelt_index_clock_is_original_publication:false,original_events_independently_verified:false,
       supabase_requests:0,b2_requests:0,payments:0,chargeable:false});
