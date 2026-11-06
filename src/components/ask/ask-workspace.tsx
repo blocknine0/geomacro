@@ -7,7 +7,6 @@ import type { AskAnswer } from "@/lib/ask-geomacro.functions";
 import { reportError, type UserError } from "@/lib/user-errors";
 import { streamPublicAsk, withAskCancellation, LegacyAskTransportOnlyError, type AskStreamStage } from "@/lib/ask-sse-client";
 import { requestPublicAsk } from "@/lib/ask-legacy-transport";
-import { createAskTabReuse } from "@/lib/ask-tab-reuse";
 import { AssistantAnswer, UserBubble } from "./ask-answer-view";
 import {
   PUBLIC_ASK_REQUEST_TIMEOUT_MS,
@@ -49,7 +48,6 @@ export function AskWorkspace() {
   const [researchStage, setResearchStage] = useState<AskStreamStage>("researching");
   const sequence = useRef(0);
   const requestRef = useRef<AbortController | null>(null);
-  const tabReuse = useRef(createAskTabReuse());
   useEffect(() => () => requestRef.current?.abort(), []);
   const messagesRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -87,7 +85,6 @@ export function AskWorkspace() {
   };
 
   const deleteChat = (id: number) => {
-    tabReuse.current.clear(); // Explicit chat deletion also clears tab-only public answer reuse.
     if (loading) return;
     const remaining = sessions.filter((session) => session.id !== id);
     if (remaining.length) {
@@ -127,23 +124,17 @@ export function AskWorkspace() {
         ])).filter(turn => turn.content.trim().length > 0);
         while (history.reduce((sum, turn) => sum + turn.content.length, 0) > 4800)
           history.shift();
-        // No history is sent or silently reused. Only identical standalone,
-        // timeless, PUBLIC explainers can hit the in-tab answer cache.
-        const hasContext = active.turns.length > 0;
-        const sameTab = tabReuse.current.get(question, hasContext);
-        const result = sameTab
-          ? {answer:sameTab,resolvedQuestion:question}
-          : await withPublicRuntimeTimeout(
-              withAskCancellation(streamPublicAsk(question, history, setResearchStage, controller.signal).catch(error => {
-                // Old Lovable deploys may temporarily lack the newer SSE transport.
-                if (error instanceof LegacyAskTransportOnlyError)
-                  return requestPublicAsk(question, previousQuestion, controller.signal);
-                throw error;
-              }), controller.signal),
-              PUBLIC_ASK_REQUEST_TIMEOUT_MS,
-              "Ask Geomacro request timed out.",
-            );
-        if (!sameTab) tabReuse.current.remember(question, hasContext, result.answer);
+        const result = await withPublicRuntimeTimeout(
+          withAskCancellation(streamPublicAsk(question, history, setResearchStage, controller.signal).catch(error => {
+            // Old Lovable deploys can temporarily lack the new POST stream;
+            // fallback only on a missing/broken transport, never security or rate-limit verdicts.
+            if (error instanceof LegacyAskTransportOnlyError)
+              return requestPublicAsk(question, previousQuestion, controller.signal);
+            throw error;
+          }), controller.signal),
+          PUBLIC_ASK_REQUEST_TIMEOUT_MS,
+          "Ask Geomacro request timed out.",
+        );
         if (controller.signal.aborted) return;
         setSessions((current) =>
           current.map((session) =>
