@@ -7,7 +7,7 @@
   "product_ci_run_id": 42251759888,
   "inventory_gate_job_id": 128008400938,
   "scan": {
-    "method": "static source/config/workflow scan with D1 binding, alias, database-parameter, REST endpoint and Wrangler D1 execute detection",
+    "method": "static source/config/workflow scan with D1 binding, alias, database-parameter, REST endpoint and command-line invocation detection",
     "files": [
       {
         "path": "scripts/day6-direct-live-federico-gro.ts",
