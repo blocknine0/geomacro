@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   security-events: write
+  checks: read
 
 concurrency:
   group: codeql-${{ github.workflow }}-${{ github.ref }}
@@ -44,6 +45,11 @@ jobs:
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: "/language:javascript-typescript"
+      - name: Diagnose exact-head PR CodeQL security annotations (read-only)
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/security/read-codeql-pr-check-annotations.mjs
       - name: Read high-severity CodeQL alert states 137 and 138 (read-only)
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
