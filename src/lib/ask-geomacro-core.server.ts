@@ -32,6 +32,23 @@ export class AskGeomacroRateLimitError extends Error {
 
 export type AskAnswer = HybridAskAnswer;
 
+/** Honest, complete public fallback after the bounded evidence deadline. */
+export function timedOutAskAnswer(question:string):AskAnswer {
+  const scope=/\\bgeopolitical\\s+risk\\s+index\\b/iu.test(question)?"Geopolitical Risk Index":
+    /\\bmacroeconomic\\s+risk\\s+index\\b/iu.test(question)?"Macroeconomic Risk Index":
+    /\\bcritical\\s+minerals?\\s+risk\\s+index\\b/iu.test(question)?"Critical Minerals Risk Index":
+    "The requested GeoMacro research";
+  return {
+    summary:scope+" is temporarily unavailable because the evidence check exceeded its deadline.",
+    what_changed:"The verification request timed out; no current event, movement or risk-index value was established.",
+    why_it_matters:"A timeout is not proof of either a new event or an absence of change.",
+    geomacro_view:"The answer remains evidence-limited. Retry later; no invented score or unsupported fact is substituted.",
+    evidence:[],insufficient_evidence:true,mean_relevance:null,low_confidence:true,
+    gri:null,generatedAt:new Date().toISOString(),data_mode:"ephemeral_live",
+    cache_status:"miss",source_identity_exposed:false,durable_live_storage_write:false,
+  };
+}
+
 export function parseAskGeomacroInput(input: unknown) {
   return AskInput.parse(input);
 }
@@ -69,13 +86,5 @@ export async function executeAskGeomacro(
     );
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "ASK_RESEARCH_DEADLINE") throw error;
-    return {
-      summary: "The evidence check took too long to complete. Please retry or narrow the question to a topic and country.",
-      what_changed: "", why_it_matters: "", geomacro_view: "",
-      evidence: [], insufficient_evidence: true, mean_relevance: null,
-      low_confidence: true, gri: null, generatedAt: new Date().toISOString(),
-      data_mode: "ephemeral_live", cache_status: "miss", source_identity_exposed: false,
-      durable_live_storage_write: false,
-    };
-  }
+    return timedOutAskAnswer(data.question);  }
 }
