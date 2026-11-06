@@ -54,7 +54,7 @@ test("Free cap stays hard fail-closed without real paid proof",()=>{
   assert.equal(planD1BundledWork(snapshot,{now,paidProof:proof}).critical,false);
  }
 });
-test("fresh authentic Workers Paid proof admits ONLY critical source work under account daily soft limit",()=>{
+test("fresh provider Paid proof remains held until all account D1 writers are verified",()=>{
  const proof=assessProviderWorkersPaidSubscription(paid,now);
  const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
   ...["workers","durable_objects"].map((product_id,i)=>({
@@ -66,37 +66,11 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
   {now,paidProof:proof}).critical,false);
  const grant=planD1BundledWork(usage(5_763_167,25_745),
   {now,paidProof:proof,spendGuardProof});
- assert.equal(grant.critical,true);
- assert.equal(grant.state,"CRITICAL_ONLY");
- assert.equal(grant.paid_capacity_verified_by_provider,true);
- assert.equal(grant.source_intake,true);
- assert.ok(grant.source_intake_max_new_rows>=3&&grant.source_intake_max_new_rows<=100);
- assert.equal(grant.phase2h_raw_archive,true);
- assert.equal(grant.phase2h_raw_archive_requires_atomic_b2_quota,true);
- assert.equal(grant.research,false);
- assert.equal(grant.maintenance,false);
- assert.equal(grant.snapshot_refresh,false);
- assert.equal(grant.structural_snapshot,false);
- assert.ok(grant.daily_account_soft_limit_read<=18_000_000);
- assert.ok(grant.daily_account_soft_limit_write<=180_000);
+ assert.equal(grant.critical,false);
+ assert.equal(grant.state,"HELD");
+ assert.equal(grant.reason,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
+ assert.equal(grant.source_intake,false);
  assert.equal(grant.paid_subscription_change_performed,false);
- const reset=new Date("2026-10-27T00:00:00.000Z");
- const atReset=planD1BundledWork(usage(0,0),{now:reset,
-  paidProof:{...proof,observed_at:reset.toISOString()},
-  spendGuardProof:{...spendGuardProof,observed_at:reset.toISOString()}});
- assert.equal(atReset.source_intake,true);
- assert.ok(atReset.source_intake_max_new_rows>=3);
- assert.equal(atReset.phase2h_raw_archive,true);
- const tight=planD1BundledWork(usage(5_763_167,140_000),
-  {now,paidProof:proof,spendGuardProof});
- assert.equal(tight.critical,true);
- assert.equal(tight.source_intake,false);
- assert.equal(tight.source_intake_max_new_rows,0);
- assert.equal(tight.phase2h_raw_archive,false);
- assert.equal(planD1BundledWork(usage(19_000_000,50_000),
-  {now,paidProof:proof,spendGuardProof}).critical,false);
- assert.equal(planD1BundledWork(usage(5_763_167,181_000),
-  {now,paidProof:proof,spendGuardProof}).critical,false);
 });
 test("Billing Read uses account-scoped Cloudflare GET and never updates a subscription",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
@@ -142,7 +116,9 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  };
  const granted=await checkD1BundledWork({env,now,fetchImpl});
  assert.equal(reads,3);
- assert.equal(granted.critical,true);
+ assert.equal(granted.critical,false);
+ assert.equal(granted.state,"HELD");
+ assert.equal(granted.reason,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
  assert.equal(granted.d1_queries,0);
  assert.equal(granted.paid_calls,0);
  const blocked=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
@@ -160,9 +136,10 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  const existingToken=await checkD1BundledWork({
   env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
   now,fetchImpl});
- assert.equal(existingToken.critical,true);
- assert.equal(existingToken.paid_capacity_verified_by_provider,true);
- assert.equal(existingToken.paid_capacity_probe_status,"VERIFIED");
+ assert.equal(existingToken.critical,false);
+ assert.equal(existingToken.state,"HELD");
+ assert.equal(existingToken.reason,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
+ assert.equal(existingToken.paid_capacity_probe_status,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
  const denied=await checkD1BundledWork({
   env,now,fetchImpl:async(url,init)=>
    url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:
