@@ -20,7 +20,8 @@ test("S3 key decoding is single-pass and rejects encoded traversal and embedded 
   "geomacro-evidence%252Fv1%2Fspool%2Fx.gz",
   "geomacro-evidence%2Fv1%2Fspool%2Fx&amp;lt;script.gz",
   "geomacro-evidence%2Fv1%2Fspool%2Fx%3Cscript%3E.gz",
-  "geomacro-evidence%2Fv1%2Fspool%2Fx%252E.gz"
+  "geomacro-evidence%2Fv1%2Fspool%2Fx%252E.gz",
+  "geomacro-evidence%2Fv1%2Fspool%2Fbad%ZZ.gz"
  ]) {
   const mutated=valid.replace("geomacro-evidence%2Fv1%2Fspool%2Fx.gz",bad);
   assert.throws(()=>parseBucketList(Buffer.from(mutated),prefix),/B2_LIST_KEY_INVALID|B2_LIST_SCOPE_OR_DUPLICATE_INVALID/);
