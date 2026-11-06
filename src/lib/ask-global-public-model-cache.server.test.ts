@@ -2,9 +2,9 @@ import {afterEach,describe,expect,it,vi} from "vitest";
 import {globalAskCacheKey,readGlobalAskModelCache,writeGlobalAskModelCache}
   from "./ask-global-public-model-cache.server";
 import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
-const original=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
-afterEach(()=>{if(original===undefined)delete process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
- else process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN=original;});
+const original=process.env.GROQ_API_KEY;
+afterEach(()=>{if(original===undefined)delete process.env.GROQ_API_KEY;
+ else process.env.GROQ_API_KEY=original;});
 const answer={
  summary:"Inflation is a broad rise in prices.",
  what_changed:"This is a general explanation; no new event was established.",
@@ -29,8 +29,8 @@ describe("source-neutral, bounded and shared public Groq answer cache",()=>{
    expect(globalAskCacheKey("What is inflation?",{...answer,evidence:[{eventId:"private",timestamp:"2026-11-06"}] as any})).toBeNull();
    expect(globalAskCacheKey("What is inflation?",{...answer,gri:5 as any})).toBeNull();
  });
- it("never reaches D1 when server-only control-plane root secret is absent",async()=>{
-   delete process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
+ it("never reaches D1 when server-only Groq secret is absent",async()=>{
+   delete process.env.GROQ_API_KEY;
    const fetchImpl=vi.fn();
    expect(await readGlobalAskModelCache("What is inflation?",answer,fetchImpl as any)).toBeNull();
    expect(await writeGlobalAskModelCache("What is inflation?",answer,
@@ -38,7 +38,7 @@ describe("source-neutral, bounded and shared public Groq answer cache",()=>{
    expect(fetchImpl).not.toHaveBeenCalled();
  });
  it("accepts only valid fresh public text, revalidates against canonical and preserves evidence",async()=>{
-   process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN="synthetic-root-secret-not-a-real-key-93401";
+   process.env.GROQ_API_KEY="gsk-synthetic-groq-secret-for-d1-cache-only-93401";
    const fetchImpl=vi.fn(async(url:string,options:RequestInit)=>{
       expect(url).toMatch(/^https:\/\/geomacro-control-plane\.daspallab202391\.workers\.dev\/v1\/internal\/ask\/public-model-cache\?key=/);
       expect(options.redirect).toBe("manual");
@@ -49,13 +49,13 @@ describe("source-neutral, bounded and shared public Groq answer cache",()=>{
    expect(hit).toMatchObject({summary:edited.summary,model_rendering:"assisted",
      model_render_cache:"hit",model_render_cache_scope:"distributed"});
    expect(hit?.evidence).toEqual([]);
-   expect(JSON.stringify(hit)).not.toContain("synthetic-root-secret");
+   expect(JSON.stringify(hit)).not.toContain("gsk-synthetic-groq-secret");
    const unsafe=vi.fn(async()=>new Response(JSON.stringify({ok:true,hit:true,
      fields:{...edited,summary:"Inflation jumped 987% today."}}),{status:200}));
    expect(await readGlobalAskModelCache("What is inflation?",answer,unsafe as any)).toBeNull();
  });
  it("writes approved fields only, not sources, users, identities or conversation",async()=>{
-   process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN="synthetic-root-secret-not-a-real-key-93401";
+   process.env.GROQ_API_KEY="gsk-synthetic-groq-secret-for-d1-cache-only-93401";
    let outgoing:any=null;
    const fetchImpl=vi.fn(async (_url:string,options:RequestInit)=>{
       outgoing=JSON.parse(String(options.body));
