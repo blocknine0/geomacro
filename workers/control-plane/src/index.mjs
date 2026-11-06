@@ -1738,6 +1738,10 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
+      return getP0bIngestionStatus(env);
+    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
+      return verifyLatestP0bCommitted(env);
     if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
       return p1SourceCoverageHealth(env);
     if(url.pathname==='/v1/internal/p1/source-cell-map'&&request.method==='PUT'){
@@ -1774,10 +1778,7 @@ export default {
       return readP0bParityManifest(env,url);
     if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-verified-page")
       return verifyHot50ArchivedPage(env,url);
-    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
-      return getP0bIngestionStatus(env);
-    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
-      return verifyLatestP0bCommitted(env);
+
 
     try {
       // Root-admin-only intake. The payload accepts structured facts, never
