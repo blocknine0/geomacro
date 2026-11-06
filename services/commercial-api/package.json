@@ -1,0 +1,30 @@
+{
+  "name": "geomacro-commercial-payments",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "node src/server.mjs",
+    "reconcile": "node src/reconcile-payments.mjs",
+    "paypal:plans": "node src/provision-paypal-plans.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "pg": "8.16.3",
+    "viem": "2.57.16"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}
