@@ -4,7 +4,7 @@
  * short finding messages. No token or original source content is emitted.
  */
 const REPO="blocknine0/geomacro";
-const alerts=[115,120,107];
+const alerts=[115,120,107,137,138];
 if (process.env.GITHUB_REPOSITORY!==REPO || !process.env.GH_TOKEN)
  throw Error("CODEQL_DIAGNOSTIC_SCOPE_INVALID");
 for(const n of alerts){
