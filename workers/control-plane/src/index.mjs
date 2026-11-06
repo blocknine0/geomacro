@@ -1,4 +1,5 @@
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
 import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
 import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from './corridor-seven-day-cache.mjs';
@@ -1311,6 +1312,11 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 
 export default {
   async scheduled(controller,env,ctx){
+    // At most one daily bounded TTL cleanup; never blocks the source ingest.
+    const askTtlAt=new Date(controller?.scheduledTime??Date.now());
+    if(env?.DB?.prepare&&askTtlAt.getUTCHours()===0&&askTtlAt.getUTCMinutes()===13)
+      ctx.waitUntil(purgeExpiredAskPublicModelCache(env,askTtlAt.getTime())
+        .catch(()=>console.error("ASK_MODEL_CACHE_TTL_DEFERRED")));
     ctx.waitUntil(runMacroReleaseTick(env).then(receipt=>console.log(JSON.stringify({schema:"geomacro.macro-release-tick.v1",...receipt}))).catch(()=>console.error("MACRO_RELEASE_TICK_UNAVAILABLE")));
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
@@ -1524,6 +1530,13 @@ export default {
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
     });
+    // Authenticated, SHA-keyed, public-format-only Ask cache; never expose
+    // endpoint or any cache entry to unauthenticated visitors.
+    if(url.pathname==="/v1/internal/ask/public-model-cache"){
+      const auth=authorized(request,env);
+      if(!auth.ok)return json({ok:false,error:auth.error},auth.status);
+      return handleAskPublicModelCache(request,env);
+    }
     const parts = url.pathname.split("/").filter(Boolean);
 
     if (request.method === "GET" && url.pathname === "/health") return health(env);
