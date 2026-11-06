@@ -35,4 +35,6 @@ test("CodeQL #138 URL key decoding cannot recursively unescape nested entities",
  assert.equal(parseBucketList(xml(base+"x%252Fy"),prefix).keys[0],prefix+"x%2Fy");
  assert.throws(()=>parseBucketList(xml(base+"x&amp;y"),prefix),/B2_LIST_KEY_ENTITY_INVALID/);
  assert.throws(()=>parseBucketList(xml(base+"bad%ZZ"),prefix),/B2_LIST_KEY_PERCENT_ENCODING_INVALID/);
+ const next=Buffer.from(`<ListBucketResult><EncodingType>url</EncodingType><KeyCount>0</KeyCount><IsTruncated>true</IsTruncated><NextContinuationToken>a&amp;lt;b</NextContinuationToken></ListBucketResult>`);
+ assert.equal(parseBucketList(next,prefix).cursor,"a&lt;b");
 });
