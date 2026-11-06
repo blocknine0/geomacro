@@ -131,9 +131,12 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    const focused=focusedPositions.has(index)?await search(target,now,fetcher,
     {publisherFocused:true,index}).catch(()=>[]):[];
    const seen=new Set(),items=[];
-   for(const item of [...broad,...focused]){
-    const host=cleanHost(item.publisher_host);
-    if(!host||!SHA.test(item.title_hash)||seen.has(host)||items.length>=3)continue;
+   // Reserve a slot for newsroom-targeted discovery where available; two
+   // unique publishers per cell bounds this lane to 24 D1 rows per tick.
+   const candidates=focused.length?[broad[0],focused[0],...broad.slice(1),...focused.slice(1)]:broad;
+   for(const item of candidates){
+    const host=cleanHost(item?.publisher_host);
+    if(!host||!SHA.test(item.title_hash)||seen.has(host)||items.length>=2)continue;
     seen.add(host);items.push(item);
    }
    // Exactly one approved public original-page attempt per cell. Never
