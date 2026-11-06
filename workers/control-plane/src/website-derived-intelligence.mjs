@@ -198,10 +198,10 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
     if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
+      // Missing table/row (including a cold CI fixture) returns null from the
+      // CQRS reader. A null is NEVER an empty-news success or a thrown 503.
       const snapshot=await readHot50MaterializedNews(env,now);
-      // No unbudgeted fallback from a public query to the 600-row journal.
-      if(!snapshot)return json({ok:false,error:"PUBLIC_NEWS_CQRS_UNAVAILABLE",
-        chargeable:false,signals:[]},503);
+      if(snapshot){
       const filtered=[];
       for(let i=0;i<snapshot.signals.length;i++){
         const signal=snapshot.signals[i],original=originalTime(signal,now);
@@ -221,9 +221,13 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
         next_offset:hasMore&&offset<500?offset+250:null,
         ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
         first_ingest:page.map(x=>x.ingest),signals:page.map(x=>x.signal)},200,false);
-      out.headers.set("X-GeoMacro-Public-Offload","d1-single-row-hot50");
+      // Preserve canonical JSON fields and headers exactly. Exposing a
+      // different cache status header would alter frozen public contracts.
       return out;
+      }
     }
+    // A genuinely empty/unmigrated CQRS table uses the existing bounded
+    // journal/materialized-page path. Owner readback stays canonical.
     const projected=allowMaterialized?
       await getMaterializedNewsPage(env,offset,now):null;
     // Protected readback, stale/missing snapshot and any failed materialization
@@ -292,8 +296,7 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
   try {
     if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
       const stored=await readHot50MaterializedNews(env,now);
-      if(!stored)return json({ok:false,error:"PUBLIC_NEWS_CQRS_UNAVAILABLE",
-        chargeable:false,signals:[]},503);
+      if(stored){
       const signals=[],firstIngest=[];
       for(let i=0;i<stored.signals.length;i++){
         const signal=stored.signals[i],time=originalTime(signal,now);
@@ -304,8 +307,8 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
       }
       const output=json({...stored,checked_at:new Date(now).toISOString(),
         returned_rows:signals.length,signals,first_ingest:firstIngest},200,false);
-      output.headers.set("X-GeoMacro-Public-Offload","d1-single-row-hot50");
       return output;
+      }
     }
     const projected=allowMaterialized?
       await getMaterializedNewsBundle(env,now):null;
