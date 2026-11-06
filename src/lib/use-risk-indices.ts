@@ -30,8 +30,8 @@ type RiskIndicesReadTarget =
   | { kind: "edge"; url: string }
   | { kind: "app"; url: string };
 
-const REQUEST_TIMEOUT_MS = 4_500;
-const CERTIFIED_RETRY_DELAYS_MS = [400] as const;
+const REQUEST_TIMEOUT_MS = 8_000;
+const CERTIFIED_RETRY_DELAYS_MS = [350, 900] as const;
 const VERIFIED_READ_CACHE_MS = 60_000;
 const REVIEWED_SIGNED_RISK_INDICES_APP_URL="/api/public/reviewed-risk-indices";
 type SignedReviewedIndicesResponse={
