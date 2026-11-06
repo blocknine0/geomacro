@@ -32,3 +32,19 @@ CREATE TABLE IF NOT EXISTS risk_gate_progressive_cell_state(
  updated_at TEXT NOT NULL,
  PRIMARY KEY(subject_type,subject_id,category)
 );
+
+-- Each index target can be kept in a durable next-search priority ledger.
+-- No headline, publisher article or upstream provider secret is stored.
+CREATE TABLE IF NOT EXISTS risk_gate_priority_feed_queue(
+ subject_type TEXT NOT NULL CHECK(subject_type IN ('COUNTRY','CORRIDOR')),
+ subject_id TEXT NOT NULL,
+ category TEXT NOT NULL CHECK(category IN ('GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS')),
+ priority TEXT NOT NULL CHECK(priority IN ('MISSING','STALE')),
+ priority_at TEXT NOT NULL,
+ last_search_at TEXT,
+ due_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ PRIMARY KEY(subject_type,subject_id,category)
+);
+CREATE INDEX IF NOT EXISTS idx_risk_gate_priority_due
+ ON risk_gate_priority_feed_queue(due_at,priority,priority_at);
