@@ -26,14 +26,18 @@ export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
  // entire expected set. A conflicting hash or previous archive produces
  // ZERO updates, never an opportunistic partial ACK.
  const sql="WITH expected(record_id,raw_sha256) AS MATERIALIZED (VALUES "+values+"), "+
+  // Resolve the small expected set through the unique record ID first.
+  // Driving UPDATE from the unarchived index scans the entire backlog even
+  // for one ACK. Materialized rowids keep both eligibility and mutation bounded.
+  "targets(rid) AS MATERIALIZED ("+
+  "SELECT (SELECT r.rowid FROM phase2h_private_raw_news AS r "+
+  "WHERE r.record_id=e.record_id AND r.raw_sha256=e.raw_sha256 "+
+  "AND r.b2_object_sha256 IS NULL) FROM expected AS e), "+
   "eligible(total) AS MATERIALIZED ("+
-  "SELECT COUNT(*) FROM phase2h_private_raw_news AS r "+
-  "JOIN expected AS e ON r.record_id=e.record_id AND r.raw_sha256=e.raw_sha256 "+
-  "WHERE r.b2_object_sha256 IS NULL) "+
+  "SELECT COUNT(*) FROM targets WHERE rid IS NOT NULL) "+
   "UPDATE phase2h_private_raw_news "+
   "SET b2_object_sha256=?,b2_archived_at=? "+
-  "WHERE b2_object_sha256 IS NULL "+
-  "AND record_id IN (SELECT record_id FROM expected) "+
+  "WHERE rowid IN (SELECT rid FROM targets WHERE rid IS NOT NULL) "+
   "AND (SELECT total FROM eligible)=? "+
   "RETURNING record_id,raw_sha256,b2_object_sha256";
  const boundParams=[...params,objectSha,now.toISOString(),rows.length];

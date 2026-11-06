@@ -280,7 +280,7 @@ jobs:
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |
-          node --test scripts/tests/unified-event-stream.test.mjs scripts/tests/unified-ingestor-keepalive.test.mjs
+          node --test scripts/tests/unified-event-stream.test.mjs scripts/tests/unified-ingestor-keepalive.test.mjs scripts/tests/d1-poll-index-write-relief.test.mjs scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/unified-ingestor-keepalive.mjs
           python -m py_compile workers/unified-ingestor/ingestor.py
