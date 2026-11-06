@@ -924,6 +924,18 @@ jobs:
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Verify real progressive Risk Gate Ed25519 and D1 idempotent replay (no funds)
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.origin.outputs.url }}
+        run: |
+          set -euo pipefail
+          test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true" || {
+            echo "::error::PROGRESSIVE_RISK_GATE_PARTNER_TOKEN_REQUIRED_FOR_LIVE_ACCEPTANCE"
+            exit 19
+          }
+          node scripts/ops/verify-progressive-risk-gate-live.mjs
+
       - name: Live unified TWN CHN Bab-el-Mandeb 3-category D1 Supabase canary (no funds)
         env:
           CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
