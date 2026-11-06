@@ -39,7 +39,7 @@ test('Atomic admission cannot accept over-reserved provider counter',async()=>{
  let updated=false;const receipts=[];
  const db={prepare(sql){return {bind(...args){return {sql,args}}}},async batch(q){
   receipts.push(q);
-  if(q[1].args[4]+q[1].args[5]>q[1].args[6])return [{success:true},{success:true,results:[]}];
+  if(q[1].args[9]+q[1].args[10]>q[1].args[11])return [{success:true},{success:true,results:[]}];
   updated=true;
   return [{success:true},{success:true,results:[{reserved_rows:100,observed_provider_highwater:170000}]}];
  }};
