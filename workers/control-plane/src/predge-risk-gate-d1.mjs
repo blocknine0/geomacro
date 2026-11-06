@@ -7,6 +7,7 @@
 
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
+import {readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -227,18 +228,21 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
- // Read and independently verify a CURRENT GRO before reserving a paid
- // partner request ID or burning limited D1 daily quota. An unavailable
- // signed product is NOT a replayable paid decision: Predge must be able to
- // retry the exact same request_id once a genuine approved GRO is published.
- // This is a read-only preflight; no stale/unsigned fallback is allowed.
- let gro;
+ // Three independent read-only probes. No waiting on a GRO-producing queue,
+ // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
+ // D1 schema or transport failure is an infrastructure error, not missing proof.
+ let gro,facts,sevenDayRollupReady;
  try{
-   const row=await hotRow(env.DB,parsed.subject,now);
-   gro=row?await verifyHotGRO(row,env,parsed.subject,now,authority):null;
+   [gro,facts,sevenDayRollupReady]=await Promise.all([
+     (async()=>{const row=await hotRow(env.DB,parsed.subject,now);
+       return row?verifyHotGRO(row,env,parsed.subject,now,authority):null;})(),
+     readProgressiveFacts(env.DB,parsed.subject,now),
+     sevenDayRollupIsReady(env,parsed.subject,now),
+   ]);
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
- if(!gro)return fail("CURRENT_SIGNED_GRO_UNAVAILABLE",503,{
-   reason_code:"NO_INDEPENDENTLY_VERIFIED_CURRENT_COMMERCIAL_GRO"});
+ const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(gro),sevenDayRollupReady);
+ const tier=gro?"COMPLEX_0_25":facts.standard_ready?"STANDARD_0_15":"BASIC_0_10";
+ const pricePerCallUsd=gro?0.25:facts.standard_ready?0.15:0.10;
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  const requestHash=await digest(canonical(body));
  const nowIso=new Date(now).toISOString();
@@ -273,16 +277,35 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
-   const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
-   const result=evaluateRiskGate(parsed,gro,new Date(now));
-   const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
-   applyIntradayFlashDecision(result,flash);
+   let result;
+   if(gro){
+     const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
+     result=evaluateRiskGate(parsed,gro,new Date(now));
+     const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
+     applyIntradayFlashDecision(result,flash);
+   }else{
+     result=provisionalRiskGate(parsed,facts,now);
+   }
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
-   const response={ok:true,risk_gate:result,context:{
-      subject:parsed.subject,source:"cloudflare-d1-verified-hot",
-      verified_signed_gro:true,commercial_eligible:true,
-      payment_authorized:false
-   },execution_authorized:false};
+   const context={
+      subject:parsed.subject,source:gro?"cloudflare-d1-verified-hot":"derived-fact-index",
+      verified_signed_gro:Boolean(gro),commercial_eligible:Boolean(gro),
+      payment_authorized:false,
+      risk_metric_semantics:gro?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
+      observation_count:facts.distinct_events,
+      latest_observation_clock:facts.latest_event_clock
+   };
+   // Ed25519 signs the immutable decision and tier matrix. HMAC audit
+   // receipts remain separate and are never mislabeled as Ed25519.
+   const signedPayload={
+     schema:"geomacro.progressive-risk-gate-decision.v1",
+     request_hash:requestHash,risk_gate:result,context,
+     tier,tier_activation_matrix:tierActivationMatrix,
+     price_per_call_usd:pricePerCallUsd,execution_authorized:false
+   };
+   const decisionSignature=await signProgressiveDecision(signedPayload,env);
+   const response={ok:true,...signedPayload,
+     decision_signed_payload:signedPayload,...decisionSignature};
    const receipt=await persistRiskGateAuditReceipt(env.DB,{
      client_id:client,request_id:parsed.request_id,request_hash:requestHash,env,
      subject_type:parsed.subject.type,subject_id:parsed.subject.id,
@@ -298,7 +321,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?
      WHERE client_id=? AND request_id=? AND state='CLAIMED' RETURNING request_id`)
-     .bind(serialized,nowIso,gro.object_id,result.decision,client,parsed.request_id).first();
+     .bind(serialized,nowIso,gro?.object_id??null,result.decision,client,parsed.request_id).first();
    if(!audit)return fail("RISK_GATE_AUDIT_UNAVAILABLE");
    return Response.json(response,{status:200,headers});
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
@@ -326,7 +349,10 @@ export async function predgeRiskGateD1Readiness(env,now=Date.now()){
      }
    }
  }catch{d1=false;keys=false;signed=false;}
- const ready=Boolean(configured&&d1&&keys&&signed);
+ const signerConfigured=/^[A-Za-z0-9._:-]{4,120}$/.test(String(env?.RISK_GATE_DECISION_ED25519_KEY_ID??""))&&
+   String(env?.RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64??"").length>=40&&
+   String(env?.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"").length>=40;
+ const ready=Boolean(configured&&d1&&signerConfigured);
  return Response.json({
    status:ready?"ready":"not_ready",
    checked_at:new Date(now).toISOString(),
@@ -334,7 +360,8 @@ export async function predgeRiskGateD1Readiness(env,now=Date.now()){
    scope:"predge-risk-gate-country-v1",
    checks:{database:d1,audit_store:d1,isolated_partner_credential:configured,
       active_pinned_verification_key:keys,
-      fresh_verified_commercial_country_gro:signed},
+      fresh_verified_commercial_country_gro:signed,
+      progressive_decision_ed25519_signer_configured:signerConfigured},
    // readiness is not partner-market proof, rights to onward redistribute, or paid approval.
    paid_launch_approved:false,execution_authorized:false
  },{status:ready?200:503,headers:{"Cache-Control":"public, max-age=60",

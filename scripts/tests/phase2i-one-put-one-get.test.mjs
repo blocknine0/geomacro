@@ -37,7 +37,8 @@ test("governed B2 source queue writes one indexed bulk object and exactly one bo
   const r=await runPhase2iCiphertextB2Archive({
    env,now:NOW,artifactReader:async()=>({envelope,sourceRunId:41787752541}),
    fetchImpl:async url=>{
-    assert.match(url,/api.cloudflare.com\/client\/v4\/accounts/u);
+    assert.equal(new URL(url).origin,"https://api.cloudflare.com");
+    assert.equal(new URL(url).pathname,"/client/v4/accounts");
     return Response.json({success:true,result:[{
      name:"geomacro-control-plane",uuid:"00000000-0000-4000-8000-000000000001"
     }]});

@@ -28,7 +28,7 @@ import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, re
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
-import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
+import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
@@ -1622,6 +1622,18 @@ export default {
       return publishPredgePilotCheckV2(request,env);
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
+    // Public verification material only; private signer remains protected.
+    if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-decision-key"&&!url.search){
+      const id=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
+      const spki=String(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
+      if(!/^[A-Za-z0-9._:-]{4,120}$/.test(id)||
+         !/^[A-Za-z0-9+/]{55,120}={0,2}$/.test(spki))
+        return json({ok:false,error:"RISK_GATE_DECISION_KEY_UNAVAILABLE"},503);
+      return Response.json({ok:true,schema:"geomacro.risk-gate-decision-key.v1",
+        key_id:id,scheme:"Ed25519",public_key_spki_b64:spki},{
+        status:200,headers:{"Cache-Control":"public, max-age=120",
+          "X-Content-Type-Options":"nosniff"}});
+    }
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-d1-readiness"&&!url.search)
       return predgeRiskGateD1Readiness(env);
     // Distinct risk-gate credential and D1 quota; never inherit root admin auth.
@@ -1734,6 +1746,16 @@ export default {
       return verifyLatestP0bCommitted(env);
 
     try {
+      // Root-admin-only intake. The payload accepts structured facts, never
+      // publisher article bodies, snippets, headlines or HTML.
+      if(request.method==="POST"&&url.pathname==="/v1/internal/risk-gate/progressive-facts"&&!url.search){
+        const body=await readJson(request,24000);
+        if(!body||body.schema!=="geomacro.progressive-fact-batch.v1"||
+          !Array.isArray(body.facts)||Object.keys(body).some(k=>!["schema","facts"].includes(k)))
+          return json({ok:false,error:"PROGRESSIVE_FACT_BATCH_INVALID"},400);
+        try{return json(await admitProgressiveRiskFacts(env,body.facts))}
+        catch{return json({ok:false,error:"PROGRESSIVE_FACT_BATCH_REJECTED"},422)}
+      }
       // Owner-only GRO evidence status: readiness is NOT a paid/signed object.
       if(request.method==="GET"&&url.pathname==="/v1/internal/gro-evidence/status"&&!url.search)
         return groEvidenceStatus(env);

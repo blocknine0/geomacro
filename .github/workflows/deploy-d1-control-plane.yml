@@ -82,6 +82,9 @@ on:
       - "workers/control-plane/src/ask-public-model-cache.mjs"
       - "workers/control-plane/migrations/0130_ask_public_model_cache.sql"
       - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/progressive-risk-gate.mjs"
+      - "workers/control-plane/migrations/0201_progressive_risk_gate_facts.sql"
+      - "scripts/tests/progressive-risk-gate.test.mjs"
       - "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
       - "workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql"
@@ -184,6 +187,9 @@ on:
       - "scripts/ops/predge-research-journal-parity.mjs"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
+      - "scripts/ops/provision-progressive-risk-gate-key.mjs"
+      - "src/routes/api.risk-gate.ts"
+      - "src/lib/risk-gate-service.server.ts"
       - "scripts/lib/derived-news-readback-policy.mjs"
       - "scripts/ops/verify-all-news-signed-publications.mjs"
       - "scripts/tests/public-signed-news.test.mjs"
@@ -223,6 +229,9 @@ jobs:
         run: node --test scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs
       - name: Verify Telegram Bot webhook relay preserves secret and no-leak ACK
         run: node --test scripts/tests/telegram-flash-relay.test.mjs
+
+      - name: Verify derived-only D1 progressive Risk Gate, Ed25519 and original corroboration
+        run: node --test scripts/tests/progressive-risk-gate.test.mjs
 
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: |
@@ -319,6 +328,9 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+
+      - name: Derive the independent protected Ed25519 progressive decision key
+        run: node scripts/ops/provision-progressive-risk-gate-key.mjs
 
       - name: Discover or create the single production D1 database
         id: d1
@@ -605,6 +617,23 @@ jobs:
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
 
+      - name: Confirm progressive Risk Gate D1 fact tables are durable before deployment
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          data="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('progressive_risk_gate_facts','progressive_risk_gate_cell_state');")"
+          printf '%s' "$data" | node -e '
+            let raw="";process.stdin.on("data",x=>raw+=x);
+            process.stdin.on("end",()=>{
+              const records=JSON.parse(raw);
+              const rows=(Array.isArray(records)?records:[records]).flatMap(x=>x?.results??x?.result?.results??[]);
+              if(Number(rows[0]?.n)!==2)throw Error("PROGRESSIVE_FACT_TABLES_REMOTE_MISSING");
+              console.log("PROGRESSIVE_FACT_TABLES_REMOTE_READBACK=true");
+            });'
+
       - name: Verify bundled P1 D1 dispatch schema before enabling fanout V2
         if: env.P0B_ACTIVATE == '1'
         working-directory: workers/control-plane
@@ -861,6 +890,12 @@ jobs:
           if test "${RISK_GATE_VERIFY_KEYS_CONFIGURED:-}" = "true"; then
             printf '%s' "$RISK_OBJECT_VERIFY_KEYS_JSON" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_VERIFY_KEYS_JSON --config wrangler.runtime.jsonc >/dev/null
           fi
+          # Domain-separated private PKCS8 never leaves protected deployment.
+          test -n "$RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64" || exit 5
+          printf '%s' "$RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64 --config wrangler.runtime.jsonc >/dev/null
+          printf '%s' "$RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64 --config wrangler.runtime.jsonc >/dev/null
+          printf '%s' "$RISK_GATE_DECISION_ED25519_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_DECISION_ED25519_KEY_ID --config wrangler.runtime.jsonc >/dev/null
+          echo "PROGRESSIVE_DECISION_ED25519_WORKER_SIGNER_INSTALLED=true"
           printf '%s' "$GEOMACRO_API_CREDENTIAL_PEPPER" | npx -y "wrangler@${WRANGLER_VERSION}" secret put GEOMACRO_API_CREDENTIAL_PEPPER --config wrangler.runtime.jsonc >/dev/null
           printf '%s' "$RISK_GATE_OBSERVATION_HMAC_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_OBSERVATION_HMAC_KEY --config wrangler.runtime.jsonc >/dev/null
           printf '%s' "$RISK_GATE_TIERED_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_TIERED_TOKEN --config wrangler.runtime.jsonc >/dev/null
@@ -888,6 +923,18 @@ jobs:
             *) echo "Direct Wrangler did not return the expected HTTPS workers.dev origin"; exit 6 ;;
           esac
           echo "url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Verify real progressive Risk Gate Ed25519 and D1 idempotent replay (no funds)
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.origin.outputs.url }}
+        run: |
+          set -euo pipefail
+          test "${PREDGE_RISK_GATE_TOKEN_CONFIGURED:-}" = "true" || {
+            echo "::error::PROGRESSIVE_RISK_GATE_PARTNER_TOKEN_REQUIRED_FOR_LIVE_ACCEPTANCE"
+            exit 19
+          }
+          node scripts/ops/verify-progressive-risk-gate-live.mjs
 
       - name: Live unified TWN CHN Bab-el-Mandeb 3-category D1 Supabase canary (no funds)
         env:
