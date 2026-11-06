@@ -81,8 +81,20 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
       WHERE country_iso3 IN (${whereIds}) AND event_clock>=? AND event_clock<=?
       GROUP BY country_iso3,category,event_fingerprint
     )`;
-  const row = await db.prepare(query).bind(...ids,cutoff,ceiling).first();
-  const events = Math.max(0,Number(row?.unique_events ?? 0));
+  // Existing continuously refreshed Google/Reuters/ANI/AP discovery index
+  // supplies Basic without a second writer, queue or a new publisher pull.
+  // Those Google-index observations are NOT independent original proof.
+  const [row,indexRow] = await Promise.all([
+    db.prepare(query).bind(...ids,cutoff,ceiling).first(),
+    db.prepare(`SELECT COUNT(DISTINCT event_id) AS index_events,
+      MAX(event_at) AS latest_index_clock
+      FROM unverified_observations
+      WHERE entity_type='COUNTRY' AND entity_id IN (${whereIds})
+        AND event_at>=? AND event_at<=?`)
+      .bind(...ids,cutoff,ceiling).first()
+  ]);
+  const events = Math.max(0,Number(row?.unique_events ?? 0),
+    Number(indexRow?.index_events ?? 0));
   const sourceCount = Math.max(0,Number(row?.max_publisher_count ?? 0));
   const countries = Math.max(0,Number(row?.corroborated_countries ?? 0));
   return {
@@ -90,7 +102,8 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
     corroboration_sources_count:sourceCount,
     corroborated_events:Math.max(0,Number(row?.corroborated_events ?? 0)),
     category_coverage:String(row?.categories ?? "").split(",").filter(c => CATEGORIES.has(c)),
-    latest_event_clock:typeof row?.latest_event_clock === "string" ? row.latest_event_clock : null,
+    latest_event_clock:[row?.latest_event_clock,indexRow?.latest_index_clock]
+      .filter(x=>typeof x==="string").sort().at(-1)??null,
     standard_ready: countries === ids.length && sourceCount >= 2,
   };
 }
