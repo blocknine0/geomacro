@@ -5,6 +5,9 @@ describe("three-domain editorial explanations and scope",()=>{
   const a=domainGuideAnswer(q)!;
   expect(a.answer_kind).toBe("explainer");expect(a.summary.length).toBeGreaterThan(50);
   expect(a.evidence).toEqual([]);expect(a.gri).toBeNull();
+  expect(a.what_changed).toContain("no specific new event");
+  expect(a.why_it_matters.trim().length).toBeGreaterThan(20);
+  expect(a.geomacro_view.trim().length).toBeGreaterThan(20);
  });
  it.each(["What is the latest inflation rate in India?","Latest rare earth news","What happened in geopolitics today?","What is the current gold price?","Predict inflation next year"])("keeps %s on the retrieval path",q=>expect(domainGuideAnswer(q)).toBeNull());
  it.each(["Write a poem about inflation","Latest football news","Latest cricket news in India","Bake a cake","What is JavaScript?"])("keeps unrelated request %s out of retrieval",q=>{

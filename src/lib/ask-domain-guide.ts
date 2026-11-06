@@ -60,6 +60,7 @@ function crossDomainGuideAnswer(question: string, domains: readonly AskDomain[])
       " specifically, the potential effect depends on the affected ore, refining and shipping stages and available substitutes; a policy announcement alone does not establish a physical shortage.");
   }
   return response(parts.join(" "), {
+    what_changed:"This is a general explanation; no specific new event has been established by this answer.",
     answer_kind:"explainer",
     why_it_matters:"The link is conditional: the size and direction of any real-world effect depend on specific actors, products, timing and measurable exposure.",
     geomacro_view:"For a current-country assessment, specify the location, mineral and time window. This explanation is not a current event confirmation, numerical forecast or signed risk score.",
@@ -102,6 +103,7 @@ export function domainGuideAnswer(question: string): HybridAskAnswer | null {
   if (domains.length > 1) return crossDomainGuideAnswer(q, domains);
   const guide = GUIDES.find(item => item.match.test(q));
   if (!guide) return null;
-  return response(guide.explanation, {why_it_matters:guide.mechanism,geomacro_view:guide.watch,
+  return response(guide.explanation, {what_changed:"This is a general explanation; no specific new event has been established by this answer.",
+    why_it_matters:guide.mechanism,geomacro_view:guide.watch,
     answer_kind:"explainer",real_time_message:"General explanation; no live observation or signed risk assessment."});
 }

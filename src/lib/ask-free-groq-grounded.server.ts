@@ -59,7 +59,42 @@ const instruction=
  "Preserve all caveats, dates, units, subjects and original uncertainties. "+
  "Return exactly one JSON object with summary, what_changed, why_it_matters, geomacro_view as nonempty strings. "+
  "Keep summary under 320 characters; each other field under 340 characters. "+
+ "Never leave a required field empty; if you cannot improve a field safely, copy that field from approved_answer verbatim. "+
  "Restate only approved wording and qualifications, without adding facts, numbers or dates.";
+const FIELDS=["summary","what_changed","why_it_matters","geomacro_view"] as const;
+type PublicField=typeof FIELDS[number];
+
+/**
+ * Never promote blank model fields into the public answer. Only the original
+ * approved canonical field may fill a blank; every nonblank model field still
+ * passes the unchanged evidence, number, URL and source-privacy validator.
+ * All-blank or byte-equivalent model output is NOT a successful generation.
+ */
+export function repairBlankGroqFields(
+  raw:string,canonical:HybridAskAnswer,
+):{text:string;hasNewWording:boolean}|null{
+  let parsed:unknown;
+  try{parsed=JSON.parse(raw);}catch{return null;}
+  if(!parsed||typeof parsed!=="object"||Array.isArray(parsed))return null;
+  const value=parsed as Record<string,unknown>;
+  if(Object.keys(value).sort().join("|")!==[...FIELDS].sort().join("|"))
+    return null;
+  const repaired={} as Record<PublicField,string>;
+  let hasNewWording=false;
+  for(const field of FIELDS){
+    const text=value[field];
+    if(typeof text!=="string")return null;
+    if(!text.trim()){
+      const approved=canonical[field];
+      if(typeof approved!=="string"||!approved.trim())return null;
+      repaired[field]=approved;
+    }else{
+      repaired[field]=text;
+      if(text.trim()!==canonical[field].trim())hasNewWording=true;
+    }
+  }
+  return {text:JSON.stringify(repaired),hasNewWording};
+}
 type Dependencies={fetchImpl?:typeof fetch;readContext?:typeof collectAskModelContext};
 function privateSafeContext(context:AskModelContext):AskModelContext{
  return {categories:context.categories.slice(0,3),
@@ -118,13 +153,15 @@ async function requestFreeGroq(
    };
    const text=envelope.choices?.[0]?.message?.content;
    if(typeof text!=="string"){diagnostic("response_empty");return canonical;}
+   const repaired=repairBlankGroqFields(text,canonical);
    let rejection:string="validation_rejected";
-   const validated=safeGroundedOpenAIOutput(text,canonical,question,
+   const validated=safeGroundedOpenAIOutput(repaired?.text??text,canonical,question,
      reason=>{rejection="validation_"+reason;});
-   diagnostic(validated?"validated":rejection);
-   // A verified formatter completion changes only presentation, never evidence.
-   // The signal is set ONLY after upstream 200 and exact safe-output validation.
-   return validated?{...validated,model_rendering:"assisted"}:canonical;
+   const assisted=Boolean(validated&&repaired?.hasNewWording);
+   diagnostic(assisted?"validated":validated?"model_no_change":rejection);
+   // A real, safe new phrasing is required before claiming model assistance;
+   // all-blank output or unapproved assertions return the canonical answer.
+   return assisted?{...validated!,model_rendering:"assisted"}:canonical;
  }catch(error){
    const timeout=error instanceof Error&&/timeout|abort/i.test(error.name);
    diagnostic(timeout?"request_timeout":phase==="context"?"context_unavailable":
