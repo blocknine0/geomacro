@@ -63,6 +63,33 @@ node scripts/ops/audit-hot50-b2-d1-parity.mjs
 
 If archived objects exceed 250 or B2 quota is insufficient, the check **fails as partial**. Reconcile in explicitly budgeted windows and produce a **separate complete snapshot** to make a final 100% claim; do not combine partial scans as a fabricated complete same-time snapshot. On quota exhaustion, stop safely.
 
+### Fresh evidence and confidence qualification — per Hot-50 ×3 cell
+
+The protected matrix uses **exact 150 cells** from `RISK_GATE_HOT50` (50 unique country ISO3 values and exactly `geopolitics`, `macro`, `rare_earth`). Each persisted derived observation requires:
+
+- `country_iso3` canonical ISO-3, `category` exact enum, `event_fingerprint` stable 64-character SHA-256, `publisher_domain` deduplication domain, `canonical_source_url`, `event_clock` ISO-8601, `observed_at` ISO-8601, `clock_basis` in `ORIGINAL_PUBLICATION` or `INDEX_OBSERVED`, and bounded `extracted_entities_json`. Never store raw publisher expression in these fields.
+- Source-native event publication clock must be within the trailing 72 hours (never use collector fetch time as event time), with original-page/source-native verification before the publisher can count as independent. Transport status 200 alone is not article-original proof.
+- Independent corroboration requires at least **two distinct original publisher domains on the SAME `event_fingerprint`** within the same country/category and evidence window. Two redistributed copies from one source, index hints, Google News and OSINT leads are insufficient.
+- **Confidence/authority class `EMPTY`**: no eligible recent metadata, no numeric score. **`INDEX_ONLY`**: index observation, research only, no proof of original. **`NATIVE_DATED_METADATA`**: at least one source-native original, not reviewer-certified. **`METADATA_CORROBORATED`**: two independent same-event originals, still not a certified index. **`CERTIFIED`** is a separate, stronger predicate requiring the existing independently signed reviewer approval, verified source rights, authenticated country/category certificate, signed GRI v1.2 scoring and complete historical B2/D1 proof. The metadata matrix never assigns `CERTIFIED` or invents a numeric confidence probability.
+
+Useful SQL:
+
+```sql
+SELECT country_iso3, category, evidence_state, observed_events,
+ original_dated_events, same_event_independent_pair
+FROM v_hot50_three_category_evidence
+ORDER BY country_iso3,category;
+SELECT country_iso3,
+ SUM(evidence_state<>'EMPTY') AS nonempty_categories,
+ SUM(evidence_state='METADATA_CORROBORATED') AS original_two_source_categories
+FROM v_hot50_three_category_evidence GROUP BY country_iso3;
+SELECT COUNT(*) AS all_cells, SUM(evidence_state='EMPTY') AS empty_cells,
+ SUM(evidence_state='METADATA_CORROBORATED') AS two_source_cells
+FROM v_hot50_three_category_evidence;
+```
+
+A coverage matrix assembled from metadata is **never** an independent reviewer certification result. The activation CLI also checks all four Cloudflare Queues via the official best-effort REST metrics (including two DLQs), because the Worker has no DLQ producer binding.
+
 ## 4. Three certified Risk Indices and watchdog
 
 The only eligible publisher is the existing `gri-v12-supabase-free-reviewed-current.yml`, invoked after immutable owner-approved input and independent reviewer/country-category certificates exist, with source-clock, independent same-event verification, rights, historical lineage, canonical GRI v1.2 scoring and the existing GRI publisher checks passing. The repo `scripts/ops/require-pallab-owner-signed-gri-ready.mjs` and `scripts/lib/supabase-free-gri-v12-current.mjs` enforce these requirements. No fake input, new signer, machine triage substitution or clock extension is allowed.
