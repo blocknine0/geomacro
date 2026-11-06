@@ -86,5 +86,6 @@ export async function executeAskGeomacro(
     );
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "ASK_RESEARCH_DEADLINE") throw error;
-    return timedOutAskAnswer(data.question);  }
+    return timedOutAskAnswer(data.question);
+  }
 }
