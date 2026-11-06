@@ -53,12 +53,19 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
      COALESCE(SUM(CASE WHEN state='REPLAYING' THEN 1 ELSE 0 END),0) replaying,
      COALESCE(SUM(CASE WHEN state='REPLAYING' AND locked_until<=? THEN 1 ELSE 0 END),0) expired_leases,
      COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) archived,
-     COALESCE(SUM(CASE WHEN state='ARCHIVED' AND NOT EXISTS (
+     COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (NOT EXISTS (
        SELECT 1 FROM ingestion_spool_bundles b
        WHERE b.b2_spool_uri=p0b_archive_outbox.b2_uri
          AND b.bundle_sha256=p0b_archive_outbox.b2_object_sha256
          AND b.item_count=p0b_archive_outbox.item_count
          AND b.state='D1_COMMITTED' AND b.acked_at IS NOT NULL)
+       OR (SELECT COUNT(*) FROM ingestion_spool_queue q
+        WHERE q.b2_spool_uri=p0b_archive_outbox.b2_uri
+          AND q.state IN ('D1_COMMITTED','ACKNOWLEDGED')
+          AND q.d1_committed_at IS NOT NULL AND q.acked_at IS NOT NULL
+          AND EXISTS (SELECT 1 FROM normalized_articles n
+           WHERE n.candidate_sha256=q.candidate_sha256 AND n.source_id=q.source_id
+            AND n.b2_archive_uri=q.b2_spool_uri))<>item_count)
        THEN 1 ELSE 0 END),0) journal_mismatch
       FROM p0b_archive_outbox`).bind(day).first(),
    env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_queue GROUP BY state").all(),

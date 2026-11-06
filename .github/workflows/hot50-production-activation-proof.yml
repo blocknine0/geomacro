@@ -17,6 +17,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   contracts:
+    # Synthetic fake-credential tests only; this job has no production environment.
+    env:
+      VITEST: "true"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -62,8 +65,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - name: Validate proof contracts offline
-        run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs
       - name: Derive existing capabilities and resolve quota database without creating it
         shell: bash
         run: |

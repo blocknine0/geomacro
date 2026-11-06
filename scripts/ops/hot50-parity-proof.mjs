@@ -26,6 +26,8 @@ export function currentParityReceipt(b,{census,origin,head,run,now=Date.now()}){
  /^[a-f0-9]{40}$/.test(head??"")&&typeof run==="string"&&run.length>0&&
  Number.isFinite(Date.parse(b.checked_at))&&now-Date.parse(b.checked_at)>=0&&
  now-Date.parse(b.checked_at)<=600000&&
+ b.stable_b2_manifest_verified===true&&/^[a-f0-9]{64}$/.test(b.b2_manifest_sha256??"")&&
+ b.coverage_scope==="ARCHIVED_ENCRYPTED_P0B_OUTBOX_BATCHES"&&
  b.stable_d1_manifest_verified===true&&/^[a-f0-9]{64}$/.test(b.d1_manifest_sha256??"")&&
  b.independent_s3_get_sha256_aes_gcm_restoration===true&&
  b.physical_bucket_list_complete===true&&b.bidirectional_parity_pass===true&&

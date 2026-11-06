@@ -83,17 +83,18 @@ async function main(){
  if(census.schema!=="geomacro.hot50-production-activation-census.v1")
   fail("CENSUS_SCHEMA_MISMATCH");
  let cursor="",checked=0,seen=new Set(),completed=false;
- const physical=new Set(),listCursors=new Set();
- let listCursor="";
- do {
-   const page=parseBucketList(await b2.list(ALLOWED,listCursor),ALLOWED);
-   for(const key of page.keys){
-     if(physical.has(key))fail("B2_LIST_DUPLICATE");physical.add(key);
-   }
-   if(page.complete)break;
-   if(listCursors.has(page.cursor))fail("B2_LIST_CURSOR_REPEATED");
-   listCursors.add(page.cursor);listCursor=page.cursor;
- }while(true);
+ async function listPhysical(){
+  const keys=new Set(),cursors=new Set();let cursor="";
+  do{
+   const page=parseBucketList(await b2.list(ALLOWED,cursor),ALLOWED);
+   for(const key of page.keys){if(keys.has(key))fail("B2_LIST_DUPLICATE");keys.add(key)}
+   if(page.complete)return keys;
+   if(cursors.has(page.cursor))fail("B2_LIST_CURSOR_REPEATED");
+   cursors.add(page.cursor);cursor=page.cursor;
+  }while(true);
+ }
+ const physical=await listPhysical();
+ const physicalSha=sha(JSON.stringify([...physical].sort()));
  const verifiedRows=[];
  while(!completed){
 
@@ -140,6 +141,8 @@ async function main(){
  }while(true);
  const manifestSha=digestManifest(verifiedRows);
  if(manifestSha!==digestManifest(endRows))fail("D1_MANIFEST_CHANGED_DURING_AUDIT");
+ const finalPhysical=await listPhysical();
+ if(physicalSha!==sha(JSON.stringify([...finalPhysical].sort())))fail("B2_MANIFEST_CHANGED_DURING_AUDIT");
  const after=await admin("/v1/internal/activation/hot50-census");
  if(after.backlog.archived_outboxes!==checked||after.backlog.exact_bundle_journal_mismatch!==0)
    fail("D1_FINAL_CENSUS_MISMATCH");
@@ -149,6 +152,8 @@ async function main(){
    checked_at:new Date().toISOString(),control_plane_origin:ORIGIN,
    head_sha:process.env.GITHUB_SHA??null,run_id:process.env.GITHUB_RUN_ID??null,
    d1_manifest_sha256:manifestSha,stable_d1_manifest_verified:true,
+   b2_manifest_sha256:physicalSha,stable_b2_manifest_verified:true,
+   coverage_scope:"ARCHIVED_ENCRYPTED_P0B_OUTBOX_BATCHES",
    checked_archived_bundles:checked,d1_archived:census.backlog.archived_outboxes,
    independent_s3_get_sha256_aes_gcm_restoration:true,
    d1_replay_and_journal_census_complete:true,

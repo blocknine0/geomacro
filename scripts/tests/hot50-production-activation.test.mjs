@@ -133,8 +133,9 @@ test("real SQLite activation views reject future evidence and count unknown debt
  const {readFileSync}=await import("node:fs");
  const db=new DatabaseSync(":memory:");
  try{
- db.exec(`CREATE TABLE p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count);
- CREATE TABLE ingestion_spool_queue(state,b2_spool_uri);
+ db.exec(`CREATE TABLE p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count,locked_until);
+ CREATE TABLE ingestion_spool_queue(state,b2_spool_uri,d1_committed_at,acked_at,candidate_sha256,source_id);
+ CREATE TABLE normalized_articles(candidate_sha256,source_id,b2_archive_uri);
  CREATE TABLE ingestion_spool_bundles(state,b2_spool_uri,bundle_sha256,item_count,acked_at);
  CREATE TABLE p0b_private_r2_fallback(state);
  CREATE TABLE phase2h_private_raw_news(b2_object_sha256);
@@ -146,5 +147,13 @@ test("real SQLite activation views reject future evidence and count unknown debt
  assert.equal(db.prepare("SELECT r2_pending FROM v_p0b_unhandled_activation").get().r2_pending,0);
  db.prepare("INSERT INTO progressive_risk_gate_facts VALUES('USA','macro','event','ORIGINAL_PUBLICATION','example.org',?)").run(new Date(Date.now()+86400000).toISOString());
  assert.equal(db.prepare("SELECT evidence_state FROM v_hot50_three_category_evidence WHERE country_iso3='USA' AND category='macro'").get().evidence_state,"EMPTY");
+ const stmt=(sql,args=[])=>({bind(...params){return stmt(sql,params)},
+  async first(){return db.prepare(sql).get(...args)},async all(){return {results:db.prepare(sql).all(...args)}}});
+ const c=await readHot50ActivationCensus({DB:{prepare:sql=>stmt(sql)}},Date.now());
+ assert.equal(c.status,200);
+ const body=await c.json();assert.equal(body.backlog.total_unhandled,1);
+ db.exec("INSERT INTO p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count) VALUES('ARCHIVED','b2://missing','abc',1)");
+ const damaged=await (await readHot50ActivationCensus({DB:{prepare:sql=>stmt(sql)}},Date.now())).json();
+ assert.equal(damaged.backlog.exact_bundle_journal_mismatch,1);
  }finally{db.close()}
 });

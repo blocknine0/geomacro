@@ -20,7 +20,8 @@ test("stale, foreign-run and changed-count receipts never pass",()=>{
  const opts={census:{backlog:{archived_outboxes:1,exact_bundle_journal_mismatch:0}},origin:"https://x.workers.dev",head:"a".repeat(40),run:"123",now:1000000};
  const b={schema:"geomacro.hot50-storage-readback.v1",status:"PASS",control_plane_origin:opts.origin,
   head_sha:opts.head,run_id:opts.run,checked_at:new Date(opts.now).toISOString(),stable_d1_manifest_verified:true,
-  d1_manifest_sha256:"b".repeat(64),independent_s3_get_sha256_aes_gcm_restoration:true,
+  coverage_scope:"ARCHIVED_ENCRYPTED_P0B_OUTBOX_BATCHES",
+  stable_b2_manifest_verified:true,b2_manifest_sha256:"c".repeat(64),d1_manifest_sha256:"b".repeat(64),independent_s3_get_sha256_aes_gcm_restoration:true,
   physical_bucket_list_complete:true,bidirectional_parity_pass:true,checked_archived_bundles:1,d1_archived:1};
  assert.equal(currentParityReceipt(b,opts),true);
  for(const patch of [{run_id:"122"},{checked_at:new Date(0).toISOString()},{d1_archived:2},{stable_d1_manifest_verified:false}])
