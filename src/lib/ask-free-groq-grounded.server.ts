@@ -203,6 +203,6 @@ export async function enhanceAskWithFreeGroq(
  return {...result,
    model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
    model_render_cache:globalHit?"hit":cacheStatus,
-   model_render_cache_scope:globalHit?"distributed":cacheStatus==="hit"?"runtime":"none",
+   model_render_cache_scope:globalHit?"distributed":String(cacheStatus)==="hit"?"runtime":"none",
    ...(result.model_rendering==="assisted"?{}:{model_render_failure:diagnostic})};
 }
