@@ -5,6 +5,8 @@ Load only the pure function from worker.py so this regression test cannot start
 the Telegram worker or contact publishers, tokens, payments or live systems.
 """
 import ast
+from datetime import datetime, timezone
+import json
 from pathlib import Path
 import re
 import unittest
@@ -38,6 +40,48 @@ def date_only_detector():
     ns = {"re": re, "Any": object, "datetime": datetime}
     exec(compile(ast.Module(body=funcs, type_ignores=[]), "<native-date>", "exec"), ns)
     return ns["native_publication_day"]
+
+
+def canada_json_parser():
+    source = Path("workers/telegram-flash/worker.py").read_text(encoding="utf-8")
+    parsed = ast.parse(source, filename="workers/telegram-flash/worker.py")
+    matches = [
+        node for node in parsed.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "parse_official_canada_json_feed"
+    ]
+    if len(matches) != 1:
+        raise AssertionError("CANADA_JSON_FEED_PARSER_NOT_UNIQUE")
+    namespace = {"json": json, "datetime": datetime, "timezone": timezone, "Any": object}
+    code = compile(ast.Module(body=matches, type_ignores=[]), "<canada-json-feed>", "exec")
+    exec(code, namespace)
+    return namespace["parse_official_canada_json_feed"]
+
+
+class CanadaNativePublicationTimeTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.parse = staticmethod(canada_json_parser())
+
+    def test_published_date_timezone_is_preserved_and_normalized(self):
+        raw = json.dumps({"feed": {"entry": [{
+            "title": "Critical minerals policy release",
+            "publishedDate": "2026-11-04T08:30:00-05:00",
+            "link": "https://www.canada.ca/news/1",
+            "teaser": "Official release",
+        }]}}).encode()
+        rows = self.parse(raw)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["published"], "2026-11-04T08:30:00-05:00")
+        self.assertEqual(rows[0]["published_parsed"][:6], (2026, 11, 4, 13, 30, 0))
+
+    def test_missing_or_timezone_naive_publication_is_not_invented(self):
+        raw = json.dumps({"feed": {"entry": [
+            {"title": "Missing clock", "link": "https://www.canada.ca/news/1"},
+            {"title": "Naive clock", "publishedDate": "2026-11-04T08:30:00",
+             "link": "https://www.canada.ca/news/2"},
+        ]}}).encode()
+        self.assertEqual(self.parse(raw), [])
 
 
 class PublisherNativeClockTests(unittest.TestCase):
