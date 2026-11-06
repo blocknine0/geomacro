@@ -198,6 +198,7 @@
     "hosting-alignment.yml",
     "hot-topic-family-readiness.yml",
     "hot50-direct-original-news-20m.yml",
+    "hot50-physical-parity-audit-tests.yml",
     "imf-oecd-native-period.yml",
     "industry-scale-security-gate.yml",
     "ingest-reliefweb-live.yml",
