@@ -17,6 +17,7 @@ import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
  from "./risk-gate-three-tier-product.mjs";
 import {buildProgressiveGateState} from "./risk-gate-progressive-state.mjs";
 import {signRiskGateFastTick} from "./risk-gate-fast-tick-sign.mjs";
+import {readRiskGateSnapshotSWR} from "./risk-gate-swr-cache.mjs";
 import {RISK_GATE_CORRIDOR_MEMBERS,RISK_GATE_CORRIDOR_WEIGHTS}
  from "./risk-gate-corridor-members.mjs";
 import {activeRiskTargets,hot50RiskGateEnabled,isHot50RiskCountry,HOT50_RISK_SQL}
@@ -896,13 +897,19 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
  if(hot50RiskGateEnabled(env)&&(target.type!=="COUNTRY"||!isHot50RiskCountry(target.id)))
   return reply({ok:false,error:"RISK_GATE_OUTSIDE_HOT50_SCOPE",chargeable:false},400);
  try{
-  const x=await generateUnifiedSnapshot(env,target,opts);
+  const now=opts.now??Date.now();
+  const x=payload.product_tier===undefined?
+    await generateUnifiedSnapshot(env,target,opts):
+    await readRiskGateSnapshotSWR(env.DB,target,{now,
+      read:()=>generateUnifiedSnapshot(env,target,opts),
+      waitUntil:typeof opts.ctx?.waitUntil==="function"?
+       promise=>opts.ctx.waitUntil(promise):null,
+    });
   // Daily record is integrity-signed observation; no unsigned client threshold
   // can transform it into a paid verified hard verdict.
   // Immutable daily snapshot is integrity-signed; customer-specific policy
   // must be evaluated against a freshly verified Ed25519 GRO, not RSS counts.
   // Client-specific result is never misrepresented as part of the daily HMAC.
-  const now=opts.now??Date.now();
   // Always re-evaluate the CURRENT pinned, Ed25519-verified and
   // commercial-qualified GRO at query time. Never replace/re-sign an
   // immutable daily observation because a GRO arrives later that day.
@@ -1060,7 +1067,7 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    if(flash.active)tiered_product.flash_details=flash;
   }
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
-   ...(tiered_product?{tiered_product,progressive_state,
+   ...(tiered_product?{tiered_product,snapshot_cache_state:x.swr_cache??null,progressive_state,
     current_evaluation:progressive_state.current_evaluation,
     tier_activation_matrix:progressive_state.tier_activation_matrix,
     cryptographic_proof:fast_tick_proof}:{}),
