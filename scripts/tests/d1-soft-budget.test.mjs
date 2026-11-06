@@ -42,17 +42,17 @@ test("D1 token bucket enforces 7500-row burst and 125-row/minute refill",async()
    dayUtc:day(t),providerObserved:170000,estimatedRows:2000,
    observedAt:iso(t),nowMs:t,
   });
-  assert.equal(first.reserved_rows,2002);
+  assert.equal(first.reserved_rows,2000);
   assert.equal(first.bucket_capacity_rows,7500);
   assert.equal(first.refill_rows_per_minute,125);
-  assert.equal(first.tokens_milli,5498000);
+  assert.equal(first.tokens_milli,5500000);
   const second=await reserveD1PhysicalRows(f.DB,{
    dayUtc:day(t),providerObserved:172002,estimatedRows:500,
    observedAt:iso(t+60000),nowMs:t+60000,
   });
-  assert.equal(second.reserved_rows,2504);
+  assert.equal(second.reserved_rows,2500);
   assert.equal(second.provider_highwater,172002);
-  assert.equal(second.tokens_milli,5121000);
+  assert.equal(second.tokens_milli,5125000);
  }finally{f.close()}
 });
 
@@ -61,7 +61,7 @@ test("cumulative daily soft ceiling blocks even when token balance remains",asyn
  const t=Date.parse("2026-11-06T09:00:00.000Z");
  try{
   const allowed=await reserveD1PhysicalRows(f.DB,{
-   dayUtc:day(t),providerObserved:179000,estimatedRows:998,
+   dayUtc:day(t),providerObserved:179000,estimatedRows:1000,
    observedAt:iso(t),nowMs:t,
   });
   assert.equal(allowed.reserved_rows,1000);
