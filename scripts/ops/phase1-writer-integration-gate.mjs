@@ -9,9 +9,11 @@ import {createHash} from 'node:crypto';
 import {join,relative,sep} from 'node:path';
 
 const SCAN_ROOTS=Object.freeze(['workers','src','scripts']);
-const SOURCE=/\.(?:mjs|js|cjs|ts|sh|ya?ml|sql)$/u;
+const SOURCE=/\.(?:mjs|js|cjs|ts|sh|ya?ml)$/u;
 const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
+const SQL_READ=/\bSELECT\b/iu;
+const D1_READ_METHOD=/\.\s*(?:all|first|raw)\s*\(/iu;
 const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+(?:execute|migrations)\b/iu;
 function filesUnder(root){
  const out=[];
@@ -34,22 +36,23 @@ for(const root of SCAN_ROOTS){
  for(const path of filesUnder(root)){
   let source;
   try{source=readFileSync(path,'utf8')}catch{throw Error('CANARY_WRITER_SCAN_READ_FAILED:'+path)}
-  if(!((D1_API.test(source)&&SQL_WRITE.test(source))||
-       (DIRECT_D1_COMMAND.test(source)&&SQL_WRITE.test(source))||
-       (path.endsWith('.sql')&&SQL_WRITE.test(source))))continue;
+  const write=(D1_API.test(source)||DIRECT_D1_COMMAND.test(source))&&SQL_WRITE.test(source);
+  const read=(D1_API.test(source)||DIRECT_D1_COMMAND.test(source))&&
+    SQL_READ.test(source)&&(D1_READ_METHOD.test(source)||DIRECT_D1_COMMAND.test(source));
+  if(!write&&!read)continue;
   const normalized=relative('.',path).split(sep).join('/');
-  candidates.set(normalized,createHash('sha256').update(source).digest('hex'));
+  candidates.set(normalized,{sha256:createHash('sha256').update(source).digest('hex'),write,read});
  }
 }
 
 const doc=JSON.parse(readFileSync('config/phase1-writer-integration.json','utf8'));
 if(doc.schema!=='geomacro.phase1.d1-writer-integration.v1'||
- !Array.isArray(doc.producers)){
+ !Array.isArray(doc.producers)||!Array.isArray(doc.readers)){
  throw Error('CANARY_WRITER_INVENTORY_INVALID');
 }
 const seen=new Set();
 for(const p of doc.producers){
- if(typeof p.path!=='string'||!/^((workers|scripts|src)\/)[\w./-]+\.(?:mjs|js|cjs|ts|sh|yml|yaml|sql)$/.test(p.path)||
+ if(typeof p.path!=='string'||!/^((workers|scripts|src)\/)[\w./-]+\.(?:mjs|js|cjs|ts|sh|yml|yaml)$/.test(p.path)||
     seen.has(p.path)||!Array.isArray(p.direct_write_references)||
     !p.direct_write_references.length||!p.admission_helper_import||
     !/^[a-f0-9]{64}$/.test(p.reviewed_sha256??'')){
@@ -58,35 +61,51 @@ for(const p of doc.producers){
  seen.add(p.path);
  const source=readFileSync(p.path,'utf8');
  const hash=createHash('sha256').update(source).digest('hex');
- if(hash!==p.reviewed_sha256||
+ const candidate=candidates.get(p.path);
+ if(!candidate?.write||hash!==p.reviewed_sha256||
     !source.includes(p.admission_helper_import)||
     p.direct_write_references.some(s=>typeof s!=='string'||!source.includes(s))){
   throw Error('CANARY_WRITER_ATOMIC_ADMISSION_DRIFT:'+p.path);
  }
 }
-const uncovered=[...candidates.keys()].filter(path=>!seen.has(path));
-if(uncovered.length){
- console.log(JSON.stringify({
-  schema:'geomacro.phase1.d1-writer-scan.v1',
-  verified:false,
-  candidate_count:candidates.size,
-  uncovered:candidates.size?uncovered.map(path=>({path,sha256:candidates.get(path)})):[],
- }));
- throw Error('CANARY_DISCOVERED_D1_WRITERS_NOT_REVIEWED:'+uncovered.length);
+const readerSeen=new Set();
+for(const p of doc.readers){
+ if(typeof p.path!=='string'||!/^((workers|scripts|src)\\/)[\\w./-]+\\.(?:mjs|js|cjs|ts|sh|yml|yaml)$/.test(p.path)||
+    readerSeen.has(p.path)||!Array.isArray(p.direct_read_references)||
+    !p.direct_read_references.length||!p.read_admission_helper_import||
+    !/^[a-f0-9]{64}$/.test(p.reviewed_sha256??''))
+  throw Error('CANARY_READER_INVENTORY_INVALID');
+ readerSeen.add(p.path);
+ const source=readFileSync(p.path,'utf8');
+ const hash=createHash('sha256').update(source).digest('hex');
+ const candidate=candidates.get(p.path);
+ if(!candidate?.read||hash!==p.reviewed_sha256||
+    !source.includes(p.read_admission_helper_import)||
+    p.direct_read_references.some(s=>typeof s!=='string'||!source.includes(s)))
+  throw Error('CANARY_READER_ATOMIC_ADMISSION_DRIFT:'+p.path);
 }
-if(doc.account_wide_governor_verified!==true||doc.producers.length<3){
+const uncovered=[...candidates].filter(([path,c])=>
+ (c.write&&!seen.has(path))||(c.read&&!readerSeen.has(path)));
+if(uncovered.length){
+ console.log(JSON.stringify({schema:'geomacro.phase1.d1-access-scan.v1',verified:false,
+  candidate_count:candidates.size,
+  uncovered:uncovered.map(([path,c])=>({path,sha256:c.sha256,read:c.read,write:c.write}))}));
+ throw Error('CANARY_DISCOVERED_D1_ACCESS_PATHS_NOT_REVIEWED:'+uncovered.length);
+}
+if(doc.account_wide_governor_verified!==true||doc.producers.length<3||
+   doc.account_wide_read_cap_verified!==true||doc.readers.length<1){
  console.log(JSON.stringify({
   schema:'geomacro.phase1.d1-writer-scan.v1',
   verified:false,
-  candidate_count:candidates.size,
-  reviewed_count:doc.producers.length,
+  candidate_count:candidates.size,writer_count:doc.producers.length,reader_count:doc.readers.length,
+  reviewed_writers:doc.producers.length,reviewed_readers:doc.readers.length,
   candidates:[...candidates].map(([path,sha256])=>({path,sha256})),
  }));
  throw Error('CANARY_ALL_D1_PRODUCERS_NOT_ATOMICALLY_GOVERNED');
 }
 console.log(JSON.stringify({
- schema:'geomacro.phase1.d1-writer-scan.v1',
+ schema:'geomacro.phase1.d1-access-scan.v1',
  verified:true,
  candidate_count:candidates.size,
- reviewed_count:doc.producers.length,
+  reviewed_writers:doc.producers.length,reviewed_readers:doc.readers.length,
 }));
