@@ -52,7 +52,7 @@ def canada_json_parser():
     ]
     if len(matches) != 1:
         raise AssertionError("CANADA_JSON_FEED_PARSER_NOT_UNIQUE")
-    namespace = {"json": json, "datetime": datetime, "timezone": timezone, "Any": object}
+    namespace = {"json": json, "datetime": datetime, "timezone": timezone, "Any": object, "re": re}
     code = compile(ast.Module(body=matches, type_ignores=[]), "<canada-json-feed>", "exec")
     exec(code, namespace)
     return namespace["parse_official_canada_json_feed"]
