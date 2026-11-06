@@ -67,8 +67,9 @@ export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetc
    const a=await readAsk(base,test.question,fetchImpl);
    results.push({domain:test.name,rendering:a.rendering,cache:a.cache});
    console.log(JSON.stringify({stage:"model_probe",domain:test.name,rendering:a.rendering,cache:a.cache}));
-   if(a.rendering!=="assisted")throw Error("ASK_FREE_GROQ_GENERATION_UNVERIFIED_"+test.name.toUpperCase());
  }
+ const unverified=results.filter(x=>x.rendering!=="assisted").map(x=>x.domain);
+ if(unverified.length)throw Error("ASK_FREE_GROQ_GENERATION_UNVERIFIED_"+unverified.join("_").toUpperCase());
  // An immediately repeated eligible question must produce a genuine cache
  // readback in a warm instance. A different backend instance can miss; report
  // the result rather than pretend memory caching is globally shared.
