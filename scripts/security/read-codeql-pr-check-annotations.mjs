@@ -1,6 +1,10 @@
 // Read-only CI diagnostic. Never accesses secret values, appends or dismisses alerts.
+import {readFileSync} from "node:fs";
 const REPO="blocknine0/geomacro";
-const sha=String(process.env.GITHUB_SHA??"");
+const event=JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH,"utf8"));
+// A pull_request workflow checks out a synthetic merge SHA, but CodeQL check
+// results are attached to the actual PR head SHA.
+const sha=String(event.pull_request?.head?.sha??process.env.GITHUB_SHA??"");
 const token=String(process.env.GH_TOKEN??"");
 if(process.env.GITHUB_REPOSITORY!==REPO||!/^[a-f0-9]{40}$/.test(sha)||token.length<20)
  throw Error("CODEQL_PR_ANNOTATION_SCOPE_INVALID");
