@@ -65,37 +65,57 @@ function allowed(question:string,answer:HybridAskAnswer):boolean{
   return [answer.summary,answer.what_changed,answer.why_it_matters,answer.geomacro_view]
     .every(value=>text(value,1800)!==null);
 }
+export type SafeGroundedOutputRejection=
+  |"invalid_json"|"invalid_shape"|"unexpected_fields"|"invalid_field"
+  |"field_too_long"|"forbidden_text"|"unapproved_number"|"unsupported_certainty";
+
+/**
+ * Existing evidence-safe formatter validator. The optional rejection callback
+ * carries an enum only: never the provider output, prompt or a source value.
+ */
 export function safeGroundedOpenAIOutput(
   raw:string,
   canonical:HybridAskAnswer,
   question:string,
+  onReject?:(reason:SafeGroundedOutputRejection)=>void,
 ):HybridAskAnswer|null{
+  const reject=(reason:SafeGroundedOutputRejection):null=>{
+    onReject?.(reason);return null;
+  };
   let value:unknown;
-  try{value=JSON.parse(raw);}catch{return null;}
-  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  try{value=JSON.parse(raw);}catch{return reject("invalid_json");}
+  if(!value||typeof value!=="object"||Array.isArray(value))
+    return reject("invalid_shape");
   const data=value as Record<string,unknown>;
   if(Object.keys(data).sort().join("|")!==
-     ["summary","what_changed","why_it_matters","geomacro_view"].sort().join("|"))
-    return null;
+    ["summary","what_changed","why_it_matters","geomacro_view"].sort().join("|"))
+    return reject("unexpected_fields");
   const limits={summary:400,what_changed:520,why_it_matters:420,geomacro_view:420};
   const fields={} as Record<keyof typeof limits,string>;
   for(const [key,max] of Object.entries(limits)){
-    const s=text(data[key],max);
-    if(!s||forbiddenPublic.test(s))return null;
-    fields[key as keyof typeof limits]=s;
+    if(typeof data[key]!=="string"||!(data[key] as string).trim())
+      return reject("invalid_field");
+    const normalized=(data[key] as string).trim().replace(/\\s+/gu," ");
+    if(normalized.length>max)return reject("field_too_long");
+    if(forbiddenTransfer.test(normalized)||forbiddenPublic.test(normalized))
+      return reject("forbidden_text");
+    fields[key as keyof typeof limits]=normalized;
   }
   // No new numerical values, rates, dates or percentages from the model.
-  const numbers=(s:string)=>s.match(/\d+(?:[.,]\d+)*/gu)??[];
+  const numbers=(s:string)=>s.match(/\\d+(?:[.,]\\d+)*/gu)??[];
   const reference=[question,canonical.summary,canonical.what_changed,
     canonical.why_it_matters,canonical.geomacro_view].join(" ");
   const approved=new Set(numbers(reference));
-  if(numbers(Object.values(fields).join(" ")).some(n=>!approved.has(n)))return null;
+  if(numbers(Object.values(fields).join(" ")).some(n=>!approved.has(n)))
+    return reject("unapproved_number");
   if((canonical.insufficient_evidence||canonical.low_confidence)&&
-    /\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\b/iu
-      .test(Object.values(fields).join(" ")))return null;
+    /\\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\\b/iu
+      .test(Object.values(fields).join(" ")))
+    return reject("unsupported_certainty");
   return {...canonical,...fields,source_identity_exposed:false,
     durable_live_storage_write:false};
 }
+
 function safeContext(context:AskModelContext):AskModelContext{
   // No publisher identity, article text, source URL or private item IDs.
   return {
