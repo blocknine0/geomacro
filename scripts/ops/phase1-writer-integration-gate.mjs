@@ -70,7 +70,7 @@ for(const p of doc.producers){
 }
 const readerSeen=new Set();
 for(const p of doc.readers){
- if(typeof p.path!=='string'||!/^((workers|scripts|src)\\/)[\\w./-]+\\.(?:mjs|js|cjs|ts|sh|yml|yaml)$/.test(p.path)||
+ if(typeof p.path!=='string'||!/^((workers|scripts|src)\/)[\w./-]+\.(?:mjs|js|cjs|ts|sh|yml|yaml)$/.test(p.path)||
     readerSeen.has(p.path)||!Array.isArray(p.direct_read_references)||
     !p.direct_read_references.length||!p.read_admission_helper_import||
     !/^[a-f0-9]{64}$/.test(p.reviewed_sha256??''))
@@ -95,11 +95,11 @@ if(uncovered.length){
 if(doc.account_wide_governor_verified!==true||doc.producers.length<3||
    doc.account_wide_read_cap_verified!==true||doc.readers.length<1){
  console.log(JSON.stringify({
-  schema:'geomacro.phase1.d1-writer-scan.v1',
+  schema:'geomacro.phase1.d1-access-scan.v1',
   verified:false,
   candidate_count:candidates.size,writer_count:doc.producers.length,reader_count:doc.readers.length,
   reviewed_writers:doc.producers.length,reviewed_readers:doc.readers.length,
-  candidates:[...candidates].map(([path,sha256])=>({path,sha256})),
+  candidates:[...candidates].map(([path,entry])=>({path,...entry})),
  }));
  throw Error('CANARY_ALL_D1_PRODUCERS_NOT_ATOMICALLY_GOVERNED');
 }
