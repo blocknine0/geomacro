@@ -243,6 +243,16 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     return held("D1_ACCOUNT_USAGE_UNVERIFIED",now);
 
 
+  if(PHASE1_WRITER_INTEGRATION?.account_wide_governor_verified!==true||
+     PHASE1_WRITER_INTEGRATION?.account_wide_read_cap_verified!==true||
+     PHASE1_WRITER_INTEGRATION?.daily_soft_rows_read_max!==120000){
+    return {...held("D1_ACCOUNT_WIDE_READ_WRITE_GOVERNOR_NOT_VERIFIED",now),
+      account_wide_governor_verified:false,
+      account_wide_read_cap_verified:false,
+      d1_daily_rows_read_soft_cap:120000};
+  }
+
+
   // Provider-verified, account-scoped Workers Paid has no 5M/day hard
   // physical read stop. Retain an independent, CONSERVATIVE 120k/180k
   // account-wide DAILY soft budget (well below official monthly allotments).
