@@ -57,6 +57,32 @@ describe("opt-in Groq Free Plan Ask model with source-private canonical proofs",
    expect(cached.model_render_cache).toBe("hit");
    expect(mock).toHaveBeenCalledTimes(1);
  });
+ it("classifies an upstream free-plan 429 without leaking credentials or changing facts",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const r=await enhanceAskWithFreeGroq("Explain cobalt supply constraints diagnostic 812",a,
+     "diagnostic-client-812",{fetchImpl:vi.fn(async()=>new Response("",{status:429})) as any,
+       readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+         research_activity_by_category:[],official_release_context:[]})});
+   expect(r.model_rendering).toBe("canonical");
+   expect(r.model_render_failure).toBe("upstream_429");
+   expect(r.summary).toBe(a.summary);
+   expect(JSON.stringify(r)).not.toContain("gsk-synthetic");
+ });
+ it("reports rejected ungrounded output without promoting the assertion",async()=>{
+   process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
+   process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
+   const bad={summary:"Confirmed incident 9999999",what_changed:"Unverified event",
+     why_it_matters:"Unknown.",geomacro_view:"Unknown."};
+   const r=await enhanceAskWithFreeGroq("Explain nickel supply, diagnostic 813",a,
+     "diagnostic-client-813",{fetchImpl:vi.fn(async()=>new Response(JSON.stringify({
+       choices:[{message:{content:JSON.stringify(bad)}}]}),{status:200})) as any,
+       readContext:async()=>({categories:["rare_earth"],canonical_evidence_items:0,
+         research_activity_by_category:[],official_release_context:[]})});
+   expect(r.model_rendering).toBe("canonical");
+   expect(r.model_render_failure).toBe("validation_rejected");
+   expect(r.summary).toBe(a.summary);
+ });
  it("cannot turn insufficient research into a confirmed fact or signed score",async()=>{
    process.env.GEOMACRO_ASK_FREE_GROQ_ENABLED="true";
    process.env.GROQ_API_KEY="gsk-synthetic-test-not-valid-000000";
