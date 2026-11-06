@@ -26,6 +26,12 @@ B2 URLs.
   `GetObject`/`HeadObject` are Class B; object listings and account/key
   administration are Class C. Uploads are not Class C. The request's 2,000
   upload policy is therefore enforced against Class A.
+- These are GeoMacro-enforced daily ceilings, not Backblaze's free transaction
+  allowance: Backblaze lists Class A/B/C as free for pay-as-you-go customers,
+  while the first 2,500 daily free calls apply to Class D. GeoMacro caps its
+  guarded Class B/C traffic at 2,080 operations/day (2,000 GET + 40 HEAD + 40
+  native authorization), with all list operations disabled. Backblaze Caps &
+  Alerts limit dollar spend; they are not request-count quotas.
 - Public GETs check Cloudflare Cache API before D1 or B2. A verified origin
   response receives `Cache-Control: public, max-age=604800, immutable` and an
   ETag. Cache API is POP-local and may evict entries; a cache miss still uses a
