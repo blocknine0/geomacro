@@ -32,7 +32,9 @@ jobs:
         with:
           node-version: "24"
       - name: Verify all Hot50 countries across three prices with exact downstream replay
-        run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
+        run: |
+          node --test scripts/lib/hot50-production-proof.test.mjs
+          node scripts/ops/verify-hot50-risk-gate-tiers.mjs
       - name: Reconcile exact 207 current-day D1 HMAC snapshots against private Supabase SHA (no funds)
         if: env.RISK_GATE_COUNTRY_SCOPE != 'HOT50'
         shell: bash
