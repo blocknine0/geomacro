@@ -48,6 +48,9 @@ export type HybridAskAnswer = AskAnswer & {
   public_links?: GeomacroPublicLink[];
   data_mode: HybridRuntimeAnswer["data_mode"];
   cache_status: HybridRuntimeAnswer["cache_status"];
+  /** Safe rendering telemetry; never evidence, model identity or source provenance. */
+  model_rendering?: "assisted" | "canonical";
+  model_render_cache?: "hit" | "miss" | "coalesced" | "bypassed";
   source_identity_exposed: false;
   durable_live_storage_write: false;
   real_time_message?: string;
