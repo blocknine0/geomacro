@@ -1205,5 +1205,19 @@
     "predge_unmodified": true,
     "payment_authorized": false,
     "production_deploy_acceptance_required": true
+  },
+  "approved_reviewed_risk_indices_activation_20261106": {
+    "authorization": "Owner explicitly requested production activation of the three certified signed Risk Indices and repair of the persistent refreshing state on 6 November 2026; internal triage scores must never substitute for certified indices.",
+    "approved_source_commit": "8021c9f6d9f96bc62b0aa9f722cb2cfb6f2c1dbe",
+    "approved_paths": [
+      "src/components/risk-indices/risk-indices-workspace.tsx"
+    ],
+    "exact_blob_lock": true,
+    "reviewed_blob_sha1": "4dc795ae50c94ad09908f21d6d8c872ac0bd83cd",
+    "purpose": "Allow the existing reviewer-gated GRI v1.2 page, explicit certified-input unavailability state, and verified history projection to reach the deployment mirror. The old self-certified news severity presentation cannot fulfill this owner request.",
+    "website_lock_remains_active": true,
+    "global_risk_final_lock_unmodified": true,
+    "published_source_sha_unchanged_until_live_acceptance": true,
+    "production_acceptance_not_claimed": true
   }
 }

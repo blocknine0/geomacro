@@ -165,6 +165,8 @@ const approvedPricing = [
   config.approved_p2_canonical_d1_intelligence_feed_20261104,
   // Founder-authorized SEO correction, one exact sitemap blob only.
   config.approved_public_sitemap_canonical_20261106,
+  // Owner-requested certified Risk Indices activation: one immutable existing UI blob.
+  config.approved_reviewed_risk_indices_activation_20261106,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
