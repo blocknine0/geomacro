@@ -19,7 +19,7 @@
     "require_verified_workers_paid_subscription": true,
     "require_both_provider_usage_blocks": true,
     "fallback_when_unverified": "CONSERVATIVE_FREE_QUOTA_OR_HOLD",
-    "d1_source_daily_soft_rows_read_max": 18000000,
+    "d1_source_daily_soft_rows_read_max": 120000,
     "d1_source_daily_soft_rows_written_max": 180000,
     "d1_account_wide_atomic_guarantee": false,
     "d1_write_token_bucket": {
@@ -30,6 +30,15 @@
       "provider_counter_max_age_seconds": 120,
       "atomic_reservation_required": true,
       "all_d1_writer_families_must_integrate": true
+    },
+    "d1_read_pacing_policy": {
+      "schema": "geomacro.d1-read-pacing-policy.v1",
+      "daily_soft_rows_read_max": 120000,
+      "rolling_capacity_rows": 20000,
+      "refill_rows_per_minute": 70,
+      "atomic_reservation_required": true,
+      "all_d1_reader_families_must_integrate": true,
+      "account_wide_atomic_guarantee": false
     }
   },
   "monthly_guardrail_targets_not_provider_hard_caps": {
