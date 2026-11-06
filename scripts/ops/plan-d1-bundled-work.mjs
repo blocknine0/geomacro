@@ -37,6 +37,8 @@ export const D1_BUNDLE_LANES=Object.freeze({
     write_reserve:50_000+PREDGE_D1_FREE_HEADROOM.rows_written,
     read_opening_burst:250_000,write_opening_burst:2_500}),
 });
+const PHASE1_WRITER_INTEGRATION=JSON.parse(readFileSync(
+  new URL("../../config/phase1-writer-integration.json",import.meta.url),"utf8"));
 const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
@@ -257,6 +259,12 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     Number.isFinite(Date.parse(paidProof.observed_at))&&
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
+  // Provider Paid proof and an observed counter are not sufficient to grant
+  // the account-wide 180k soft envelope. Every independent writer must first
+  // pass the exact-source inventory gate; unknown or false inventory holds.
+  if(paid && PHASE1_WRITER_INTEGRATION?.account_wide_governor_verified!==true)
+    return {...held("D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED",now),
+      paid_capacity_probe_status:"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED"};
   if(paid) {
     // Workers Paid has no Free-tier 100k/day stop. GeoMacro retains its own
     // conservative soft envelope, and each writer must reserve atomically.
