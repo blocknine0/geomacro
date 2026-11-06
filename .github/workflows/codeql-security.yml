@@ -39,7 +39,7 @@ jobs:
           languages: javascript-typescript
           build-mode: none
       - name: Test alert-state verification contract (no network)
-        run: node --test scripts/security/verify-codeql-closure.test.mjs
+        run: node --test scripts/security/verify-codeql-closure.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/codeql-137-token-entropy.test.mjs
       - name: Analyze
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
