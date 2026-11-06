@@ -61,20 +61,35 @@ export async function runSupabaseFreeSourceRuntime({state,fetchImpl=fetch,now=ne
       last_attempt_at:now.toISOString(),last_success_at:usable?now.toISOString():old?.last_success_at??null});
   }
   const gkg=discovery.gdelt_static_bulk_discovery??null;
+  const verifiedArchive=(value:unknown)=>!!value&&typeof value==="object"&&
+    "archive_integrity_verified" in value&&
+    (value as {archive_integrity_verified?:unknown}).archive_integrity_verified===true;
+  const healthy=contexts.every(x=>x.context.source_families_readable>0)&&
+    verifiedArchive(event)&&verifiedArchive(gkg);
+  // A quiet cycle is credible ONLY if every attempted family was read,
+  // all three categories yielded no qualified findings, and both archival
+  // discovery inputs were integrity verified. No HTTP/DB failure is quiet.
+  const sourceQuiet=healthy&&contexts.every(x=>
+    Number.isSafeInteger(x.context.source_families_attempted)&&
+    x.context.source_families_attempted>0&&
+    x.context.source_families_unavailable===0&&
+    x.context.source_families_readable===x.context.source_families_attempted&&
+    Array.isArray(x.context.findings)&&x.context.findings.length===0);
   const report={schema:"geomacro.supabase-free-source-runtime.v1",checked_at:now.toISOString(),
     replacements:SOURCE_RUNTIME_REPLACEMENTS,
     gdelt_event:event,gdelt_gkg:gkg,
     contexts:contexts.map(({scope,context})=>({category:scope,source_families_attempted:context.source_families_attempted,
       source_families_readable:context.source_families_readable,derived_context_count:context.findings.length})),
     state_storage:"cloudflare_d1_derived_only",raw_records_persisted:false,supabase_requests:supabaseAttempts,
-    b2_requests:0,payments:0,scored:false,independent_reviewed:false,chargeable:false};
+    b2_requests:0,payments:0,scored:false,independent_reviewed:false,chargeable:false,
+    ...(sourceQuiet?{release_qualification:{
+      schema:"geomacro.source-release-qualification.v1",
+      status:"NO_QUALIFIED_NEW_RELEASE",checked_at:now.toISOString(),complete:true,
+      categories:["geopolitics","macro","rare_earth"],
+    }}:{})};
   if(supabaseAttempts!==0||JSON.stringify(report).length>64_000||/https?:\/\/|www\./iu.test(JSON.stringify(report)))
     throw Error("SOURCE_RUNTIME_BOUNDARY_FAILED");
-  const verifiedArchive=(value:unknown)=>!!value&&typeof value==="object"&&
-    "archive_integrity_verified" in value&&
-    (value as {archive_integrity_verified?:unknown}).archive_integrity_verified===true;
-  const healthy=contexts.every(x=>x.context.source_families_readable>0)&&
-    verifiedArchive(event)&&verifiedArchive(gkg);
+
   await state.persist("summary",{report},{cursor:{status:healthy?"healthy":"degraded"},
     last_attempt_at:now.toISOString(),last_success_at:healthy?now.toISOString():previous.get("summary")?.last_success_at??null});
   const readback=await state.loadRows();
