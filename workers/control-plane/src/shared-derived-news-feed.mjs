@@ -25,7 +25,13 @@ export async function publicSharedDerivedNewsFeed(env,query=new URLSearchParams(
   const signals=[],seen=new Set();
   try{
     // All machine categories share the same bounded one-query journal read.
-    const response=await readDerivedStoriesBundle(env,now,allowMaterialized);
+    // Preserve the frozen 5-argument public Fastlane callsite while letting
+    // feature-gated *public* Macro Fastlane share the one-row CQRS.
+    // Partner/research calls lack includeMacroContext and remain canonical.
+    const publicFastlaneCQRS=includeMacroContext===true&&
+      projection==="attributed_research"&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
+    const response=await readDerivedStoriesBundle(env,now,
+      allowMaterialized||publicFastlaneCQRS);
     if(response.status!==200){
       const denied=await response.json().catch(()=>null);
       if(denied?.error==="DERIVED_NEWS_BUNDLE_HARD_CAP_EXCEEDED")

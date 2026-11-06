@@ -1,3 +1,4 @@
+import {readHot50MaterializedNews} from "./hot50-materialized-news.mjs";
 import {MACRO_TOPICS} from "../../../scripts/lib/macro-fx-metals.mjs";
 /**
  * Free website-only rolling derived-news journal. Independent of Supabase,
@@ -196,7 +197,40 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
   if(![0,15].includes(legacyDelayMinutes)||!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
-    const projected=allowMaterialized?
+    let coldCQRS=false;
+    if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
+      // Missing table/row (including a cold CI fixture) returns null from the
+      // CQRS reader. A null is NEVER an empty-news success or a thrown 503.
+      const snapshot=await readHot50MaterializedNews(env,now);
+      coldCQRS=snapshot===null;
+      if(snapshot){
+      const filtered=[];
+      for(let i=0;i<snapshot.signals.length;i++){
+        const signal=snapshot.signals[i],original=originalTime(signal,now);
+        if(verifyDerivedStory(signal,now)&&original&&
+           original.at>=now-AUTO_INGEST_RETENTION_MS&&
+           original.eligibleAt+legacyDelayMinutes*60_000<=now&&
+           (legacyDelayMinutes!==15||signal.status!=="osint_feed_observed_unverified"))
+          filtered.push({signal,ingest:snapshot.first_ingest[i]});
+      }
+      const page=filtered.slice(offset,offset+250),hasMore=filtered.length>offset+250;
+      const out=json({ok:true,schema:"geomacro.website-derived-news-feed.v1",
+        checked_at:new Date(now).toISOString(),
+        original_release_delay_minutes:legacyDelayMinutes,
+        retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+        scored:false,chargeable:false,supabase_dependency:false,
+        page_offset:offset,page_size:250,has_more:hasMore,
+        next_offset:hasMore&&offset<500?offset+250:null,
+        ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
+        first_ingest:page.map(x=>x.ingest),signals:page.map(x=>x.signal)},200,false);
+      // Preserve canonical JSON fields and headers exactly. Exposing a
+      // different cache status header would alter frozen public contracts.
+      return out;
+      }
+    }
+    // A genuinely empty/unmigrated CQRS table uses the existing bounded
+    // journal/materialized-page path. Owner readback stays canonical.
+    const projected=allowMaterialized&&!coldCQRS?
       await getMaterializedNewsPage(env,offset,now):null;
     // Protected readback, stale/missing snapshot and any failed materialization
     // still issue the original verified source-journal SELECT unchanged.
@@ -262,7 +296,25 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
   if(!Number.isFinite(now))
     return json({ok:false,error:"DERIVED_NEWS_BUNDLE_CLOCK_INVALID",chargeable:false},400);
   try {
-    const projected=allowMaterialized?
+    let coldCQRS=false;
+    if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
+      const stored=await readHot50MaterializedNews(env,now);
+      coldCQRS=stored===null;
+      if(stored){
+      const signals=[],firstIngest=[];
+      for(let i=0;i<stored.signals.length;i++){
+        const signal=stored.signals[i],time=originalTime(signal,now);
+        if(time&&verifyDerivedStory(signal,now)&&
+           time.at>=now-AUTO_INGEST_RETENTION_MS){
+          signals.push(signal);firstIngest.push(stored.first_ingest[i]);
+        }
+      }
+      const output=json({...stored,checked_at:new Date(now).toISOString(),
+        returned_rows:signals.length,signals,first_ingest:firstIngest},200,false);
+      return output;
+      }
+    }
+    const projected=allowMaterialized&&!coldCQRS?
       await getMaterializedNewsBundle(env,now):null;
     const {results=[]}=projected!==null?{results:projected}:
       await env.DB.prepare(

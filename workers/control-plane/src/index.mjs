@@ -28,6 +28,7 @@ import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
+import {refreshHot50MaterializedNews} from "./hot50-materialized-news.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
 import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts} from "./news-intake-policy.mjs";
@@ -1323,6 +1324,13 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Feature-gated CQRS publisher on existing cron; a quiet source revision
+    // avoids rescanning canonical D1 and news ingestion never waits for it.
+    if(env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"&&env?.DB?.prepare&&
+       env?.DB?.batch&&utc.getUTCMinutes()%10===2)
+      ctx.waitUntil(refreshHot50MaterializedNews(env,utc.getTime())
+        .then(r=>{if(!r.ok)console.error("HOT50_CQRS_REFRESH_DEFERRED",r.status)})
+        .catch(()=>console.error("HOT50_CQRS_REFRESH_UNAVAILABLE")));
     // Rotating 12-cell search page every 20 minutes across the 195x3 matrix
     // and registered corridors. Results remain unverified observations.
     if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%20===0)
@@ -1531,6 +1539,7 @@ export default {
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+      swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
     });
     // Authenticated, SHA-keyed, public-format-only Ask cache; never expose
     // endpoint or any cache entry to unauthenticated visitors.
@@ -1616,7 +1625,7 @@ export default {
         }
         return await readPublicNewsR2Snapshot(request,env) ??
           await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
-            "source_neutral",false,eligiblePublicFreeD1CacheRequest(request));
+            "source_neutral",false,eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1");
       });
     // Optional pilot sample; separate from the unchanged production partner Risk Gate.
     if(url.pathname==="/v1/pilot/check")return predgePilotCheckV2(request,env);
@@ -1668,9 +1677,10 @@ export default {
         ()=>readPublicFreeD1Cached(pageRequest,async()=>
           await readPublicNewsR2Snapshot(pageRequest,env) ??
           await readDerivedStories(env,Date.now(),0,0,
-            eligiblePublicFreeD1CacheRequest(pageRequest)),{
+            eligiblePublicFreeD1CacheRequest(pageRequest)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"),{
             cache:typeof caches!=="undefined"?caches.default:null,
             waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+            swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
           })));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-certified-news-severity-gri"&&!url.search)
@@ -1678,7 +1688,7 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
       return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStoriesBundle(env,Date.now(),
-          eligiblePublicFreeD1CacheRequest(request)));
+          eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"));
     // Retired: this public URL exposed private original-page verdicts,
     // source-review clocks and issuer envelopes. Neither browsers, agents
     // nor PREDGE may read internal qualification state.
@@ -1697,7 +1707,7 @@ export default {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
-      const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request);
+      const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
       if(q.size===0)return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),0,legacyDelay,
@@ -1737,6 +1747,12 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    // Canonical root-admin authorization applies before either P0-B route.
+    // Keep this first among protected handlers for cold-start smoke contract.
+    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
+      return getP0bIngestionStatus(env);
+    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
+      return verifyLatestP0bCommitted(env);
     if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
       return p1SourceCoverageHealth(env);
     if(url.pathname==='/v1/internal/p1/source-cell-map'&&request.method==='PUT'){
@@ -1771,10 +1787,6 @@ export default {
       return readHot50ActivationCensus(env);
     if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-manifest")
       return readP0bParityManifest(env,url);
-    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
-      return getP0bIngestionStatus(env);
-    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
-      return verifyLatestP0bCommitted(env);
 
     try {
       // Root-admin-only intake. The payload accepts structured facts, never

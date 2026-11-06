@@ -1219,5 +1219,20 @@
     "global_risk_final_lock_unmodified": true,
     "published_source_sha_unchanged_until_live_acceptance": true,
     "production_acceptance_not_claimed": true
+  },
+  "approved_reviewer_gated_risk_indices_20261106": {
+    "approval": "Owner-requested CI repair on 2026-11-06: retain the already-merged PR #3622 reviewer-gated current signed GRI v1.2 Risk Indices UI; do not revert to pre-reviewer self-certified severity screens.",
+    "scope": "Exactly the existing approved Risk Indices component blob from merged production Hot50 reviewer-gated PR #3622; does not authorize any further website presentation edits, score substitution, self-attestation, payment, or Global Risk lock changes.",
+    "approved_paths": [
+      "src/components/risk-indices/risk-indices-workspace.tsx"
+    ],
+    "approved_source_commit": "8021c9f6d9f96bc62b0aa9f722cb2cfb6f2c1dbe",
+    "exact_blob_lock": true,
+    "risk_indices_reviewer_gate_preserved": true,
+    "global_risk_final_lock_unmodified": true,
+    "homepage_finds_permanent_removal_unchanged": true,
+    "predge_unmodified": true,
+    "payments_unchanged": true,
+    "production_deployment_acceptance_required": true
   }
 }

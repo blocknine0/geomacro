@@ -52,7 +52,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-d1-control-plane-production
+  # Independent PR-only SQLite tests must not be evicted from the shared
+  # production D1 deploy concurrency group. Production still uses the exact
+  # existing geomacro-d1-control-plane-production mutual exclusion.
+  group: ${{ github.event_name == 'pull_request' && format('geomacro-customer-d1-schema-pr-{0}', github.event.pull_request.number) || 'geomacro-d1-control-plane-production' }}
   cancel-in-progress: false
 
 jobs:

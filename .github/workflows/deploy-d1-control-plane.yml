@@ -224,6 +224,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Protect PR #3626: no direct 100% production deploy while staged D1 canary is pending.
+  d1-v2-canary-release-hold:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    outputs:
+      allow_deploy: ${{ steps.release_guard.outputs.allow_deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Enforce canary acceptance before full Worker redeployment
+        id: release_guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -f config/d1-hotspot-v2-canary.hold; then
+            echo "allow_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::D1_V2_CANARY_HOLD_ACTIVE: production deploy skipped until authorized gradual rollout"
+          else
+            echo "allow_deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
   p0-1-offline-regression:
     if: github.event_name == 'pull_request' && github.repository == 'blocknine0/geomacro'
     runs-on: ubuntu-24.04
@@ -258,7 +280,8 @@ jobs:
           node --check scripts/ops/verify-live-geomacro-news-gri.mjs
 
   bootstrap-deploy-accept:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    needs: d1-v2-canary-release-hold
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.d1-v2-canary-release-hold.outputs.allow_deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
