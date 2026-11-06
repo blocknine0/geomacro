@@ -1,12 +1,12 @@
 import {createHash,createPublicKey,verify as edVerify} from "node:crypto";
-import {defineEventHandler,setResponseHeaders,setResponseStatus} from "h3";
+import {defineEventHandler,setResponseHeaders,setResponseStatus,type H3Event} from "h3";
 import {fetchWithoutRedirect} from "../../../src/lib/fetch-without-redirect";
 import {canonicalRiskObjectJson} from "../../../src/lib/risk-object-signing.server";
 import type {PublicRiskIndices} from "../../../src/lib/risk-indices.types";
 
 /** Same-origin verified bridge; never echoes an unsigned numeric package. */
 const WORKER="https://geomacro-control-plane.daspallab202391.workers.dev";
-const fail=(event:Parameters<ReturnType<typeof defineEventHandler>>[0] extends never?never:any)=>{
+const fail=(event:H3Event)=>{
   setResponseStatus(event,503);
   return {ok:false,code:"CURRENT_REVIEWED_SIGNED_THREE_INDICES_UNAVAILABLE",
     message:"Awaiting current genuine reviewed GRI input and three signed readings."};
