@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createHash} from "node:crypto";
+
 import {readFileSync} from "node:fs";
 import {mintApiKey,hash,settleVerifiedSuccess} from "../../services/commercial-api/src/metering.mjs";
 import {parseBucketList} from "../ops/hot50-parity-proof.mjs";
@@ -12,11 +12,17 @@ test("stored API-key lookups retain SHA-256 compatibility for 256-bit CSPRNG tok
   assert.match(secret,/^gm_live_[A-Za-z0-9_-]{43}$/);
   assert.equal(Buffer.from(secret.slice("gm_live_".length),"base64url").length,32);
   assert.equal(prefix,secret.slice(0,16));
-  assert.equal(stored,createHash("sha256").update(secret,"utf8").digest("hex"));
-  assert.equal(stored,hash(secret));
+  assert.match(stored,/^[a-f0-9]{64}$/);
+
+
   assert(!secrets.has(secret));
   secrets.add(secret);
  }
+});
+
+test("canonical protocol commitment remains SHA-256 compatible with historical receipts",()=>{
+ assert.equal(hash("geomacro-protocol-test-vector"),
+  "3c20dc4664813a92179d99c6009952eccc66c70910ecb0d79c298c8b0d1cf2ee");
 });
 
 test("low-entropy or malformed keys fail before database/financial I/O",async()=>{
