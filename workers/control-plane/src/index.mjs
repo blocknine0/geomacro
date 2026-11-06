@@ -1605,7 +1605,7 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/fastlane-intelligence")
-      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true));
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true,env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"));
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicReadCache(async()=>{
         // The 3 public category variants project from one source-neutral
@@ -1625,7 +1625,7 @@ export default {
         }
         return await readPublicNewsR2Snapshot(request,env) ??
           await publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),
-            "source_neutral",false,eligiblePublicFreeD1CacheRequest(request));
+            "source_neutral",false,eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1");
       });
     // Optional pilot sample; separate from the unchanged production partner Risk Gate.
     if(url.pathname==="/v1/pilot/check")return predgePilotCheckV2(request,env);
@@ -1677,7 +1677,7 @@ export default {
         ()=>readPublicFreeD1Cached(pageRequest,async()=>
           await readPublicNewsR2Snapshot(pageRequest,env) ??
           await readDerivedStories(env,Date.now(),0,0,
-            eligiblePublicFreeD1CacheRequest(pageRequest)),{
+            eligiblePublicFreeD1CacheRequest(pageRequest)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"),{
             cache:typeof caches!=="undefined"?caches.default:null,
             waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
             swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
@@ -1688,7 +1688,7 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
       return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStoriesBundle(env,Date.now(),
-          eligiblePublicFreeD1CacheRequest(request)));
+          eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"));
     // Retired: this public URL exposed private original-page verdicts,
     // source-review clocks and issuer envelopes. Neither browsers, agents
     // nor PREDGE may read internal qualification state.
@@ -1707,7 +1707,7 @@ export default {
       // Only deterministic 250-row read pages of the existing 600-row D1
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
-      const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request);
+      const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
       if(q.size===0)return publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),0,legacyDelay,
