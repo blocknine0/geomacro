@@ -19,7 +19,7 @@ import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudfla
 // The existing separate D1 rate governor remains the partner request cap.
 // No partner token, payload, API behavior or SQL is changed here.
 export const PREDGE_D1_FREE_HEADROOM=Object.freeze({
-  rows_read:500_000,rows_written:8_000,
+  rows_read:5_000,rows_written:8_000,
   pilot_request_cap_per_utc_day:500,
   basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE",
 });
@@ -27,15 +27,15 @@ export const D1_BUNDLE_LANES=Object.freeze({
   // Strict end-of-day reserves + a finite opening burst. Without pacing,
   // 5-minute and 30-minute jobs can consume an entire day's account headroom
   // during the first hours after UTC reset.
-  critical:Object.freeze({read_reserve:750_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+  critical:Object.freeze({read_reserve:10_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:15_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:1_000_000,write_opening_burst:10_000}),
-  research:Object.freeze({read_reserve:1_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    read_opening_burst:20_000,write_opening_burst:10_000}),
+  research:Object.freeze({read_reserve:25_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:30_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:500_000,write_opening_burst:5_000}),
-  maintenance:Object.freeze({read_reserve:2_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    read_opening_burst:12_000,write_opening_burst:5_000}),
+  maintenance:Object.freeze({read_reserve:40_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:50_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:250_000,write_opening_burst:2_500}),
+    read_opening_burst:5_000,write_opening_burst:2_500}),
 });
 const PHASE1_WRITER_INTEGRATION=JSON.parse(readFileSync(
   new URL("../../config/phase1-writer-integration.json",import.meta.url),"utf8"));
@@ -43,9 +43,9 @@ const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==18_000_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==120_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.schema!=="geomacro.d1-read-pacing-policy.v1"||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.daily_soft_rows_read_max!==120_000||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.rolling_capacity_rows!==20_000||\n   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||\n   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.daily_soft_rows_written_max!==180_000||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.capacity_rows!==7_500||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.refill_rows_per_minute!==125||
@@ -66,7 +66,7 @@ export function d1LanePacedCeiling(lane,now){
     return Math.floor(burst+(cap-burst)*fraction);
   };
   return Object.freeze({
-    rows_read:allowed(D1_FREE_DAILY.rows_read,settings.read_reserve,
+    rows_read:allowed(FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max,settings.read_reserve,
       settings.read_opening_burst),
     rows_written:allowed(D1_FREE_DAILY.rows_written,settings.write_reserve,
       settings.write_opening_burst),
@@ -85,10 +85,10 @@ const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
 // call-count guarantee. The five-minute fastlane uses the intake clock and
 // must honor the interval returned here, not run an extra D1 write every 5m.
 export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
- interval_minutes:15,max_new_rows:5,producers_per_slot:3,
- rows_read_per_slot:3200,
+ interval_minutes:15,max_new_rows:5,producers_per_slot:1,
+ rows_read_per_slot:300,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
- rows_read_fixed:100000,rows_written_fixed:2000,
+ rows_read_fixed:5000,rows_written_fixed:2000,
  expected_categories:3,maximum_original_records_per_slot:5,
  no_paid_capacity:true,protect_predge_reserve:true,
 });
@@ -120,7 +120,7 @@ export function planSourceIntake(snapshot,now){
  const rows_written=(c.rows_written_per_new_row*c.max_new_rows+
    c.rows_written_overhead_per_slot)*slots*c.producers_per_slot+
    c.rows_written_fixed+directSlots*HOT50_DIRECT_20M_FREE_RESERVE.rows_written_per_slot;
- // No borrowing from PREDGE's 500k read / 8k write reserve, critical
+ // No borrowing from PREDGE's 5k read / 8k write reserve, critical
  // emergency operations, or a future source tick. Strict '>' absorbs
  // non-atomic provider counter lag; unknown quota is a hard HOLD upstream.
  if(snapshot.remaining_rows_read<=D1_BUNDLE_LANES.critical.read_reserve+rows_read||
@@ -149,7 +149,7 @@ export const REGISTERED_ADAPTIVE_FREE_CAP=Object.freeze({
  worst_case_extra_rows_written_per_original:16,
  worst_case_extra_rows_read_per_original:64,
  additional_write_contingency:10_000,
- additional_read_contingency:100_000,
+ additional_read_contingency:5_000,
 });
 export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
   now=new Date(),criticalGranted=false,
@@ -170,7 +170,7 @@ export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
    remainingArchiveSlots*750-c.additional_write_contingency);
  const readRoom=Math.max(0,snapshot.remaining_rows_read-
    D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
-   remainingArchiveSlots*20_000-c.additional_read_contingency);
+   remainingArchiveSlots*1_000-c.additional_read_contingency);
  const extra=Math.max(0,Math.min(
    c.max_originals_per_15m-c.baseline_reserved_originals,
    Math.floor(writeRoom/(slots*c.worst_case_extra_rows_written_per_original)),
@@ -203,7 +203,7 @@ export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered
    (registered?.extra_write_reserved??0)-archiveSlots*750-10_000);
  const readAvailable=Math.max(0,snapshot.remaining_rows_read-
    D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
-   (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
+   (registered?.extra_read_reserved??0)-archiveSlots*1_000-5_000);
  const extra=Math.max(0,Math.min(95,
    Math.floor(writeAvailable/16),Math.floor(readAvailable/64)));
  const max_new_rows=baseline+extra;
@@ -242,7 +242,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
 
 
   // Provider-verified, account-scoped Workers Paid has no 5M/day hard
-  // physical read stop. Retain an independent, CONSERVATIVE 18M/180k
+  // physical read stop. Retain an independent, CONSERVATIVE 120k/180k
   // account-wide DAILY soft budget (well below official monthly allotments).
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
@@ -333,7 +333,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   const retentionReadHeadroom=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingHourSlots*2500+10000+
+      remainingHourSlots*1000+5000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved;
   const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
     Math.min(1000,safeRowsPerHour):0;
@@ -350,7 +350,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   const phase2hRawArchive=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingArchiveSlots*20_000+10_000+
+      remainingArchiveSlots*1_000+2_000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
@@ -367,7 +367,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved+
-      remainingArchiveSlots*20_000+25_000;
+      remainingArchiveSlots*1_000+2_000;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
@@ -377,7 +377,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // The measurement workflow also enforces its own 20-B2-request cap.
   const governedMeasurement=sourceIntake &&
     snapshot.remaining_rows_read>
-      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000+
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+3_000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500+
@@ -387,13 +387,13 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // Separate from source intake/signing; reserve 250k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
-      250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
+      5_000+PREDGE_D1_FREE_HEADROOM.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
       registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
-      D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-5_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
       D1_FREE_DAILY.rows_written-5_000-PREDGE_D1_FREE_HEADROOM.rows_written;
   // The observed account budget is the shared physical constraint.
@@ -404,7 +404,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // B2 network attempts still require their own shared atomic reservations.
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
-      250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
+      5_100+PREDGE_D1_FREE_HEADROOM.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
@@ -432,7 +432,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     retention_cleanup_source_budget_to_utc_reset_reserved:true,
     retention_cleanup_does_not_admit_research_or_signing:true,
     governed_measurement:governedMeasurement,
-    governed_measurement_extra_read_budget:governedMeasurement?25_000:0,
+    governed_measurement_extra_read_budget:governedMeasurement?3_000:0,
     governed_measurement_extra_write_budget:governedMeasurement?500:0,
     governed_measurement_no_signing_or_payments:true,
     predge_account_headroom_guard_enabled:true,
