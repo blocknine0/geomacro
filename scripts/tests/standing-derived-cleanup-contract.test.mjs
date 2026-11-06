@@ -6,7 +6,7 @@ test("protected derived & complete GRI review cleanup stays syntactically valid"
  const workflow=readFileSync(".github/workflows/standing-delegated-derived-attestation.yml","utf8");
  const marker="      - name: Delete temporary receipt bytes\n        if: always()\n        run: |\n";
  assert.equal(workflow.split(marker).length,2);
- const tail=workflow.split(marker)[1];
+ const tail=workflow.split(marker)[1].split("\n  gri-source-neutral-consented-signing:")[0];
  const script=tail.split("\n").filter(line=>line.startsWith("          ")).
   map(line=>line.slice(10)).join("\n")+"\n";
  const result=spawnSync("bash",["-n"],{input:script,encoding:"utf8"});
