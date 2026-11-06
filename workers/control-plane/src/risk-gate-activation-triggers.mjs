@@ -50,10 +50,27 @@ export function productActivationTriggers(product,{tier,verifiedGro=null,archive
    archiveProof?.archive_write_acknowledged===true)&&
   typeof archiveProof?.archive_key==="string"&&
   SHA.test(archiveProof.archive_sha256??"");
- const signedDays=history.filter(x=>x.proof_verified===true&&
+ const from=new Date(now-6*86400000).toISOString().slice(0,10);
+ const through=new Date(now).toISOString().slice(0,10);
+ const signedDays=new Set(history.filter(x=>x.proof_verified===true&&
   SHA.test(String(x.snapshot?.signed_gro_payload_sha256??""))&&
   Number.isFinite(x.snapshot?.verified_unified_risk_score)&&
-  /^\d{4}-\d{2}-\d{2}$/.test(x.day_utc)).length;
+  /^\d{4}-\d{2}-\d{2}$/.test(x.day_utc)&&
+  x.day_utc>=from&&x.day_utc<=through).map(x=>x.day_utc)).size;
+ const categories=["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"];
+ const category_triggers=categories.map(category=>{
+  const basic=product.category_observations?.find(row=>row.category===category);
+  const sheet=product.category_fact_sheets?.find(row=>row.category===category);
+  const eligible=tier==="basic_focused"?
+   Boolean(basic?.observed_count>0&&freshObserved):
+   tier==="standard"?Boolean(ready&&
+    sheet?.evidence_status==="VERIFIED_CORROBORATED"):
+    Boolean(ready&&sheet?.evidence_status==="VERIFIED_CORROBORATED");
+  return {category,triggered:eligible,
+   evidence_status:eligible?
+    tier==="basic_focused"?"OBSERVED_ONLY":"VERIFIED":
+    "PENDING_EVIDENCE"};
+ });
  const conditions=tier==="basic_focused"?[
   ["FRESH_OBSERVATION_IN_LAST_24H",Boolean(freshObserved)],
  ]:tier==="standard"?[
@@ -74,6 +91,7 @@ export function productActivationTriggers(product,{tier,verifiedGro=null,archive
   completed_conditions:conditions.filter(([,ok])=>ok).map(([id])=>id),
   pending_conditions:conditions.filter(([,ok])=>!ok).map(([id])=>id),
   signed_history_days_observed:Math.min(7,signedDays),
+  category_triggers,
   signed_gro_expiry:groFresh?verifiedGro.expires_at:null,
   re_evaluate_on:RISK_GATE_EVIDENCE_EVENTS,
   source_discovery_does_not_verify_event:true,
