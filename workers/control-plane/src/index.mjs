@@ -1605,7 +1605,7 @@ export default {
       return getAutomatedFinds(env,url.searchParams.get("category"));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/fastlane-intelligence")
-      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true,env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"));
+      return publicReadCache(()=>publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),"attributed_research",true));
     if(request.method==="GET"&&url.pathname==="/v1/public/derived-structural-72h")
       return publicReadCache(async()=>{
         // The 3 public category variants project from one source-neutral
@@ -1747,6 +1747,12 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    // Canonical root-admin authorization applies before either P0-B route.
+    // Keep this first among protected handlers for cold-start smoke contract.
+    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
+      return getP0bIngestionStatus(env);
+    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
+      return verifyLatestP0bCommitted(env);
     if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
       return p1SourceCoverageHealth(env);
     if(url.pathname==='/v1/internal/p1/source-cell-map'&&request.method==='PUT'){
@@ -1781,10 +1787,6 @@ export default {
       return readHot50ActivationCensus(env);
     if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-manifest")
       return readP0bParityManifest(env,url);
-    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
-      return getP0bIngestionStatus(env);
-    if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
-      return verifyLatestP0bCommitted(env);
 
     try {
       // Root-admin-only intake. The payload accepts structured facts, never
