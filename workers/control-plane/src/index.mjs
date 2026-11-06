@@ -1110,6 +1110,8 @@ async function health(env) {
       .first();
     if (!row || Number(row.version) < 1) return json({ ok: false, error: "D1_SCHEMA_NOT_READY" }, 503);
     return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
+       d1_hotspot_v2_enabled:env.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
+       payment_runtime_locked:env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=="ACCEPTED_CANONICAL_D1_PAID_RUNTIME",
       derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION,
       deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
         ? env.GEOMACRO_SOURCE_SHA : null });
@@ -2181,6 +2183,16 @@ export default {
         headers.set("Cache-Control","no-store");
         headers.set("X-GeoMacro-Origin-Readback","d1-canonical");
         return new Response(direct.body,{status:direct.status,headers});
+      }
+      // Protected, no-funds hot50 CQRS producer ACK (never a public write).
+      if(request.method==="PUT"&&url.pathname==="/v1/internal/hot50-cqrs-refresh"&&!url.search){
+        if(env?.GEOMACRO_D1_READ_HOTSPOT_V2!=="1")
+          return json({ok:false,error:"CQRS_CANARY_FLAG_DISABLED"},409);
+        const receipt=await refreshHot50MaterializedNews(env,Date.now());
+        return json({schema:"geomacro.hot50-cqrs-canary-ack.v1",
+          ok:receipt.ok===true,state:receipt.status,rows:receipt.rows??null,
+          rows_written:receipt.rows_written_for_write??null,
+          payment_performed:false},receipt.ok===true?200:503);
       }
       if(request.method==="PUT"&&url.pathname==="/v1/internal/public-news-page-refresh"&&!url.search){
         // Owner authenticated, public-only, no new publisher source fetch

@@ -1,0 +1,30 @@
+{
+  "schema": "geomacro.phase1-canary-policy.v1",
+  "worker_name": "geomacro-control-plane",
+  "worker_config_source": "workers/control-plane/wrangler.example.jsonc",
+  "worker_config_generated": "workers/control-plane/wrangler.runtime.jsonc",
+  "d1_binding": "DB",
+  "d1_database_name": "geomacro-control-plane",
+  "d1_migrations": [
+    "0204_d1_read_hotspot_optimization.sql",
+    "0205_d1_internal_soft_budget.sql"
+  ],
+  "read_hotspot_feature_flag": "GEOMACRO_D1_READ_HOTSPOT_V2=1",
+  "paid_internal_daily_soft_rows_read": 18000000,
+  "paid_internal_daily_soft_rows_written": 180000,
+  "hot50_only_risk_gate": true,
+  "commercial_payment_unlock": false,
+  "stage_ramp_percentages": [
+    0,
+    1,
+    5,
+    25,
+    50,
+    100
+  ],
+  "base_version_rollback_required": true,
+  "canary_hold_kept_in_repo": true,
+  "canary_environment_requires_reviewers": true,
+  "analytics_must_contain_real_version_traffic": true,
+  "zero_sample_is_failure": true
+}

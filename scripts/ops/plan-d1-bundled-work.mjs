@@ -9,6 +9,7 @@ import {appendFileSync,readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
+import {assessPaidEnvelope,paidBundleContract} from "./d1-paid-envelope.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
@@ -256,75 +257,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     Number.isFinite(Date.parse(paidProof.observed_at))&&
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
-  if(paid){
-    const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const dailyReads=Math.floor(4_000_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-4_000_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const dailyWrites=Math.floor(40_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-40_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const admitted=snapshot.observed_rows_read<dailyReads&&
-      snapshot.observed_rows_written<dailyWrites;
-    const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
-    const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
-    const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
-    // Reserve ALL existing source producers through UTC reset, not merely
-    // this caller. Paid entitlement previously granted critical=true while
-    // source_intake=false, permanently starving the actual news collector.
-    const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
-    const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
-    const futureWriteRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
-    const futureReadRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
-    // Future slots use the full-day ceiling; this slot still uses its paced
-    // allowance. Reserving tomorrow's work from today's early-hour allowance
-    // would incorrectly stop intake immediately after every UTC reset.
-    const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
-      D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
-    const sourceIntake=admitted&&rowsPerSlot>=3&&
-      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
-      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
-    const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
-      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
-    return Object.freeze({
-      schema:"geomacro.d1-free-bundled-work-admission.v1",
-      day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
-      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
-        "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
-      critical:admitted,research:false,maintenance:false,
-      phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
-      phase2h_raw_archive_max_rows_per_slot:300,
-      phase2h_raw_archive_requires_atomic_b2_quota:true,
-      historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
-      registered_private_max_new_rows:0,
-      source_intake_max_new_rows:sourceIntake?rowsPerSlot:0,snapshot_refresh:false,
-      structural_snapshot:false,
-      structural_snapshot_max_b2_network_attempts:0,
-      structural_snapshot_requires_atomic_b2_account_reservation:true,
-      snapshot_refresh_does_not_admit_ingestion:true,
-      source_intake_does_not_admit_signing_or_audits:true,
-      observed_rows_read:snapshot.observed_rows_read,
-      observed_rows_written:snapshot.observed_rows_written,
-      // Provider-verified paid capacity is not subjected to the Free physical
-      // daily 5M cap; the existing conservative paid soft budget still applies.
-      predge_account_headroom_guard_enabled:false,
-      predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
-      predge_account_headroom_is_hard_partition:false,
-      predge_request_governor_is_separate_and_unchanged:true,
-      paid_capacity_verified_by_provider:true,
-      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
-      daily_account_soft_limit_read:dailyReads,
-      daily_account_soft_limit_write:dailyWrites,
-      paid_subscription_change_performed:false,
-      paid_billing_is_operator_controlled:true,
-      d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
-      budget_is_nonatomic_provider_snapshot:true,
-    });
+  if(paid) {
+    // Workers Paid has no Free-tier 100k/day stop. GeoMacro retains its own
+    // conservative soft envelope, and each writer must reserve atomically.
+    return paidBundleContract(assessPaidEnvelope(snapshot,{now,paidProof,spendGuardProof}));
   }
   const paced=Object.fromEntries(Object.keys(D1_BUNDLE_LANES).map(lane=>[
     lane,d1LanePacedCeiling(lane,now),

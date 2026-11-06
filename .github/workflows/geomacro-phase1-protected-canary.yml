@@ -1,0 +1,79 @@
+name: GeoMacro Phase 1 Parts 01-02 Protected Canary
+on:
+  workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Reviewed exact main commit SHA (40 hex)"
+        required: true
+        type: string
+      base_version_id:
+        description: "Cloudflare currently deployed 100% Worker version UUID"
+        required: true
+        type: string
+      owner_approval:
+        description: "Type APPROVE_PHASE1_PART01_02_NO_FUNDS"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+jobs:
+  phase1-protected-release:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.actor == 'blocknine0' &&
+      inputs.owner_approval == 'APPROVE_PHASE1_PART01_02_NO_FUNDS' &&
+      inputs.release_sha == github.sha
+    runs-on: ubuntu-24.04
+    timeout-minutes: 110
+    # Configure required reviewers, prevent self-review and branch bypass.
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: ${{ secrets.GEOMACRO_CONTROL_PLANE_D1_DATABASE_ID }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
+      BASE_VERSION_ID: ${{ inputs.base_version_id }}
+      REVIEWED_RUNTIME_CONFIG_SHA256: ${{ secrets.GEOMACRO_REVIEWED_CANARY_CONFIG_SHA256 }}
+      CANARY_OWNER_APPROVAL: ${{ inputs.owner_approval }}
+      API_ORIGIN: https://api.geomacro.live
+      MIN_CANARY_REQUESTS: '20'
+      MAX_CANARY_ERROR_RATE: '0.01'
+      CANARY_OBSERVATION_SECONDS: '600'
+      HEALTH_WINDOW_MINUTES: '10'
+    steps:
+      - name: Checkout exact protected main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Verify patch committed, hold preserved and offline checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          node scripts/ops/phase1-writer-integration-gate.mjs
+          test "$(git rev-parse HEAD)" = "${{ inputs.release_sha }}"
+          node scripts/ops/apply-phase1-patch.mjs
+          git diff --exit-code
+          node --test scripts/tests/phase1-paid-canary.test.mjs scripts/tests/d1-read-hotspot-v2.test.mjs
+          test -f workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql
+          test -f workers/control-plane/migrations/0205_d1_internal_soft_budget.sql
+      - name: Stages A-G (rollback to previous Worker on any failure)
+        run: bash scripts/ops/phase1-canary.sh
+      - name: Preserve nonsecret exact-version and D1 bookmark receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: phase1-protected-release-receipts
+          path: artifacts/phase1-canary/*.json
+          if-no-files-found: ignore
+          retention-days: 7
