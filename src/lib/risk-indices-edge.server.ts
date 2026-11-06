@@ -69,12 +69,19 @@ export function validatePublicRiskIndices(data: PublicRiskIndices | null | undef
 
 export async function readRiskIndicesEdge(mode: IndexReadMode = "current"): Promise<PublicRiskIndices | null> {
   try {
-    const response = await fetch(EDGE_URL, {
+    const endpoint=mode==="historical"?EDGE_URL+"/history":EDGE_URL;
+    const response = await fetch(endpoint, {
       method: "GET",
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),
     });
     if (!response.ok || response.headers.get("x-geomacro-authority") !== EDGE_AUTHORITY) return null;
+    if (mode === "historical" &&
+        (response.headers.get("x-geomacro-display-status") !== "last_verified" ||
+         !["deployment-b2-readback-verified",
+           "b2-exact-compressed-hash-readback-proof"].includes(
+             response.headers.get("x-geomacro-historical-verification") ?? "")))
+      return null;
 
     const payload = await response.json() as {
       schema?: string;
