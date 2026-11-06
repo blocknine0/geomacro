@@ -235,7 +235,7 @@ function provisionalServiceResult(
         reason_code:"verified_signed_gro_required_for_executable_policy",
         current_value:"DISCOVERY_ONLY",required_value:"VERIFIED",delta_required:null}],
       note:"Counterfactual context only; it never authorizes execution."},
-    subject:{type:"country",id:country},
+    subject:{type:"country",id:country,name:null},
     risk:{object_id:"derived-observation:"+country+":"+timestamp,
       score:proxy,label:hasEvidence?"WATCH":"CRITICAL",
       previous_score:null,delta:null,confidence:0,
