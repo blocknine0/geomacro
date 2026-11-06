@@ -9,9 +9,10 @@ import {createHash} from 'node:crypto';
 import {join,relative,sep} from 'node:path';
 
 const SCAN_ROOTS=Object.freeze(['workers','src','scripts']);
-const SOURCE=/\.(?:mjs|js|cjs|ts)$/u;
+const SOURCE=/\.(?:mjs|js|cjs|ts|sh|ya?ml|sql)$/u;
 const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
+const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+(?:execute|migrations)\b/iu;
 function filesUnder(root){
  const out=[];
  function walk(dir){
@@ -33,7 +34,9 @@ for(const root of SCAN_ROOTS){
  for(const path of filesUnder(root)){
   let source;
   try{source=readFileSync(path,'utf8')}catch{throw Error('CANARY_WRITER_SCAN_READ_FAILED:'+path)}
-  if(!D1_API.test(source)||!SQL_WRITE.test(source))continue;
+  if(!((D1_API.test(source)&&SQL_WRITE.test(source))||
+       (DIRECT_D1_COMMAND.test(source)&&SQL_WRITE.test(source))||
+       (path.endsWith('.sql')&&SQL_WRITE.test(source))))continue;
   const normalized=relative('.',path).split(sep).join('/');
   candidates.set(normalized,createHash('sha256').update(source).digest('hex'));
  }
@@ -46,7 +49,7 @@ if(doc.schema!=='geomacro.phase1.d1-writer-integration.v1'||
 }
 const seen=new Set();
 for(const p of doc.producers){
- if(typeof p.path!=='string'||!/^((workers|scripts|src)\/)[\w./-]+\.(?:mjs|js|cjs|ts)$/.test(p.path)||
+ if(typeof p.path!=='string'||!/^((workers|scripts|src)\/)[\w./-]+\.(?:mjs|js|cjs|ts|sh|yml|yaml|sql)$/.test(p.path)||
     seen.has(p.path)||!Array.isArray(p.direct_write_references)||
     !p.direct_write_references.length||!p.admission_helper_import||
     !/^[a-f0-9]{64}$/.test(p.reviewed_sha256??'')){
