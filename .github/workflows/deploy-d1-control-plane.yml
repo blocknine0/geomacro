@@ -82,6 +82,10 @@ on:
       - "workers/control-plane/src/ask-public-model-cache.mjs"
       - "workers/control-plane/migrations/0130_ask_public_model_cache.sql"
       - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/src/hot50-production-activation-census.mjs"
+      - "workers/control-plane/src/reviewed-risk-indices-delivery.mjs"
+      - "workers/control-plane/migrations/0202_hot50_activation_audit_views.sql"
+      - "scripts/tests/hot50-production-activation.test.mjs"
       - "workers/control-plane/src/progressive-risk-gate.mjs"
       - "workers/control-plane/migrations/0201_progressive_risk_gate_facts.sql"
       - "scripts/tests/progressive-risk-gate.test.mjs"
@@ -188,6 +192,13 @@ on:
       - "scripts/ops/predge-research-journal-parity.mjs"
       - "lib/intelligence-publication-authority.mjs"
       - "workers/control-plane/**"
+      - "scripts/ops/verify-hot50-production-activation.mjs"
+      - "scripts/ops/audit-hot50-b2-d1-parity.mjs"
+      - "server/api/public/reviewed-risk-indices.get.ts"
+      - "src/lib/reviewed-risk-index-retrieval.server.ts"
+      - "src/lib/use-risk-indices.ts"
+      - "src/lib/ask-answer.server.ts"
+      - "src/components/risk-indices/risk-indices-workspace.tsx"
       - "scripts/ops/provision-progressive-risk-gate-key.mjs"
       - "src/routes/api.risk-gate.ts"
       - "src/lib/risk-gate-service.server.ts"
@@ -224,6 +235,9 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Test complete Hot50 D1 census, fail-closed certification and parity cursors
+        run: node --test scripts/tests/hot50-production-activation.test.mjs
+
       - name: Verify unified cron failure visibility and production API route contracts
         run: node --test scripts/lib/hot50-production-proof.test.mjs scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
@@ -937,6 +951,19 @@ jobs:
             exit 19
           }
           node scripts/ops/verify-progressive-risk-gate-live.mjs
+
+      - name: Audit full Hot50 activation and one bounded idempotent redrive (no funds)
+        # A missing authentic reviewer certificate or bucket-wide B2 proof
+        # MUST remain visible FAIL; it does not block safe Worker deployment.
+        continue-on-error: true
+        env:
+          ACTIVATION_RUN_IDEMPOTENT_REDRIVE: "1"
+          ACTIVATION_ALLOW_MODEL_PROBE: "1"
+          GEOMACRO_CONTROL_PLANE_URL: ${{ steps.origin.outputs.url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-hot50-production-activation.mjs
 
       - name: Live unified TWN CHN Bab-el-Mandeb 3-category D1 Supabase canary (no funds)
         env:

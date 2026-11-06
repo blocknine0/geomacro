@@ -1,3 +1,4 @@
+import {readCurrentReviewedSignedIndices,signedCategoryReading} from "./reviewed-risk-index-retrieval.server";
 import { domainGuideAnswer } from "./ask-domain-guide";
 import {
   answerQuestion as answerHybridQuestion,
@@ -163,15 +164,30 @@ export async function answerAskQuestion(question: string): Promise<HybridAskAnsw
   // category-specific unavailable answer, not a blank chat or wrong category.
   const scopedIndex=canonicalScoredIndexQuestion(question);
   if(scopedIndex){
-    try{
-      const matched=await answerHybridQuestion(question);
-      const text=[matched.summary,matched.what_changed,matched.geomacro_view].join(" ");
-      if(matched.insufficient_evidence===false &&
-         matched.low_confidence===false &&
-         text.includes(scopedIndex) &&
-         /verified Risk Indices package/iu.test(matched.summary))
-        return matched;
-    }catch{/* Missing B2/edge cannot become an invented current score. */}
+    const domain=scopedIndex==="Geopolitical Risk Index"?"geopolitics":
+      scopedIndex==="Macroeconomic Risk Index"?"macro":"critical_minerals";
+    // This is a bounded direct read of a CURRENT, reviewer-gated GRI v1.2
+    // with verified Ed25519 issuer delivery. No prompt, Groq call or
+    // self-certified news-severity score is used for numeric index answers.
+    const signed=await readCurrentReviewedSignedIndices();
+    const matched=signed?signedCategoryReading(signed,domain):null;
+    if(matched&&signed){
+      return {
+        summary:scopedIndex+": "+matched.score+"/100 (reviewed GRI v1.2, as of "+
+          signed.snapshotAsOf+").",
+        what_changed:"A current, authenticated reviewer-gated signed index reading was retrieved. No historical movement or event attribution is inferred.",
+        why_it_matters:"The reading is sourced from the existing independently reviewed scoring and B2/D1 publication lineage, rather than news-feed triage.",
+        geomacro_view:"Source-native timestamp: "+signed.snapshotAsOf+
+          ". Issuer Ed25519 delivery was verified; the result is advisory and never execution authorization.",
+        evidence:[],insufficient_evidence:false,mean_relevance:null,
+        low_confidence:false,gri:null,generatedAt:new Date().toISOString(),
+        data_mode:"ephemeral_live",cache_status:"bypassed",
+        answer_kind:"public_info",source_identity_exposed:false,
+        durable_live_storage_write:false,
+        real_time_message:"CURRENT_SIGNED_REVIEWED_RISK_INDEX",
+        signed_gro_generated:false,independent_same_event_verification:false
+      };
+    }
     return unavailableScoredIndex(scopedIndex);
   }
   // For explicit precise official measurements, either answer with a verified

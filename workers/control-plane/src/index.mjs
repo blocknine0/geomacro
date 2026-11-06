@@ -1,3 +1,5 @@
+import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
+import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
 import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
@@ -1623,6 +1625,11 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     // Public verification material only; private signer remains protected.
+    // Current genuinely reviewed GRI v1.2 only: Ed25519 delivery receipt.
+    // No internal news severity, machine triage, replay or fabricated score.
+    if(request.method==="GET"&&url.pathname==="/v1/public/reviewed-risk-indices"&&!url.search)
+      return serveReviewedSignedRiskIndices(env,
+        product=>getPublicHotSnapshot(env,product));
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-decision-key"&&!url.search){
       const id=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
       const spki=String(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
@@ -1740,6 +1747,30 @@ export default {
       }catch{return json({ok:false,error:"P1_MAPPING_REQUEST_INVALID"},400)}
     }
     if(url.pathname.startsWith('/v1/internal/p0a/'))return handleP0aAdmin(request,env);
+    // Owner-only bounded recovery. Existing CAS leases, SHA identities,
+    // quota governor and independent B2 readback remain authoritative.
+    // This is NOT an unbounded queue flush and never certifies indices.
+    if(request.method==="POST"&&url.pathname==="/v1/internal/activation/redrive"&&!url.search){
+      const outbox=await drainP0bArchiveOutbox(env,{limit:2});
+      const fifo=await drainBacklog(env,{limit:100});
+      const r2=await drainR2Fallback(env,{limit:2});
+      const acceptable=new Set(["P0B_OUTBOX_REPLAY_OK","P0B_OUTBOX_B2_CIRCUIT_HELD"]);
+      return Response.json({ok:acceptable.has(outbox.status)&&
+        !["DRAIN_CONFIG_UNAVAILABLE","D1_QUOTA_STATUS_UNAVAILABLE","D1_BACKLOG_READ_UNAVAILABLE","DRAIN_PARTIAL"].includes(fifo.status),
+        schema:"geomacro.activation-bounded-redrive.v1",
+        outbox:{status:outbox.status,selected:outbox.selected??0,
+          archived:outbox.archived??0,failed:outbox.failed??0},
+        fifo:{status:fifo.status,selected:fifo.selected??0,
+          queued:fifo.count??0,failed:fifo.failed??0},
+        r2:{status:r2.status,selected:r2.selected??0,verified:r2.verified??0},
+        empty_queue_not_assumed:true,do_not_count_duplicate_dispatches:true,
+        no_funds:true},{headers:{"Cache-Control":"private, no-store",
+          "X-Content-Type-Options":"nosniff"}});
+    }
+    if(request.method==="GET"&&url.pathname==="/v1/internal/activation/hot50-census")
+      return readHot50ActivationCensus(env);
+    if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-manifest")
+      return readP0bParityManifest(env,url);
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
       return getP0bIngestionStatus(env);
     if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')

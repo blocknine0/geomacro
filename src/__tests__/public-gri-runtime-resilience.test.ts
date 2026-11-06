@@ -49,7 +49,8 @@ describe("public risk runtime resilience", () => {
     expect(legacyHook).toContain("body.meta?.authority !== EDGE_AUTHORITY");
     expect(legacyHook).toContain("validateGlobalRiskContinuity(next)");
     expect(legacyHook).toContain('setStatus("error")');
-    expect(indicesHook).toContain('setStatus(hasData.current ? "ready" : "error")');
+    expect(indicesHook).toContain('setStatus(previousIsCurrent ? "ready" : "error")');
+    expect(indicesHook).toContain("Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000");
     expect(indicesHook).toContain('RiskIndicesStatus = "loading" | "ready" | "updating" | "error"');
   });
 
@@ -63,7 +64,11 @@ describe("public risk runtime resilience", () => {
     const retainedBranch=legacyCatch.split("if (retained) {")[1]?.split("} else {")[0] ?? "";
     expect(retainedBranch).toContain("setData(retained)");
     expect(retainedBranch).not.toContain("setData(null)");
-    expect(indicesCatch).not.toContain("setData(null)");
+    // Retain only genuinely current signed GRI values. On expiry, clearing
+    // the stale score is the required security behavior, not a resilience bug.
+    expect(indicesCatch).toContain('const previous=lastCurrent.current');
+    expect(indicesCatch).toContain('if(!previousIsCurrent)');
+    expect(indicesCatch).toContain('setData(null)');
   });
 
   it("does not add a synthetic score or browser database fallback", () => {

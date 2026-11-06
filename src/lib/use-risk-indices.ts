@@ -33,16 +33,52 @@ type RiskIndicesReadTarget =
 const REQUEST_TIMEOUT_MS = 8_000;
 const CERTIFIED_RETRY_DELAYS_MS = [350, 900] as const;
 const VERIFIED_READ_CACHE_MS = 60_000;
+const REVIEWED_SIGNED_RISK_INDICES_APP_URL="/api/public/reviewed-risk-indices";
+type SignedReviewedIndicesResponse={
+  ok:boolean;data?:PublicRiskIndices;
+  meta?:{authority?:string;signature_verified?:boolean;signature_scheme?:string;
+    public_key_trust?:string;source_as_of?:string};
+};
+async function readCurrentReviewedSignedIndices():Promise<PublicRiskIndices>{
+  const res=await fetch(REVIEWED_SIGNED_RISK_INDICES_APP_URL,{
+    method:"GET",redirect:"error",cache:"no-store",credentials:"same-origin",
+    headers:{"Accept":"application/json"},signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  });
+  if(res.status!==200||res.redirected)
+    throw Error("CURRENT_REVIEWED_SIGNED_GRI_UNAVAILABLE");
+  const body=await res.json() as SignedReviewedIndicesResponse;
+  if(body.ok!==true||body.meta?.authority!=="geomacro-reviewed-gri-ed25519-delivery"||
+     body.meta.signature_verified!==true||body.meta.signature_scheme!=="Ed25519"||
+     !validIndices(body.data))
+     throw Error("REVIEWED_GRI_CRYPTOGRAPHIC_ACCEPTANCE_INVALID");
+  const now=Date.now();
+  const snapshot=Date.parse(body.data.snapshotAsOf);
+  if(!Number.isFinite(snapshot)||snapshot>now+5*60000||now-snapshot>60*60000||
+     body.meta.source_as_of!==body.data.snapshotAsOf||
+     body.data.proofScope!=="verified-category-projection"||
+     body.data.indices.some(index=>
+       index.readingStatus!=="current"||
+       !Number.isFinite(Date.parse(index.readingAsOf??""))||
+       now-Date.parse(index.readingAsOf??"")>60*60000||
+       Date.parse(index.readingAsOf??"")>now+5*60000))
+    throw Error("REVIEWED_GRI_CURRENT_NATIVE_CLOCK_REQUIRED");
+  return body.data;
+}
+
 let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = null;
 
 /** Cache only a fully validated, issuer-pinned document. Never cache a failed or
  * unverified reading, and never substitute a legacy GRI for news severity. */
 async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<PublicRiskIndices> {
   if (!forceRefresh && lastCertifiedRead &&
-      Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS) {
+      Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS &&
+      Date.now()-Date.parse(lastCertifiedRead.data.snapshotAsOf)<=60*60000 &&
+      lastCertifiedRead.data.indices.every(index=>index.readingAsOf &&
+        Date.now()-Date.parse(index.readingAsOf)<=60*60000)) {
     return lastCertifiedRead.data;
   }
-  const data = await readGeoMacroCertifiedNewsRisk();
+  // Require real reviewer-gated GRI v1.2 publication; never self-certified news severity.
+  const data = await readCurrentReviewedSignedIndices();
   lastCertifiedRead = { loadedAt: Date.now(), data };
   return data;
 }
@@ -240,6 +276,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
   const [error, setError] = useState<UserError | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const hasData = useRef(false);
+  const lastCurrent = useRef<PublicRiskIndices|null>(null);
 
   const retry = useCallback(() => setReloadKey((value) => value + 1), []);
 
@@ -255,6 +292,7 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
           const response = await readCachedCertifiedNewsRisk(forceRefresh || attempt > 0);
           if (cancelled) return;
           hasData.current = true;
+          lastCurrent.current = response;
           setData(response);
           setError(null);
           setStatus("ready");
@@ -273,7 +311,17 @@ export function useRiskIndices(refreshMs = 5 * 60 * 1000) {
         "refreshing the verified public risk indices",
       );
       setError(userError);
-      setStatus(hasData.current ? "ready" : "error");
+      // A stale verified reading cannot remain presented as CURRENT. Keep
+      // only in-window previously reviewed scores during transient failures.
+      const previous=lastCurrent.current;
+      const previousIsCurrent=previous!==null &&
+        Number.isFinite(Date.parse(previous.snapshotAsOf)) &&
+        Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000 &&
+        previous.indices.every(index=>index.readingAsOf &&
+          Number.isFinite(Date.parse(index.readingAsOf)) &&
+          Date.now()-Date.parse(index.readingAsOf)<=60*60000);
+      if(!previousIsCurrent){hasData.current=false;lastCurrent.current=null;setData(null);}
+      setStatus(previousIsCurrent ? "ready" : "error");
     }
 
     // Always fetch on first client mount. Follow-up retries are automatic and
