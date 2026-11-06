@@ -1234,5 +1234,22 @@
     "predge_unmodified": true,
     "payments_unchanged": true,
     "production_deployment_acceptance_required": true
+  },
+  "approved_verified_historical_indices_20261106": {
+    "approval": "Founder explicitly directed permanent restoration of both missing certified Risk Indices path and accurately dated previously verified history, including the Risk Indices page, on 2026-11-06 (Asia/Kolkata). This approves ONLY the scoped historical/not-live presentation; does not authorize faking current certification or changing immutable Global Risk.",
+    "approved_source_commit": "e37cfe0789ae1109ef2c1a7f27ac84f9f93113be",
+    "approved_paths": [
+      "src/components/risk-indices/risk-indices-workspace.tsx",
+      "src/components/risk-indices/verified-historical-indices.tsx"
+    ],
+    "exact_blob_lock": true,
+    "scope": "Previously verified B2-readback-proven historical GRI values may appear only as LAST VERIFIED, with exact source-native clocks, separate from current independently reviewed indices.",
+    "current_signed_index_claim_unchanged": true,
+    "global_risk_final_lock_unmodified": true,
+    "published_source_sha_unchanged": true,
+    "pending_publish_acceptance": true,
+    "lovable_publish_required": true,
+    "current_certification_not_waived": true,
+    "payment_authorized": false
   }
 }
