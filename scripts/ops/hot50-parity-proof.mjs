@@ -11,8 +11,19 @@ export function parseBucketList(bytes,prefix){
  if(one("EncodingType")!=="url")throw Error("B2_LIST_ENCODING_INVALID");
  const truncated=one("IsTruncated");
  if(!["true","false"].includes(truncated))throw Error("B2_LIST_TRUNCATION_INVALID");
- const decodeXml=s=>s.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
- const keys=[...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map(m=>decodeURIComponent(decodeXml(m[1])));
+ // Unescape XML ampersands LAST. Otherwise &amp;lt; becomes < after two passes.
+ const decodeXml=s=>s.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,"&");
+ const keys=[...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map(m=>{
+   // ListObjectsV2 encoding-type=url percent-encodes object keys.
+   // Only the archive client's ASCII-safe key alphabet is accepted, after ONE
+   // XML entity decode and ONE percent decode. Reject traversal and residual %.
+   let key;
+   try { key=decodeURIComponent(decodeXml(m[1])); }
+   catch { throw Error("B2_LIST_KEY_INVALID"); }
+   if(!/^[A-Za-z0-9_./-]+$/.test(key)||key.includes("..")||key.includes("//"))
+     throw Error("B2_LIST_KEY_INVALID");
+   return key;
+ });
  if(keys.some(k=>!k.startsWith(prefix))||new Set(keys).size!==keys.length)
    throw Error("B2_LIST_SCOPE_OR_DUPLICATE_INVALID");
  if(Number(one("KeyCount"))!==keys.length)throw Error("B2_LIST_KEYCOUNT_INVALID");

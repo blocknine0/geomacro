@@ -11,6 +11,22 @@ test("physical list validates encoding, full pagination cursor and prefix",()=>{
  assert.throws(()=>parseBucketList(xml(),"other/"));
  assert.throws(()=>parseBucketList(Buffer.from('<!DOCTYPE x>'+xml()),prefix));
 });
+test("S3 key decoding is single-pass and rejects encoded traversal and embedded entities",()=>{
+ const cursor=xml("<NextContinuationToken>a&amp;lt;b&amp;quot;c&amp;amp;d</NextContinuationToken>","true");
+ assert.equal(parseBucketList(cursor,prefix).cursor,"a&lt;b&quot;c&amp;d");
+ const valid=xml().toString("utf8");
+ for(const bad of [
+  "geomacro-evidence%2Fv1%2Fspool%2F..%2Fsecret.gz",
+  "geomacro-evidence%252Fv1%2Fspool%2Fx.gz",
+  "geomacro-evidence%2Fv1%2Fspool%2Fx&amp;lt;script.gz",
+  "geomacro-evidence%2Fv1%2Fspool%2Fx%3Cscript%3E.gz",
+  "geomacro-evidence%2Fv1%2Fspool%2Fx%252E.gz",
+  "geomacro-evidence%2Fv1%2Fspool%2Fbad%ZZ.gz"
+ ]) {
+  const mutated=valid.replace("geomacro-evidence%2Fv1%2Fspool%2Fx.gz",bad);
+  assert.throws(()=>parseBucketList(Buffer.from(mutated),prefix),/B2_LIST_KEY_INVALID|B2_LIST_SCOPE_OR_DUPLICATE_INVALID/);
+ }
+});
 test("count-preserving canonical substitutions change the manifest commitment",()=>{
  const a={batch_id:"a",b2_uri:"b2://x",b2_object_sha256:"c",item_count:2};
  assert.notEqual(digestManifest([a]),digestManifest([{...a,b2_object_sha256:"d"}]));

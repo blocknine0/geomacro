@@ -106,7 +106,7 @@ before its atomic receipt/usage/debit commit.
 - `POST /v1/api-keys/{id}/revoke`: revoke an owned key.
 
 Key management requires the verified user's Supabase bearer JWT; a caller-supplied
-user UUID is never authentication. API calls use the generated `gm_live_...` key,
+user UUID is never authentication. API calls use the generated `gm_live2_...` key (legacy `gm_live_...` keys remain valid until rotated),
 not the user's login JWT. The browser onboarding/sandbox/store UI is Step 4.
 Existing D1 keys/balances are not automatically migrated into this separate
 PostgreSQL namespace.

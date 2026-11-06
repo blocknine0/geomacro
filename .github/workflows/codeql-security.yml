@@ -44,6 +44,9 @@ jobs:
         uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
         with:
           category: "/language:javascript-typescript"
+      - name: Summarize changed-file CodeQL results in PR (read-only)
+        if: github.event_name == 'pull_request'
+        run: node scripts/security/inspect-pr-codeql-sarif.mjs
       - name: Assert original three CodeQL alerts are FIXED on exact main SHA
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
