@@ -393,7 +393,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
         "source_id": "nrcan_news_atom",
         "name": "Natural Resources Canada News Releases Atom",
-        "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+        "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=json&atomtitle=Natural%20Resources%20Canada",
         "event_type": "CRITICAL_MINERALS_GOVERNMENT_RELEASE",
         "source_reliability": 95.0,
         "max_entry_age_hours": 168,
@@ -1169,7 +1169,64 @@ class LenientFeedParser:
         return list(unique.values())
 
 
+def parse_official_canada_json_feed(raw: bytes) -> list[dict[str, Any]]:
+    """Map Canada News API JSON records without inventing publication clocks."""
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return []
+    feed = document.get("feed") if isinstance(document, dict) else None
+    json_entries = feed.get("entry") if isinstance(feed, dict) else None
+    if not isinstance(json_entries, list):
+        return []
+
+    normalized: list[dict[str, Any]] = []
+    for item in json_entries:
+        if not isinstance(item, dict):
+            continue
+        title = item.get("title")
+        published = item.get("publishedDate")
+        link = item.get("link")
+        if not all(isinstance(value, str) and value.strip()
+                   for value in (title, published, link)):
+            continue
+        published_text = published.strip()
+        moment = None
+        if re.fullmatch(r"20\d{2}-\d{2}-\d{2}", published_text):
+            try:
+                datetime.strptime(published_text, "%Y-%m-%d")
+            except ValueError:
+                continue
+        else:
+            try:
+                moment = datetime.fromisoformat(published_text.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if moment.tzinfo is None:
+                continue
+        entry: dict[str, Any] = {
+            "title": title.strip(),
+            "published": published_text,
+            "link": link.strip(),
+            "id": link.strip(),
+        }
+        if moment is not None:
+            entry["published_parsed"] = moment.astimezone(timezone.utc).utctimetuple()
+        teaser = item.get("teaser")
+        if isinstance(teaser, str) and teaser.strip():
+            entry["summary"] = teaser.strip()
+        normalized.append(entry)
+    return normalized
+
+
 def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
+    # The Canada API's Atom view exposes <updated>, not <published>. Use its
+    # explicit JSON publishedDate field instead of treating mutable updates as
+    # original publication times.
+    canada_entries = parse_official_canada_json_feed(raw)
+    if canada_entries:
+        return canada_entries, "rss"
+
     parsed = feedparser.parse(raw)
     if parsed.entries:
         return list(parsed.entries), "rss"
