@@ -13,10 +13,15 @@ const SOURCE=/\.(?:mjs|js|cjs|ts|tsx|jsx|py|sh|bash|ps1|ya?ml|json|jsonc)$/u;
 const D1_CALL=/\b([A-Za-z_$][\w$]*)\s*(?:\?\.)?\.\s*(?:prepare|batch|exec)\s*\(/gu;
 const D1_BINDING_ALIAS=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*(?:\?\.)?\.\s*DB\b/gu;
 const D1_ALIAS_ASSIGNMENT=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gu;
+const D1_DATABASE_PARAMETER=/\b(?:async\s+)?function\s+[A-Za-z_$][\w$]*\s*\(\s*(db|database|DB|D1)\s*(?:[,)=])/gu;
 const D1_REST_ENDPOINT=/(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query/iu;
 function accessesD1(source){
  if(D1_REST_ENDPOINT.test(source))return true;
  const aliases=new Set(['DB']);
+ if(!/\b(?:node:sqlite|better-sqlite3)\b/u.test(source)){
+  D1_DATABASE_PARAMETER.lastIndex=0;
+  for(const match of source.matchAll(D1_DATABASE_PARAMETER))aliases.add(match[1]);
+ }
  let changed=true;
  while(changed){
   changed=false;
