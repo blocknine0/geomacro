@@ -69,7 +69,7 @@ test("Fast-Tick signs a canonical progressive receipt with actual Ed25519; pinne
  const result=await signRiskGateFastTick(state,env);
  assert.equal(result.status,"SIGNED");
  assert.equal(result.signer,"did:geomacro:authority:fast-tick-fixture-v1");
- const message=Buffer.from("geomacro.risk-gate-fast-tick.v1\\n"+result.canonical_hash.slice(7));
+ const message=Buffer.from("geomacro.risk-gate-fast-tick.v1\n"+result.canonical_hash.slice(7));
  assert.equal(verify(null,message,publicKey,
   Buffer.from(result.ed25519_signature,"base64")),true);
  assert.equal(result.signature_scope,"RESPONSE_AUTHENTICITY_NOT_SOURCE_VERIFICATION");
