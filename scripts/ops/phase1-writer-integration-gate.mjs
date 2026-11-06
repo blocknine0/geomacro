@@ -34,7 +34,6 @@ function accessesD1(source){
 }
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
 const SQL_READ=/\bSELECT\b/iu;
-const D1_READ_METHOD=/\.\s*(?:all|first|raw|run|batch|exec|query)\s*\(/iu;
 const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+execute\b/iu;
 function filesUnder(root){
  const out=[];
@@ -59,8 +58,7 @@ for(const root of SCAN_ROOTS){
   try{source=readFileSync(path,'utf8')}catch{throw Error('CANARY_WRITER_SCAN_READ_FAILED:'+path)}
   const d1Access=accessesD1(source)||DIRECT_D1_COMMAND.test(source);
   const write=d1Access&&SQL_WRITE.test(source);
-  const read=d1Access&&SQL_READ.test(source)&&
-    (D1_READ_METHOD.test(source)||DIRECT_D1_COMMAND.test(source)||D1_API.test(source));
+  const read=d1Access&&SQL_READ.test(source);
   const unknown=d1Access&&!write&&!read;
   if(!d1Access)continue;
   const normalized=relative('.',path).split(sep).join('/');
