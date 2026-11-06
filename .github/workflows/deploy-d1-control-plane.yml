@@ -72,6 +72,8 @@ on:
       - "scripts/ops/seed-p1-1077-source-registry.mjs"
       - "scripts/tests/p1-source-registry-seed.test.mjs"
       - "scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs"
+      - "workers/control-plane/src/ask-public-model-cache.mjs"
+      - "workers/control-plane/migrations/0130_ask_public_model_cache.sql"
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
@@ -217,7 +219,7 @@ jobs:
 
       - name: Run offline D1 recovery, caching and hashed-insights regression
         run: |
-          node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/reserve-p0b-native-auth-ticket.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
+          node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/reserve-p0b-native-auth-ticket.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/ask-public-model-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
           node --test scripts/tests/private-news-proof-boundary.test.mjs scripts/tests/public-signed-news.test.mjs
           node --test scripts/tests/phase2h-raw-news.test.mjs
           node --test scripts/tests/geomacro-news-severity-gri.test.mjs
@@ -233,6 +235,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GROQ_API_KEY_FOR_ASK_CACHE: ${{ secrets.GROQ_API_KEY }}
       RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
@@ -795,6 +798,43 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
+          # A purpose-specific HMAC of the existing GitHub Groq secret is used
+          # by the existing Lovable SSR Groq runtime for public-answer cache only.
+          # Never deploy the raw Groq API key to Cloudflare or display it.
+          test "${#GROQ_API_KEY_FOR_ASK_CACHE}" -ge 20 || {
+            echo "::error::ASK_GLOBAL_CACHE_EXISTING_GROQ_SECRET_MISSING"; exit 5;
+          }
+          ASK_PUBLIC_MODEL_CACHE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.GROQ_API_KEY_FOR_ASK_CACHE).update('geomacro-ask-public-model-cache-v1').digest('hex'))")"
+          test "${#ASK_PUBLIC_MODEL_CACHE_TOKEN}" -eq 64 || exit 5
+          echo "::add-mask::$ASK_PUBLIC_MODEL_CACHE_TOKEN"
+          printf '%s' "$ASK_PUBLIC_MODEL_CACHE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put ASK_PUBLIC_MODEL_CACHE_TOKEN --config wrangler.runtime.jsonc >/dev/null
+          echo "ASK_PUBLIC_MODEL_CACHE_TOKEN_PROVISIONED=true"
+          # One intentionally tiny, source-free D1 write/readback is required
+          # before counting the shared model cache as production activated.
+          export ASK_PUBLIC_MODEL_CACHE_TOKEN DEPLOYMENT_URL
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import {createHash} from "node:crypto";
+          const target=process.env.DEPLOYMENT_URL+"/v1/internal/ask/public-model-cache";
+          const key=createHash("sha256").update("geomacro-public-model-cache-canary:"+process.env.GITHUB_SHA).digest("hex");
+          const headers={Authorization:"Bearer "+process.env.ASK_PUBLIC_MODEL_CACHE_TOKEN,Accept:"application/json"};
+          const fields={summary:"Inflation refers to a broad price level increase.",
+            what_changed:"General explanation only; no current event established.",
+            why_it_matters:"Prices affect household purchasing power.",
+            geomacro_view:"Compare the same period and base for sound interpretation."};
+          const put=await fetch(target,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},
+            body:JSON.stringify({key,fields,expires_at:Math.floor(Date.now()/1000)+300}),
+            signal:AbortSignal.timeout(12000)});
+          assert.equal(put.status,200,"ASK_CACHE_PUT_NOT_200");
+          const p=await put.json();assert.equal(p.ok,true,"ASK_CACHE_PUT_FAILED");
+          const get=await fetch(target+"?key="+key,{headers,signal:AbortSignal.timeout(12000)});
+          assert.equal(get.status,200,"ASK_CACHE_GET_NOT_200");
+          const g=await get.json();
+          assert.equal(g.ok,true,"ASK_CACHE_READ_FAILED");
+          assert.equal(g.hit,true,"ASK_CACHE_READ_MISS");
+          assert.deepEqual(g.fields,fields,"ASK_CACHE_READBACK_FIELDS_DIFFER");
+          console.log("ASK_PUBLIC_MODEL_CACHE_AUTH_D1_WRITE_READBACK_PASS=true");
+          NODE
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
           # Install an approved ReliefWeb appname only if provisioned.
           # Never silently substitute an unapproved catalogue identifier.

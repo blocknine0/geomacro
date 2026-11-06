@@ -2,6 +2,7 @@ import type {HybridAskAnswer} from "./hybrid-ask-intelligence.server";
 import {collectAskModelContext,type AskModelContext} from "./ask-openai-evidence.server";
 import {safeGroundedOpenAIOutput} from "./ask-openai-grounded.server";
 import {cachedGroqAnswer} from "./ask-shared-answer-cache.server";
+import {readGlobalAskModelCache,writeGlobalAskModelCache} from "./ask-global-public-model-cache.server";
 
 /**
  * Free-only provider opt-in: the owner must verify Groq Free Plan, configure
@@ -98,7 +99,7 @@ export function repairBlankGroqFields(
   }
   return {text:JSON.stringify(repaired),hasNewWording};
 }
-type Dependencies={fetchImpl?:typeof fetch;readContext?:typeof collectAskModelContext};
+type Dependencies={fetchImpl?:typeof fetch;cacheFetchImpl?:typeof fetch;readContext?:typeof collectAskModelContext};
 function privateSafeContext(context:AskModelContext):AskModelContext{
  return {categories:context.categories.slice(0,3),
   canonical_evidence_items:context.canonical_evidence_items,
@@ -185,11 +186,29 @@ export async function enhanceAskWithFreeGroq(
    !eligible(canonical))return canonical;
  let cacheStatus:"hit"|"miss"|"coalesced"|"bypassed"="bypassed";
  let diagnostic="not_attempted";
+ let globalHit=false;
  const result=await cachedGroqAnswer(question,canonical,
-   ()=>requestFreeGroq(question,canonical,clientKey,dependencies,code=>{diagnostic=code;}),
+   async()=>{
+     // Read only hashed, existing public explainer wording. Never cache a
+     // current event, score, follow-up context or source record in D1.
+     // A mocked provider fetch is not a mock of the unrelated private D1
+     // cache. Production has neither dependency injected; tests may opt into
+     // cache behaviour with an explicit cacheFetchImpl mock.
+     const globalCacheEnabled=!dependencies.fetchImpl||Boolean(dependencies.cacheFetchImpl);
+     const remote=globalCacheEnabled
+       ? await readGlobalAskModelCache(question,canonical,dependencies.cacheFetchImpl??fetch)
+       : null;
+     if(remote){globalHit=true;return remote;}
+     const rendered=await requestFreeGroq(question,canonical,clientKey,dependencies,
+       code=>{diagnostic=code;});
+     if(rendered.model_rendering==="assisted"&&globalCacheEnabled)
+       await writeGlobalAskModelCache(question,canonical,rendered,dependencies.cacheFetchImpl??fetch);
+     return rendered;
+   },
    status=>{cacheStatus=status;});
  return {...result,
    model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
-   model_render_cache:cacheStatus,
+   model_render_cache:globalHit?"hit":cacheStatus,
+   model_render_cache_scope:globalHit?"distributed":String(cacheStatus)==="hit"?"runtime":"none",
    ...(result.model_rendering==="assisted"?{}:{model_render_failure:diagnostic})};
 }

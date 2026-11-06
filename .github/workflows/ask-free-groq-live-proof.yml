@@ -7,6 +7,8 @@ on:
     paths:
       - 'scripts/ops/verify-live-free-groq-ask*'
       - 'src/lib/ask-free-groq-grounded.server*'
+      - 'src/lib/ask-global-public-model-cache.server*'
+      - 'workers/control-plane/src/ask-public-model-cache.mjs'
       - 'src/lib/ask-shared-answer-cache.server*'
       - 'src/lib/hybrid-ask-intelligence.server.ts'
       - '.github/workflows/ask-free-groq-live-proof.yml'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'scripts/ops/verify-live-free-groq-ask*'
       - 'src/lib/ask-free-groq-grounded.server*'
+      - 'src/lib/ask-global-public-model-cache.server*'
+      - 'workers/control-plane/src/ask-public-model-cache.mjs'
       - 'src/lib/ask-shared-answer-cache.server*'
       - 'src/lib/hybrid-ask-intelligence.server.ts'
       - '.github/workflows/ask-free-groq-live-proof.yml'
@@ -35,6 +39,7 @@ jobs:
         with:
           node-version: '22'
       - run: node --test scripts/ops/verify-live-free-groq-ask.test.mjs
+      - run: node --test scripts/tests/ask-public-model-cache.test.mjs
       - name: Observe published SHA without provider calls or activation
         run: node --input-type=module -e 'import {readPublishedBuild} from "./scripts/ops/verify-live-free-groq-ask.mjs"; const b=await readPublishedBuild("https://geomacro.live"); console.log(JSON.stringify({published_build_status:b.status,canonical_sha:b.sha}));'
       - name: Observe one synthetic live Ask rendering status (no credentials)
@@ -52,7 +57,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '22'
-      - name: Require live three-category completions and a real warm cache hit
+      - name: Require three real Free Groq completions and distributed D1 cache hit
         env:
           EXPECTED_CANONICAL_MAIN_SHA: ${{ github.sha }}
         run: node scripts/ops/verify-live-free-groq-ask.mjs

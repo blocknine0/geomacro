@@ -15,16 +15,17 @@ function mockFetch(url,options){
  const answer={summary:"An approved educational answer.",answer_kind:"explainer",
   insufficient_evidence:false,low_confidence:false,gri:null,evidence:[],
   source_identity_exposed:false,durable_live_storage_write:false,
-  model_rendering:"assisted",model_render_cache:cache};
+  model_rendering:"assisted",model_render_cache:cache,
+  model_render_cache_scope:cache==="hit"?"distributed":"none"};
  return Promise.resolve(new Response("event: stage\ndata: {}\n\nevent: answer\ndata: "+JSON.stringify({ok:true,data:answer})+"\n\n",{
   status:200,headers:{"content-type":"text/event-stream"}}));
 }
-test("three domains and a repeated warm answer have observable generation and cache proof",async()=>{
+test("three domains and a repeated distributed answer have verifiable generation and cache proof",async()=>{
  questionBodies.length=0;
  const r=await verifyLiveAskFreeGroq("https://geomacro.live",mockFetch);
  assert.equal(r.model_generation_domains,3);
- assert.equal(r.same_runtime_cache_hit_observed,true);
- assert.equal(r.distributed_cache_proven,false);
+ assert.equal(r.warm_or_distributed_cache_hit_observed,true);
+ assert.equal(r.distributed_cache_proven,true);
  assert.equal(questionBodies.length,4);
 });
 test("rejects nonproduction target",async()=>{
