@@ -81,6 +81,27 @@ test('trusted canonical D1 primary and recovery writer completions wake all-news
  assert.match(enqueue,/github.event.workflow_run.name == 'Five-Minute Original News Fastlane'/);
 });
 
+test('completed source-neutral signing wakes GRI admission only, never GRI certification',()=>{
+ const name="Standing Delegated Derived Contract No Funds";
+ const workflow=readFileSync(".github/workflows/gri-signed-ready-cadence-backstop.yml","utf8");
+ assert.equal(workflow.split('"'+name+'"').length-1,1);
+ assert.match(workflow,/github.event.workflow_run.name == 'Standing Delegated Derived Contract No Funds'/);
+ for(const event of ["schedule","push","workflow_dispatch","workflow_run"]){
+  const r=verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,event}}});
+  assert.equal(r.allowed,true);
+  assert.equal(r.news_workflow_ancestry_verified,false);
+  assert.equal(r.consented_machine_audit_wakeup_only,true);
+  assert.equal(r.signed_gri_input_verified,false);
+  assert.equal(r.published,false);
+  assert.equal(r.b2_requests+r.d1_writes+r.payments,0);
+ }
+ for(const patch of [
+  {conclusion:"failure"},{head_branch:"feature"},{event:"pull_request"},
+  {head_repository:{full_name:"other/geomacro"}},{head_sha:"main"}
+ ])assert.throws(()=>verifyGriNewsWakeup({...args,event:{workflow_run:{...run,name,...patch}}}));
+ assert.throws(()=>verifyGriNewsWakeup({...args,isAncestor:false,
+  event:{workflow_run:{...run,name}}}));
+});
 test('successful canonical D1 deployment resumes originals after main advances without admitting GRI',()=>{
  const deployed={...run,name:'Deploy D1 Control Plane',event:'push',status:'completed'};
  for(const event of ['push','workflow_dispatch']){
