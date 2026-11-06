@@ -1,0 +1,48 @@
+name: Ask Free Groq Live Rendering Proof (No Funds)
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "23 3 * * *"
+  pull_request:
+    paths:
+      - 'scripts/ops/verify-live-free-groq-ask*'
+      - 'src/lib/ask-free-groq-grounded.server*'
+      - 'src/lib/ask-shared-answer-cache.server*'
+      - 'src/lib/hybrid-ask-intelligence.server.ts'
+      - '.github/workflows/ask-free-groq-live-proof.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/ops/verify-live-free-groq-ask*'
+      - 'src/lib/ask-free-groq-grounded.server*'
+      - 'src/lib/ask-shared-answer-cache.server*'
+      - 'src/lib/hybrid-ask-intelligence.server.ts'
+      - '.github/workflows/ask-free-groq-live-proof.yml'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-ask-free-groq-live-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - run: node --test scripts/ops/verify-live-free-groq-ask.test.mjs
+  live-production:
+    needs: offline-contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '22'
+      - name: Require live three-category completions and a real warm cache hit
+        run: node scripts/ops/verify-live-free-groq-ask.mjs
