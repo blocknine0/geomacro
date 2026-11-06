@@ -34,6 +34,7 @@ jobs:
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
       - name: Fail closed on unreviewed production D1 reader/writer paths
+        if: always()
         run: node scripts/ops/phase1-writer-integration-gate.mjs
 
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
