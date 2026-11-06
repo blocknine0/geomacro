@@ -5,6 +5,7 @@
  */
 // Load the canonical TS engine lazily only after signed GRO acceptance.\n// The D1 Worker is also imported by Node ESM ops tests without TS extension resolution.
 
+import {readCachedSignedGro} from "./signed-gro-read-cache.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
 import {readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
@@ -234,8 +235,9 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  let gro,facts,sevenDayRollupReady;
  try{
    [gro,facts,sevenDayRollupReady]=await Promise.all([
-     (async()=>{const row=await hotRow(env.DB,parsed.subject,now);
-       return row?verifyHotGRO(row,env,parsed.subject,now,authority):null;})(),
+     readCachedSignedGro(env,parsed.subject,now,
+        ()=>hotRow(env.DB,parsed.subject,now),
+        row=>row?verifyHotGRO(row,env,parsed.subject,now,authority):null),
      readProgressiveFacts(env.DB,parsed.subject,now),
      sevenDayRollupIsReady(env,parsed.subject,now),
    ]);
