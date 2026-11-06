@@ -17,7 +17,9 @@ export function parseBucketList(bytes,prefix){
    // ListObjectsV2 encoding-type=url percent-encodes object keys.
    // Only the archive client's ASCII-safe key alphabet is accepted, after ONE
    // XML entity decode and ONE percent decode. Reject traversal and residual %.
-   const key=decodeURIComponent(decodeXml(m[1]));
+   let key;
+   try { key=decodeURIComponent(decodeXml(m[1])); }
+   catch { throw Error("B2_LIST_KEY_INVALID"); }
    if(!/^[A-Za-z0-9_./-]+$/.test(key)||key.includes("..")||key.includes("//"))
      throw Error("B2_LIST_KEY_INVALID");
    return key;
