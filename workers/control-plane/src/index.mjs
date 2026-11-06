@@ -28,7 +28,7 @@ import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, re
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
-import {readNewsIntakePolicy,storeNewsIntakePolicy} from "./news-intake-policy.mjs";
+import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
@@ -1734,6 +1734,16 @@ export default {
       return verifyLatestP0bCommitted(env);
 
     try {
+      // Root-admin-only intake. The payload accepts structured facts, never
+      // publisher article bodies, snippets, headlines or HTML.
+      if(request.method==="POST"&&url.pathname==="/v1/internal/risk-gate/progressive-facts"&&!url.search){
+        const body=await readJson(request,24000);
+        if(!body||body.schema!=="geomacro.progressive-fact-batch.v1"||
+          !Array.isArray(body.facts)||Object.keys(body).some(k=>!["schema","facts"].includes(k)))
+          return json({ok:false,error:"PROGRESSIVE_FACT_BATCH_INVALID"},400);
+        try{return json(await admitProgressiveRiskFacts(env,body.facts))}
+        catch{return json({ok:false,error:"PROGRESSIVE_FACT_BATCH_REJECTED"},422)}
+      }
       // Owner-only GRO evidence status: readiness is NOT a paid/signed object.
       if(request.method==="GET"&&url.pathname==="/v1/internal/gro-evidence/status"&&!url.search)
         return groEvidenceStatus(env);
