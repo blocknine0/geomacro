@@ -7,6 +7,9 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 const REPO='blocknine0/geomacro';
 const SHA=/^[a-f0-9]{40}$/u;
+// A successful consented machine audit is a wakeup only, not a first-party
+// original source and never a numerical reviewer/country certificate.
+export const GRI_CONSENTED_SIGNER_WAKEUP="Standing Delegated Derived Contract No Funds";
 export const GRI_NEWS_WORKFLOWS=Object.freeze([
  'Auto Ingest News','Five-Minute Original News Fastlane',
  // Both existing D1 newsroom writers must wake exact derived-input signer.
@@ -30,18 +33,23 @@ export function verifyGriNewsWakeup({env,event={},checkoutSha,isAncestor=false}=
   throw Error('GRI_NEWS_WAKEUP_EVENT_REJECTED');
  if(kind==='workflow_run'){
   const run=event.workflow_run;
-  if(!GRI_NEWS_WORKFLOWS.includes(run?.name)||run.conclusion!=='success'||
+  const signedPolicyWakeup=run?.name===GRI_CONSENTED_SIGNER_WAKEUP;
+  if((!signedPolicyWakeup&&!GRI_NEWS_WORKFLOWS.includes(run?.name))||run.conclusion!=='success'||
      run.head_repository?.full_name!==REPO||run.head_branch!=='main'||
      !(['schedule','workflow_dispatch','push'].includes(run.event) ||
        (run.event==='workflow_run' &&
         ['Five-Minute Original News Fastlane',
          'Website Derived News Continuity',
-         'Website Derived News Cadence Backstop'].includes(run.name)))||
+         'Website Derived News Cadence Backstop',
+         GRI_CONSENTED_SIGNER_WAKEUP].includes(run.name)))||
      !SHA.test(run.head_sha??'')||isAncestor!==true)
    throw Error('GRI_NEWS_WAKEUP_TRUSTED_ANCESTOR_REQUIRED');
  }
  return Object.freeze({schema:'geomacro.gri-news-wakeup.v1',
-  allowed:true,news_workflow_ancestry_verified:kind==='workflow_run',
+  allowed:true,news_workflow_ancestry_verified:
+     kind==='workflow_run' && event.workflow_run?.name!==GRI_CONSENTED_SIGNER_WAKEUP,
+  consented_machine_audit_wakeup_only:
+     kind==='workflow_run' && event.workflow_run?.name===GRI_CONSENTED_SIGNER_WAKEUP,
   signed_gri_input_verified:false,published:false,b2_requests:0,d1_writes:0,payments:0});
 }
 // A deployment completion can resume the original-news producer, but cannot

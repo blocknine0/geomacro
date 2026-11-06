@@ -20,6 +20,9 @@ on:
       # Direct wakeup after authenticated native-date private original intake.
       # The already signed reviewer+owner exact SHA gate still runs FIRST.
       - "Current Original Private Signing Review Intake (No Funds)"
+      # Successful scoped machine-policy audit wakes the existing GRI readiness
+      # gate without creating any numeric review or source certification.
+      - "Standing Delegated Derived Contract No Funds"
       - "Africa Country Source Sweep (Every 2 Hours)"
       - "Asia Country Source Sweep (Every 2 Hours)"
       - "Europe Country Source Sweep (Every 2 Hours)"
@@ -111,7 +114,8 @@ jobs:
          (github.event.workflow_run.event == 'workflow_run' &&
           (github.event.workflow_run.name == 'Five-Minute Original News Fastlane' ||
            github.event.workflow_run.name == 'Website Derived News Continuity' ||
-           github.event.workflow_run.name == 'Website Derived News Cadence Backstop')))))
+           github.event.workflow_run.name == 'Website Derived News Cadence Backstop' ||
+           github.event.workflow_run.name == 'Standing Delegated Derived Contract No Funds')))))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: production
