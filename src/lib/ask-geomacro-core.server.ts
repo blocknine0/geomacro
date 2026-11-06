@@ -39,7 +39,7 @@ export function timedOutAskAnswer(question:string):AskAnswer {
     /\bcritical\s+minerals?\s+risk\s+index\b/iu.test(question)?"Critical Minerals Risk Index":
     "The requested GeoMacro research";
   return {
-    summary:scope+" is temporarily unavailable because the evidence check exceeded its deadline.",
+    summary:scope+" check took too long to complete; verified results are temporarily unavailable.",
     what_changed:"The verification request timed out; no current event, movement or risk-index value was established.",
     why_it_matters:"A timeout is not proof of either a new event or an absence of change.",
     geomacro_view:"The answer remains evidence-limited. Retry later; no invented score or unsupported fact is substituted.",
