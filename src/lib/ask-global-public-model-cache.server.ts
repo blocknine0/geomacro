@@ -19,9 +19,12 @@ const PERSONAL=/\b(?:i|me|my|mine|we|us|our|ours|account|password|secret|token|a
 const NOT_TIMELESS=/\b(?:today|now|latest|current|yesterday|news|newest|this (?:week|month|year)|predict|forecast|price|risk indices?|signed gro|risk gate)\b/iu;
 const UNSAFE=/(?:https?:\/\/|www\.|@|[<>\r\n\u0000])/u;
 function authToken():string|null{
- const key=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
- return key.length>=32?createHmac("sha256",key)
-   .update("geomacro-control-plane-v1").digest("hex"):null;
+ // The same already-connected Groq Free key exists in Lovable SSR and the
+ // GitHub deployment secrets; only a purpose-bound HMAC is ever transmitted
+ // to Cloudflare. This never grants access to commerce or other control routes.
+ const key=String(process.env.GROQ_API_KEY??"").trim();
+ return key.length>=20?createHmac("sha256",key)
+   .update("geomacro-ask-public-model-cache-v1").digest("hex"):null;
 }
 function eligible(question:string,canonical:HybridAskAnswer):boolean{
  const q=question.trim();
