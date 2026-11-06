@@ -25,3 +25,20 @@ Source timestamps without a publisher timestamp are held out. Country and
 risk tags use deterministic title/summary rules. Sentiment remains `null`
 until a supported scorer exists. Google News headlines are tagged at 0.55 and
 are not treated as independently verified facts.
+
+## Render Free liveness
+
+The Render blueprint uses the minimal public `/healthz` endpoint for its
+health check. After provisioning the service, configure the Control Plane
+Worker variable `GEOMACRO_UNIFIED_INGESTOR_HEALTH_URL` to the exact Render URL
+ending in `/healthz`. Its existing one-minute Cron Trigger then makes one
+bounded GET every ten minutes, keeping an otherwise-idle Free web service
+awake without D1, queue or B2 operations. The Worker ignores malformed or
+non-Render URLs and reports failed pings without logging the URL or response
+body. Leave the variable unset until the Render URL is known.
+
+This keepalive does not increase Render's monthly free instance-hour pool or
+prevent workspace-wide suspension if the pool is exhausted. Monitor usage in
+Render before treating the service as continuously available. The service
+also remains subject to Render's free-service restarts and outbound-traffic
+limits.
