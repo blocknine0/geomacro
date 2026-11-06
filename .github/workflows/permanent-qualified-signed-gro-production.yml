@@ -1,8 +1,19 @@
 name: Permanent Qualified Signed GRO Production
 
-# Durable event-driven workflow. Only immutable issuer-qualified existing B2
-# inputs are processed. NO daily polling, no payment, no synthetic readiness.
+# Event-driven signing plus a 20-minute durable-outbox recovery backstop.
+# Only independently qualified immutable inputs are signed; no funds.
 on:
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+  schedule:
+    - cron: "3,23,43 * * * *"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/permanent-qualified-signed-gro-production.yml"
+      - "scripts/ops/run-automatic-gro-signing.ts"
+      - "scripts/lib/gro-auto-signing-jobs.mjs"
   repository_dispatch:
     types: [qualified_machine_gro_ready]
   workflow_dispatch:
@@ -29,7 +40,8 @@ jobs:
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (
-        github.event_name == 'workflow_dispatch' ||
+        github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push' ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
         (github.event_name == 'repository_dispatch' &&
          github.event.action == 'qualified_machine_gro_ready' &&
          github.event.client_payload.schema == 'geomacro.qualified-machine-gro-ready.v1')
@@ -38,6 +50,7 @@ jobs:
     timeout-minutes: 25
     environment: production
     env:
+      RISK_GATE_COUNTRY_SCOPE: HOT50
       GEOMACRO_MACHINE_GRO_INPUT_B2_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_key || github.event.client_payload.machine_b2_key }}
       GEOMACRO_MACHINE_GRO_INPUT_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.machine_b2_sha256 || github.event.client_payload.machine_b2_sha256 }}
       # Existing production credentials, never stored in repository code.
@@ -76,6 +89,7 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Assert immutable source input pin and protected authority before requests
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
         shell: bash
         run: |
           set -euo pipefail
@@ -111,7 +125,12 @@ jobs:
             appendFileSync(process.env.GITHUB_ENV,"D1_DATABASE_ID="+ids[0].uuid+String.fromCharCode(10));
           '
 
+      - name: Recover pending unsigned-to-signed GRO jobs without funds
+        if: github.event_name == 'schedule' || github.event_name == 'push' || github.event_name == 'workflow_run'
+        run: bun scripts/ops/run-automatic-gro-signing.ts
+
       - name: Score, Ed25519 sign and independently verify B2 then D1 hot with existing data
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'repository_dispatch'
         shell: bash
         run: |
           set -euo pipefail

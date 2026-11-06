@@ -196,22 +196,32 @@ export async function scoreAndSignQualifiedOnDemandCountry(
       snapshot.sha256)
     throw Error("ON_DEMAND_QUALIFIED_EVIDENCE_CHANGED");
 
+  return signQualifiedCountry(input,snapshot.evidence,snapshot.eventIds,
+    receipt.event_commercial_eligibility,now,deps);
+}
+
+async function signQualifiedCountry(
+ input:Pick<OnDemandCountryScoringInput,"country_iso3"|"country_name"|"profile">,
+ evidence:CountryRiskEventInput[],eventIds:string[],
+ eligibility:StructuredEventCommercialEligibility[],now:Date,
+ deps:OnDemandCountryScoringDependencies,
+):Promise<PreparedOnDemandPartnerArtifact>{
   const scored=await buildCountryRiskObject({
     country_iso3:input.country_iso3,
     country_name:input.country_name??null,
-    events:snapshot.evidence,
+    events:evidence,
     as_of:now.toISOString(),
     ...(input.profile === "FEDERICO_STRICT"
       ? {calculation_namespace:"federico_strict_evidence_v1"} : {}),
   });
   // Never sign an empty, carried-forward or mis-scoped GRO even if a
   // qualifier erroneously returns a full green receipt.
-  if (scored.evidence.length !== snapshot.eventIds.length ||
-      scored.evidence.some(item=>!snapshot.eventIds.includes(item.event_id)) ||
+  if (scored.evidence.length !== eventIds.length ||
+      scored.evidence.some(item=>!eventIds.includes(item.event_id)) ||
       scored.evidence_summary.independent_source_count < 2)
     throw Error("ON_DEMAND_QUALIFIED_SCORING_INCOMPLETE");
   const commercial=applyCountryRiskCommercialEligibility(
-    scored,receipt.event_commercial_eligibility);
+    scored,eligibility);
   const observed=withRiskObjectObservationTimestamp(commercial,now.toISOString());
   if (observed.verification.status !== "VERIFIED" ||
       observed.commercial_eligibility.status !== "VERIFIED")
@@ -222,4 +232,41 @@ export async function scoreAndSignQualifiedOnDemandCountry(
     profile:input.profile??"CANONICAL",now,
     verification_keys:deps.verificationKeys,
   });
+}
+
+/** Private three-domain composition: qualify each exact category snapshot
+ * independently, then invoke the SAME canonical country scorer and signer
+ * once. A single-category GRO is never relabelled as three-category proof. */
+export async function scoreAndSignQualifiedThreeCategoryCountry(
+ input:Pick<OnDemandCountryScoringInput,"country_iso3"|"country_name"> & {
+  groups:Array<Pick<OnDemandCountryScoringInput,"category"|"events">>;now?:Date;
+ },deps:OnDemandCountryScoringDependencies,
+):Promise<PreparedOnDemandPartnerArtifact>{
+ const now=input.now??new Date();
+ if(!Number.isFinite(now.getTime())||!Array.isArray(input.groups)||input.groups.length!==3||
+    new Set(input.groups.map(x=>x.category)).size!==3||
+    !["geopolitics","macro","rare_earth"].every(c=>input.groups.some(x=>x.category===c))||
+    typeof deps?.qualifyEvidence!=="function"||!deps.signingMaterial||!deps.verificationKeys)
+  throw Error("ON_DEMAND_THREE_CATEGORY_SCOPE_INVALID");
+ const snapshots=input.groups.map(group=>({category:group.category,
+  value:validatedSnapshot({...group,country_iso3:input.country_iso3},now)}));
+ const evidence:CountryRiskEventInput[]=[],eventIds:string[]=[],eligibility:StructuredEventCommercialEligibility[]=[];
+ for(const {category,value} of snapshots){
+  const scoped={country_iso3:input.country_iso3,category,events:value.evidence};
+  const receipt=await deps.qualifyEvidence(Object.freeze({category,
+   country_iso3:input.country_iso3,evidence_sha256:value.sha256,
+   events:value.evidence,now:new Date(now)}));
+  assertReceipt(receipt,scoped,value);
+  if(createHash("sha256").update(canonicalRiskObjectJson(value.evidence)).digest("hex")!==value.sha256)
+   throw Error("ON_DEMAND_QUALIFIED_EVIDENCE_CHANGED");
+  evidence.push(...value.evidence);eventIds.push(...value.eventIds);
+  eligibility.push(...JSON.parse(canonicalRiskObjectJson(receipt.event_commercial_eligibility)));
+ }
+ // A later asynchronous qualifier must not mutate a previously approved group.
+ for(const {value} of snapshots)
+  if(createHash("sha256").update(canonicalRiskObjectJson(value.evidence)).digest("hex")!==value.sha256)
+   throw Error("ON_DEMAND_QUALIFIED_EVIDENCE_CHANGED");
+ if(new Set(eventIds).size!==eventIds.length)
+  throw Error("ON_DEMAND_THREE_CATEGORY_EVENT_COLLISION");
+ return signQualifiedCountry({...input,profile:"CANONICAL"},evidence,eventIds,eligibility,now,deps);
 }

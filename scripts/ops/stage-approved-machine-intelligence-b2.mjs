@@ -13,6 +13,7 @@ import {qualifyMachineIntelligenceBatch} from
   "../../src/lib/machine-intelligence-publication.server.ts";
 import {machineCommercialAuthorityConfigurationValid} from
   "../../src/lib/geomacro-machine-commercial-qualification.server.ts";
+import {stageAutomaticGroInputs} from "./stage-automatic-gro-inputs.ts";
 import {createB2Client} from "./b2-s3-client.mjs";
 
 const SHA=/^[a-f0-9]{64}$/u;
@@ -71,7 +72,7 @@ export function machineStageDispatchPayload(key,pin){
 }
 export async function stageMachineIntelligence({
  env=process.env,now=()=>new Date(),fetchImpl=fetch,
- qualifier=qualifyMachineIntelligenceBatch,
+ qualifier=qualifyMachineIntelligenceBatch,groStager=stageAutomaticGroInputs,
  archiveClient=()=>createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",
    bucket:"geomacro-private-archive",accessKey:env.B2_KEY_ID,
    secretKey:env.B2_APPLICATION_KEY}),
@@ -113,7 +114,10 @@ export async function stageMachineIntelligence({
    if(response.status!==204)fail("PROTECTED_MACHINE_PUBLISHER_DISPATCH_REJECTED");
    dispatched=true;
  }
+ const automaticGro=env.GEOMACRO_GRO_AUTO_SIGN_ENABLED==="0"?{enabled:false}:
+   await groStager({input,qualified,env,now:now()});
  return Object.freeze({schema:"geomacro.private-machine-intelligence-b2-stage.v1",
+   automatic_gro_signing:automaticGro,
    immutable_b2_key:key,immutable_b2_sha256:pin,qualified_event_count:input.rows.length,
    real_signed_rights_preflight_verified:true,exact_private_b2_readback_verified:true,
    publisher_dispatch_accepted:dispatched,publisher_published:false,

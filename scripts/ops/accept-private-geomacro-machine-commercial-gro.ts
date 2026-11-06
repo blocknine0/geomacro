@@ -13,7 +13,7 @@ import {closeSync,constants,openSync,readFileSync,writeFileSync}
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {assertPrivateReviewPaths} from "./accept-private-live-on-demand-gro";
-import {prepareGeomacroMachineCommercialGRO}
+import {prepareGeomacroMachineCommercialGRO,prepareGeomacroMachineCommercialCountryGRO}
  from "../../src/lib/geomacro-machine-commercial-qualification.server";
 import {loadRiskObjectVerificationKeysFromEnv}
  from "../../src/lib/risk-object-signing.server";
@@ -58,23 +58,39 @@ export function parsePrivateMachineCommercialRequest(raw:string){
     candidates:x.candidates,envelope:x.envelope,
   };
 }
+export function parsePrivateMachineCommercialCountryRequest(raw:string){
+ let x:any;try{x=JSON.parse(raw)}catch{throw Error(FAIL)}
+ if(!x||x.schema!=="geomacro.private-machine-commercial-country-request.v1"||
+    !Array.isArray(x.parts)||x.parts.length!==3||
+    Object.keys(x).some(k=>!["schema","parts"].includes(k)))throw Error(FAIL);
+ const parts=x.parts.map((part:unknown)=>parsePrivateMachineCommercialRequest(JSON.stringify(part)));
+ if(new Set(parts.map((p:any)=>p.category)).size!==3||
+    new Set(parts.map((p:any)=>p.country_iso3)).size!==1||
+    !["geopolitics","macro","rare_earth"].every(c=>parts.some((p:any)=>p.category===c)))
+  throw Error(FAIL);
+ return parts;
+}
 export async function acceptMachineCommercialPrivateGRO(inputPath:string,outputPath:string):
  Promise<{status:"MACHINE_COMMERCIAL_SIGNED_PRIVATE_NO_FUNDS";
    country_iso3:string;category:string;record_sha256:string}>{
   const paths=assertPrivateReviewPaths(inputPath,outputPath);
-  const input=parsePrivateMachineCommercialRequest(readFileSync(paths.input,"utf8"));
-  const signed=await prepareGeomacroMachineCommercialGRO({
-    category:input.category,country_iso3:input.country_iso3,
-    country_name:input.country_name,
-    events:[input.event as import("../../src/lib/country-risk-engine").CountryRiskEventInput],
-    now:new Date(),
-  },{
-    candidates:input.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],
-    envelope:input.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope,
-  },{
-    signingMaterial:signer(),
-    verificationKeys:loadRiskObjectVerificationKeysFromEnv(),
-  });
+  const raw=readFileSync(paths.input,"utf8");
+  let schema;try{schema=JSON.parse(raw)?.schema}catch{throw Error(FAIL)}
+  const parts=schema==="geomacro.private-machine-commercial-country-request.v1"?
+    parsePrivateMachineCommercialCountryRequest(raw):[parsePrivateMachineCommercialRequest(raw)];
+  const input=parts[0];
+  const options={signingMaterial:signer(),verificationKeys:loadRiskObjectVerificationKeysFromEnv()};
+  const signed=parts.length===3?await prepareGeomacroMachineCommercialCountryGRO({
+    country_iso3:input.country_iso3,country_name:input.country_name,now:new Date(),
+    groups:parts.map(part=>({category:part.category,
+      events:[part.event as import("../../src/lib/country-risk-engine").CountryRiskEventInput],
+      bundle:{candidates:part.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],
+       envelope:part.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope}})),
+   },options):await prepareGeomacroMachineCommercialGRO({
+    category:input.category,country_iso3:input.country_iso3,country_name:input.country_name,
+    events:[input.event as import("../../src/lib/country-risk-engine").CountryRiskEventInput],now:new Date(),
+   },{candidates:input.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],
+      envelope:input.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope},options);
   if(signed.profile!=="CANONICAL"||!signed.locally_verified||
      signed.payment_authorized!==false||signed.persistence_performed!==false||
      signed.live_review_authorized!==false||signed.external_partner_approved!==false||
@@ -83,15 +99,20 @@ export async function acceptMachineCommercialPrivateGRO(inputPath:string,outputP
        signed.record_sha256)throw Error(FAIL);
   // Re-check the exact separately attested proof/rights/native date AGAIN
   // after live source verification and signing. A B2 clock cannot substitute.
-  const pins=pinnedMachineCommercialSourceHandoff(
-    input.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope,
-    input.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],
-    new Date(),
-  );
+  const handoffs=parts.map(part=>pinnedMachineCommercialSourceHandoff(
+    part.envelope as import("../../src/lib/geomacro-machine-commercial-qualification.server").MachineCommercialEnvelope,
+    part.candidates as import("../../src/lib/geomacro-machine-source-rights.server").MachineOriginalWithRegistry[],new Date(),
+  ));
+  const pins=handoffs.length===1?handoffs[0]:{
+    machine_attested_proof_sha256:createHash("sha256").update(JSON.stringify(handoffs.map(x=>x.machine_attested_proof_sha256))).digest("hex"),
+    machine_attestation_expires_at:handoffs.map(x=>x.machine_attestation_expires_at).sort()[0],
+    original_native_source_as_of:handoffs.map(x=>x.original_native_source_as_of).sort()[0],
+  };
+  const category=parts.length===3?"multi":input.category;
   const output=JSON.stringify({
     schema:"geomacro.private-machine-commercial-prepared-gro.v1",
     profile:"GEOMACRO_AUTOMATED_CROSS_SOURCE_NOT_EXTERNAL_REVIEWED_V1",
-    country_iso3:input.country_iso3,category:input.category,
+    country_iso3:input.country_iso3,category,
     record_sha256:signed.record_sha256,
     signing_key_id:signed.signing_key_id,
     machine_attested_proof_sha256:pins.machine_attested_proof_sha256,
@@ -116,7 +137,7 @@ export async function acceptMachineCommercialPrivateGRO(inputPath:string,outputP
     closeSync(fd);fd=undefined;
   }finally{if(fd!==undefined)closeSync(fd)}
   return {status:"MACHINE_COMMERCIAL_SIGNED_PRIVATE_NO_FUNDS",
-    country_iso3:input.country_iso3,category:input.category,
+    country_iso3:input.country_iso3,category,
     record_sha256:signed.record_sha256};
 }
 async function main(){

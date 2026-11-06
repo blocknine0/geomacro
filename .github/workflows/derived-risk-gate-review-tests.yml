@@ -21,6 +21,13 @@ on:
       - "scripts/tests/p2-gro-edge-acceptance.test.mjs"
       - "workers/control-plane/src/risk-gate-three-tier-product.mjs"
       - "workers/control-plane/src/unified-risk-gate.mjs"
+      - "workers/control-plane/src/risk-gate-assessment-buffer.mjs"
+      - "scripts/tests/risk-gate-assessment-buffer.test.mjs"
+      - "scripts/tests/qualified-three-category-country.test.mjs"
+      - "src/lib/on-demand-qualified-country-risk.server.ts"
+      - "src/lib/geomacro-machine-commercial-qualification.server.ts"
+      - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "src/__tests__/three-category-machine-request.test.ts"
       - "scripts/tests/risk-gate-three-tier-product.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-flash-override.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs"
       - "workers/control-plane/src/predge-risk-gate-d1.mjs"
       - "workers/control-plane/src/risk-gate-controlled-bypass.mjs"
@@ -57,6 +64,13 @@ on:
       - "workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql"
       - "workers/control-plane/src/risk-gate-three-tier-product.mjs"
       - "workers/control-plane/src/unified-risk-gate.mjs"
+      - "workers/control-plane/src/risk-gate-assessment-buffer.mjs"
+      - "scripts/tests/risk-gate-assessment-buffer.test.mjs"
+      - "scripts/tests/qualified-three-category-country.test.mjs"
+      - "src/lib/on-demand-qualified-country-risk.server.ts"
+      - "src/lib/geomacro-machine-commercial-qualification.server.ts"
+      - "scripts/ops/accept-private-geomacro-machine-commercial-gro.ts"
+      - "src/__tests__/three-category-machine-request.test.ts"
       - "scripts/tests/risk-gate-three-tier-product.test.mjs"
       - "workers/control-plane/src/predge-risk-gate-d1.mjs"
       - "workers/control-plane/src/risk-gate-controlled-bypass.mjs"
@@ -95,8 +109,8 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
-          node-version: "22"
+          node-version: "24"
       - name: Verify Risk Gate review loop and independently signed proof rules
-        run: node --test scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs scripts/tests/derived-risk-gate-discovery-bridge.test.mjs scripts/tests/derived-risk-gate-website-raw.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs
+        run: node --test scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/lib/derived-risk-gate-review-loop.test.mjs scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs scripts/tests/derived-risk-gate-discovery-bridge.test.mjs scripts/tests/derived-risk-gate-website-raw.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs
       - name: P2 real archival hook and canonical edge feed offline contracts
         run: node --test scripts/tests/p2-gro-edge-acceptance.test.mjs
