@@ -148,7 +148,7 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
         delta_required:null}],
       note:"Counterfactual context only; it never authorizes execution."
     },
-    subject:parsed.subject,
+    subject:{...parsed.subject,name:null},
     risk:{
       object_id:"derived-observation:"+parsed.subject.id+":"+at,
       score:proxyScore,label:hasFacts?"WATCH":"CRITICAL",
