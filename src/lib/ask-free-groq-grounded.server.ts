@@ -29,7 +29,7 @@ function admit(clientKey:string,now=Date.now()):boolean{
  if(day.until<=now)day={until:now+86_400_000,count:0};
  const before=clients.get(clientKey);
  const slot=!before||before.until<=now?{until:now+60_000,count:0}:before;
- if(slot.count>=2||minute.count>=12||day.count>=120)return false;
+ if(slot.count>=3||minute.count>=12||day.count>=120)return false;
  slot.count++;minute.count++;day.count++;clients.set(clientKey,slot);inflight++;
  if(clients.size>512){
    for(const [id,v] of clients)if(v.until<=now)clients.delete(id);
@@ -80,9 +80,12 @@ async function requestFreeGroq(
    };
    phase="upstream";
    const res=await (dependencies.fetchImpl??fetch)(ENDPOINT,{
-     method:"POST",redirect:"error",cache:"no-store",
+     // Workerd/Nitro outbound fetch may reject browser cache modes or
+     // redirect:"error". POST is inherently non-cacheable; a manual redirect
+     // never follows to another host with a bearer credential.
+     method:"POST",redirect:"manual",
      headers:{Accept:"application/json","Content-Type":"application/json",
-       Authorization:"Bearer "+process.env.GROQ_API_KEY},
+       "Cache-Control":"no-store",Authorization:"Bearer "+process.env.GROQ_API_KEY},
      body:JSON.stringify(payload),signal:AbortSignal.timeout(MAX_MS),
    });
    // Groq Free Plan 429 is a normal fallback, never a paid-provider retry.
