@@ -46,8 +46,8 @@ export async function privateOsintBundleRead(env,query=new URLSearchParams(),now
    // The country-specific path uses the 0203 composite index; generic
    // domain reads retain the preexisting 0029 ordered keyset index.
    // Never scan the whole 4,000-item ring to return one page.
-   const index=country?"idx_private_osint_country_category_clock_v2":
-     "idx_private_osint_category_clock";
+   const index=country&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"?
+     "idx_private_osint_country_category_clock_v2":"idx_private_osint_category_clock";
    return env.DB.prepare("SELECT item_id,native_feed_published_at,projection_json,first_seen_at,last_seen_at "+
     "FROM private_osint_news_25h INDEXED BY "+index+" WHERE "+where.join(" AND ")+
     " ORDER BY native_feed_published_at DESC,item_id DESC LIMIT "+(requestedPageSize+1)).bind(...args);
