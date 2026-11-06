@@ -19,6 +19,7 @@ function fixture(){
    const result=db.prepare(sql).run(...args);
    return {success:true,results:[],meta:{changes:result.changes}};
   },
+  async first(){return db.prepare(sql).get(...args)??null},
  });
  return {db,DB:{prepare,async batch(statements){
   db.exec("BEGIN IMMEDIATE");
