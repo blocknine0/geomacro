@@ -55,10 +55,27 @@ test("P1 private D1 migration provides exactly 195 x 3 countries and 10 logical 
    "p1_source_cell_mapping_health");
  }finally{f.close()}
 });
+test("P1 due sources defer before lease while account-wide D1 governor is unverified",async()=>{
+ const f=fixture(1);
+ try{
+  const before=f.db.prepare("SELECT total_changes() AS n").get().n;
+  const result=await dispatchP1DueSources({
+   DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+   SOURCE_POLL_QUEUE:{async sendBatch(){throw Error("QUEUE_MUST_NOT_BE_CALLED")}},
+  },{now});
+  assert.equal(result.status,"P1_DISPATCH_GOVERNOR_HELD");
+  assert.equal(result.deferred,true);
+  assert.equal(result.durable_defer_state,"SOURCE_REGISTRY_DUE_ROWS");
+  assert.equal(result.retry_on_next_scheduled_dispatch,true);
+  assert.equal(result.d1_writes,0);
+  assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n,before);
+  assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE poll_dispatch_lease_until IS NOT NULL").get().n,0);
+ }finally{f.close()}
+});
 test("P1 1077 due sources fan out through max 108 per minute and ten isolated Queue shards in an hour",async()=>{
  const f=fixture(1077),batches=[];let attempted=0;
  try{
-  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",\n    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
   for(let minute=0;minute<11;minute++){
    const t=now+minute*60000,before=batches.length;
@@ -152,7 +169,7 @@ test("P1 transport refuses HTML soft 404 masquerading as RSS without promoting a
 test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per-source dispatcher leases",async()=>{
  const f=fixture(1077),batches=[];let processed=0;
  try{
-  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",\n    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
    GEOMACRO_P1_BUNDLED_LEASES_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
   const baseline=f.db.prepare("SELECT total_changes() AS n").get().n;
@@ -211,7 +228,7 @@ test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per
 test("P1 V3 failed Queue batch retains short lease then automatically re-dispatches",async()=>{
  const f=fixture(1);let sent=0;
  try{
-  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",\n    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
    GEOMACRO_P1_BUNDLED_LEASES_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(){sent++;throw Error("QUEUE_TEMP_FAILURE")}}};
   const first=await dispatchP1DueSources(env,{now});
@@ -230,7 +247,7 @@ test("P1 V3 failed Queue batch retains short lease then automatically re-dispatc
 test("P1 V3 rejects unknown/expired bundle lease and retries D1 read failures",async()=>{
  const f=fixture(1),msgs=[];
  try{
-  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",\n    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
    GEOMACRO_P1_BUNDLED_LEASES_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(piece){msgs.push(...piece)}}};
   assert.equal((await dispatchP1DueSources(env,{now})).queued,1);
@@ -268,7 +285,7 @@ test("P1 V3 rejects unknown/expired bundle lease and retries D1 read failures",a
 test("P1 consumer never acknowledges unverified source storage",async()=>{
  const f=fixture(1),msgs=[];
  try{
-  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
+  const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",\n    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
    GEOMACRO_P1_BUNDLED_LEASES_ENABLED:"1",
    SOURCE_POLL_QUEUE:{async sendBatch(part){msgs.push(...part)}}};
   assert.equal((await dispatchP1DueSources(env,{now})).queued,1);
