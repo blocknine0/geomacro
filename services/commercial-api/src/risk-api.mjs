@@ -1,5 +1,5 @@
 import {randomUUID,sign} from 'node:crypto';
-import {canonicalize,hash,verifyReceipt} from './metering.mjs';
+import {canonicalize,hash,apiKeyHash,isApiKey,verifyReceipt} from './metering.mjs';
 import {PaymentError,requireValue} from './payments/common.mjs';
 import {subjectTarget,parseRiskRequest,safeRiskFields,TIER_ORDER} from './risk-contract.mjs';
 import {provisionAccount,createApiKey} from './accounts.mjs';
@@ -24,8 +24,8 @@ export function signedCreditResponse(result,publicKeys,headers={}){
 /** No cross-request transactions. settle_success itself is one atomic database
  * transaction, rechecking the locked balance, tier and request fingerprint. */
 export async function creditRiskGate({pool,input,apiKey,resolveRisk,privateKey,publicKeyId,publicKeys,signal}){
- requireValue(/^gm_live_[A-Za-z0-9_-]{43}$/.test(apiKey),'API_KEY_REQUIRED',401);
- const keyHash=hash(apiKey),requestHash=hash(canonicalize({method:'POST',path:'/v1/risk-gate',subject:input.subject,tier:input.tier}));
+ requireValue(isApiKey(apiKey),'API_KEY_REQUIRED',401);
+ const keyHash=apiKeyHash(apiKey),requestHash=hash(canonicalize({method:'POST',path:'/v1/risk-gate',subject:input.subject,tier:input.tier}));
  const authorization=await pool.call('authorize_credit_key',[keyHash]);
  const headers={'X-RateLimit-Limit':String(authorization.rate_limit),'X-RateLimit-Remaining':String(authorization.remaining),
   'X-RateLimit-Reset':authorization.reset_at};
@@ -89,7 +89,7 @@ export function createRiskApi(runtime,env){
    if(auth)requireValue(!disabled.has('credits')&&!disabled.has('prepaid'),'CREDIT_RAIL_QUARANTINED',423);
    requireValue(!(auth&&payment),'AMBIGUOUS_PAYMENT_RAIL',400);
    let result;
-   if(auth){const match=auth.match(/^Bearer (gm_live_[A-Za-z0-9_-]{43})$/);requireValue(match,'API_KEY_REQUIRED',401);
+   if(auth){const match=auth.match(/^Bearer ((?:gm_live_|gm_live2_)[A-Za-z0-9_-]{43})$/);requireValue(match,'API_KEY_REQUIRED',401);
     result=await creditRiskGate({pool:runtime.pool,input,apiKey:match[1],resolveRisk:runtime.resolveRisk,
      privateKey:runtime.privateKey,publicKeyId:runtime.publicKeyId,publicKeys:runtime.publicKeys,signal:request.signal});
    }else{
