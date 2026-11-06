@@ -110,13 +110,10 @@ test("72-hour event auto-promotes only two genuine independently fetched origina
  const {db,D1}=sqliteDb();putEvent(db,NOW,true);
  const result=await runRiskGateAutonomousCorroborator({DB:D1,RISK_GATE_COUNTRY_SCOPE:"HOT50"},{now:NOW});
  assert.equal(result.ok,true,JSON.stringify(result));
- assert.equal(result.corroborrated,undefined);
- assert.equal(result.corroborrated,undefined);
  assert.equal(result.corroborated,1);
  const row=db.prepare("SELECT evidence_status,corroborated_events,derived_impact_0_100 "+
   "FROM risk_gate_progressive_cell_state WHERE subject_id='IND'").get();
  assert.equal(row.evidence_status,"CORROBORATED_ORIGINAL_EVIDENCE");
- assert.equal(row.corroborrated_events,undefined);
  assert.equal(row.corroborated_events,1);
  assert.equal(row.derived_impact_0_100,72);
  db.close();
