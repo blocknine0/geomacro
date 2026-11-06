@@ -57,7 +57,8 @@ export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimate
   reserved_rows:out.reserved_rows,provider_highwater:out.observed_provider_highwater,
   tokens_milli:out.tokens_milli,bucket_capacity_rows:D1_BUCKET_CAPACITY_MILLI/1000,
   refill_rows_per_minute:D1_REFILL_MILLI_ROWS_PER_MINUTE/1000,
-  includes_ledger_row:true,account_wide_only_if_all_writers_integrated:true});
+  estimated_rows_reserved:estimatedRows,
+  account_wide_only_if_all_writers_integrated:true});
 
 }
 export async function admittedBoundedD1Batch(db,statements,{dayUtc,providerObserved,
