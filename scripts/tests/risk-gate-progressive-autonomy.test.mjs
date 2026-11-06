@@ -8,6 +8,7 @@ import {partitionRiskGateSubjects,runRiskGatePartitioned}
  from "../../workers/control-plane/src/risk-gate-partitioned-concurrency.mjs";
 import {classifyRiskGateCorroboration,runRiskGateAutonomousCorroborator}
  from "../../workers/control-plane/src/risk-gate-autonomous-corrob.mjs";
+import {runRiskGateIncompleteWatchdog} from "../../workers/control-plane/src/risk-gate-incomplete-watchdog.mjs";
 const NOW=Date.parse("2026-11-06T12:00:00Z"),ISO=new Date(NOW).toISOString();
 const SHA="a".repeat(64),EV="b".repeat(64);
 const product=(tier,price,status,score)=>({
@@ -139,4 +140,21 @@ test("same event sent by two apparent index hosts cannot manufacture original co
  assert.equal(result.metadata_publishers,2);
  assert.equal(result.corroborated,false);
  assert.equal(result.derived_impact_0_100,null);
+});
+
+test("self-healing watchdog enqueues exactly twelve missing Hot50 cells over ten bounded partitions",async()=>{
+ const {db,D1}=sqliteDb();
+ const first=await runRiskGateIncompleteWatchdog(
+  {DB:D1,RISK_GATE_COUNTRY_SCOPE:"HOT50"},{now:NOW});
+ assert.equal(first.ok,true,JSON.stringify(first));
+ assert.equal(first.registered_subjects,207);
+ assert.equal(first.active_subjects,50);
+ assert.equal(first.partitions,10);
+ assert.equal(first.missing_cells,150);
+ assert.equal(first.priority_slots_enqueued,12);
+ const rows=db.prepare("SELECT subject_type,category,priority,due_at FROM "+
+  "risk_gate_priority_feed_queue").all();
+ assert.equal(rows.length,12);
+ assert.equal(rows.every(x=>x.subject_type==="COUNTRY"&&x.priority==="MISSING"),true);
+ db.close();
 });
