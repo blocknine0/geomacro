@@ -25,22 +25,29 @@ function fixture({analysisSha=SHA,states={},status=200}={}) {
  };
  return {fetchImpl,calls};
 }
-test("three actual fixed alerts after analysis of exact main SHA yield acceptance",async()=>{
+test("five actual fixed alerts after analysis of exact main SHA yield acceptance",async()=>{
  const {fetchImpl,calls}=fixture();
  const proof=await verifyCodeqlClosure({token:TOKEN,sha:SHA,fetchImpl,
    pause:async()=>{},maxPolls:1});
  assert.equal(proof.ok,true);
  assert.equal(proof.analysis_verified,true);
- assert.equal(proof.fixed,3);
+ assert.equal(proof.fixed,5);
  assert.equal(proof.open,0);
  assert.equal(proof.dismissed,0);
- assert.deepEqual(proof.alerts.map(a=>a.number),[107,115,120]);
- assert.equal(calls.length,4);
+ assert.deepEqual(proof.alerts.map(a=>a.number),[107,115,120,137,138]);
+ assert.equal(calls.length,6);
 });
 test("unfixed alert never passes after bounded checks",async()=>{
  const {fetchImpl}=fixture({states:{120:"open"}});
  await assert.rejects(verifyCodeqlClosure({token:TOKEN,sha:SHA,fetchImpl,
    pause:async()=>{},maxPolls:2}),/CODEQL_ALERTS_STILL_OPEN_120/);
+});
+test("either of the two new high-severity alerts must not remain open",async()=>{
+ for (const number of [137,138]) {
+  const {fetchImpl}=fixture({states:{[number]:"open"}});
+  await assert.rejects(verifyCodeqlClosure({token:TOKEN,sha:SHA,fetchImpl,
+   pause:async()=>{},maxPolls:1}),new RegExp("CODEQL_ALERTS_STILL_OPEN_"+number));
+ }
 });
 test("a dismissed alert is never confused with remediated code",async()=>{
  const {fetchImpl}=fixture({states:{107:"dismissed"}});
