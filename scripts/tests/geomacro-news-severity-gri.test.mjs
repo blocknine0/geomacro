@@ -155,17 +155,18 @@ test("public endpoint returns only self-certified, source-neutral report, no raw
  assert.equal(body.certification.issuer,"GeoMacro");
  assert.doesNotMatch(JSON.stringify(body),/source_url|articleUrl|raw_upstream|private_key/);
 });
-test("existing page layout stays but GeoMacro news severity replaces signed GRI parent dependency",()=>{
+test("self-certified news severity remains separate; public Risk Indices require genuine reviewed GRI",()=>{
  const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
  const hook=readFileSync("src/lib/use-risk-indices.ts","utf8");
  const view=readFileSync("src/components/risk-indices/risk-indices-workspace.tsx","utf8");
  assert.match(worker,/serveSelfCertifiedNewsSeverityGri/u);
  assert.match(worker,/\/v1\/public\/geomacro-certified-news-severity-gri/u);
- assert.match(hook,/const data = await readGeoMacroCertifiedNewsRisk\(\)/u);
+ assert.match(worker,/\/v1\/public\/reviewed-risk-indices/u);
+ assert.match(hook,/const data = await readCurrentReviewedSignedIndices\(\)/u);
  assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh \|\| attempt > 0\)/u);
- assert.match(view,/GeoMacro Certified GRI/u);
- assert.match(view,/GeoMacro self-certified/u);
- assert.doesNotMatch(view,/independent third-party certification or verification of every reported event is present/u);
+ assert.match(view,/Reviewer-gated GRI v1.2/u);
+ assert.match(view,/Authentic independent reviewer certificates/u);
+ assert.doesNotMatch(view,/GeoMacro self-certified|Monitored, unverified observations contribute at 0.22/u);
 });
 
 test("real 24H/48H/72H journal backfill stays source-native and never invents old GRI scores",async()=>{
