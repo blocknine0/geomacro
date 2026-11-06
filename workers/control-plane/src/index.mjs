@@ -51,6 +51,7 @@ import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
+import {pingUnifiedIngestorHealth} from "./unified-ingestor-keepalive.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -1325,6 +1326,14 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Render Free sleeps after 15 minutes without inbound requests. The
+    // existing one-minute Cron Trigger sends one minimal liveness GET every
+    // ten minutes only after an owner configures the Render /healthz URL.
+    // This uses no D1 rows, queue messages, B2 calls or additional trigger.
+    if(env?.GEOMACRO_UNIFIED_INGESTOR_HEALTH_URL&&utc.getUTCMinutes()%10===4)
+      ctx.waitUntil(pingUnifiedIngestorHealth(env).then(r=>{
+        if(!r.ok)console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD",r.error);
+      }).catch(()=>console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD")));
     // Feature-gated CQRS publisher on existing cron; a quiet source revision
     // avoids rescanning canonical D1 and news ingestion never waits for it.
     if(env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"&&env?.DB?.prepare&&

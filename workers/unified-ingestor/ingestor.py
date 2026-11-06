@@ -365,8 +365,14 @@ app = FastAPI(title="GeoMacro Unified Ingestor", version="1.0.0", lifespan=lifes
 async def health():
     return {"ok": True, "service": "geomacro-unified-ingestor", "pending": len(service.pending),
         "source_count": len(service.source_status),
-        "source_failures": sum(1 for row in service.source_status.values() if not row.get("ok")),
-        "sources": service.source_status}
+        "source_failures": sum(1 for row in service.source_status.values() if not row.get("ok"))}
+
+
+@app.get("/healthz")
+async def healthz():
+    # Public liveness endpoint used by Render and the opt-in Cloudflare
+    # keepalive. It deliberately exposes no feed registry or source failures.
+    return {"ok": True, "service": "geomacro-unified-ingestor"}
 
 
 @app.post("/v1/osint")
