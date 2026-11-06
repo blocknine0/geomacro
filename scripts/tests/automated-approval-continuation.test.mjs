@@ -65,3 +65,25 @@ test('primary and recovery D1 newsroom producers always trigger idempotent all-n
  assert.equal(w.match(/cron:/g)?.length,1);
  assert.match(w,/cron: '23 \* \* \* \*'/u);
 });
+
+test('source-neutral machine signer is opt-in gated, isolated from owner original proof and issuer key',()=>{
+ const producer=w.split('  approve-retained-derived-inputs:')[1].split('  cloud-derived-only:')[0];
+ const machine=w.split('  gri-source-neutral-consented-signing:')[1];
+ assert.match(producer,/owner-only-verification\.json/u);
+ assert.match(producer,/--emit-neutral/u);
+ assert.match(producer,/gri-issuer-neutral-\$\{\{ github\.run_id \}\}/u);
+ assert.match(producer,/Delete temporary receipt bytes|Remove owner-only source proof/u);
+ assert.match(machine,/needs: \[contract, approve-retained-derived-inputs\]/u);
+ assert.match(machine,/vars\.GEOMACRO_GRI_AUTO_ENROLLED == 'YES_CONSENT_ONLY'/u);
+ assert.match(machine,/vars\.GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY'/u);
+ assert.match(machine,/--machine-sign-neutral/u);
+ assert.match(machine,/RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64/u);
+ for(const secret of ['GEOMACRO_COMMERCE_LEDGER_TOKEN',
+  'RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64',
+  'GEOMACRO_LOW_REVIEW_TOKEN','B2_APPLICATION_KEY',
+  'GEOMACRO_VERIFIED_DERIVED_RECEIPT_PATH'])
+  assert.equal(machine.includes(secret),false,secret);
+ // Prior privacy-disabled legacy delegated job is deliberately unchanged.
+ assert.match(w,/  cloud-derived-only:[\s\S]*?if: >-\s+false &&/u);
+ assert.match(machine,/current.*risk.indices|not numerical GRI/iu);
+});
