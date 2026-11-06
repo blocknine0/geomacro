@@ -14,7 +14,8 @@ export async function auditSupabaseFreeCountryRuntime(){
   // Empty API arrays, transient 503s or a missing runtime are NOT quiet proof.
   const release=runtime.release_qualification;
   const cats=["geopolitics","macro","rare_earth"];
-  const quiet=release?.schema==="geomacro.source-release-qualification.v1" &&
+  const quiet=runtime.status==="SOURCE_QUIET" &&
+    release?.schema==="geomacro.source-release-qualification.v1" &&
     release?.status==="NO_QUALIFIED_NEW_RELEASE" &&
     release?.complete===true &&
     Number.isFinite(Date.parse(release.checked_at??"")) &&
