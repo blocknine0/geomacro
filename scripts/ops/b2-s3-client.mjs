@@ -55,7 +55,7 @@ function normalizeAllowedPrefixes(allowedKeyPrefixes) {
   }
   const normalized = allowedKeyPrefixes.map((value) => String(value ?? "").trim());
   for (const prefix of normalized) {
-    if (prefix !== "geomacro-evidence/v1/" && !EXTRA_ALLOWED_PREFIXES.has(prefix)) {
+    if (!(prefix.startsWith("geomacro-evidence/v1/") && /^[A-Za-z0-9_/-]+\/$/.test(prefix) && !prefix.includes("..") && !prefix.includes("//")) && !EXTRA_ALLOWED_PREFIXES.has(prefix)) {
       throw new Error("B2_ARCHIVE_PREFIX_CONFIG_INVALID");
     }
   }
@@ -284,6 +284,7 @@ export function createB2Client({
       allowNotFound = false,
       extraSignedHeaders = null,
       metadataOnly = false,
+      listing = null,
     } = {},
   ) {
     const normalizedKey = String(key ?? "");
@@ -300,11 +301,14 @@ export function createB2Client({
       !/^[A-Za-z0-9_./-]+$/.test(normalizedKey) ||
       normalizedKey.includes("..") ||
       normalizedKey.startsWith("/") ||
-      normalizedKey.endsWith("/")
+      (!listing && normalizedKey.endsWith("/"))
     ) {
       throw new Error("B2_ARCHIVE_KEY_INVALID");
     }
-    const path = `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
+    const path = listing ? `/${bucket}` : `/${[bucket, ...normalizedKey.split("/")].map(encodeURIComponent).join("/")}`;
+    const encode = value => encodeURIComponent(value).replace(/[!'()*]/g, c=>"%"+c.charCodeAt(0).toString(16).toUpperCase());
+    const query = listing ? Object.entries({"encoding-type":"url","list-type":"2","max-keys":"1000",prefix:normalizedKey,
+      ...(listing.cursor?{"continuation-token":listing.cursor}:{})}).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>encode(k)+"="+encode(v)).join("&") : "";
     const host = new URL(endpoint.endpoint).host;
     const payloadHash = sha(body);
     const credentialCandidates =
@@ -328,7 +332,7 @@ export function createB2Client({
       const credential = credentialCandidates[credentialIndex];
       const fingerprint = nativeCredentialFingerprint(credential);
 
-      if (method === "GET" && nativePreferredCredentials.has(fingerprint)) {
+      if (method === "GET" && !listing && nativePreferredCredentials.has(fingerprint)) {
         try {
           return await nativeRead(credential, normalizedKey, { allowNotFound });
         } catch (nativeCause) {
@@ -364,14 +368,14 @@ export function createB2Client({
       const names = Object.keys(headers).sort();
       const canonicalHeaders = names.map((name) => `${name}:${headers[name]}\n`).join("");
       const signedHeaders = names.join(";");
-      const canonical = [method, path, "", canonicalHeaders, signedHeaders, payloadHash].join("\n");
+      const canonical = [method, path, query, canonicalHeaders, signedHeaders, payloadHash].join("\n");
       const scope = `${day}/${endpoint.region}/s3/aws4_request`;
       const stringToSign = ["AWS4-HMAC-SHA256", timestamp, scope, sha(canonical)].join("\n");
       const signatureKey = hmac(hmac(hmac(hmac(`AWS4${credential.secretKey}`, day), endpoint.region), "s3"), "aws4_request");
       const signature = createHmac("sha256", signatureKey).update(stringToSign).digest("hex");
 
       try {
-        const result = await fetch(`${endpoint.endpoint}${path}`, {
+        const result = await fetch(`${endpoint.endpoint}${path}${query?"?"+query:""}`, {
           method,
           headers: {
             "x-amz-content-sha256": payloadHash,
@@ -426,8 +430,9 @@ export function createB2Client({
           if (credentialIndex < credentialCandidates.length - 1) break;
           throw lastAccessDenied;
         }
+        if (listing && result.status === 403 && errorCode === "AccessDenied" && credentialIndex < credentialCandidates.length-1) break;
         if (
-          method === "GET" &&
+          method === "GET" && !listing &&
           result.status === 403 &&
           errorCode === "AccessDenied"
         ) {
@@ -543,6 +548,9 @@ export function createB2Client({
   }
 
   return {
+    // Lists use the same per-attempt account reservation and request budget.
+    // No native GET fallback is permitted for a bucket-list operation.
+    list: (prefix, cursor="") => request("GET", prefix, Buffer.alloc(0), {listing:{cursor}}),
     put: (key, bytes) => request("PUT", key, bytes),
     putWithMetadataVerification,
     get: (key) => readSingleFlight(key, false),

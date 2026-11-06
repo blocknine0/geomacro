@@ -4,7 +4,7 @@
 
 ## 1. Production deployment and D1 schema (protected environment only)
 
-On the main-push `.github/workflows/deploy-d1-control-plane.yml` the existing protected Cloudflare secrets and quota preflight are checked. The migration runner applies all committed migrations, including `0201_progressive_risk_gate_facts.sql` and `0202_hot50_activation_audit_views.sql`, before the Worker deploy. The Worker retains existing `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_SPOOL_ENCRYPTION_KEY`, `CONTROL_PLANE_TOKEN` and `RISK_GATE_DECISION_ED25519_*` bindings; **do not create a new Groq key, GRI signer or reviewer credential**.
+On the main-push `.github/workflows/deploy-d1-control-plane.yml` the existing protected Cloudflare secrets and quota preflight are checked. The migration runner applies all committed migrations, including `0201_progressive_risk_gate_facts.sql` `0202_hot50_activation_audit_views.sql`, and `0203_hot50_activation_fail_closed_views.sql`, before the Worker deploy. The Worker retains existing `B2_KEY_ID`, `B2_APPLICATION_KEY`, `B2_SPOOL_ENCRYPTION_KEY`, `CONTROL_PLANE_TOKEN` and `RISK_GATE_DECISION_ED25519_*` bindings; **do not create a new Groq key, GRI signer or reviewer credential**.
 
 For an authorized local Cloudflare operator with Wrangler credentials already configured:
 
@@ -19,7 +19,7 @@ npx -y wrangler@4.136.3 d1 execute DB --remote --config wrangler.runtime.jsonc \
   --command "SELECT COUNT(*) AS cells, SUM(evidence_state='EMPTY') AS missing FROM v_hot50_three_category_evidence;"
 ```
 
-The D1 SQL zero-pending condition is **necessary but not sufficient**. All six integer columns in `v_p0b_unhandled_activation` must be zero, the protected real provider Queue `backlogCount` must be precisely zero, and physical B2 parity must independently pass. `QUARANTINED` and `DEAD_LETTER` are not silent successes.
+The D1 SQL zero-pending condition is **necessary but not sufficient**. All seven integer columns in `v_p0b_unhandled_activation` must be zero, the protected REST `backlog_count` for all four provider queues must be precisely zero, and physical B2 parity must independently pass. `QUARANTINED` and `DEAD_LETTER` are not silent successes.
 
 ## 2. Bounded FIFO redrive and exact census
 
@@ -43,23 +43,22 @@ Never print the bearer, ciphertext, raw articles, B2 credentials or publisher id
 
 The live producer is `src/workers/ingest-producer.ts`, consumer `src/workers/ingest-bundle-consumer.ts`, outbox `src/workers/p0b-transactional-outbox.ts`, and B2 implementation `src/storage/b2-spool-manager.ts`. Producer first journals encrypted pending D1 state, then encrypted B2 PUT followed by independently fetched S3 GET and SHA-256, AES-GCM decrypt, gzip restoration and member-identity check. It commits canonical item/bundle D1 rows idempotently (unique candidate fingerprints), re-reads exact persisted D1 state and only then ACKs Queue messages. On failure, keep pending lease or retry; never ACK on unverifiable object.
 
-The independent **physical** audit is read-only and uses the existing `scripts/ops/b2-s3-client.mjs` with the shared B2 D1 quota governor. Full bucket listing is mandatory for 100% *bidirectional* parity; a D1 pointer table is **not** the B2 bucket manifest. Use the existing authorized B2 scoped key with `s3:ListBucket` rights, restricted to the already-owned prefix, and the AWS CLI:
+The independent **physical** audit is read-only and uses the existing `scripts/ops/b2-s3-client.mjs` with the shared B2 D1 quota governor. Full bucket listing is mandatory for 100% *bidirectional* parity; a D1 pointer table is **not** the B2 bucket manifest. The audit now obtains every `ListObjectsV2` page directly through the same governed client; externally supplied or manually marked manifests are not accepted. Every list attempt consumes a shared GET ticket. Listing and read credentials must have prefix-scoped list/download permissions.
 
 ```sh
-export AWS_ACCESS_KEY_ID="${B2_KEY_ID}"
-export AWS_SECRET_ACCESS_KEY="${B2_APPLICATION_KEY}"
-export AWS_DEFAULT_REGION="us-east-005"
-aws s3api list-objects-v2 --endpoint-url https://s3.us-east-005.backblazeb2.com \
-  --bucket geomacro-private-archive --prefix geomacro-evidence/v1/spool/ \
-  --output json > /tmp/geomacro-b2-complete-spool-list.json
-# Verify the JSON result says IsTruncated:false, with all Contents pages included.
-export B2_BUCKET_MANIFEST_JSON=/tmp/geomacro-b2-complete-spool-list.json
 export B2_ACCOUNT_QUOTA_REQUIRED=1
-export B2_REQUEST_BUDGET=250
-export PARITY_MAX_B2_READS=250
+export B2_ACCOUNT_QUOTA_WORKFLOW_ID=hot50_production_proof
+# Existing account ID/token and canonical quota-ledger D1_DATABASE_ID required.
+# Example bounded invocation; shared daily limits remain authoritative.
+export B2_REQUEST_BUDGET=12
+export PARITY_MAX_B2_READS=10
 export B2_SPOOL_PREFIX=geomacro-evidence/v1/spool/
-node scripts/ops/audit-hot50-b2-d1-parity.mjs
+node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/geomacro-parity.json
+export B2_PARITY_VERIFIED_RECEIPT_JSON=/tmp/geomacro-parity.json
+node scripts/ops/verify-hot50-production-activation.mjs
 ```
+
+The audit independently lists the owned spool prefix, GETs and decrypts every referenced archived outbox batch, and compares both directions. It then reads the complete D1 manifest again and compares a sorted SHA-256 commitment, detecting count-preserving changes. A receipt is accepted only for the same production origin, exact GitHub commit and run ID, within ten minutes, with matching live archive count and no bundle-journal mismatch. This is an observed stable scan, not a provider-wide serializable snapshot. Unknown queue states count as unhandled. Physical archive parity and provider-queue emptiness are separate gates.
 
 If archived objects exceed 250 or B2 quota is insufficient, the check **fails as partial**. Reconcile in explicitly budgeted windows and produce a **separate complete snapshot** to make a final 100% claim; do not combine partial scans as a fabricated complete same-time snapshot. On quota exhaustion, stop safely.
 
@@ -121,3 +120,26 @@ node scripts/ops/verify-hot50-production-activation.mjs
 ### Final acceptance contract
 
 Report exactly five statuses: **Backlog Census, B2-D1 Parity, Hot 50 Coverage, Index Signing, Ask GeoMacro Retrieval**. A missing provider backlog reading, missing B2 ListObjectsV2 manifest, insufficient B2 GET quota, missing original-dated Hot-50 cell, stale reviewed GRI score, absent independent reviewer certificate, stale deployed website or failed cache proof must produce **FAIL**, never synthetic **PASS**. A successful `git merge`, a new Worker URL or source registry seed alone does not prove production end-to-end coverage.
+
+## 6. Protected automated report
+
+`hot50-production-activation-proof.yml` runs after the canonical D1 deployment completes (including failed deployment attempts), or by explicit main-only dispatch. It derives the existing capabilities without changing any runtime secret, resolves the existing D1 database without creating one, attempts the governed physical audit, invokes one bounded existing FIFO/outbox/R2 redrive, and uploads no-content JSON artifacts even on failure. The acceptance job exits nonzero unless all five gates pass. Missing reviewer inputs, partial read budgets, denied listing permission and unknown provider metrics remain FAIL.
+
+```sh
+gh workflow run hot50-production-activation-proof.yml --repo blocknine0/geomacro --ref main
+gh run list --repo blocknine0/geomacro --workflow hot50-production-activation-proof.yml --limit 5
+gh run download RUN_ID --repo blocknine0/geomacro --name hot50-production-proof-RUN_ID
+```
+
+Ask acceptance compares each of the three exact named-index SSE answers against the verified public signed score and source timestamp. General inflation probes separately prove the existing Groq formatter and distributed cache reuse. Per-index elapsed milliseconds are recorded; a single probe cannot prove zero latency regression, so that claim remains explicitly unproven. No extra model invocation is added to the production retrieval path.
+
+To assert D1 logical zero without hiding a mismatch:
+
+```sql
+SELECT CASE WHEN outbox_pending+queue_unhandled+bundles_unhandled+r2_pending+
+ historical_unarchived+outbox_bundle_mismatch+outbox_item_mismatch=0
+ THEN 'PASS' ELSE 'FAIL' END AS d1_logical_zero
+FROM v_p0b_unhandled_activation;
+```
+
+Authentic reviewer publication requires immutable `reviewed_inputs_b2_key`/SHA-256 and `reviewed_certificates_b2_key`/SHA-256, plus the independently pinned reviewer public key admitted by `verify-gri-independent-reviewer-pre-b2.mjs`. Supply these through the existing protected reviewed-current publisher. Existing decision delivery keys authenticate delivery only and cannot satisfy the independent reviewer identity check.

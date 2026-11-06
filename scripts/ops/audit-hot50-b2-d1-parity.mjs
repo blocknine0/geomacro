@@ -6,7 +6,7 @@
  */
 import {createHash,createDecipheriv} from "node:crypto";
 import {gunzipSync} from "node:zlib";
-import {readFileSync} from "node:fs";
+import {digestManifest,parseBucketList} from "./hot50-parity-proof.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 
 const sha=x=>createHash("sha256").update(x).digest("hex");
@@ -15,7 +15,7 @@ const ORIGIN=String(process.env.GEOMACRO_CONTROL_PLANE_URL||
  "https://geomacro-control-plane.daspallab202391.workers.dev").replace(/\/+$/,"");
 const TOKEN=String(process.env.CONTROL_PLANE_TOKEN??"");
 const LIMIT=Number(process.env.PARITY_MAX_B2_READS??"12");
-const ALLOWED=String(process.env.B2_SPOOL_PREFIX??"geomacro-evidence/v1/spool/");
+let ALLOWED=String(process.env.B2_SPOOL_PREFIX??"geomacro-evidence/v1/spool/");
 const BUCKET="geomacro-private-archive";
 const ENDPOINT="https://s3.us-east-005.backblazeb2.com";
 const fail=code=>{throw Error("ACTIVATION_B2_PARITY_"+code)};
@@ -26,9 +26,6 @@ if(!/^https:\/\/[a-z0-9.-]+\.workers\.dev$/iu.test(ORIGIN)||
   String(process.env.B2_SPOOL_ENCRYPTION_KEY??"").length<32||
   process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1")
  fail("CONFIG_UNAVAILABLE");
-const b2=createB2Client({endpointUrl:ENDPOINT,bucket:BUCKET,
- accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
- allowedKeyPrefixes:[ALLOWED]});
 async function admin(path){
  const r=await fetch(ORIGIN+path,{method:"GET",redirect:"error",cache:"no-store",
   headers:{Authorization:"Bearer "+TOKEN,Accept:"application/json"},
@@ -72,25 +69,36 @@ function readManifestSha(bytes,batchSha,count){
  return true;
 }
 async function main(){
+ const status=await admin("/v1/internal/p0b/status");
+ const configured=status.b2_spool_scope?.prefix;
+ if(typeof configured!=="string"||!configured.startsWith("geomacro-evidence/v1/")||
+  !/^(?:[A-Za-z0-9_-]+\/)*spool\/$/u.test(configured))fail("LIVE_SPOOL_SCOPE_UNAVAILABLE");
+ if(process.env.B2_SPOOL_PREFIX&&ALLOWED!==configured)fail("LIVE_SPOOL_SCOPE_MISMATCH");
+ ALLOWED=configured;
+ const b2=createB2Client({endpointUrl:ENDPOINT,bucket:BUCKET,
+ accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
+ allowedKeyPrefixes:[ALLOWED]});
+
  const census=await admin("/v1/internal/activation/hot50-census");
  if(census.schema!=="geomacro.hot50-production-activation-census.v1")
   fail("CENSUS_SCHEMA_MISMATCH");
  let cursor="",checked=0,seen=new Set(),completed=false;
- const manifestPath=String(process.env.B2_BUCKET_MANIFEST_JSON??"");
- // A complete independently exported B2 ListObjectsV2 manifest is required
- // for bidirectional parity. Without it only D1->B2 existence is proven.
- let physical=null;
- if(manifestPath){
-   const input=JSON.parse(readFileSync(manifestPath,"utf8"));
-     if(input?.IsTruncated!==false||!Array.isArray(input?.Contents))
-     fail("BUCKET_LIST_INCOMPLETE");
-   physical=new Set(input.Contents.map(item=>item?.Key)
-     .filter(k=>typeof k==="string"&&k.startsWith(ALLOWED)));
- }
+ const physical=new Set(),listCursors=new Set();
+ let listCursor="";
+ do {
+   const page=parseBucketList(await b2.list(ALLOWED,listCursor),ALLOWED);
+   for(const key of page.keys){
+     if(physical.has(key))fail("B2_LIST_DUPLICATE");physical.add(key);
+   }
+   if(page.complete)break;
+   if(listCursors.has(page.cursor))fail("B2_LIST_CURSOR_REPEATED");
+   listCursors.add(page.cursor);listCursor=page.cursor;
+ }while(true);
+ const verifiedRows=[];
  while(!completed){
-   if(checked>=LIMIT)fail("READ_BUDGET_PARTIAL");
+
    const page=await admin("/v1/internal/p0b/parity-manifest?limit="+
-     Math.min(25,LIMIT-checked)+(cursor?"&after="+cursor:""));
+     25+(cursor?"&after="+cursor:""));
    if(page.schema!=="geomacro.p0b-remote-manifest-page.v1"||
       !Array.isArray(page.rows)||page.rows.length>25)
       fail("D1_PAGE_INVALID");
@@ -102,10 +110,11 @@ async function main(){
        fail("D1_MANIFEST_INVALID");
      seen.add(item.batch_id);
      const key=item.b2_uri.slice(5);
+     if(checked>=LIMIT)fail("READ_BUDGET_PARTIAL");
      const bytes=await b2.get(key); // independent actual B2 S3 GET
      readManifestSha(bytes,item.b2_object_sha256,item.item_count);
      if(physical&&!physical.delete(key))fail("D1_REFERENCE_NOT_IN_B2_LIST");
-     checked++;
+     verifiedRows.push(item);checked++;
    }
    const next=page.next_cursor;
    // A full page may be the last; allow one short read to prove completion.
@@ -118,9 +127,28 @@ async function main(){
  if(checked!==census.backlog.archived_outboxes)
   fail("D1_ARCHIVED_COUNT_MISMATCH");
  if(physical&&physical.size)fail("ORPHAN_B2_OBJECTS");
- const zero=census.backlog.zero_unhandled_proven===true;
+ // Repeat the full canonical manifest to detect concurrent change, including
+ // count-preserving replacements. A moving archive cannot receive full proof.
+ const endRows=[];let endCursor="";
+ do {
+   const page=await admin("/v1/internal/p0b/parity-manifest?limit=25"+(endCursor?"&after="+endCursor:""));
+   if(!Array.isArray(page.rows)||endRows.length+page.rows.length>LIMIT)fail("D1_FINAL_MANIFEST_INVALID");
+   endRows.push(...page.rows);
+   if(page.complete===true&&page.next_cursor===null)break;
+   if(!HEX.test(page.next_cursor??"")||page.next_cursor===endCursor)fail("D1_FINAL_CURSOR_INVALID");
+   endCursor=page.next_cursor;
+ }while(true);
+ const manifestSha=digestManifest(verifiedRows);
+ if(manifestSha!==digestManifest(endRows))fail("D1_MANIFEST_CHANGED_DURING_AUDIT");
+ const after=await admin("/v1/internal/activation/hot50-census");
+ if(after.backlog.archived_outboxes!==checked||after.backlog.exact_bundle_journal_mismatch!==0)
+   fail("D1_FINAL_CENSUS_MISMATCH");
+ const zero=after.backlog.d1_zero_unhandled_proven===true;
  const b2BothWays=physical!==null;
  const report={schema:"geomacro.hot50-storage-readback.v1",
+   checked_at:new Date().toISOString(),control_plane_origin:ORIGIN,
+   head_sha:process.env.GITHUB_SHA??null,run_id:process.env.GITHUB_RUN_ID??null,
+   d1_manifest_sha256:manifestSha,stable_d1_manifest_verified:true,
    checked_archived_bundles:checked,d1_archived:census.backlog.archived_outboxes,
    independent_s3_get_sha256_aes_gcm_restoration:true,
    d1_replay_and_journal_census_complete:true,
@@ -130,7 +158,7 @@ async function main(){
    coverage_nonempty_cells:census.coverage.observed_cells,
    coverage_total_cells:150,
    certified_indices_not_inferred:true,
-   status:b2BothWays&&zero?"PASS":"FAIL"};
+   status:b2BothWays?"PASS":"FAIL"};
  console.log(JSON.stringify(report));
  if(report.status!=="PASS")process.exitCode=2;
 }
