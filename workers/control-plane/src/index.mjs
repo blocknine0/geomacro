@@ -1533,8 +1533,13 @@ export default {
     // Authenticated, SHA-keyed, public-format-only Ask cache; never expose
     // endpoint or any cache entry to unauthenticated visitors.
     if(url.pathname==="/v1/internal/ask/public-model-cache"){
-      const auth=authorized(request,env);
-      if(!auth.ok)return json({ok:false,error:auth.error},auth.status);
+      // Dedicated cache-only HMAC. The existing Groq key itself NEVER leaves
+      // the website SSR and is never provisioned to the D1 Worker.
+      const expected=String(env.ASK_PUBLIC_MODEL_CACHE_TOKEN??"").trim();
+      if(!/^[a-f0-9]{64}$/u.test(expected))
+        return json({ok:false,error:"ASK_CACHE_AUTH_UNCONFIGURED"},503);
+      if(!secureEqual(bearer(request),expected))
+        return json({ok:false,error:"UNAUTHORIZED"},401);
       return handleAskPublicModelCache(request,env);
     }
     const parts = url.pathname.split("/").filter(Boolean);
