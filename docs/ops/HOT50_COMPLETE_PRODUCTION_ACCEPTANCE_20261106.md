@@ -17,6 +17,29 @@ Apply all pre-existing migrations using the repository-owned protected GitHub de
     npx wrangler d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT evidence_state, COUNT(*) AS cells FROM v_hot50_three_category_evidence GROUP BY evidence_state ORDER BY evidence_state;"
     npx wrangler d1 execute DB --remote --config wrangler.runtime.jsonc --command "SELECT country_iso3,category,observed_events,original_dated_events,same_event_independent_pair,evidence_state FROM v_hot50_three_category_evidence ORDER BY country_iso3,category;"
 
+Exact fail-closed D1 logical-zero assertion (provider Queue and remote B2 checks are separate):
+
+    SELECT CASE WHEN outbox_pending=0 AND queue_unhandled=0
+      AND bundles_unhandled=0 AND r2_pending=0
+      AND historical_unarchived=0 AND outbox_bundle_mismatch=0
+      AND outbox_item_mismatch=0 THEN 'D1_ZERO_PENDING'
+      ELSE 'D1_UNHANDLED_ITEMS' END AS logical_backlog_status
+    FROM v_p0b_unhandled_activation;
+
+Country-wise native-original evidence coverage, with empty-bucket flags:
+
+    SELECT country_iso3,
+      SUM(CASE WHEN original_dated_events>0 THEN 1 ELSE 0 END) AS native_cells,
+      ROUND(100.0*SUM(CASE WHEN original_dated_events>0 THEN 1 ELSE 0 END)/3,2)
+        AS native_metadata_coverage_pct,
+      SUM(CASE WHEN evidence_state='EMPTY' THEN 1 ELSE 0 END) AS empty_cells,
+      SUM(CASE WHEN same_event_independent_pair>0 THEN 1 ELSE 0 END)
+        AS same_event_two_publisher_cells
+    FROM v_hot50_three_category_evidence
+    GROUP BY country_iso3 ORDER BY country_iso3;
+
+The score above is metadata coverage, NOT reviewer-certified cell coverage.
+
 All seven counts in v_p0b_unhandled_activation must be zero, including outbox_pending, queue_unhandled, bundles_unhandled, r2_pending, historical_unarchived, outbox_bundle_mismatch and outbox_item_mismatch. This condition is necessary but not sufficient: independent B2 GET + LIST and actual provider Queue backlog metrics must also succeed. Do not delete, reset or ACK rows to manufacture a zero census.
 
 ## FIFO encrypted redrive
