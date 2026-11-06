@@ -7,6 +7,7 @@ const xml=(extra="",truncated="false")=>Buffer.from(`<ListBucketResult><Encoding
 test("physical list validates encoding, full pagination cursor and prefix",()=>{
  assert.deepEqual(parseBucketList(xml(),prefix),{keys:[prefix+"x.gz"],cursor:null,complete:true});
  assert.equal(parseBucketList(xml('<NextContinuationToken>a&amp;b</NextContinuationToken>',"true"),prefix).cursor,"a&b");
+ assert.equal(parseBucketList(xml('<NextContinuationToken>a&amp;lt;b</NextContinuationToken>',"true"),prefix).cursor,"a&lt;b");
  assert.throws(()=>parseBucketList(xml("","true"),prefix));
  assert.throws(()=>parseBucketList(xml(),"other/"));
  assert.throws(()=>parseBucketList(Buffer.from('<!DOCTYPE x>'+xml()),prefix));
