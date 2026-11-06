@@ -115,7 +115,7 @@ function validIndices(data) {
     if (!expected.delete(index?.key)) return false;
     if (
       index?.status !== "available" ||
-      !Number.isFinite(Number(index?.score)) ||
+      (typeof index?.score !== "number" || !Number.isFinite(index.score) || index.score < 0 || index.score > 100) ||
       !Array.isArray(index?.series?.["7D"]?.buckets) ||
       index.series["7D"].buckets.length < 2 ||
       !Array.isArray(index?.series?.["30D"]?.buckets) ||
@@ -123,6 +123,85 @@ function validIndices(data) {
     ) return false;
   }
   return expected.size === 0;
+}
+
+
+/**
+ * Explicit archival route. The current /risk-indices endpoint remains
+ * unchanged and refuses expired source clocks. Historical results are bound
+ * to an actual previously verified B2 readback/proof (or an exact matching
+ * deploy-time B2 readback artifact), never a synthetic re-timestamp.
+ */
+function validatedHistoricalPayload(live) {
+  const data=live?.data;
+  const generated=Date.parse(String(live?.generated_at??""));
+  const original=Date.parse(String(data?.snapshotAsOf??""));
+  const now=Date.now();
+  if(live?.schema!=="geomacro.public-risk-indices-live.v1"||
+    live?.source_project!==PROJECT_REF||
+    !Number.isFinite(generated)||!Number.isFinite(original)||
+    generated>now+5*60_000||original>generated+5*60_000||
+    !validIndices(data)||!/^([a-f0-9]{64})$/.test(data?.proofHash??"")||
+    !/^([a-f0-9]{64})$/.test(data?.inputHash??""))return false;
+  return data.indices.every(index=>{
+    const t=Date.parse(String(index.readingAsOf??""));
+    return typeof index.score==="number"&&Number.isFinite(index.score)&&
+      index.score>=0&&index.score<=100&&
+      Number.isFinite(t)&&t<=generated+5*60_000;
+  });
+}
+function historicalResponse(live,verification) {
+  return new Response(JSON.stringify(live),{
+    status:200,headers:{
+      "content-type":"application/json; charset=utf-8",
+      "cache-control":"public, max-age=300",
+      "x-content-type-options":"nosniff",
+      "x-geomacro-authority":"backblaze-b2-risk-indices-edge",
+      "x-geomacro-display-status":"last_verified",
+      "x-geomacro-historical-verification":verification,
+      "x-geomacro-source-as-of":live.data.snapshotAsOf,
+      "access-control-allow-origin":"*",
+      "access-control-expose-headers":
+        "x-geomacro-authority, x-geomacro-display-status, x-geomacro-historical-verification, x-geomacro-source-as-of"
+    }
+  });
+}
+async function buildHistoricalResponse(env) {
+  // Zero-B2-request historical path if deployment retained its exact
+  // readback-proved static bytes; this is not a current-score cache.
+  if(continuity?.schema==="geomacro.edge-continuity.v1" &&
+     continuity?.product==="risk-indices" &&
+     continuity?.b2_readback_verified===true &&
+     continuity?.projection==="exact-public-package" &&
+     typeof continuity?.payload_json==="string" &&
+     /^[a-f0-9]{64}$/.test(continuity?.payload_sha256??"") &&
+     await sha256(continuity.payload_json)===continuity.payload_sha256) {
+    try{
+      const live=JSON.parse(continuity.payload_json);
+      if(validatedHistoricalPayload(live))
+        return historicalResponse(live,"deployment-b2-readback-verified");
+    }catch{/* reject malformed historical continuity */}
+  }
+  // Two governed B2 reads. Require exact compressed-content SHA + immutable
+  // proof contract before exposing any previously validated numeric value.
+  const liveBytes=await signedGet(LIVE_KEY,env);
+  const proofBytes=await signedGet(PROOF_KEY,env);
+  const digest=await sha256(liveBytes);
+  const proof=JSON.parse(decoder.decode(proofBytes));
+  const live=JSON.parse(decoder.decode(await gunzip(liveBytes)));
+  if(proof?.schema!=="geomacro.public-risk-indices-live-proof.v1"||
+     proof?.source_project!==PROJECT_REF||
+     proof?.live_key!==LIVE_KEY||
+     proof?.compressed_sha256!==digest||
+     proof?.full_b2_readback_verified!==true||
+     proof?.exact_gzip_restore_verified!==true||
+     proof?.snapshot_id!==live?.data?.snapshotId||
+     proof?.snapshot_as_of!==live?.data?.snapshotAsOf||
+     proof?.contract_version!==live?.data?.contractVersion||
+     proof?.parent_methodology_version!==live?.data?.parentMethodologyVersion||
+     !validatedHistoricalPayload(live))
+    throw Error("RISK_INDICES_HISTORICAL_B2_PROOF_INVALID");
+  return historicalResponse(live,"b2-exact-compressed-hash-readback-proof");
 }
 
 async function buildContinuityResponse() {
@@ -304,6 +383,28 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method !== "GET") return unavailable(405);
+    if(url.pathname==="/risk-indices/history" && !url.search){
+      const archiveCache=caches.default;
+      const archiveKey=new Request(`${url.origin}/risk-indices/history`,{method:"GET"});
+      const prior=await archiveCache.match(archiveKey);
+      if(prior && prior.status===200 &&
+        prior.headers.get("x-geomacro-display-status")==="last_verified"){
+        try{
+          const live=await prior.clone().json();
+          if(validatedHistoricalPayload(live))return prior;
+        }catch{/* revalidate source */}
+      }
+      const negativeKey=b2OriginFailureCacheKey(url.origin,"/risk-indices/history");
+      if(await failedB2OriginRecently(archiveCache,negativeKey))return unavailable(503);
+      try{
+        const archived=await buildHistoricalResponse(env);
+        ctx.waitUntil(archiveCache.put(archiveKey,archived.clone()));
+        return archived;
+      }catch{
+        ctx.waitUntil(rememberFailedB2Origin(archiveCache,negativeKey));
+        return unavailable(503);
+      }
+    }
     if (url.pathname !== "/risk-indices" || url.search) return unavailable(404);
 
     const cache = caches.default;

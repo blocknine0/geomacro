@@ -3,6 +3,7 @@ import { Activity, ArrowUpRight, CheckCircle2, Clock3, Fingerprint, Globe2, Laye
 import { Button } from "@/components/ui/button";
 import { RiskBadge } from "@/components/foundation/risk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
+import {VerifiedHistoricalRiskIndices} from "./verified-historical-indices";
 import type { PublicRiskIndex } from "@/lib/risk-indices.types";
 
 const TONE = {
@@ -32,6 +33,7 @@ export function RiskIndicesWorkspace() {
           <p className="mt-4 text-sm leading-6 text-muted-foreground">Authentic independent reviewer certificates and a current signed GRI v1.2 publication are required. No triage, cached historic or artificial zero score is substituted.</p>
         </article>)}
     </div>
+    <VerifiedHistoricalRiskIndices />
   </main>;
 
   const data = risk.data;
