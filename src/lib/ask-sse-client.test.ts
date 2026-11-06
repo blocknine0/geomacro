@@ -98,7 +98,7 @@ describe("Ask transport same-tab public cache",()=>{
      geomacro_view:"Assess concrete policy, actor and location.",
      answer_kind:"explainer",insufficient_evidence:false,low_confidence:false,
      evidence:[],gri:null,source_identity_exposed:false,durable_live_storage_write:false};
-   const wire="event: answer\\ndata: "+JSON.stringify({ok:true,data:body,context:{resolved_question:question}})+"\\n\\n";
+   const wire="event: answer\ndata: "+JSON.stringify({ok:true,data:body,context:{resolved_question:question}})+"\n\n";
    const calls=vi.fn(async()=>new Response(wire,{headers:{"content-type":"text/event-stream"}}));
    vi.stubGlobal("fetch",calls);
    const first=await streamPublicAsk(question,[]);
