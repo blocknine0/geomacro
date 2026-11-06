@@ -67,3 +67,25 @@ test("remote HTTP or malformed readback fails closed",async()=>{
  assert.equal(r.ok,false);
  assert.equal(r.error,"UNIFIED_CENSUS_REMOTE_READBACK_UNAVAILABLE");
 });
+
+// The owner paused the other 145 countries and all corridors for Risk Gates.
+// Scope must constrain both database reads before their limits are applied.
+import {RISK_GATE_HOT50} from "../../workers/control-plane/src/risk-gate-hot50-scope.mjs";
+const hotLocal=local.filter(x=>x.entity_type==="COUNTRY"&&RISK_GATE_HOT50.includes(x.entity_id));
+test("Hot50 census proves exactly the active 50 hashes without requiring 207 targets",async()=>{
+ const scoped={...env(hotLocal),RISK_GATE_COUNTRY_SCOPE:"HOT50"};
+ const result=await verifyUnifiedRiskDailyRemoteCensus(scoped,DAY,{fetcher:async url=>{
+  const query=new URL(url).searchParams;
+  assert.equal(query.get("entity_type"),"eq.COUNTRY");
+  assert.equal(query.get("entity_id"),"in.("+RISK_GATE_HOT50.join(",")+")");
+  return Response.json(hotLocal);
+ }});
+ assert.equal(result.ok,true);assert.equal(result.remote_count,50);
+});
+test("Hot50 remote injection or loss does not pass a scoped census",async()=>{
+ const scoped={...env(hotLocal),RISK_GATE_COUNTRY_SCOPE:"HOT50"};
+ for(const rows of [hotLocal.slice(1),[...hotLocal,{entity_type:"COUNTRY",entity_id:"TWN",content_sha256:"f".repeat(64)}]]){
+  const result=await verifyUnifiedRiskDailyRemoteCensus(scoped,DAY,{fetcher:async()=>Response.json(rows)});
+  assert.equal(result.ok,false);assert.equal(result.error,"UNIFIED_CENSUS_REMOTE_HASH_MISMATCH");
+ }
+});

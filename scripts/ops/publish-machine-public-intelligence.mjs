@@ -52,6 +52,7 @@ try {
     promoteHotSnapshot: publishB2VerifiedHotSnapshot,
   });
   console.log(JSON.stringify(result));
+  if(Number(result.automatic_gro_signing?.failed)>0)process.exitCode=1;
 } catch {
   // Never print original packages, private URLs or provider error bodies.
   console.error("MACHINE_INTELLIGENCE_PUBLICATION_FAILED_CLOSED");

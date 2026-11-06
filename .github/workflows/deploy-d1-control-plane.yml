@@ -977,7 +977,8 @@ jobs:
             if test "$status" = 200 &&
               grep -Eiq '^cache-control:[[:space:]]*no-store([[:space:]]|$)' "$headers" &&
               jq -e '.ok == true and .schema == "geomacro.unified-risk-census.v1" and
-                .expected.country == 195 and .expected.corridor == 12 and
+                (if .scope == "HOT50" then .expected.country == 50 and .expected.corridor == 0
+                 else .expected.country == 195 and .expected.corridor == 12 end) and
                 .commercial_activation == false' "$body" >/dev/null 2>&1; then
               accepted=1
               break

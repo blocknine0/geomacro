@@ -819,9 +819,9 @@ export async function verifyUnifiedRiskDailyRemoteCensus(env,day,{fetcher=fetch}
   if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_CENSUS_D1_UNAVAILABLE"};
   const local=(await env.DB.prepare(
    "SELECT entity_type,entity_id,content_sha256,supabase_synced_at FROM unified_risk_snapshots "+
-   "WHERE day_utc=? AND (entity_type='CORRIDOR' OR entity_id<>'TWN') LIMIT 210"
+   "WHERE day_utc=? AND "+(hot50RiskGateEnabled(env)?HOT50_RISK_SQL:"(entity_type='CORRIDOR' OR entity_id<>'TWN')")+" LIMIT 210"
   ).bind(day).all())?.results??[];
-  const expected=new Set(CANONICAL_UNIFIED_TARGETS.map(identity));
+  const expected=new Set(activeRiskTargets(env,CANONICAL_UNIFIED_TARGETS).map(identity));
   if(local.length!==expected.size ||
     local.some(r=>!expected.has(r.entity_type+"|"+r.entity_id)||
       !hex.test(String(r.content_sha256??""))||!r.supabase_synced_at))
@@ -829,10 +829,11 @@ export async function verifyUnifiedRiskDailyRemoteCensus(env,day,{fetcher=fetch}
   const localMap=new Map(local.map(r=>[r.entity_type+"|"+r.entity_id,r.content_sha256]));
   if(localMap.size!==expected.size)return {ok:false,error:"UNIFIED_CENSUS_LOCAL_DUPLICATE"};
   const url="/rest/v1/geomacro_unified_risk_daily?select=entity_type,entity_id,content_sha256"+
-    "&day_utc=eq."+encodeURIComponent(day)+"&limit=210";
+    "&day_utc=eq."+encodeURIComponent(day)+(hot50RiskGateEnabled(env)?
+     "&entity_type=eq.COUNTRY&entity_id=in.("+activeRiskTargets(env,CANONICAL_UNIFIED_TARGETS).map(x=>x.id).join(",")+")":"")+"&limit=210";
   const found=await (await remote(cfg,url,{},fetcher)).json();
   if(!Array.isArray(found)||found.length>210)return {ok:false,error:"UNIFIED_CENSUS_REMOTE_INVALID"};
-  const canonical=found.filter(r=>!(r.entity_type==="COUNTRY"&&r.entity_id==="TWN"));
+  const canonical=hot50RiskGateEnabled(env)?found:found.filter(r=>!(r.entity_type==="COUNTRY"&&r.entity_id==="TWN"));
   if(canonical.length!==expected.size||
     canonical.some(r=>!expected.has(r.entity_type+"|"+r.entity_id)||
       !hex.test(String(r.content_sha256??""))||
@@ -853,22 +854,25 @@ export async function cleanupUnifiedRiskSupabase(env,{now=Date.now(),fetcher=fet
  if(!cfg)return {ok:false,error:"UNIFIED_SUPABASE_NOT_CONFIGURED"};
  try{
   const cutoff=iso(now-SEVEN),encoded=encodeURIComponent(cutoff);
-  await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?generated_at=lt."+encoded,{method:"DELETE"},fetcher);
-  const check=await (await remote(cfg,"/rest/v1/geomacro_unified_risk_daily?select=entity_id&generated_at=lt."+encoded+"&limit=1",{},fetcher)).json();
-  if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
-  await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?original_at=lt."+encoded,
-   {method:"DELETE",headers:{Prefer:"return=minimal"}},fetcher);
-  const signalCheck=await (await remote(cfg,"/rest/v1/geomacro_risk_signal_7d?select=id&original_at=lt."+encoded+"&limit=1",{},fetcher)).json();
-  if(!Array.isArray(signalCheck)||signalCheck.length)
-   return {ok:false,error:"RISK_SIGNAL_7D_CLEANUP_READBACK_FAILED"};
-  await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?expires_at=lt."+encoded,
-   {method:"DELETE",headers:{Prefer:"return=minimal"}},fetcher);
-  const corridorCheck=await (await remote(cfg,"/rest/v1/geomacro_corridor_candidate_7d?select=corridor_id&expires_at=lt."+encoded+"&limit=1",{},fetcher)).json();
-  if(!Array.isArray(corridorCheck)||corridorCheck.length)
-   return {ok:false,error:"CORRIDOR_CANDIDATE_7D_CLEANUP_READBACK_FAILED"};
-  await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL").bind(cutoff).run();
-  await env.DB.prepare("DELETE FROM risk_observations WHERE created_at<?").bind(cutoff).run();
-  await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE day_utc<?").bind(cutoff.slice(0,10)).run();
+  // The project RPC limits each indexed table delete to 1000 rows and skips
+  // locked rows. A residual expired row remains a visible failed acceptance;
+  // the next hourly run continues, without an unbounded retry loop.
+  await remote(cfg,"/rest/v1/rpc/geomacro_purge_risk_buffer_7d",{
+   method:"POST",headers:{"Content-Type":"application/json"},body:"{}",
+  },fetcher);
+  for(const [table,column,key] of [
+   ["geomacro_unified_risk_daily","generated_at","entity_id"],
+   ["geomacro_risk_signal_7d","ingested_at","id"],
+   ["geomacro_corridor_candidate_7d","ingested_at","id"],
+   ["geomacro_risk_assessment_7d","ingested_at","assessment_sha256"],
+   ["geomacro_daily_tiered_risk_gates","generated_at","corridor_id"],
+  ]){
+   const check=await (await remote(cfg,"/rest/v1/"+table+"?select="+key+"&"+column+"=lt."+encoded+"&limit=1",{},fetcher)).json();
+   if(!Array.isArray(check)||check.length)return {ok:false,error:"UNIFIED_CLEANUP_READBACK_FAILED"};
+  }
+  await env.DB.prepare("DELETE FROM unified_risk_snapshots WHERE rowid IN (SELECT rowid FROM unified_risk_snapshots WHERE generated_at<? AND supabase_synced_at IS NOT NULL ORDER BY generated_at LIMIT 500)").bind(cutoff).run();
+  await env.DB.prepare("DELETE FROM risk_observations WHERE rowid IN (SELECT rowid FROM risk_observations WHERE created_at<? ORDER BY created_at LIMIT 500)").bind(cutoff).run();
+  await env.DB.prepare("DELETE FROM unified_risk_generation_attempts WHERE rowid IN (SELECT rowid FROM unified_risk_generation_attempts WHERE day_utc<? ORDER BY day_utc LIMIT 500)").bind(cutoff.slice(0,10)).run();
   await env.DB.prepare("INSERT INTO risk_gate_daily_housekeeping(job_id,last_cleanup_at,next_cleanup_at) VALUES('unified_supabase_seven_day',?,?) ON CONFLICT(job_id) DO UPDATE SET last_cleanup_at=excluded.last_cleanup_at,next_cleanup_at=excluded.next_cleanup_at")
    .bind(iso(now),iso(now+60*60000)).run();
   return {ok:true,verified:true,retention_days:7,interval_hours:1};

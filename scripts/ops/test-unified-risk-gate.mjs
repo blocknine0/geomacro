@@ -209,7 +209,7 @@ test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
  assert.equal(r.error,"UNIFIED_RECOVERY_D1_UNAVAILABLE");
 });
 
-test("hourly seven-day retention verifies all three Supabase tables before any D1 prune",async()=>{
+test("hourly bounded seven-day retention verifies all five Supabase tables before any D1 prune",async()=>{
  const now=Date.parse("2026-11-13T08:35:00Z"),sqlCalls=[];
  let remoteDelete=0,remoteRead=0;
  const remoteOldRows={daily:[],signals:[],corridors:[]};
@@ -221,12 +221,18 @@ test("hourly seven-day retention verifies all three Supabase tables before any D
   }}}}}
  };
  const fetcher=async(url,opt)=>{
+  if(url.includes("/rpc/geomacro_purge_risk_buffer_7d")){
+   assert.equal(opt.method,"POST");assert.equal(opt.body,"{}");
+   remoteDelete++;return Response.json(null);
+  }
   assert.match(url,/2026-11-06/);
-  if(opt.method==="DELETE"){remoteDelete++;return new Response(null,{status:204})}
+  assert.match(url,/limit=1/);
+  assert.notEqual(opt.method,"DELETE");
   remoteRead++;
   if(url.includes("geomacro_unified_risk_daily"))return Response.json(remoteOldRows.daily);
   if(url.includes("geomacro_risk_signal_7d"))return Response.json(remoteOldRows.signals);
   if(url.includes("geomacro_corridor_candidate_7d"))return Response.json(remoteOldRows.corridors);
+  if(url.includes("geomacro_risk_assessment_7d")||url.includes("geomacro_daily_tiered_risk_gates"))return Response.json([]);
   assert.fail("unexpected cleanup table");
  };
  const cleaned=await cleanupUnifiedRiskSupabase(env,{now,fetcher});
@@ -234,8 +240,8 @@ test("hourly seven-day retention verifies all three Supabase tables before any D
  assert.equal(cleaned.verified,true);
  assert.equal(cleaned.interval_hours,1);
  assert.equal(cleaned.retention_days,7);
- assert.equal(remoteDelete,3);
- assert.equal(remoteRead,3);
+ assert.equal(remoteDelete,1);
+ assert.equal(remoteRead,5);
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_generation_attempts")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM risk_observations")));
  assert.ok(sqlCalls.some(x=>x.query.startsWith("DELETE FROM unified_risk_snapshots")&&

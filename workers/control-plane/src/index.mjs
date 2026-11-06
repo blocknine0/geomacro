@@ -1,3 +1,4 @@
+import {RISK_GATE_HOT50,HOT50_RISK_SQL} from "./risk-gate-hot50-scope.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
 import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
@@ -1773,6 +1774,27 @@ export default {
       // Owner-admin-only daily census; no article metadata or customer IDs.
       if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){
         const day_utc=new Date().toISOString().slice(0,10);
+        if(env.RISK_GATE_COUNTRY_SCOPE==="HOT50"){
+          const rows=(await env.DB.prepare("SELECT entity_id,supabase_synced_at FROM unified_risk_snapshots WHERE day_utc=? AND "+HOT50_RISK_SQL+" LIMIT 51").bind(day_utc).all())?.results;
+          if(!Array.isArray(rows)||rows.length>50||new Set(rows.map(x=>x.entity_id)).size!==rows.length)
+            return json({ok:false,error:"HOT50_CENSUS_LOCAL_INVALID"},503);
+          const country_count=rows.length,country_synced=rows.filter(x=>x.supabase_synced_at).length;
+          const remote=country_count===50&&country_synced===50?
+            await verifyUnifiedRiskDailyRemoteCensus(env,day_utc):{ok:false};
+          const hot=await env.DB.prepare("SELECT COUNT(*) AS n FROM country_gro_verified_hot WHERE country_iso3 IN ("+
+            RISK_GATE_HOT50.map(()=>"?").join(",")+") AND generated_at<=? AND expires_at>? AND archive_write_acknowledged=1")
+            .bind(...RISK_GATE_HOT50,new Date().toISOString(),new Date().toISOString()).first();
+          return json({schema:"geomacro.unified-risk-census.v1",scope:"HOT50",ok:true,day_utc,
+            country_count,country_synced,corridor_count:0,corridor_synced:0,
+            expected:{country:50,corridor:0,total:50},
+            d1_generation_missing:50-country_count,supabase_hash_sync_backlog:country_count-country_synced,
+            current_hot_country_gro_candidate_count:Number(hot?.n??0),
+            current_hot_corridor_gro_candidate_count:0,hot_gro_counts_are_crypto_verified:false,
+            scoring_requires_pinned_current_ed25519_gro:true,
+            remote_count:remote.ok?remote.remote_count:0,remote_hash_matches:remote.ok?remote.remote_hash_matches:0,
+            supabase_live_readback_verified:remote.ok===true,complete:remote.ok===true,
+            commercial_activation:false});
+        }
         const rows=(await env.DB.prepare("SELECT entity_type,COUNT(DISTINCT entity_id) AS entities,SUM(CASE WHEN supabase_synced_at IS NOT NULL THEN 1 ELSE 0 END) AS synced FROM unified_risk_snapshots WHERE day_utc=? AND (entity_type='CORRIDOR' OR entity_id<>'TWN') GROUP BY entity_type").bind(day_utc).all())?.results??[];
         const countries=rows.find(x=>x.entity_type==="COUNTRY");
         const corridors=rows.find(x=>x.entity_type==="CORRIDOR");
