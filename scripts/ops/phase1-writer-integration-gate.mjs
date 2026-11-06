@@ -10,11 +10,11 @@ import {join,relative,sep} from 'node:path';
 
 const SCAN_ROOTS=Object.freeze(['.']);
 const SOURCE=/\.(?:mjs|js|cjs|ts|tsx|jsx|py|sh|bash|ps1|ya?ml|json|jsonc)$/u;
-const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
+const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
 const SQL_READ=/\bSELECT\b/iu;
 const D1_READ_METHOD=/\.\s*(?:all|first|raw|run|batch|exec|query)\s*\(/iu;
-const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+(?:execute|migrations)\b/iu;
+const DIRECT_D1_COMMAND=/\bwrangler\s+d1\s+execute\b/iu;
 function filesUnder(root){
  const out=[];
  function walk(dir){
