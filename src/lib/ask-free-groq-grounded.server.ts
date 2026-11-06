@@ -99,7 +99,7 @@ export function repairBlankGroqFields(
   }
   return {text:JSON.stringify(repaired),hasNewWording};
 }
-type Dependencies={fetchImpl?:typeof fetch;readContext?:typeof collectAskModelContext};
+type Dependencies={fetchImpl?:typeof fetch;cacheFetchImpl?:typeof fetch;readContext?:typeof collectAskModelContext};
 function privateSafeContext(context:AskModelContext):AskModelContext{
  return {categories:context.categories.slice(0,3),
   canonical_evidence_items:context.canonical_evidence_items,
@@ -191,12 +191,18 @@ export async function enhanceAskWithFreeGroq(
    async()=>{
      // Read only hashed, existing public explainer wording. Never cache a
      // current event, score, follow-up context or source record in D1.
-     const remote=await readGlobalAskModelCache(question,canonical,dependencies.fetchImpl??fetch);
+     // A mocked provider fetch is not a mock of the unrelated private D1
+     // cache. Production has neither dependency injected; tests may opt into
+     // cache behaviour with an explicit cacheFetchImpl mock.
+     const globalCacheEnabled=!dependencies.fetchImpl||Boolean(dependencies.cacheFetchImpl);
+     const remote=globalCacheEnabled
+       ? await readGlobalAskModelCache(question,canonical,dependencies.cacheFetchImpl??fetch)
+       : null;
      if(remote){globalHit=true;return remote;}
      const rendered=await requestFreeGroq(question,canonical,clientKey,dependencies,
        code=>{diagnostic=code;});
-     if(rendered.model_rendering==="assisted")
-       await writeGlobalAskModelCache(question,canonical,rendered,dependencies.fetchImpl??fetch);
+     if(rendered.model_rendering==="assisted"&&globalCacheEnabled)
+       await writeGlobalAskModelCache(question,canonical,rendered,dependencies.cacheFetchImpl??fetch);
      return rendered;
    },
    status=>{cacheStatus=status;});
