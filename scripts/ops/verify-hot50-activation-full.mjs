@@ -214,30 +214,59 @@ async function signedIndices(){
  return {three_domains:true,issuer_delivery_ed25519_verified:true,
    reviewer_public_authority_pinned_and_distinct:true,
    reviewed_gri_source:"EXISTING_PROTECTED_GRI_V1_2_PUBLISHER",
-   payload_sha256:source.payload_sha256};
+   payload_sha256:source.payload_sha256,
+   scores:Object.fromEntries(arr.map(x=>[x.key,x.score]))};
 }
 const ASK_CASES=[
- ["geopolitics","What is the current Geopolitical Risk Index?"],
- ["macro","What is the current Macroeconomic Risk Index?"],
- ["critical_minerals","What is the current Critical Minerals Risk Index?"]
+ ["geopolitics","Geopolitical Risk Index","What is the latest geopolitical risk index?"],
+ ["macro","Macroeconomic Risk Index","What is the latest macroeconomic risk index?"],
+ ["critical_minerals","Critical Minerals Risk Index","What is the latest critical minerals risk index?"]
 ];
-async function askProof(){
+async function askProof(verifiedScores){
+ if(!verifiedScores)fail("ASK_REVIEWED_INDEX_REFERENCE_UNAVAILABLE");
  const rows=[];
- for(const [category,question] of ASK_CASES){
+ for(const [category,label,question] of ASK_CASES){
   const seen=[];
   for(let n=0;n<2;n++){
    const start=performance.now();
    const r=await read(ASK,{headers:{accept:"application/json",
     origin:"https://geomacro.live","x-geomacro-question":question}});
    const a=r.data?.data;
+   // The current repo intentionally leaves gri:null in the exact-index
+   // answer: it returns a fresh signed text reading without caching a score.
    if(r.data?.ok!==true||!a||typeof a.summary!=="string"||
-      !Array.isArray(a.evidence)||a.gri===null||a.insufficient_evidence===true)
-    fail("ASK_CURRENT_INDEX_CONTEXT_UNVERIFIED_"+category);
-   seen.push({cache_status:a.cache_status??null,latency_ms:Math.round(performance.now()-start)});
+      a.summary.indexOf(label+": "+verifiedScores[category]+"/100")<0||
+      a.real_time_message!=="CURRENT_SIGNED_REVIEWED_RISK_INDEX"||
+      !Array.isArray(a.evidence)||a.insufficient_evidence!==false||
+      a.low_confidence!==false||a.cache_status!=="bypassed"||
+      a.gri!==null||a.source_identity_exposed!==false||
+      a.durable_live_storage_write!==false)
+    fail("ASK_SIGNED_INDEX_CONTEXT_OR_NO_CACHE_INVARIANT_"+category);
+   seen.push({cache_status:a.cache_status,latency_ms:Math.round(performance.now()-start)});
   }
-  rows.push({category,cache_probe:seen});
+  rows.push({category,verified_index_score:verifiedScores[category],requests:seen});
  }
- return {domains:rows,zero_latency_claim:false,groq_architecture_unchanged:true};
+ // A separate ordinary, non-index explainer checks cache contract without
+ // falsely expecting signed index answers to be shared or model-rewritten.
+ const general=[];
+ for(let n=0;n<2;n++){
+  const t=performance.now();
+  const r=await read(ASK,{headers:{accept:"application/json",
+    origin:"https://geomacro.live",
+    "x-geomacro-question":"How does monetary policy influence foreign exchange rates?"}});
+  const data=r.data?.data;
+  if(r.data?.ok!==true||!data||typeof data.summary!=="string"||
+     typeof data.cache_status!=="string"||
+     data.source_identity_exposed!==false||data.durable_live_storage_write!==false)
+   fail("ASK_SHARED_ANSWER_CACHE_CONTRACT_UNAVAILABLE");
+  general.push({cache_status:data.cache_status,
+    model_render_cache:data.model_render_cache??null,
+    model_render_cache_scope:data.model_render_cache_scope??null,
+    latency_ms:Math.round(performance.now()-t)});
+ }
+ return {index_domains:rows,ordinary_answer_cache_reads:general,
+   observed_cache_hit:general.some(x=>x.cache_status==="hit"||x.model_render_cache==="hit"),
+   zero_latency_claim:false,groq_architecture_unchanged:true};
 }
 if(process.argv[1] && fileURLToPath(import.meta.url)===resolve(process.argv[1])){
  const allowed=new Set(["--redrive","--b2-list"]);
@@ -279,9 +308,11 @@ if(process.argv[1] && fileURLToPath(import.meta.url)===resolve(process.argv[1]))
     record("B2-D1 Parity",physicalList,details);
    }catch(e){record("B2-D1 Parity",false,{reason:String(e.message).slice(0,150)})}
   }else record("B2-D1 Parity",false,{reason:"CENSUS_NOT_AVAILABLE"});
-  try{record("Index Signing",true,await signedIndices())}
+  let signedScores=null;
+  try{const proof=await signedIndices();signedScores=proof.scores;
+    record("Index Signing",true,proof)}
   catch(e){record("Index Signing",false,{reason:String(e.message).slice(0,150)})}
-  try{record("Ask GeoMacro Retrieval",true,await askProof())}
+  try{record("Ask GeoMacro Retrieval",true,await askProof(signedScores))}
   catch(e){record("Ask GeoMacro Retrieval",false,{reason:String(e.message).slice(0,150)})}
   const pass=results.every(r=>r.status==="PASS");
   console.log(JSON.stringify({schema:"geomacro.hot50-production-activation-acceptance.v1",
