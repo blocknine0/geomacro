@@ -1,3 +1,4 @@
+import {CATEGORIES,validatedSignedCategoryScores} from "./unified-risk-categories.mjs";
 /**
  * Evidence-triggered activation contract for the existing three real
  * Risk Gate products. Never manufactures evidence or triggers a charge.
@@ -27,15 +28,10 @@ export function productActivationTriggers(product,{tier,verifiedGro=null,archive
  const freshObserved=tier==="basic_focused"&&
   (product.category_observations??[]).some(x=>x.observed_count>0)&&
   Array.isArray(product.signal_alerts)&&product.signal_alerts.length>0;
- const categorySigned=verifiedGro?.verification?.status==="VERIFIED"&&
-  verifiedGro?.commercial_eligibility?.status==="VERIFIED"&&
-  Array.isArray(verifiedGro?.attribution)&&
-  ["conflict","sanctions","political_instability","trade_policy"].some(
-   d=>verifiedGro.attribution.some(x=>x.driver===d))&&
-  ["monetary_policy","inflation","labor_market","currency_fx","macro_stress"].some(
-   d=>verifiedGro.attribution.some(x=>x.driver===d))&&
-  ["critical_minerals","rare_earth_supply"].some(
-   d=>verifiedGro.attribution.some(x=>x.driver===d));
+ const categoryScores=validatedSignedCategoryScores(verifiedGro);
+ const categorySigned=CATEGORIES.every(category=>
+  typeof categoryScores[category]==="number"&&
+  Number.isFinite(categoryScores[category]));
  const groFresh=Boolean(verifiedGro)&&
   Number.isFinite(Date.parse(verifiedGro.generated_at))&&
   Number.isFinite(Date.parse(verifiedGro.expires_at))&&
