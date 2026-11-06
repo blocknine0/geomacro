@@ -235,6 +235,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GROQ_API_KEY_FOR_ASK_CACHE: ${{ secrets.GROQ_API_KEY }}
       RELIEFWEB_APPROVED_APPNAME: ${{ secrets.RELIEFWEB_APPROVED_APPNAME }}
       RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
       RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
@@ -797,6 +798,17 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' "$DEPLOY_LOG" | tail -n 1 || true)"
           test -n "$DEPLOYMENT_URL" || { echo "Wrangler deploy did not emit a workers.dev deployment URL"; exit 6; }
           printf '%s' "$CONTROL_PLANE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put CONTROL_PLANE_TOKEN --config wrangler.runtime.jsonc >/tmp/d1-secret-put.log
+          # A purpose-specific HMAC of the existing GitHub Groq secret is used
+          # by the existing Lovable SSR Groq runtime for public-answer cache only.
+          # Never deploy the raw Groq API key to Cloudflare or display it.
+          test "${#GROQ_API_KEY_FOR_ASK_CACHE}" -ge 20 || {
+            echo "::error::ASK_GLOBAL_CACHE_EXISTING_GROQ_SECRET_MISSING"; exit 5;
+          }
+          ASK_PUBLIC_MODEL_CACHE_TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.GROQ_API_KEY_FOR_ASK_CACHE).update('geomacro-ask-public-model-cache-v1').digest('hex'))")"
+          test "${#ASK_PUBLIC_MODEL_CACHE_TOKEN}" -eq 64 || exit 5
+          echo "::add-mask::$ASK_PUBLIC_MODEL_CACHE_TOKEN"
+          printf '%s' "$ASK_PUBLIC_MODEL_CACHE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put ASK_PUBLIC_MODEL_CACHE_TOKEN --config wrangler.runtime.jsonc >/dev/null
+          echo "ASK_PUBLIC_MODEL_CACHE_TOKEN_PROVISIONED=true"
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
           # Install an approved ReliefWeb appname only if provisioned.
           # Never silently substitute an unapproved catalogue identifier.
