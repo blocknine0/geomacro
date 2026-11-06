@@ -25,8 +25,8 @@ if(full){
    hmac_verified:body.hmac_verified===true};
  }catch{rollup={ok:false};}
 }
-// A bounded read-only census: the sequential 150 * 25s worst case exceeded
-// the daily 12-minute job limit. Never issue any payment or mutation request.
+// Bounded no-funds API census: the 150 sequential 25s worst case exceeded
+// the daily 12-minute job limit. The API maintains its existing audit receipts.
 const tasks=ids.flatMap(id=>Object.entries(RISK_GATE_PRODUCT_TIERS).map(([tier,price])=>({id,tier,price})));
 const receipts=new Array(tasks.length);
 const concurrency=Math.min(8,tasks.length);
@@ -51,14 +51,14 @@ const cells=ids.flatMap(id=>HOT50_CATEGORY_KEYS.map(category=>{
  const valid=receipts.filter(x=>x.country_iso3===id&&x.contract_valid);
  const verified=valid.some(x=>x.verified_current_three_category);
  const state=valid.find(x=>x.category_statuses?.[category])?.category_statuses?.[category]??"INVALID_OR_MISSING";
- return {country_iso3:id,category,status:state,verified_current_signed_gro:verified};
+ return {country_iso3:id,category,status:verified?"VERIFIED_CURRENT_SIGNED_GRO":state,verified_current_signed_gro:verified};
 }));
 const verifiedCells=cells.filter(x=>x.verified_current_signed_gro).length;
 const report={schema:"geomacro.hot50-three-price-production-acceptance.v2",generated_at:new Date().toISOString(),
  scope:"HOT50",full_census:full,countries_checked:ids.length,categories_per_country:3,
  expected_tiers:3,checked:receipts.length,ready:receipts.filter(x=>x.ready).length,
  country_category_cells_checked:cells.length,country_category_cells_verified:verifiedCells,
- complete:receipts.every(x=>x.ready)&&verifiedCells===ids.length*3&&(!full||rollup?.ok===true),
+ complete:receipts.every(x=>x.ready)&&verifiedCells===ids.length*3&&(!full||(rollup?.ok===true&&rollup?.hmac_verified===true)),
  no_funds:true,rollup,cells,receipts};
 mkdirSync("artifacts/hot50-risk-gate",{recursive:true});
 writeFileSync("artifacts/hot50-risk-gate/latest.json",JSON.stringify(report,null,2));
