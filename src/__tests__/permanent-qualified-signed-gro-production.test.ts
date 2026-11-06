@@ -87,6 +87,7 @@ describe("permanent native GRO 1.1 signing and B2/D1 hot production", () => {
     expect(yaml).toContain('cron: "3,23,43 * * * *"');
     expect(yaml).toContain("scripts/ops/run-automatic-gro-signing.ts");
     expect(yaml).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(yaml).toContain('"Machine Dual-Authority Intelligence Publication"');
     expect(yaml).not.toContain("COINBASE_X402_MAINNET_ACK");
     expect(yaml).not.toContain("GEOMACRO_REAL_FUNDS_SECURITY_ACK");
     expect(yaml).not.toContain("PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");

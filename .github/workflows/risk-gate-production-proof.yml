@@ -10,6 +10,8 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/verify-hot50-risk-gate-tiers.mjs"
+      - "scripts/lib/hot50-production-proof.mjs"
+      - "scripts/lib/hot50-production-proof.test.mjs"
       - "scripts/tests/risk-gate-hot50-low-quota.test.mjs"
       - ".github/workflows/risk-gate-production-proof.yml"
   workflow_dispatch:
@@ -171,7 +173,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify scoped scheduling, tamper rejection and one-read rollups
-        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs
+        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs
       - name: Observe account quota before authenticated API proofs
         id: quota
         env:
