@@ -809,6 +809,32 @@ jobs:
           echo "::add-mask::$ASK_PUBLIC_MODEL_CACHE_TOKEN"
           printf '%s' "$ASK_PUBLIC_MODEL_CACHE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put ASK_PUBLIC_MODEL_CACHE_TOKEN --config wrangler.runtime.jsonc >/dev/null
           echo "ASK_PUBLIC_MODEL_CACHE_TOKEN_PROVISIONED=true"
+          # One intentionally tiny, source-free D1 write/readback is required
+          # before counting the shared model cache as production activated.
+          export ASK_PUBLIC_MODEL_CACHE_TOKEN DEPLOYMENT_URL
+          node --input-type=module <<'NODE'
+          import assert from "node:assert/strict";
+          import {createHash} from "node:crypto";
+          const target=process.env.DEPLOYMENT_URL+"/v1/internal/ask/public-model-cache";
+          const key=createHash("sha256").update("geomacro-public-model-cache-canary:"+process.env.GITHUB_SHA).digest("hex");
+          const headers={Authorization:"Bearer "+process.env.ASK_PUBLIC_MODEL_CACHE_TOKEN,Accept:"application/json"};
+          const fields={summary:"Inflation refers to a broad price level increase.",
+            what_changed:"General explanation only; no current event established.",
+            why_it_matters:"Prices affect household purchasing power.",
+            geomacro_view:"Compare the same period and base for sound interpretation."};
+          const put=await fetch(target,{method:"PUT",headers:{...headers,"Content-Type":"application/json"},
+            body:JSON.stringify({key,fields,expires_at:Math.floor(Date.now()/1000)+300}),
+            signal:AbortSignal.timeout(12000)});
+          assert.equal(put.status,200,"ASK_CACHE_PUT_NOT_200");
+          const p=await put.json();assert.equal(p.ok,true,"ASK_CACHE_PUT_FAILED");
+          const get=await fetch(target+"?key="+key,{headers,signal:AbortSignal.timeout(12000)});
+          assert.equal(get.status,200,"ASK_CACHE_GET_NOT_200");
+          const g=await get.json();
+          assert.equal(g.ok,true,"ASK_CACHE_READ_FAILED");
+          assert.equal(g.hit,true,"ASK_CACHE_READ_MISS");
+          assert.deepEqual(g.fields,fields,"ASK_CACHE_READBACK_FIELDS_DIFFER");
+          console.log("ASK_PUBLIC_MODEL_CACHE_AUTH_D1_WRITE_READBACK_PASS=true");
+          NODE
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
           # Install an approved ReliefWeb appname only if provisioned.
           # Never silently substitute an unapproved catalogue identifier.
