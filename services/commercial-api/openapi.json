@@ -140,7 +140,7 @@
       "ApiKey": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "gm_live_<256-bit-secret>"
+        "bearerFormat": "gm_live2_<256-bit-secret>; legacy gm_live_ keys accepted"
       },
       "X402": {
         "type": "apiKey",
