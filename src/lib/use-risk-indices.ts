@@ -33,6 +33,38 @@ type RiskIndicesReadTarget =
 const REQUEST_TIMEOUT_MS = 8_000;
 const CERTIFIED_RETRY_DELAYS_MS = [350, 900] as const;
 const VERIFIED_READ_CACHE_MS = 60_000;
+const REVIEWED_SIGNED_RISK_INDICES_APP_URL="/api/public/reviewed-risk-indices";
+type SignedReviewedIndicesResponse={
+  ok:boolean;data?:PublicRiskIndices;
+  meta?:{authority?:string;signature_verified?:boolean;signature_scheme?:string;
+    public_key_trust?:string;source_as_of?:string};
+};
+async function readCurrentReviewedSignedIndices():Promise<PublicRiskIndices>{
+  const res=await fetch(REVIEWED_SIGNED_RISK_INDICES_APP_URL,{
+    method:"GET",redirect:"error",cache:"no-store",credentials:"same-origin",
+    headers:{"Accept":"application/json"},signal:AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  });
+  if(res.status!==200||res.redirected)
+    throw Error("CURRENT_REVIEWED_SIGNED_GRI_UNAVAILABLE");
+  const body=await res.json() as SignedReviewedIndicesResponse;
+  if(body.ok!==true||body.meta?.authority!=="geomacro-reviewed-gri-ed25519-delivery"||
+     body.meta.signature_verified!==true||body.meta.signature_scheme!=="Ed25519"||
+     !validIndices(body.data))
+     throw Error("REVIEWED_GRI_CRYPTOGRAPHIC_ACCEPTANCE_INVALID");
+  const now=Date.now();
+  const snapshot=Date.parse(body.data.snapshotAsOf);
+  if(!Number.isFinite(snapshot)||snapshot>now+5*60000||now-snapshot>60*60000||
+     body.meta.source_as_of!==body.data.snapshotAsOf||
+     body.data.proofScope!=="verified-category-projection"||
+     body.data.indices.some(index=>
+       index.readingStatus!=="current"||
+       !Number.isFinite(Date.parse(index.readingAsOf??""))||
+       now-Date.parse(index.readingAsOf??"")>60*60000||
+       Date.parse(index.readingAsOf??"")>now+5*60000))
+    throw Error("REVIEWED_GRI_CURRENT_NATIVE_CLOCK_REQUIRED");
+  return body.data;
+}
+
 let lastCertifiedRead: { loadedAt: number; data: PublicRiskIndices } | null = null;
 
 /** Cache only a fully validated, issuer-pinned document. Never cache a failed or
@@ -42,7 +74,8 @@ async function readCachedCertifiedNewsRisk(forceRefresh: boolean): Promise<Publi
       Date.now() - lastCertifiedRead.loadedAt < VERIFIED_READ_CACHE_MS) {
     return lastCertifiedRead.data;
   }
-  const data = await readGeoMacroCertifiedNewsRisk();
+  // Require real reviewer-gated GRI v1.2 publication; never self-certified news severity.
+  const data = await readCurrentReviewedSignedIndices();
   lastCertifiedRead = { loadedAt: Date.now(), data };
   return data;
 }
