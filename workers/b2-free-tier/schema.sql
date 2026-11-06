@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS files (
   visibility TEXT NOT NULL CHECK (visibility IN ('public','private')),
   expires_at TEXT,
   last_accessed_at TEXT,
+  baseline_accounted INTEGER NOT NULL DEFAULT 0 CHECK (baseline_accounted IN (0,1)),
   evictable INTEGER NOT NULL DEFAULT 1 CHECK (evictable IN (0,1))
 );
 
@@ -52,7 +53,7 @@ BEGIN
     THEN RAISE(ABORT, 'B2_STORAGE_BASELINE_UNVERIFIED') END;
   SELECT CASE WHEN
     (SELECT account_bytes FROM b2_storage_baseline WHERE singleton=1) +
-    (SELECT COALESCE(SUM(size_bytes),0) FROM files) + NEW.size_bytes > 9200000000
+    (SELECT COALESCE(SUM(size_bytes),0) FROM files WHERE baseline_accounted=0) + NEW.size_bytes > 9200000000
     THEN RAISE(ABORT, 'B2_STORAGE_HARD_LIMIT') END;
   INSERT INTO b2_daily_usage(day_utc,upload_requests,class_a_calls,updated_at)
   VALUES (substr(NEW.created_at,1,10),1,1,NEW.created_at)

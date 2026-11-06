@@ -47,3 +47,16 @@ test("only public GET route can return immutable cacheable data", async () => {
   assert.match(source, /reserveB2AccountQuota\(env\.DB/u);
   assert.match(source, /await reserveClassA\(env, \{ upload: true \}\)/u);
 });
+
+test("internal exact-key reader is authenticated, indexed, pinned to one version, and cacheable", async () => {
+  const source = await readFile(new URL("../src/index.mjs", import.meta.url), "utf8");
+  assert.match(source, /\/v1\/internal\/objects/u);
+  assert.match(source, /internalAuthorized\(request, env\)/u);
+  assert.match(source, /WHERE path=\? AND status='ready'/u);
+  assert.match(source, /new URLSearchParams\(\{ versionId: row\.b2_file_id \}\)/u);
+  assert.match(source, /evictable,baseline_accounted\)/u);
+  assert.match(source, /WHERE baseline_accounted=0/u);
+  assert.match(source, /"private, no-store"/u);
+  assert.match(source, /validLegacyPath\(path\)/u);
+  assert.doesNotMatch(source, /ListObjects|list_file_names|list-type=2|listFiles/iu);
+});

@@ -45,6 +45,12 @@ B2 URLs.
 - Any B2 provider storage, download, or transaction cap response blocks this
   Worker for the rest of the UTC day. Unknown PUT outcomes retain the pending
   D1 byte reservation instead of undercounting a possibly stored object.
+- Authenticated `GET /v1/internal/objects?path=<exact-key>` supports known
+  pre-existing keys without invoking any list API. A cold exact-key read imports
+  its size, MIME type, SHA-256 and B2 version ID into `files` as
+  `baseline_accounted=1`; those bytes are already included in the verified
+  account baseline and are excluded from the managed-byte sum. The response is
+  integrity-checked and pinned to that exact version in the Worker Cache API.
 
 ## Important account-wide boundary
 
@@ -61,6 +67,20 @@ deploys successfully.
 The 9.2 GB limit applies to the tracked baseline plus the `files` rows. B2
 lifecycle processing is asynchronous, so old-version removal is not immediate.
 Keep the hard gate at 9.2 GB and the verified baseline conservative.
+
+### Existing object reader cutover gate
+
+The internal exact-key route is a migration primitive, not a complete
+account-wide cutover by itself. Set `INTERNAL_GATEWAY_TOKEN` only on the
+gateway and trusted server/Worker callers. Before routing a mutable legacy key
+through it, migrate that key's writer so each successful write updates the
+D1 version pointer before readers switch. Otherwise the first imported version
+is intentionally pinned and later direct B2 overwrites will not appear through
+the gateway. Keep existing readers active until writer migration, D1 index
+population, edge-cache verification, and rollback checks all pass. The three
+public edge Workers, server-side archive readers, and operational scripts still
+require individual migration and exact-head acceptance before legacy
+credentials can be revoked.
 
 ## D1 setup
 
@@ -92,8 +112,9 @@ index pre-existing objects.
    read, write, and delete capabilities. Do not grant file-listing or
    bucket-listing capabilities. The gateway does not call any list API.
 3. Store these as Worker secrets: `B2_KEY_ID`, `B2_APPLICATION_KEY`, and a
-   high-entropy `UPLOAD_BEARER_TOKEN`. Keep the endpoint, region, and bucket in
-   Worker variables as shown in `wrangler.toml`.
+   high-entropy `UPLOAD_BEARER_TOKEN`. Also set a separate high-entropy
+   `INTERNAL_GATEWAY_TOKEN` for trusted server-side exact-key reads. Keep the
+   endpoint, region, and bucket in Worker variables as shown in `wrangler.toml`.
 4. Deploy the Worker, bind a Cloudflare hostname, and change frontend/API
    clients to read only `/v1/files/{id}`. Uploads use `PUT /v1/files`; cleanup
    uses authenticated `POST /v1/admin/cleanup`.
@@ -147,6 +168,9 @@ prefix must remain intact. Confirm the saved prefix and rule in the console.
       for other B2 credentials and direct B2 requests. Migrate them to the
       account-wide shared governor or revoke their credentials before claiming
       an account-wide lock.
+- [ ] Migrate writers for every mutable legacy key before switching its readers;
+      exact-key imports pin the indexed B2 version and do not follow future
+      direct overwrites.
 - [ ] Confirm the only gateway S3 methods are `PUT`, `GET`, and exact-version
       `DELETE`; verify no list, bucket, or key-management method exists.
 - [ ] Verify the shared D1 ledger never exceeds 2,000 uploads/Class-A calls,

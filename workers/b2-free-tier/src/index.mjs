@@ -186,7 +186,7 @@ async function handleProviderResponse(env, response) {
 
 async function storageUsage(env) {
   const row = await env.DB.prepare(`
-    SELECT b.account_bytes + COALESCE((SELECT SUM(size_bytes) FROM files),0) AS total_bytes
+    SELECT b.account_bytes + COALESCE((SELECT SUM(size_bytes) FROM files WHERE baseline_accounted=0),0) AS total_bytes
     FROM b2_storage_baseline b WHERE b.singleton=1 AND b.verified_at IS NOT NULL
   `).first();
   if (!row || !Number.isSafeInteger(Number(row.total_bytes))) throw new Error("B2_STORAGE_BASELINE_UNVERIFIED");
@@ -354,6 +354,103 @@ async function publicRead(request, env, ctx, id) {
   return result;
 }
 
+function validLegacyPath(path) {
+  return typeof path === "string" && path.length > 0 && path.length <= 1024 &&
+    path.startsWith("geomacro-evidence/v1/") && /^[A-Za-z0-9_./-]+$/u.test(path) &&
+    !path.includes("..") && !path.includes("//") && !path.startsWith("/") && !path.endsWith("/");
+}
+
+async function internalAuthorized(request, env) {
+  const header = request.headers.get("authorization") ?? "";
+  return Boolean(env.INTERNAL_GATEWAY_TOKEN) && header.startsWith("Bearer ") &&
+    constantTimeEqual(header.slice(7), env.INTERNAL_GATEWAY_TOKEN);
+}
+
+async function internalObjectRead(request, env, ctx) {
+  if (!(await internalAuthorized(request, env))) return json({ error: "UNAUTHORIZED" }, 401);
+  const path = new URL(request.url).searchParams.get("path");
+  if (!validLegacyPath(path)) return json({ error: "OBJECT_PATH_INVALID" }, 400);
+
+  let row = await env.DB.prepare(`
+    SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,status,baseline_accounted
+    FROM files WHERE path=? AND status='ready' LIMIT 1
+  `).bind(path).first();
+
+  // Existing objects are imported only by exact key supplied by a trusted
+  // reader. This is a single-object GET, never a bucket/prefix listing.
+  if (!row) {
+    try {
+      await reserveClassB(env);
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      return json({ error: message === "B2_DAILY_CLASS_B_LIMIT" ? message : "B2_QUOTA_LEDGER_UNAVAILABLE" }, 503);
+    }
+    const origin = await s3Request(env, "GET", path);
+    try {
+      await handleProviderResponse(env, origin);
+    } catch {
+      return json({ error: origin.status === 404 ? "NOT_FOUND" : "ORIGIN_UNAVAILABLE" }, origin.status === 404 ? 404 : 503);
+    }
+    const bytes = new Uint8Array(await origin.arrayBuffer());
+    const versionId = origin.headers.get("x-amz-version-id");
+    if (!versionId || bytes.length > 50 * 1024 * 1024) return json({ error: "OBJECT_METADATA_UNAVAILABLE" }, 502);
+    const id = crypto.randomUUID();
+    const mimeType = (origin.headers.get("content-type") ?? "application/octet-stream").split(";")[0].trim().toLowerCase();
+    const digest = await sha256(bytes);
+    try {
+      await env.DB.prepare(`
+        INSERT INTO files(id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,visibility,expires_at,last_accessed_at,evictable,baseline_accounted)
+        VALUES(?,?,?,?,?,?,?,'ready','private',NULL,NULL,0,1)
+        ON CONFLICT(path) DO NOTHING
+      `).bind(id, path, versionId, bytes.byteLength, mimeType, digest, new Date().toISOString()).run();
+    } catch {
+      return json({ error: "OBJECT_INDEX_WRITE_FAILED" }, 503);
+    }
+    row = await env.DB.prepare(`
+      SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,status,baseline_accounted
+      FROM files WHERE path=? AND status='ready' LIMIT 1
+    `).bind(path).first();
+    if (!row || row.b2_file_id !== versionId) return json({ error: "OBJECT_INDEX_CONFLICT" }, 409);
+    const cacheKey = new Request(new URL(`/v1/internal/files/${row.id}`, new URL(request.url).origin), { method: "GET" });
+    ctx.waitUntil(caches.default.put(cacheKey, internalObjectResponse(bytes, row, true)));
+    return internalObjectResponse(bytes, row);
+  }
+
+  const cacheKey = new Request(new URL(`/v1/internal/files/${row.id}`, new URL(request.url).origin), { method: "GET" });
+  const cached = await caches.default.match(cacheKey);
+  if (cached) return internalObjectResponse(new Uint8Array(await cached.arrayBuffer()), row);
+  if (!row.b2_file_id) return json({ error: "OBJECT_VERSION_MISSING" }, 503);
+  try {
+    await reserveClassB(env);
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    return json({ error: message === "B2_DAILY_CLASS_B_LIMIT" ? message : "B2_QUOTA_LEDGER_UNAVAILABLE" }, 503);
+  }
+  const origin = await s3Request(env, "GET", row.path, { query: new URLSearchParams({ versionId: row.b2_file_id }) });
+  try {
+    await handleProviderResponse(env, origin);
+  } catch {
+    return json({ error: "ORIGIN_UNAVAILABLE" }, 503);
+  }
+  const bytes = new Uint8Array(await origin.arrayBuffer());
+  if (bytes.byteLength !== row.size_bytes || await sha256(bytes) !== row.sha256) {
+    await blockForToday(env, "B2_OBJECT_INTEGRITY_MISMATCH");
+    return json({ error: "OBJECT_INTEGRITY_MISMATCH" }, 502);
+  }
+  ctx.waitUntil(caches.default.put(cacheKey, internalObjectResponse(bytes, row, true)));
+  return internalObjectResponse(bytes, row);
+}
+
+function internalObjectResponse(bytes, row, cacheable = false) {
+  return new Response(bytes, { status: 200, headers: {
+    "content-type": row.mime_type,
+    "content-length": String(row.size_bytes),
+    "cache-control": cacheable ? `public, max-age=${CACHE_SECONDS}, immutable` : "private, no-store",
+    etag: `"${row.sha256}"`,
+    "x-content-type-options": "nosniff",
+  }});
+}
+
 async function adminCleanup(request, env) {
   if (!(await authorized(request, env))) return json({ error: "UNAUTHORIZED" }, 401);
   try {
@@ -370,6 +467,7 @@ export default {
       const url = new URL(request.url);
       if (request.method === "PUT" && url.pathname === "/v1/files") return upload(request, env);
       if (request.method === "POST" && url.pathname === "/v1/admin/cleanup") return adminCleanup(request, env);
+      if (request.method === "GET" && url.pathname === "/v1/internal/objects") return internalObjectRead(request, env, ctx);
       const match = url.pathname.match(/^\/v1\/files\/([^/]+)$/u);
       if (request.method === "GET" && match) return publicRead(request, env, ctx, decodeURIComponent(match[1]));
       return json({ error: "NOT_FOUND" }, 404);
