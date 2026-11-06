@@ -70,7 +70,7 @@ describe("GeoMacro private research + approved OpenAI composer",()=>{
         code=>failures.push(code));
     expect(check({...valid,extra:"not approved"})).toBeNull();
     expect(check({...valid,summary:"Long ".repeat(90)})).toBeNull();
-    expect(check({...valid,why_it_matters:"Secret API key: test"})).toBeNull();
+    expect(check({...valid,why_it_matters:"Unverified OSINT research"})).toBeNull();
     expect(check({...valid,summary:"Copper output 987654 today."})).toBeNull();
     expect(failures).toEqual(["unexpected_fields","field_too_long","forbidden_text",
       "unapproved_number"]);
