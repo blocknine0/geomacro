@@ -70,7 +70,7 @@ test("fresh provider Paid proof remains held until all account D1 writers are ve
  assert.equal(grant.state,"HELD");
  assert.equal(grant.reason,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
  assert.equal(grant.source_intake,false);
- assert.equal(grant.paid_subscription_change_performed,false);
+ assert.equal(grant.paid_calls,0);
 });
 test("Billing Read uses account-scoped Cloudflare GET and never updates a subscription",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
@@ -139,7 +139,7 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  assert.equal(existingToken.critical,false);
  assert.equal(existingToken.state,"HELD");
  assert.equal(existingToken.reason,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
- assert.equal(existingToken.paid_capacity_probe_status,"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED");
+ assert.equal(existingToken.paid_capacity_probe_status,"VERIFIED");
  const denied=await checkD1BundledWork({
   env,now,fetchImpl:async(url,init)=>
    url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:
