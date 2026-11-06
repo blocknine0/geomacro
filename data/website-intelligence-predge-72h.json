@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-06T20:49:26.493Z",
+  "checked_at": "2026-11-06T23:12:32.657Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 75,
+  "item_count": 69,
   "counts": {
-    "geopolitics": 15,
-    "macro": 25,
+    "geopolitics": 12,
+    "macro": 22,
     "rare_earth": 35
   },
-  "source_native_ids_sha256": "7b4d0d738a082136e616f5f3f7bf3a6811d1e9e52b312413fffe9433242d47f0",
+  "source_native_ids_sha256": "8a976d5ff767f2dfefe609cc0ba13fc2be5fa8d71873c4117db79e874b17e89f",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -1329,120 +1329,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-46cda459",
-      "category": "macro",
-      "title": "Geomacro finds Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com",
-      "what_changed": "A monitored source feed reports: Corn Falls lowered on Tuesday with Traders Taking Risk Off - Barchart.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T22:52:06.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-a15f64ac",
-      "category": "macro",
-      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat",
-      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: oilprice.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-d7fd72ee",
-      "category": "macro",
-      "title": "Geomacro finds Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com",
-      "what_changed": "A monitored source feed reports: Africa launched $5 Billion Energy Bank as Western Lenders Retreat - Crude Oil Prices Today | OilPrice.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-fe5630a3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump announced halt to $4 bn in aid to Israel on midterm election day",
-      "what_changed": "A monitored source feed reports: Trump announced halt to $4 bn in aid to Israel on midterm election day. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T21:47:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: rt-english.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-980cf4df",
-      "category": "geopolitics",
-      "title": "Geomacro finds President Zelenskyy said US elections will impact war in Ukraine",
-      "what_changed": "A monitored source feed reports: President Zelenskyy said US elections will impact war in Ukraine. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T21:43:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.aljazeera.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-561d77f3",
-      "category": "geopolitics",
-      "title": "Geomacro finds Oil Settles lowered as Market Holds Out Hope for Middle East Diplomacy -- 3nd Update - MarketWatch",
-      "what_changed": "A monitored source feed reports: Oil Settles lowered as Market Holds Out Hope for Middle East Diplomacy -- 3nd Update - MarketWatch. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T20:51:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
