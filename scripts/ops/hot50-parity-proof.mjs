@@ -11,7 +11,10 @@ export function parseBucketList(bytes,prefix){
  if(one("EncodingType")!=="url")throw Error("B2_LIST_ENCODING_INVALID");
  const truncated=one("IsTruncated");
  if(!["true","false"].includes(truncated))throw Error("B2_LIST_TRUNCATION_INVALID");
- const decodeXml=s=>s.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+ // Decode XML entities in the continuation cursor in ONE pass. In particular,
+ // &amp;lt; must become literal &lt;, not an extra-decoded '<' character.
+ const xmlEntities={amp:"&",lt:"<",gt:">",quot:'"',apos:"'"};
+ const decodeXml=s=>s.replace(/&(amp|lt|gt|quot|apos);/g,(_,entity)=>xmlEntities[entity]);
  // EncodingType=url percent-encodes S3 object keys. An XML entity in a
  // Key makes the wire representation ambiguous; fail closed instead of
  // recursively interpreting XML entities and URL escapes.
