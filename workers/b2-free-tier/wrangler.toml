@@ -1,0 +1,18 @@
+name = "geomacro-b2-free-tier-gateway"
+main = "src/index.mjs"
+compatibility_date = "2026-11-06"
+workers_dev = true
+
+[vars]
+B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com"
+B2_REGION = "us-east-005"
+B2_BUCKET = "geomacro-private-archive"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "geomacro-control-plane"
+database_id = "REPLACE_WITH_EXISTING_GEOMACRO_CONTROL_PLANE_D1_ID"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["10 0 * * *"]

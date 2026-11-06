@@ -38,7 +38,7 @@ test("governed B2 source queue writes one indexed bulk object and exactly one bo
    env,now:NOW,artifactReader:async()=>({envelope,sourceRunId:41787752541}),
    fetchImpl:async url=>{
     assert.equal(new URL(url).origin,"https://api.cloudflare.com");
-    assert.equal(new URL(url).pathname,"/client/v4/accounts");
+    assert.match(new URL(url).pathname,/^\/client\/v4\/accounts\/[a-f0-9]{32}\/d1\/database$/u);
     return Response.json({success:true,result:[{
      name:"geomacro-control-plane",uuid:"00000000-0000-4000-8000-000000000001"
     }]});

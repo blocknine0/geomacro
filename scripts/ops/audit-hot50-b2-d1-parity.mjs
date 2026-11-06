@@ -6,7 +6,7 @@
  */
 import {createHash,createDecipheriv} from "node:crypto";
 import {gunzipSync} from "node:zlib";
-import {digestManifest,parseBucketList} from "./hot50-parity-proof.mjs";
+import {digestManifest} from "./hot50-parity-proof.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
 
 const sha=x=>createHash("sha256").update(x).digest("hex");
@@ -83,18 +83,6 @@ async function main(){
  if(census.schema!=="geomacro.hot50-production-activation-census.v1")
   fail("CENSUS_SCHEMA_MISMATCH");
  let cursor="",checked=0,seen=new Set(),completed=false;
- async function listPhysical(){
-  const keys=new Set(),cursors=new Set();let cursor="";
-  do{
-   const page=parseBucketList(await b2.list(ALLOWED,cursor),ALLOWED);
-   for(const key of page.keys){if(keys.has(key))fail("B2_LIST_DUPLICATE");keys.add(key)}
-   if(page.complete)return keys;
-   if(cursors.has(page.cursor))fail("B2_LIST_CURSOR_REPEATED");
-   cursors.add(page.cursor);cursor=page.cursor;
-  }while(true);
- }
- const physical=await listPhysical();
- const physicalSha=sha(JSON.stringify([...physical].sort()));
  const verifiedRows=[];
  while(!completed){
 
@@ -114,7 +102,6 @@ async function main(){
      if(checked>=LIMIT)fail("READ_BUDGET_PARTIAL");
      const bytes=await b2.get(key); // independent actual B2 S3 GET
      readManifestSha(bytes,item.b2_object_sha256,item.item_count);
-     if(physical&&!physical.delete(key))fail("D1_REFERENCE_NOT_IN_B2_LIST");
      verifiedRows.push(item);checked++;
    }
    const next=page.next_cursor;
@@ -127,9 +114,9 @@ async function main(){
  }
  if(checked!==census.backlog.archived_outboxes)
   fail("D1_ARCHIVED_COUNT_MISMATCH");
- if(physical&&physical.size)fail("ORPHAN_B2_OBJECTS");
- // Repeat the full canonical manifest to detect concurrent change, including
- // count-preserving replacements. A moving archive cannot receive full proof.
+ // Repeat the D1 index to detect concurrent change, including
+ // count-preserving replacements. B2 listing is prohibited; unindexed B2
+ // objects are intentionally not enumerated by this audit.
  const endRows=[];let endCursor="";
  do {
    const page=await admin("/v1/internal/p0b/parity-manifest?limit=25"+(endCursor?"&after="+endCursor:""));
@@ -141,33 +128,32 @@ async function main(){
  }while(true);
  const manifestSha=digestManifest(verifiedRows);
  if(manifestSha!==digestManifest(endRows))fail("D1_MANIFEST_CHANGED_DURING_AUDIT");
- const finalPhysical=await listPhysical();
- if(physicalSha!==sha(JSON.stringify([...finalPhysical].sort())))fail("B2_MANIFEST_CHANGED_DURING_AUDIT");
  const after=await admin("/v1/internal/activation/hot50-census");
  if(after.backlog.archived_outboxes!==checked||after.backlog.exact_bundle_journal_mismatch!==0)
    fail("D1_FINAL_CENSUS_MISMATCH");
  const zero=after.backlog.d1_zero_unhandled_proven===true;
- const b2BothWays=physical!==null&&checked>0&&after.backlog.outbox===0;
- // An empty archived namespace proves set equality only, not a successful
- // independent object GET or recovery of the pending encrypted outbox.
+ const indexedReadback=checked>0&&checked===census.backlog.archived_outboxes&&
+   after.backlog.outbox===0&&after.backlog.exact_bundle_journal_mismatch===0;
  const report={schema:"geomacro.hot50-storage-readback.v1",
    checked_at:new Date().toISOString(),control_plane_origin:ORIGIN,
    head_sha:process.env.GITHUB_SHA??null,run_id:process.env.GITHUB_RUN_ID??null,
    d1_manifest_sha256:manifestSha,stable_d1_manifest_verified:true,
-   b2_manifest_sha256:physicalSha,stable_b2_manifest_verified:true,
+   b2_manifest_sha256:null,stable_b2_manifest_verified:false,
    coverage_scope:"ARCHIVED_ENCRYPTED_P0B_OUTBOX_BATCHES",
    pending_outbox_batches:after.backlog.outbox,
    checked_archived_bundles:checked,d1_archived:census.backlog.archived_outboxes,
    independent_s3_get_sha256_aes_gcm_restoration:checked>0,
    d1_replay_and_journal_census_complete:true,
-   physical_bucket_list_complete:true,
-   namespace_set_equality_verified:true,
-   bidirectional_parity_pass:b2BothWays,
+   physical_bucket_list_complete:false,
+   namespace_set_equality_verified:false,
+   bidirectional_parity_pass:false,
+   d1_indexed_b2_readback_verified:indexedReadback,
+   unindexed_b2_objects_enumerated:false,
    ingestion_zero_pending_pass:zero,
    coverage_nonempty_cells:census.coverage.observed_cells,
    coverage_total_cells:150,
    certified_indices_not_inferred:true,
-   status:b2BothWays?"PASS":"FAIL"};
+   status:indexedReadback?"PASS":"FAIL"};
  console.log(JSON.stringify(report));
  if(report.status!=="PASS")process.exitCode=2;
 }
