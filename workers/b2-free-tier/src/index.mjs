@@ -369,7 +369,7 @@ async function publicRead(request, env, ctx, id) {
 
 function validLegacyPath(path) {
   return typeof path === "string" && path.length > 0 && path.length <= 1024 &&
-    (path.startsWith("geomacro-evidence/v1/") || path.startsWith("telegram/leads/") || path.startsWith("telegram/owner-exports/") || path.startsWith("spool/")) &&
+    (path.startsWith("geomacro-evidence/v1/") || path.startsWith("telegram/leads/") || path.startsWith("telegram/owner-exports/") || path.startsWith("spool/") || path.startsWith("archive/events/")) &&
     /^[A-Za-z0-9_./-]+$/u.test(path) &&
     !path.includes("..") && !path.includes("//") && !path.startsWith("/") && !path.endsWith("/");
 }
@@ -480,10 +480,12 @@ async function internalObjectWrite(request, env) {
     const seeded = await internalObjectRead(new Request(seedUrl, {
       method: "GET", headers: { Authorization: `Bearer ${env.INTERNAL_GATEWAY_TOKEN}` },
     }), env, { waitUntil() {} });
-    if (!seeded.ok) return json({ error: seeded.status === 404 ? "NOT_FOUND" : "OBJECT_INDEX_REQUIRED" }, seeded.status === 404 ? 404 : 503);
-    row = await env.DB.prepare(`SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,baseline_accounted
-      FROM files WHERE path=? AND status='ready' LIMIT 1`).bind(path).first();
-    if (!row) return json({ error: "OBJECT_INDEX_REQUIRED" }, 503);
+    if (!seeded.ok && seeded.status !== 404) return json({ error: "OBJECT_INDEX_REQUIRED" }, 503);
+    if (seeded.ok) {
+      row = await env.DB.prepare(`SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,baseline_accounted
+        FROM files WHERE path=? AND status='ready' LIMIT 1`).bind(path).first();
+      if (!row) return json({ error: "OBJECT_INDEX_REQUIRED" }, 503);
+    }
   }
 
   const pendingId = crypto.randomUUID();
@@ -521,7 +523,7 @@ async function internalObjectWrite(request, env) {
   }
   const versionId = response.headers.get("x-amz-version-id");
   if (!versionId) return json({ error: "B2_VERSION_ID_MISSING_RESERVATION_RETAINED" }, 503);
-  const statements = [
+  const statements = row ? [
     env.DB.prepare(`INSERT OR IGNORE INTO b2_retained_versions(b2_file_id,path,size_bytes,mime_type,sha256,created_at,expires_at,baseline_accounted)
       SELECT b2_file_id,path,size_bytes,mime_type,sha256,created_at,?,baseline_accounted FROM files
       WHERE id=? AND b2_file_id IS NOT NULL`).bind(new Date(Date.now() + 86_400_000).toISOString(), row.id),
@@ -531,17 +533,25 @@ async function internalObjectWrite(request, env) {
     env.DB.prepare(`DELETE FROM b2_pending_uploads WHERE id=? AND EXISTS(
       SELECT 1 FROM files WHERE id=? AND b2_file_id=? AND sha256=? AND size_bytes=?
     )`).bind(pendingId, row.id, versionId, digest, bytes.byteLength),
+  ] : [
+    env.DB.prepare(`INSERT INTO files(id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,visibility,expires_at,last_accessed_at,evictable,baseline_accounted)
+      VALUES(?,?,?,?,?,?,?,'ready','private',NULL,NULL,0,0)`)
+      .bind(crypto.randomUUID(), path, versionId, bytes.byteLength, mimeType, digest, createdAt),
+    env.DB.prepare(`DELETE FROM b2_pending_uploads WHERE id=? AND path=?`)
+      .bind(pendingId, path),
   ];
   try {
     const results = await env.DB.batch(statements);
     if (results.some((result) => result?.success === false)) throw new Error("D1_BATCH_FAILED");
-    if (results[1]?.meta?.changes !== 1 || results[2]?.meta?.changes !== 1) throw new Error("D1_FINALIZE_ROW_COUNT_INVALID");
+    if (row ? (results[1]?.meta?.changes !== 1 || results[2]?.meta?.changes !== 1) : results[1]?.meta?.changes !== 1) throw new Error("D1_FINALIZE_ROW_COUNT_INVALID");
   } catch {
     return json({ error: "B2_WRITE_INDEX_FINALIZE_FAILED_RESERVATION_RETAINED", path }, 503);
   }
-  const cacheKey = internalVersionCacheKey(request, { id: row.id, b2_file_id: versionId });
+  const current = row ?? await env.DB.prepare("SELECT id,b2_file_id FROM files WHERE path=? AND status='ready' LIMIT 1").bind(path).first();
+  if (!current?.id) return json({ error: "B2_WRITE_INDEX_FINALIZE_FAILED_RESERVATION_RETAINED", path }, 503);
+  const cacheKey = internalVersionCacheKey(request, { id: current.id, b2_file_id: versionId });
   await caches.default.delete(cacheKey);
-  return json({ ok: true, id: row.id, path, b2_file_id: versionId, size_bytes: bytes.byteLength, mime_type: mimeType, sha256: digest }, 200, {
+  return json({ ok: true, id: current.id, path, b2_file_id: versionId, size_bytes: bytes.byteLength, mime_type: mimeType, sha256: digest }, 200, {
     "x-geomacro-b2-version-id": versionId,
     "x-geomacro-sha256": digest,
   });

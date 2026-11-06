@@ -103,6 +103,20 @@ test("B2 archive parity requires a quota-reserved exact SHA-256 body readback",a
   assert.equal(calls,1);assert.match(headers.Authorization,/AWS4-HMAC-SHA256/u);
 });
 
+test("gateway mode verifies unified archives only through authenticated D1-indexed reads",async()=>{
+  const bytes=new TextEncoder().encode("gateway archive bytes"),sha=createHash("sha256").update(bytes).digest("hex");
+  let calls=0,authorization;
+  const result=await verifyUnifiedB2Archive({DB:{prepare(){}},B2_STORAGE_MODE:"gateway",
+    B2_GATEWAY_URL:"https://storage.example.test",INTERNAL_GATEWAY_TOKEN:"g".repeat(48)}, {
+    archive_object_key:`archive/events/20261106T23-${sha}.ndjson.gz`,archive_sha256:sha,
+  },{reserve:async()=>{throw Error("gateway must reserve its own B2 read")},
+    fetchImpl:async(url,init)=>{calls++;authorization=init.headers.Authorization;
+      assert.equal(new URL(url).searchParams.get("path"),`archive/events/20261106T23-${sha}.ndjson.gz`);
+      return new Response(bytes,{status:200});}});
+  assert.equal(result.status,200);assert.equal((await result.json()).b2_exact_readback_verified,true);
+  assert.equal(calls,1);assert.equal(authorization,`Bearer ${"g".repeat(48)}`);
+});
+
 test("B2 exact readback fails closed when shared quota is held",async()=>{
   let calls=0;
   const response=await verifyUnifiedB2Archive({DB:{prepare(){}}},{

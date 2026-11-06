@@ -7,7 +7,6 @@ per UTC hour; this service never calls any B2 list API.
 from __future__ import annotations
 
 import asyncio
-import base64
 import gzip
 import hashlib
 import html
@@ -23,7 +22,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-import boto3
 import feedparser
 import httpx
 from fastapi import FastAPI, Header, HTTPException
@@ -35,13 +33,14 @@ log = logging.getLogger("geomacro.ingestor")
 WORKER_URL = os.environ["GEOMACRO_INGEST_WORKER_URL"].rstrip("/")
 WORKER_TOKEN = os.environ["GEOMACRO_INGEST_WORKER_TOKEN"]
 RAW_INGEST_TOKEN = os.environ["GEOMACRO_RAW_INGEST_TOKEN"]
-for required_secret in ("B2_S3_ENDPOINT", "B2_REGION", "B2_APPLICATION_KEY_ID", "B2_APPLICATION_KEY", "B2_BUCKET_NAME"):
+for required_secret in ("B2_GATEWAY_URL", "INTERNAL_GATEWAY_TOKEN"):
     if not os.environ.get(required_secret, "").strip():
         raise RuntimeError(f"Missing required environment variable: {required_secret}")
 if len(WORKER_TOKEN) < 32 or len(RAW_INGEST_TOKEN) < 32:
     raise RuntimeError("Ingest and OSINT bearer credentials must each contain at least 32 characters")
-if not os.environ["B2_S3_ENDPOINT"].startswith("https://"):
-    raise RuntimeError("B2_S3_ENDPOINT must use HTTPS")
+gateway_url = os.environ["B2_GATEWAY_URL"].rstrip("/")
+if not gateway_url.startswith("https://") or len(os.environ["INTERNAL_GATEWAY_TOKEN"]) < 32:
+    raise RuntimeError("B2 gateway URL and bearer token are invalid")
 POLL_SECONDS = max(60, min(int(os.getenv("POLL_SECONDS", "900")), 3600))
 DEFAULT_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "unified-rss-feed-registry.v1.json"
 COUNTRY_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "country-iso2-names.v1.json"
@@ -286,21 +285,13 @@ class IngestService:
             archive = gzip.compress(payload, compresslevel=6, mtime=0)
             sha = hashlib.sha256(archive).hexdigest()
             key = f"archive/events/{hour}-{sha}.ndjson.gz"
-            quota = await self.http.post(WORKER_URL + "/v1/b2-quota/reserve",
-                headers={"Authorization": f"Bearer {WORKER_TOKEN}"},
-                json={"kind": "PUT", "workflow_id": "unified_event_archive"})
-            quota_body = quota.json()
-            if quota.status_code != 200 or quota_body.get("ok") is not True or quota_body.get("reserved") is not True:
-                return {"ok": False, "held": True, "error": quota_body.get("error", "B2_QUOTA_HELD")}
-            s3 = boto3.client("s3", endpoint_url=os.environ["B2_S3_ENDPOINT"],
-                aws_access_key_id=os.environ["B2_APPLICATION_KEY_ID"],
-                aws_secret_access_key=os.environ["B2_APPLICATION_KEY"], region_name=os.environ["B2_REGION"])
-            md5 = hashlib.md5(archive, usedforsecurity=False).digest()
-            put_result = await asyncio.to_thread(s3.put_object, Bucket=os.environ["B2_BUCKET_NAME"], Key=key,
-                Body=archive, ContentType="application/x-ndjson", ContentEncoding="gzip",
-                ContentMD5=base64.b64encode(md5).decode("ascii"),
-                Metadata={"sha256": sha, "item-count": str(len(events))})
-            if str(put_result.get("ETag", "")).strip('"').lower() != md5.hex():
+            gateway = await self.http.put(gateway_url + "/v1/internal/objects?path=" + quote(key, safe="/"),
+                headers={"Authorization": f"Bearer {os.environ['INTERNAL_GATEWAY_TOKEN']}",
+                    "Content-Type": "application/gzip"}, content=archive)
+            gateway_body = gateway.json()
+            if gateway.status_code != 200 or gateway_body.get("ok") is not True or \
+                gateway_body.get("sha256") != sha or gateway_body.get("size_bytes") != len(archive) or \
+                not gateway_body.get("b2_file_id"):
                 raise RuntimeError("B2_WRITE_ACK_CHECKSUM_MISMATCH")
             verify = await self.http.post(WORKER_URL + "/v1/internal/unified-events/archive-verify",
                 headers={"Authorization": f"Bearer {WORKER_TOKEN}"},

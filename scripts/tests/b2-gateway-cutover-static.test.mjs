@@ -38,5 +38,13 @@ test("B2 callers have a fail-closed gateway mode for exact-key reads and mutable
     readFile("workers/b2-free-tier/migrations/0002_legacy_exact_key_index.sql", "utf8"),
   ]);
   assert.match(gateway, /OBJECT_WRITE_IN_PROGRESS/u);
+  assert.match(gateway, /INSERT INTO files\(id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status/u);
   assert.match(migration, /b2_pending_upload_reservation/u);
+  const ingestor = await readFile("workers/unified-ingestor/ingestor.py", "utf8");
+  assert.match(ingestor, /B2_GATEWAY_URL/u);
+  assert.match(ingestor, /\/v1\/internal\/objects\?path=/u);
+  assert.doesNotMatch(ingestor, /boto3|B2_APPLICATION_KEY|put_object/u);
+  const controlPlane = await readFile("workers/control-plane/src/unified-event-stream.mjs", "utf8");
+  assert.match(controlPlane, /if\(env\.B2_STORAGE_MODE==="gateway"\)/u);
+  assert.match(controlPlane, /B2_GATEWAY_READBACK_UNAVAILABLE/u);
 });
