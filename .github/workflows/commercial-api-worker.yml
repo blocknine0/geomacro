@@ -1,0 +1,75 @@
+name: Commercial API PostgreSQL Payment Rails
+on:
+  pull_request:
+    paths:
+      - 'services/commercial-api/**'
+      - 'scripts/ops/deploy-commercial-api.mjs'
+      - '.github/workflows/commercial-api-worker.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/commercial-api/**'
+      - 'scripts/ops/deploy-commercial-api.mjs'
+      - '.github/workflows/commercial-api-worker.yml'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-commercial-api-${{ github.event_name }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Install isolated locked commercial service dependencies
+        working-directory: services/commercial-api
+        run: npm ci --ignore-scripts
+      - name: Verify financial, signature, replay and private RPC boundaries
+        working-directory: services/commercial-api
+        run: npm test
+      - name: Bundle actual Cloudflare Worker without credentials
+        working-directory: services/commercial-api
+        run: npx --yes wrangler@4.136.3 deploy --dry-run --outdir /tmp/commercial-api-worker
+  deploy:
+    needs: test
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - working-directory: services/commercial-api
+        run: npm ci --omit=dev --ignore-scripts
+      - name: Deploy and read back exact revision, private ledger and issuer key without funds
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY }}
+          RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+          GEOMACRO_PAYPAL_CLIENT_ID: ${{ secrets.GEOMACRO_PAYPAL_CLIENT_ID }}
+          GEOMACRO_PAYPAL_CLIENT_SECRET: ${{ secrets.GEOMACRO_PAYPAL_CLIENT_SECRET }}
+          GEOMACRO_PAYPAL_WEBHOOK_ID: ${{ secrets.GEOMACRO_PAYPAL_WEBHOOK_ID }}
+          GEOMACRO_PAYPAL_MERCHANT_ID: ${{ secrets.GEOMACRO_PAYPAL_MERCHANT_ID }}
+          GEOMACRO_PAYPAL_ENVIRONMENT: ${{ vars.GEOMACRO_PAYPAL_ENVIRONMENT }}
+          PAYPAL_CATALOG_JSON: ${{ vars.GEOMACRO_PAYPAL_CATALOG_JSON }}
+          COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          COMMERCIAL_X402_FACILITATOR_URL: ${{ vars.GEOMACRO_COMMERCIAL_X402_FACILITATOR_URL }}
+          COMMERCIAL_X402_FACILITATOR_HEADERS_JSON: ${{ secrets.GEOMACRO_COMMERCIAL_X402_FACILITATOR_HEADERS_JSON }}
+          GEOMACRO_REAL_FUNDS_SECURITY_ACK: ${{ vars.GEOMACRO_REAL_FUNDS_SECURITY_ACK }}
+          GEOMACRO_PAYPAL_KYC_RECEIVE_ACK: ${{ vars.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK }}
+          GEOMACRO_COMMERCE_EMERGENCY_FREEZE: ${{ vars.GEOMACRO_COMMERCE_EMERGENCY_FREEZE }}
+          GEOMACRO_COMMERCE_DISABLED_PROVIDERS: ${{ vars.GEOMACRO_COMMERCE_DISABLED_PROVIDERS }}
+        run: node scripts/ops/deploy-commercial-api.mjs
