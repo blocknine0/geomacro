@@ -1,0 +1,116 @@
+name: Hot50 production five-gate proof
+on:
+  pull_request:
+    paths:
+      - "scripts/ops/*hot50*"
+      - "scripts/tests/hot50*"
+      - "workers/control-plane/src/hot50-production-activation-census.mjs"
+      - ".github/workflows/hot50-production-activation-proof.yml"
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ["Deploy D1 Control Plane"]
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-hot50-production-proof
+  cancel-in-progress: false
+jobs:
+  contracts:
+    # Synthetic fake-credential tests only; this job has no production environment.
+    env:
+      VITEST: "true"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs
+  acceptance:
+    needs: contracts
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GROQ_API_KEY_FOR_ASK_CACHE: ${{ secrets.GROQ_API_KEY }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: hot50_production_proof
+      # Includes every listing page, GET, auth fallback and retry. The shared
+      # account governor can refuse earlier; no provider budget is increased.
+      B2_REQUEST_BUDGET: "12"
+      PARITY_MAX_B2_READS: "10"
+      GEOMACRO_CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+      B2_PARITY_VERIFIED_RECEIPT_JSON: /tmp/hot50-proof/parity.json
+      ACTIVATION_RUN_IDEMPOTENT_REDRIVE: "1"
+      ACTIVATION_ALLOW_MODEL_PROBE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Derive existing capabilities and resolve quota database without creating it
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hot50-proof
+          node --input-type=module <<'NODE'
+          import {createHmac} from 'node:crypto';
+          import {appendFileSync} from 'node:fs';
+          const root=process.env.ROOT_LEDGER_TOKEN??'';
+          if(root.length<32)throw Error('EXISTING_ROOT_CAPABILITY_UNAVAILABLE');
+          for(const [name,scope] of [['CONTROL_PLANE_TOKEN','geomacro-control-plane-v1'],['B2_SPOOL_ENCRYPTION_KEY','geomacro-p0b-private-spool-aes-gcm-v1']]){
+            const value=createHmac('sha256',root).update(scope).digest('hex');
+            console.log('::add-mask::'+value);appendFileSync(process.env.GITHUB_ENV,name+'='+value+'\n');
+          }
+          const endpoint='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID+'/d1/database?per_page=100';
+          const r=await fetch(endpoint,{headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},signal:AbortSignal.timeout(15000)});
+          const j=await r.json();
+          if(!r.ok||j.success!==true||!Array.isArray(j.result))throw Error('QUOTA_DATABASE_LOOKUP_FAILED');
+          const rows=j.result.filter(x=>x.name==='geomacro-control-plane');
+          if(rows.length!==1||!/^[a-f0-9-]{36}$/.test(rows[0].uuid??''))throw Error('CANONICAL_D1_DATABASE_UNAVAILABLE');
+          appendFileSync(process.env.GITHUB_ENV,'D1_DATABASE_ID='+rows[0].uuid+'\n');
+          NODE
+      - name: Diagnose existing independent reviewer pin without B2 requests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs | tee /tmp/hot50-proof/reviewer-authority.json
+      - name: Independent governed B2 GET and stable canonical manifest audit
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'cat /tmp/hot50-proof/parity.json /tmp/hot50-proof/parity-error.json' EXIT
+          node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/hot50-proof/parity.json 2> /tmp/hot50-proof/parity-error.json
+      - name: Report all five gates and one bounded existing FIFO redrive
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hot50-proof
+          node scripts/ops/verify-hot50-production-activation.mjs | tee /tmp/hot50-proof/acceptance.json
+      - name: Retain no-content PASS FAIL evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hot50-production-proof-${{ github.run_id }}
+          path: /tmp/hot50-proof/*.json
+          retention-days: 7

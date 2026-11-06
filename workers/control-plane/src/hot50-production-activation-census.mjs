@@ -53,11 +53,19 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
      COALESCE(SUM(CASE WHEN state='REPLAYING' THEN 1 ELSE 0 END),0) replaying,
      COALESCE(SUM(CASE WHEN state='REPLAYING' AND locked_until<=? THEN 1 ELSE 0 END),0) expired_leases,
      COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) archived,
-     COALESCE(SUM(CASE WHEN state='ARCHIVED' AND NOT EXISTS (
+     COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (NOT EXISTS (
        SELECT 1 FROM ingestion_spool_bundles b
        WHERE b.b2_spool_uri=p0b_archive_outbox.b2_uri
          AND b.bundle_sha256=p0b_archive_outbox.b2_object_sha256
-         AND b.item_count=p0b_archive_outbox.item_count)
+         AND b.item_count=p0b_archive_outbox.item_count
+         AND b.state='D1_COMMITTED' AND b.acked_at IS NOT NULL)
+       OR (SELECT COUNT(*) FROM ingestion_spool_queue q
+        WHERE q.b2_spool_uri=p0b_archive_outbox.b2_uri
+          AND q.state IN ('D1_COMMITTED','ACKNOWLEDGED')
+          AND q.d1_committed_at IS NOT NULL AND q.acked_at IS NOT NULL
+          AND EXISTS (SELECT 1 FROM normalized_articles n
+           WHERE n.candidate_sha256=q.candidate_sha256 AND n.source_id=q.source_id
+            AND n.b2_archive_uri=q.b2_spool_uri))<>item_count)
        THEN 1 ELSE 0 END),0) journal_mismatch
       FROM p0b_archive_outbox`).bind(day).first(),
    env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_queue GROUP BY state").all(),
@@ -76,13 +84,10 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
    }
   }
   const unhandled={
-    outbox:assertedCount(outbox.pending)+assertedCount(outbox.replaying),
-    queue:["PENDING","RETRY","PROCESSING","QUARANTINED","DEAD_LETTER"].reduce(
-      (v,k)=>v+(queueStates[k]??0),0),
-    bundles:["PENDING","RETRY","PROCESSING","QUARANTINED","DEAD_LETTER"].reduce(
-      (v,k)=>v+(bundleStates[k]??0),0),
-    r2:["PENDING_B2","PROCESSING","FAILED","DEAD_LETTER"].reduce(
-      (v,k)=>v+(r2States[k]??0),0),
+    outbox:assertedCount(outbox.total)-assertedCount(outbox.archived),
+    queue:Object.entries(queueStates).filter(([k])=>!["ACKNOWLEDGED","D1_COMMITTED"].includes(k)).reduce((v,[,n])=>v+n,0),
+    bundles:Object.entries(bundleStates).filter(([k])=>k!=="D1_COMMITTED").reduce((v,[,n])=>v+n,0),
+    r2:Object.entries(r2States).filter(([k])=>k!=="B2_VERIFIED").reduce((v,[,n])=>v+n,0),
     historical_raw:assertedCount(historical.unarchived)
   };
   const providerQueue=await (async()=>{try{
@@ -92,7 +97,9 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
   }catch{return null}})();
   const items=coverage?.results;
   if(!Array.isArray(items)||items.length!==150)throw Error("ACTIVATION_COVERAGE_MATRIX_INVALID");
+  const expected=new Set(RISK_GATE_HOT50.flatMap(c=>["geopolitics","macro","rare_earth"].map(k=>c+":"+k)));
   const matrix=items.map(row=>{
+    if(!expected.delete(row.country_iso3+":"+row.category))throw Error("ACTIVATION_COVERAGE_CELL_INVALID");
     const events=assertedCount(row.observed_events),original=assertedCount(row.original_dated_events);
     const multi=assertedCount(row.two_publisher_same_event);
     const max=assertedCount(row.max_independent_publishers);
@@ -118,6 +125,7 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
      archived_outboxes:assertedCount(outbox.archived),
      expired_outbox_leases:assertedCount(outbox.expired_leases),
      exact_bundle_journal_mismatch:assertedCount(outbox.journal_mismatch),
+     d1_zero_unhandled_proven:totalUnhandled===0&&assertedCount(outbox.journal_mismatch)===0,
      zero_unhandled_proven:zeroProof,queue_states:queueStates,
      bundle_states:bundleStates,r2_states:r2States},
     coverage:{freshness_window_hours:72,

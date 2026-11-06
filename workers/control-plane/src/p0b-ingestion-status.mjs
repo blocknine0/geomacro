@@ -100,6 +100,7 @@ export async function getP0bIngestionStatus(env){
     private_transactional_outbox_consistent:noOutboxMismatch,
     private_transactional_outbox_pending:outbox?.pending??null,
    },
+   b2_spool_scope:{prefix:env.B2_SPOOL_PREFIX??null,bucket:env.B2_SPOOL_BUCKET??null},
    b2_storage_guard:{open:Boolean(guard?.hold_until&&guard.hold_until>checkedAt),
     last_error_code:guard?.last_error_code??null,
     hold_until:guard?.hold_until??null},
