@@ -5,7 +5,7 @@ const price={tier:"STANDARD",usd_per_call:"0.15",usdc_atomic:"150000"};
 const now=Date.parse("2026-11-06T12:00:00Z");
 const categories=Object.fromEntries(HOT50_CATEGORY_KEYS.map(k=>[k,{status:"VERIFIED_SIGNED_GRO"}]));
 function response(){
- return {ok:true,target_type:"COUNTRY",target_id:"USA",categories,
+ return {ok:true,target_type:"COUNTRY",target_id:"USA",categories:structuredClone(categories),
   policy_evaluation_has_complete_verified_score:true,
   verified_live_scoring:{trusted_signed_gro_verified:true,
    gro_generated_at:"2026-11-06T11:20:00Z",gro_expires_at:"2026-11-06T14:20:00Z",
