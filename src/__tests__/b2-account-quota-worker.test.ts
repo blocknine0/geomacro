@@ -101,10 +101,14 @@ describe("#1827 atomic cross-workflow daily B2 quota", () => {
       expect((await reserveB2AccountQuota(db,{kind:"PUT",workflow_id:"writer_one"},{now:date})).ok)
         .toBe(true);
     }
+    for(let i=0;i<B2_DAILY_LIMITS.HEAD;i++) {
+      expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"writer_two"},{now:date})).ok)
+        .toBe(true);
+    }
     expect((await reserveB2AccountQuota(db,{kind:"HEAD",workflow_id:"writer_two"},{now:date})).ok)
       .toBe(false);
     const status=await readB2AccountQuota(db,{now:date});
-    expect(status.used).toEqual({total:4000,GET:2000,PUT:2000,HEAD:0,NATIVE_AUTH:0});
+    expect(status.used).toEqual({total:4040,GET:2000,PUT:2000,HEAD:40,NATIVE_AUTH:0});
     const next=await reserveB2AccountQuota(db,{kind:"GET",workflow_id:"reader_one"},
       {now:new Date("2026-10-10T00:00:01Z")});
     expect(next.ok).toBe(true);
