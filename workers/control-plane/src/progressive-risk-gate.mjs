@@ -122,7 +122,7 @@ export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady
       seven_day_rollup_ready:Boolean(sevenDayRollupReady),
       ...(!signedGroReady || !sevenDayRollupReady ? {missing:[
         ...(!signedGroReady?["CURRENT_VERIFIED_SIGNED_GRO"]:[]),
-        ...(!sevenDayRollupReady?["VERIFIED_SEVEN_DAY_ROLLUP"]:[]
+        ...(!sevenDayRollupReady?["VERIFIED_SEVEN_DAY_ROLLUP"]:[])
       ]}:{})
     }
   };
