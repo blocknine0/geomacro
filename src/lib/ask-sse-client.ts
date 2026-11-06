@@ -1,4 +1,5 @@
 import type {AskAnswer} from "./ask-geomacro.functions";
+import {createAskTabReuse} from "./ask-tab-reuse";
 export type AskStreamStage="researching"|"finalizing";
 export class LegacyAskTransportOnlyError extends Error {
  constructor(){super("ASK_STREAM_ROUTE_UNAVAILABLE");}
@@ -7,6 +8,8 @@ type Turn=Readonly<{role:"user"|"assistant";content:string}>;
 export type StreamedAsk={answer:AskAnswer;resolvedQuestion:string};
 const MAX_EVENT_BYTES=48_000;
 const MAX_TOTAL_BYTES=96_000;
+// Isolated to the current browser tab/session memory; no persistence or server writes.
+const tabReuse=createAskTabReuse();
 export function decodeAskEvent(frame:string){
  const event=frame.split("\n").find(line=>line.startsWith("event: "))?.slice(7).trim();
  const body=frame.split("\n").filter(line=>line.startsWith("data: ")).map(x=>x.slice(6)).join("\n");
@@ -21,6 +24,11 @@ export function decodeAskEvent(frame:string){
 export async function streamPublicAsk(
   question:string,history:readonly Turn[],onStage?:(stage:AskStreamStage)=>void, signal?:AbortSignal,
 ):Promise<StreamedAsk>{
+ if(signal?.aborted)throw signal.reason ?? new DOMException("Stopped","AbortError");
+ // Only a repeated standalone timeless PUBLIC explainer can bypass another POST.
+ // History-aware requests always reach the evidence/intent path fresh.
+ const safeRepeat=tabReuse.get(question,history.length>0);
+ if(safeRepeat)return {answer:safeRepeat,resolvedQuestion:question};
  let response:Response;
  try {
    response=await fetch("/api/ask/v2/turn",{
@@ -92,6 +100,9 @@ export async function streamPublicAsk(
    throw error;
  }finally{reader.releaseLock();}
  if(!completed)throw new LegacyAskTransportOnlyError();
+ // Never cache a response resolved to a different underlying question.
+ if(completed.resolvedQuestion.trim()===question.trim())
+   tabReuse.remember(question,history.length>0,completed.answer);
  return completed;
 }
 
