@@ -135,10 +135,10 @@ async function main(){
   if(process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
      !process.env.CLOUDFLARE_API_TOKEN||!process.env.CLOUDFLARE_ACCOUNT_ID||
      !process.env.D1_DATABASE_ID)throw Error("SHARED_D1_B2_GOVERNOR_REQUIRED");
+  const {createB2Client,b2StorageConfigured}=await import("./b2-s3-client.mjs");
+  if(!b2StorageConfigured())throw Error("B2_STORAGE_CLIENT_CONFIG_REQUIRED");
   const accessKey=process.env.B2_ARCHIVE_READ_KEY_ID;
   const secretKey=process.env.B2_ARCHIVE_READ_APPLICATION_KEY;
-  if(!accessKey||!secretKey)throw Error("B2_DEDICATED_READ_CONFIG_REQUIRED");
-  const {createB2Client}=await import("./b2-s3-client.mjs");
   const b2=createB2Client({
     endpointUrl:"https://s3.us-east-005.backblazeb2.com",
     accessKey,secretKey,bucket:"geomacro-private-archive",

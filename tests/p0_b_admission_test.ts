@@ -102,6 +102,35 @@ test('test_b2_spool_write_and_readback',async()=>{
   assert.deepEqual(recovered.rawPayload,c.raw);
  }finally{f.close()}
 });
+test('gateway mode sends spool writes and reads through the authenticated D1 gateway only',async()=>{
+ const f=fixture();
+ try{
+  const env:any={...f.env,B2_STORAGE_MODE:'gateway',B2_GATEWAY_URL:'https://gateway.example.test',
+   INTERNAL_GATEWAY_TOKEN:'g'.repeat(48)};
+  delete env.B2_S3_ENDPOINT;delete env.B2_KEY_ID;delete env.B2_APPLICATION_KEY;
+  const objects=new Map<string,Uint8Array>(),seen:any[]=[];let directReservations=0;
+  const manager=new B2SpoolManager(env,{now:NOW_DATE,reserve:async()=>{directReservations++},
+   fetchImpl:async(url:any,opts:any)=>{
+    const parsed=new URL(url);seen.push({url:parsed,opts});
+    assert.equal(parsed.origin,'https://gateway.example.test');
+    assert.equal(parsed.pathname,'/v1/internal/objects');
+    assert.equal(opts.headers.Authorization,'Bearer '+'g'.repeat(48));
+    const key=parsed.searchParams.get('path')!;
+    if(opts.method==='PUT'){
+     objects.set(key,opts.body instanceof ArrayBuffer?new Uint8Array(opts.body):Uint8Array.from(opts.body));
+     return new Response(JSON.stringify({ok:true}),{status:200});
+    }
+    const bytes=objects.get(key);
+    return bytes?new Response(bytes,{status:200}):new Response(null,{status:404});
+   }});
+  const c=await candidate(88);
+  const receipt=await manager.spoolAndVerify({candidateSha256:c.candidateSha256,sourceId:c.sourceId,
+   rawPayload:c.raw,discoveredAt:at,headers:{}});
+  assert.equal(receipt.sha256,c.candidateSha256);
+  assert.deepEqual(seen.map(x=>x.opts.method),['PUT','GET']);
+  assert.equal(directReservations,0,'gateway owns account-wide quota reservations');
+ }finally{f.close()}
+});
 test('test_burst_admission_over_150: all 250 B2-spooled, no drop',async()=>{
  const f=fixture();
  try{

@@ -186,7 +186,10 @@ async function handleProviderResponse(env, response) {
 
 async function storageUsage(env) {
   const row = await env.DB.prepare(`
-    SELECT b.account_bytes + COALESCE((SELECT SUM(size_bytes) FROM files WHERE baseline_accounted=0),0) AS total_bytes
+    SELECT b.account_bytes +
+      COALESCE((SELECT SUM(size_bytes) FROM files WHERE baseline_accounted=0),0) +
+      COALESCE((SELECT SUM(size_bytes) FROM b2_retained_versions WHERE baseline_accounted=0),0) +
+      COALESCE((SELECT SUM(size_bytes) FROM b2_pending_uploads),0) AS total_bytes
     FROM b2_storage_baseline b WHERE b.singleton=1 AND b.verified_at IS NOT NULL
   `).first();
   if (!row || !Number.isSafeInteger(Number(row.total_bytes))) throw new Error("B2_STORAGE_BASELINE_UNVERIFIED");
@@ -208,6 +211,16 @@ export async function cleanup(env, { maxDeletes = 25, now = new Date() } = {}) {
   let removed = 0;
   while (removed < maxDeletes) {
     const usage = await storageUsage(env);
+    const retained = await env.DB.prepare(`SELECT b2_file_id,path,size_bytes,baseline_accounted,expires_at,status
+      FROM b2_retained_versions WHERE status='deleting' OR expires_at<=?
+      ORDER BY CASE WHEN status='deleting' THEN 0 ELSE 1 END,expires_at ASC LIMIT 1`)
+      .bind(now.toISOString()).first();
+    if (retained) {
+      const removedVersion = await deleteRetainedVersion(env, retained, now);
+      if (removedVersion) removed += 1;
+      if (removed >= maxDeletes) break;
+      continue;
+    }
     const stranded = await env.DB.prepare(`
       SELECT id,path,b2_file_id,size_bytes,expires_at,last_accessed_at,created_at,status
       FROM files WHERE status='deleting' AND b2_file_id IS NOT NULL
@@ -356,7 +369,8 @@ async function publicRead(request, env, ctx, id) {
 
 function validLegacyPath(path) {
   return typeof path === "string" && path.length > 0 && path.length <= 1024 &&
-    path.startsWith("geomacro-evidence/v1/") && /^[A-Za-z0-9_./-]+$/u.test(path) &&
+    (path.startsWith("geomacro-evidence/v1/") || path.startsWith("telegram/leads/") || path.startsWith("telegram/owner-exports/") || path.startsWith("spool/")) &&
+    /^[A-Za-z0-9_./-]+$/u.test(path) &&
     !path.includes("..") && !path.includes("//") && !path.startsWith("/") && !path.endsWith("/");
 }
 
@@ -411,12 +425,12 @@ async function internalObjectRead(request, env, ctx) {
       FROM files WHERE path=? AND status='ready' LIMIT 1
     `).bind(path).first();
     if (!row || row.b2_file_id !== versionId) return json({ error: "OBJECT_INDEX_CONFLICT" }, 409);
-    const cacheKey = new Request(new URL(`/v1/internal/files/${row.id}`, new URL(request.url).origin), { method: "GET" });
+    const cacheKey = internalVersionCacheKey(request, row);
     ctx.waitUntil(caches.default.put(cacheKey, internalObjectResponse(bytes, row, true)));
     return internalObjectResponse(bytes, row);
   }
 
-  const cacheKey = new Request(new URL(`/v1/internal/files/${row.id}`, new URL(request.url).origin), { method: "GET" });
+  const cacheKey = internalVersionCacheKey(request, row);
   const cached = await caches.default.match(cacheKey);
   if (cached) return internalObjectResponse(new Uint8Array(await cached.arrayBuffer()), row);
   if (!row.b2_file_id) return json({ error: "OBJECT_VERSION_MISSING" }, 503);
@@ -439,6 +453,119 @@ async function internalObjectRead(request, env, ctx) {
   }
   ctx.waitUntil(caches.default.put(cacheKey, internalObjectResponse(bytes, row, true)));
   return internalObjectResponse(bytes, row);
+}
+
+function internalVersionCacheKey(request, row) {
+  const versionPath = `/v1/internal/versions/${encodeURIComponent(row.id)}/${encodeURIComponent(row.b2_file_id)}`;
+  return new Request(new URL(versionPath, new URL(request.url).origin), { method: "GET" });
+}
+
+async function internalObjectWrite(request, env) {
+  if (!(await internalAuthorized(request, env))) return json({ error: "UNAUTHORIZED" }, 401);
+  const path = new URL(request.url).searchParams.get("path");
+  if (!validLegacyPath(path)) return json({ error: "OBJECT_PATH_INVALID" }, 400);
+  const length = Number(request.headers.get("content-length"));
+  if (!Number.isSafeInteger(length) || length < 1 || length > MAX_UPLOAD_BYTES) return json({ error: "UPLOAD_SIZE_INVALID" }, 413);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.byteLength !== length || bytes.byteLength > MAX_UPLOAD_BYTES) return json({ error: "UPLOAD_SIZE_INVALID" }, 413);
+  const mimeType = (request.headers.get("content-type") ?? "application/octet-stream").split(";")[0].trim().toLowerCase();
+  if (!/^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/u.test(mimeType)) return json({ error: "MIME_TYPE_INVALID" }, 400);
+  const digest = await sha256(bytes);
+  const createdAt = new Date().toISOString();
+  let row = await env.DB.prepare(`SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,baseline_accounted
+    FROM files WHERE path=? AND status='ready' LIMIT 1`).bind(path).first();
+  if (!row) {
+    const seedUrl = new URL("/v1/internal/objects", new URL(request.url).origin);
+    seedUrl.searchParams.set("path", path);
+    const seeded = await internalObjectRead(new Request(seedUrl, {
+      method: "GET", headers: { Authorization: `Bearer ${env.INTERNAL_GATEWAY_TOKEN}` },
+    }), env, { waitUntil() {} });
+    if (!seeded.ok) return json({ error: seeded.status === 404 ? "NOT_FOUND" : "OBJECT_INDEX_REQUIRED" }, seeded.status === 404 ? 404 : 503);
+    row = await env.DB.prepare(`SELECT id,path,b2_file_id,size_bytes,mime_type,sha256,created_at,status,baseline_accounted
+      FROM files WHERE path=? AND status='ready' LIMIT 1`).bind(path).first();
+    if (!row) return json({ error: "OBJECT_INDEX_REQUIRED" }, 503);
+  }
+
+  const pendingId = crypto.randomUUID();
+  try {
+    await env.DB.prepare(`INSERT INTO b2_pending_uploads(id,path,size_bytes,mime_type,sha256,created_at) VALUES(?,?,?,?,?,?)`)
+      .bind(pendingId, path, bytes.byteLength, mimeType, digest, createdAt).run();
+  } catch (error) {
+    const message = String(error?.message ?? error);
+    if (message.includes("B2_STORAGE_BASELINE_UNVERIFIED")) return json({ error: "STORAGE_BASELINE_UNVERIFIED" }, 503);
+    if (message.includes("B2_STORAGE_HARD_LIMIT")) return json({ error: "STORAGE_LIMIT_9_2GB" }, 507);
+    if (message.includes("B2_DAILY_UPLOAD_OR_CLASS_A_LIMIT")) return json({ error: "DAILY_UPLOAD_LIMIT_2000" }, 429);
+    if (message.includes("UNIQUE constraint failed")) return json({ error: "OBJECT_WRITE_IN_PROGRESS" }, 409);
+    throw error;
+  }
+  try {
+    await reserveClassA(env, { upload: true });
+  } catch (error) {
+    await env.DB.prepare("DELETE FROM b2_pending_uploads WHERE id=?").bind(pendingId).run().catch(() => {});
+    const message = String(error?.message ?? error);
+    return json({ error: message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED" ? message : "B2_QUOTA_LEDGER_UNAVAILABLE" }, message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED" ? 429 : 503);
+  }
+
+  let response;
+  try {
+    response = await s3Request(env, "PUT", path, { body: bytes, contentType: mimeType });
+  } catch {
+    // A lost PUT response is ambiguous: retain the byte reservation and path
+    // lock until an operator reconciles the exact key.
+    return json({ error: "B2_UPLOAD_OUTCOME_AMBIGUOUS", path }, 503);
+  }
+  if (!response.ok) {
+    await env.DB.prepare("DELETE FROM b2_pending_uploads WHERE id=?").bind(pendingId).run().catch(() => {});
+    try { await handleProviderResponse(env, response); } catch {}
+    return json({ error: `B2_ORIGIN_${response.status}` }, 503);
+  }
+  const versionId = response.headers.get("x-amz-version-id");
+  if (!versionId) return json({ error: "B2_VERSION_ID_MISSING_RESERVATION_RETAINED" }, 503);
+  const statements = [
+    env.DB.prepare(`INSERT OR IGNORE INTO b2_retained_versions(b2_file_id,path,size_bytes,mime_type,sha256,created_at,expires_at,baseline_accounted)
+      SELECT b2_file_id,path,size_bytes,mime_type,sha256,created_at,?,baseline_accounted FROM files
+      WHERE id=? AND b2_file_id IS NOT NULL`).bind(new Date(Date.now() + 86_400_000).toISOString(), row.id),
+    env.DB.prepare(`UPDATE files SET b2_file_id=?,size_bytes=?,mime_type=?,sha256=?,status='ready',baseline_accounted=0,
+      visibility='private',evictable=0,expires_at=NULL,last_accessed_at=NULL WHERE id=? AND path=? AND status='ready'`)
+      .bind(versionId, bytes.byteLength, mimeType, digest, row.id, path),
+    env.DB.prepare(`DELETE FROM b2_pending_uploads WHERE id=? AND EXISTS(
+      SELECT 1 FROM files WHERE id=? AND b2_file_id=? AND sha256=? AND size_bytes=?
+    )`).bind(pendingId, row.id, versionId, digest, bytes.byteLength),
+  ];
+  try {
+    const results = await env.DB.batch(statements);
+    if (results.some((result) => result?.success === false)) throw new Error("D1_BATCH_FAILED");
+    if (results[1]?.meta?.changes !== 1 || results[2]?.meta?.changes !== 1) throw new Error("D1_FINALIZE_ROW_COUNT_INVALID");
+  } catch {
+    return json({ error: "B2_WRITE_INDEX_FINALIZE_FAILED_RESERVATION_RETAINED", path }, 503);
+  }
+  const cacheKey = internalVersionCacheKey(request, { id: row.id, b2_file_id: versionId });
+  await caches.default.delete(cacheKey);
+  return json({ ok: true, id: row.id, path, b2_file_id: versionId, size_bytes: bytes.byteLength, mime_type: mimeType, sha256: digest }, 200, {
+    "x-geomacro-b2-version-id": versionId,
+    "x-geomacro-sha256": digest,
+  });
+}
+
+async function deleteRetainedVersion(env, row, now = new Date()) {
+  if (row.status !== "deleting") {
+    const claim = await env.DB.prepare("UPDATE b2_retained_versions SET status='deleting' WHERE b2_file_id=? AND status='ready'").bind(row.b2_file_id).run();
+    if (claim.meta?.changes !== 1) return false;
+  }
+  try {
+    await reserveClassA(env);
+    const response = await s3Request(env, "DELETE", row.path, { query: new URLSearchParams({ versionId: row.b2_file_id }) });
+    await handleProviderResponse(env, response);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE b2_storage_baseline SET account_bytes=MAX(0,account_bytes-?) WHERE singleton=1 AND ?=1")
+        .bind(row.size_bytes, row.baseline_accounted),
+      env.DB.prepare("DELETE FROM b2_retained_versions WHERE b2_file_id=? AND status='deleting'").bind(row.b2_file_id),
+    ]);
+    return true;
+  } catch (error) {
+    await env.DB.prepare("UPDATE b2_retained_versions SET status='ready' WHERE b2_file_id=? AND status='deleting'").bind(row.b2_file_id).run().catch(() => {});
+    throw error;
+  }
 }
 
 function internalObjectResponse(bytes, row, cacheable = false) {
@@ -466,6 +593,7 @@ export default {
       requireConfigured(env);
       const url = new URL(request.url);
       if (request.method === "PUT" && url.pathname === "/v1/files") return upload(request, env);
+      if (request.method === "PUT" && url.pathname === "/v1/internal/objects") return internalObjectWrite(request, env);
       if (request.method === "POST" && url.pathname === "/v1/admin/cleanup") return adminCleanup(request, env);
       if (request.method === "GET" && url.pathname === "/v1/internal/objects") return internalObjectRead(request, env, ctx);
       const match = url.pathname.match(/^\/v1\/files\/([^/]+)$/u);

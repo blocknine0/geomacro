@@ -57,6 +57,10 @@ test("internal exact-key reader is authenticated, indexed, pinned to one version
   assert.match(source, /evictable,baseline_accounted\)/u);
   assert.match(source, /WHERE baseline_accounted=0/u);
   assert.match(source, /"private, no-store"/u);
+  assert.match(source, /async function internalObjectWrite\(/u);
+  assert.match(source, /UPDATE files SET b2_file_id=\?,size_bytes=\?,mime_type=\?,sha256=\?/u);
+  assert.match(source, /internalVersionCacheKey\(request, row\)/u);
+  assert.match(source, /b2_retained_versions/u);
   assert.match(source, /validLegacyPath\(path\)/u);
   assert.doesNotMatch(source, /ListObjects|list_file_names|list-type=2|listFiles/iu);
 });

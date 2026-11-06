@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { verifyRiskObjectSignature } from "../../src/lib/risk-object-signing.server";
 import { verifyCommercialRiskObjectArtifact } from "../../src/lib/commercial-risk-object-policy";
 import { PUBLIC_DEMO_RISK_PROFILE_REASON } from "../../src/lib/public-demo-risk-profile";
@@ -23,8 +23,7 @@ if (
   process.env.APP_SUPABASE_URL !== `https://${SOURCE_PROJECT}.supabase.co` ||
   !process.env.APP_SUPABASE_SERVICE_ROLE_KEY ||
   String(process.env.B2_S3_ENDPOINT ?? ENDPOINT).trim() !== ENDPOINT ||
-  !process.env.B2_KEY_ID ||
-  !process.env.B2_APPLICATION_KEY
+  !b2StorageConfigured()
 ) throw new Error("B2_COUNTRY_GRO_PUBLISH_CONFIG_REQUIRED");
 
 const db = createClient(

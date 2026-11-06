@@ -36,6 +36,21 @@ async function hmac(key, value) {
 }
 
 async function signedGet(key, env) {
+  if (env.B2_STORAGE_MODE === "gateway") {
+    const gatewayUrl = String(env.B2_GATEWAY_URL ?? "").trim();
+    const token = String(env.INTERNAL_GATEWAY_TOKEN ?? "").trim();
+    if (!gatewayUrl || token.length < 32) throw new Error("B2_GATEWAY_CONFIG_REQUIRED");
+    const endpoint = new URL("/v1/internal/objects", gatewayUrl);
+    endpoint.searchParams.set("path", key);
+    const response = await fetch(endpoint, {
+      method: "GET", headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`B2_GATEWAY_READ_${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (!bytes.length || bytes.length > MAX_COMPRESSED_BYTES) throw new Error("B2_GATEWAY_SIZE_INVALID");
+    return bytes;
+  }
   const accessKey = String(env.B2_KEY_ID ?? "").trim();
   const secretKey = String(env.B2_APPLICATION_KEY ?? "").trim();
   if (!accessKey || !secretKey) throw new Error("B2_RISK_INDICES_EDGE_CONFIG_REQUIRED");

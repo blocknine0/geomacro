@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const PROJECT_URL = `https://${PROJECT_REF}.supabase.co`;
@@ -62,8 +62,7 @@ async function confirmGovernedQuotaRestriction(output) {
 function assertB2Config() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID ||
-    !process.env.B2_APPLICATION_KEY
+    !b2StorageConfigured()
   ) {
     throw new Error("B2_PRESERVATION_CONFIG_REQUIRED");
   }

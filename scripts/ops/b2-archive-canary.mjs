@@ -2,7 +2,7 @@
 // Copy one verified fragment to B2 and read it back. Never deletes or edits Supabase.
 import { createClient } from "@supabase/supabase-js";
 import { archiveObjectPlan, verifyArchiveReadback } from "./b2-archive-contract.mjs";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client, b2StorageConfigured } from "./b2-s3-client.mjs";
 
 const bucket = "geomacro-private-archive";
 const accessKey = process.env.B2_KEY_ID;
@@ -10,7 +10,7 @@ const secretKey = process.env.B2_APPLICATION_KEY;
 const supabaseUrl = process.env.APP_SUPABASE_URL;
 const supabaseKey = process.env.APP_SUPABASE_SERVICE_ROLE_KEY;
 const fragmentId = process.argv[2];
-if (!accessKey || !secretKey || !supabaseKey ||
+if (!b2StorageConfigured() || !supabaseKey ||
     supabaseUrl !== "https://ldpwajisioljyjtojvfx.supabase.co" ||
     !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/.test(fragmentId ?? "")) {
   throw new Error("ARCHIVE_CANARY_CONFIG_REQUIRED");

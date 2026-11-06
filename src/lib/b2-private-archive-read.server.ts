@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { readB2GatewayObject } from "./b2-gateway-read.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -69,6 +70,9 @@ function readCredentials(): ReadCredential[] {
 }
 
 export function b2PrivateArchiveReadConfigured() {
+  if (process.env.B2_STORAGE_MODE === "gateway") {
+    return Boolean(process.env.B2_GATEWAY_URL && String(process.env.INTERNAL_GATEWAY_TOKEN ?? "").length >= 32);
+  }
   try {
     readCredentials();
     return true;
@@ -293,6 +297,11 @@ export async function readPrivateB2Object(
     Math.min(40_000_000, Number(options.maxBytes ?? DEFAULT_MAX_BYTES)),
   );
   const normalizedKey = validateKey(key);
+  if (process.env.B2_STORAGE_MODE === "gateway") {
+    const bytes = await readB2GatewayObject(normalizedKey, maxBytes, timeoutMs);
+    if (!bytes) throw new Error("B2_PRIVATE_ARCHIVE_OBJECT_NOT_FOUND");
+    return validateSize(Buffer.from(bytes), maxBytes);
+  }
   const credentials = readCredentials();
   let lastError: unknown = null;
 

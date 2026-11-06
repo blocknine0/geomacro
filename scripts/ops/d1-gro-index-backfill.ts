@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import {
   canonicalRiskObjectJson,
   verifyRiskObjectSignature,
@@ -36,7 +36,7 @@ const directDb = parsedDb.hostname === `db.${PROJECT}.supabase.co` && parsedDb.u
 const poolerDb = parsedDb.hostname.endsWith(".pooler.supabase.com") && parsedDb.username === `postgres.${PROJECT}`;
 if (!directDb && !poolerDb) throw new Error("D1_GRO_INDEX_DB_TARGET_INVALID");
 if (String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY) {
+    !b2StorageConfigured()) {
   throw new Error("D1_GRO_INDEX_B2_CONFIG_INVALID");
 }
 if (!process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID) {

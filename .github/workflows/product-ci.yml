@@ -49,7 +49,7 @@ jobs:
         run: node --test scripts/tests/audit-workflow-code-callers.test.mjs
 
       - name: Enforce zero B2 listing APIs and D1-only index before B2 I/O
-        run: node --test scripts/tests/b2-no-list-api.guard.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/phase2h-independent-b2-version-census.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/ops/telegram-export-ingest.test.mjs workers/b2-free-tier/tests/*.test.mjs
+        run: node --test scripts/tests/b2-no-list-api.guard.test.mjs scripts/tests/b2-gateway-client.test.mjs scripts/tests/b2-gateway-cutover-static.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/phase2h-independent-b2-version-census.test.mjs scripts/tests/phase2h-retention-72h.test.mjs scripts/ops/telegram-export-ingest.test.mjs workers/b2-free-tier/tests/*.test.mjs
 
       # Pin the exact Bun version that produced and validated the committed
       # lockfile. Do not float on "latest": lockfile semantics can change

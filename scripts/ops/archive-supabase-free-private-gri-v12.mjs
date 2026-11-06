@@ -3,7 +3,7 @@
 // snapshot, paid API, source rights mutation, or automatic GRO publication.
 import { readFileSync, mkdirSync, writeFileSync, realpathSync } from "node:fs";
 import { resolve, join, basename, sep } from "node:path";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { createD1ControlPlaneStateClient } from "../lib/d1-control-plane-state.mjs";
 import {
   archivePrivatePortableGriProof,
@@ -29,7 +29,7 @@ async function execute() {
   }
   if (
     process.env.B2_S3_ENDPOINT !== ENDPOINT ||
-    !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY ||
+    !b2StorageConfigured() ||
     !process.env.CLOUDFLARE_ACCOUNT_ID ||
     !process.env.CLOUDFLARE_API_TOKEN || !process.env.D1_DATABASE_ID ||
     process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" ||

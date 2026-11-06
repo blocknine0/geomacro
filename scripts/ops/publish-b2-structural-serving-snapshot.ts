@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { createClient } from "@supabase/supabase-js";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 
 const HISTORICAL_URL = "https://nqvpcbnnvjsrlvyxxevk.supabase.co";
 const HISTORICAL_PROJECT_REF = "nqvpcbnnvjsrlvyxxevk";
@@ -35,8 +35,7 @@ if (
   process.env.HISTORICAL_SUPABASE_URL !== HISTORICAL_URL ||
   !process.env.HISTORICAL_SUPABASE_SERVICE_ROLE_KEY ||
   String(process.env.B2_S3_ENDPOINT ?? ENDPOINT).trim() !== ENDPOINT ||
-  !process.env.B2_KEY_ID ||
-  !process.env.B2_APPLICATION_KEY
+  !b2StorageConfigured()
 ) throw new Error("B2_STRUCTURAL_PUBLISH_CONFIG_REQUIRED");
 
 let historicalDbReads = 0;

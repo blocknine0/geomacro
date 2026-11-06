@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import {
   canonicalRiskObjectJson,
   verifyRiskObjectSignature,
@@ -34,7 +34,7 @@ if (!indexFile) throw new Error("GENERIC_RISK_OBJECT_INDEX_FILE_REQUIRED");
 if (String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT) {
   throw new Error("GENERIC_RISK_OBJECT_B2_ENDPOINT_INVALID");
 }
-if (!process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY) {
+if (!b2StorageConfigured()) {
   throw new Error("GENERIC_RISK_OBJECT_B2_CREDENTIALS_REQUIRED");
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { createGriDbClient } from "../lib/gri-db-client.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
@@ -113,8 +113,7 @@ function dedupeScoredRows(rows) {
 function assertConfig() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID ||
-    !process.env.B2_APPLICATION_KEY ||
+    !b2StorageConfigured() ||
     String(process.env.GRI_DB_MODE ?? "").trim() !== "direct_postgres" ||
     !process.env.SUPABASE_DB_URL
   ) throw new Error("FASTLANE_SCORED_ONLY_CONFIG_INVALID");

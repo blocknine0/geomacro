@@ -68,9 +68,138 @@ function normalizeAllowedPrefixes(allowedKeyPrefixes) {
 // cannot opt out merely by omitting the legacy rollout environment flag.
 export function assertGitHubActionsB2AccountGovernor(env = process.env) {
   if (env.GITHUB_ACTIONS === "true" && env.VITEST !== "true" &&
-      env.B2_ACCOUNT_QUOTA_REQUIRED !== "1") {
+      env.B2_STORAGE_MODE !== "gateway" && env.B2_ACCOUNT_QUOTA_REQUIRED !== "1") {
     throw new Error("B2_ACTIONS_ACCOUNT_GOVERNOR_REQUIRED");
   }
+}
+
+export function b2StorageConfigured(env = process.env) {
+  if (env.B2_STORAGE_MODE === "gateway") {
+    try {
+      const url = new URL(String(env.B2_GATEWAY_URL ?? ""));
+      return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash &&
+        String(env.INTERNAL_GATEWAY_TOKEN ?? "").trim().length >= 32;
+    } catch {
+      return false;
+    }
+  }
+  return Boolean(env.B2_KEY_ID && env.B2_APPLICATION_KEY);
+}
+
+function createGatewayB2Client({ allowedKeyPrefixes = null } = {}) {
+  const gatewayUrl = String(process.env.B2_GATEWAY_URL ?? "").trim();
+  const token = String(process.env.INTERNAL_GATEWAY_TOKEN ?? "").trim();
+  let origin;
+  try {
+    const parsed = new URL(gatewayUrl);
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error();
+    origin = parsed.origin;
+  } catch {
+    throw new Error("B2_GATEWAY_CONFIG_INVALID");
+  }
+  if (token.length < 32) throw new Error("B2_GATEWAY_TOKEN_REQUIRED");
+  const prefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
+  const requestBudget = parseRequestBudget();
+  let requestsStarted = 0;
+  let s3RequestsStarted = 0;
+  let writesStarted = 0;
+  const inFlightReads = new Map();
+
+  function normalizeKey(key) {
+    const value = String(key ?? "");
+    if (!prefixes.some(prefix => value.startsWith(prefix)) ||
+        !/^[A-Za-z0-9_./-]+$/.test(value) || value.includes("..") ||
+        value.startsWith("/") || value.endsWith("/")) throw new Error("B2_ARCHIVE_KEY_INVALID");
+    return value;
+  }
+
+  function endpoint(key) {
+    const url = new URL("/v1/internal/objects", origin);
+    url.searchParams.set("path", normalizeKey(key));
+    return url;
+  }
+
+  async function call(method, key, body = null, { allowNotFound = false, metadataOnly = false } = {}) {
+    if (requestsStarted >= requestBudget) throw new Error("B2_REQUEST_BUDGET_EXHAUSTED");
+    requestsStarted += 1;
+    s3RequestsStarted += 1;
+    if (method === "PUT") writesStarted += 1;
+    let response;
+    try {
+      response = await fetch(endpoint(key), {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(body ? { "Content-Type": "application/octet-stream" } : {}),
+        },
+        body: method === "PUT" ? body : undefined,
+        redirect: "error",
+        cache: "no-store",
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch {
+      throw new Error("B2_GATEWAY_TRANSPORT_FAILED");
+    }
+    if (allowNotFound && response.status === 404) return null;
+    if (!response.ok) {
+      let code = `B2_GATEWAY_${method}_FAILED_${response.status}`;
+      try {
+        const payload = await response.json();
+        if (/^[A-Z0-9_:-]{1,100}$/.test(String(payload?.error ?? ""))) code = String(payload.error);
+      } catch {}
+      throw new Error(code);
+    }
+    if (metadataOnly) {
+      const length = Number(response.headers.get("content-length"));
+      return {
+        content_length: Number.isSafeInteger(length) && length >= 0 ? length : null,
+        geomacro_sha256: String(response.headers.get("x-geomacro-sha256") ?? "").trim().toLowerCase(),
+      };
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return method === "GET" ? bytes : bytes;
+  }
+
+  function readSingleFlight(key, allowNotFound = false) {
+    const normalized = normalizeKey(key);
+    const cacheKey = `${allowNotFound ? "optional" : "required"}:${normalized}`;
+    if (inFlightReads.has(cacheKey)) return inFlightReads.get(cacheKey);
+    const promise = call("GET", normalized, null, { allowNotFound }).finally(() => inFlightReads.delete(cacheKey));
+    inFlightReads.set(cacheKey, promise);
+    return promise;
+  }
+
+  async function putWithMetadataVerification(key, bytes, { verifyRestored, onStage } = {}) {
+    const body = Buffer.from(bytes);
+    const digest = sha(body);
+    if (typeof onStage === "function") onStage("INITIAL_PUT");
+    await call("PUT", key, body);
+    if (typeof onStage === "function") onStage("FIRST_VERIFICATION_GET");
+    const readback = await readSingleFlight(key, false);
+    if (readback.length !== body.length) throw new Error("B2_READBACK_CONTENT_LENGTH_MISMATCH");
+    if (sha(readback) !== digest) throw new Error("B2_READBACK_SHA256_MISMATCH");
+    if (verifyRestored !== undefined) {
+      if (typeof verifyRestored !== "function") throw new Error("B2_RESTORE_VERIFIER_INVALID");
+      await verifyRestored(readback);
+    }
+    return { sha256: digest, bytes: body.length, verification_mode: "gateway-put-full-readback-sha256", full_body_readback_verified: true };
+  }
+
+  return {
+    list: () => { throw new Error("B2_LIST_OPERATIONS_DISABLED_USE_D1_INDEX"); },
+    put: (key, bytes) => call("PUT", key, Buffer.from(bytes)),
+    putWithMetadataVerification,
+    get: key => readSingleFlight(key, false),
+    getOptional: key => readSingleFlight(key, true),
+    usage: () => ({ requests_started: requestsStarted, request_budget: requestBudget,
+      global_account_governor_enabled: true, gateway_mode: true, s3_requests_started: s3RequestsStarted,
+      writes_started: writesStarted, native_read_requests_started: 0,
+      allowed_prefixes: prefixes, read_credentials_separate: false, read_credential_roles: [],
+      read_fallback_to_primary_available: false, native_read_fallback_enabled: false,
+      native_read_fallback_attempts: 0, native_read_fallback_successes: 0,
+      native_read_fatal_error: null, native_preferred_credential_count: 0,
+      in_flight_read_count: inFlightReads.size }),
+  };
 }
 
 export function createB2Client({
@@ -83,6 +212,7 @@ export function createB2Client({
   allowedKeyPrefixes = null,
 }) {
   assertGitHubActionsB2AccountGovernor();
+  if (process.env.B2_STORAGE_MODE === "gateway") return createGatewayB2Client({ allowedKeyPrefixes });
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");

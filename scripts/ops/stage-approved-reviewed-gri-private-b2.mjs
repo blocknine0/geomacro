@@ -13,7 +13,7 @@ import {approvedIndependentReviewerFromEnv} from
   "../../src/lib/independent-reviewer-authority.server.ts";
 import {prepareImmutableReviewedGriHandoff} from
   "../lib/gri-reviewed-immutable-b2-handoff.mjs";
-import {createB2Client} from "./b2-s3-client.mjs";
+import {createB2Client, b2StorageConfigured} from "./b2-s3-client.mjs";
 import {verifyPallabSignedReadyGate} from "../lib/pallab-signed-ready-gri-gate.mjs";
 import {verifyStandingGriOwnerPublicationConsent,verifyStandingGriOwnerPublicationPolicy,authorizeStandingGriOwnerInput}
  from "../lib/gri-standing-owner-publication-policy.mjs";
@@ -51,7 +51,7 @@ async function main(){
      !process.env.D1_DATABASE_ID||
      !process.env.CLOUDFLARE_ACCOUNT_ID||
      !process.env.CLOUDFLARE_API_TOKEN||
-     !process.env.B2_KEY_ID||!process.env.B2_APPLICATION_KEY||
+     !b2StorageConfigured()||
      !process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN||
      !/^[a-z][a-z0-9_-]{1,47}$/u.test(process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID??""))
     fail("PROTECTED_B2_D1_GOVERNOR_REQUIRED");

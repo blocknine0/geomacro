@@ -4,7 +4,7 @@
  * Producer never stores full event rows, publisher text, or makes risk scores.
  */
 import {createHash,createHmac} from "node:crypto";
-import {createB2Client} from "./b2-s3-client.mjs";
+import {createB2Client, b2StorageConfigured} from "./b2-s3-client.mjs";
 import {writeFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {readGdeltStaticArchive} from "../lib/gdelt-gkg-bulk-discovery.mjs";
@@ -248,7 +248,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
     process.env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
     process.env.B2_ACCOUNT_QUOTA_WORKFLOW_ID!=="gdelt_v2_event_sync"||
     process.env.B2_REQUEST_BUDGET!=="4"||
-    !process.env.B2_KEY_ID||!process.env.B2_APPLICATION_KEY||
+    !b2StorageConfigured()||
     !process.env.CLOUDFLARE_API_TOKEN||
     !process.env.CLOUDFLARE_ACCOUNT_ID||!process.env.D1_DATABASE_ID)
    throw Error("RG_GDELT_B2_D1_GOVERNANCE_REQUIRED");
