@@ -1,6 +1,13 @@
 name: Risk Gate production proof
 
 on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/risk-gap-enrichment.mjs"
+      - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
+      - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
+      - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
+      - ".github/workflows/risk-gate-production-proof.yml"
   schedule:
     - cron: "17,37,57 * * * *"
   workflow_run:
@@ -17,6 +24,8 @@ on:
       - "scripts/tests/risk-gate-global-news-search.test.mjs"
       - "scripts/tests/risk-gate-activation-triggers.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
+      - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
+      - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/lib/hot50-production-proof.mjs"
       - "scripts/lib/hot50-production-proof.test.mjs"
       - "scripts/tests/risk-gate-hot50-low-quota.test.mjs"
@@ -33,6 +42,22 @@ permissions:
   contents: read
 
 jobs:
+  bounded-hot50-read-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Prove bounded Hot50 SQL index plans and 20m evidence contract
+        run: node --test scripts/tests/risk-gap-hot50-index-plans.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
+
   proof:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -180,7 +205,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify scoped scheduling, tamper rejection and one-read rollups
-        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
+        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gap-hot50-index-plans.test.mjs
       - name: Observe account quota before authenticated API proofs
         id: quota
         env:

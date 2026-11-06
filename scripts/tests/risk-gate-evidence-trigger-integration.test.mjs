@@ -22,7 +22,8 @@ function mock(){
    },bind(...args){return {
    sql,args,
    async all(){
-    if(sql.startsWith("SELECT entity_type,entity_id,category,MAX(discovered_at)")){
+    if(sql.startsWith("SELECT entity_type,entity_id,category FROM unverified_observations")||
+       sql.startsWith("SELECT entity_type,entity_id,category,MAX(discovered_at)")){
      return {results:[...inserted.values()].map(x=>({
       entity_type:x.entity_type,entity_id:x.entity_id,category:x.category}))};
     }

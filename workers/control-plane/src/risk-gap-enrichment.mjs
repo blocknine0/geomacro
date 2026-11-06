@@ -98,18 +98,32 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
  if(!env?.DB?.prepare||!env?.DB?.batch||!Number.isFinite(now))
   return {ok:false,error:"RISK_GAP_D1_UNAVAILABLE"};
  try{
-  const all=targets().filter(x=>!hot50RiskGateEnabled(env)||
+  const hot50=hot50RiskGateEnabled(env);
+  const all=targets().filter(x=>!hot50||
    x.type==="COUNTRY"&&isHot50RiskCountry(x.id)),cutoff=iso(now-12*3600000);
-  const recent=await env.DB.prepare(
+  // On the exact owner-approved Hot50 scope, lookup only those 50 country IDs.
+  // The original global/corridor query remains unchanged for non-Hot50 mode.
+  // This avoids two global 12-hour GROUP BY scans on every 20-minute tick.
+  const hot50Ids=hot50?JSON.stringify([...new Set(all.map(x=>x.id))]):null;
+  const recentSql=hot50?
+   "SELECT entity_type,entity_id,category FROM unverified_observations "+
+   "WHERE entity_type='COUNTRY' AND entity_id IN (SELECT value FROM json_each(?)) "+
+   "AND discovered_at>=? GROUP BY entity_type,entity_id,category":
    "SELECT entity_type,entity_id,category,MAX(discovered_at) AS last_input "+
    "FROM unverified_observations WHERE discovered_at>=? "+
-   "GROUP BY entity_type,entity_id,category"
-  ).bind(cutoff).all();
+   "GROUP BY entity_type,entity_id,category";
+  const recent=await env.DB.prepare(recentSql)
+   .bind(...(hot50?[hot50Ids,cutoff]:[cutoff])).all();
   const fresh=new Set((recent?.results??[]).map(x=>x.entity_type+"|"+x.entity_id+"|"+x.category));
-  const observed=await env.DB.prepare(
+  const observedSql=hot50?
+   "SELECT entity_type,entity_id,category FROM risk_observations "+
+   "WHERE entity_type='COUNTRY' AND entity_id IN (SELECT value FROM json_each(?)) "+
+   "AND created_at>=? AND evidence_status IN ('VERIFIED_SIGNED_GRO','OBSERVED_UNVERIFIED') "+
+   "GROUP BY entity_type,entity_id,category":
    "SELECT entity_type,entity_id,category FROM risk_observations WHERE created_at>=? "+
-   "AND evidence_status IN ('VERIFIED_SIGNED_GRO','OBSERVED_UNVERIFIED') GROUP BY entity_type,entity_id,category"
-  ).bind(cutoff).all();
+   "AND evidence_status IN ('VERIFIED_SIGNED_GRO','OBSERVED_UNVERIFIED') GROUP BY entity_type,entity_id,category";
+  const observed=await env.DB.prepare(observedSql)
+   .bind(...(hot50?[hot50Ids,cutoff]:[cutoff])).all();
   for(const x of observed?.results??[])fresh.add(x.entity_type+"|"+x.entity_id+"|"+x.category);
   // Discovery is a continuing trigger, not a once-per-12h checkbox.
   // An observed OSINT/index item is NOT a verified signed three-category GRO.
