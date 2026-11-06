@@ -10,9 +10,20 @@ const MAX_AGE_MS=11*60_000;
 export async function readHot50MaterializedNews(env,now=Date.now()){
  if(!env?.DB?.prepare||!Number.isFinite(now))return null;
  try{
-  const row=await env.DB.prepare(
+  const receipt=await env.DB.prepare(
     "SELECT payload,updated_at FROM materialized_cache WHERE key=? LIMIT 1"
-  ).bind(KEY).first();
+  ).bind(KEY).all();
+  if(!Array.isArray(receipt?.results)||receipt.results.length>1)return null;
+  // Observed D1 billing rows, not a guess from SQL LIMIT 1. Explicit opt-in,
+  // no source payload or key values are ever written to logs.
+  if(env.GEOMACRO_D1_READ_METRICS_SAMPLE==="1")
+    console.log(JSON.stringify({schema:"geomacro.d1-hot50-single-row-read.v1",
+      query:"PUBLIC_CQRS_PK_ONLY",
+      rows_read:Number.isSafeInteger(receipt?.meta?.rows_read)?
+        receipt.meta.rows_read:null,
+      rows_written:Number.isSafeInteger(receipt?.meta?.rows_written)?
+        receipt.meta.rows_written:null}));
+  const row=receipt.results[0];
   if(!row||typeof row.payload!=="string"||row.payload.length>MAX_BYTES||
      !Number.isSafeInteger(row.updated_at)||row.updated_at>now||
      now-row.updated_at>MAX_AGE_MS)return null;
