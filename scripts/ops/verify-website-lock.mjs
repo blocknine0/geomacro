@@ -169,6 +169,8 @@ const approvedPricing = [
   config.approved_reviewed_risk_indices_activation_20261106,
   // PR #3622 reviewer-gated Risk Indices: immutable existing component blob only.
   config.approved_reviewer_gated_risk_indices_20261106,
+  // Founder-authorized historical recovery, two exact Risk Indices UI blobs only.
+  config.approved_verified_historical_indices_20261106,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
