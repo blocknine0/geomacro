@@ -142,7 +142,7 @@ SELECT CASE WHEN outbox_pending+queue_unhandled+bundles_unhandled+r2_pending+
 FROM v_p0b_unhandled_activation;
 ```
 
-Authentic reviewer publication requires immutable `reviewed_inputs_b2_key`/SHA-256 and `reviewed_certificates_b2_key`/SHA-256, plus the independently pinned reviewer public key admitted by `verify-gri-independent-reviewer-pre-b2.mjs`. Supply these through the existing protected reviewed-current publisher. Existing decision delivery keys authenticate delivery only and cannot satisfy the independent reviewer identity check.
+Authentic reviewer publication requires immutable `reviewed_b2_key`/`reviewed_b2_sha256` and `reviewed_certificates_b2_key`/SHA-256, plus the independently pinned reviewer public key admitted by `verify-gri-independent-reviewer-pre-b2.mjs`. Supply these through the existing protected reviewed-current publisher. Existing decision delivery keys authenticate delivery only and cannot satisfy the independent reviewer identity check.
 
 
 ### Recovery coordinator and deadline isolation
@@ -150,3 +150,17 @@ Authentic reviewer publication requires immutable `reviewed_inputs_b2_key`/SHA-2
 `node scripts/ops/redrive-hot50-ingestion.mjs` invokes only the existing protected bounded recovery route, at most 60 rounds within eight minutes. Each Worker operation still reserves the same shared account quota. The coordinator stops on a provider/circuit/quota hold, an unverifiable HTTP result, an unsuccessful replay, no archive progress, or exhaustion of its bounded window. It never turns an empty dispatch selection into a zero-backlog assertion: future retry deadlines, leases, dead letters and historical rows still require the independent census.
 
 The protected proof workflow runs recovery before physical auditing, then reports all five gates even if recovery fails. Its local audit ceiling is 240 object reads/250 total client attempts to cover the observed 107-batch backlog; existing account-wide daily caps are unchanged and can refuse earlier. A recovery HTTP timeout leaves the Worker CAS lease and ciphertext intact; it no longer skips the census. The acceptance report records actual account quota usage/limits and holds. The manual verifier's optional single recovery call permits a 130-second response deadline; a timeout never authorizes ACK or a concurrent replacement lease.
+
+
+For already approved immutable reviewer artifacts, the existing publisher accepts these exact input names:
+
+```sh
+gh workflow run gri-v12-supabase-free-reviewed-current.yml \
+  --repo blocknine0/geomacro --ref main \
+  -f "reviewed_b2_key=${REVIEWED_B2_KEY}" \
+  -f "reviewed_b2_sha256=${REVIEWED_B2_SHA256}" \
+  -f "reviewed_certificates_b2_key=${REVIEWED_CERTIFICATES_B2_KEY}" \
+  -f "reviewed_certificates_b2_sha256=${REVIEWED_CERTIFICATES_B2_SHA256}"
+```
+
+These are authenticated artifact references and independently approved digests, not permission to generate reviewer signatures or substitute internal scores.
