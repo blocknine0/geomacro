@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS progressive_risk_gate_cell_state (
   country_iso3 TEXT NOT NULL,
   category TEXT NOT NULL CHECK (category IN ('geopolitics','macro','rare_earth')),
   event_fingerprint TEXT NOT NULL CHECK (length(event_fingerprint) = 64),
-  corroboration_sources_count INTEGER NOT NULL CHECK (corroboration_sources_count >= 1),
+  corroboration_sources_count INTEGER NOT NULL CHECK (corroboration_sources_count >= 0),
   status TEXT NOT NULL CHECK (status IN ('OBSERVED','CORROBORATED')),
   event_clock TEXT NOT NULL,
   updated_at TEXT NOT NULL,
