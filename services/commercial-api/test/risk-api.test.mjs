@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
 import {randomUUID,generateKeyPairSync} from 'node:crypto';
 import {SupabaseRpcPool} from '../src/payments/rpc-http.mjs';
-import {mintApiKey,verifyReceipt,canonicalize,hash} from '../src/metering.mjs';
+import {mintApiKey,verifyReceipt,canonicalize,hash,apiKeyHash} from '../src/metering.mjs';
 import {admitQualifiedProduct,createQualifiedRiskResolver} from '../src/qualified-risk.mjs';
 import {creditRiskGate,createRiskApi} from '../src/risk-api.mjs';
 import {parseRiskRequest,CASH_ATOMIC,TIER_NAMES} from '../src/risk-contract.mjs';
@@ -120,10 +120,10 @@ test('key issuance works through real typed RPC aliases; only masked metadata is
  const r=await app(new Request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:'API fixture'})}));
  assert.equal(r.status,201);const key=await r.json();assert.match(key.api_key,/^gm_live2_[A-Za-z0-9_-]{43}$/);
  const listed=await (await app(new Request(url))).json();assert(listed.keys.some(k=>k.id===key.id));
- assert(!JSON.stringify(listed).includes(key.api_key));assert(!JSON.stringify(listed).includes(hash(key.api_key)));
+ assert(!JSON.stringify(listed).includes(key.api_key));assert(!JSON.stringify(listed).includes(apiKeyHash(key.api_key)));
  const revoked=await app(new Request(`${url}/${key.id}/revoke`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}));
  assert.equal(revoked.status,200);
- await assert.rejects(pool.call('authorize_credit_key',[hash(key.api_key)]),/KEY_UNAVAILABLE/);
+ await assert.rejects(pool.call('authorize_credit_key',[apiKeyHash(key.api_key)]),/KEY_UNAVAILABLE/);
 });
 test('database-backed API rate limit denies excess calls without any debit',async()=>{
  const key=mintApiKey();const id=await pool.call('create_api_key',[user,key.hash,key.prefix,'rate test']);
