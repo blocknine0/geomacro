@@ -15,7 +15,11 @@ function fakeSource(host,title="India central bank announces rate decision"){
 function mock(){
  let cursor=0,cursorAt=null;const inserted=new Map(),queries=[];
  const DB={
-  prepare(sql){return {bind(...args){return {
+  prepare(sql){return {async first(){
+    if(sql.includes("FROM risk_gap_enrichment_cursor"))
+     return cursorAt?{next_offset:cursor,last_run_at:cursorAt}:null;
+    throw Error("UNEXPECTED_SQL_UNBOUND_FIRST");
+   },bind(...args){return {
    sql,args,
    async all(){
     if(sql.startsWith("SELECT entity_type,entity_id,category,MAX(discovered_at)")){
