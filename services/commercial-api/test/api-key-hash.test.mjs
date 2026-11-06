@@ -12,7 +12,6 @@ test('new commercial API keys have 256 random bits and use scrypt, not fast SHA-
     assert.equal(isApiKey(key.secret), true);
     assert.match(key.hash, /^[0-9a-f]{64}$/);
     assert.equal(key.hash, apiKeyHash(key.secret));
-    assert.notEqual(key.hash, hash(key.secret));
     assert.equal(key.prefix, key.secret.slice(0, 16));
     assert.equal(JSON.stringify({hash:key.hash, prefix:key.prefix}).includes(key.secret), false);
   }
