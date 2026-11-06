@@ -168,3 +168,51 @@ test("the disabled flag never attempts the optional single-row materialization",
  assert.equal(bundle.status,200);
  assert.equal(calls,2);
 });
+
+
+test("warm single-row CQRS returns the exact canonical page/bundle contracts",async()=>{
+ const now=Date.parse("2026-11-06T07:00:00.000Z");
+ const native="2026-11-06T06:00:00.000Z";
+ const first="2026-11-06T06:05:00.000Z";
+ const story={id:"geopolitics-00000001",category:"geopolitics",
+  title:"Geomacro finds original official policy change in the observed sector",
+  what_changed:"An official publisher released a new statement about a policy development in the observed sector.",
+  why_it_matters:"This release may affect operating assumptions but actual consequences require independent confirmation.",
+  topic:"foreign policy",development_type:"policy update",geography:null,
+  published_at:native,date_precision:"exact",observed_release_count:1,
+  sources_credited:[],status:"official_release_observed_unscored",
+  same_event_corrob_verified:false,severity:null};
+ const row={story_json:JSON.stringify(story),first_seen_at:first};
+ const base={ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+  checked_at:new Date(now).toISOString(),original_release_delay_minutes:0,
+  retention_days:3,retention_hours:72,delivery_scope:"free_website_only",
+  complete:true,item_cap:600,returned_rows:1,
+  ingest_clock_kind:"D1_FIRST_INSERT_NOT_WEBSITE_FIRST_RENDER",
+  first_ingest:[{id:story.id,first_seen_at:first}],signals:[story],
+  scored:false,chargeable:false,supabase_dependency:false};
+ let cachedRead=0;
+ const env=flag=>({GEOMACRO_D1_READ_HOTSPOT_V2:flag,DB:{
+  prepare(sql){
+   if(sql.includes("materialized_cache")){
+    cachedRead++;
+    return {bind:()=>({all:async()=>({results:[{payload:JSON.stringify(base),updated_at:now-2000}]})})};
+   }
+   if(sql.includes("website_derived_materialized"))
+    return {all:async()=>{throw Error("no such table: website_derived_materialized_pages_v1")}};
+   if(sql.includes("website_derived_intelligence"))
+    return {bind:()=>({all:async()=>({results:[row]})})};
+   throw Error("Unexpected SQL");
+  }
+ }});
+ for(const project of [
+  e=>readDerivedStories(e,now,0,0,true),
+  e=>readDerivedStoriesBundle(e,now,true),
+ ]){
+  const fromCache=await project(env("1"));
+  const canonical=await project(env("0"));
+  assert.equal(fromCache.status,200);
+  assert.equal(await fromCache.text(),await canonical.text());
+  assert.deepEqual([...fromCache.headers.entries()], [...canonical.headers.entries()]);
+ }
+ assert.equal(cachedRead,2);
+});
