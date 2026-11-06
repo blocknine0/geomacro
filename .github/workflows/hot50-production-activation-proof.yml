@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs
+      - run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs scripts/tests/hot50-redrive.test.mjs
   acceptance:
     needs: contracts
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main')
@@ -51,11 +51,11 @@ jobs:
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: hot50_production_proof
       # Includes every listing page, GET, auth fallback and retry. The shared
       # account governor can refuse earlier; no provider budget is increased.
-      B2_REQUEST_BUDGET: "12"
-      PARITY_MAX_B2_READS: "10"
+      B2_REQUEST_BUDGET: "250"
+      PARITY_MAX_B2_READS: "240"
       GEOMACRO_CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
       B2_PARITY_VERIFIED_RECEIPT_JSON: /tmp/hot50-proof/parity.json
-      ACTIVATION_RUN_IDEMPOTENT_REDRIVE: "1"
+      ACTIVATION_RUN_IDEMPOTENT_REDRIVE: "0"
       ACTIVATION_ALLOW_MODEL_PROBE: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -93,6 +93,12 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs | tee /tmp/hot50-proof/reviewer-authority.json
+      - name: Recover existing FIFO and encrypted outbox under unchanged account governor
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/redrive-hot50-ingestion.mjs | tee /tmp/hot50-proof/recovery.json
       - name: Independent governed B2 GET and stable canonical manifest audit
         continue-on-error: true
         shell: bash
@@ -100,7 +106,7 @@ jobs:
           set -euo pipefail
           trap 'cat /tmp/hot50-proof/parity.json /tmp/hot50-proof/parity-error.json' EXIT
           node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/hot50-proof/parity.json 2> /tmp/hot50-proof/parity-error.json
-      - name: Report all five gates and one bounded existing FIFO redrive
+      - name: Report all five gates independently of recovery success
         if: always()
         shell: bash
         run: |

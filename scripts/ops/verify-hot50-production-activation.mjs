@@ -23,16 +23,28 @@ const checks=[];
 function gate(name,pass,code,details={}){
  checks.push({name,status:pass?"PASS":"FAIL",code,...details});
 }
-async function call(path,{method="GET",body=null,token=null}={}){
+async function call(path,{method="GET",body=null,token=null,timeoutMs=REQ_TIMEOUT}={}){
  const headers={Accept:"application/json"};
  if(token)headers.Authorization="Bearer "+token;
  if(body!==null)headers["Content-Type"]="application/json";
  const r=await fetch(WORKER+path,{method,headers,body:body===null?undefined:JSON.stringify(body),
-    redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(REQ_TIMEOUT)});
+    redirect:"manual",cache:"no-store",signal:AbortSignal.timeout(timeoutMs)});
  if(r.redirected||r.status>=300&&r.status<400)throw Error("UNTRUSTED_REDIRECT");
  const data=await r.text();
  if(data.length>500000)throw Error("RESPONSE_OVERSIZED");
  return {status:r.status,headers:r.headers,json:JSON.parse(data)};
+}
+export async function observeActivation({token,redrive=false},callImpl=call){
+ let replay=null;
+ if(redrive){
+  try{const q=await callImpl("/v1/internal/activation/redrive",{
+    method:"POST",token,timeoutMs:130000});
+   replay={status:q.status,outbox:q.json?.outbox,fifo:q.json?.fifo,r2:q.json?.r2};
+  }catch{replay={status:"TRANSPORT_UNCERTAIN_LEASES_PRESERVED"}}
+ }
+ // An uncertain mutation never suppresses this independent read-only census.
+ const census=await callImpl("/v1/internal/activation/hot50-census",{token});
+ return {replay,census};
 }
 async function reviewedIndices(){
  const [r,k]=await Promise.all([
@@ -160,23 +172,23 @@ async function providerQueueDepth(){
   readings,reason:"CLOUDFLARE_FOUR_QUEUES_BEST_EFFORT_SNAPSHOT"};
 }
 async function main(){
- let census=null,redrive=null,storage=null;
+ let census=null,redrive=null,storage=null,quota=null;
  if(!SHA.test(OWNER)){gate("Backlog Census",false,"OWNER_TOKEN_UNAVAILABLE");
    gate("Hot 50 Coverage",false,"OWNER_TOKEN_UNAVAILABLE");}
  else {
    try {
-     if(process.env.ACTIVATION_RUN_IDEMPOTENT_REDRIVE==="1"){
-       const q=await call("/v1/internal/activation/redrive",{
-        method:"POST",token:OWNER});
-       redrive={status:q.status,outbox:q.json?.outbox?.status,
-         fifo:q.json?.fifo?.status};
-     }
-     const result=await call("/v1/internal/activation/hot50-census",{token:OWNER});
+     const observed=await observeActivation({token:OWNER,
+       redrive:process.env.ACTIVATION_RUN_IDEMPOTENT_REDRIVE==="1"});
+     redrive=observed.replay;
+     const result=observed.census;
      if(result.status!==200||result.json.ok!==true)throw Error("D1_COMPLETE_CENSUS_UNAVAILABLE");
      census=result.json;
      const b=census.backlog;
      try{const q=await call("/v1/internal/p0b/status",{token:OWNER});
        if(q.status===200&&q.json.ok===true)storage=q.json.b2_storage_guard??null;
+     }catch{}
+     try{const q=await call("/v1/b2-quota/status",{token:OWNER});
+      if(q.status===200&&q.json.ok===true)quota={day_utc:q.json.day_utc,used:q.json.used,limits:q.json.limits};
      }catch{}
      let provider={verified:false,reason:"PROVIDER_METRIC_NOT_CHECKED"};
      try{provider=await providerQueueDepth()}catch{
@@ -187,7 +199,7 @@ async function main(){
        zero?"D1_ZERO_AND_FOUR_QUEUE_BEST_EFFORT_ZERO":"UNHANDLED_OR_PROVIDER_QUEUE_NOT_PROVEN",
        {total_unhandled:b?.total_unhandled??null,
         d1_stores:{outbox:b.outbox,queue:b.queue,bundles:b.bundles,r2:b.r2,historical_raw:b.historical_raw},
-        storage_guard:storage,
+        storage_guard:storage,b2_account_quota:quota,
         provider_queue_backlog:b?.provider_queue_backlog??null,
         four_queue_metrics_verified:provider.verified===true,
         cloudflare_queues:provider.readings??[],
