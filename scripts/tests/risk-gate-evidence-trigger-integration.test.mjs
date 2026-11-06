@@ -39,7 +39,7 @@ function mock(){
      return cursorAt?{next_offset:cursor,last_run_at:cursorAt}:null;
     throw Error("UNEXPECTED_SQL_FIRST");
    },
-  }}}}},
+  }}}},
   async batch(stmts){
    for(const stmt of stmts){
     if(stmt.sql.startsWith("INSERT INTO unverified_observations"))
