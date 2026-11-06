@@ -326,6 +326,8 @@ jobs:
       github.event_name != 'pull_request' &&
       github.ref == 'refs/heads/main' &&
       needs.approve-retained-derived-inputs.result == 'success' &&
+      vars.GEOMACRO_STANDING_DELEGATION_ENABLED == 'YES_DELEGATED_DERIVED_ONLY' &&
+      vars.GEOMACRO_STANDING_DELEGATION_REVOKED != 'YES' &&
       vars.GEOMACRO_GRI_AUTO_ENROLLED == 'YES_CONSENT_ONLY' &&
       vars.GEOMACRO_GRI_AUTO_REVOKED != 'YES'
     runs-on: ubuntu-24.04
