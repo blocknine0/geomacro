@@ -54,7 +54,8 @@ export async function readAsk(origin,question,fetchImpl=fetch){
     !Array.isArray(a.evidence)||a.evidence.length!==0)
    throw Error("ASK_FREE_GROQ_UNSAFE_OR_INELIGIBLE_ANSWER");
  return {rendering:a.model_rendering??"unavailable",
-   cache:a.model_render_cache??"unavailable",answer_kind:a.answer_kind};
+   cache:a.model_render_cache??"unavailable",answer_kind:a.answer_kind,
+   fallback:a.model_render_failure??null};
 }
 export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetch){
  const base=assertOrigin(origin);
@@ -66,7 +67,7 @@ export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetc
  for(const test of CASES){
    const a=await readAsk(base,test.question,fetchImpl);
    results.push({domain:test.name,rendering:a.rendering,cache:a.cache});
-   console.log(JSON.stringify({stage:"model_probe",domain:test.name,rendering:a.rendering,cache:a.cache}));
+   console.log(JSON.stringify({stage:"model_probe",domain:test.name,rendering:a.rendering,cache:a.cache,fallback:a.fallback}));
  }
  const unverified=results.filter(x=>x.rendering!=="assisted").map(x=>x.domain);
  if(unverified.length)throw Error("ASK_FREE_GROQ_GENERATION_UNVERIFIED_"+unverified.join("_").toUpperCase());
