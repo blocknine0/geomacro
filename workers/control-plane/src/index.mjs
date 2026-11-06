@@ -1112,6 +1112,8 @@ async function health(env) {
     return json({ ok: true, store: "d1", schema_version: Number(row.version), durable_payload_store: "b2", commerce_ledger: "durable_object",
        d1_hotspot_v2_enabled:env.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
        account_wide_governor_verified:env.GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED==="true",
+       account_wide_read_cap_verified:env.GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED==="true",
+       d1_daily_rows_read_soft_cap:env.GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX==="120000"?120000:null,
        payment_runtime_locked:env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=="ACCEPTED_CANONICAL_D1_PAID_RUNTIME",
       derived_news_topic_policy_revision: DERIVED_NEWS_TOPIC_POLICY_REVISION,
       deployed_source_sha: /^[a-f0-9]{40}$/.test(String(env.GEOMACRO_SOURCE_SHA ?? ""))
