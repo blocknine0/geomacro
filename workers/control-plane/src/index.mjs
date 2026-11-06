@@ -28,6 +28,7 @@ import {consumeCentralSecurityBudget} from './central-security-budget.mjs';
 import { reserveB2AccountQuota, readB2AccountQuota } from "./b2-account-quota.mjs";
 import { readDerivedStories, readDerivedStoriesBundle, publishDerivedStories, renderDerivedStoriesHtml, DERIVED_NEWS_TOPIC_POLICY_REVISION } from "./website-derived-intelligence.mjs";
 import {refreshMaterializedNewsPages} from "./materialized-public-news-pages.mjs";
+import {refreshHot50MaterializedNews} from "./hot50-materialized-news.mjs";
 import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
 import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts} from "./news-intake-policy.mjs";
@@ -1323,6 +1324,13 @@ export default {
     // Existing 1-minute Worker cron: one bounded daily deletion, no new
     // schedule, secrets, source pulls or partner route changes.
     const utc=new Date();
+    // Feature-gated CQRS publisher on existing cron; a quiet source revision
+    // avoids rescanning canonical D1 and news ingestion never waits for it.
+    if(env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"&&env?.DB?.prepare&&
+       env?.DB?.batch&&utc.getUTCMinutes()%10===2)
+      ctx.waitUntil(refreshHot50MaterializedNews(env,utc.getTime())
+        .then(r=>{if(!r.ok)console.error("HOT50_CQRS_REFRESH_DEFERRED",r.status)})
+        .catch(()=>console.error("HOT50_CQRS_REFRESH_UNAVAILABLE")));
     // Rotating 12-cell search page every 20 minutes across the 195x3 matrix
     // and registered corridors. Results remain unverified observations.
     if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%20===0)
@@ -1531,6 +1539,7 @@ export default {
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+      swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
     });
     // Authenticated, SHA-keyed, public-format-only Ask cache; never expose
     // endpoint or any cache entry to unauthenticated visitors.
@@ -1671,6 +1680,7 @@ export default {
             eligiblePublicFreeD1CacheRequest(pageRequest)),{
             cache:typeof caches!=="undefined"?caches.default:null,
             waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
+            swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
           })));
     }
     if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-certified-news-severity-gri"&&!url.search)
