@@ -1,5 +1,5 @@
 /** Main-only protected deployment. No credentials or payment signatures logged. */
-import {createHmac,createPrivateKey,createPublicKey,createHash} from 'node:crypto';
+import {createHmac,createPrivateKey,createPublicKey,createHash,verify} from 'node:crypto';
 import {readFileSync,writeFileSync,appendFileSync,unlinkSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {resolve} from 'node:path';
@@ -14,6 +14,7 @@ const publicBytes=createPublicKey(privateKey).export({format:'der',type:'spki'})
 const keyId='geomacro-commercial-'+createHash('sha256').update(publicBytes).digest('hex').slice(0,16);
 const secrets={
  COMMERCIAL_SUPABASE_KEY:env.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY,
+ COMMERCIAL_ACCEPTANCE_TOKEN:createHmac('sha256',env.ROOT_LEDGER_TOKEN).update('geomacro.commercial-api.no-funds-acceptance.v1').digest('hex'),
  COMMERCIAL_SIGNING_PRIVATE_PKCS8_B64:privateBytes.toString('base64'),
  COMMERCIAL_SIGNING_PUBLIC_SPKI_B64:publicBytes.toString('base64'),
 };
@@ -35,6 +36,7 @@ config.vars={...config.vars,DEPLOYED_SHA:env.GITHUB_SHA,COMMERCIAL_SIGNING_KEY_I
  GEOMACRO_PAYPAL_KYC_RECEIVE_ACK:env.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK||'',
  GEOMACRO_COMMERCE_EMERGENCY_FREEZE:env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE||'',
  GEOMACRO_COMMERCE_DISABLED_PROVIDERS:env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS||'',
+ COMMERCIAL_VERIFY_KEYS_JSON:env.COMMERCIAL_VERIFY_KEYS_JSON||'',
 };
 const configPath=root+'/wrangler.runtime.jsonc';writeFileSync(configPath,JSON.stringify(config,null,2));
 const wrangler=(args,options={})=>{
@@ -68,10 +70,30 @@ try{
  if(!r.ok||ready.ledger_verified!==true)throw Error('COMMERCIAL_POSTGRES_READBACK_FAILED');
  const jwks=await (await fetch(origin+'/.well-known/jwks.json')).json();
  if(!jwks.keys?.some(k=>k.kid===keyId&&k.crv==='Ed25519'))throw Error('COMMERCIAL_PUBLIC_KEY_READBACK_FAILED');
+ let evidenceProof={status:'NOT_PROBED'};
+ if(config.vars.PUBLIC_API_ORIGIN){
+  const canonical=await fetch(config.vars.PUBLIC_API_ORIGIN+'/v1/commercial/health',{signal:AbortSignal.timeout(15000)});
+  const canonicalHealth=await canonical.json();
+  if(!canonical.ok||canonicalHealth.deployed_sha!==env.GITHUB_SHA)throw Error('COMMERCIAL_CUSTOM_DOMAIN_SHA_MISMATCH');
+  const noFunds=await fetch(origin+'/v1/internal/commercial-acceptance',{method:'POST',
+   headers:{Authorization:'Bearer '+secrets.COMMERCIAL_ACCEPTANCE_TOKEN},signal:AbortSignal.timeout(30000)});
+  const body=await noFunds.json();
+  if(noFunds.ok){
+   const {audit_receipt,...payload}=body;
+   const canonicalize=v=>v===null||typeof v!=='object'?JSON.stringify(v):Array.isArray(v)?'['+v.map(canonicalize).join(',')+']':
+    '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonicalize(v[k])).join(',')+'}';
+   const bytes=Buffer.from(canonicalize(payload));
+   if(payload.execution_authorized!==false||payload.metadata?.certified_risk_index!==false||payload.payment_attempted!==false||
+    audit_receipt.public_key_id!==keyId||audit_receipt.hash!==createHash('sha256').update(bytes).digest('hex')||
+    !verify(null,bytes,createPublicKey(privateKey),Buffer.from(audit_receipt.signature,'base64')))
+    throw Error('COMMERCIAL_NO_FUNDS_PROOF_INVALID');
+   evidenceProof={status:'GENUINE_BASIC_ACTIVITY_ADVISORY_VERIFIED',certified_risk_index:false};
+  }else evidenceProof={status:'EVIDENCE_BLOCKED_NO_CHARGE',code:body.error??'UPSTREAM_UNAVAILABLE'};
+ }
  const summary={schema:'geomacro.commercial-api-deployment.v1',origin,deployed_sha:env.GITHUB_SHA,
   ledger_verified:true,signer_verified:health.signer_configured===true,
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
-  blockers:health.blockers,real_payment_attempted:false};
+  blockers:health.blockers,evidence_proof:evidenceProof,real_payment_attempted:false};
  console.log(JSON.stringify(summary));
  if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'\n'+JSON.stringify(summary,null,2)+'\n');
 }catch(error){console.error(error.message);process.exitCode=1;}

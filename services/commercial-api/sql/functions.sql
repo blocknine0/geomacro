@@ -77,11 +77,18 @@ BEGIN
  SELECT * INTO STRICT u FROM geomacro.users WHERE id=k.user_id FOR UPDATE;
  -- Re-read after lock: revocation uses same lock order.
  SELECT * INTO STRICT k FROM geomacro.api_keys WHERE id=k.id;
+ -- Serialize the global request ID with the accountless rail before either
+ -- rail can claim it. No ingestion/backlog queue participates in this lock.
+ PERFORM pg_advisory_xact_lock(hashtextextended('geomacro-commercial-request:'||p_request::text,0));
+ IF to_regclass('geomacro.x402_intents') IS NOT NULL THEN
+  IF EXISTS(SELECT FROM geomacro.x402_intents WHERE request_id=p_request)
+  THEN RAISE EXCEPTION 'IDEMPOTENCY_CONFLICT'; END IF;
+ END IF;
  IF u.status<>'active' OR k.revoked_at IS NOT NULL OR k.expires_at<=clock_timestamp()
  OR NOT ('risk-gate:read'=ANY(k.scopes)) THEN RAISE EXCEPTION 'KEY_UNAVAILABLE'; END IF;
  SELECT * INTO v FROM geomacro.usage_logs WHERE request_id=p_request;
  IF FOUND THEN
-  IF v.user_id<>u.id OR v.api_key_id<>k.id OR v.request_hash<>p_request_hash
+  IF v.user_id IS DISTINCT FROM u.id OR v.api_key_id IS DISTINCT FROM k.id OR v.request_hash<>p_request_hash
    OR v.subject<>p_subject OR v.requested_tier<>p_requested THEN RAISE EXCEPTION 'IDEMPOTENCY_CONFLICT'; END IF;
   IF v.state<>'succeeded' THEN RAISE EXCEPTION 'REQUEST_NOT_REPLAYABLE'; END IF;
   SELECT * INTO STRICT a FROM geomacro.audit_receipts WHERE request_id=p_request;
@@ -157,7 +164,7 @@ BEGIN
  PERFORM 1 FROM geomacro.users WHERE id=k.user_id FOR UPDATE;
  SELECT * INTO v FROM geomacro.usage_logs WHERE request_id=p_request;
  IF FOUND THEN
-  IF v.user_id<>k.user_id OR v.api_key_id<>k.id OR v.request_hash<>p_request_hash
+  IF v.user_id IS DISTINCT FROM k.user_id OR v.api_key_id IS DISTINCT FROM k.id OR v.request_hash<>p_request_hash
    OR v.subject<>p_subject OR v.requested_tier<>p_requested THEN RAISE EXCEPTION 'IDEMPOTENCY_CONFLICT'; END IF;
   IF v.state<>'failed' THEN RAISE EXCEPTION 'ALREADY_SETTLED_USE_REFUND'; END IF;
   RETURN;

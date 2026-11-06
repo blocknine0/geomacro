@@ -1,3 +1,11 @@
+# Canonical production service: Steps 1–3
+
+The integrated Cloudflare production adapter and Step 3 contract are documented in
+[PRODUCTION.md](PRODUCTION.md) and [STEP3.md](STEP3.md). The standalone Step 1–2
+Node setup below remains reproducible; do not re-create installed tables when
+upgrading a live database. New installations also apply `sql/risk-api.sql` before
+`sql/rpc-gateway.sql`. Existing Step 1–2 installations apply those two files only.
+
 # GeoMacro — Step 2: PayPal + Base USDC x402
 
 This package adds real payment engines to Step 1's PostgreSQL ledger. It contains

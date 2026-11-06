@@ -7,7 +7,7 @@ import worker from '../src/worker.mjs';
 const db=new PGlite();
 before(async()=>{
  await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
- for(const name of ['schema.sql','functions.sql','payments.sql','rpc-gateway.sql'])
+ for(const name of ['schema.sql','functions.sql','payments.sql','replay-ownership.sql','risk-api.sql','rpc-gateway.sql'])
   await db.exec(await readFile(new URL(`../sql/${name}`,import.meta.url),'utf8'));
 });
 after(()=>db.close());
@@ -57,4 +57,10 @@ test('Worker global fetch receiver is bound to globalThis, never a client instan
   assert.equal(this,globalThis,'Cloudflare global fetch requires its global receiver');return Response.json({ready:true});
  }});
  assert.equal((await pool.call('health')).ready,true);
+});
+
+test('OpenAPI discovery describes the actual risk endpoint without claiming execution',async()=>{
+ const r=await worker.fetch(new Request('https://service.example/v1/commercial/openapi.json'),{SITE_ORIGIN:'https://geomacro.live'});
+ assert.equal(r.status,200);const spec=await r.json();assert.equal(spec.openapi,'3.1.0');
+ assert(spec.paths['/v1/risk-gate'].post);assert.equal(spec['x-execution-authorized'],false);
 });
