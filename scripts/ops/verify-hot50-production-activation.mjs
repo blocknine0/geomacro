@@ -196,10 +196,13 @@ async function main(){
      const build=await readPublishedBuild(SITE);
      const test=await readAsk(SITE,"What is inflation?");
      const second=await readAsk(SITE,"What is inflation?");
-     ask=build.status==="VALID"&&test.rendering==="assisted"&&
+     const expected=String(process.env.GITHUB_SHA??"");
+     ask=build.status==="VALID"&&/^[a-f0-9]{40}$/.test(expected)&&
+       build.sha===expected&&test.rendering==="assisted"&&
        second.cache==="hit"&&second.scope==="distributed";
      site={model_assisted:test.rendering==="assisted",model_cache:second.cache,
-       cache_scope:second.scope,published_sha_valid:build.status==="VALID"};
+       cache_scope:second.scope,published_sha_valid:build.status==="VALID",
+       deployed_exact_head_verified:build.sha===expected};
    }catch{ask=false}
  }
  gate("Ask GeoMacro Retrieval",cache.pass&&ask,
