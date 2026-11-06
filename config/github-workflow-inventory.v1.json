@@ -164,6 +164,8 @@
     "gdelt-v2-event-sync.yml",
     "geomacro-first-customer-receipt-safety.yml",
     "geomacro-owner-partner-four-gates.yml",
+    "geomacro-phase1-d1-budget-watch.yml",
+    "geomacro-phase1-protected-canary.yml",
     "geomacro-predge-email-acceptance.yml",
     "geopolitical-production-diagnostics.yml",
     "global-195x3-human-machine-source-regression.yml",

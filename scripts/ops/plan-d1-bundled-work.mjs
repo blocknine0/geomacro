@@ -9,6 +9,7 @@ import {appendFileSync,readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
+import {assessPaidEnvelope,paidBundleContract} from "./d1-paid-envelope.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
@@ -18,7 +19,7 @@ import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudfla
 // The existing separate D1 rate governor remains the partner request cap.
 // No partner token, payload, API behavior or SQL is changed here.
 export const PREDGE_D1_FREE_HEADROOM=Object.freeze({
-  rows_read:500_000,rows_written:8_000,
+  rows_read:5_000,rows_written:8_000,
   pilot_request_cap_per_utc_day:500,
   basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE",
 });
@@ -26,22 +27,33 @@ export const D1_BUNDLE_LANES=Object.freeze({
   // Strict end-of-day reserves + a finite opening burst. Without pacing,
   // 5-minute and 30-minute jobs can consume an entire day's account headroom
   // during the first hours after UTC reset.
-  critical:Object.freeze({read_reserve:750_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+  critical:Object.freeze({read_reserve:10_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:15_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:1_000_000,write_opening_burst:10_000}),
-  research:Object.freeze({read_reserve:1_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    read_opening_burst:20_000,write_opening_burst:10_000}),
+  research:Object.freeze({read_reserve:25_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:30_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:500_000,write_opening_burst:5_000}),
-  maintenance:Object.freeze({read_reserve:2_500_000+PREDGE_D1_FREE_HEADROOM.rows_read,
+    read_opening_burst:12_000,write_opening_burst:5_000}),
+  maintenance:Object.freeze({read_reserve:40_000+PREDGE_D1_FREE_HEADROOM.rows_read,
     write_reserve:50_000+PREDGE_D1_FREE_HEADROOM.rows_written,
-    read_opening_burst:250_000,write_opening_burst:2_500}),
+    read_opening_burst:5_000,write_opening_burst:2_500}),
 });
+const PHASE1_WRITER_INTEGRATION=JSON.parse(readFileSync(
+  new URL("../../config/phase1-writer-integration.json",import.meta.url),"utf8"));
 const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==18_000_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==120_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.schema!=="geomacro.d1-read-pacing-policy.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.daily_soft_rows_read_max!==120_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.rolling_capacity_rows!==20_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.capacity_rows!==7_500||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.refill_rows_per_minute!==125||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.provider_counter_max_age_seconds!==120||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.durable_objects?.threshold_cents!==1)
   throw Error("CLOUDFLARE_CENTRAL_FIVE_USD_POLICY_WEAKENED");
@@ -58,29 +70,27 @@ export function d1LanePacedCeiling(lane,now){
     return Math.floor(burst+(cap-burst)*fraction);
   };
   return Object.freeze({
-    rows_read:allowed(D1_FREE_DAILY.rows_read,settings.read_reserve,
+    rows_read:allowed(FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max,settings.read_reserve,
       settings.read_opening_burst),
     rows_written:allowed(D1_FREE_DAILY.rows_written,settings.write_reserve,
       settings.write_opening_burst),
   });
 }
 const safeInt=x=>Number.isSafeInteger(x)&&x>=0;
-// Minimum Free/bundled envelope for the EXISTING fifteen-minute private
-// source lane. A fixed five-original maximum gives the three news categories
-// a 2/2/1 fair share without opening a parallel expensive research pipeline.
+// Daily 120k-read plan for the existing fifteen-minute private-source lane.
+// One serialized five-item bundle carries all three category lanes.
 // This is a DAILY worst-case reserve, not an atomic Cloudflare reservation:
 // no source intake is allowed when actual provider headroom is insufficient.
-// Reserve up to three independent capped D1 producers per 15-minute slot:
-// the five-minute fastlane, private source-only writer and optionally
-// five-item AES-GCM replay when research headroom is separately admitted.
+// Reserve one bounded D1 producer per slot; parallel readers require their
+// own verified admission before activation.
 // This avoids treating a GitHub concurrency mutex as a total daily
 // call-count guarantee. The five-minute fastlane uses the intake clock and
 // must honor the interval returned here, not run an extra D1 write every 5m.
 export const MINIMUM_DAILY_BUNDLED_SOURCE=Object.freeze({
- interval_minutes:15,max_new_rows:5,producers_per_slot:3,
- rows_read_per_slot:3200,
+ interval_minutes:15,max_new_rows:5,producers_per_slot:1,
+ rows_read_per_slot:300,
  rows_written_per_new_row:16,rows_written_overhead_per_slot:40,
- rows_read_fixed:100000,rows_written_fixed:2000,
+ rows_read_fixed:5000,rows_written_fixed:2000,
  expected_categories:3,maximum_original_records_per_slot:5,
  no_paid_capacity:true,protect_predge_reserve:true,
 });
@@ -112,7 +122,7 @@ export function planSourceIntake(snapshot,now){
  const rows_written=(c.rows_written_per_new_row*c.max_new_rows+
    c.rows_written_overhead_per_slot)*slots*c.producers_per_slot+
    c.rows_written_fixed+directSlots*HOT50_DIRECT_20M_FREE_RESERVE.rows_written_per_slot;
- // No borrowing from PREDGE's 500k read / 8k write reserve, critical
+ // No borrowing from PREDGE's 5k read / 8k write reserve, critical
  // emergency operations, or a future source tick. Strict '>' absorbs
  // non-atomic provider counter lag; unknown quota is a hard HOLD upstream.
  if(snapshot.remaining_rows_read<=D1_BUNDLE_LANES.critical.read_reserve+rows_read||
@@ -141,7 +151,7 @@ export const REGISTERED_ADAPTIVE_FREE_CAP=Object.freeze({
  worst_case_extra_rows_written_per_original:16,
  worst_case_extra_rows_read_per_original:64,
  additional_write_contingency:10_000,
- additional_read_contingency:100_000,
+ additional_read_contingency:5_000,
 });
 export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
   now=new Date(),criticalGranted=false,
@@ -162,7 +172,7 @@ export function planRegisteredAdaptiveFreeOriginals(snapshot,intakeBudget,{
    remainingArchiveSlots*750-c.additional_write_contingency);
  const readRoom=Math.max(0,snapshot.remaining_rows_read-
    D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
-   remainingArchiveSlots*20_000-c.additional_read_contingency);
+   remainingArchiveSlots*1_000-c.additional_read_contingency);
  const extra=Math.max(0,Math.min(
    c.max_originals_per_15m-c.baseline_reserved_originals,
    Math.floor(writeRoom/(slots*c.worst_case_extra_rows_written_per_original)),
@@ -195,7 +205,7 @@ export function planPhase2iAdaptiveSourceBudget(snapshot,intakeBudget,registered
    (registered?.extra_write_reserved??0)-archiveSlots*750-10_000);
  const readAvailable=Math.max(0,snapshot.remaining_rows_read-
    D1_BUNDLE_LANES.critical.read_reserve-intakeBudget.rows_read-
-   (registered?.extra_read_reserved??0)-archiveSlots*20_000-100_000);
+   (registered?.extra_read_reserved??0)-archiveSlots*1_000-5_000);
  const extra=Math.max(0,Math.min(95,
    Math.floor(writeAvailable/16),Math.floor(readAvailable/64)));
  const max_new_rows=baseline+extra;
@@ -233,8 +243,18 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     return held("D1_ACCOUNT_USAGE_UNVERIFIED",now);
 
 
+  if(PHASE1_WRITER_INTEGRATION?.account_wide_governor_verified!==true||
+     PHASE1_WRITER_INTEGRATION?.account_wide_read_cap_verified!==true||
+     PHASE1_WRITER_INTEGRATION?.daily_soft_rows_read_max!==120000){
+    return {...held("D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED",now),
+      account_wide_governor_verified:false,
+      account_wide_read_cap_verified:false,
+      d1_daily_rows_read_soft_cap:120000};
+  }
+
+
   // Provider-verified, account-scoped Workers Paid has no 5M/day hard
-  // physical read stop. Retain an independent, CONSERVATIVE 18M/180k
+  // physical read stop. Retain an independent, CONSERVATIVE 120k/180k
   // account-wide DAILY soft budget (well below official monthly allotments).
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
@@ -256,76 +276,30 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     Number.isFinite(Date.parse(paidProof.observed_at))&&
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
-  if(paid){
-    const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const dailyReads=Math.floor(4_000_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-4_000_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const dailyWrites=Math.floor(40_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-40_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const admitted=snapshot.observed_rows_read<dailyReads&&
-      snapshot.observed_rows_written<dailyWrites;
-    const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
-    const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
-    const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
-    // Reserve ALL existing source producers through UTC reset, not merely
-    // this caller. Paid entitlement previously granted critical=true while
-    // source_intake=false, permanently starving the actual news collector.
-    const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
-    const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
-    const futureWriteRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
-    const futureReadRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
-    // Future slots use the full-day ceiling; this slot still uses its paced
-    // allowance. Reserving tomorrow's work from today's early-hour allowance
-    // would incorrectly stop intake immediately after every UTC reset.
-    const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
-      D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
-    const sourceIntake=admitted&&rowsPerSlot>=3&&
-      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
-      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
-    const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
-      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
-    return Object.freeze({
-      schema:"geomacro.d1-free-bundled-work-admission.v1",
-      day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
-      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
-        "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
-      critical:admitted,research:false,maintenance:false,
-      phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
-      phase2h_raw_archive_max_rows_per_slot:300,
-      phase2h_raw_archive_requires_atomic_b2_quota:true,
-      historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
-      registered_private_max_new_rows:0,
-      source_intake_max_new_rows:sourceIntake?rowsPerSlot:0,snapshot_refresh:false,
-      structural_snapshot:false,
-      structural_snapshot_max_b2_network_attempts:0,
-      structural_snapshot_requires_atomic_b2_account_reservation:true,
-      snapshot_refresh_does_not_admit_ingestion:true,
-      source_intake_does_not_admit_signing_or_audits:true,
-      observed_rows_read:snapshot.observed_rows_read,
-      observed_rows_written:snapshot.observed_rows_written,
-      // Provider-verified paid capacity is not subjected to the Free physical
-      // daily 5M cap; the existing conservative paid soft budget still applies.
-      predge_account_headroom_guard_enabled:false,
-      predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
-      predge_account_headroom_is_hard_partition:false,
-      predge_request_governor_is_separate_and_unchanged:true,
-      paid_capacity_verified_by_provider:true,
-      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
-      daily_account_soft_limit_read:dailyReads,
-      daily_account_soft_limit_write:dailyWrites,
-      paid_subscription_change_performed:false,
-      paid_billing_is_operator_controlled:true,
-      d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
-      budget_is_nonatomic_provider_snapshot:true,
-    });
+  // Provider Paid proof and an observed counter are not sufficient to grant
+  // the account-wide 180k soft envelope. Every independent writer must first
+  // pass the exact-source inventory gate; unknown or false inventory holds.
+  if(paid && PHASE1_WRITER_INTEGRATION?.account_wide_governor_verified!==true)
+    return {...held("D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED",now),
+      paid_capacity_probe_status:"D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED"};
+  if(paid) {
+    // Workers Paid has no Free-tier 100k/day stop. GeoMacro retains its own
+    // conservative soft envelope, and each writer must reserve atomically.
+    return paidBundleContract(assessPaidEnvelope(snapshot,{now,paidProof,spendGuardProof}));
   }
+  // Clamp every autonomous Free-plan lane to GeoMacro's internal budget,
+  // regardless of Cloudflare's larger provider allowance. Preserve the
+  // provider headroom separately for diagnostics.
+  const providerRemainingRowsRead=snapshot.remaining_rows_read;
+  const providerRemainingRowsWritten=snapshot.remaining_rows_written;
+  snapshot={...snapshot,
+    remaining_rows_read:Math.min(providerRemainingRowsRead,Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-
+        snapshot.observed_rows_read)),
+    remaining_rows_written:Math.min(providerRemainingRowsWritten,Math.max(0,
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-
+        snapshot.observed_rows_written)),
+  };
   const paced=Object.fromEntries(Object.keys(D1_BUNDLE_LANES).map(lane=>[
     lane,d1LanePacedCeiling(lane,now),
   ]));
@@ -384,7 +358,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   const retentionReadHeadroom=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingHourSlots*2500+10000+
+      remainingHourSlots*1000+5000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved;
   const retentionCleanupMaxRows=retentionReadHeadroom&&safeRowsPerHour>=25?
     Math.min(1000,safeRowsPerHour):0;
@@ -401,7 +375,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   const phase2hRawArchive=sourceIntake&&
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
-      remainingArchiveSlots*20_000+10_000+
+      remainingArchiveSlots*1_000+2_000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved&&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+
@@ -418,33 +392,33 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     snapshot.remaining_rows_read>
       D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved+
-      remainingArchiveSlots*20_000+25_000;
+      remainingArchiveSlots*1_000+2_000;
   // Dedicated, once-per-run optional EIA/NOAA measurement import. These two
   // source-native statistics are NOT current news or commercial signals.
   // Preserve the ENTIRE day-to-reset source-intake allocation, plus critical
-  // safety and PREDGE reserves, BEFORE granting 25k reads / 500 writes for
+  // safety and PREDGE reserves, BEFORE granting 3k reads / 500 writes for
   // both compact checkpoints and atomically ticketed B2 GET/PUT operations.
   // This is not maintenance, signing, research, website or PREDGE admission.
   // The measurement workflow also enforces its own 20-B2-request cap.
   const governedMeasurement=sourceIntake &&
     snapshot.remaining_rows_read>
-      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+25_000+
+      D1_BUNDLE_LANES.critical.read_reserve+intakeBudget.rows_read+3_000+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       D1_BUNDLE_LANES.critical.write_reserve+intakeBudget.rows_written+500+
       registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved;
   // Bounded public-serving refresh, even if intake pacing is HELD. The
   // Worker checks the 8-minute revision fence *before* its <=601-row scan.
-  // Separate from source intake/signing; reserve 250k read and 5k write rows
+  // Separate from source intake/signing; reserve 5k read and 5k write rows
   // PLUS the non-atomic protected PREDGE pilot headroom on the account counter.
   const snapshotRefresh=snapshot.remaining_rows_read>
-      250_000+PREDGE_D1_FREE_HEADROOM.rows_read+
+      5_000+PREDGE_D1_FREE_HEADROOM.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_000+PREDGE_D1_FREE_HEADROOM.rows_written+
       registeredAdaptive.extra_write_reserved+phase2iAdaptive.extra_write_reserved &&
     snapshot.observed_rows_read<
-      D1_FREE_DAILY.rows_read-250_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-5_000-PREDGE_D1_FREE_HEADROOM.rows_read &&
     snapshot.observed_rows_written<
       D1_FREE_DAILY.rows_written-5_000-PREDGE_D1_FREE_HEADROOM.rows_written;
   // The observed account budget is the shared physical constraint.
@@ -455,7 +429,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // B2 network attempts still require their own shared atomic reservations.
   const structuralSnapshot=snapshotRefresh &&
       snapshot.remaining_rows_read>
-      250_100+PREDGE_D1_FREE_HEADROOM.rows_read+
+      5_100+PREDGE_D1_FREE_HEADROOM.rows_read+
       registeredAdaptive.extra_read_reserved+phase2iAdaptive.extra_read_reserved &&
     snapshot.remaining_rows_written>
       5_100+PREDGE_D1_FREE_HEADROOM.rows_written+
@@ -483,7 +457,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     retention_cleanup_source_budget_to_utc_reset_reserved:true,
     retention_cleanup_does_not_admit_research_or_signing:true,
     governed_measurement:governedMeasurement,
-    governed_measurement_extra_read_budget:governedMeasurement?25_000:0,
+    governed_measurement_extra_read_budget:governedMeasurement?3_000:0,
     governed_measurement_extra_write_budget:governedMeasurement?500:0,
     governed_measurement_no_signing_or_payments:true,
     predge_account_headroom_guard_enabled:true,
@@ -514,6 +488,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     observed_rows_written:snapshot.observed_rows_written,
     remaining_rows_read:snapshot.remaining_rows_read,
     remaining_rows_written:snapshot.remaining_rows_written,
+    provider_remaining_rows_read:providerRemainingRowsRead,
+    provider_remaining_rows_written:providerRemainingRowsWritten,
+    daily_account_soft_limit_read_max:FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max,
+    daily_account_soft_limit_write_max:FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max,
     // A throttled lane preserves next-hour capacity for actual future events.
     // These are non-atomic provider usage ceilings, not D1 reservations.
     admission_paced_to_utc_day:true,
@@ -538,6 +516,8 @@ export function phase2fQuotaDiagnostic(plan){
   const readReserve=D1_BUNDLE_LANES.critical.read_reserve;
   const writeReserve=D1_BUNDLE_LANES.critical.write_reserve;
   const physical=valid&&
+    (plan.provider_remaining_rows_read===0||plan.provider_remaining_rows_written===0);
+  const internalSoft=valid&&
     (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
   const protectedReserve=valid&&
     (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
@@ -546,6 +526,7 @@ export function phase2fQuotaDiagnostic(plan){
      plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
     physical?"PHYSICAL_FREE_LIMIT_REACHED":
+    internalSoft?"GEOMACRO_INTERNAL_SOFT_DAILY_CAP_REACHED":
     protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
     plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
     plan.source_intake===true?"BOUNDED_ORIGINAL_SOURCE_INTAKE_ONLY":
@@ -561,6 +542,7 @@ export function phase2fQuotaDiagnostic(plan){
     remaining_rows_read:valid?plan.remaining_rows_read:null,
     remaining_rows_written:valid?plan.remaining_rows_written:null,
     physical_free_limit_reached:valid?physical:null,
+    geomacro_internal_soft_daily_cap_reached:valid?internalSoft:null,
     protected_critical_predge_reserve_held:valid?protectedReserve:null,
     utc_critical_pacing_held:valid?pacing:null,
     critical_read_reserve_rows:readReserve,

@@ -30,6 +30,15 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
     !Number.isSafeInteger(limit)||limit<1||limit>MAX_DUE||
     !Number.isFinite(now))
   return {status:"P1_DISPATCH_BINDING_UNAVAILABLE",selected:0,queued:0};
+ // Fail closed before leasing or queueing lower-priority polling work until
+ // the reviewed shared account-wide D1 governor is active. Due registry rows
+ // remain durable and eligible for the next scheduled dispatch.
+ if(env.GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED!=="true"||
+    env.GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED!=="true"||
+    env.GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX!=="120000")
+  return {status:"P1_DISPATCH_ACCOUNT_D1_GOVERNOR_HELD",selected:0,queued:0,
+   deferred:true,durable_defer_state:"SOURCE_REGISTRY_DUE_ROWS",
+   retry_on_next_scheduled_dispatch:true,d1_reads:0,d1_writes:0};
  // Existing 1077-source fanout stays enabled, but one bundled lease row
  // replaces up to 108 physical per-source dispatcher lease writes.
  if(env.GEOMACRO_P1_BUNDLED_LEASES_ENABLED==="1")
@@ -170,6 +179,13 @@ export async function consumeP1SourcePollBatch(batch,env,{
  if(batch?.queue!=="geomacro-source-poll"||!Array.isArray(batch.messages)||
     batch.messages.length>BATCH||!env?.DB?.prepare)
   throw Error("P1_QUEUE_CONSUMER_BINDING_INVALID");
+ if(env.GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED!=="true"||
+    env.GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED!=="true"||
+    env.GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX!=="120000"){
+  for(const msg of batch.messages)msg.retry({delaySeconds:30});
+  return {status:"P1_CONSUMER_ACCOUNT_D1_GOVERNOR_HELD",
+   retried:batch.messages.length,d1_reads:0,d1_writes:0};
+ }
  // Paid-mode runtime sets max_batch_size:1 so a single invocation processes
  // at most 15 source polls. Legacy V1/V2 messages remain compatible.
  if(batch.messages.length===1&&
