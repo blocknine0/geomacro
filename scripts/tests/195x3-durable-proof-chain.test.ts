@@ -156,3 +156,38 @@ test("archive failures disclose only safe class, never credential/endpoint conte
  const text="response includes private-token-should-not-appear";
  expect(classifyGlobalProofArchiveFailure(Error(text))).not.toContain(text);
 });
+
+test("complete fresh quiet census is accepted; missing or stale census is rejected",()=>{
+ const quiet=makeAudit(true);
+ quiet.audit_state="SOURCE_QUIET";
+ quiet.source_runtime.contexts=[{source_families_readable:1},{source_families_readable:1},{source_families_readable:1}];
+ quiet.automated_finds_categories=[
+   {category:"geopolitics",current_24h_count:0},
+   {category:"macro",current_24h_count:0},
+   {category:"rare_earth",current_24h_count:0},
+ ];
+ quiet.release_qualification={
+   schema:"geomacro.source-release-qualification.v1",
+   status:"NO_QUALIFIED_NEW_RELEASE",complete:true,checked_at:when,
+   categories:["geopolitics","macro","rare_earth"],
+ };
+ expect(assertGlobalAuditDocument(quiet).audit_ok).toBe(true);
+ const without={...quiet,release_qualification:null};
+ expect(()=>assertGlobalAuditDocument(without)).toThrow("GLOBAL_PROOF_QUIET_WITHOUT_COMPLETE_FRESH_SOURCE_PROOF");
+ const partial={...quiet,automated_finds_categories:[
+   ...quiet.automated_finds_categories.slice(0,2),
+   {category:"rare_earth",current_24h_count:1},
+ ]};
+ expect(()=>assertGlobalAuditDocument(partial)).toThrow("GLOBAL_PROOF_QUIET_WITHOUT_COMPLETE_FRESH_SOURCE_PROOF");
+});
+test("B2 archive MUST reject a falsified readback receipt",async()=>{
+ const b2=memoryStore();
+ b2.putWithMetadataVerification=async(k,bytes)=>{
+   b2.data.set(k,Buffer.from(bytes));
+   return {sha256:"0".repeat(64),bytes:bytes.length,full_body_readback_verified:false};
+ };
+ await expect(archiveGlobalCountryAudit({
+   audit:makeAudit(true),env:ENV,b2,now:new Date(clock),
+ })).rejects.toThrow("GLOBAL_PROOF_PUBLISH_SNAPSHOT_RECEIPT_NOT_VERIFIED");
+ expect(b2.data.has(GLOBAL_PROOF_HEAD_KEY)).toBe(false);
+});
