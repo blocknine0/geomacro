@@ -393,7 +393,7 @@ DEFAULT_RSS_FEEDS: list[dict[str, Any]] = [
     {
         "source_id": "nrcan_news_atom",
         "name": "Natural Resources Canada News Releases Atom",
-        "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=atom&atomtitle=Natural%20Resources%20Canada",
+        "url": "https://api.io.canada.ca/io-server/gc/news/en/v2?dept=naturalresourcescanada&sort=publishedDate&orderBy=desc&publishedDate%3E=2021-07-23&pick=50&format=json&atomtitle=Natural%20Resources%20Canada",
         "event_type": "CRITICAL_MINERALS_GOVERNMENT_RELEASE",
         "source_reliability": 95.0,
         "max_entry_age_hours": 168,
@@ -1170,6 +1170,48 @@ class LenientFeedParser:
 
 
 def parse_rss_entries(raw: bytes, base_url: str) -> tuple[list[dict[str, Any]], str]:
+    # Canada's official News API represents `publishedDate` in JSON, while its
+    # Atom variant omits <published> and supplies only <updated>. Do not
+    # mislabel that mutable update clock as original publication time. Map the
+    # API's explicit field into the common feed-entry shape, retaining its
+    # exact timezone and rejecting naive/malformed timestamps.
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        document = None
+    feed = document.get("feed") if isinstance(document, dict) else None
+    json_entries = feed.get("entry") if isinstance(feed, dict) else None
+    if isinstance(json_entries, list):
+        normalized: list[dict[str, Any]] = []
+        for item in json_entries:
+            if not isinstance(item, dict):
+                continue
+            title = item.get("title")
+            published = item.get("publishedDate")
+            link = item.get("link")
+            if not all(isinstance(value, str) and value.strip()
+                       for value in (title, published, link)):
+                continue
+            try:
+                moment = datetime.fromisoformat(published.strip().replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if moment.tzinfo is None:
+                continue
+            entry: dict[str, Any] = {
+                "title": title.strip(),
+                "published": published.strip(),
+                "published_parsed": moment.astimezone(timezone.utc).utctimetuple(),
+                "link": link.strip(),
+                "id": link.strip(),
+            }
+            teaser = item.get("teaser")
+            if isinstance(teaser, str) and teaser.strip():
+                entry["summary"] = teaser.strip()
+            normalized.append(entry)
+        if normalized:
+            return normalized, "rss"
+
     parsed = feedparser.parse(raw)
     if parsed.entries:
         return list(parsed.entries), "rss"
