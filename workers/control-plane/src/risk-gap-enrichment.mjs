@@ -120,7 +120,20 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   const gaps=[...missing,...followup];
   const cursor=await env.DB.prepare("SELECT next_offset FROM risk_gap_enrichment_cursor WHERE singleton=1").first();
   const start=Number.isSafeInteger(cursor?.next_offset)?cursor.next_offset%Math.max(gaps.length,1):0;
-  const page=Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>gaps[(start+i)%gaps.length]);
+  const due=await env.DB.prepare(
+   "SELECT subject_type,subject_id,category FROM risk_gate_priority_feed_queue "+
+   "WHERE due_at<=? ORDER BY CASE priority WHEN 'MISSING' THEN 0 ELSE 1 END,"+
+   "priority_at LIMIT 12").bind(iso(now)).all().catch(()=>({results:[]}));
+  const byKey=new Map(all.map(x=>[x.type+"|"+x.id+"|"+x.category,x]));
+  const targeted=(due?.results??[]).map(x=>
+   byKey.get(x.subject_type+"|"+x.subject_id+"|"+x.category)).filter(Boolean);
+  const seen=new Set(),page=[];
+  for(const x of [...targeted,...Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>
+   gaps[(start+i)%gaps.length])]){
+   const key=x.type+"|"+x.id+"|"+x.category;
+   if(seen.has(key)||page.length>=BATCH)continue;
+   page.push(x);seen.add(key);
+  }
   const focusedPositions=new Set(Array.from({length:Math.min(4,page.length)},(_,i)=>
    (Math.floor(now/(20*60000))*4+i)%Math.max(1,page.length)));
   const settled=await Promise.allSettled(page.map(async(target,index)=>{
@@ -193,6 +206,14 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    "status=CASE WHEN (SELECT COUNT(DISTINCT source_host) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=2 AND (SELECT MAX(julianday(event_at))-MIN(julianday(event_at)) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=0.25 THEN 'CORROBORATED' ELSE 'OBSERVED' END "+
    "WHERE event_id IN (SELECT value FROM json_each(?))"
   ).bind(JSON.stringify([...new Set(rows.map(x=>x.event_id))])));
+  // A priority cell is released only after this discovery attempt has been
+  // processed; the next recheck remains automatic and evidence-aware.
+  if(page.length)statements.push(env.DB.prepare(
+   "UPDATE risk_gate_priority_feed_queue SET last_search_at=?,due_at=?,"+
+   "updated_at=? WHERE (subject_type || '|' || subject_id || '|' || category) "+
+   "IN (SELECT value FROM json_each(?))")
+   .bind(iso(now),iso(now+4*3600000),iso(now),JSON.stringify(
+    page.map(x=>x.type+"|"+x.id+"|"+x.category))));
   const next=(start+page.length)%Math.max(gaps.length,1);
   statements.push(env.DB.prepare(
    "INSERT INTO risk_gap_enrichment_cursor(singleton,next_offset,last_run_at) VALUES(1,?,?) "+
@@ -208,6 +229,7 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   if(storedCursor?.next_offset!==next||storedCursor?.last_run_at!==iso(now))throw Error();
   return {ok:true,schema:"geomacro.risk-gap-enrichment.v1",gap_cells:missing.length,followup_cells:followup.length,
    searched_cells:page.length,observations:rows.length,
+   prioritized_due_cells:targeted.length,
    fulltext_articles_fetched:results.filter(x=>x.fullText).length,
    publisher_focused_queries:Math.min(4,page.length),
    global_index_queries:page.length,
