@@ -33,10 +33,6 @@ jobs:
       - name: Verify permanent workflow inventory and frozen Predge definitions
         run: node scripts/ops/verify-github-workflow-inventory.mjs
 
-      - name: Fail closed on unreviewed production D1 reader/writer paths
-        if: always()
-        run: node scripts/ops/phase1-writer-integration-gate.mjs
-
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
         run: node --check scripts/ops/verify-d1-parity.mjs && node --check workers/control-plane/src/d1-soft-budget.mjs && node --test scripts/tests/d1-soft-budget.test.mjs scripts/tests/phase1-paid-canary.test.mjs scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
 
@@ -203,6 +199,10 @@ jobs:
 
       - name: Production build
         run: bun run build
+
+      - name: Fail closed on unreviewed production D1 reader/writer paths
+        if: always()
+        run: node scripts/ops/phase1-writer-integration-gate.mjs
 
       - name: Verify generated route tree is committed
         shell: bash
