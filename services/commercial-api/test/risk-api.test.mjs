@@ -153,3 +153,25 @@ test('accountless intent cannot claim a request already settled using prepaid cr
  const i=input();await creditRiskGate(baseArgs(i));
  await assert.rejects(pool.call('x402_prepare',[JSON.stringify({request_id:i.request_id})]),e=>e.code==='IDEMPOTENCY_CONFLICT');
 });
+
+test('edge cache never serves an expired signed GRO as an available complex tier',async()=>{
+ const realNow=Date.now;let clock=realNow(),fetches=0;Date.now=()=>clock;
+ try{
+  const complex=productFixture('complex');complex.tiered_product.confidence.verification='CRYPTO_SIGNED';
+  Object.assign(complex.tiered_product,{gro_signature:{scheme:'Ed25519',payload_sha256:'c'.repeat(64),
+   generated_at:new Date(clock-1000).toISOString(),expires_at:new Date(clock+1000).toISOString()},
+   b2_archive:{archive_sha256:'d'.repeat(64)},seven_day_verified_subject_history:{verified_score_days:7}});
+  const resolver=createQualifiedRiskResolver({origin:'https://api.geomacro.live',token:'a'.repeat(64),fetchImpl:async(_url,o)=>{
+   fetches++;const tier=JSON.parse(o.body).product_tier;
+   if(tier==='complex_full'){
+    const body=structuredClone(complex);if(fetches>1){body.tiered_product.status='EXPIRED';body.tiered_product.chargeable=false;}
+    return Response.json(body);
+   }
+   return Response.json(productFixture('standard'));
+  }});
+  assert.deepEqual((await resolver({subject:'USA',tier:'complex'})).availableTiers,['complex']);
+  clock+=2000;
+  assert.deepEqual((await resolver({subject:'USA',tier:'complex'})).availableTiers,['standard']);
+  assert.equal(fetches,3);
+ }finally{Date.now=realNow;}
+});

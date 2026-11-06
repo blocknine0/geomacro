@@ -23,24 +23,6 @@
     "COMMERCIAL_SUPABASE_URL": "https://ymjuwuvbialsevfawvvq.supabase.co",
     "PAYPAL_ENABLED": "false",
     "X402_ENABLED": "false",
-    "PUBLIC_API_ORIGIN": "https://api.geomacro.live"
-  },
-  "routes": [
-    {
-      "pattern": "api.geomacro.live/v1/risk-gate",
-      "zone_name": "geomacro.live"
-    },
-    {
-      "pattern": "api.geomacro.live/v1/api-keys*",
-      "zone_name": "geomacro.live"
-    },
-    {
-      "pattern": "api.geomacro.live/v1/commercial/*",
-      "zone_name": "geomacro.live"
-    },
-    {
-      "pattern": "api.geomacro.live/payments/paypal/*",
-      "zone_name": "geomacro.live"
-    }
-  ]
+    "PUBLIC_API_ORIGIN": "https://geomacro-commercial-api.daspallab202391.workers.dev"
+  }
 }
