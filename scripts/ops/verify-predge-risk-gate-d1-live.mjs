@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {createHash,createPublicKey,verify as verifyEd25519} from "node:crypto";
 // No-funds, no-source-payload, no-token logging acceptance for the D1 Risk Gate.
 const origin=String(process.env.CONTROL_PLANE_URL??"").replace(/\/+$/,"");
 const token=String(process.env.PREDGE_RISK_GATE_TOKEN??"");
@@ -46,16 +47,55 @@ async function main(){
  }
  const actual=await post(token);
  if(actual.status===200){
-   const risk=actual.data.risk_gate;
-   if(actual.data.ok!==true||risk?.schema_version!=="risk-gate-1.0"||
-      risk.execution_authorized!==false||risk.risk?.verification_status!=="VERIFIED"||
-      risk.risk?.commercial_eligibility_status!=="VERIFIED"||
-      !["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(risk.decision))
-      throw Error("SIGNED_RISK_GATE_INVALID");
-   console.log("PASS: D1 signed-GRO Risk Gate served a verified non-authorizing decision.");
- }else if(actual.status===503&&
-   actual.data.error==="CURRENT_SIGNED_GRO_UNAVAILABLE"){
-   console.log("PASS: route authenticated but NO CURRENT VERIFIED COMMERCIAL GRO. Paid launch NOT READY.");
+   const data=actual.data,risk=data.risk_gate;
+   if(data.ok!==true||risk?.schema_version!=="risk-gate-1.0"||
+      risk.execution_authorized!==false||data.execution_authorized!==false||
+      data.context?.payment_authorized!==false||
+      !Number.isFinite(risk.risk?.score)||risk.risk.score<0||risk.risk.score>100||
+      !["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(risk.decision)||
+      !["BASIC_0_10","STANDARD_0_15","COMPLEX_0_25"].includes(data.tier)||
+      data.tier_activation_matrix?.basic?.status!=="ACTIVE"||
+      data.decision_signature_scheme!=="Ed25519"||
+      data.decision_signature_scope!=="geomacro.progressive-risk-gate-decision.v1")
+      throw Error("SIGNED_PROGRESSIVE_RISK_GATE_INVALID");
+   const complex=data.tier==="COMPLEX_0_25";
+   if(complex ? (
+     risk.risk.verification_status!=="VERIFIED"||
+     risk.risk.commercial_eligibility_status!=="VERIFIED"||
+     data.context?.verified_signed_gro!==true
+   ) : (
+     risk.risk.verification_status!=="INCOMPLETE"||
+     risk.risk.commercial_eligibility_status!=="UNVERIFIED"||
+     data.context?.verified_signed_gro!==false||
+     !["OBSERVATION_DENSITY_PROXY","NO_DATA_POLICY_SENTINEL"].includes(
+       data.context?.risk_metric_semantics)||
+     !["PAUSE","REQUIRE_APPROVAL"].includes(risk.decision)
+   ))throw Error("PROGRESSIVE_PROVENANCE_BOUNDARY_INVALID");
+   const pubResponse=await fetch(origin+"/v1/public/risk-gate-decision-key",{
+     redirect:"manual",signal:AbortSignal.timeout(5000)});
+   if(pubResponse.status!==200)throw Error("PROGRESSIVE_ED25519_PUBLIC_KEY_UNAVAILABLE");
+   const publicInfo=await pubResponse.json();
+   if(publicInfo.ok!==true||publicInfo.scheme!=="Ed25519"||
+      publicInfo.key_id!==data.decision_signature_key_id||
+      typeof publicInfo.public_key_spki_b64!=="string")
+     throw Error("PROGRESSIVE_ED25519_PUBLIC_KEY_MISMATCH");
+   const canonical=v=>v===null||typeof v!=="object"?JSON.stringify(v):
+     Array.isArray(v)?"["+v.map(canonical).join(",")+"]":
+     "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}";
+   const payload=data.decision_signed_payload;
+   if(!payload||payload.tier!==data.tier||
+      payload.execution_authorized!==false||
+      canonical(payload.risk_gate)!==canonical(risk)||
+      canonical(payload.tier_activation_matrix)!==canonical(data.tier_activation_matrix))
+      throw Error("PROGRESSIVE_ED25519_SCOPE_INVALID");
+   const bytes=Buffer.from(canonical(payload));
+   if(createHash("sha256").update(bytes).digest("hex")!==data.decision_payload_sha256||
+      !verifyEd25519(null,bytes,createPublicKey({
+         key:Buffer.from(publicInfo.public_key_spki_b64,"base64"),
+         format:"der",type:"spki"}),
+       Buffer.from(data.decision_signature_b64,"base64")))
+      throw Error("PROGRESSIVE_ED25519_SIGNATURE_INVALID");
+   console.log("PASS: authenticated D1 "+data.tier+" advisory, Ed25519 verified; execution forbidden; no funds.");
  }else throw Error("RISK_GATE_D1_PRODUCTION_ACCEPTANCE_FAILED_"+actual.status);
 }
 main().catch(e=>{console.error("RISK_GATE_D1_ACCEPTANCE_FAILED:",String(e.message).slice(0,120));process.exitCode=1;});
