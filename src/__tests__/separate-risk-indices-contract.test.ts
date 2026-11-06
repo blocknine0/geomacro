@@ -7,16 +7,16 @@ const read = (path: string) => readFileSync(join(ROOT, path), "utf8");
 
 describe("separate public risk indices contract", () => {
 
-  it("uses 24H/48H/72H observed series without claiming 7D/30D backfill", () => {
+  it("keeps observation-only news history separate from genuinely reviewed 7D/30D GRI", () => {
     const workspace = read("src/components/risk-indices/risk-indices-workspace.tsx");
     const worker = read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
     const hook = read("src/lib/use-risk-indices.ts");
-    expect(workspace).toContain('["24H", "48H", "72H"]');
-    expect(workspace).toContain('GeoMacro OSINT');
-    expect(workspace).not.toContain('label="OSINT"');
-    expect(workspace).toContain('index.observedSeverity?.[window]');
+    expect(workspace).toContain('index.series?.["7D"]');
+    expect(workspace).toContain('index.series?.["30D"]');
+    expect(workspace).not.toContain('index.observedSeverity?.[window]');
     expect(worker).toContain('observedSeveritySeries(news,now,"72H")');
     expect(worker).toContain('observedSeveritySeries(news,now,"48H")');
+    expect(hook).toContain('const data = await readCurrentReviewedSignedIndices()');
     expect(hook).toContain('GEOMACRO_NEWS_GRI_HISTORY_BUCKET_INVALID');
   });
 
@@ -75,8 +75,8 @@ describe("separate public risk indices contract", () => {
     expect(edge).toContain('status: rawScore === null ? "unavailable" : "available"');
     expect(projection).toContain('status: "unavailable"');
     expect(projection).toContain("score: null");
-    expect(workspace).toContain("No zero-risk estimate is inferred.");
-    expect(workspace).toContain("No unrelated GRI or invented severity fallback is being displayed.");
+    expect(workspace).toContain("No triage, cached historic or artificial zero score is substituted.");
+    expect(workspace).toContain("No current reviewed GRI; no numeric replacement is inferred.");
   });
 
   it("keeps the legacy Supabase Edge Function read-only and bounded for explicit recovery only", () => {
@@ -149,19 +149,21 @@ describe("separate public risk indices contract", () => {
     expect(continuity).toContain("RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING");
   });
 
-  it("routes public Risk Indices through GeoMacro-issued news severity without treating its signature as independent GRI", () => {
+  it("routes public certified Risk Indices through current Ed25519-reviewed GRI, not news triage", () => {
     const hook=read("src/lib/use-risk-indices.ts");
     const worker=read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
+    const signed=read("workers/control-plane/src/reviewed-risk-indices-delivery.mjs");
     const view=read("src/components/risk-indices/risk-indices-workspace.tsx");
-    expect(hook).toContain("const data = await readGeoMacroCertifiedNewsRisk()");
-     expect(hook).toContain("readCachedCertifiedNewsRisk(forceRefresh || attempt > 0)");
-     expect(hook).toContain("CERTIFIED_RETRY_DELAYS_MS");
+    expect(hook).toContain("const data = await readCurrentReviewedSignedIndices()");
+    expect(hook).toContain("readCachedCertifiedNewsRisk(forceRefresh || attempt > 0)");
+    expect(hook).toContain("CERTIFIED_RETRY_DELAYS_MS");
     expect(hook).toContain("GEOMACRO_CERTIFIED_NEWS_GRI_URL");
     expect(worker).toContain('NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0"');
     expect(worker).toContain("source_event_facts_independently_verified:false");
     expect(worker).toContain("independent_third_party_certified:false");
-    expect(view).toContain("GeoMacro Certified GRI");
-    expect(view).toContain("not independently certified event facts");
+    expect(signed).toContain("EXISTING_PROTECTED_GRI_V1_2_PUBLISHER");
+    expect(view).toContain("Reviewer-gated GRI v1.2");
+    expect(view).not.toContain("GeoMacro self-certified");
   });
 
   it("keeps public surfaces fail-closed without synthetic risk values", () => {
