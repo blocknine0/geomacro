@@ -69,11 +69,28 @@ export async function serveReviewedSignedRiskIndices(env,read,now=Date.now()){
      gri.verificationStatus!=="verified"||gri.auditPersisted!==true||
      !HASH.test(gri.proofHash??"")||!HASH.test(gri.evidenceHash??"")||
      !HASH.test(gri.calculationHash??"")||
+     data.snapshotId!==gri.snapshotId||
+     data.snapshotAsOf!==gri.snapshotAsOf||
+     data.proofHash!==gri.proofHash||
+     data.evidenceHash!==gri.evidenceHash||
+     data.calculationHash!==gri.calculationHash||
+     data.inputHash!==gri.inputHash||
+     data.methodologyHash!==gri.methodologyHash||
      !Array.isArray(data.indices)||data.indices.length!==3)
      return unavailable();
   const required=new Map(CATEGORIES);
   for(const item of data.indices){
     const native=Date.parse(item?.readingAsOf??"");
+    const original=gri.domainIndices?.[item?.sourceCategory];
+    if(!original||original.score!==item.score||
+       original.rawScore!==item.rawScore||
+       original.readingAsOf!==item.readingAsOf||
+       original.readingSnapshotId!==item.readingSnapshotId||
+       original.readingStatus!==item.readingStatus||
+       original.confidence!==item.confidence||
+       original.sourceCount!==item.sourceCount||
+       original.independentStoryCount!==item.independentStoryCount)
+      return unavailable();
     if(!required.has(item?.key)||required.get(item.key)!==item.sourceCategory||
        item.status!=="available"||item.readingStatus!=="current"||
        typeof item.score!=="number"||!Number.isFinite(item.score)||
