@@ -32,6 +32,7 @@ import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs"
 import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
+import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1764,6 +1765,10 @@ export default {
           remote_hash_readback_verified:receipt.hash_readback_verified===true,
           error:receipt.ok?null:receipt.error,
           no_funds:true,commercial_activation:false},receipt.ok?200:503);
+      }
+      if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/signing-automation"&&!url.search){
+        const status=await readGroAutoSigningHealth(env);
+        return json(status,status.ok?200:503);
       }
       // Owner-admin-only daily census; no article metadata or customer IDs.
       if(request.method==="GET"&&url.pathname==="/v1/internal/risk-gate/unified-census"&&!url.search){

@@ -73,7 +73,7 @@ describe("permanent native GRO 1.1 signing and B2/D1 hot production", () => {
     expect(publisher).not.toContain("signRiskObject(");
   });
 
-  it("is a permanent qualified event-triggered main-only deployment, no cron, no payment or PREDGE edits", () => {
+  it("is a main-only event signing service with owner-authorized 20-minute recovery and no funds", () => {
     const yaml=readFileSync(".github/workflows/permanent-qualified-signed-gro-production.yml","utf8");
     expect(yaml).toContain("repository_dispatch:");
     expect(yaml).toContain("types: [qualified_machine_gro_ready]");
@@ -84,7 +84,9 @@ describe("permanent native GRO 1.1 signing and B2/D1 hot production", () => {
     expect(yaml).toContain("B2_ACCOUNT_QUOTA_WORKFLOW_ID: qualified_machine_gro_production");
     expect(yaml).toContain("scripts/ops/publish-qualified-machine-gro-production.ts");
     expect(yaml).toContain("RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64: ");
-    expect(yaml).not.toContain("schedule:");
+    expect(yaml).toContain('cron: "3,23,43 * * * *"');
+    expect(yaml).toContain("scripts/ops/run-automatic-gro-signing.ts");
+    expect(yaml).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(yaml).not.toContain("COINBASE_X402_MAINNET_ACK");
     expect(yaml).not.toContain("GEOMACRO_REAL_FUNDS_SECURITY_ACK");
     expect(yaml).not.toContain("PREDGE_RESEARCH_NEWS_TOKEN_OVERRIDE");

@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync, lstatSync } from "node:fs";
 import { createHash } from "node:crypto";
+import {stageAutomaticGroInputs} from "./stage-automatic-gro-inputs.ts";
 import { publishMachineIntelligence } from "../lib/machine-intelligence-publisher.ts";
 import { createB2Client } from "./b2-s3-client.mjs";
 import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
@@ -42,6 +43,7 @@ try {
   const result = await publishMachineIntelligence({
     ...input,
     sourceRunId: process.env.GITHUB_RUN_ID,
+    ...(process.env.GEOMACRO_GRO_AUTO_SIGN_ENABLED==="0"?{}:{stageGroInputs:stageAutomaticGroInputs}),
     createArchiveClient: () => createB2Client({
       endpointUrl: "https://s3.us-east-005.backblazeb2.com",
       bucket: "geomacro-private-archive",

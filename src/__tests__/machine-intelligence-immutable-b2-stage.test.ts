@@ -25,6 +25,7 @@ function fixture(){
  writeFileSync(path,bytes,{mode:0o600});
  const pin=sha(bytes);
  const env={
+  GEOMACRO_GRO_AUTO_SIGN_ENABLED:"0",
   GEOMACRO_QUALIFIED_INTELLIGENCE_INPUT:path,
   GEOMACRO_QUALIFIED_INTELLIGENCE_SHA256:pin,
   B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"machine_intelligence_signed_staging",
@@ -70,6 +71,18 @@ describe("owner-private dual-signed immutable Intelligence staging",()=>{
    await expect(stageMachineIntelligence({env:f.env,qualifier:async()=>{throw Error("NOT_QUALIFIED")},
      archiveClient:()=>{opened++;throw Error("FORBIDDEN")}})).rejects.toThrow();
    expect(opened).toBe(0);
+  }finally{f.cleanup()}
+ });
+ it("automatically hands a qualified staged batch to the signing outbox sidecar",async()=>{
+  const f=fixture(),b=archive();let calls=0;
+  try{
+   const r=await stageMachineIntelligence({env:{...f.env,GEOMACRO_GRO_AUTO_SIGN_ENABLED:"1"},
+    qualifier:approve,archiveClient:()=>b.client,groStager:async({input,qualified}:any)=>{
+     calls++;expect(qualified.receipt.commercial_event_admission).toBe(true);
+     expect(input.eventPackages.length).toBe(3);
+     expect(b.store.size).toBe(1);return {enabled:true,enqueued:1,incomplete_country_groups:0,failed:0};
+    }});
+   expect(calls).toBe(1);expect(r.automatic_gro_signing.enqueued).toBe(1);
   }finally{f.cleanup()}
  });
  it("uploads only exact approved private bytes; no payment, public claim or automatic dispatch",async()=>{

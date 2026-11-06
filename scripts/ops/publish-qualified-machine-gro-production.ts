@@ -23,6 +23,8 @@ import { promoteOwnerPrivateGRO } from "./publish-private-signed-gro-d1";
 import { readD1VerifiedHotCountryGro } from "../../src/lib/d1-country-gro-hot.server";
 import { canonicalRiskObjectJson } from "../../src/lib/risk-object-signing.server";
 
+import {isHot50RiskCountry} from "../../workers/control-plane/src/risk-gate-hot50-scope.mjs";
+
 const FAIL = "QUALIFIED_MACHINE_GRO_PRODUCTION_NOT_VERIFIED";
 const PREFIX = "geomacro-evidence/v1/private/machine-gro-qualified/";
 const SHA256 = /^[a-f0-9]{64}$/u;
@@ -107,6 +109,8 @@ export async function publishPinnedMachineGroProduction(
     // source-native clock/bytes and source licence. This is NOT a flag flip.
     // Reuse the existing deterministic GRO scorer + canonical Ed25519 signer.
     const signed=await acceptMachineCommercialPrivateGRO(inputPath,signedPath);
+    if (process.env.RISK_GATE_COUNTRY_SCOPE==="HOT50"&&!isHot50RiskCountry(signed.country_iso3))
+      throw Error("QUALIFIED_MACHINE_GRO_OUTSIDE_HOT50");
     if (signed.status!=="MACHINE_COMMERCIAL_SIGNED_PRIVATE_NO_FUNDS")
       throw Error(FAIL);
 
@@ -133,6 +137,7 @@ export async function publishPinnedMachineGroProduction(
       ok:true,
       schema:"geomacro.qualified-machine-gro-production.v1",
       country_iso3:signed.country_iso3,
+      gro_expires_at:hot.expires_at,
       category:signed.category,
       record_sha256:signed.record_sha256,
       gro_1_1_signed:true,
