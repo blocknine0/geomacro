@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-06T00:05:28.339Z",
+  "checked_at": "2026-11-06T00:27:58.368Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -3740,25 +3740,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T01:16:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2beb1be9",
-      "category": "macro",
-      "title": "Geomacro finds Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek",
-      "what_changed": "A monitored source feed reports: Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T00:26:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

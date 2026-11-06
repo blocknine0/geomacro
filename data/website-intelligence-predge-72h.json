@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-06T00:05:28.339Z",
+  "checked_at": "2026-11-06T00:27:58.368Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 205,
+  "item_count": 204,
   "counts": {
     "geopolitics": 69,
-    "macro": 93,
+    "macro": 92,
     "rare_earth": 43
   },
-  "source_native_ids_sha256": "8b87dead45f70b8997c378450bfdc5ef291488d3e1465030ecf522403d6e0e6d",
+  "source_native_ids_sha256": "7966e46971f25cb4fac8a2f3770c66240e324bc78bc3c27e5ddb6efb9dd7be67",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -3892,25 +3892,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-03T01:16:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-2beb1be9",
-      "category": "macro",
-      "title": "Geomacro finds Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek",
-      "what_changed": "A monitored source feed reports: Trump said Oil Prices Dropping as Don Jr. Concedes Gas Prices Are ‘High’ - Newsweek. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-03T00:26:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
