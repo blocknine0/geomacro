@@ -29,10 +29,12 @@ test("current indexed readback accepts no-list proof but never claims physical p
 test("shared S3 client refuses listing before any provider request",async t=>{
  const original=globalThis.fetch;
  const old=process.env.B2_REQUEST_BUDGET;
+ const oldVitest=process.env.VITEST;
  process.env.B2_REQUEST_BUDGET="1";
+ process.env.VITEST="true";
  let requests=0;
  globalThis.fetch=async()=>{requests+=1;return new Response("unexpected")};
- t.after(()=>{globalThis.fetch=original;if(old===undefined)delete process.env.B2_REQUEST_BUDGET;else process.env.B2_REQUEST_BUDGET=old});
+ t.after(()=>{globalThis.fetch=original;if(old===undefined)delete process.env.B2_REQUEST_BUDGET;else process.env.B2_REQUEST_BUDGET=old;if(oldVitest===undefined)delete process.env.VITEST;else process.env.VITEST=oldVitest});
  const client=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",bucket:"geomacro-private-archive",
   accessKey:"fake-access-key",secretKey:"fake-secret-key-value-1234567890",allowedKeyPrefixes:["geomacro-evidence/v1/spool/"]});
  assert.throws(()=>client.list("geomacro-evidence/v1/spool/"),/B2_LIST_OPERATIONS_DISABLED_USE_D1_INDEX/u);

@@ -23,7 +23,7 @@ if (process.argv[1]?.endsWith("/recover-gri-pinned-b2-version.mjs")) {
     const code = error instanceof Error && /^GRI_VERSION_[A-Z0-9_]+$/u.test(error.message)
       ? error.message : "GRI_VERSION_D1_FILE_INDEX_REQUIRED";
     console.error(JSON.stringify({ schema: "geomacro.gri-immutable-version-readback-failure.v1",
-      error_code: code, b2_list_calls: 0, current_gri_qualified: false,
+      error_code: code, listing_calls: 0, current_gri_qualified: false,
       publication_performed: false, raw_content_logged: false, payments: 0 }));
     process.exitCode = 2;
   }
