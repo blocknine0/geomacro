@@ -47,10 +47,10 @@ export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimate
    "excluded.reserved_rows*1000 " +
   "RETURNING reserved_rows,observed_provider_highwater,tokens_milli"
  ).bind(dayUtc,estimatedRows,providerObserved,now,
-  D1_BUCKET_CAPACITY_MILLI,estimatedRows,currentMs,
+  D1_BUCKET_CAPACITY_MILLI-estimatedRows*1000,currentMs,
   providerObserved,estimatedRows,limit,estimatedRows,D1_BUCKET_CAPACITY_MILLI,
-  D1_REFILL_MILLI_ROWS_PER_MINUTE,limit,D1_REFILL_MILLI_ROWS_PER_MINUTE,
-  estimatedRows*1000).first();
+  D1_BUCKET_CAPACITY_MILLI,D1_REFILL_MILLI_ROWS_PER_MINUTE,limit,
+  D1_REFILL_MILLI_ROWS_PER_MINUTE,estimatedRows*1000).first();
  if(!out)
   throw new D1BudgetHold("D1_INTERNAL_WRITE_SOFT_BUDGET_HELD");
  return Object.freeze({ok:true,day_utc:dayUtc,
