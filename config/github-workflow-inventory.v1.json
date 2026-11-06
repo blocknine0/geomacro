@@ -17,6 +17,7 @@
     "apply-risk-gate-production-migrations.yml",
     "apply-source-network-staging-migrations.yml",
     "apply-ucdp-production-migrations.yml",
+    "ask-free-groq-live-proof.yml",
     "ask-live-official-sse.yml",
     "ask-production-acceptance.yml",
     "ask-unscored-no-funds-acceptance.yml",
