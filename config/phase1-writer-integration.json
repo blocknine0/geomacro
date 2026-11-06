@@ -2,5 +2,8 @@
   "schema": "geomacro.phase1.d1-writer-integration.v1",
   "account_wide_governor_verified": false,
   "producers": [],
-  "review_instructions": "Fail closed until EVERY known D1 writer family, including other Worker services, cron, outbox, ingestion and retention, is atomically governed and the exact audited source SHA-256s are listed. A single D1 database counter cannot atomically govern other D1 databases. Do not set true based on tests alone."
+  "review_instructions": "Fail closed until EVERY known D1 reader and writer family, including other Worker services, cron, outbox, ingestion, retention, APIs and operational scripts, is atomically governed and exact audited source SHA-256s are listed. A single D1 database counter cannot atomically govern other D1 databases. Do not set either verification flag true based on tests alone.",
+  "account_wide_read_cap_verified": false,
+  "daily_soft_rows_read_max": 120000,
+  "readers": []
 }
