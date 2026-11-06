@@ -15,6 +15,8 @@ import {countPrivateOsintCountryEvidence} from "./unified-risk-private-osint-bri
 import {readIndexedRiskCountryOriginals} from "./phase2h-risk-country-index.mjs";
 import {composeRiskGateThreeTierResponse,RISK_GATE_PRODUCT_TIERS}
  from "./risk-gate-three-tier-product.mjs";
+import {buildProgressiveGateState} from "./risk-gate-progressive-state.mjs";
+import {signRiskGateFastTick} from "./risk-gate-fast-tick-sign.mjs";
 import {RISK_GATE_CORRIDOR_MEMBERS,RISK_GATE_CORRIDOR_WEIGHTS}
  from "./risk-gate-corridor-members.mjs";
 import {activeRiskTargets,hot50RiskGateEnabled,isHot50RiskCountry,HOT50_RISK_SQL}
@@ -947,7 +949,7 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    if(lenient)customTiers={...customTiers,policy:{...customTiers.policy,lenient_mode_outcome:"OVERRIDE_HOLD"}};
    clientPolicyDecision="GATE_HOLD";
   }
-  let tiered_product=null;
+  let tiered_product=null,progressive_state=null,fast_tick_proof=null;
   if(payload.product_tier!==undefined){
    const page=await env.DB.prepare(
     "SELECT category,source_count,evidence_payload FROM risk_observations "+
@@ -959,7 +961,7 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    // Basic Fast SLA: re-read the actual last-24h D1 native originals on
    // every authorized query. Existing once/day HMAC snapshot is not current
    // news, so supplement older observations without rebuilding daily state.
-   if(payload.product_tier==="basic_focused"){
+   if(payload.product_tier!==undefined){
     const liveTarget={...target,...registry(target.type,target.id)};
     const fresh=await Promise.all(CATEGORIES.map(async category=>{
      const entries=compactEvidence(
@@ -1004,7 +1006,7 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
     }
    }
    let archive_proof=null,history=[];
-   if(payload.product_tier==="complex_full"){
+   if(payload.product_tier!==undefined){
     const lookup=target.type==="COUNTRY"?
      "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
       "archive_readback_verified FROM country_gro_verified_hot "+
@@ -1034,19 +1036,34 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    // Standard must see today's newly corroborated events immediately,
    // rather than the facts frozen into the first immutable daily snapshot.
    // These query-time facts remain outside that snapshot's HMAC scope.
-   const productSnapshot=payload.product_tier==="standard"?
-    {...x.snapshot,corroborated_risk_facts:await corroboratedGapFacts(env,
-      {...target,...registry(target.type,target.id)},now)}:x.snapshot;
-   tiered_product=composeRiskGateThreeTierResponse({
-    tier:payload.product_tier,snapshot:productSnapshot,observations,
-    verified_gro:gro,archive_proof,history,now,
+   const productSnapshot={...x.snapshot,
+    corroborated_risk_facts:await corroboratedGapFacts(env,
+      {...target,...registry(target.type,target.id)},now)};
+   // Three pure tier projections, parallel readiness, one authenticated query:
+   // only the tier the client requested (or cheaper) may be delivered.
+   const products=Object.fromEntries(Object.keys(RISK_GATE_PRODUCT_TIERS).map(tier=>[
+    tier,composeRiskGateThreeTierResponse({
+     tier,snapshot:productSnapshot,observations,verified_gro:gro,
+     archive_proof,history,now,
+    })]));
+   tiered_product=products[payload.product_tier];
+   progressive_state=buildProgressiveGateState({
+    subject:{type:target.type,id:target.id},requestedTier:payload.product_tier,
+    products,now,policyDecision:clientPolicyDecision,
    });
+   // The fast-tick signature signs exactly the derived state and its clock.
+   // A missing protected signing key produces an explicit unsigned status,
+   // never a fake Ed25519 seal, GRO validation or event-truth assertion.
+   fast_tick_proof=await signRiskGateFastTick(progressive_state,env);
    tiered_product.intraday_override=flash.active===true;
    tiered_product.flash_check_available=flash.available===true;
    if(flash.active)tiered_product.flash_details=flash;
   }
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
-   ...(tiered_product?{tiered_product}:{}),
+   ...(tiered_product?{tiered_product,progressive_state,
+    current_evaluation:progressive_state.current_evaluation,
+    tier_activation_matrix:progressive_state.tier_activation_matrix,
+    cryptographic_proof:fast_tick_proof}:{}),
    client_policy:payload.client_policy??"STRICT",
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
    intraday_override:flash.active===true,flash_check_available:flash.available===true,
