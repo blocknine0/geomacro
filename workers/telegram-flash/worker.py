@@ -1192,7 +1192,7 @@ def parse_official_canada_json_feed(raw: bytes) -> list[dict[str, Any]]:
             continue
         published_text = published.strip()
         moment = None
-        if re.fullmatch(r"20\\d{2}-\\d{2}-\\d{2}", published_text):
+        if re.fullmatch(r"20\d{2}-\d{2}-\d{2}", published_text):
             try:
                 datetime.strptime(published_text, "%Y-%m-%d")
             except ValueError:
