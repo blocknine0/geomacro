@@ -9,7 +9,6 @@ import {createHash} from 'node:crypto';
 import {join,relative,sep} from 'node:path';
 
 const SCAN_ROOTS=Object.freeze(['workers','src','scripts']);
-const SOURCE_EXTENSIONS=new Set(['.mjs','.js','.cjs','.ts']);
 const SOURCE=/\.(?:mjs|js|cjs|ts)$/u;
 const D1_API=/(?:\.\s*(?:prepare|batch|exec)\s*\(|\/d1\/database\/|\bD1_DATABASE_ID\b)/iu;
 const SQL_WRITE=/\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE\s+[\w".`]+|DELETE\s+FROM|REPLACE\s+INTO)\b/iu;
