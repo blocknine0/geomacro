@@ -7,15 +7,18 @@ export const hash = value => createHash('sha256').update(value, 'utf8').digest('
 // gm_live2_ credentials use a per-token scrypt KDF; database key_hash stays hex64.
 const LEGACY_API_KEY = /^gm_live_[A-Za-z0-9_-]{43}$/;
 const V2_API_KEY = /^gm_live2_[A-Za-z0-9_-]{43}$/;
-export const isApiKey = value => typeof value === 'string' &&
-  (LEGACY_API_KEY.test(value) || V2_API_KEY.test(value));
+export function isApiKey(value) {
+  if (typeof value !== 'string' || !(LEGACY_API_KEY.test(value) || V2_API_KEY.test(value)))
+    return false;
+  const encoded = value.slice(value.startsWith('gm_live2_') ? 9 : 8);
+  const decoded = Buffer.from(encoded, 'base64url');
+  return decoded.length === 32 && decoded.toString('base64url') === encoded;
+}
 export function apiKeyHash(value) {
   if (!isApiKey(value)) throw new TypeError('API_KEY_INVALID');
   if (LEGACY_API_KEY.test(value)) return hash(value); // Existing 256-bit tokens only.
   const encoded = value.slice('gm_live2_'.length);
   const salt = Buffer.from(encoded, 'base64url');
-  if (salt.length !== 32 || salt.toString('base64url') !== encoded)
-    throw new TypeError('API_KEY_INVALID');
   return scryptSync(value, salt, 32, {
     N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024,
   }).toString('hex');
