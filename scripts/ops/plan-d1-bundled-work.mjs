@@ -246,7 +246,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   if(PHASE1_WRITER_INTEGRATION?.account_wide_governor_verified!==true||
      PHASE1_WRITER_INTEGRATION?.account_wide_read_cap_verified!==true||
      PHASE1_WRITER_INTEGRATION?.daily_soft_rows_read_max!==120000){
-    return {...held("D1_ACCOUNT_WIDE_READ_WRITE_GOVERNOR_NOT_VERIFIED",now),
+    return {...held("D1_ACCOUNT_WIDE_GOVERNOR_NOT_VERIFIED",now),
       account_wide_governor_verified:false,
       account_wide_read_cap_verified:false,
       d1_daily_rows_read_soft_cap:120000};
@@ -490,6 +490,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     remaining_rows_written:snapshot.remaining_rows_written,
     provider_remaining_rows_read:providerRemainingRowsRead,
     provider_remaining_rows_written:providerRemainingRowsWritten,
+    daily_account_soft_limit_read_max:FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max,
+    daily_account_soft_limit_write_max:FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max,
     // A throttled lane preserves next-hour capacity for actual future events.
     // These are non-atomic provider usage ceilings, not D1 reservations.
     admission_paced_to_utc_day:true,
