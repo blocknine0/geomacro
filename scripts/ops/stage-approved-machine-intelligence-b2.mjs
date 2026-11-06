@@ -129,7 +129,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  try{
   if(process.argv.length!==3||process.argv[2]!=="--stage-dual-signed-no-funds")
      fail("EXPLICIT_PRIVATE_STAGING_MODE_REQUIRED");
-  console.log(JSON.stringify(await stageMachineIntelligence()));
+  const result=await stageMachineIntelligence();
+  console.log(JSON.stringify(result));
+  if(Number(result.automatic_gro_signing?.failed)>0)process.exitCode=2;
  }catch{
   console.error("MACHINE_INTELLIGENCE_SIGNED_B2_STAGE_FAILED_CLOSED");
   process.exitCode=2;
