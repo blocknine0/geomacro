@@ -14,9 +14,16 @@ on:
       - "workers/control-plane/src/risk-gate-global-news-search.mjs"
       - "workers/control-plane/src/risk-gate-activation-triggers.mjs"
       - "workers/control-plane/src/risk-gate-three-tier-product.mjs"
+      - "workers/control-plane/src/risk-gate-progressive-state.mjs"
+      - "workers/control-plane/src/risk-gate-fast-tick-sign.mjs"
+      - "workers/control-plane/src/risk-gate-partitioned-concurrency.mjs"
+      - "workers/control-plane/src/risk-gate-autonomous-corrob.mjs"
+      - "workers/control-plane/src/risk-gate-swr-cache.mjs"
+      - "workers/control-plane/migrations/0131_risk_gate_evidence_autonomy.sql"
+      - "scripts/tests/risk-gate-progressive-autonomy.test.mjs"
       - "scripts/tests/risk-gate-global-news-search.test.mjs"
       - "scripts/tests/risk-gate-activation-triggers.test.mjs"
-      - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
+      - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-progressive-autonomy.test.mjs"
       - "scripts/lib/hot50-production-proof.mjs"
       - "scripts/lib/hot50-production-proof.test.mjs"
       - "scripts/tests/risk-gate-hot50-low-quota.test.mjs"
@@ -180,7 +187,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify scoped scheduling, tamper rejection and one-read rollups
-        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
+        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-progressive-autonomy.test.mjs
       - name: Observe account quota before authenticated API proofs
         id: quota
         env:

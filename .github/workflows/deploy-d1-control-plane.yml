@@ -66,6 +66,15 @@ on:
       - "workers/control-plane/src/risk-gate-global-news-search.mjs"
       - "workers/control-plane/src/risk-gate-activation-triggers.mjs"
       - "workers/control-plane/src/risk-gate-three-tier-product.mjs"
+      - "workers/control-plane/src/risk-gate-progressive-state.mjs"
+      - "workers/control-plane/src/risk-gate-fast-tick-sign.mjs"
+      - "workers/control-plane/src/risk-gate-partitioned-concurrency.mjs"
+      - "workers/control-plane/src/risk-gate-autonomous-corrob.mjs"
+      - "workers/control-plane/src/risk-gate-incomplete-watchdog.mjs"
+      - "workers/control-plane/src/risk-gate-swr-cache.mjs"
+      - "scripts/ops/b2-s3-client.mjs"
+      - "workers/control-plane/migrations/0131_risk_gate_evidence_autonomy.sql"
+      - "scripts/tests/risk-gate-progressive-autonomy.test.mjs"
       - "scripts/tests/risk-gate-global-news-search.test.mjs"
       - "scripts/tests/risk-gate-activation-triggers.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
@@ -286,7 +295,7 @@ jobs:
           python -m py_compile workers/unified-ingestor/ingestor.py
 
       - name: Verify unified cron failure visibility and production API route contracts
-        run: node --test scripts/lib/hot50-production-proof.test.mjs scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
+        run: node --test scripts/lib/hot50-production-proof.test.mjs scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gate-progressive-autonomy.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
       - name: Verify P1 1077 source fanout and exact 585-cell D1 health offline
         run: node --test scripts/tests/p1-source-fanout.test.mjs scripts/tests/p1-source-registry-seed.test.mjs
@@ -326,6 +335,9 @@ jobs:
       PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
       GEOMACRO_API_CREDENTIAL_PEPPER: ${{ secrets.GEOMACRO_API_CREDENTIAL_PEPPER }}
       RISK_GATE_OBSERVATION_HMAC_KEY: ${{ secrets.RISK_GATE_OBSERVATION_HMAC_KEY }}
+      RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64 }}
+      RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64 }}
+      RISK_GATE_FAST_TICK_KEY_ID: ${{ secrets.RISK_GATE_FAST_TICK_KEY_ID }}
       RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
       RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY }}
       GEOMACRO_CUSTOMER_SSR_TOKEN: ${{ secrets.GEOMACRO_CUSTOMER_SSR_TOKEN }}
@@ -499,7 +511,7 @@ jobs:
         run: node scripts/ops/p0b-b2-scope-preflight.mjs
 
       - name: Verify unified cron failure visibility and production API route contracts
-        run: node --test scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
+        run: node --test scripts/lib/gro-auto-signing-jobs.test.mjs scripts/tests/risk-gate-progressive-autonomy.test.mjs scripts/tests/risk-gate-assessment-buffer.test.mjs scripts/tests/qualified-three-category-country.test.mjs scripts/tests/risk-gate-audit-receipt.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/unified-risk-production-route-and-cron.test.mjs scripts/tests/unified-risk-daily-remote-census.test.mjs scripts/tests/cloudflare-api-owner-zone-admission.test.mjs scripts/ops/test-unified-risk-gate.mjs scripts/tests/unified-risk-private-osint-evidence-bridge.test.mjs scripts/tests/phase2h-risk-country-index.test.mjs scripts/tests/phase2h-raw-news.test.mjs scripts/tests/unified-risk-canary-supabase-sync.test.mjs scripts/tests/unified-risk-canonical-207-reconciliation.test.mjs
 
       - name: Verify P0-1 D1 quota and public-only cache contracts offline
         run: node --test scripts/tests/three-domain-continuity-single-scan.test.mjs scripts/tests/news-product-factory.test.mjs scripts/tests/d1-quota-reset-recovery-workflow.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/public-news-r2-offload.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/private-osint-ring-cardinality.test.mjs scripts/tests/native-country-repair-worklist.test.mjs scripts/tests/check-derived-journal-overcap.test.mjs scripts/tests/materialized-public-news-pages.test.mjs scripts/tests/website-derived-cap-compaction.test.mjs scripts/tests/refresh-public-news-pages-under-quota.test.mjs scripts/tests/public-materialized-worker-import.test.mjs scripts/tests/verify-public-d1-materialization-live.test.mjs scripts/tests/materialized-origin-owner-route.test.mjs scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/verify-private-source-directory-production.test.mjs
@@ -962,6 +974,22 @@ jobs:
           echo "PROGRESSIVE_DECISION_ED25519_WORKER_SIGNER_INSTALLED=true"
           printf '%s' "$GEOMACRO_API_CREDENTIAL_PEPPER" | npx -y "wrangler@${WRANGLER_VERSION}" secret put GEOMACRO_API_CREDENTIAL_PEPPER --config wrangler.runtime.jsonc >/dev/null
           printf '%s' "$RISK_GATE_OBSERVATION_HMAC_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_OBSERVATION_HMAC_KEY --config wrangler.runtime.jsonc >/dev/null
+          # Independent owner-provisioned Ed25519 Fast-Tick receipt key.
+          # Do not expose protected GRO issuer keys or silently mint a new key.
+          if test -n "${RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64:-}" &&
+             test -n "${RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64:-}" &&
+             test -n "${RISK_GATE_FAST_TICK_KEY_ID:-}"; then
+            printf '%s' "$RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64 --config wrangler.runtime.jsonc >/dev/null
+            printf '%s' "$RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64 --config wrangler.runtime.jsonc >/dev/null
+            printf '%s' "$RISK_GATE_FAST_TICK_KEY_ID" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_FAST_TICK_KEY_ID --config wrangler.runtime.jsonc >/dev/null
+            echo "FAST_TICK_KEY_PAIR_PROVISIONED=true"
+          elif test -n "${RISK_GATE_FAST_TICK_PRIVATE_KEY_PKCS8_B64:-}" ||
+               test -n "${RISK_GATE_FAST_TICK_PUBLIC_KEY_SPKI_B64:-}" ||
+               test -n "${RISK_GATE_FAST_TICK_KEY_ID:-}"; then
+            echo "::error::FAST_TICK_PARTIAL_KEYPAIR_CONFIGURATION"; exit 5
+          else
+            echo "::warning::FAST_TICK_ED25519_PRODUCTION_KEY_NOT_CONFIGURED"
+          fi
           printf '%s' "$RISK_GATE_TIERED_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_TIERED_TOKEN --config wrangler.runtime.jsonc >/dev/null
           printf '%s' "$RISK_GATE_SUPABASE_SERVICE_ROLE_KEY" | npx -y "wrangler@${WRANGLER_VERSION}" secret put RISK_GATE_SUPABASE_SERVICE_ROLE_KEY --config wrangler.runtime.jsonc >/dev/null
           printf '%s' "$GEOMACRO_CUSTOMER_SSR_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put GEOMACRO_CUSTOMER_SSR_TOKEN --config wrangler.runtime.jsonc >/dev/null

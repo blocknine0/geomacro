@@ -120,10 +120,23 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   const gaps=[...missing,...followup];
   const cursor=await env.DB.prepare("SELECT next_offset FROM risk_gap_enrichment_cursor WHERE singleton=1").first();
   const start=Number.isSafeInteger(cursor?.next_offset)?cursor.next_offset%Math.max(gaps.length,1):0;
-  const page=Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>gaps[(start+i)%gaps.length]);
+  const due=await env.DB.prepare(
+   "SELECT subject_type,subject_id,category FROM risk_gate_priority_feed_queue "+
+   "WHERE due_at<=? ORDER BY CASE priority WHEN 'MISSING' THEN 0 ELSE 1 END,"+
+   "priority_at LIMIT 12").bind(iso(now)).all().catch(()=>({results:[]}));
+  const byKey=new Map(all.map(x=>[x.type+"|"+x.id+"|"+x.category,x]));
+  const targeted=(due?.results??[]).map(x=>
+   byKey.get(x.subject_type+"|"+x.subject_id+"|"+x.category)).filter(Boolean);
+  const seen=new Set(),page=[];
+  for(const x of [...targeted,...Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>
+   gaps[(start+i)%gaps.length])]){
+   const key=x.type+"|"+x.id+"|"+x.category;
+   if(seen.has(key)||page.length>=BATCH)continue;
+   page.push(x);seen.add(key);
+  }
   const focusedPositions=new Set(Array.from({length:Math.min(4,page.length)},(_,i)=>
    (Math.floor(now/(20*60000))*4+i)%Math.max(1,page.length)));
-  const results=await Promise.all(page.map(async(target,index)=>{
+  const settled=await Promise.allSettled(page.map(async(target,index)=>{
    // Always search the global index. Four of twelve rotating gap targets also
    // receive a wire/newsroom-specific index query (Reuters, ANI, AP and peers).
    // This is at most 16 Google RSS reads per 20m slot, no licensed API calls.
@@ -145,6 +158,7 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    const fullText=original?await fetchArticle(original,target,fetcher).catch(()=>null):null;
    return {target,items,fullText,fullTextFor:fullText?original?.id:null};
   }));
+  const results=settled.filter(r=>r.status==="fulfilled").map(r=>r.value);
   const rows=[];
   for(const {target,items,fullText,fullTextFor} of results)for(const item of items){
    const sourceHost=cleanHost(item.publisher_host);
@@ -167,6 +181,24 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    "SELECT json_extract(value,'$.observation_id'),json_extract(value,'$.event_id'),json_extract(value,'$.entity_type'),json_extract(value,'$.entity_id'),json_extract(value,'$.category'),json_extract(value,'$.event_at'),json_extract(value,'$.source_id'),json_extract(value,'$.source_host'),json_extract(value,'$.title_sha256'),json_extract(value,'$.impact_factor'),json_extract(value,'$.fact_basis'),json_extract(value,'$.original_page_fetched'),'OBSERVED',1,json_extract(value,'$.discovered_at') FROM json_each(?) WHERE 1 "+
    "ON CONFLICT(event_id,source_host) DO UPDATE SET discovered_at=excluded.discovered_at,impact_factor=MAX(COALESCE(unverified_observations.impact_factor,0),COALESCE(excluded.impact_factor,0)),fact_basis=CASE WHEN unverified_observations.original_page_fetched=1 THEN unverified_observations.fact_basis ELSE excluded.fact_basis END,original_page_fetched=MAX(unverified_observations.original_page_fetched,excluded.original_page_fetched)"
   ).bind(JSON.stringify(rows)));
+  // Every newly observed original/index row emits a durable lightweight
+  // EVENT_OBSERVATION_INGESTED; D1's existing .batch keeps enqueue with
+  // the observation write. A separate 10-partition Worker re-evaluates
+  // real original evidence without holding the discovery/API request.
+  if(rows.length)statements.push(env.DB.prepare(
+   "INSERT INTO risk_gate_progressive_event_outbox("+
+   "event_key,observation_id,event_id,subject_type,subject_id,category,"+
+   "first_seen_at,last_seen_at,event_at,state,attempts,next_attempt_at,updated_at) "+
+   "SELECT json_extract(value,'$.observation_id'),json_extract(value,'$.observation_id'),"+
+   "json_extract(value,'$.event_id'),json_extract(value,'$.entity_type'),"+
+   "json_extract(value,'$.entity_id'),json_extract(value,'$.category'),"+
+   "json_extract(value,'$.discovered_at'),json_extract(value,'$.discovered_at'),"+
+   "json_extract(value,'$.event_at'),'PENDING',0,"+
+   "json_extract(value,'$.discovered_at'),json_extract(value,'$.discovered_at') "+
+   "FROM json_each(?) WHERE 1 ON CONFLICT(event_key) DO UPDATE SET "+
+   "last_seen_at=excluded.last_seen_at WHERE "+
+   "risk_gate_progressive_event_outbox.last_seen_at<excluded.last_seen_at"
+  ).bind(JSON.stringify(rows)));
   // Require distinct publishers and publication times separated by six hours
   // before promoting identical event fingerprints beyond OBSERVED.
   if(rows.length)statements.push(env.DB.prepare(
@@ -174,6 +206,14 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    "status=CASE WHEN (SELECT COUNT(DISTINCT source_host) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=2 AND (SELECT MAX(julianday(event_at))-MIN(julianday(event_at)) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=0.25 THEN 'CORROBORATED' ELSE 'OBSERVED' END "+
    "WHERE event_id IN (SELECT value FROM json_each(?))"
   ).bind(JSON.stringify([...new Set(rows.map(x=>x.event_id))])));
+  // A priority cell is released only after this discovery attempt has been
+  // processed; the next recheck remains automatic and evidence-aware.
+  if(page.length)statements.push(env.DB.prepare(
+   "UPDATE risk_gate_priority_feed_queue SET last_search_at=?,due_at=?,"+
+   "updated_at=? WHERE (subject_type || '|' || subject_id || '|' || category) "+
+   "IN (SELECT value FROM json_each(?))")
+   .bind(iso(now),iso(now+4*3600000),iso(now),JSON.stringify(
+    page.map(x=>x.type+"|"+x.id+"|"+x.category))));
   const next=(start+page.length)%Math.max(gaps.length,1);
   statements.push(env.DB.prepare(
    "INSERT INTO risk_gap_enrichment_cursor(singleton,next_offset,last_run_at) VALUES(1,?,?) "+
@@ -189,10 +229,13 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   if(storedCursor?.next_offset!==next||storedCursor?.last_run_at!==iso(now))throw Error();
   return {ok:true,schema:"geomacro.risk-gap-enrichment.v1",gap_cells:missing.length,followup_cells:followup.length,
    searched_cells:page.length,observations:rows.length,
+   prioritized_due_cells:targeted.length,
    fulltext_articles_fetched:results.filter(x=>x.fullText).length,
    publisher_focused_queries:Math.min(4,page.length),
    global_index_queries:page.length,
    original_fulltext_stored:false,provisional_only:true,
+   autonomous_events_enqueued:rows.length,
+   partial_search_failures:settled.filter(x=>x.status==="rejected").length,
    cursor_next:next,run_at:iso(now)};
  }catch{return {ok:false,error:"RISK_GAP_ENRICHMENT_FAILED"};}
 }

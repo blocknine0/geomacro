@@ -8,6 +8,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
 const MAX_ATTEMPTS = 4;
 const NATIVE_AUTH_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Share 24h Backblaze native read authorization across governed client
+// instances in the SAME runtime only. Never cache raw credential strings.
+const governedNativeAuthorizationCache = new Map();
+const GOVERNED_NATIVE_AUTH_CACHE_MAX=16;
 const DEFAULT_REQUEST_BUDGET = 64;
 const MAX_REQUEST_BUDGET = 500;
 const DEFAULT_ALLOWED_PREFIXES = Object.freeze(["geomacro-evidence/v1/"]);
@@ -138,7 +142,8 @@ export function createB2Client({
   let nativeReadFallbackAttempts = 0;
   let nativeReadFallbackSuccesses = 0;
   let nativeReadFatalError = null;
-  const nativeReadAuthCache = new Map();
+  const nativeReadAuthCache = globalAccountGovernor
+    ? governedNativeAuthorizationCache : new Map();
   const nativePreferredCredentials = new Set();
   const inFlightReads = new Map();
 
@@ -152,7 +157,8 @@ export function createB2Client({
   }
 
   function nativeCredentialFingerprint(credential) {
-    return `${credential.accessKey}\u0000${credential.secretKey}`;
+    return createHash("sha256").update(credential.accessKey).update("\\0")
+      .update(credential.secretKey).digest("hex");
   }
 
   async function authorizeNativeRead(credential) {
@@ -227,6 +233,9 @@ export function createB2Client({
       };
     })();
 
+    if (nativeReadAuthCache.size >= GOVERNED_NATIVE_AUTH_CACHE_MAX) {
+      nativeReadAuthCache.delete(nativeReadAuthCache.keys().next().value);
+    }
     nativeReadAuthCache.set(fingerprint, {
       expiresAt: now + NATIVE_AUTH_CACHE_TTL_MS,
       promise,

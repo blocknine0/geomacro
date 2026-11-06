@@ -48,6 +48,8 @@ import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
 import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
+import {runRiskGateAutonomousCorroborator} from "./risk-gate-autonomous-corrob.mjs";
+import {runRiskGateIncompleteWatchdog} from "./risk-gate-incomplete-watchdog.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
 import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
@@ -1344,9 +1346,23 @@ export default {
     // Rotating 12-cell search page every 20 minutes across the 195x3 matrix
     // and registered corridors. Results remain unverified observations.
     if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%20===0)
-      ctx.waitUntil(riskGapEnrichmentTick(env,{now:utc.getTime()}).then(r=>{
-        if(!r.ok)console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE");
-      }).catch(()=>console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE")));
+      ctx.waitUntil((async()=>{
+        // Self-healing missing/stale queue precedes the same tick's searches.
+        const watched=await runRiskGateIncompleteWatchdog(env,{now:utc.getTime()});
+        if(!watched.ok)console.error("RISK_GATE_WATCHDOG_DEFERRED");
+        const r=await riskGapEnrichmentTick(env,{now:utc.getTime()});
+        if(!r.ok){console.error("RISK_GAP_ENRICHMENT_UNAVAILABLE");return;}
+        // Event-driven after genuine D1 observation ACK, not before commit.
+        // Independent signed-GRO issuer and B2 outbox remain separate.
+        const proof=await runRiskGateAutonomousCorroborator(env,{now:utc.getTime()});
+        if(!proof.ok)console.error("RISK_AUTONOMOUS_CORROBORATOR_DEFERRED");
+      })().catch(()=>console.error("RISK_GAP_OR_WATCHDOG_UNAVAILABLE")));
+    // Reclaim 2-minute processing leases after crashes and poll remaining
+    // independent original-page evidence. One bounded 20-event page per slot.
+    if(env?.DB?.prepare&&utc.getUTCMinutes()%5===1)
+      ctx.waitUntil(runRiskGateAutonomousCorroborator(env,{now:utc.getTime()})
+        .then(r=>{if(!r.ok)console.error("RISK_AUTONOMOUS_CORROBORATOR_DEFERRED");})
+        .catch(()=>console.error("RISK_AUTONOMOUS_CORROBORATOR_UNAVAILABLE")));
     // P0-B: leverage the EXISTING one-minute Worker cron, no extra trigger.
     if(env?.GEOMACRO_P0B_ADMISSION_ACTIVE==='1'&&utc.getUTCMinutes()%10===0&&env?.DB?.prepare&&env?.INGEST_QUEUE?.send)
       ctx.waitUntil(drainBacklog(env,{now:utc.getTime()}).then(r=>{
@@ -1673,7 +1689,7 @@ export default {
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
     if(url.pathname==="/v1/risk-gate/unified/evaluate")
-      return unifiedRiskGateEvaluate(request,env);
+      return unifiedRiskGateEvaluate(request,env,{ctx});
     if(url.pathname==="/v1/risk-gate/commercial/evaluate")
       return commercialRiskGateEvaluate(request,env);
     if(url.pathname==="/v1/risk-gate/tiered/evaluate")
