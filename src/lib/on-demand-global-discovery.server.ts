@@ -2185,3 +2185,97 @@ export function websiteCandidateFromCountryOriginal(
  return {title:page.article_title,articleUrl:page.article_url,publishedAt:new Date(at).toISOString(),
   sourceId:source.id,category:page.domain,credit:source.credit};
 }
+
+/**
+ * Facts-only continuation for the progressive advisory. Publishers' strings
+ * are used for PRIVATE in-memory classification, then discarded; the return
+ * value contains no article title, snippet, summary, HTML or news body.
+ * Index observation time is explicitly distinguished from the event clock.
+ */
+export type OnDemandFactPrimitive=Readonly<{
+  country_iso3:string;
+  event_fingerprint:string;
+  publisher_domain:string;
+  canonical_source_url:string;
+  event_clock:string;
+  derived_category:OnDemandCategory;
+  extracted_entities:string[];
+  clock_basis:"ORIGINAL_PUBLICATION"|"INDEX_OBSERVED";
+}>;
+
+export function extractOnDemandFactPrimitives(
+  candidates:readonly (PrivateOriginalCandidate|PrivatePageDatedOriginal)[],
+  checkedAt:Date,
+):OnDemandFactPrimitive[]{
+  const now=checkedAt.getTime();
+  if(!Number.isFinite(now))throw Error("PROGRESSIVE_FACT_CLOCK_INVALID");
+  const result:OnDemandFactPrimitive[]=[];
+  const seen=new Set<string>();
+  for(const item of candidates){
+    if(!item.country_iso3||!country195ByIso3(item.country_iso3)||
+       !/^[a-f0-9]{64}$/u.test(item.article_identity_sha256))continue;
+    let url:URL;
+    try{url=new URL(item.article_url)}catch{continue;}
+    if(url.protocol!=="https:"||url.username||url.password||url.port||url.hash)continue;
+    const publisher_domain=url.hostname.toLowerCase().replace(/^www\./u,"");
+    const pageClock="page_original_published_at" in item &&
+      item.publisher_article_page_date_verified===true
+      ? item.page_original_published_at:null;
+    const originalClock=pageClock??(
+      item.source_native_feed_publication_date_verified===true
+        ? item.feed_item_published_at:null);
+    const t=Date.parse(originalClock??"");
+    const original=originalClock!==null && Number.isFinite(t) &&
+      t<=now && now-t<=72*3600_000;
+    const event_clock=original?new Date(t).toISOString():checkedAt.toISOString();
+    // Fixed tag vocabulary, ISO country and clock are factual primitives.
+    // Lexical anchors are hashed only, never serialized into the result.
+    const tags=Object.entries(TOPIC_TITLE_PATTERNS)
+      .filter(([,pattern])=>pattern.test(item.article_title))
+      .map(([tag])=>tag).sort().slice(0,12);
+    const anchors=item.article_title.normalize("NFKC").toLowerCase()
+      .match(/[\p{L}\p{N}]{4,}/gu)?.filter(word=>
+        !new Set(["about","after","before","from","with","the","their","says",
+          "said","news","latest","report","update","today"]).has(word))
+      .sort().slice(0,12)??[];
+    const event_fingerprint=createHash("sha256").update(JSON.stringify([
+      item.country_iso3,item.domain,event_clock.slice(0,10),tags,anchors
+    ])).digest("hex");
+    const id=[item.article_identity_sha256,event_fingerprint].join("|");
+    if(seen.has(id))continue;
+    seen.add(id);
+    result.push({
+      country_iso3:item.country_iso3,event_fingerprint,publisher_domain,
+      canonical_source_url:url.href,event_clock,derived_category:item.domain,
+      extracted_entities:[item.country_iso3,...tags].slice(0,16),
+      clock_basis:original?"ORIGINAL_PUBLICATION":"INDEX_OBSERVED"
+    });
+  }
+  return result;
+}
+
+/** Caller receives ONLY derived primitives, never PrivateOriginalCandidate. */
+export async function discoverOnDemandForProgressiveRiskGate(
+  input:OnDemandSearchInput,
+  options:{fetchImpl?:typeof fetch;now?:Date;disableDiscoveryIndex?:boolean;
+    indexSearchApiKey?:string;enableTavilyLeadSearch?:boolean}={},
+):Promise<{discovery:OnDemandDiscovery;facts:OnDemandFactPrimitive[]}>{
+  const now=options.now??new Date();
+  const result=await discoverOnDemandImpl(input,options);
+  try{
+    const verified=await verifyOnDemandOriginalArticlePages(
+      result.private_original_review_candidates,
+      {fetchImpl:options.fetchImpl,now,maxProbes:4,maxAgeSeconds:86400});
+    const verifiedById=new Map(verified.verified_candidates.map(item=>
+      [item.article_identity_sha256,item]));
+    const originals=result.private_candidates.map(item=>
+      verifiedById.get(item.article_identity_sha256)??item);
+    return {discovery:result.discovery,
+      facts:extractOnDemandFactPrimitives(originals,now)};
+  }finally{
+    // Remove this function's references to publisher expression immediately
+    // after the fact projection; JS does not guarantee physical string zeroing.
+    result.private_candidates.length=0;
+    result.private_original_review_candidates.length=0;
+  }
+}
