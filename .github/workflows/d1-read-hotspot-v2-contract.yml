@@ -1,0 +1,77 @@
+name: D1 Read Hotspot v2 Contract
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-read-hotspot-v2-contract.yml"
+      - "workers/control-plane/src/cache-middleware.mjs"
+      - "workers/control-plane/src/public-free-d1-cache.mjs"
+      - "workers/control-plane/src/hot50-materialized-news.mjs"
+      - "workers/control-plane/src/website-derived-intelligence.mjs"
+      - "workers/control-plane/src/private-osint-bundle.mjs"
+      - "workers/control-plane/src/signed-gro-read-cache.mjs"
+      - "workers/control-plane/src/predge-risk-gate-d1.mjs"
+      - "workers/control-plane/src/index.mjs"
+      - "workers/control-plane/migrations/0203_d1_read_hotspot_optimization.sql"
+      - "scripts/tests/d1-read-hotspot-v2.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/d1-read-hotspot-v2-contract.yml"
+      - "workers/control-plane/src/**"
+      - "workers/control-plane/migrations/0203_d1_read_hotspot_optimization.sql"
+      - "scripts/tests/d1-read-hotspot-v2.test.mjs"
+permissions:
+  contents: read
+jobs:
+  syntax-unit-index:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Syntax and public/private cache contracts
+        run: |
+          set -euo pipefail
+          for p in workers/control-plane/src/{cache-middleware,public-free-d1-cache,hot50-materialized-news,website-derived-intelligence,private-osint-bundle,signed-gro-read-cache,predge-risk-gate-d1,index}.mjs; do
+            node --check "$p"
+          done
+          node --test scripts/tests/d1-read-hotspot-v2.test.mjs scripts/tests/public-free-d1-cache.test.mjs
+      - name: SQLite migrations, indexes, CQRS plan and bounded OSINT keyset plan
+        run: |
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          d=Path('workers/control-plane/migrations')
+          conn=sqlite3.connect(':memory:')
+          for f in ['0017_website_derived_news_only.sql',
+                    '0028_private_osint_15m_durable.sql',
+                    '0029_private_osint_bundle_index.sql',
+                    '0032_private_osint_ring_cardinality.sql',
+                    '0033_website_public_materialized_pages.sql',
+                    '0203_d1_read_hotspot_optimization.sql']:
+              conn.executescript((d/f).read_text())
+          conn.execute("INSERT INTO materialized_cache(key,payload,updated_at) VALUES(?,?,?)",
+                       ('public_derived_news_hot50','{}',1000))
+          plan=conn.execute("EXPLAIN QUERY PLAN SELECT payload,updated_at FROM materialized_cache WHERE key='public_derived_news_hot50' LIMIT 1").fetchall()
+          assert any('SEARCH materialized_cache' in row[3] for row in plan),plan
+          for i in range(1000):
+              conn.execute("""INSERT INTO private_osint_news_25h
+              (item_id,category,country_iso3,native_feed_published_at,
+              projection_json,first_seen_at,last_seen_at)
+              VALUES (?,?,?,?,?,?,?)""",
+              (f'{i:064x}','macro','IND','2026-11-05T00:00:00.000Z',
+               'p'*400,'2026-11-05T00:00:00.000Z','2026-11-05T00:00:00.000Z'))
+          plan=conn.execute("""EXPLAIN QUERY PLAN
+          SELECT item_id,native_feed_published_at FROM private_osint_news_25h
+          INDEXED BY idx_private_osint_country_category_clock_v2
+          WHERE country_iso3='IND' AND category='macro'
+          AND native_feed_published_at>='2026-11-04T00:00:00.000Z'
+          ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 101""").fetchall()
+          assert any('USING COVERING INDEX idx_private_osint_country_category_clock_v2' in x[3] for x in plan),plan
+          assert not any('SCAN private_osint_news_25h' in x[3] or 'USE TEMP B-TREE' in x[3] for x in plan),plan
+          print('PASS: 0203 migration and PK/composite SQLite query plans')
+          PY
