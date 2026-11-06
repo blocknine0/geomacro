@@ -16,6 +16,20 @@ function assertOrigin(input){
  if(origin!==DEFAULT_ORIGIN)throw Error("ASK_FREE_GROQ_ORIGIN_NOT_PRODUCTION");
  return origin;
 }
+export async function readPublishedBuild(origin,fetchImpl=fetch){
+ try{
+   const res=await fetchImpl(origin+"/.well-known/geomacro-build.json",{
+     method:"GET",headers:{Accept:"application/json","Cache-Control":"no-store"},
+     redirect:"error",cache:"no-store",signal:AbortSignal.timeout(10_000)});
+   if(res.status!==200)return {sha:null,status:"HTTP_"+res.status};
+   const raw=await res.text();
+   if(raw.length>8192)return {sha:null,status:"OVERSIZE"};
+   const data=JSON.parse(raw);
+   const sha=typeof data?.canonical_main_sha==="string"&&/^[0-9a-f]{40}$/u.test(data.canonical_main_sha)&&
+     data.canonical_repository==="blocknine0/geomacro"?data.canonical_main_sha:null;
+   return {sha,status:sha?"VALID":"INVALID"};
+ }catch{return {sha:null,status:"UNAVAILABLE"};}
+}
 export async function readAsk(origin,question,fetchImpl=fetch){
  const response=await fetchImpl(origin+"/api/ask/v2/turn",{
    method:"POST",headers:{Origin:origin,Accept:"text/event-stream","Content-Type":"application/json"},
@@ -44,22 +58,30 @@ export async function readAsk(origin,question,fetchImpl=fetch){
 }
 export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetch){
  const base=assertOrigin(origin);
+ const build=await readPublishedBuild(base,fetchImpl);
+ const expected=process.env.EXPECTED_CANONICAL_MAIN_SHA??null;
+ console.log(JSON.stringify({stage:"published_build",status:build.status,
+   sha:build.sha?.slice(0,12)??null,expected:expected?.slice(0,12)??null}));
  const results=[];
  for(const test of CASES){
    const a=await readAsk(base,test.question,fetchImpl);
    results.push({domain:test.name,rendering:a.rendering,cache:a.cache});
+   console.log(JSON.stringify({stage:"model_probe",domain:test.name,rendering:a.rendering,cache:a.cache}));
    if(a.rendering!=="assisted")throw Error("ASK_FREE_GROQ_GENERATION_UNVERIFIED_"+test.name.toUpperCase());
  }
  // An immediately repeated eligible question must produce a genuine cache
  // readback in a warm instance. A different backend instance can miss; report
  // the result rather than pretend memory caching is globally shared.
  const repeat=await readAsk(base,CASES[0].question,fetchImpl);
+ console.log(JSON.stringify({stage:"repeat_probe",rendering:repeat.rendering,cache:repeat.cache}));
  if(repeat.rendering!=="assisted")throw Error("ASK_FREE_GROQ_REPEATED_RENDERING_UNVERIFIED");
+ if(expected&&build.sha!==expected)throw Error("ASK_PUBLISHED_SHA_UNVERIFIED");
  return {schema:"geomacro.ask-free-groq-live-proof.v1",origin:base,
    model_generation_domains:results.length,rendering_accepted:true,
    repeated_question_cache_status:repeat.cache,
    same_runtime_cache_hit_observed:repeat.cache==="hit",
-   distributed_cache_proven:false,results,no_funds:true};
+   distributed_cache_proven:false,published_sha_checked:expected!==null&&build.sha===expected,
+   results,no_funds:true};
 }
 if(import.meta.url===new URL("file://"+process.argv[1]).href){
  verifyLiveAskFreeGroq(process.env.GEOMACRO_BASE_URL).then(x=>{
