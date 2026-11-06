@@ -1190,19 +1190,28 @@ def parse_official_canada_json_feed(raw: bytes) -> list[dict[str, Any]]:
         if not all(isinstance(value, str) and value.strip()
                    for value in (title, published, link)):
             continue
-        try:
-            moment = datetime.fromisoformat(published.strip().replace("Z", "+00:00"))
-        except ValueError:
-            continue
-        if moment.tzinfo is None:
-            continue
+        published_text = published.strip()
+        moment = None
+        if re.fullmatch(r"20\\d{2}-\\d{2}-\\d{2}", published_text):
+            try:
+                datetime.strptime(published_text, "%Y-%m-%d")
+            except ValueError:
+                continue
+        else:
+            try:
+                moment = datetime.fromisoformat(published_text.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if moment.tzinfo is None:
+                continue
         entry: dict[str, Any] = {
             "title": title.strip(),
-            "published": published.strip(),
-            "published_parsed": moment.astimezone(timezone.utc).utctimetuple(),
+            "published": published_text,
             "link": link.strip(),
             "id": link.strip(),
         }
+        if moment is not None:
+            entry["published_parsed"] = moment.astimezone(timezone.utc).utctimetuple()
         teaser = item.get("teaser")
         if isinstance(teaser, str) and teaser.strip():
             entry["summary"] = teaser.strip()
