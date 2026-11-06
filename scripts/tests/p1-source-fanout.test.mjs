@@ -76,7 +76,9 @@ test("P1 1077 due sources fan out through max 108 per minute and ten isolated Qu
  const f=fixture(1077),batches=[];let attempted=0;
  try{
   const env={DB:f.DB,GEOMACRO_P1_FANOUT_ENABLED:"1",
-    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",\n    GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED:"true",\n    GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX:"120000",
+    GEOMACRO_D1_ACCOUNT_WIDE_GOVERNOR_VERIFIED:"true",
+    GEOMACRO_D1_ACCOUNT_WIDE_READ_CAP_VERIFIED:"true",
+    GEOMACRO_D1_DAILY_ROWS_READ_SOFT_MAX:"120000",
    SOURCE_POLL_QUEUE:{async sendBatch(messages){batches.push(messages)}}};
   for(let minute=0;minute<11;minute++){
    const t=now+minute*60000,before=batches.length;
