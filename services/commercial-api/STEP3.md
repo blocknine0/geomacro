@@ -122,9 +122,8 @@ low-entropy customer passwords. Human account authentication remains with
 Supabase Auth, which does not use this helper for password storage.
 
 Changing this digest to a password KDF without a migration would invalidate
-existing issued API keys and historical signed receipts. The narrowly scoped
-CodeQL annotation documents why the password-hashing rule is inapplicable to
-this 256-bit CSPRNG-token lookup. The CI regression test enforces the token
+existing issued API keys and historical signed receipts. The source documentation records why the password-hashing rule is
+inapplicable to this 256-bit CSPRNG-token lookup. The CI regression test enforces the token
 size, wire format, uniqueness, and existing stored digest contract. This is
 an explicit false-positive disposition, **not** a claim that a password KDF
 was introduced or a scanner finding was fixed without reanalysis.
