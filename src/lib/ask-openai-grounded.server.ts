@@ -95,21 +95,21 @@ export function safeGroundedOpenAIOutput(
   for(const [key,max] of Object.entries(limits)){
     if(typeof data[key]!=="string"||!(data[key] as string).trim())
       return reject("invalid_field");
-    const normalized=(data[key] as string).trim().replace(/\\s+/gu," ");
+    const normalized=(data[key] as string).trim().replace(/\s+/gu," ");
     if(normalized.length>max)return reject("field_too_long");
     if(forbiddenTransfer.test(normalized)||forbiddenPublic.test(normalized))
       return reject("forbidden_text");
     fields[key as keyof typeof limits]=normalized;
   }
   // No new numerical values, rates, dates or percentages from the model.
-  const numbers=(s:string)=>s.match(/\\d+(?:[.,]\\d+)*/gu)??[];
+  const numbers=(s:string)=>s.match(/\d+(?:[.,]\d+)*/gu)??[];
   const reference=[question,canonical.summary,canonical.what_changed,
     canonical.why_it_matters,canonical.geomacro_view].join(" ");
   const approved=new Set(numbers(reference));
   if(numbers(Object.values(fields).join(" ")).some(n=>!approved.has(n)))
     return reject("unapproved_number");
   if((canonical.insufficient_evidence||canonical.low_confidence)&&
-    /\\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\\b/iu
+    /\b(?:confirmed|verified|established|proven|announced today|has increased|has fallen)\b/iu
       .test(Object.values(fields).join(" ")))
     return reject("unsupported_certainty");
   return {...canonical,...fields,source_identity_exposed:false,
