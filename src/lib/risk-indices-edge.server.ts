@@ -6,10 +6,40 @@ const EDGE_AUTHORITY = "backblaze-b2-risk-indices-edge";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const METHODOLOGY = "gri-v1.2.0";
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+type IndexReadMode = "current" | "historical";
 
-function recentEnough(value: unknown): boolean {
+function sourceClock(value: unknown, now: number): number | null {
   const parsed = Date.parse(String(value ?? ""));
-  return Number.isFinite(parsed) && parsed <= Date.now() + 5 * 60_000 && Date.now() - parsed <= MAX_AGE_MS;
+  return Number.isFinite(parsed) && parsed <= now + 5 * 60_000 ? parsed : null;
+}
+function recentEnough(value: unknown): boolean {
+  const now = Date.now();
+  const parsed = sourceClock(value, now);
+  return parsed !== null && now - parsed <= MAX_AGE_MS;
+}
+/**
+ * Historical recovery is separate from the CURRENT public API. It retains the
+ * exact verified bytes and original source dates. It MUST NOT retimestamp,
+ * upgrade signed-review status, synthesize scores, or authorize paid output.
+ * A verified archived reading may be old: the UI labels it explicitly.
+ */
+export function validateHistoricalRiskIndices(data: PublicRiskIndices | null | undefined,
+  generatedAt: unknown, now = Date.now()): boolean {
+  if (!validatePublicRiskIndices(data) || !data) return false;
+  const generated = sourceClock(generatedAt, now);
+  const snapshot = sourceClock(data.snapshotAsOf, now);
+  if (generated === null || snapshot === null || generated + 5 * 60_000 < snapshot) return false;
+  if (!/^[a-f0-9]{64}$/u.test(data.proofHash ?? "") ||
+      !/^[a-f0-9]{64}$/u.test(data.calculationHash ?? "") ||
+      !/^[a-f0-9]{64}$/u.test(data.inputHash ?? "")) return false;
+  return data.indices.every(index => {
+    const reading = sourceClock(index.readingAsOf, now);
+    return reading !== null &&
+      reading <= generated + 5 * 60_000 &&
+      (index.readingStatus === "current" || index.readingStatus === "last_verified") &&
+      index.score !== null && Number.isFinite(index.score) &&
+      index.score >= 0 && index.score <= 100;
+  });
 }
 
 export function validatePublicRiskIndices(data: PublicRiskIndices | null | undefined): boolean {
@@ -37,7 +67,7 @@ export function validatePublicRiskIndices(data: PublicRiskIndices | null | undef
   return expected.size === 0;
 }
 
-export async function readRiskIndicesEdge(): Promise<PublicRiskIndices | null> {
+export async function readRiskIndicesEdge(mode: IndexReadMode = "current"): Promise<PublicRiskIndices | null> {
   try {
     const response = await fetch(EDGE_URL, {
       method: "GET",
@@ -55,8 +85,10 @@ export async function readRiskIndicesEdge(): Promise<PublicRiskIndices | null> {
     if (
       payload.schema !== "geomacro.public-risk-indices-live.v1" ||
       payload.source_project !== PROJECT_REF ||
-      !recentEnough(payload.generated_at) ||
-      !validatePublicRiskIndices(payload.data)
+      (mode === "current" && !recentEnough(payload.generated_at)) ||
+      (mode === "historical"
+        ? !validateHistoricalRiskIndices(payload.data, payload.generated_at)
+        : !validatePublicRiskIndices(payload.data))
     ) return null;
 
     return payload.data ?? null;
