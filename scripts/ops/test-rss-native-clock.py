@@ -75,6 +75,17 @@ class CanadaNativePublicationTimeTests(unittest.TestCase):
         self.assertEqual(rows[0]["published"], "2026-11-04T08:30:00-05:00")
         self.assertEqual(rows[0]["published_parsed"][:6], (2026, 11, 4, 13, 30, 0))
 
+    def test_date_only_publication_keeps_day_precision(self):
+        raw = json.dumps({"feed": {"entry": [{
+            "title": "Date-only release",
+            "publishedDate": "2026-11-04",
+            "link": "https://www.canada.ca/news/3",
+        }]}}).encode()
+        rows = self.parse(raw)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["published"], "2026-11-04")
+        self.assertNotIn("published_parsed", rows[0])
+
     def test_missing_or_timezone_naive_publication_is_not_invented(self):
         raw = json.dumps({"feed": {"entry": [
             {"title": "Missing clock", "link": "https://www.canada.ca/news/1"},
