@@ -11,7 +11,7 @@ import {fetchWithoutRedirect} from "../lib/fetch-without-redirect";
 const FALLBACK="https://geomacro-control-plane.daspallab202391.workers.dev";
 const MAX_BYTES=64*1024;
 const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
-function validateSignedProgressiveResponse(json:Record<string,unknown>):boolean{
+function validateSignedProgressiveResponse(json:Record<string,unknown>,trustedKey:string,keyId:string|null):boolean{
  const payload=json.decision_signed_payload;
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||
     json.decision_signature_scheme!=="Ed25519"||
@@ -44,13 +44,39 @@ function validateSignedProgressiveResponse(json:Record<string,unknown>):boolean{
  if(digest!==json.decision_payload_sha256)return false;
  // The Worker also independently verifies signing-key pair consistency.
  // SSR additionally verifies if a separately pinned public key is installed.
- const pin=String(process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
- if(!pin)return false;
+ if(!trustedKey||keyId!==null&&json.decision_signature_key_id!==keyId)return false;
  try{
-   const key=createPublicKey({key:Buffer.from(pin,"base64"),format:"der",type:"spki"});
+   const key=createPublicKey({key:Buffer.from(trustedKey,"base64"),format:"der",type:"spki"});
    return key.asymmetricKeyType==="ed25519" && edVerify(null,Buffer.from(canonical),
      key,Buffer.from(json.decision_signature_b64,"base64"));
  }catch{return false}
+}
+/**
+ * A separately configured SSR trust pin is preferred. Where Lovable SSR has
+ * no deployment-specific pin, resolve the public key ONLY from the same
+ * configured Cloudflare origin over validated HTTPS (no redirects).
+ * This fallback is transport-bound trust, not an independently pinned issuer.
+ */
+async function resolveDecisionVerifier(origin:string,
+ fetcher:typeof fetchWithoutRedirect,staging:boolean):Promise<{key:string;id:string|null}>{
+ const pinned=String(process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
+ if(pinned)return {key:pinned,id:null};
+ if(staging || !origin.startsWith("https://"))throw Error("DECISION_KEY_PIN_UNAVAILABLE");
+ const res=await fetcher(origin+"/v1/public/risk-gate-decision-key",{
+   method:"GET",redirect:"manual",
+   headers:{"accept":"application/json"},signal:AbortSignal.timeout(2000)
+ });
+ if(res.status!==200||res.redirected)throw Error("DECISION_KEY_ORIGIN_UNAVAILABLE");
+ const wire=await res.text();
+ if(wire.length>2048)throw Error("DECISION_KEY_OVERSIZED");
+ const obj=JSON.parse(wire) as Record<string,unknown>;
+ if(obj.ok!==true||obj.schema!=="geomacro.risk-gate-decision-key.v1"||
+   obj.scheme!=="Ed25519"||
+   typeof obj.key_id!=="string"||!/^[A-Za-z0-9._:-]{4,120}$/.test(obj.key_id)||
+   typeof obj.public_key_spki_b64!=="string"||
+   !/^[A-Za-z0-9+/]{55,120}={0,2}$/.test(obj.public_key_spki_b64))
+   throw Error("DECISION_KEY_ORIGIN_INVALID");
+ return {key:obj.public_key_spki_b64,id:obj.key_id};
 }
 export async function forwardRiskGateToD1(request:Request,fetcher=fetchWithoutRedirect):Promise<Response>{
  const incoming=new URL(request.url);
@@ -90,12 +116,15 @@ export async function forwardRiskGateToD1(request:Request,fetcher=fetchWithoutRe
    let json:Record<string,unknown>;
    try{json=JSON.parse(text)}catch{throw Error("INVALID_JSON");}
    if(json.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
-   if(upstream.status===200&&
-      (json.ok!==true||
-       !json.risk_gate||
-       (json.risk_gate as Record<string,unknown>).execution_authorized!==false||
-       !validateSignedProgressiveResponse(json)))
+   if(upstream.status===200){
+     if(json.ok!==true||!json.risk_gate||
+        (json.risk_gate as Record<string,unknown>).execution_authorized!==false||
+        json.decision_signature_scheme!=="Ed25519")
        throw Error("INVALID_SIGNED_PROGRESSIVE_RESPONSE");
+     const verifier=await resolveDecisionVerifier(origin,fetcher,staging);
+     if(!validateSignedProgressiveResponse(json,verifier.key,verifier.id))
+       throw Error("INVALID_SIGNED_PROGRESSIVE_RESPONSE");
+   }
    return Response.json(json,{status:upstream.status,headers});
  }catch{
    return Response.json({ok:false,error:"RISK_GATE_D1_TRANSPORT_UNAVAILABLE",
