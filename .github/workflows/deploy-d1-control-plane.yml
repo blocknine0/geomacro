@@ -101,7 +101,7 @@ on:
       - "scripts/ops/verify-live-geomacro-news-gri.mjs"
       - "workers/control-plane/src/public-free-d1-cache.mjs"
       - "workers/control-plane/src/unified-event-stream.mjs"
-      - "workers/control-plane/src/unified-event-stream.test.mjs"
+      - "scripts/tests/unified-event-stream.test.mjs"
       - "workers/control-plane/migrations/0205_unified_event_stream.sql"
       - "workers/unified-ingestor/**"
       - "config/unified-rss-feed-registry.v1.json"
@@ -119,7 +119,7 @@ on:
       - "scripts/tests/phase2h-raw-news.test.mjs"
       - "scripts/tests/public-free-d1-cache.test.mjs"
       - "workers/control-plane/src/unified-event-stream.mjs"
-      - "workers/control-plane/src/unified-event-stream.test.mjs"
+      - "scripts/tests/unified-event-stream.test.mjs"
       - "workers/control-plane/migrations/0205_unified_event_stream.sql"
       - "workers/unified-ingestor/**"
       - "config/unified-rss-feed-registry.v1.json"
@@ -276,7 +276,7 @@ jobs:
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |
-          node --test workers/control-plane/src/unified-event-stream.test.mjs
+          node --test scripts/tests/unified-event-stream.test.mjs
           node --check workers/control-plane/src/index.mjs
           python -m py_compile workers/unified-ingestor/ingestor.py
 

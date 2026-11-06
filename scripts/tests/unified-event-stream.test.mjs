@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {putUnifiedEvents,readUnifiedEvents,reserveUnifiedEventArchiveSlot} from "./unified-event-stream.mjs";
-import {eligiblePublicFreeD1CacheRequest} from "./public-free-d1-cache.mjs";
+import {putUnifiedEvents,readUnifiedEvents,reserveUnifiedEventArchiveSlot} from "../../workers/control-plane/src/unified-event-stream.mjs";
+import {eligiblePublicFreeD1CacheRequest} from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 class MockD1 {
   rows=new Map(); slots=new Map();
