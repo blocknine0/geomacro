@@ -197,10 +197,12 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
   if(![0,15].includes(legacyDelayMinutes)||!Number.isSafeInteger(offset)||![0,250,500].includes(offset))
     return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID"},400);
   try {
+    let coldCQRS=false;
     if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
       // Missing table/row (including a cold CI fixture) returns null from the
       // CQRS reader. A null is NEVER an empty-news success or a thrown 503.
       const snapshot=await readHot50MaterializedNews(env,now);
+      coldCQRS=snapshot===null;
       if(snapshot){
       const filtered=[];
       for(let i=0;i<snapshot.signals.length;i++){
@@ -228,7 +230,7 @@ export async function readDerivedStories(env,now=Date.now(),offset=0,legacyDelay
     }
     // A genuinely empty/unmigrated CQRS table uses the existing bounded
     // journal/materialized-page path. Owner readback stays canonical.
-    const projected=allowMaterialized?
+    const projected=allowMaterialized&&!coldCQRS?
       await getMaterializedNewsPage(env,offset,now):null;
     // Protected readback, stale/missing snapshot and any failed materialization
     // still issue the original verified source-journal SELECT unchanged.
@@ -294,8 +296,10 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
   if(!Number.isFinite(now))
     return json({ok:false,error:"DERIVED_NEWS_BUNDLE_CLOCK_INVALID",chargeable:false},400);
   try {
+    let coldCQRS=false;
     if(allowMaterialized&&env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"){
       const stored=await readHot50MaterializedNews(env,now);
+      coldCQRS=stored===null;
       if(stored){
       const signals=[],firstIngest=[];
       for(let i=0;i<stored.signals.length;i++){
@@ -310,7 +314,7 @@ export async function readDerivedStoriesBundle(env,now=Date.now(),allowMateriali
       return output;
       }
     }
-    const projected=allowMaterialized?
+    const projected=allowMaterialized&&!coldCQRS?
       await getMaterializedNewsBundle(env,now):null;
     const {results=[]}=projected!==null?{results:projected}:
       await env.DB.prepare(
