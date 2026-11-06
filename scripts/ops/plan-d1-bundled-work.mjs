@@ -48,7 +48,8 @@ if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.schema!=="geomacro.d1-read-pacing-policy.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.daily_soft_rows_read_max!==120_000||
    FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.rolling_capacity_rows!==20_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||\n   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
+   FIVE_USD_BUDGET.paid_admission?.d1_read_pacing_policy?.refill_rows_per_minute!==70||
+   FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.schema!=="geomacro.d1-write-token-bucket.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.daily_soft_rows_written_max!==180_000||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.capacity_rows!==7_500||
    FIVE_USD_BUDGET.paid_admission?.d1_write_token_bucket?.refill_rows_per_minute!==125||
