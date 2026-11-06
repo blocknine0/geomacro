@@ -29,7 +29,8 @@ describe("Supabase-free recurring quota footprint",()=>{
     });
   });
   it("reports depleted capacity without pretending it resets or grants writes",()=>{
-    const v=validateAccountBudget(sample(B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT),{now});
+    const v=validateAccountBudget(sample(B2_DAILY_LIMITS.GET,B2_DAILY_LIMITS.PUT,
+      B2_DAILY_LIMITS.HEAD,B2_DAILY_LIMITS.NATIVE_AUTH),{now});
     expect(v.b2_daily_quota_exhausted).toBe(true);
     expect(v.b2_remaining.total).toBe(0);
     expect(v.ungoverned_b2_admission).toBe(false);

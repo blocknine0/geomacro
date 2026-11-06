@@ -163,7 +163,8 @@ test("self-certified news severity remains separate; public Risk Indices require
  assert.match(worker,/\/v1\/public\/geomacro-certified-news-severity-gri/u);
  assert.match(worker,/\/v1\/public\/reviewed-risk-indices/u);
  assert.match(hook,/async function readCurrentReviewedSignedIndices\(\)/u);
- assert.match(hook,/readCurrentReviewedSignedIndices\(\)\.then\(data =>/u);
+ assert.match(hook,/const pending = readCurrentReviewedSignedIndices\(\)\.then\(data =>/u);
+ assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh\)/u);
  assert.match(hook,/body\.meta\.signature_verified!==true/u);
  assert.match(view,/Reviewer-gated GRI v1.2/u);
  assert.match(view,/Authentic independent reviewer certificates/u);

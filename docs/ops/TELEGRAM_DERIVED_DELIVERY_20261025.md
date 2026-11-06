@@ -64,11 +64,13 @@ The job checks the filename hash against the actual object bytes.
 
 After the owner supplies real export files and the verified 72h
 lifecycle, `Owner Telegram Desktop Export Derived JSON (No Funds)`
-runs six-hourly and on explicit workflow_dispatch. It queries B2
-objects with a tightly bound ListObjectsV2 request under the existing
-D1 B2 account-wide GET request quota. It skips processed source-object
-hashes, reads at most two small exports per run, then writes only the
-derived JSON to the existing protected control-plane D1.
+runs six-hourly and on explicit workflow_dispatch. The zero-list policy
+requires source object paths and version IDs to be registered in D1 at
+upload time. The workflow reads only D1-indexed exact object keys, skips
+processed source-object hashes, reads at most two small exports per run,
+then writes only the derived JSON to the existing protected control-plane D1.
+Legacy exports absent from the D1 index remain unavailable until imported
+through an indexed upload; no B2 bucket enumeration is permitted.
 
 Protected paths, bearer token mandatory:
 - `PUT /v1/internal/telegram-export-derived-json`: strict derived-only

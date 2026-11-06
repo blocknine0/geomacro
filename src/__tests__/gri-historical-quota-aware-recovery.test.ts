@@ -15,7 +15,11 @@ describe("quota-aware genuine immutable historical GRI retry",()=>{
   expect(x.b2_requests+x.d1_writes+x.payments).toBe(0);
  });
  it("holds for native/GET/total quota exhaustion without spending",()=>{
-  for(const d of [{get_requests:339,total_requests:354},{native_auth_requests:40,total_requests:60},{total_requests:719,get_requests:330,put_requests:350,head_requests:20,native_auth_requests:19}]){
+  for(const d of [
+   {get_requests:1998,total_requests:1998,put_requests:0,head_requests:0,native_auth_requests:0},
+   {native_auth_requests:40,total_requests:40,get_requests:0,put_requests:0,head_requests:0},
+   {total_requests:4077,get_requests:2000,put_requests:2000,head_requests:40,native_auth_requests:37},
+  ]){
    const x=decideGriHistoryQuotaAdmission({rows:[row(d)],now});
    expect(x.status).toBe("SHARED_B2_QUOTA_HELD");
    expect(x.quota_allows_attempt).toBe(false);
@@ -24,7 +28,7 @@ describe("quota-aware genuine immutable historical GRI retry",()=>{
  });
  it("accepts a truly empty day and rejects malformed/adulterated reservations",()=>{
   expect(decideGriHistoryQuotaAdmission({rows:[],now}).quota_allows_attempt).toBe(true);
-  for(const bad of [[row({day_utc:"2026-10-17"})],[row({total_requests:21})],[row({get_requests:341,total_requests:356})],[row({extra:"invalid"})],[row(),row()],null]){
+  for(const bad of [[row({day_utc:"2026-10-17"})],[row({total_requests:21})],[row({get_requests:2001,total_requests:2016})],[row({extra:"invalid"})],[row(),row()],null]){
    expect(()=>decideGriHistoryQuotaAdmission({rows:bad,now})).toThrow();
   }
  });
