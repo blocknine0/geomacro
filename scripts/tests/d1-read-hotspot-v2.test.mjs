@@ -16,8 +16,9 @@ test("one exact indexed materialized row is read for each hot50 public miss",asy
  const env={DB:{prepare(sql){
   queries++;
   assert.equal(sql,"SELECT payload,updated_at FROM materialized_cache WHERE key=? LIMIT 1");
-  return {bind(...args){binds.push(args);return {first:async()=>({
-   payload:JSON.stringify(valid()),updated_at:now-10000
+  return {bind(...args){binds.push(args);return {all:async()=>({
+   results:[{payload:JSON.stringify(valid()),updated_at:now-10000}],
+   meta:{rows_read:1,rows_written:0}
   })}}};
  }}};
  assert.equal((await readHot50MaterializedNews(env,now)).ok,true);
