@@ -11,12 +11,12 @@ import {join,relative,sep} from 'node:path';
 const SCAN_ROOTS=Object.freeze(['.']);
 const SOURCE=/\.(?:mjs|js|cjs|ts|tsx|jsx|py|sh|bash|ps1|ya?ml|json|jsonc)$/u;
 const D1_CALL=/\b([A-Za-z_$][\w$]*)\s*(?:\?\.)?\.\s*(?:prepare|batch|exec)\s*\(/gu;
-const D1_BINDING_ALIAS=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*(?:\?\.)?\.\s*(?:DB|D1)\b/gu;
+const D1_BINDING_ALIAS=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[A-Za-z_$][\w$]*\s*(?:\?\.)?\.\s*DB\b/gu;
 const D1_ALIAS_ASSIGNMENT=/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([A-Za-z_$][\w$]*)\s*;/gu;
 const D1_REST_ENDPOINT=/(?:https?:\/\/)?api\.cloudflare\.com\/client\/v4\/accounts\/[^\s"']+\/d1\/database\/[^\s"']+\/query|\/d1\/database\/[^\s"']+\/query/iu;
 function accessesD1(source){
  if(D1_REST_ENDPOINT.test(source))return true;
- const aliases=new Set(['DB','D1','db','d1','database']);
+ const aliases=new Set(['DB']);
  let changed=true;
  while(changed){
   changed=false;
