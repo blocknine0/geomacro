@@ -1,8 +1,10 @@
+import {reserveB2AccountQuota} from "./b2-account-quota.mjs";
 const TYPES=new Set(["verified_media","official","unverified_osint"]);
 const CATEGORIES=new Set(["conflict","macro_economics","commodities","sanctions"]);
 const CATEGORY_ALIASES=Object.freeze({macro:"macro_economics",geopolitics:"conflict",
  "critical_minerals":"commodities",rare_earth:"commodities"});
 const HEX=/^[a-f0-9]{64}$/u;
+const ENCODER=new TextEncoder();
 const text=(v,max)=>typeof v==="string"&&v.trim().length>0&&v.length<=max;
 const isoCountry=v=>v===null||typeof v==="string"&&/^[A-Z]{2}$/u.test(v);
 const json=(v,status=200,headers={})=>Response.json(v,{status,headers:{
@@ -104,6 +106,60 @@ export async function exportUnifiedEvents(env,limit=500){
  }catch{return json({ok:false,error:"UNIFIED_EVENT_EXPORT_UNAVAILABLE"},503)}
 }
 
+async function hmac(key,value){
+ const raw=typeof key==="string"?ENCODER.encode(key):key;
+ const imported=await crypto.subtle.importKey("raw",raw,{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+ return new Uint8Array(await crypto.subtle.sign("HMAC",imported,ENCODER.encode(value)));
+}
+const hex=bytes=>[...bytes].map(x=>x.toString(16).padStart(2,"0")).join("");
+async function digest(value){return hex(new Uint8Array(await crypto.subtle.digest("SHA-256",value)))}
+
+export async function verifyUnifiedB2Archive(env,body,{fetchImpl=globalThis.fetch.bind(globalThis),
+ now=new Date(),reserve=async()=>reserveB2AccountQuota(env.DB,
+  {kind:"GET",workflow_id:"unified_event_archive"},{now})}={}){
+ const key=body?.archive_object_key;
+ if(!env?.DB?.prepare||!HEX.test(body?.archive_sha256??"")||
+    typeof key!=="string"||!/^archive\/events\/20\d{6}T\d{2}-[a-f0-9]{64}\.ndjson\.gz$/u.test(key)||
+    key.includes(".."))return json({ok:false,error:"UNIFIED_EVENT_ARCHIVE_VERIFY_INVALID"},400);
+ try{
+  const endpoint=new URL(String(env.B2_S3_ENDPOINT??""));
+  const bucket=String(env.B2_SPOOL_BUCKET??"");
+  const access=String(env.B2_KEY_ID??""),secret=String(env.B2_APPLICATION_KEY??"");
+  if(endpoint.protocol!=="https:"||!/^s3\.[a-z0-9-]+\.backblazeb2\.com$/u.test(endpoint.hostname)||
+     !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/u.test(bucket)||access.length<5||secret.length<20)
+   throw Error("B2_CONFIGURATION_UNAVAILABLE");
+  const quota=await reserve();
+  if(!quota.ok||!quota.reserved)throw Error("B2_QUOTA_HELD");
+  const at=now.toISOString().replace(/[:-]|\.\d{3}/gu,"");
+  const day=at.slice(0,8),region=endpoint.hostname.slice(3,-".backblazeb2.com".length);
+  const path="/"+[bucket,...key.split("/")].map(encodeURIComponent).join("/");
+  const host=endpoint.host,emptyHash=await digest(new Uint8Array());
+  const headers="host:"+host+"\n"+"x-amz-content-sha256:"+emptyHash+"\n"+"x-amz-date:"+at+"\n";
+  const signed="host;x-amz-content-sha256;x-amz-date",scope=day+"/"+region+"/s3/aws4_request";
+  const canonical=["GET",path,"",headers,signed,emptyHash].join("\n");
+  const canonicalHash=await digest(ENCODER.encode(canonical));
+  const stringToSign=["AWS4-HMAC-SHA256",at,scope,canonicalHash].join("\n");
+  const kd=await hmac("AWS4"+secret,day),kr=await hmac(kd,region),ks=await hmac(kr,"s3"),sigKey=await hmac(ks,"aws4_request");
+  const signature=hex(await hmac(sigKey,stringToSign));
+  const response=await fetchImpl(endpoint.origin+path,{method:"GET",redirect:"manual",
+   headers:{"x-amz-content-sha256":emptyHash,"x-amz-date":at,
+    "Authorization":"AWS4-HMAC-SHA256 Credential="+access+"/"+scope+
+     ", SignedHeaders="+signed+", Signature="+signature},
+   signal:AbortSignal.timeout(12000)});
+  if(response.status!==200||response.redirected)throw Error("B2_OBJECT_FETCH_FAILED");
+  const length=Number(response.headers.get("content-length")||"0");
+  if(Number.isFinite(length)&&length>5_000_000)throw Error("B2_OBJECT_TOO_LARGE");
+  const bytes=new Uint8Array(await response.arrayBuffer());
+  if(bytes.length>5_000_000||await digest(bytes)!==body.archive_sha256)
+   throw Error("B2_OBJECT_SHA256_MISMATCH");
+  return json({ok:true,archive_object_key:key,archive_sha256:body.archive_sha256,
+   b2_exact_readback_verified:true,byte_length:bytes.length},200);
+ }catch(error){
+  const code=/^(B2_CONFIGURATION_UNAVAILABLE|B2_QUOTA_HELD|B2_OBJECT_FETCH_FAILED|B2_OBJECT_TOO_LARGE|B2_OBJECT_SHA256_MISMATCH)$/u.test(error?.message)?error.message:"B2_READBACK_UNAVAILABLE";
+  return json({ok:false,error:code,held:true},503);
+ }
+}
+
 export async function reserveUnifiedEventArchiveSlot(env,body,now=Date.now()){
  const hour=new Date(now).toISOString().slice(0,13);
  if(!env?.DB?.prepare||body?.schema!=="geomacro.unified-event-archive-slot.v1"||body.hour_utc!==hour)
@@ -122,7 +178,7 @@ export async function reserveUnifiedEventArchiveSlot(env,body,now=Date.now()){
 export async function ackUnifiedEventsArchive(env,body,now=Date.now()){
  if(!env?.DB?.prepare||body?.schema!=="geomacro.unified-event-archive-ack.v1"||
     !/^20\d{2}-\d{2}-\d{2}T\d{2}$/u.test(body.hour_utc)||!text(body.archive_object_key,512)||!HEX.test(body.archive_sha256)||!Array.isArray(body.ids)||body.ids.length<1||body.ids.length>500||
-    body.ids.some(x=>!HEX.test(x))||new Set(body.ids).size!==body.ids.length)
+    body.b2_exact_readback_verified!==true||body.ids.some(x=>!HEX.test(x))||new Set(body.ids).size!==body.ids.length)
   return json({ok:false,error:"UNIFIED_EVENT_ARCHIVE_ACK_INVALID"},400);
  try{
   const placeholders=body.ids.map(()=>"?").join(",");
@@ -137,6 +193,7 @@ export async function ackUnifiedEventsArchive(env,body,now=Date.now()){
    .bind(body.archive_object_key,body.archive_sha256,Math.floor(now/1000),hour).run();
   const slot=await env.DB.prepare("SELECT state,archive_object_key,archive_sha256 FROM unified_event_archive_slots WHERE hour_utc=? LIMIT 1").bind(hour).first();
   if(slot?.state!=="ACKED"||slot.archive_object_key!==body.archive_object_key||slot.archive_sha256!==body.archive_sha256)throw Error();
-  return json({ok:true,acknowledged:r.results.length,d1_archive_pointer_readback_verified:true});
+  return json({ok:true,acknowledged:r.results.length,b2_exact_readback_verified:true,
+   d1_archive_pointer_readback_verified:true});
  }catch{return json({ok:false,error:"UNIFIED_EVENT_ARCHIVE_ACK_UNVERIFIED",held:body.ids.length},503)}
 }

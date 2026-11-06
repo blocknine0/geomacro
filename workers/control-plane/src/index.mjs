@@ -50,7 +50,7 @@ import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvi
 import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
 import {commercialRiskGateEvaluate} from "./commercial-risk-gate.mjs";
 import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs";
-import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
+import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
@@ -2032,6 +2032,9 @@ export default {
       }
       if(request.method==="POST"&&url.pathname==="/v1/internal/unified-events/archive-slot"&&!url.search){
         return reserveUnifiedEventArchiveSlot(env,await readJson(request,1024));
+      }
+      if(request.method==="POST"&&url.pathname==="/v1/internal/unified-events/archive-verify"&&!url.search){
+        return verifyUnifiedB2Archive(env,await readJson(request,2048));
       }
       if(request.method==="PUT"&&url.pathname==="/v1/internal/unified-events/archive-ack"&&!url.search){
         const body=await readJson(request,64000);

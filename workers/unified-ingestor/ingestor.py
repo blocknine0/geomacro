@@ -302,16 +302,24 @@ class IngestService:
                 Metadata={"sha256": sha, "item-count": str(len(events))})
             if str(put_result.get("ETag", "")).strip('"').lower() != md5.hex():
                 raise RuntimeError("B2_WRITE_ACK_CHECKSUM_MISMATCH")
+            verify = await self.http.post(WORKER_URL + "/v1/internal/unified-events/archive-verify",
+                headers={"Authorization": f"Bearer {WORKER_TOKEN}"},
+                json={"archive_object_key": key, "archive_sha256": sha})
+            verify_body = verify.json()
+            if verify.status_code != 200 or verify_body.get("ok") is not True or verify_body.get("b2_exact_readback_verified") is not True:
+                raise RuntimeError("B2_EXACT_READBACK_UNVERIFIED")
             ack = await self.http.put(WORKER_URL + "/v1/internal/unified-events/archive-ack",
                 headers={"Authorization": f"Bearer {WORKER_TOKEN}"},
                 json={"schema": "geomacro.unified-event-archive-ack.v1", "archive_object_key": key,
-                    "hour_utc": hour_utc, "archive_sha256": sha, "ids": [row["id"] for row in events]})
+                    "hour_utc": hour_utc, "archive_sha256": sha,
+                    "b2_exact_readback_verified": True, "ids": [row["id"] for row in events]})
             result = ack.json()
-            if ack.status_code != 200 or result.get("ok") is not True or result.get("d1_archive_pointer_readback_verified") is not True:
+            if ack.status_code != 200 or result.get("ok") is not True or result.get("d1_archive_pointer_readback_verified") is not True or result.get("b2_exact_readback_verified") is not True:
                 raise RuntimeError("D1_ARCHIVE_ACK_UNVERIFIED")
             log.info("hourly_archive items=%d bytes=%d sha256=%s", len(events), len(archive), sha)
             return {"ok": True, "archived": len(events), "archive_sha256": sha,
                 "b2_put_checksum_acknowledged": True,
+                "b2_exact_readback_verified": True,
                 "d1_archive_pointer_readback_verified": True, "has_more": data.get("has_more") is True}
         except Exception as exc:
             log.error("hourly_archive_held error=%s", type(exc).__name__)

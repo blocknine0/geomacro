@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {putUnifiedEvents,readUnifiedEvents,reserveUnifiedEventArchiveSlot} from "../../workers/control-plane/src/unified-event-stream.mjs";
+import {putUnifiedEvents,readUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive} from "../../workers/control-plane/src/unified-event-stream.mjs";
 import {eligiblePublicFreeD1CacheRequest} from "../../workers/control-plane/src/public-free-d1-cache.mjs";
 
 class MockD1 {
@@ -85,4 +85,30 @@ test("only fixed unified feed queries enter the public edge cache",()=>{
   assert.equal(eligiblePublicFreeD1CacheRequest(new Request("https://example/api/v1/feed?category=macro&min_credibility=0.7")),true);
   assert.equal(eligiblePublicFreeD1CacheRequest(new Request("https://example/api/v1/feed?category=macro&min_credibility=0.7&country=US")),false);
   assert.equal(eligiblePublicFreeD1CacheRequest(new Request("https://example/api/v1/feed?category=macro&min_credibility=0.2")),false);
+});
+
+test("B2 archive parity requires a quota-reserved exact SHA-256 body readback",async()=>{
+  const bytes=new TextEncoder().encode("gzip fixture bytes"),sha=createHash("sha256").update(bytes).digest("hex");
+  let calls=0,headers;
+  const result=await verifyUnifiedB2Archive({DB:{prepare(){}},
+    B2_S3_ENDPOINT:"https://s3.us-east-005.backblazeb2.com",B2_SPOOL_BUCKET:"geomacro-private-archive",
+    B2_KEY_ID:"access-key",B2_APPLICATION_KEY:"secret-key-value-long-enough"},{
+    archive_object_key:`archive/events/20261106T23-${sha}.ndjson.gz`,archive_sha256:sha,
+  },{
+    now:new Date("2026-11-06T23:35:00Z"),
+    reserve:async()=>({ok:true,reserved:true}),
+    fetchImpl:async(url,init)=>{calls++;headers=init.headers;return new Response(bytes,{status:200})},
+  });
+  assert.equal(result.status,200);assert.equal((await result.json()).b2_exact_readback_verified,true);
+  assert.equal(calls,1);assert.match(headers.Authorization,/AWS4-HMAC-SHA256/u);
+});
+
+test("B2 exact readback fails closed when shared quota is held",async()=>{
+  let calls=0;
+  const response=await verifyUnifiedB2Archive({DB:{prepare(){}}},{
+    archive_object_key:"archive/events/20261106T23-"+"a".repeat(64)+".ndjson.gz",
+    archive_sha256:"a".repeat(64),
+  },{now:new Date("2026-11-06T23:35:00Z"),reserve:async()=>({ok:false,reserved:false}),
+    fetchImpl:async()=>{calls++;return new Response("never")}});
+  assert.equal(response.status,503);assert.equal(calls,0);
 });
