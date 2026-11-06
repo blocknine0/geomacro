@@ -118,7 +118,7 @@ test('key issuance works through real typed RPC aliases; only masked metadata is
  authenticate:async()=>({id:user,email:'fixture@example.test',email_confirmed_at:new Date().toISOString()})};
  const app=createRiskApi(runtime,{SITE_ORIGIN:'https://geomacro.live'}),url='https://api.geomacro.live/v1/api-keys';
  const r=await app(new Request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label:'API fixture'})}));
- assert.equal(r.status,201);const key=await r.json();assert.match(key.api_key,/^gm_live_/);
+ assert.equal(r.status,201);const key=await r.json();assert.match(key.api_key,/^gm_live2_[A-Za-z0-9_-]{43}$/);
  const listed=await (await app(new Request(url))).json();assert(listed.keys.some(k=>k.id===key.id));
  assert(!JSON.stringify(listed).includes(key.api_key));assert(!JSON.stringify(listed).includes(hash(key.api_key)));
  const revoked=await app(new Request(`${url}/${key.id}/revoke`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}));
