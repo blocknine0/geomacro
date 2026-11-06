@@ -2,7 +2,7 @@
 /**
  * External production-only, no-funds proof of the optional Free Ask formatter.
  * The returned generic markers attest a validated provider completion and
- * warm-instance cache reuse; they do NOT imply a distributed cache or new facts.
+ * cross-instance D1 cache reuse only when scope=distributed; no new facts.
  * No API credential, publisher data, answer body or user identifier is logged.
  */
 const DEFAULT_ORIGIN="https://geomacro.live";
@@ -54,7 +54,7 @@ export async function readAsk(origin,question,fetchImpl=fetch){
     !Array.isArray(a.evidence)||a.evidence.length!==0)
    throw Error("ASK_FREE_GROQ_UNSAFE_OR_INELIGIBLE_ANSWER");
  return {rendering:a.model_rendering??"unavailable",
-   cache:a.model_render_cache??"unavailable",answer_kind:a.answer_kind,
+   cache:a.model_render_cache??"unavailable",scope:a.model_render_cache_scope??"unavailable",answer_kind:a.answer_kind,
    fallback:a.model_render_failure??null};
 }
 export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetch){
@@ -66,28 +66,28 @@ export async function verifyLiveAskFreeGroq(origin=DEFAULT_ORIGIN,fetchImpl=fetc
  const results=[];
  for(const test of CASES){
    const a=await readAsk(base,test.question,fetchImpl);
-   results.push({domain:test.name,rendering:a.rendering,cache:a.cache});
+   results.push({domain:test.name,rendering:a.rendering,cache:a.cache,scope:a.scope});
    console.log(JSON.stringify({stage:"model_probe",domain:test.name,rendering:a.rendering,cache:a.cache,fallback:a.fallback}));
  }
  const unverified=results.filter(x=>x.rendering!=="assisted").map(x=>x.domain);
  if(unverified.length)throw Error("ASK_FREE_GROQ_GENERATION_UNVERIFIED_"+unverified.join("_").toUpperCase());
- // An immediately repeated eligible question must produce a genuine cache
- // readback in a warm instance. A different backend instance can miss; report
- // the result rather than pretend memory caching is globally shared.
+ // A repeated eligible question MUST hit the separately verified D1 cache.
+ // A warm runtime hit is helpful but insufficient proof of cross-server reuse.
  const repeat=await readAsk(base,CASES[0].question,fetchImpl);
- console.log(JSON.stringify({stage:"repeat_probe",rendering:repeat.rendering,cache:repeat.cache}));
+ console.log(JSON.stringify({stage:"repeat_probe",rendering:repeat.rendering,cache:repeat.cache,scope:repeat.scope}));
  if(repeat.rendering!=="assisted")throw Error("ASK_FREE_GROQ_REPEATED_RENDERING_UNVERIFIED");
  if(expected&&build.sha!==expected)throw Error("ASK_PUBLISHED_SHA_UNVERIFIED");
  return {schema:"geomacro.ask-free-groq-live-proof.v1",origin:base,
    model_generation_domains:results.length,rendering_accepted:true,
    repeated_question_cache_status:repeat.cache,
-   same_runtime_cache_hit_observed:repeat.cache==="hit",
-   distributed_cache_proven:false,published_sha_checked:expected!==null&&build.sha===expected,
+   warm_or_distributed_cache_hit_observed:repeat.cache==="hit",
+   distributed_cache_proven:repeat.cache==="hit"&&repeat.scope==="distributed",
+   published_sha_checked:expected!==null&&build.sha===expected,
    results,no_funds:true};
 }
 if(import.meta.url===new URL("file://"+process.argv[1]).href){
  verifyLiveAskFreeGroq(process.env.GEOMACRO_BASE_URL).then(x=>{
    console.log(JSON.stringify(x));
-   if(!x.same_runtime_cache_hit_observed)process.exitCode=2;
+   if(!x.distributed_cache_proven)process.exitCode=2;
  }).catch(e=>{console.error(e.message);process.exitCode=1});
 }
