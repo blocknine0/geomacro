@@ -147,15 +147,18 @@ async function main(){
  if(after.backlog.archived_outboxes!==checked||after.backlog.exact_bundle_journal_mismatch!==0)
    fail("D1_FINAL_CENSUS_MISMATCH");
  const zero=after.backlog.d1_zero_unhandled_proven===true;
- const b2BothWays=physical!==null;
+ const b2BothWays=physical!==null&&checked>0&&after.backlog.outbox===0;
+ // An empty archived namespace proves set equality only, not a successful
+ // independent object GET or recovery of the pending encrypted outbox.
  const report={schema:"geomacro.hot50-storage-readback.v1",
    checked_at:new Date().toISOString(),control_plane_origin:ORIGIN,
    head_sha:process.env.GITHUB_SHA??null,run_id:process.env.GITHUB_RUN_ID??null,
    d1_manifest_sha256:manifestSha,stable_d1_manifest_verified:true,
    b2_manifest_sha256:physicalSha,stable_b2_manifest_verified:true,
    coverage_scope:"ARCHIVED_ENCRYPTED_P0B_OUTBOX_BATCHES",
+   pending_outbox_batches:after.backlog.outbox,
    checked_archived_bundles:checked,d1_archived:census.backlog.archived_outboxes,
-   independent_s3_get_sha256_aes_gcm_restoration:true,
+   independent_s3_get_sha256_aes_gcm_restoration:checked>0,
    d1_replay_and_journal_census_complete:true,
    physical_bucket_list_complete:b2BothWays,
    bidirectional_parity_pass:b2BothWays,
