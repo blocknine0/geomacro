@@ -11,14 +11,15 @@ const DAY=/^\d{4}-\d{2}-\d{2}$/u;
 const CAPACITY_MILLI=20_000_000;
 const REFILL_MILLI_ROWS_PER_MINUTE=70_000;
 const INTERNAL_DAILY_LIMIT=120_000;
-const MAX_RESERVATION_ROWS=10_000;
+const MAX_ESTIMATED_ROWS=10_000;
+const MAX_RESERVATION_ROWS=MAX_ESTIMATED_ROWS+1;
 export async function reserveD1PhysicalReadRows(db,{
  dayUtc,providerObserved,estimatedRows,observedAt,nowMs=Date.now(),
  limit=INTERNAL_DAILY_LIMIT
 }={}){
  if(!db?.prepare||!DAY.test(dayUtc??"")||
    ![providerObserved,estimatedRows,limit,nowMs].every(Number.isSafeInteger)||
-   providerObserved<0||estimatedRows<1||estimatedRows>MAX_RESERVATION_ROWS||
+   providerObserved<0||estimatedRows<1||estimatedRows>MAX_ESTIMATED_ROWS||
    limit!==INTERNAL_DAILY_LIMIT||nowMs<0)
   throw new D1ReadBudgetHold("D1_READ_ADMISSION_INVALID");
  const reportedMs=Date.parse(observedAt??"");
