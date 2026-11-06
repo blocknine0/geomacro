@@ -27,12 +27,18 @@ export async function readHot50MaterializedNews(env,now=Date.now()){
 }
 export async function refreshHot50MaterializedNews(env,now=Date.now()){
  if(!env?.DB?.prepare||!Number.isFinite(now))return {ok:false,status:"D1_UNAVAILABLE"};
- // Dynamic import avoids a circular module load; production materialization is
- // producer-only, never triggered by a read miss or an anonymous web request.
+ // Existing 0033 revision-fenced pages avoid a canonical scan on QUIET
+ // ticks. A changed journal incurs one bounded <=601-row scan on the producer.
+ const {refreshMaterializedNewsPages}=await import("./materialized-public-news-pages.mjs");
+ const pages=await refreshMaterializedNewsPages(env,now);
+ if(!["MATERIALIZED_ALREADY_CURRENT","MATERIALIZED_COMMIT_VERIFIED"].includes(pages.status))
+  return {ok:false,status:"PAGES_REVISION_NOT_VERIFIED"};
+ // Dynamic import avoids a module cycle. The producer uses existing canonical
+ // revision-fenced pages, never an anonymous HTTP cache hit or prior hot row.
  const {readDerivedStoriesBundle}=await import("./website-derived-intelligence.mjs");
- // IMPORTANT: false forces the canonical SOURCE journal; one <=601-row bounded
- // scan occurs on the scheduled producer, not per website request.
- const response=await readDerivedStoriesBundle(env,now,false);
+ const response=await readDerivedStoriesBundle({
+  ...env,GEOMACRO_D1_READ_HOTSPOT_V2:"0"
+ },now,true);
  if(response.status!==200)return {ok:false,status:"JOURNAL_UNAVAILABLE"};
  const text=await response.text();
  if(new TextEncoder().encode(text).byteLength>MAX_BYTES)
