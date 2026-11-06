@@ -63,8 +63,13 @@ parallel canonical data source or ingest private OSINT into a public cache.
    at `0` until the schema and revision-fenced publisher ACK are observed.
 5. Enable `GEOMACRO_D1_READ_HOTSPOT_V2=1` in the **actual Worker
    configuration**; first allow the 10-minute producer to publish and prove the
-   single-row snapshot. Confirm HTTP 200 for every three-domain public category,
-   strict no-cache/private bypass and exact canonical journal parity.
+   single-row snapshot. Optionally set `GEOMACRO_D1_READ_METRICS_SAMPLE=1` to
+   log the real D1 `meta.rows_read` and `meta.rows_written` for each public
+   PK lookup, without payloads or private query arguments. Confirm HTTP 200
+   for every three-domain public category and canonical journal parity.
+   For public routes, no-cache/Authorization headers bypass shared edge response
+   caching but may still read the one-row public projection; the separately
+   owner-authenticated INTERNAL readback remains genuinely canonical D1.
 6. The optional `GEOMACRO_PREDGE_SIGNED_GRO_READ_CACHE=1` and private KV
    binding `SIGNED_GRO_CACHE_KV` must be separately authorized: the former
    accepts a <=5s revocation-observation window, while KV remains
