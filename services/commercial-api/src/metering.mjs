@@ -1,6 +1,9 @@
 import { createHash, randomBytes, sign, verify, createPublicKey } from 'node:crypto';
 
 export const hash = value => createHash('sha256').update(value, 'utf8').digest('hex');
+// SHA-256 here commits signed receipt bytes and identifies 256-bit randomly
+// minted API tokens. It must NEVER be used for a human-selected password.
+// See security regression tests and commercial API threat-model documentation.
 // Deterministic JSON for this protocol, NOT a claim of RFC 8785 conformance.
 // Store and replay these exact UTF-8 bytes; never reserialize before verifying.
 export function canonicalize(value) {
@@ -36,7 +39,8 @@ export async function settleVerifiedSuccess(pool, {
   apiKey, requestId, subject, requestedTier, availableTiers, riskByTier,
   privateKey, publicKeyId, publicKeys, signal,
 }) {
-  if (!['basic', 'standard', 'complex'].includes(requestedTier) ||
+  if (!/^gm_live_[A-Za-z0-9_-]{43}$/.test(apiKey) ||
+      !['basic', 'standard', 'complex'].includes(requestedTier) ||
       typeof subject !== 'string' || !subject.length || !Array.isArray(availableTiers))
     throw new BillingError('INVALID_REQUEST');
   const requestHash = hash(canonicalize({ method: 'POST', path: '/v1/risk-gate', subject, tier: requestedTier }));
