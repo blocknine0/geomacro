@@ -8,6 +8,11 @@ export class D1BudgetHold extends Error {
  constructor(code){super(code);this.name="D1BudgetHold";}
 }
 const DAY=/^\d{4}-\d{2}-\d{2}$/u;
+// Token bucket: 125 rows/minute (180,000/day), with a finite 7,500-row burst.
+// The cumulative daily counter remains an independent upper bound.
+const D1_BUCKET_CAPACITY_MILLI=7_500_000;
+const D1_REFILL_MILLI_ROWS_PER_MINUTE=125_000;
+
 export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimatedRows,limit=180000,observedAt}={}){
  if(!db?.batch||!DAY.test(dayUtc??"")||![providerObserved,estimatedRows,limit].every(Number.isSafeInteger)||
     providerObserved<0||estimatedRows<2||estimatedRows>1000||limit!==180000)
@@ -21,20 +26,29 @@ export async function reserveD1PhysicalRows(db,{dayUtc,providerObserved,estimate
  const now=new Date(currentMs).toISOString();
  const receipts=await db.batch([
   db.prepare("INSERT OR IGNORE INTO geomacro_d1_soft_write_budget " +
-   "(day_utc,reserved_rows,observed_provider_highwater,updated_at) VALUES(?,0,?,?)")
-   .bind(dayUtc,providerObserved,now),
+   "(day_utc,reserved_rows,observed_provider_highwater,updated_at,tokens_milli,last_refill_ms) " +
+   "VALUES(?,0,?,?,?,?)")
+   .bind(dayUtc,providerObserved,now,D1_BUCKET_CAPACITY_MILLI,currentMs),
   db.prepare("UPDATE geomacro_d1_soft_write_budget SET " +
    "reserved_rows=reserved_rows+?, " +
-   "observed_provider_highwater=MAX(observed_provider_highwater,?),updated_at=? " +
+   "observed_provider_highwater=MAX(observed_provider_highwater,?), " +
+   "tokens_milli=MIN(?,tokens_milli+CAST(MAX(0,?-last_refill_ms)*?/60000 AS INTEGER)-?), " +
+   "last_refill_ms=?,updated_at=? " +
    "WHERE day_utc=? AND MAX(observed_provider_highwater,?)+reserved_rows+?<=? " +
-   "RETURNING reserved_rows,observed_provider_highwater")
-   .bind(estimatedRows,providerObserved,now,dayUtc,providerObserved,estimatedRows,limit)
+   "AND tokens_milli+CAST(MAX(0,?-last_refill_ms)*?/60000 AS INTEGER)>=? " +
+   "RETURNING reserved_rows,observed_provider_highwater,tokens_milli")
+   .bind(estimatedRows,providerObserved,D1_BUCKET_CAPACITY_MILLI,currentMs,
+    D1_REFILL_MILLI_ROWS_PER_MINUTE,estimatedRows*1000,currentMs,now,dayUtc,
+    providerObserved,estimatedRows,limit,currentMs,D1_REFILL_MILLI_ROWS_PER_MINUTE,
+    estimatedRows*1000)
  ]);
  const out=receipts?.[1]?.results;
  if(receipts?.[1]?.success===false || !Array.isArray(out) || out.length!==1)
   throw new D1BudgetHold("D1_INTERNAL_WRITE_SOFT_BUDGET_HELD");
  return Object.freeze({ok:true,day_utc:dayUtc,
   reserved_rows:out[0].reserved_rows,provider_highwater:out[0].observed_provider_highwater,
+  tokens_milli:out[0].tokens_milli,bucket_capacity_rows:D1_BUCKET_CAPACITY_MILLI/1000,
+  refill_rows_per_minute:D1_REFILL_MILLI_ROWS_PER_MINUTE/1000,
   includes_ledger_row:true,account_wide_only_if_all_writers_integrated:true});
 }
 export async function admittedBoundedD1Batch(db,statements,{dayUtc,providerObserved,
