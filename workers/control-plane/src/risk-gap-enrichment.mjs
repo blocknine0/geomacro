@@ -121,12 +121,14 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   const cursor=await env.DB.prepare("SELECT next_offset FROM risk_gap_enrichment_cursor WHERE singleton=1").first();
   const start=Number.isSafeInteger(cursor?.next_offset)?cursor.next_offset%Math.max(gaps.length,1):0;
   const page=Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>gaps[(start+i)%gaps.length]);
+  const focusedPositions=new Set(Array.from({length:Math.min(4,page.length)},(_,i)=>
+   (Math.floor(now/(20*60000))*4+i)%Math.max(1,page.length)));
   const results=await Promise.all(page.map(async(target,index)=>{
    // Always search the global index. Four of twelve rotating gap targets also
    // receive a wire/newsroom-specific index query (Reuters, ANI, AP and peers).
    // This is at most 16 Google RSS reads per 20m slot, no licensed API calls.
    const broad=await search(target,now,fetcher).catch(()=>[]);
-   const focused=index<4?await search(target,now,fetcher,
+   const focused=focusedPositions.has(index)?await search(target,now,fetcher,
     {publisherFocused:true,index}).catch(()=>[]):[];
    const seen=new Set(),items=[];
    for(const item of [...broad,...focused]){
