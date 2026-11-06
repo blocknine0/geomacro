@@ -1,5 +1,6 @@
 import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
 import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
+import {verifyHot50ArchivedPage} from "./hot50-verified-parity-page.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
 import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
@@ -1771,6 +1772,8 @@ export default {
       return readHot50ActivationCensus(env);
     if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-manifest")
       return readP0bParityManifest(env,url);
+    if(request.method==="GET"&&url.pathname==="/v1/internal/p0b/parity-verified-page")
+      return verifyHot50ArchivedPage(env,url);
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
       return getP0bIngestionStatus(env);
     if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
