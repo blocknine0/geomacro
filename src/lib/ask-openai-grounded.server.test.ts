@@ -57,6 +57,24 @@ describe("GeoMacro private research + approved OpenAI composer",()=>{
     });
     expect(safeGroundedOpenAIOutput(internal,answer,"Why copper?")).toBeNull();
   });
+  it("reports fixed rejection enums without returning private model text",()=>{
+    const valid={
+      summary:"Copper access depends on refining.",
+      what_changed:"No disruption has been established.",
+      why_it_matters:"Processing conditions affect inputs.",
+      geomacro_view:"Monitor the approved evidence.",
+    };
+    const failures:string[]=[];
+    const check=(value:Record<string,unknown>)=>
+      safeGroundedOpenAIOutput(JSON.stringify(value),answer,"Why copper?",
+        code=>failures.push(code));
+    expect(check({...valid,extra:"not approved"})).toBeNull();
+    expect(check({...valid,summary:"Long ".repeat(90)})).toBeNull();
+    expect(check({...valid,why_it_matters:"Unverified OSINT research"})).toBeNull();
+    expect(check({...valid,summary:"Copper output 987654 today."})).toBeNull();
+    expect(failures).toEqual(["unexpected_fields","field_too_long","forbidden_text",
+      "unapproved_number"]);
+  });
   it("accepts bounded explanation but preserves canonical evidence and flags",()=>{
     const content={summary:"Copper availability can change with export policy.",
       what_changed:"The current disruption has not been established.",
