@@ -1,3 +1,4 @@
+import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
 import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
 import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
@@ -1624,6 +1625,11 @@ export default {
     if(request.method==="GET"&&url.pathname==="/v1/partner/predge/derived-structural-72h")
       return predgeResearchDerivedNewsFeed(request,env);
     // Public verification material only; private signer remains protected.
+    // Current genuinely reviewed GRI v1.2 only: Ed25519 delivery receipt.
+    // No internal news severity, machine triage, replay or fabricated score.
+    if(request.method==="GET"&&url.pathname==="/v1/public/reviewed-risk-indices"&&!url.search)
+      return serveReviewedSignedRiskIndices(env,
+        product=>getPublicHotSnapshot(env,product));
     if(request.method==="GET"&&url.pathname==="/v1/public/risk-gate-decision-key"&&!url.search){
       const id=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
       const spki=String(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
