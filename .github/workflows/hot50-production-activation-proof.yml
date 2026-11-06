@@ -89,12 +89,16 @@ jobs:
           NODE
       - name: Diagnose existing independent reviewer pin without B2 requests
         continue-on-error: true
-        run: node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs > /tmp/hot50-proof/reviewer-authority.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/verify-gri-independent-reviewer-pre-b2.mjs | tee /tmp/hot50-proof/reviewer-authority.json
       - name: Independent governed B2 GET and stable canonical manifest audit
         continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
+          trap 'cat /tmp/hot50-proof/parity.json /tmp/hot50-proof/parity-error.json' EXIT
           node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/hot50-proof/parity.json 2> /tmp/hot50-proof/parity-error.json
       - name: Report all five gates and one bounded existing FIFO redrive
         if: always()
