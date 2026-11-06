@@ -3,9 +3,10 @@ import {PHASE2H_COUNTRIES_195} from "../../../scripts/lib/phase2h-country-origin
 import {CATEGORY_SPECS,CATEGORIES} from "./unified-risk-categories.mjs";
 import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {hot50RiskGateEnabled,isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
+import {riskPublisherSearchPlan,isPublisherFullTextRestricted} from "./risk-gate-global-news-search.mjs";
 
 const BATCH=12, SHA=/^[a-f0-9]{64}$/u;
-const TIER_ONE_HOSTS=["apnews.com","bbc.com","dw.com","aljazeera.com","france24.com","theguardian.com","reuters.com","npr.org"];
+const TIER_ONE_HOSTS=["apnews.com","bbc.com","dw.com","aljazeera.com","france24.com","theguardian.com","reuters.com","aninews.in","euronews.com","npr.org","thehindu.com","scmp.com","abc.net.au","cbc.ca","channelnewsasia.com","mining.com","miningweekly.com"];
 const iso=n=>new Date(n).toISOString();
 const enc=new TextEncoder();
 const hash=async value=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(value)))].map(x=>x.toString(16).padStart(2,"0")).join("");
@@ -45,7 +46,10 @@ function htmlText(html){
 }
 async function fetchArticle(item,target,fetcher){
  const expected=cleanHost(item.publisher_host);
- if(!expected||!allowedPublisher(expected,target.category))return null;
+ // Reuters/ANI/AP and paid publisher content is indexed as metadata only;
+ // absent an independently approved original licence, never fetch body text.
+ if(!expected||!allowedPublisher(expected,target.category)||
+    isPublisherFullTextRestricted(expected))return null;
  let current=item.url;
  for(let hop=0;hop<4;hop++){
   const response=await fetcher(current,{redirect:"manual",cache:"no-store",
@@ -77,10 +81,11 @@ function targets(){
   all.push({type:"CORRIDOR",id:c.id,name:c.id.replace(/-/gu," "),category});
  return all;
 }
-async function search(target,now,fetcher){
+async function search(target,now,fetcher,{publisherFocused=false,index=0}={}){
  const spec=CATEGORY_SPECS[target.category];
  const q='"'+target.name+'" ('+spec.keywords.map(x=>'"'+x+'"').join(" OR ")+") when:24h";
- const url="https://news.google.com/rss/search?q="+encodeURIComponent(q)+"&hl=en-US&gl=US&ceid=US:en";
+ const url=publisherFocused?riskPublisherSearchPlan(target,now,index).url:
+  "https://news.google.com/rss/search?q="+encodeURIComponent(q)+"&hl=en-US&gl=US&ceid=US:en";
  const response=await fetcher(url,{redirect:"manual",cache:"no-store",
   signal:AbortSignal.timeout(7000),headers:{Accept:"application/rss+xml, application/xml;q=0.9"}});
  if(response.status!==200||response.url&&hostOf(response.url)!=="news.google.com")return [];
@@ -106,18 +111,37 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    "AND evidence_status IN ('VERIFIED_SIGNED_GRO','OBSERVED_UNVERIFIED') GROUP BY entity_type,entity_id,category"
   ).bind(cutoff).all();
   for(const x of observed?.results??[])fresh.add(x.entity_type+"|"+x.entity_id+"|"+x.category);
-  const gaps=all.filter(x=>!fresh.has(x.type+"|"+x.id+"|"+x.category));
+  // Discovery is a continuing trigger, not a once-per-12h checkbox.
+  // An observed OSINT/index item is NOT a verified signed three-category GRO.
+  // Prioritize missing cells, but rotate already observed ones again to seek
+  // a real independently qualified publisher and keep the evidence fresh.
+  const missing=all.filter(x=>!fresh.has(x.type+"|"+x.id+"|"+x.category));
+  const followup=all.filter(x=>fresh.has(x.type+"|"+x.id+"|"+x.category));
+  const gaps=[...missing,...followup];
   const cursor=await env.DB.prepare("SELECT next_offset FROM risk_gap_enrichment_cursor WHERE singleton=1").first();
   const start=Number.isSafeInteger(cursor?.next_offset)?cursor.next_offset%Math.max(gaps.length,1):0;
   const page=Array.from({length:Math.min(BATCH,gaps.length)},(_,i)=>gaps[(start+i)%gaps.length]);
-  const results=await Promise.all(page.map(async target=>{
-   const items=await search(target,now,fetcher).catch(()=>[]);
-   const newest=items[0];
-   const fullText=newest?await fetchArticle(newest,target,fetcher).catch(()=>null):null;
-   return {target,items:newest?[newest]:[],fullText};
+  const results=await Promise.all(page.map(async(target,index)=>{
+   // Always search the global index. Four of twelve rotating gap targets also
+   // receive a wire/newsroom-specific index query (Reuters, ANI, AP and peers).
+   // This is at most 16 Google RSS reads per 20m slot, no licensed API calls.
+   const broad=await search(target,now,fetcher).catch(()=>[]);
+   const focused=index<4?await search(target,now,fetcher,
+    {publisherFocused:true,index}).catch(()=>[]):[];
+   const seen=new Set(),items=[];
+   for(const item of [...broad,...focused]){
+    const host=cleanHost(item.publisher_host);
+    if(!host||!SHA.test(item.title_hash)||seen.has(host)||items.length>=3)continue;
+    seen.add(host);items.push(item);
+   }
+   // Exactly one approved public original-page attempt per cell. Never
+   // fetch Reuters/ANI/AP/paywalled body from an index hint.
+   const original=items.find(item=>!isPublisherFullTextRestricted(cleanHost(item.publisher_host)));
+   const fullText=original?await fetchArticle(original,target,fetcher).catch(()=>null):null;
+   return {target,items,fullText,fullTextFor:fullText?original?.id:null};
   }));
   const rows=[];
-  for(const {target,items,fullText} of results)for(const item of items){
+  for(const {target,items,fullText,fullTextFor} of results)for(const item of items){
    const sourceHost=cleanHost(item.publisher_host);
    if(!sourceHost||!SHA.test(item.title_hash)||!Number.isFinite(Date.parse(item.published_at)))continue;
    const eventId=await hash([target.type,target.id,target.category,item.title_hash].join("|"));
@@ -125,8 +149,10 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
     observation_id:await hash([eventId,target.type,target.id,target.category,sourceHost].join("|")),
     event_id:eventId,entity_type:target.type,entity_id:target.id,category:target.category,
     event_at:item.published_at,source_id:item.source_id,source_host:sourceHost,
-    title_sha256:item.title_hash,impact_factor:impactFactor((fullText||"")+" "+item.title,target.category),
-    fact_basis:fullText?"ARTICLE_FULL_TEXT":"SEARCH_TITLE_ONLY",original_page_fetched:fullText?1:0,
+    title_sha256:item.title_hash,impact_factor:impactFactor((fullTextFor===item.id?fullText:"")+
+     " "+item.title,target.category),
+    fact_basis:fullTextFor===item.id?"ARTICLE_FULL_TEXT":"SEARCH_TITLE_ONLY",
+    original_page_fetched:fullTextFor===item.id?1:0,
     status:"OBSERVED",independent_source_count:1,discovered_at:iso(now),
    });
   }
@@ -140,7 +166,7 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   // before promoting identical event fingerprints beyond OBSERVED.
   if(rows.length)statements.push(env.DB.prepare(
    "UPDATE unverified_observations SET independent_source_count=(SELECT COUNT(DISTINCT source_host) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id), "+
-   "status=CASE WHEN (SELECT COUNT(DISTINCT source_host) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id)>=2 AND (SELECT MAX(julianday(event_at))-MIN(julianday(event_at)) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id)>=0.25 THEN 'CORROBORATED' ELSE 'OBSERVED' END "+
+   "status=CASE WHEN (SELECT COUNT(DISTINCT source_host) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=2 AND (SELECT MAX(julianday(event_at))-MIN(julianday(event_at)) FROM unverified_observations x WHERE x.event_id=unverified_observations.event_id AND x.fact_basis='ARTICLE_FULL_TEXT' AND x.original_page_fetched=1)>=0.25 THEN 'CORROBORATED' ELSE 'OBSERVED' END "+
    "WHERE event_id IN (SELECT value FROM json_each(?))"
   ).bind(JSON.stringify([...new Set(rows.map(x=>x.event_id))])));
   const next=(start+page.length)%Math.max(gaps.length,1);
@@ -159,6 +185,8 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
   return {ok:true,schema:"geomacro.risk-gap-enrichment.v1",gap_cells:gaps.length,
    searched_cells:page.length,observations:rows.length,
    fulltext_articles_fetched:results.filter(x=>x.fullText).length,
+   publisher_focused_queries:Math.min(4,page.length),
+   global_index_queries:page.length,
    original_fulltext_stored:false,provisional_only:true,
    cursor_next:next,run_at:iso(now)};
  }catch{return {ok:false,error:"RISK_GAP_ENRICHMENT_FAILED"};}
