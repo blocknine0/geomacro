@@ -11,6 +11,18 @@ test("physical list validates encoding, full pagination cursor and prefix",()=>{
  assert.throws(()=>parseBucketList(xml(),"other/"));
  assert.throws(()=>parseBucketList(Buffer.from('<!DOCTYPE x>'+xml()),prefix));
 });
+test("B2 URL-encoded keys are decoded once; XML entities and bad escapes fail closed",()=>{
+ const document=encoded=>Buffer.from(`<ListBucketResult><EncodingType>url</EncodingType><KeyCount>1</KeyCount><IsTruncated>false</IsTruncated><Contents><Key>${encoded}</Key></Contents></ListBucketResult>`);
+ const path="geomacro-evidence%2Fv1%2Fspool%2F";
+ // Percent-encoded ampersand followed by XML-looking text is literal key data,
+ // not a second instruction to unescape a different object name.
+ assert.equal(parseBucketList(document(path+"a%26amp%3Bb"),prefix).keys[0],prefix+"a&amp;b");
+ // A literal percent sequence must not be recursively decoded into a slash.
+ assert.equal(parseBucketList(document(path+"a%252Fb"),prefix).keys[0],prefix+"a%2Fb");
+ assert.throws(()=>parseBucketList(document(path+"a&amp;b"),prefix),/B2_LIST_KEY_ENTITY_INVALID/);
+ assert.throws(()=>parseBucketList(document(path+"a&#38;b"),prefix),/B2_LIST_KEY_ENTITY_INVALID/);
+ assert.throws(()=>parseBucketList(document(path+"bad%ZZ"),prefix),/B2_LIST_KEY_PERCENT_ENCODING_INVALID/);
+});
 test("count-preserving canonical substitutions change the manifest commitment",()=>{
  const a={batch_id:"a",b2_uri:"b2://x",b2_object_sha256:"c",item_count:2};
  assert.notEqual(digestManifest([a]),digestManifest([{...a,b2_object_sha256:"d"}]));
