@@ -33,3 +33,23 @@ export function riskIndicesResumeDelay(
   if (!Number.isFinite(now) || now < lastStartedAt) return refreshDelayMs;
   return Math.max(0, refreshDelayMs - (now - lastStartedAt));
 }
+
+/**
+ * Do not show a stale verified reading as "current" between browser polls.
+ * The earliest genuine source-native clock controls expiry, never the time
+ * the browser fetched the JSON envelope.
+ */
+export function riskIndicesSignedSourceRemainingMs(
+  snapshotAsOf: string,
+  readingClocks: readonly (string | null)[],
+  now = Date.now(),
+): number {
+  if (readingClocks.length !== 3 || !Number.isFinite(now)) return 0;
+  const clocks = [snapshotAsOf, ...readingClocks].map(value =>
+    typeof value === "string" ? Date.parse(value) : NaN,
+  );
+  if (clocks.some(value => !Number.isFinite(value))) return 0;
+  const oldestSource = Math.min(...clocks);
+  if (oldestSource > now + 5 * 60_000) return 0;
+  return Math.max(0, oldestSource + 60 * 60_000 - now);
+}
