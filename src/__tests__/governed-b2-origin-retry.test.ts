@@ -69,7 +69,15 @@ describe("Phase 2: governed public B2 transient recovery", () => {
     expect(worker).toContain('withGovernedB2OriginRetry(() => signedGetOnce(key, env))');
     const once=worker.slice(worker.indexOf("async function signedGetOnce"),worker.indexOf("async function gunzip"));
     expect(once).toContain("reserveB2AccountQuota(env.B2_QUOTA_DB");
-    expect(once.indexOf("reserveB2AccountQuota")).toBeLessThan(once.indexOf("await fetch("));
+    const gatewayBranch=once.indexOf('if (env.B2_STORAGE_MODE === "gateway")');
+    const gatewayFetch=once.indexOf("await fetch(endpoint,",gatewayBranch);
+    const directReservation=once.indexOf("reserveB2AccountQuota");
+    const directFetch=once.indexOf("await fetch(`${B2_ENDPOINT}${path}`, {");
+    expect(gatewayBranch).toBeGreaterThanOrEqual(0);
+    expect(gatewayFetch).toBeGreaterThan(gatewayBranch);
+    expect(once.slice(gatewayBranch,directReservation)).toContain("Authorization: `Bearer ${token}`");
+    expect(directReservation).toBeGreaterThan(gatewayFetch);
+    expect(directReservation).toBeLessThan(directFetch);
     expect(once).toContain("const timestamp = new Date().toISOString()");
     expect(once).toContain("AWS4-HMAC-SHA256 Credential=");
     expect(once).toContain("controller.abort()");
