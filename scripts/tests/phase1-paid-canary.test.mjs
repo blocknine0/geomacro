@@ -35,21 +35,24 @@ test('Observed 192823 is held: provider paid capacity cannot override GeoMacro 1
 test('Unknown or expired paid evidence fails closed',()=>{
  assert.throws(()=>assessPaidEnvelope(snapshot(0,0),{now,paidProof:{...paidProof,observed_at:'2026-11-05T00:00:00Z'},spendGuardProof}),/PROOF/);
 });
-test('Atomic admission cannot accept over-reserved provider counter',async()=>{
- let updated=false;const receipts=[];
- const db={prepare(sql){return {bind(...args){return {sql,args}}}},async batch(q){
-  receipts.push(q);
-  if(q[1].args[9]+q[1].args[10]>q[1].args[11])return [{success:true},{success:true,results:[]}];
-  updated=true;
-  return [{success:true},{success:true,results:[{reserved_rows:100,observed_provider_highwater:170000}]}];
- }};
- await assert.rejects(()=>reserveD1PhysicalRows(db,{providerObserved:192823,estimatedRows:20,observedAt:new Date().toISOString(),dayUtc:new Date().toISOString().slice(0,10)}),D1BudgetHold);
- assert.equal(updated,false);
- const success=await reserveD1PhysicalRows(db,{providerObserved:170000,estimatedRows:20,observedAt:new Date().toISOString(),dayUtc:new Date().toISOString().slice(0,10)});
- assert.equal(success.ok,true);assert.equal(receipts.length,2);
+test('Atomic D1 admission refuses observed totals above the daily cap',async()=>{
+ let admitted=false;
+ const db={prepare(){return {bind(...args){return {async first(){
+  if(args[6]+args[7]>args[8]||args[9]*1000>args[10])return null;
+  admitted=true;
+  return {reserved_rows:100,observed_provider_highwater:170000,tokens_milli:5000000};
+ }}}}}};
+ const stamp=new Date();
+ const common={estimatedRows:20,observedAt:stamp.toISOString(),dayUtc:stamp.toISOString().slice(0,10)};
+ await assert.rejects(()=>reserveD1PhysicalRows(db,{...common,providerObserved:192823}),D1BudgetHold);
+ assert.equal(admitted,false);
+ const success=await reserveD1PhysicalRows(db,{...common,providerObserved:170000});
+ assert.equal(success.ok,true);
+ assert.equal(success.tokens_milli,5000000);
+ assert.equal(admitted,true);
 });
 test('Atomic admission rejects stale provider metrics, despite free provider entitlement',async()=>{
- const db={batch(){throw Error('WRITES_MUST_NOT_OCCUR')}};
+ const db={prepare(){throw Error('WRITES_MUST_NOT_OCCUR')}};
  await assert.rejects(()=>reserveD1PhysicalRows(db,{dayUtc:new Date().toISOString().slice(0,10),
   providerObserved:1,estimatedRows:20,observedAt:'2026-01-01T00:00:00Z'}),
   /STALE_PROVIDER_COUNTER/);
