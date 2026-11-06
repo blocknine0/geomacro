@@ -62,7 +62,7 @@ export default {
  async fetch(request,env){
   let runtime=cache.get(env);if(!runtime){runtime=buildWorkerRuntime(env);cache.set(env,runtime);}
   const url=new URL(request.url);
-  if(request.method==='GET'&&url.pathname==='/v1/commercial/openapi.json')return Response.json(openapi,{headers:{'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff'}});
+  if(request.method==='GET'&&url.pathname==='/v1/commercial/openapi.json')return Response.json({...openapi,servers:[{url:env.PUBLIC_API_ORIGIN??new URL(request.url).origin}]},{headers:{'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff'}});
   if(request.method==='GET'&&['/health','/v1/commercial/health'].includes(url.pathname))return response({ok:true,schema:'geomacro.commercial-api.v1',
    deployed_sha:env.DEPLOYED_SHA??null,paypal_configured:!!runtime.paypal,x402_configured:!!runtime.x402,
    ledger_configured:!!runtime.pool,signer_configured:!!runtime.publicKey,blockers:runtime.blockers});

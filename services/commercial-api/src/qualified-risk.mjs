@@ -48,6 +48,7 @@ export function admitQualifiedProduct(data,{subject,tier,now=Date.now()}){
  }
  return {decision,risk_score:p.risk_score_0_100,factors,risk_score_kind:kind,
   confidence:p.confidence?.level??null,data_as_of:p.evaluated_at,
+  evidence_valid_until:tier==='complex'?p.gro_signature.expires_at:data.verified_live_scoring?.gro_expires_at??null,
   evidence_receipt_hash:data.audit_receipt_hash,gro_payload_hash:p.gro_signature?.payload_sha256??null};
 }
 export function createQualifiedRiskResolver({origin,token,fetchImpl=fetch,cacheTtlMs=30000}){
@@ -75,6 +76,7 @@ export function createQualifiedRiskResolver({origin,token,fetchImpl=fetch,cacheT
   requireValue(availableTiers.length,'INCONCLUSIVE_NO_CHARGE');
   const value={availableTiers,riskByTier};
   if(cache.size>=256)cache.delete(cache.keys().next().value);
-  cache.set(key,{until:now+cacheTtlMs,value:structuredClone(value)});return value;
+  const expiry=Math.min(now+cacheTtlMs,...Object.values(riskByTier).map(r=>Date.parse(r.evidence_valid_until)).filter(Number.isFinite));
+  cache.set(key,{until:expiry,value:structuredClone(value)});return value;
  };
 }

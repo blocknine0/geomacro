@@ -31,6 +31,6 @@ export function safeRiskFields(risk){
  return {decision:risk.decision,risk_score:risk.risk_score,factors:risk.factors,
   metadata:{schema:'geomacro.commercial-risk-gate.v1',advisory_only:true,certified_risk_index:false,
    risk_score_kind:risk.risk_score_kind??'UNSPECIFIED_ADVISORY_SCORE',confidence:risk.confidence??null,
-   data_as_of:risk.data_as_of??null,evidence_receipt_hash:risk.evidence_receipt_hash??null,
+   data_as_of:risk.data_as_of??null,evidence_valid_until:risk.evidence_valid_until??null,evidence_receipt_hash:risk.evidence_receipt_hash??null,
    gro_payload_hash:risk.gro_payload_hash??null,cache_status:risk.cache_status??'MISS'}};
 }

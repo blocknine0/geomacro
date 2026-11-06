@@ -11,6 +11,13 @@ const seed=createHmac('sha256',env.ROOT_LEDGER_TOKEN).update('geomacro.commercia
 const privateBytes=Buffer.concat([Buffer.from('302e020100300506032b657004220420','hex'),seed]);
 const privateKey=createPrivateKey({key:privateBytes,format:'der',type:'pkcs8'});
 const publicBytes=createPublicKey(privateKey).export({format:'der',type:'spki'});
+const routeZone=String(env.COMMERCIAL_ROUTE_ZONE_ID??'');
+if(routeZone){
+ if(!/^[a-f0-9]{32}$/.test(routeZone))throw Error('COMMERCIAL_ROUTE_ZONE_ID_INVALID');
+ config.routes=['api.geomacro.live/v1/risk-gate','api.geomacro.live/v1/api-keys*','api.geomacro.live/v1/commercial/*','api.geomacro.live/payments/paypal/*']
+  .map(pattern=>({pattern,zone_id:routeZone}));
+ config.vars.PUBLIC_API_ORIGIN='https://api.geomacro.live';
+}
 const keyId='geomacro-commercial-'+createHash('sha256').update(publicBytes).digest('hex').slice(0,16);
 const secrets={
  COMMERCIAL_SUPABASE_KEY:env.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY,
@@ -74,7 +81,7 @@ try{
  if(config.vars.PUBLIC_API_ORIGIN){
   const canonical=await fetch(config.vars.PUBLIC_API_ORIGIN+'/v1/commercial/health',{signal:AbortSignal.timeout(15000)});
   const canonicalHealth=await canonical.json();
-  if(!canonical.ok||canonicalHealth.deployed_sha!==env.GITHUB_SHA)throw Error('COMMERCIAL_CUSTOM_DOMAIN_SHA_MISMATCH');
+  if(!canonical.ok||canonicalHealth.deployed_sha!==env.GITHUB_SHA)throw Error('COMMERCIAL_API_ORIGIN_SHA_MISMATCH');
   const noFunds=await fetch(origin+'/v1/internal/commercial-acceptance',{method:'POST',
    headers:{Authorization:'Bearer '+secrets.COMMERCIAL_ACCEPTANCE_TOKEN},signal:AbortSignal.timeout(30000)});
   const body=await noFunds.json();
@@ -91,6 +98,7 @@ try{
   }else evidenceProof={status:'EVIDENCE_BLOCKED_NO_CHARGE',code:body.error??'UPSTREAM_UNAVAILABLE'};
  }
  const summary={schema:'geomacro.commercial-api-deployment.v1',origin,deployed_sha:env.GITHUB_SHA,
+  public_api_origin:config.vars.PUBLIC_API_ORIGIN,custom_api_route_attached:Boolean(config.routes?.length),
   ledger_verified:true,signer_verified:health.signer_configured===true,
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
   blockers:health.blockers,evidence_proof:evidenceProof,real_payment_attempted:false};

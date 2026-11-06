@@ -2,7 +2,7 @@
 
 ## Contract
 
-`POST https://api.geomacro.live/v1/risk-gate` accepts a JSON body containing
+`POST https://geomacro-commercial-api.daspallab202391.workers.dev/v1/risk-gate` accepts a JSON body containing
 `subject` and `tier` (`basic`, `standard`, `complex`). `request_id` or the
 `Idempotency-Key` header can supply a stable UUID; if absent, the server returns
 a newly generated ID. Retain the ID across retries. A different subject/tier under
@@ -17,7 +17,7 @@ unavailable. The new service does not silently enable 195-country coverage.
 Prepaid call:
 
 ```bash
-curl -X POST 'https://api.geomacro.live/v1/risk-gate' \
+curl -X POST 'https://geomacro-commercial-api.daspallab202391.workers.dev/v1/risk-gate' \
   -H "Authorization: Bearer $GEOMACRO_API_KEY" \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: 41cb8481-44c9-4611-9355-ed0affcf1368' \
@@ -64,8 +64,7 @@ signed and billed as Standard: $0.15 for x402 or 15 credits under the initial
 explicit Step 1 rate card. Credit tariffs remain configurable in the database;
 this does not change existing D1 customer credit balances or product pricing.
 
-Admitted, redacted evidence is cached for up to 30 seconds inside the edge
-runtime. Its original `data_as_of` is retained in the signed metadata. A successful
+Admitted, redacted evidence is cached for up to 30 seconds inside the edge runtime, capped at the underlying GRO expiry. The original `evidence_valid_until` is included in signed metadata; an expired GRO is never returned from a cache hit. Its original `data_as_of` is retained in the signed metadata. A successful
 financial response is never shared across callers. Replays return the originally
 stored receipt without resolving evidence or deducting again. The response's
 Server-Timing header exposes total processing time. A 99.9% uptime or <100 ms SLA
@@ -125,8 +124,7 @@ or receipt issuer; do not delete public keys needed for historical replays.
 
 ## Production routing and acceptance
 
-The new Worker claims only the exact `/v1/risk-gate` route and its new commercial,
-key-management and payment namespaces. It does not intercept the existing nested
+The API currently uses the verified Workers origin. Optional custom-domain routes are installed only when `GEOMACRO_COMMERCIAL_API_ROUTE_ZONE_ID` supplies an actually accessible zone ID. The initial account/token could not resolve the geomacro.live zone, so no successful custom-hostname attachment is claimed. When configured, routes are restricted to the exact `/v1/risk-gate` route and its new commercial, key-management and payment namespaces. It does not intercept the existing nested
 Risk Gate evaluation endpoints, public index routes or website presentation.
 Cloudflare's explicit public-fetch compatibility flag permits calling the
 existing protected resolver across Workers on the same zone.
