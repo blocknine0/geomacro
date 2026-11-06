@@ -12,8 +12,8 @@ export function publicEdgeCacheEligible(req){
  const path=new URL(req.url).pathname;
  if(!(path.startsWith("/v1/public/")||path.startsWith("/api/v1/feed/")))return false;
  if(banned.some(h=>req.headers.has(h)))return false;
- if(/(?:no-store|no-cache|max-age\\s*=\\s*0)/iu.test(req.headers.get("Cache-Control")??""))return false;
- if(/\\bno-cache\\b/iu.test(req.headers.get("Pragma")??""))return false;
+ if(/(?:no-store|no-cache|max-age\s*=\s*0)/iu.test(req.headers.get("Cache-Control")??""))return false;
+ if(/\bno-cache\b/iu.test(req.headers.get("Pragma")??""))return false;
  return true;
 }
 const epoch=()=>Date.now();
