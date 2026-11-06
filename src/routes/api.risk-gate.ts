@@ -45,14 +45,12 @@ function validateSignedProgressiveResponse(json:Record<string,unknown>):boolean{
  // The Worker also independently verifies signing-key pair consistency.
  // SSR additionally verifies if a separately pinned public key is installed.
  const pin=String(process.env.GEOMACRO_RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
- if(pin){
-   try{
-     const key=createPublicKey({key:Buffer.from(pin,"base64"),format:"der",type:"spki"});
-     return key.asymmetricKeyType==="ed25519" && edVerify(null,Buffer.from(canonical),
-       key,Buffer.from(json.decision_signature_b64,"base64"));
-   }catch{return false}
- }
- return true;
+ if(!pin)return false;
+ try{
+   const key=createPublicKey({key:Buffer.from(pin,"base64"),format:"der",type:"spki"});
+   return key.asymmetricKeyType==="ed25519" && edVerify(null,Buffer.from(canonical),
+     key,Buffer.from(json.decision_signature_b64,"base64"));
+ }catch{return false}
 }
 export async function forwardRiskGateToD1(request:Request,fetcher=fetchWithoutRedirect):Promise<Response>{
  const incoming=new URL(request.url);
