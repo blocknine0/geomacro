@@ -12,7 +12,7 @@ import {cachedGroqAnswer} from "./ask-shared-answer-cache.server";
 const ENDPOINT="https://api.groq.com/openai/v1/chat/completions";
 const MODEL="openai/gpt-oss-20b";
 const MAX_MS=3_400;
-const MAX_OUTPUT_TOKENS=700;
+const MAX_OUTPUT_TOKENS=1100;
 const ANSWER_FORMAT={
   type:"json_schema",json_schema:{
     name:"geomacro_ask_formatter",strict:true,
@@ -60,7 +60,10 @@ const instruction=
  "Return exactly one JSON object with summary, what_changed, why_it_matters, geomacro_view as nonempty strings. "+
  "Keep summary under 320 characters; each other field under 340 characters. "+
  "Never leave a required field empty; if you cannot improve a field safely, copy that field from approved_answer verbatim. "+
- "Restate only approved wording and qualifications, without adding facts, numbers or dates.";
+ "REPHRASE the summary in a genuinely different, clear sentence structure while keeping precisely the original meaning, scope, caveats and qualifications. "+
+ "Do NOT copy the entire approved answer byte-for-byte; change at least one field, preferably summary. "+
+ "For the three remaining fields you may copy the approved text verbatim if rephrasing would change the meaning. "+
+ "This is an editing task, not factual research; restate only approved wording, without adding any facts, numbers or dates.";
 const FIELDS=["summary","what_changed","why_it_matters","geomacro_view"] as const;
 type PublicField=typeof FIELDS[number];
 
