@@ -52,6 +52,6 @@ describe("GeoMacro public Risk Indices budget-aware browser reading",()=>{
   expect(hook).toContain("Date.now()-Date.parse(previous.snapshotAsOf)<=60*60000");
   expect(hook).toContain('body.meta?.authority!=="geomacro-reviewed-gri-ed25519-delivery"');
   expect(server).toContain("now-clock>60*60000");
-  expect(server).toContain("now-Date.parse");
+  expect(server).toContain("Date.now()-clock>60*60000");
  });
 });
