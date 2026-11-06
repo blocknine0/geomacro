@@ -34,30 +34,53 @@ export function assessPaidEnvelope(snapshot,{now=new Date(),paidProof,spendGuard
     throw Error("PAID_D1_PROVIDER_PROOF_UNVERIFIED");
 
   const p=PAID_D1_INTERNAL;
+  const elapsedMs=now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z");
+  const fraction=Math.min(1,Math.max(0,elapsedMs/86_400_000));
+  // These are INTERNAL pacing watermarks, not Cloudflare Paid hard limits.
+  const pacedRead=Math.floor(4_000_000+(p.reads-4_000_000)*fraction);
+  const pacedWrite=Math.floor(40_000+(p.writes-40_000)*fraction);
   const writesLeft=Math.max(0,p.writes-snapshot.observed_rows_written);
   const readsLeft=Math.max(0,p.reads-snapshot.observed_rows_read);
-  // Explicit protected partner and delayed-analytics reserves. No Cloudflare
-  // Paid daily physical quota; these are GeoMacro's own policy values.
-  const spendable=Math.max(0,writesLeft-p.safetyWrites-p.protectedPartnerWrites);
-  const perOriginal=p.worstWritesPerOriginal;
-  const maxOriginals=Math.max(0,Math.min(p.maxOriginalsPerBatch,
-    Math.floor((spendable-p.fixedWritesPerBatch)/perOriginal)));
-  const allowed=readsLeft>=3200 && maxOriginals>=1;
+  const readRoom=Math.max(0,pacedRead-snapshot.observed_rows_read);
+  const writeRoom=Math.max(0,pacedWrite-snapshot.observed_rows_written);
+  const critical=snapshot.observed_rows_read<pacedRead &&
+    snapshot.observed_rows_written<pacedWrite;
+  // Preserve all remaining producer slots and the existing 23k critical
+  // write reserve before granting a single source microbatch.
+  const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
+  const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
+  const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
+  const criticalReadReserve=1_250_000, criticalWriteReserve=23_000;
+  const perSlot=Math.min(p.maxOriginalsPerBatch,Math.floor(
+    (writesLeft-criticalWriteReserve-slots*40-archiveReserve)/
+      (slots*p.worstWritesPerOriginal)));
+  const maxOriginals=Math.max(0,perSlot);
+  const sourceIntake=critical&&maxOriginals>=3&&
+    writeRoom>criticalWriteReserve+maxOriginals*p.worstWritesPerOriginal+40&&
+    readRoom>criticalReadReserve+3200+30000&&
+    readsLeft>criticalReadReserve+slots*3200+30000;
+  const archive=sourceIntake&&
+    writeRoom>criticalWriteReserve+maxOriginals*p.worstWritesPerOriginal+40+900&&
+    writesLeft>criticalWriteReserve+
+      slots*(maxOriginals*p.worstWritesPerOriginal+40)+archiveReserve;
   return Object.freeze({
-    schema:"geomacro.d1-paid-internal-envelope.v2", day_utc:snapshot.day_utc,
+    schema:"geomacro.d1-paid-internal-envelope.v2",day_utc:snapshot.day_utc,
     provider_plan:"workers_paid", provider_monthly_rows_written_included:50_000_000,
     provider_monthly_rows_read_included:25_000_000_000,
     provider_daily_100k_free_limit_applicable:false,
-    internal_soft_rows_written:p.writes, internal_soft_rows_read:p.reads,
+    internal_soft_rows_written:p.writes,internal_soft_rows_read:p.reads,
+    paced_soft_rows_written:pacedWrite,paced_soft_rows_read:pacedRead,
     observed_rows_written:snapshot.observed_rows_written,
     observed_rows_read:snapshot.observed_rows_read,
-    soft_write_headroom:writesLeft, soft_read_headroom:readsLeft,
-    max_originals_per_bounded_batch:allowed?maxOriginals:0,
-    state:allowed?"SOURCE_BUNDLE_ELIGIBLE_NONATOMIC":"HELD",
+    soft_write_headroom:writesLeft,soft_read_headroom:readsLeft,
+    max_originals_per_bounded_batch:sourceIntake?maxOriginals:0,
+    critical_eligible:critical,source_intake_eligible:sourceIntake,
+    archive_eligible:archive,
+    state:critical?"CRITICAL_ONLY":"HELD",
     reason:!writesLeft?"INTERNAL_DAILY_WRITE_BUDGET_EXHAUSTED":
       !readsLeft?"INTERNAL_DAILY_READ_BUDGET_EXHAUSTED":
-      allowed?"PAID_CAPACITY_VERIFIED_INTERNAL_BUDGET_AVAILABLE":
-      "PROTECTED_RESERVES_OR_BATCH_HEADROOM_INSUFFICIENT",
+      critical?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
+      "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
     soft_budget_is_not_provider_limit:true,
     budget_is_nonatomic_provider_snapshot:true,
     atomic_reservation_still_required:true,
@@ -65,25 +88,30 @@ export function assessPaidEnvelope(snapshot,{now=new Date(),paidProof,spendGuard
 }
 /** Adapt to GeoMacro's pre-existing admission contract without new privileges. */
 export function paidBundleContract(envelope){
- const grant=envelope.state==="SOURCE_BUNDLE_ELIGIBLE_NONATOMIC";
+ const critical=envelope.critical_eligible===true;
+ const source=envelope.source_intake_eligible===true;
+ const archive=envelope.archive_eligible===true;
  return Object.freeze({
   schema:"geomacro.d1-free-bundled-work-admission.v1",day_utc:envelope.day_utc,
-  state:grant?"CRITICAL_ONLY":"HELD",reason:envelope.reason,
-  critical:grant,research:false,maintenance:false,
-  source_intake:grant,source_intake_interval_minutes:grant?20:null,
-  source_intake_max_new_rows:envelope.max_originals_per_bounded_batch,
-  registered_private_max_new_rows:0,phase2h_raw_archive:false,
+  state:critical?"CRITICAL_ONLY":"HELD",reason:envelope.reason,
+  critical,research:false,maintenance:false,
+  source_intake:source,source_intake_interval_minutes:source?20:null,
+  source_intake_max_new_rows:source?envelope.max_originals_per_bounded_batch:0,
+  registered_private_max_new_rows:0,phase2h_raw_archive:archive,
+  phase2h_raw_archive_max_rows_per_slot:300,
+  phase2h_raw_archive_requires_atomic_b2_quota:true,
   retention_cleanup:false,retention_cleanup_max_rows:0,
-  snapshot_refresh:grant,structural_snapshot:false,
+  snapshot_refresh:false,structural_snapshot:false,
   historical_recovery:false,historical_recovery_max_rows:0,
   governed_measurement:false,paid_capacity_verified_by_provider:true,
   free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
-  daily_account_soft_limit_read:envelope.internal_soft_rows_read,
-  daily_account_soft_limit_write:envelope.internal_soft_rows_written,
+  daily_account_soft_limit_read:envelope.paced_soft_rows_read,
+  daily_account_soft_limit_write:envelope.paced_soft_rows_written,
   observed_rows_read:envelope.observed_rows_read,
   observed_rows_written:envelope.observed_rows_written,
   soft_write_headroom:envelope.soft_write_headroom,
-  predge_account_headroom_guard_enabled:true,
+  predge_account_headroom_guard_enabled:false,
+  predge_account_headroom_planning_reserve:{rows_read:500000,rows_written:8000,pilot_request_cap_per_utc_day:500,basis:"CONSERVATIVE_NONATOMIC_ACCOUNT_WIDE_CAPACITY_RESERVE"},
   predge_account_headroom_is_hard_partition:false,
   predge_request_governor_is_separate_and_unchanged:true,
   paid_subscription_change_performed:false,paid_billing_is_operator_controlled:true,
