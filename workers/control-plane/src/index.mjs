@@ -1639,7 +1639,7 @@ export default {
     if(url.pathname==="/v1/partner/predge/risk-gate")
       return predgeRiskGateD1(request,env);
     if(url.pathname==="/v1/risk-gate/unified/evaluate")
-      return unifiedRiskGateEvaluate(request,env);
+      return unifiedRiskGateEvaluate(request,env,{ctx});
     if(url.pathname==="/v1/risk-gate/commercial/evaluate")
       return commercialRiskGateEvaluate(request,env);
     if(url.pathname==="/v1/risk-gate/tiered/evaluate")
