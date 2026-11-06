@@ -84,7 +84,7 @@ function validateEnv(env:B2SpoolEnv){
  if(gatewayMode){
   if(String(env.INTERNAL_GATEWAY_TOKEN??'').length<32)throw Error('P0B_GATEWAY_CONFIGURATION_UNAVAILABLE');
  }else if(endpoint.pathname!=='/'||!/^s3\.[a-z0-9-]+\.backblazeb2\.com$/u.test(endpoint.hostname)||
-   env.B2_KEY_ID?.length<5||env.B2_APPLICATION_KEY?.length<20){
+   String(env.B2_KEY_ID??'').length<5||String(env.B2_APPLICATION_KEY??'').length<20){
   throw Error('P0B_B2_CONFIGURATION_UNAVAILABLE');
  }
  const region=gatewayMode?'gateway':endpoint.hostname.slice(3,-'.backblazeb2.com'.length);
