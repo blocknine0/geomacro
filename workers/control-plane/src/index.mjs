@@ -1332,7 +1332,18 @@ export default {
     // This uses no D1 rows, queue messages, B2 calls or additional trigger.
     if(env?.GEOMACRO_UNIFIED_INGESTOR_HEALTH_URL&&utc.getUTCMinutes()%10===4)
       ctx.waitUntil(pingUnifiedIngestorHealth(env).then(r=>{
-        if(!r.ok)console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD",r.error);
+        if(r.ok&&!r.skipped){
+          console.log(JSON.stringify({
+            schema:"geomacro.unified-ingestor-health-ping.v1",
+            ok:true,
+            status:r.status,
+            observed_at:new Date().toISOString()
+          }));
+        }else if(r.skipped){
+          console.warn("UNIFIED_INGESTOR_HEALTH_PING_SKIPPED",r.reason);
+        }else{
+          console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD",r.error);
+        }
       }).catch(()=>console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD")));
     // Feature-gated CQRS publisher on existing cron; a quiet source revision
     // avoids rescanning canonical D1 and news ingestion never waits for it.
