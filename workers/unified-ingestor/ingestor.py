@@ -35,6 +35,13 @@ log = logging.getLogger("geomacro.ingestor")
 WORKER_URL = os.environ["GEOMACRO_INGEST_WORKER_URL"].rstrip("/")
 WORKER_TOKEN = os.environ["GEOMACRO_INGEST_WORKER_TOKEN"]
 RAW_INGEST_TOKEN = os.environ["GEOMACRO_RAW_INGEST_TOKEN"]
+for required_secret in ("B2_S3_ENDPOINT", "B2_REGION", "B2_APPLICATION_KEY_ID", "B2_APPLICATION_KEY", "B2_BUCKET_NAME"):
+    if not os.environ.get(required_secret, "").strip():
+        raise RuntimeError(f"Missing required environment variable: {required_secret}")
+if len(WORKER_TOKEN) < 32 or len(RAW_INGEST_TOKEN) < 32:
+    raise RuntimeError("Ingest and OSINT bearer credentials must each contain at least 32 characters")
+if not os.environ["B2_S3_ENDPOINT"].startswith("https://"):
+    raise RuntimeError("B2_S3_ENDPOINT must use HTTPS")
 POLL_SECONDS = max(60, min(int(os.getenv("POLL_SECONDS", "900")), 3600))
 DEFAULT_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "unified-rss-feed-registry.v1.json"
 COUNTRY_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "country-iso2-names.v1.json"
