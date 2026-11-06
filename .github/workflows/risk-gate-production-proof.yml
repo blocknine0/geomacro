@@ -17,6 +17,8 @@ on:
       - "scripts/tests/risk-gate-global-news-search.test.mjs"
       - "scripts/tests/risk-gate-activation-triggers.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
+      - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
+      - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/lib/hot50-production-proof.mjs"
       - "scripts/lib/hot50-production-proof.test.mjs"
       - "scripts/tests/risk-gate-hot50-low-quota.test.mjs"
@@ -180,7 +182,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify scoped scheduling, tamper rejection and one-read rollups
-        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
+        run: node --test scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gap-hot50-index-plans.test.mjs
       - name: Observe account quota before authenticated API proofs
         id: quota
         env:
