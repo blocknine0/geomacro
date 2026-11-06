@@ -50,17 +50,10 @@ jobs:
           node - <<'NODE'
           const fs=require("node:fs");
           const src=fs.readFileSync("scripts/ops/legacy-b2-origin-free-storage-readback.mjs","utf8");
-          const checks=[
-            'quota.used.GET+2>quota.limits.GET-5',
-            'avatar.archive_key!==intel.archive_key',
-            'SAME_VERIFIED_SHARD_TWO_BUCKET_CANARY_UNAVAILABLE',
-            'b2_independent_original_bucket_canaries_verified!==2',
-            'source_supabase_network_requests:0',
-            'old_supabase_deletion_authorized:false',
-          ];
-          if(checks.some(p=>!src.includes(p)) ||
-            src.split('await gov.reserve("GET")').length-1!==2)
-            throw Error("LEGACY_ORIGIN_FREE_TWO_GET_NO_DELETION_CONTRACT_FAILED");
+          if(!src.includes('LEGACY_DISCOVERY_RETIRED_USE_GATEWAY_D1_INDEX')||
+             !src.includes('source_supabase_network_requests: 0')||
+             !src.includes('old_supabase_deletion_authorized: false'))
+            throw Error("LEGACY_B2_DISCOVERY_RETIREMENT_GUARD_FAILED");
           NODE
           node scripts/ops/legacy-b2-origin-free-storage-readback.mjs || test "$?" -eq 3
           node - <<'NODE'
@@ -72,7 +65,7 @@ jobs:
              r.source_supabase_network_requests!==0||
              r.source_supabase_deletes!==0||r.source_supabase_writes!==0||
              r.b2_writes!==0||r.b2_deletes!==0||r.payments!==0||
-             !source.includes('VERIFIED_ROOT_HASH_PREFIX="5eff883cadf814cd"'))
+             r.reason!=="LEGACY_DISCOVERY_RETIRED_USE_GATEWAY_D1_INDEX")
             throw Error("B2_ORIGIN_FREE_NO_DELETION_CONTRACT_FAILED");
           NODE
   protected-private-readback:
