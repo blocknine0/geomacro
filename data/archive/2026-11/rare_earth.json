@@ -2,8 +2,25 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-06T00:05:28.339Z",
+  "updated_at": "2026-11-06T14:57:36.622Z",
   "signals": [
+    {
+      "id": "rare_earth-9446609f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Shri G. Kishan Reddy: called for Expediting Mineral Exploration and Strengthening Centre, State Coordination · India",
+      "why_it_matters": "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output.",
+      "what_changed": "Shri G. Kishan Reddy called for Expediting Mineral Exploration and Strengthening Centre, State Coordination. Country or region mentioned: India.",
+      "geography": "India",
+      "development_type": "research",
+      "topic": "mineral exploration and production",
+      "published_at": "2026-11-06T10:52:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-e17bb9c2",
       "category": "rare_earth",
