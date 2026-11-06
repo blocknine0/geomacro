@@ -51,6 +51,8 @@ export type HybridAskAnswer = AskAnswer & {
   /** Safe rendering telemetry; never evidence, model identity or source provenance. */
   model_rendering?: "assisted" | "canonical";
   model_render_cache?: "hit" | "miss" | "coalesced" | "bypassed";
+  /** Sanitized diagnostics only. Never an upstream body, key or source name. */
+  model_render_failure?: string;
   source_identity_exposed: false;
   durable_live_storage_write: false;
   real_time_message?: string;

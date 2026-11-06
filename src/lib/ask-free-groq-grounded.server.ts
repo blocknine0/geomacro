@@ -56,9 +56,11 @@ function privateSafeContext(context:AskModelContext):AskModelContext{
 async function requestFreeGroq(
   question:string,canonical:HybridAskAnswer,
   clientKey:string,dependencies:Dependencies,
+  diagnostic:(reason:string)=>void,
 ):Promise<HybridAskAnswer>{
  // We read the secret only on the backend. No paid provider, no auto upgrade.
- if(!admit(clientKey))return canonical;
+ if(!admit(clientKey)){diagnostic("budget_limited");return canonical;}
+ let phase:"context"|"upstream"|"validation"="context";
  try{
    const ctx=await (dependencies.readContext??collectAskModelContext)(question,canonical);
    const payload={
@@ -76,6 +78,7 @@ async function requestFreeGroq(
        })},
      ],
    };
+   phase="upstream";
    const res=await (dependencies.fetchImpl??fetch)(ENDPOINT,{
      method:"POST",redirect:"error",cache:"no-store",
      headers:{Accept:"application/json","Content-Type":"application/json",
@@ -83,19 +86,32 @@ async function requestFreeGroq(
      body:JSON.stringify(payload),signal:AbortSignal.timeout(MAX_MS),
    });
    // Groq Free Plan 429 is a normal fallback, never a paid-provider retry.
-   if(!res.ok||Number(res.headers.get("content-length")??0)>16_384)return canonical;
+   if(!res.ok){
+     const code=res.status===429?"upstream_429":
+       [400,401,403,404,413].includes(res.status)?"upstream_"+res.status:
+       res.status>=500?"upstream_5xx":"upstream_other";
+     diagnostic(code);return canonical;
+   }
+   phase="validation";
+   if(Number(res.headers.get("content-length")??0)>16_384){diagnostic("response_oversize");return canonical;}
    const raw=await res.text();
-   if(raw.length>16_384)return canonical;
+   if(raw.length>16_384){diagnostic("response_oversize");return canonical;}
    const envelope=JSON.parse(raw) as {
      choices?:Array<{message?:{content?:unknown}}>;
    };
    const text=envelope.choices?.[0]?.message?.content;
-   if(typeof text!=="string")return canonical;
+   if(typeof text!=="string"){diagnostic("response_empty");return canonical;}
    const validated=safeGroundedOpenAIOutput(text,canonical,question);
+   diagnostic(validated?"validated":"validation_rejected");
    // A verified formatter completion changes only presentation, never evidence.
    // The signal is set ONLY after upstream 200 and exact safe-output validation.
    return validated?{...validated,model_rendering:"assisted"}:canonical;
- }catch{return canonical;}
+ }catch(error){
+   const timeout=error instanceof Error&&/timeout|abort/i.test(error.name);
+   diagnostic(timeout?"request_timeout":phase==="context"?"context_unavailable":
+     phase==="upstream"?"transport_error":"response_invalid");
+   return canonical;
+ }
  finally{inflight=Math.max(0,inflight-1);}
 }
 /** Shared keyed cache and in-flight dedup precede expensive Groq admission.
@@ -109,10 +125,12 @@ export async function enhanceAskWithFreeGroq(
    !process.env.GROQ_API_KEY||process.env.GROQ_API_KEY.length<20||
    !eligible(canonical))return canonical;
  let cacheStatus:"hit"|"miss"|"coalesced"|"bypassed"="bypassed";
+ let diagnostic="not_attempted";
  const result=await cachedGroqAnswer(question,canonical,
-   ()=>requestFreeGroq(question,canonical,clientKey,dependencies),
+   ()=>requestFreeGroq(question,canonical,clientKey,dependencies,code=>{diagnostic=code;}),
    status=>{cacheStatus=status;});
  return {...result,
    model_rendering:result.model_rendering==="assisted"?"assisted":"canonical",
-   model_render_cache:cacheStatus};
+   model_render_cache:cacheStatus,
+   ...(result.model_rendering==="assisted"?{}:{model_render_failure:diagnostic})};
 }
