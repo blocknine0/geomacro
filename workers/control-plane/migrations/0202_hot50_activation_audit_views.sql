@@ -25,7 +25,7 @@ events AS (
    AS original_publishers,
   MAX(event_clock) AS latest_original_or_index_clock
  FROM progressive_risk_gate_facts
- WHERE event_clock>=datetime('now','-72 hours')
+ WHERE event_clock>=strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours')
  GROUP BY country_iso3,category,event_fingerprint
 ),agg AS (
  SELECT country_iso3,category,COUNT(*) observed_events,
