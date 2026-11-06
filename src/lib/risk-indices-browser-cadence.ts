@@ -50,6 +50,6 @@ export function riskIndicesSignedSourceRemainingMs(
   );
   if (clocks.some(value => !Number.isFinite(value))) return 0;
   const oldestSource = Math.min(...clocks);
-  if (oldestSource > now + 5 * 60_000) return 0;
+  if (clocks.some(value => value > now + 5 * 60_000)) return 0;
   return Math.max(0, oldestSource + 60 * 60_000 - now);
 }
