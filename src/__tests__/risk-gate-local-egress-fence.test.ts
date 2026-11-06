@@ -20,7 +20,11 @@ describe("loopback Risk Gate cannot leak disposable credentials to production",(
   }
   vi.stubEnv('GEOMACRO_RISK_GATE_LOCAL_D1_ORIGIN','http://127.0.0.1:3101');
   const fetcher=vi.fn(async(..._args:any[])=>Response.json({ok:true,execution_authorized:false,risk_gate:{execution_authorized:false}}));
-  expect((await forwardRiskGateToD1(req(),fetcher)).status).toBe(200);
+  // An untrusted local fixture without an independently pinned Ed25519
+  // decision signature may be reached, but must never be accepted as HTTP 200.
+  const unsigned=await forwardRiskGateToD1(req(),fetcher);
+  expect(unsigned.status).toBe(503);
+  expect((await unsigned.json()).error).toBe("RISK_GATE_D1_TRANSPORT_UNAVAILABLE");
   expect(fetcher.mock.calls[0][0]).toBe('http://127.0.0.1:3101/v1/partner/predge/risk-gate');
   vi.stubEnv('NODE_ENV','production');fetcher.mockClear();
   expect((await forwardRiskGateToD1(req(),fetcher)).status).toBe(503);expect(fetcher).not.toHaveBeenCalled();
