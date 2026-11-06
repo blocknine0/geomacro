@@ -21,7 +21,16 @@
     "fallback_when_unverified": "CONSERVATIVE_FREE_QUOTA_OR_HOLD",
     "d1_source_daily_soft_rows_read_max": 18000000,
     "d1_source_daily_soft_rows_written_max": 180000,
-    "d1_account_wide_atomic_guarantee": false
+    "d1_account_wide_atomic_guarantee": false,
+    "d1_write_token_bucket": {
+      "schema": "geomacro.d1-write-token-bucket.v1",
+      "daily_soft_rows_written_max": 180000,
+      "capacity_rows": 7500,
+      "refill_rows_per_minute": 125,
+      "provider_counter_max_age_seconds": 120,
+      "atomic_reservation_required": true,
+      "all_d1_writer_families_must_integrate": true
+    }
   },
   "monthly_guardrail_targets_not_provider_hard_caps": {
     "workers_requests": 8000000,
