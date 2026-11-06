@@ -1,3 +1,4 @@
+import {withPublicEdgeCache} from "./cache-middleware.mjs";
 /**
  * Per-POP read-through cache for exact, anonymous, PUBLIC free D1 projections.
  * A bounded public-only cache reduces repeated D1 reads for website pages
@@ -98,9 +99,15 @@ export function eligiblePublicFreeD1CacheRequest(request){
   return [...forbidden].every(name=>!request.headers.has(name));
 }
 export async function readPublicFreeD1Cached(request,calculate,{
-  cache=null,waitUntil=null,
+  cache=null,waitUntil=null,swr=false,
 }={}){
   if(typeof calculate!=="function")throw Error("PUBLIC_D1_CACHE_HANDLER_REQUIRED");
+  if(swr===true)return withPublicEdgeCache(request,calculate,{
+    cache,waitUntil,eligible:eligiblePublicFreeD1CacheRequest,
+    ttlSeconds:ttlForPath(new URL(request.url).pathname),
+    staleSeconds:ttlForPath(new URL(request.url).pathname)>=300?60:120,
+    tag:"geomacro-public-d1",
+  });
   if(!eligiblePublicFreeD1CacheRequest(request)||!cache)
     return calculate();
   const url=new URL(request.url);
