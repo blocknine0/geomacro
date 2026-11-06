@@ -21,7 +21,8 @@ const freshResponse=(body,state,soft)=> {
  r.headers.delete("x-geomacro-cache-hard-until");
  r.headers.delete("x-geomacro-private-cache-tags");
  r.headers.set("X-GeoMacro-Edge-Cache",state);
- r.headers.set("Cache-Control","public, max-age="+soft);
+ // Never let browsers extend the stale window beyond the edge hard expiry.
+ r.headers.set("Cache-Control","public, max-age="+(state==="STALE"?0:soft));
  return r;
 };
 export async function withPublicEdgeCache(req,producer,{
