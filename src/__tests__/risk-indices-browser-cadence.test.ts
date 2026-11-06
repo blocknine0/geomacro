@@ -7,6 +7,7 @@ import {
   RISK_INDICES_VERIFIED_CACHE_MS,
   riskIndicesRefreshDelay,
   riskIndicesResumeDelay,
+  riskIndicesSignedSourceRemainingMs,
 } from "../lib/risk-indices-browser-cadence";
 
 describe("GeoMacro public Risk Indices budget-aware browser reading",()=>{
@@ -36,6 +37,21 @@ describe("GeoMacro public Risk Indices budget-aware browser reading",()=>{
   expect(riskIndicesResumeDelay(first,first-5_000,300_000)).toBe(300_000);
   expect(riskIndicesResumeDelay(first,NaN,300_000)).toBe(300_000);
  });
+ it("expires real signed-source clocks before the next 5m/10m browser poll",()=>{
+  const now=Date.parse("2026-11-06T17:00:00.000Z");
+  const oneMinuteBeforeNow="2026-11-06T16:01:00.000Z";
+  const recent="2026-11-06T16:55:00.000Z";
+  expect(riskIndicesSignedSourceRemainingMs(recent,
+    [oneMinuteBeforeNow,recent,recent],now)).toBe(60_000);
+  expect(riskIndicesSignedSourceRemainingMs(recent,
+    [oneMinuteBeforeNow,recent,recent],now+60_000)).toBe(0);
+  expect(riskIndicesSignedSourceRemainingMs(recent,
+    [null,recent,recent],now)).toBe(0);
+  expect(riskIndicesSignedSourceRemainingMs(recent,
+    [recent,recent],now)).toBe(0);
+  expect(riskIndicesSignedSourceRemainingMs("2026-12-01T00:00:00.000Z",
+    [recent,recent,recent],now)).toBe(0);
+ });
  it("holds browser budget, coalescing, hidden-page pause and signed-source clock guards",()=>{
   const hook=readFileSync("src/lib/use-risk-indices.ts","utf8");
   const server=readFileSync("server/api/public/reviewed-risk-indices.get.ts","utf8");
@@ -45,6 +61,10 @@ describe("GeoMacro public Risk Indices budget-aware browser reading",()=>{
   expect(hook).toContain("riskIndicesResumeDelay(lastStartedAt, Date.now(), nextCadenceMs)");
   expect(hook).toContain("riskIndicesRefreshDelay(false, refreshMs)");
   expect(hook).toContain("riskIndicesRefreshDelay(true, refreshMs)");
+  expect(hook).toContain("function revokeExpiredCurrent()");
+  expect(hook).toContain("riskIndicesSignedSourceRemainingMs(");
+  expect(hook).toContain("const boundedDelay = sourceRemaining === null");
+  expect(hook).toContain("const justExpired = revokeExpiredCurrent()");
   expect(hook).toContain("if (cancelled || inFlight || document.visibilityState === \"hidden\") return;");
   expect(hook).toContain("if (inFlightCertifiedRead) return inFlightCertifiedRead;");
   expect(hook).not.toContain("CERTIFIED_RETRY_DELAYS_MS");
