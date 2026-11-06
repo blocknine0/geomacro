@@ -111,6 +111,24 @@ not the user's login JWT. The browser onboarding/sandbox/store UI is Step 4.
 Existing D1 keys/balances are not automatically migrated into this separate
 PostgreSQL namespace.
 
+### High-entropy API tokens versus passwords (CodeQL #137)
+
+The `gm_live_` API credentials are **not human-selected passwords**. They
+contain exactly 32 bytes from Node's cryptographically secure `randomBytes`,
+encoded as 43 URL-safe characters. The database stores their deterministic
+SHA-256 digest solely as an exact lookup key; the same SHA-256 helper also
+commits to canonical receipt bytes. It must **never** be repurposed to hash
+low-entropy customer passwords. Human account authentication remains with
+Supabase Auth, which does not use this helper for password storage.
+
+Changing this digest to a password KDF without a migration would invalidate
+existing issued API keys and historical signed receipts. The narrowly scoped
+CodeQL annotation documents why the password-hashing rule is inapplicable to
+this 256-bit CSPRNG-token lookup. The CI regression test enforces the token
+size, wire format, uniqueness, and existing stored digest contract. This is
+an explicit false-positive disposition, **not** a claim that a password KDF
+was introduced or a scanner finding was fixed without reanalysis.
+
 To verify a response, remove `audit_receipt`, canonicalize the remaining JSON with
 `src/metering.mjs`'s `canonicalize`, check SHA-256 against `hash`, then verify
 Ed25519 using the matching JWKS `kid`. `verifyReceipt` implements this process.
