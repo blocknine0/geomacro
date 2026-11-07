@@ -122,7 +122,7 @@ export class X402Engine {
     requireValue(tx,'PAYMENT_SETTLEMENT_UNCERTAIN',503);
   }
   requireValue(tx,'PAYMENT_SETTLEMENT_PENDING',503);
-  if(!intent.tx_hash)await rpc(this.pool,'x402_note_tx',[intent.request_id,token,tx]);
+  if(!intent.tx_hash)await rpc(this.pool,this.rail.ops.note,[intent.request_id,token,tx]);
   const logIndex=await this.base.confirm(tx,intent);
   return rpc(this.pool,this.rail.ops.confirm,[intent.request_id,token,tx,logIndex]);
  }
