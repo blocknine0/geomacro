@@ -33,9 +33,12 @@ const aliases={PAYPAL_CLIENT_ID:'GEOMACRO_PAYPAL_CLIENT_ID',PAYPAL_CLIENT_SECRET
 for(const [target,source]of Object.entries(aliases))if(env[source])secrets[target]=env[source];
 const paypalComplete=['PAYPAL_CLIENT_ID','PAYPAL_CLIENT_SECRET','PAYPAL_WEBHOOK_ID','PAYPAL_MERCHANT_ID'].every(k=>secrets[k])&&!!env.PAYPAL_CATALOG_JSON;
 const x402Complete=!!(secrets.X402_PAYEE_ADDRESS&&secrets.BASE_RPC_URL&&env.COMMERCIAL_X402_FACILITATOR_URL);
+// This Step B xpay integration is no-funds-only even if an old real-funds ACK exists.
+// A separately reviewed future release must explicitly lift this hard code gate.
+const xpayNoFundsOnly=String(env.COMMERCIAL_X402_FACILITATOR_URL??'').replace(/\/$/u,'')==='https://facilitator.xpay.sh';
 config.vars={...config.vars,DEPLOYED_SHA:env.GITHUB_SHA,COMMERCIAL_SIGNING_KEY_ID:keyId,
  PAYPAL_MODE:env.GEOMACRO_PAYPAL_ENVIRONMENT||'sandbox',
- PAYPAL_ENABLED:String(Boolean(paypalComplete)),X402_ENABLED:String(Boolean(x402Complete)),
+ PAYPAL_ENABLED:String(Boolean(paypalComplete)),X402_ENABLED:String(Boolean(x402Complete&&!xpayNoFundsOnly)),
  X402_FACILITATOR_URL:env.COMMERCIAL_X402_FACILITATOR_URL||'',
  PAYPAL_CATALOG_JSON:env.PAYPAL_CATALOG_JSON||'',
  GEOMACRO_COMMERCIAL_LAUNCH_ACK:'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH',
@@ -101,7 +104,7 @@ try{
   public_api_origin:config.vars.PUBLIC_API_ORIGIN,custom_api_route_attached:Boolean(config.routes?.length),
   ledger_verified:true,signer_verified:health.signer_configured===true,
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
-  blockers:health.blockers,evidence_proof:evidenceProof,real_payment_attempted:false};
+  blockers:health.blockers,evidence_proof:evidenceProof,xpay_no_funds_only:xpayNoFundsOnly,real_payment_attempted:false};
  console.log(JSON.stringify(summary));
  if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'\n'+JSON.stringify(summary,null,2)+'\n');
 }catch(error){console.error(error.message);process.exitCode=1;}

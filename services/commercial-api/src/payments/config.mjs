@@ -3,7 +3,8 @@ import { createPrivateKey,createPublicKey } from 'node:crypto';
 import { loadCatalog } from './catalog.mjs';
 import { PayPalClient } from './paypal-client.mjs';
 import { PayPalEngine } from './paypal.mjs';
-import { BaseVerifier,Facilitator } from './base.mjs';
+import { BaseVerifier } from './base.mjs';
+import { createCommercialFacilitator } from './xpay.mjs';
 import { X402Engine } from './x402.mjs';
 import { supabaseAuthenticator,createPaymentHandler } from './http.mjs';
 import { requireValue,PaymentError } from './common.mjs';
@@ -22,7 +23,7 @@ export function configurePayments(pool,env=process.env,{resolveRisk}={}){
   const files=JSON.parse(requireValue(env.SIGNING_PUBLIC_KEYS_JSON,'PUBLIC_KEYS_REQUIRED',500)),publicKeys={};
   for(const [keyId,file]of Object.entries(files))publicKeys[keyId]=createPublicKey(readFileSync(file));
   const verifier=new BaseVerifier({rpcUrl:env.BASE_RPC_URL,confirmations:Number(env.BASE_CONFIRMATIONS??2)});
-  const facilitator=new Facilitator({url:requireValue(env.X402_FACILITATOR_URL,'FACILITATOR_URL_REQUIRED',500),
+  const facilitator=createCommercialFacilitator({url:requireValue(env.X402_FACILITATOR_URL,'FACILITATOR_URL_REQUIRED',500),
     headers:JSON.parse(env.X402_FACILITATOR_HEADERS_JSON??'{}')});
   x402=new X402Engine({pool,payee:env.X402_PAYEE_ADDRESS,siteOrigin,base:verifier,facilitator,privateKey,
     publicKeyId:env.SIGNING_PUBLIC_KEY_ID,publicKeys,resolveRisk:resolveRisk??(async()=>{throw new PaymentError('QUALIFIED_RISK_RESOLVER_NOT_CONFIGURED');})});

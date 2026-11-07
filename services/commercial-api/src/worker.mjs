@@ -8,7 +8,8 @@ import {SupabaseRpcPool} from './payments/rpc-http.mjs';
 import {PayPalClient} from './payments/paypal-client.mjs';
 import {PayPalEngine} from './payments/paypal.mjs';
 import {loadCatalog} from './payments/catalog.mjs';
-import {BaseVerifier,Facilitator} from './payments/base.mjs';
+import {BaseVerifier} from './payments/base.mjs';
+import {createCommercialFacilitator} from './payments/xpay.mjs';
 import {X402Engine} from './payments/x402.mjs';
 import {createPaymentHandler,supabaseAuthenticator} from './payments/http.mjs';
 import {PaymentError} from './payments/common.mjs';
@@ -39,7 +40,7 @@ export function buildWorkerRuntime(env){
  else blockers.push('PAYPAL_NOT_ACTIVATED');
  if(env.X402_ENABLED==='true'&&launched&&fundsAccepted&&!disabled.has('x402')&&!disabled.has('coinbase_x402')&&pool&&privateKey&&publicKey){try{
   x402=new X402Engine({pool,payee:env.X402_PAYEE_ADDRESS,siteOrigin:env.PUBLIC_API_ORIGIN??env.SITE_ORIGIN,
-   base:new BaseVerifier({rpcUrl:env.BASE_RPC_URL}),facilitator:new Facilitator({url:env.X402_FACILITATOR_URL,
+   base:new BaseVerifier({rpcUrl:env.BASE_RPC_URL}),facilitator:createCommercialFacilitator({url:env.X402_FACILITATOR_URL,
     headers:JSON.parse(env.X402_FACILITATOR_HEADERS_JSON??'{}')}),privateKey,publicKeyId,publicKeys:{[publicKeyId]:publicKey},
    resolveRisk});
  }catch{blockers.push('X402_CONFIGURATION_INCOMPLETE');}}
