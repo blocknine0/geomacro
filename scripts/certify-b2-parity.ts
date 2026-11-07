@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-/** Fully paginated, exact-key B2↔D1 and optional R2↔manifest readback. */
+/** Bounded D1-indexed independent B2/R2 object readback; no bucket listing. */
 import {createHash,createHmac,createDecipheriv} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
-import {readFileSync,existsSync} from 'node:fs';
 import {createB2Client} from './ops/b2-s3-client.mjs';
 import {ORIGIN,need,envString,api,canonicalD1,queryD1,sha256,canonical,signedReport,holdError,SHA_RE} from './release-common.ts';
 const B2_ENDPOINT='https://s3.us-east-005.backblazeb2.com',B2_BUCKET='geomacro-private-archive';
@@ -62,7 +61,7 @@ async function queueSnapshot(){
  need(snap.every(s=>s.backlog===0),'PARITY_QUEUE_BACKLOG_NOT_ZERO');return snap;
 }
 
-/** R2 signed GET/LIST against the exact private fallback D1 ledger. */
+/** R2 signed GET only against an exact private fallback D1 object key. */
 async function r2Request(key:string){
  const account=envString('CLOUDFLARE_ACCOUNT_ID',32),bucket=envString('P0B_PRIVATE_R2_BUCKET');
  need(/^[a-z0-9-]{3,63}$/.test(bucket),'PARITY_R2_BUCKET_INVALID');
@@ -73,7 +72,7 @@ async function r2Request(key:string){
  need(/^p0b\/private-fallback\/v1\/[A-Za-z0-9_./-]+$/u.test(key)&&!key.includes('..'),'PARITY_R2_D1_KEY_INVALID');
  const path='/'+bucket+'/'+key.split('/').map(encodeURIComponent).join('/');
  const query='';
-  const host=new URL(endpoint).host;
+ const host=new URL(endpoint).host;
  const header=`host:${host}\nx-amz-content-sha256:${empty}\nx-amz-date:${date}\n`;
  const hNames='host;x-amz-content-sha256;x-amz-date';
  const scope=`${day}/${region}/s3/aws4_request`;
