@@ -7,7 +7,7 @@ import {pathToFileURL} from 'node:url';
 import {evaluateMigrationBudget,checkTimeTravel} from './verify-protected-d1-migration-gate.mjs';
 import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
 import {REPAIR_SCHEMA_OBJECTS,verifyRepairSchema,pendingRepairPlans,verifyRepairSql,repairProbeSql,verifyRepairProbe,admitRepairCost} from './protected-d1-repair-plan.mjs';
-export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork}={}){
+export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
     env.GITHUB_REF!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??'')||
     !env.RUNNER_TEMP||env.WRANGLER_VERSION!=='4.136.3'||
@@ -22,7 +22,7 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
  };
  const budget=async()=>{
   exactMain();
-  const b=evaluateMigrationBudget(await plan({env}));
+  const b=assessBudget(await plan({env}));
   record('budget',b);if(!b.admitted)throw Error('REPAIR_PROVIDER_BUDGET_HELD');return b;
  };
  const configPath=resolve('workers/control-plane/wrangler.canary-d1.jsonc');
