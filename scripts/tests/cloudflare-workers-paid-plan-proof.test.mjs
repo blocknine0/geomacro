@@ -77,7 +77,7 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.equal(grant.maintenance,false);
  assert.equal(grant.snapshot_refresh,false);
  assert.equal(grant.structural_snapshot,false);
- assert.ok(grant.daily_account_soft_limit_read<=120_000);
+ assert.ok(grant.daily_account_soft_limit_read<=140_000);
  assert.ok(grant.daily_account_soft_limit_write<=180_000);
  assert.equal(grant.paid_subscription_change_performed,false);
  const reset=new Date("2026-10-27T00:00:00.000Z");
@@ -144,7 +144,7 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  const granted=await checkD1BundledWork({env,now,fetchImpl});
  assert.equal(reads,3);
  assert.equal(granted.critical,false);
- assert.equal(granted.reason,"GEOMACRO_OWNER_D1_UTC_DAILY_BUDGET_HELD");
+ assert.equal(granted.reason,"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD");
  assert.equal(granted.workers_paid_subscription_verified,true);
  assert.equal(granted.owner_d1_utc_budget_held,true);
  assert.equal(granted.d1_queries,0);
@@ -206,11 +206,11 @@ test("owner 120k reads / 180k writes cap applies independently of Paid allowance
  assert.equal(granted.source_intake,false); // 20m+15m read envelope > 120k.
  assert.equal(granted.paid_capacity_probe_status,"VERIFIED");
  assert.equal(granted.owner_d1_utc_budget_held,false);
- assert.equal(granted.owner_d1_utc_daily_targets.rows_read,120000);
+ assert.equal(granted.owner_d1_utc_daily_targets.rows_read,140000);
  assert.equal(granted.owner_d1_utc_daily_targets.rows_written,180000);
  const blocked=await checkD1BundledWork({env,now,
-  fetchImpl:mock(117000,2000)});
- assert.equal(blocked.reason,"GEOMACRO_OWNER_D1_UTC_DAILY_BUDGET_HELD");
+  fetchImpl:mock(137000,2000)});
+ assert.equal(blocked.reason,"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD");
  assert.equal(blocked.critical,false);
  assert.equal(blocked.source_intake,false);
  assert.equal(blocked.paid_capacity_probe_status,"VERIFIED");
@@ -223,10 +223,30 @@ test("owner 120k reads / 180k writes cap applies independently of Paid allowance
   fetchImpl:mock(1500,1500,404)});
  assert.equal(missingSpend.owner_d1_utc_budget_held,false);
  assert.equal(missingSpend.workers_paid_subscription_verified,true);
- assert.equal(missingSpend.reason,"WORKERS_PAID_SPEND_POLICY_UNVERIFIED");
+ assert.equal(missingSpend.reason,"WORKERS_PAID_SPEND_POLICY_UNVERIFIED_SAFE_DEGRADE");
  assert.equal(missingSpend.paid_capacity_probe_status,
   "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003");
  assert.equal(missingSpend.critical,false);
  assert.equal(missingSpend.source_intake,false);
  assert.equal(missingSpend.paid_calls,0);
+});
+
+test("140k daily regular max reserves last 40k writes for explicitly authorized emergency only",async()=>{
+ const proof=assessProviderWorkersPaidSubscription(paid,now);
+ const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
+  "workers","durable_objects"].map((product_id,i)=>({
+   id:"lock-"+i,product_id,action:"usage_block",enabled:true,
+   threshold_cents:1,version:1,current_state:{status:"below_limit"},
+  })),
+ ]},now);
+ const normal=planD1BundledWork(usage(3000,3000),{now,paidProof:proof,spendGuardProof});
+ assert.equal(normal.critical,true);
+ assert.ok(normal.daily_account_soft_limit_read<=140000);
+ assert.ok(normal.daily_account_soft_limit_write<=140000);
+ const afterNormal=planD1BundledWork(usage(3000,140000),{now,paidProof:proof,spendGuardProof});
+ assert.equal(afterNormal.critical,false);
+ assert.equal(afterNormal.source_intake,false);
+ const noOverride=planD1BundledWork(usage(3000,179999),{now,paidProof:proof,spendGuardProof});
+ assert.equal(noOverride.critical,false);
+ assert.equal(noOverride.phase2h_raw_archive,false);
 });
