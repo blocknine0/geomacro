@@ -147,18 +147,40 @@ function originalUrl(raw){
   return u.href;
  }catch{return null}
 }
+// Narrow explicit Hot50 country-adjective aliases. Never infer an actor from
+// country-name length: a headline mentioning two distinct countries is
+// ambiguous until independently verified issuer/country evidence exists.
+const HOT50_ORIGINAL_TITLE_ALIASES=Object.freeze({
+ USA:["U.S."],CHN:["Chinese"],IND:["Indian"],RUS:["Russian"],
+ GBR:["British"],DEU:["German"],FRA:["French"],JPN:["Japanese"],
+ KOR:["South Korean"],BEL:["Belgian"],CAN:["Canadian","British Columbia"],AUS:["Australian"],
+ BRA:["Brazilian"],MEX:["Mexican"],ITA:["Italian"],ESP:["Spanish"],
+ NLD:["Dutch"],CHE:["Swiss"],NOR:["Norwegian"],SWE:["Swedish"],
+ POL:["Polish"],UKR:["Ukrainian"],TUR:["Turkish"],SAU:["Saudi"],
+ ARE:["Emirati"],IRN:["Iranian"],ISR:["Israeli"],EGY:["Egyptian"],
+ QAT:["Qatari"],OMN:["Omani"],IRQ:["Iraqi"],ZAF:["South African"],
+ NGA:["Nigerian"],COD:["DR Congo","D.R. Congo"],
+ ZMB:["Zambian"],CHL:["Chilean"],PER:["Peruvian"],
+ ARG:["Argentine","Argentinian"],BOL:["Bolivian"],IDN:["Indonesian"],
+ VNM:["Vietnamese"],THA:["Thai"],MYS:["Malaysian"],SGP:["Singaporean"],
+ PHL:["Philippine","Filipino"],PAK:["Pakistani"],BGD:["Bangladeshi"],
+ KAZ:["Kazakh"],MNG:["Mongolian"],MMR:["Burmese"]
+});
 function countryFromTitle(t){
  const normalized=t.normalize("NFKC").toLocaleLowerCase("en");
  const hits=[];
  for(const c of COUNTRIES){
-  const candidates=[c.name,...(c.iso3==="PSE"?["Palestine","Palestinian"]:
-    c.iso3==="GBR"?["Britain","British"]:c.iso3==="USA"?["United States of America"]:
-    c.iso3==="UKR"?["Ukrainian"]:[])];
+  const candidates=[c.name,...(HOT50_ORIGINAL_TITLE_ALIASES[c.iso3]||[]),
+    ...(c.iso3==="PSE"?["Palestine","Palestinian"]:
+    c.iso3==="GBR"?["Britain"]:c.iso3==="USA"?["United States of America"]:[])];
   for(const phrase of candidates){
    if(phrase.length<4)continue;
    const needle=phrase.toLocaleLowerCase("en");
    const at=normalized.indexOf(needle);
    if(at<0)continue;
+   // A named Canadian province is not a UK government actor.
+   if(c.iso3==="GBR"&&needle==="british"&&
+      /^\s+columbia\b/u.test(normalized.slice(at+needle.length)))continue;
    const left=at===0||!/\p{L}/u.test(normalized[at-1]);
    const right=at+needle.length===normalized.length||
     !/\p{L}/u.test(normalized[at+needle.length]);
@@ -166,8 +188,9 @@ function countryFromTitle(t){
   }
  }
  if(!hits.length)return null;
- const best=Math.max(...hits.map(h=>h.n));
- const distinct=[...new Set(hits.filter(h=>h.n===best).map(h=>h.country))];
+ // A title like "China restricts exports to Russia" cannot be safely
+ // attributed to Russia just because that name has more letters.
+ const distinct=[...new Set(hits.map(h=>h.country))];
  return distinct.length===1?distinct[0]:null;
 }
 function severity(title,cat){
