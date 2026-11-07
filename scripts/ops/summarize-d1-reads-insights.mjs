@@ -11,6 +11,22 @@ import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
+// Coarse workstream attribution only: no table names, raw SQL, URLs,
+// publisher names or bound parameter values leave this process. Matches are
+// heuristic and MUST NOT be treated as a certified source of write attribution.
+export function classifyD1QueryWorkstream(query){
+ if(typeof query!=="string"||query.length<1||query.length>32000)
+  throw Error("D1_INSIGHTS_QUERY_CLASSIFICATION_INVALID");
+ const t=query.toLowerCase();
+ const groups=[
+  ["SOURCE_POLL",/\b(?:source_registry|p1_source_poll_bundles|p0a_source|source_poll_dispatch_mutex)\b/u],
+  ["ARCHIVE_B2",/\b(?:p0b_archive_outbox|phase2h_private_raw_news|b2_account_quota|b2_archive|ingestion_spool_queue)\b/u],
+  ["RISK_GATE",/\b(?:risk_observations|unverified_observations|progressive_risk_gate|risk_gap_enrichment|unified_risk_snapshots)\b/u],
+  ["PUBLIC_CACHE",/\b(?:ask_public_model_cache|public_free_d1_cache|materialized_public|public_news_cache)\b/u],
+  ["SIGNING_GRO",/\b(?:gro_evidence|signed_gro|risk_index_signing|gri_)\b/u],
+ ];
+ return groups.find(([_,pattern])=>pattern.test(t))?.[0]??"OTHER";
+}
 export function summarizeD1ReadInsights(input,{top=10,sortBy="reads"}={}){
   if(!Array.isArray(input)||input.length<1||input.length>200||
      !Number.isSafeInteger(top)||top<1||top>25||
@@ -27,6 +43,7 @@ export function summarizeD1ReadInsights(input,{top=10,sortBy="reads"}={}){
     seen.add(fingerprint);
     return {
       query_sha256:fingerprint,
+      workstream_heuristic:classifyD1QueryWorkstream(item.query),
       total_rows_read:item.totalRowsRead,
       total_rows_written:item.totalRowsWritten,
       executions:item.numberOfTimesRun,
