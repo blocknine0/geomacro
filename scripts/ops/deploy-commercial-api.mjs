@@ -43,6 +43,10 @@ config.vars={...config.vars,DEPLOYED_SHA:env.GITHUB_SHA,COMMERCIAL_SIGNING_KEY_I
  PAYPAL_MODE:env.GEOMACRO_PAYPAL_ENVIRONMENT||'sandbox',
  PAYPAL_ENABLED:String(!commercialNoFundsOnly&&Boolean(paypalComplete)),X402_ENABLED:String(!commercialNoFundsOnly&&Boolean(x402Complete&&!xpayNoFundsOnly)),
  POLYGON_X402_ENABLED:'false',
+ // Public canonical api.geomacro.live transport is not production-verified.
+ // Use the approved same-service control-plane Worker endpoint for internal
+ // qualified evidence; existing strict subject/rights/signed proof checks stay.
+ RISK_EVIDENCE_ORIGIN:'https://geomacro-control-plane.daspallab202391.workers.dev',
  X402_FACILITATOR_URL:env.COMMERCIAL_X402_FACILITATOR_URL||'',
  PAYPAL_CATALOG_JSON:env.PAYPAL_CATALOG_JSON||'',
  GEOMACRO_COMMERCIAL_LAUNCH_ACK:commercialNoFundsOnly?'':'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH',
@@ -129,7 +133,7 @@ try{
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
   blockers:health.blockers,evidence_proof:evidenceProof,xpay_no_funds_only:xpayNoFundsOnly,
   polygon_no_funds_only:true,commercial_no_funds_only:commercialNoFundsOnly,
-  no_funds_public_route:noFundsPaymentGate,real_payment_attempted:false};
+  no_funds_public_route:noFundsPaymentGate,risk_evidence_origin:'direct-control-plane',real_payment_attempted:false};
  console.log(JSON.stringify(summary));
  if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'\n'+JSON.stringify(summary,null,2)+'\n');
 }catch(error){console.error(error.message);process.exitCode=1;}
