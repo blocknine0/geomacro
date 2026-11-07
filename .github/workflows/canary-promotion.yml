@@ -1,0 +1,149 @@
+name: GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'verify, migrate, promote, or release-hold (no payments)'
+        type: choice
+        required: true
+        options: [verify, migrate, promote, release-hold]
+        default: verify
+      baseline_version_id:
+        description: 'Actual 100% provider baseline Worker version UUID'
+        required: false
+        type: string
+      candidate_version_id:
+        description: 'Already uploaded, exact-main Worker version UUID'
+        required: false
+        type: string
+      confirmation:
+        description: 'Must equal PROMOTE_HOT50_NO_FUNDS for a traffic change'
+        required: false
+        type: string
+  schedule:
+    - cron: '15 1 * * *' # closed previous UTC day; guarded provider reads only
+  pull_request:
+    paths:
+      - '.github/workflows/canary-promotion.yml'
+      - 'scripts/apply-d1-migrations.ts'
+      - 'scripts/canary-promoter.ts'
+      - 'scripts/verify-d1-quota-proof.ts'
+      - 'scripts/certify-b2-parity.ts'
+      - 'scripts/release-common.ts'
+      - 'scripts/release-remediate.ts'
+      - 'src/middleware/quotaCircuitBreaker.ts'
+      - 'src/risk/hot50Attestation.ts'
+      - 'scripts/release-static-check.mjs'
+      - 'scripts/release-five-gate-contract.test.mjs'
+      - 'scripts/release-security-regression.test.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+jobs:
+  static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: '24'}
+      - name: Validate source syntax and policy lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release-static-check.mjs
+          node --experimental-strip-types --test scripts/release-five-gate-contract.test.mjs scripts/release-security-regression.test.mjs
+          test -f config/d1-hotspot-v2-canary.hold
+          node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
+  protected-release:
+    needs: static-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 115
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
+      CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_SPOOL_ENCRYPTION_KEY: ${{ secrets.B2_SPOOL_ENCRYPTION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: '1'
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: 'hot50_release_parity'
+      B2_REQUEST_BUDGET: '500'
+      P0B_PRIVATE_R2_BUCKET: ${{ secrets.P0B_PRIVATE_R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      PARITY_MAX_B2_READS: '250'
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ vars.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ vars.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
+      WRANGLER_VERSION: '4.136.3'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: '24'}
+      - name: Require reviewed exact-main SHA and existing canary protection
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          # Never swallow a failed provider gate as an authorized rollout.
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+      - name: Execute ONLY selected gated operation
+        shell: bash
+        env:
+          OPERATION: ${{ inputs.operation }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # Never schedule a full physical B2/R2 LIST+GET parity census.
+          # The scheduled path checks only the CLOSED UTC-day D1 billable rows.
+          # All five protected gates run together only by manual dispatch.
+          if test "$EVENT_NAME" = schedule; then
+            npm run release:quota
+            exit 0
+          fi
+          case "${OPERATION:-verify}" in
+            verify)
+              npm run release:remediate ;;
+            migrate)
+              test "$EVENT_NAME" = workflow_dispatch
+              test "$RELEASE_CONFIRMATION" = MIGRATE_D1_0204_0211_NO_FUNDS
+              node --experimental-strip-types scripts/apply-d1-migrations.ts --apply ;;
+            promote)
+              test "$EVENT_NAME" = workflow_dispatch
+              node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
+              node --experimental-strip-types scripts/canary-promoter.ts --promote ;;
+            release-hold)
+              test "$EVENT_NAME" = workflow_dispatch
+              npm run release:remediate
+              node --experimental-strip-types scripts/canary-promoter.ts --promote --release-hold ;;
+            *) echo 'RELEASE_OPERATION_INVALID' >&2; exit 2 ;;
+          esac
+      - name: Retain evidence and HOLD receipts independently of result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-five-gate-provider-receipts
+          path: artifacts/release/*.json
+          retention-days: 14
+          if-no-files-found: warn

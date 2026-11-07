@@ -53,6 +53,7 @@
     "base-polygon-three-category-no-funds.yml",
     "bgs-native-mineral-reference.yml",
     "bls-atom-native-readonly-acceptance.yml",
+    "canary-promotion.yml",
     "canonical-risk-object-production-refresh.yml",
     "category-endpoint-live-acceptance.yml",
     "circle-x402-prelaunch-readiness.yml",
@@ -410,6 +411,7 @@
   "criticalWorkflowFiles": [
     "auto-ingest-news.yml",
     "b2-raw-storage-maintenance.yml",
+    "canary-promotion.yml",
     "cloudflare-five-usd-spend-blocks.yml",
     "codeql-security.yml",
     "commercial-api-production-acceptance.yml",
@@ -485,7 +487,8 @@
     "part2-source-d1-acceptance.yml": "Part 2 Source D1 and Rights Acceptance",
     "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)",
     "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)",
-    "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)"
+    "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)",
+    "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -551,6 +554,16 @@
       "versions deploy",
       "CANARY_0204_0211_P1_REMOTE_SCHEMA_AND_BACKUP_VERIFIED",
       "CANARY_PROMOTION_FAILED_ROLLBACK_ATTEMPTING_PREVIOUS_100_PERCENT_VERSION"
+    ],
+    "canary-promotion.yml": [
+      "workflow_dispatch:",
+      "environment: production",
+      "group: geomacro-d1-control-plane-production",
+      "cancel-in-progress: false",
+      "test -f config/d1-hotspot-v2-canary.hold",
+      "test \"$EVENT_NAME\" = workflow_dispatch",
+      "npm run release:quota",
+      "test \"$RELEASE_CONFIRMATION\" = MIGRATE_D1_0204_0211_NO_FUNDS"
     ]
   },
   "predgeBlobSha1": {
