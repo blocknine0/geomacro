@@ -28,8 +28,8 @@ const allowedPlan={
  paid_capacity_verified_by_provider:true,
  observed_rows_read:50000,observed_rows_written:40000,
  owner_d1_utc_daily_targets:{
-  rows_read:140000,normal_rows_written:140000,rows_written:180000,
-  emergency_rows_written:40000,emergency_auto_admission:false,
+  rows_read:140000,normal_rows_written:140000,rows_written:140000,
+  emergency_rows_written:0,emergency_auto_admission:false,
   safety_buffer_rows_read:4000,safety_buffer_rows_written:2000,
  },
 };
@@ -71,7 +71,7 @@ test("spend-policy 404 is advisory while owner daily cap still HOLDS without spe
   plan:async()=>({...allowedPlan,observed_rows_written:138100})
  });
  assert.equal(writes.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
- assert.equal(writes.emergency_write_reserve,40000);
+ assert.equal(writes.emergency_write_reserve,0);
 });
 test("bad baseline, unverified bookmark or provider 403 never count as canary-ready",async()=>{
  const base={env,now:at,plan:async()=>allowedPlan};
@@ -110,7 +110,7 @@ test("early UTC burn-rate spike HOLDS even below 140k; emergency writes never re
   plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:9000})
  });
  assert.equal(highWrites.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
- assert.equal(highWrites.emergency_write_reserve,40000);
+ assert.equal(highWrites.emergency_write_reserve,0);
  const safe=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,observed_rows_read:100,observed_rows_written:100})
  });
