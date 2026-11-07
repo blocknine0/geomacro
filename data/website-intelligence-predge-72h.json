@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T13:06:16.542Z",
+  "checked_at": "2026-11-07T13:54:43.981Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 32,
+  "item_count": 29,
   "counts": {
     "geopolitics": 2,
     "macro": 5,
-    "rare_earth": 25
+    "rare_earth": 22
   },
-  "source_native_ids_sha256": "d1a60f2a6a80d38fe592974df971a49ea534eba3a9c2ccb15d718d278a499bf0",
+  "source_native_ids_sha256": "94086906bd3459c4064f345172459d564e297c3d976c60c5154422ba1a70ff77",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -567,63 +567,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T15:00:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-5c6a6e2b",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output (FCX:NYSE) - Seeking Alpha. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T13:32:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-757f2e98",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad expansion plan to boost copper, molybdenum output - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T13:32:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-6613a8fb",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5 billion Bagdad copper mine expansion By Investing.com - Investing.com UK. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T13:10:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
