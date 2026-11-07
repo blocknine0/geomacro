@@ -207,7 +207,7 @@ jobs:
     # Deployment completion is the critical observation moment: capture the
     # actual dominant SQL after each production Worker deploy, rather than
     # skipping query-insights during workflow_run as in #42421188378.
-    # Same-origin, exact-main guard rejects untrusted/forked workflow runs.
+    # Same-origin, exact-main guard rejects untrusted/forked event payloads.
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
