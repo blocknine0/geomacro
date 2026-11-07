@@ -61,8 +61,8 @@ test('new D1 credential HMAC exactly matches Node canonical commercial-bearer na
  await errCode(customerPaidKeyDigest({},key),'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED');
 });
 
-test('tier/cost table matches canonical TS registry and exposes three risk-gate tiers only',()=>{
- const ts=readFileSync('src/lib/commercial-access-contract.ts','utf8');
+test('tier/cost shares central pricing and prohibits unavailable risk authorization',()=>{
+ const ts=readFileSync('src/lib/credit-metering-policy.mjs','utf8');
  for(const [name,cost] of Object.entries(CUSTOMER_CREDIT_COSTS)){
   assert.match(ts,new RegExp(name+':\\s*'+cost+'[,}]'));
  }
@@ -70,9 +70,17 @@ test('tier/cost table matches canonical TS registry and exposes three risk-gate 
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('gri_read'));
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle'));
  for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
-  assert.ok(CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
+  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
  assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
   {risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25});
+});
+
+test('D1 customer authorize rejects risk tiers that cannot be debited',async()=>{
+ const f=fixture();f.user(alice,'alice@example.com');f.fund(alice,{tier:'business_pilot',credits:100});
+ const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
+ for(const capability of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full','risk_gate_bundle','gri_read'])
+  await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,capability),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
+ assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM customer_usage_receipts").get().n,0);
 });
 
 test('unverified, zero-funded, or wrong-person keys cannot be issued',async()=>{
