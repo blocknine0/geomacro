@@ -130,11 +130,17 @@ export async function stageP0bR2Fallback(env:R2FallbackEnv,payloads:SpoolPayload
  const saved=await env.DB.prepare(
   "SELECT batch_id,object_key,cipher_sha256,item_count,state FROM p0b_private_r2_fallback WHERE batch_id=?"
  ).bind(batchId).first();
- if(!saved||saved.item_count!==payloads.length)
+ if(!saved||saved.batch_id!==batchId||
+    saved.item_count!==payloads.length||
+    typeof saved.object_key!=="string"||!HEX.test(saved.cipher_sha256??""))
   throw Error("P0B_R2_FALLBACK_D1_INDEX_UNVERIFIED");
- // If a concurrent writer won the immutable batch ID, verify its actual
- // R2 ciphertext rather than falsely claiming our orphan object indexed.
- await restoreP0bR2Fallback(env,saved);
+ // The newly staged R2 bytes have ALREADY passed an independent exact GET,
+ // SHA-256, AES-GCM and plaintext-member readback above. An exact D1 pointer
+ // cannot gain further evidence from a duplicate GET; spare that Class-B
+ // operation on every fresh fallback. A concurrent D1 winner with a different
+ // key/hash MUST still receive a separate full R2 cryptographic readback.
+ if(saved.object_key!==key||saved.cipher_sha256!==digest)
+  await restoreP0bR2Fallback(env,saved);
  return {verified:true,batchId,itemCount:payloads.length,
   pendingB2:saved.state!=="B2_VERIFIED",reused:false};
 }
