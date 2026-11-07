@@ -1,3 +1,4 @@
+import {admitP0bSourceStorage} from './p0b-source-storage-admission.mjs';
 /**
  * P0-A source registry and isolated private normalization intake.
  * All routes are mounted BEHIND the existing control-plane admin bearer.
@@ -477,6 +478,10 @@ export async function pollP0aSources(env,{
     sourceIds.length>MAX_SOURCES_PER_POLL||sourceIds.some(x=>!SOURCE.test(x))||
     new Set(sourceIds).size!==sourceIds.length)))
   return {ok:false,error:'P0A_POLL_ARGUMENT_INVALID'};
+ const storage=await admitP0bSourceStorage(env,now);
+ if(!storage.admitted)return {ok:false,error:storage.reason,
+  ...(storage.retry_at?{retry_at:storage.retry_at}:{}),
+  due_selected:0,receipts:[],storage_held:true};
  let rows;
  try{
   const filtered=sourceIds!==null?
