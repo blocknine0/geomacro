@@ -30,11 +30,20 @@ test("shared S3 client refuses listing before any provider request",async t=>{
  const original=globalThis.fetch;
  const old=process.env.B2_REQUEST_BUDGET;
  const oldVitest=process.env.VITEST;
+ const oldNodeEnv=process.env.NODE_ENV;
  process.env.B2_REQUEST_BUDGET="1";
+ // This fixture contains synthetic credentials and a hard network stub.
+ // Real Node B2 callers must never impersonate this isolated test contract.
  process.env.VITEST="true";
+ process.env.NODE_ENV="test";
  let requests=0;
  globalThis.fetch=async()=>{requests+=1;return new Response("unexpected")};
- t.after(()=>{globalThis.fetch=original;if(old===undefined)delete process.env.B2_REQUEST_BUDGET;else process.env.B2_REQUEST_BUDGET=old;if(oldVitest===undefined)delete process.env.VITEST;else process.env.VITEST=oldVitest});
+ t.after(()=>{
+  globalThis.fetch=original;
+  if(old===undefined)delete process.env.B2_REQUEST_BUDGET;else process.env.B2_REQUEST_BUDGET=old;
+  if(oldVitest===undefined)delete process.env.VITEST;else process.env.VITEST=oldVitest;
+  if(oldNodeEnv===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=oldNodeEnv;
+ });
  const client=createB2Client({endpointUrl:"https://s3.us-east-005.backblazeb2.com",bucket:"geomacro-private-archive",
   accessKey:"fake-access-key",secretKey:"fake-secret-key-value-1234567890",allowedKeyPrefixes:["geomacro-evidence/v1/spool/"]});
  assert.throws(()=>client.list("geomacro-evidence/v1/spool/"),/B2_LIST_OPERATIONS_DISABLED_USE_D1_INDEX/u);
