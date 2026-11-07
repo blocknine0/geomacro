@@ -137,7 +137,8 @@ test('Dexter verification-only client does not expose settlement or broadcast',a
 test('Dexter rejects invalid/mismatched verification response without settlement',async()=>{
  const p=await signedPayment({validAfter:String(Math.floor(Date.now()/1000)-3),
   validBefore:String(Math.floor(Date.now()/1000)+90)});
- for(const response of [{isValid:false},{isValid:true,payer:recipient},{isValid:'true'},{}]){
+ for(const response of [{isValid:false},{isValid:true,payer:recipient},{isValid:'true'},
+  {isValid:true,invalidReason:'payment_rejected'},{}]){
   const d=new DexterPolygonVerifier({fetchImpl:async()=>Response.json(response)});
   await assert.rejects(d.verify(p,expected),/DEXTER_VERIFICATION_INVALID/);
  }
