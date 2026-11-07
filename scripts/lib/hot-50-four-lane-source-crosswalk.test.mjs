@@ -85,9 +85,9 @@ test("actual producer uses category-specific Google variants, no additional requ
  assert.equal(new Set(reg.map(x=>x.url)).size,reg.length);
  assert.ok(reg.some(x=>x.private_discovery_index_only===true&&
   HOT50_COUNTRY_SET.has(x.discovery_country_iso3)));
- // Small budgets preserve combined all-domain country searches and use at
- // most one of their old GET slots for an additional focused query.
- assert.equal(reg.filter(x=>x.google_news_category_specific===true).length,1);
+ // Removed endpoints free enough positions for the full 25-query Hot-50
+ // rotation without adding requests or dropping country-local publishers.
+ assert.equal(reg.filter(x=>x.google_news_category_specific===true).length,25);
  assert.ok(reg.some(x=>x.id==="private_hot50_can_gac_newsreleases"));
  assert.ok(reg.some(x=>x.id==="private_hot50_can_gac_statements"));
 });

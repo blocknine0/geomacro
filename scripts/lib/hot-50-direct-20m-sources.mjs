@@ -12,7 +12,7 @@ import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.
 import {HOT50_COUNTRY_ISO3,HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const HOT50_DIRECT_20M_FREQUENCY_MINUTES=20;
-export const HOT50_RETIRED_REPROBES_PER_SLOT=5;
+export const HOT50_RETIRED_REPROBES_PER_SLOT=0;
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const TYPES=new Set(["rss","rdf","atom","xml","json"]);
 const safeUrl=link=>{
@@ -65,25 +65,12 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    }else merged.set(pin.url,source);
   }
  }
- // Previously failed endpoints are never silently promoted to healthy.
- // Retry up to five distinct pins per 20-minute slot inside the EXISTING
- // 512-GET cap. Across three delivered slots every one of the 14 currently
- // retired Hot-50 pins gets a real HTTP/native-date probe. Success still
- // requires the collector\u0027s actual check; failures remain visible as failures.
+ // Permanently removed feeds have no production re-probe lane. Preserve
+ // catalogue provenance and expose exclusion counts for operator visibility.
  const nonretiredCount=merged.size;
  const n=retired.length;
- const count=Math.min(HOT50_RETIRED_REPROBES_PER_SLOT,n);
- const slot=Math.floor(now.getTime()/(HOT50_DIRECT_20M_FREQUENCY_MINUTES*60_000));
- const selected=n?Array.from({length:count},(_,i)=>retired[(slot*count+i)%n]):[];
+ const count=0;
  const reprobed=[];
- for(const s of selected){
-  if(merged.has(s.url))continue; // One publisher URL, one fetch identity.
-  merged.set(s.url,Object.freeze({...s,
-   private_hot50_retired_reprobe:true,
-   activation_state:"RETIRED_TRANSPORT_REPROBE_ONLY",
-  }));
-  reprobed.push(s.id);
- }
  if(snapshot.countries.length!==50||ids.size!==124||
     merged.size===0||merged.size>512)
   throw Error("HOT50_DIRECT20M_SOURCE_COUNT_DRIFT");
@@ -99,7 +86,7 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    retired_reprobe_ids_this_tick:Object.freeze(reprobed),
    retired_reprobes_this_tick:reprobed.length,
    retired_reprobe_frequency_minutes:HOT50_DIRECT_20M_FREQUENCY_MINUTES,
-   retired_reprobe_full_cycle_nominal_minutes:n?
+   retired_reprobe_full_cycle_nominal_minutes:n&&count?
     HOT50_DIRECT_20M_FREQUENCY_MINUTES*Math.ceil(n/count):null,
    retired_reprobe_is_transport_only:true,
    retired_reprobe_does_not_prove_recovery:true,

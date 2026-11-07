@@ -50,16 +50,16 @@ test("every local publisher receives nominal 60m polling without exceeding exist
  for(const slot of slots){
   assert.equal(slot.local.length,24);
   assert.ok(slot.sources.length<=512);
-  assert.ok(slot.sources.length>=89); // retired base sources cannot be counted as active GETs
+  assert.ok(slot.sources.length>=70); // retired base sources cannot be counted as active GETs
   assert.equal(new Set(slot.sources.map(x=>x.url)).size,slot.sources.length);
-  assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,89);
+  assert.equal(slot.sources.filter(x=>x.private_country_local_candidate).length,70);
   const index=slot.sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3);
   assert.ok(index.length>=1&&index.length<=25);
   assert.equal(slot.sources.filter(x=>x.launch_watch&&x.private_discovery_index_only).length,5);
  }
  const all=slots.flatMap(x=>x.local);
- assert.equal(new Set(all.map(x=>x.id)).size,89);
- assert.ok(new Set(all.map(x=>x.publisher_country_iso3)).size>=86);
+ assert.equal(new Set(all.map(x=>x.id)).size,70);
+ assert.ok(new Set(all.map(x=>x.publisher_country_iso3)).size>=69);
  assert.deepEqual(rotatingPrivateLocalPublisherSources(new Date(at.getTime()+4*quarter))
   .map(x=>x.id),slots[0].local.map(x=>x.id));
 });
@@ -117,9 +117,9 @@ test("local manifest rejects duplicate URLs and forged permissions, never adding
 
 test("active local publisher inventory is fully polled in a source tick while preserving native quotas",()=>{
  const all=budgetedPrivateLocalPublisherSources(at,96);
- assert.equal(all.length,89);
+ assert.equal(all.length,70);
  assert.equal(new Set(all.map(x=>x.id)).size,all.length);
- assert.equal(new Set(all.map(x=>x.publisher_country_iso3)).size>=86,true);
+ assert.equal(new Set(all.map(x=>x.publisher_country_iso3)).size>=69,true);
  const production=privateOsintRuntimeSources(at,privateOsintGlobalSources(),
    COUNTRIES_195,{includeLocalGapLane:true});
  assert.ok(production.length<=512);
@@ -133,5 +133,5 @@ test("active local publisher inventory is fully polled in a source tick while pr
   for(const source of budgetedPrivateLocalPublisherSources(quarter,10))
    deferred.add(source.id);
  }
- assert.equal(deferred.size,89,"partial network budget rotates all approved local publishers");
+ assert.equal(deferred.size,70,"partial network budget rotates all approved local publishers");
 });

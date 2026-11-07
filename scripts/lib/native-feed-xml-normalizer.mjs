@@ -14,7 +14,11 @@ export function normalizeNativeFeedXml(raw,maxBytes=192*1024){
     /<!DOCTYPE\b|<!ENTITY\b/iu.test(raw))return null;
  const clean=raw.replace(/^\uFEFF/u,"")
   .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/gu,"");
- const body=clean.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d{1,7}|#x[0-9a-f]{1,6});)/giu,
+ // Publisher feeds commonly declare a presentation stylesheet between the
+ // XML declaration and RSS root. It is text metadata, never fetched/executed.
+ // Strip only that processing instruction; DTD/entity rejection above remains.
+ const body=clean.replace(/<\?xml-stylesheet\s[^?]*(?:\?(?!>)[^?]*)*\?>/giu,"")
+  .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d{1,7}|#x[0-9a-f]{1,6});)/giu,
    "&amp;");
  if(!/^(?:<\?xml\b[^>]*\?>\s*)?<(?:rss|feed|rdf:RDF)\b/iu.test(body.trimStart())||
     new TextEncoder().encode(body).byteLength>maxBytes)return null;

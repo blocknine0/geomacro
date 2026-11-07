@@ -42,7 +42,7 @@ test("true 20-minute production registry includes all Hot-50 native feeds plus n
   x.original_article_verified===false&&
   (!PRIVATE_OSINT_RETIRED_SOURCE_IDS.includes(x.id)||
    x.private_hot50_retired_reprobe===true)));
- assert.equal(summary.hot50_retired_transport_reprobes_this_tick,5);
+ assert.equal(summary.hot50_retired_transport_reprobes_this_tick,0);
  assert.equal(summary.hot50_retired_reprobe_does_not_prove_http_success,true);
  assert.ok(registry.every(x=>{
   const u=new URL(x.url);

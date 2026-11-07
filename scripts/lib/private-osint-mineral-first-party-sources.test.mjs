@@ -2,19 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {privateMineralNationalRssSources} from "./private-osint-mineral-first-party-sources.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
-import {sourceIsPinnedNationalPrimary} from "./private-osint-national-primary-scope.mjs";
+import {sourceIsPinnedNationalPrimary,qualifyPrivateNationalPrimaryScope} from "./private-osint-national-primary-scope.mjs";
 import {collectRegisteredReusableNews} from "./registered-reusable-news-source-collector.mjs";
 import {PRIVATE_OSINT_TOPICS} from "./private-osint-global-sources.mjs";
 const now=new Date("2026-10-31T12:00:00Z");
 const norm=x=>({schema:"geomacro.reusable-news-json.v1",category:x.category,
  country_iso3:x.country_iso3??null,delivery:{raw_article_included:false},
  usage_rights:{commercial_reuse_authorized:false}});
-test("Chile and South Africa official RSS join capped 15m rotation",()=>{
+test("Chile official RSS joins capped 15m rotation; removed South Africa feed stays excluded",()=>{
  const urls=privateMineralNationalRssSources();
  assert.equal(urls.length,2);
  const base=privateOsintRuntimeSources(now);
  assert.ok(base.length<=512);
- for(const source of urls){
+ for(const source of urls.filter(x=>x.id!=="private_mineral_zaf_dmpr_media")){
   const loaded=base.find(s=>s.url===source.url);
   assert.ok(loaded,source.id);
   assert.equal(sourceIsPinnedNationalPrimary(loaded),source.scope==="national_primary");
@@ -38,8 +38,8 @@ test("issuer-only Spanish copper release gains Chile provisional context; foreig
  assert.equal(r.summary.paid_publication_authorized,false);
 });
 
-test("South African DMPR source is original domestic publisher, not foreign event country",async()=>{
- const source=privateOsintRuntimeSources(now).find(s=>s.id==="private_mineral_zaf_dmpr_media");
+test("historical South African DMPR fixture preserves domestic issuer attribution without active polling",async()=>{
+ const source=qualifyPrivateNationalPrimaryScope(privateMineralNationalRssSources().find(s=>s.id==="private_mineral_zaf_dmpr_media"));
  assert.ok(source);
  assert.equal(sourceIsPinnedNationalPrimary(source),true);
  const titles=["Minister announces new copper mine rehabilitation measures",
@@ -57,7 +57,7 @@ test("South African DMPR source is original domestic publisher, not foreign even
 test("previously unavailable Australia industry RSS is excluded; keep existing Indonesia ANTARA local",()=>{
  const urls=new Set(privateOsintRuntimeSources(now).map(s=>s.url));
  assert.equal(urls.has("https://www.industry.gov.au/news.xml"),false);
- assert.equal(urls.has("https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215"),true);
+ assert.equal(urls.has("https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215"),false);
  assert.equal(urls.has("https://www.minister.industry.gov.au/feed/all-media/rss.xml"),false);
  assert.equal(urls.has("https://en.antaranews.com/rss/business-investment.xml"),false);
 });

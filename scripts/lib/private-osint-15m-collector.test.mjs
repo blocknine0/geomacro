@@ -21,6 +21,23 @@ const mockSources=Array.from({length:18},(_,i)=>({
  id:"issuer_"+i,url:"https://publisher-"+i+".example.org/rss.xml",
  type:"rss",supported:true,categories:[["geopolitics","macro","rare_earth"][i%3]]
 }));
+test("Euronews language subdomains share one in-flight publisher slot without retrying 406",async()=>{
+ const registry=["de","es","fr","pt","ru"].map(language=>({
+  id:"issuer_"+language,url:"https://"+language+".euronews.com/rss",
+  type:"rss",supported:true,categories:["geopolitics"],
+ }));
+ let active=0,high=0,calls=0;
+ const result=await collectPrivateOsint15m({now,registry,normalize,resolveCountry:()=>null,
+  fetchImpl:async()=>{
+   calls++;active++;high=Math.max(high,active);
+   await new Promise(resolve=>setTimeout(resolve,2));active--;
+   return new Response(null,{status:406});
+  }});
+ assert.equal(high,1);
+ assert.equal(calls,5);
+ assert.equal(result.summary.original_feed_transient_retries,0);
+ assert.ok(result.checks.every(x=>x.state==="UNAVAILABLE"));
+});
 test("all 18 registered endpoint URLs are polled on ONE tick, no 15m registry rotation omissions",async()=>{
  const called=new Set();
  let active=0,high=0;

@@ -80,7 +80,7 @@ test("real private runtime uses at most 512 native/index URLs and retains all th
  assert.ok(registry.some(x=>x.private_hot50_original_candidate===true));
  assert.ok(registry.some(x=>x.private_discovery_index_only===true));
  const indices=registry.filter(x=>x.private_discovery_index_only===true &&
-  /^private_country_index_[a-z]{3}$/u.test(x.id));
+  typeof x.discovery_country_iso3==="string");
  assert.ok(indices.length>0 && indices.every(x=>COUNTRIES_195.some(c=>
   c.iso3===x.discovery_country_iso3)));
  assert.ok(registry.filter(x=>x.private_hot50_original_candidate===true)

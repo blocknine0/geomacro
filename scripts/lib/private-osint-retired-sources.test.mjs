@@ -8,11 +8,11 @@ import {privateLocalPublisherCandidates,rotatingPrivateLocalPublisherSources}
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
-test("79 repeatedly failing sources are retired from private production ingestion, not published or deleted from source history",()=>{
- assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,79);
+test("127 owner-removed source entries are retired from private production ingestion, not published or deleted from source history",()=>{
+ assert.equal(PRIVATE_OSINT_RETIRED_SOURCE_IDS.length,127);
  const oldLocal=privateLocalPublisherCandidates();
  const retainedLocal=oldLocal.filter(s=>isRetiredPrivateOsintSource(s));
- assert.equal(retainedLocal.length,7);
+ assert.equal(retainedLocal.length,26);
  assert.equal(isRetiredPrivateOsintSource({id:"private_mineral_aus_industry_news"}),true);
  const catalogueIds=new Set(privateOsintGlobalSources().map(s=>s.id));
  // Audit metadata is immutable; active poll source IDs are pruned instead.
@@ -28,7 +28,7 @@ test("79 repeatedly failing sources are retired from private production ingestio
   assert.ok(registry.every(s=>!isRetiredPrivateOsintSource(s)));
   const indexCount=registry.filter(s=>s.private_discovery_index_only&&s.discovery_country_iso3).length;
   assert.ok(indexCount>=1&&indexCount<=25);
-  assert.equal(registry.filter(s=>s.private_country_local_candidate).length,89);
+  assert.equal(registry.filter(s=>s.private_country_local_candidate).length,70);
   assert.equal(registry.filter(s=>s.private_hub_overlay).length,3);
  }
 });

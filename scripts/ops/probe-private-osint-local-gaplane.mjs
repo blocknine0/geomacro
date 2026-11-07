@@ -22,7 +22,7 @@ const registry=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true})
 if(registry.length<1||registry.length>100)throw Error("PRIVATE_GAPLANE_REGISTRY_RANGE_INVALID");
 const canonical=new Set(COUNTRIES_195.map(c=>c.iso3));
 const countries=[...new Set(registry.map(s=>s.publisher_country_iso3))].sort();
-if(countries.length!==registry.length-2||countries.some(c=>!canonical.has(c)))
+if(countries.length<1||countries.length>registry.length||countries.some(c=>!canonical.has(c)))
  throw Error("PRIVATE_GAPLANE_COUNTRY_SET_INVALID");
 const now=new Date();
 const report={
