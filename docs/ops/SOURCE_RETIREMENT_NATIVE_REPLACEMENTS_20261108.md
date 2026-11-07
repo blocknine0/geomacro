@@ -11,12 +11,12 @@ The local native-item check succeeded twice for these 12 endpoints using the pro
 | Removed entry | Replacement feed | Native 72h items at admission check | Identical original article URL samples |
 |---|---|---:|---:|
 | `private_mesh_infobae_americas` | https://www.infobae.com/arc/outboundfeeds/rss/category/america/mundo/ | 70 | 0 |
-| `private_repo_b43996d173bd42476265` | https://es.euronews.com/rss | 50 | 50 |
-| `private_repo_6089f0804e11b1f84ee1` | https://fr.euronews.com/rss | 50 | 50 |
-| `private_repo_143016f4f089bc2fb3ad` | https://pt.euronews.com/rss | 50 | 50 |
-| `private_repo_3a717bddc9306b392bdb` | https://de.euronews.com/rss | 50 | 50 |
+| `private_repo_b43996d173bd42476265` | https://es.euronews.com/rss?format=mrss&level=theme&name=news | 50 | 19 |
+| `private_repo_6089f0804e11b1f84ee1` | https://fr.euronews.com/rss?format=mrss&level=theme&name=news | 50 | 13 |
+| `private_repo_143016f4f089bc2fb3ad` | https://pt.euronews.com/rss?format=mrss&level=theme&name=news | 50 | 18 |
+| `private_repo_3a717bddc9306b392bdb` | https://de.euronews.com/rss?format=mrss&level=theme&name=news | 50 | 17 |
 | `private_gaplane_blr_13` | https://charter97.org/rss.php | 50 | 0 |
-| `private_repo_4fc76c8a74bf3b048b56` | https://ru.euronews.com/rss | 50 | 50 |
+| `private_repo_4fc76c8a74bf3b048b56` | https://ru.euronews.com/rss?format=mrss&level=theme&name=news | 50 | 16 |
 | `private_local_candidate_id_antara` | https://en.antaranews.com/rss/news | 50 | 0 |
 | `private_gaplane_lso_supplement` | https://lestimes.com/?feed=rss2 | 10 | 0 |
 | `private_gaplane_cpv_supplement` | https://expressodasilhas.cv/rss | 10 | 0 |
@@ -26,7 +26,7 @@ The local native-item check succeeded twice for these 12 endpoints using the pro
 ## Acceptance and unresolved work
 
 - 192 relevant local regression tests passed, including alias exclusion, all-category source budgets, XML stylesheet handling, deduplication, and prevention of commercial/verification claims.
-- Five Euronews feeds each matched 50 exact original article URLs in the old feed during the admission comparison. This is sample overlap, not a perpetual all-news equivalence guarantee.
+- Five Euronews official MRSS feeds matched 13–19 exact original article URLs each against the sampled old feed. This is sample overlap, not a perpetual all-news equivalence guarantee.
 - Seven further feeds are same-publisher native alternatives; full identical-story coverage is unproven.
 - 115 removed entries still have no admitted same-publisher native replacement. Their absence remains a coverage gap. Existing broad alternate publishers are not mislabeled as exact duplicates.
 - Replacement checks are read-only: zero D1 queries/writes and zero B2 requests. Successful feed checks do not prove D1 admission, B2 durability, public Website Intelligence delivery or paid Risk Gate readiness.

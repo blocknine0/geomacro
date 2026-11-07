@@ -19,7 +19,7 @@ test("removed IDs and exact feed URL aliases cannot re-enter any replacement reg
  assert.ok(result.every(x=>x.publisher_native_dates_required&&
   x.rights_verified===false&&x.commercial_eligible===false&&
   x.full_duplicate_news_coverage_verified===false));
- assert.equal(result.filter(x=>x.sampled_identical_article_urls===50).length,5);
+ assert.equal(result.filter(x=>x.sampled_identical_article_urls>0).length,5);
 });
 
 test("same-publisher replacement cannot claim unrelated publisher, missing native items, or complete exact duplication",()=>{
