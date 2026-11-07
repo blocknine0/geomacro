@@ -2,6 +2,7 @@
 /** Genuine-source Hot50/3-category attestation; never self-certify story truth. */
 import {readFileSync} from 'node:fs';
 import {createHash,randomUUID} from 'node:crypto';
+import {isIP} from 'node:net';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {HOT50,CATEGORIES,SHA_RE,need,canonical,sha256,signedReport,holdError} from '../../scripts/release-common.ts';
@@ -16,8 +17,19 @@ const fresh=(s:string,now:number)=>{
  const n=Date.parse(s);return Number.isFinite(n)&&n<=now&&now-n<=MAX_AGE&&
   new Date(n).toISOString()===s;
 };
-const hostname=(raw:string)=>{const u=new URL(raw);need(u.protocol==='https:'&&!u.username&&!u.password&&
-  u.port===''&&!/^(localhost|\d+\.\d+\.\d+\.\d+)$/.test(u.hostname),'HOT50_ORIGINAL_HTTPS_REQUIRED');return u.hostname.toLowerCase()};
+const hostname=(raw:string)=>{
+ const u=new URL(raw);
+ const host=u.hostname.toLowerCase().replace(/^\[|\]$/g,'');
+ // External evidence must never be a request to localhost, link-local,
+ // metadata hosts, a bare internal name or a URL with hidden credentials.
+ // Full issuer provenance is separately bound to TWO independently signed
+ // machine facts/rights attestations before any network fetch.
+ need(u.protocol==='https:'&&!u.username&&!u.password&&u.port===''&&
+  host.includes('.')&&!isIP(host)&&
+  !/(?:^|\.)(?:localhost|local|internal|test|invalid|example|onion|arpa)$/u.test(host),
+  'HOT50_ORIGINAL_PUBLIC_HTTPS_REQUIRED');
+ return host;
+};
 function publishedInPage(html:string,date:string){
  const matches=[...html.matchAll(/<(?:meta|time)\b[^>]{0,1000}>/giu)].map(m=>m[0]);
  const tokens=matches.filter(s=>/article:published_time|datePublished|pubdate|date-published|datetime\s*=/iu.test(s));
@@ -49,6 +61,33 @@ async function checkOriginal(source:Publisher,event:Event,now:number){
   original_published_at:source.original_published_at,original_body_sha256:source.page_sha256,
   rights_record_sha256:source.source_rights_record_sha256,independent_native_page_readback:true};
 }
+/** Bind the existing dual-signed facts/rights record to THIS event and
+ * THESE exact independently fetched original publisher objects. A valid
+ * unrelated signature must never authorize another event or country.
+ * This mapping is a structural prerequisite, not an independent trust claim.
+ */
+export function verifyCorroborationBinding(e:Event):boolean{
+ const source:any=e?.facts_rights_proof;
+ if(!source||typeof source!=='object'||Array.isArray(source)||
+  source.countryIso3!==e.country_iso3||
+  source.factualRecordSha256!==e.factual_record_sha256||
+  source.independentSameEventVerified!==true||
+  source.sourceNativeTimeVerified!==true||
+  !Array.isArray(source.independentEvidence))return false;
+ const matched=new Set<string>();
+ for(const original of e.publisher_sources??[]){
+  const hits=source.independentEvidence.filter((x:any)=>
+   x?.url===original.url&&x?.contentSha256===original.page_sha256&&
+   x?.issuer===original.publisher_org_id&&
+   x?.independentlyFetched===true&&x?.issuerVerified===true&&
+   x?.sameEventVerified===true&&x?.factVerified===true&&
+   x?.licenceOrPublicDomainVerified===true&&
+   x?.thirdPartyMaterialExcluded===true);
+  if(hits.length!==1||matched.has(original.publisher_org_id))return false;
+  matched.add(original.publisher_org_id);
+ }
+ return matched.size>=3;
+}
 function validateEvent(e:Event,now:number){
  need(HOT50.includes(e.country_iso3)&&CATEGORIES.includes(e.category)&&SHA_RE.test(e.event_fingerprint)&&
   SHA_RE.test(e.factual_record_sha256)&&Array.isArray(e.fact_claim_terms)&&e.fact_claim_terms.length>=3&&e.fact_claim_terms.length<=6&&
@@ -63,6 +102,7 @@ function validateEvent(e:Event,now:number){
  // SIGNING_JWK alone is only integrator integrity, NEVER a replacement.
  need(e.facts_rights_proof!==null&&typeof e.facts_rights_proof==='object'&&
    !Array.isArray(e.facts_rights_proof),'HOT50_FACTS_RIGHTS_PROOF_TYPE_INVALID');
+ need(verifyCorroborationBinding(e),'HOT50_SOURCE_FACT_RIGHTS_BINDING_UNVERIFIED');
  need(verifyPinnedFactsOnlyGriV12Proof(e.facts_rights_proof),'HOT50_FACTS_AND_RIGHTS_ATTESTATION_UNVERIFIED');
  return e;
 }
