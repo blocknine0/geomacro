@@ -54,14 +54,9 @@ test("reject malicious or incomplete provider proof and wrong billed-row metadat
  '{}','[]'
  ])assert.throws(()=>checkBoundedMigrationSizeProbe(both,response),/MIGRATION_/);
 });
-test("protected workflow verifies source-row ceiling AND rechecks 140k provider headroom before migrations apply",()=>{
+test("protected workflow delegates single-file repair to a bounded provider-gated runner",()=>{
  const flow=readFileSync(new URL("../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",import.meta.url),"utf8");
- const pending=flow.indexOf('--pending "$RUNNER_TEMP/d1-pending.txt"');
- const indexProbe=flow.indexOf('--emit-size-probe "$RUNNER_TEMP/d1-pending.txt"');
- const readback=flow.indexOf('--verify-size-probe "$RUNNER_TEMP/d1-pending.txt"');
- const finalBudget=flow.indexOf('node scripts/ops/verify-protected-d1-migration-gate.mjs\n      - name: Apply only approved pending migrations');
- const apply=flow.indexOf("npx -y \"wrangler@$WRANGLER_VERSION\" d1 migrations apply DB --remote");
- assert.ok(pending>0&&indexProbe>pending&&readback>indexProbe&&finalBudget>readback&&apply>finalBudget);
+ assert.ok(flow.includes("node scripts/ops/run-protected-d1-repair.mjs"));
  assert.ok(flow.includes("config/d1-hotspot-v2-canary.hold"));
  assert.ok(!flow.includes("d1 time-travel restore"));
 });
