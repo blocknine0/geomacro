@@ -562,7 +562,8 @@
       "cancel-in-progress: false",
       "test -f config/d1-hotspot-v2-canary.hold",
       "test \"$EVENT_NAME\" = workflow_dispatch",
-      "npm run release:quota"
+      "npm run release:quota",
+      "test \"$RELEASE_CONFIRMATION\" = MIGRATE_D1_0204_0211_NO_FUNDS"
     ]
   },
   "predgeBlobSha1": {
