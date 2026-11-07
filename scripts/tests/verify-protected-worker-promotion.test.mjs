@@ -21,6 +21,7 @@ const version=(id,message="")=>({
  id,annotations:{"workers/message":message},resources:{bindings}
 });
 const quota={
+ day_utc:"2026-11-07",
  owner_d1_utc_daily_targets:{
   rows_read:140000,rows_written:140000,emergency_rows_written:0
  },workers_paid_subscription_verified:true,state:"ADMITTED",
@@ -101,4 +102,10 @@ test("P1 and Hot50 runtime flags must be provider-readable and enabled",()=>{
  const candidate={...version(B,"geomacro-main:"+SHA),resources:{bindings:bad}};
  assert.equal(check(1,0,{candidateVersion:candidate}).reason,
   "CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+});
+
+test("stale UTC-day provider counters can never authorize rollout",()=>{
+ const stale={...quota,day_utc:"2026-11-06"};
+ assert.equal(check(0,0,{quota:stale}).reason,
+  "PROVIDER_UTC_DAY_RECEIPT_STALE_OR_MISSING");
 });
