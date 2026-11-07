@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {REPAIR_PLANS,REPAIR_SCHEMA_OBJECTS,pendingRepairPlans,verifyRepairSql,
  repairProbeSql,verifyRepairProbe,admitRepairCost,verifyRepairSchema} from '../ops/protected-d1-repair-plan.mjs';
-import {runProtectedD1Repair} from '../ops/run-protected-d1-repair.mjs';
+import {runProtectedD1Repair,classifyRepairCommandFailure} from '../ops/run-protected-d1-repair.mjs';
 const root=resolve('.');
 const provider=(results,rows_read=10)=>[{success:true,results,meta:{rows_read,rows_written:0}}];
 test('only hash-pinned reviewed chain accepted; unknown/staged migration still refused',()=>{
@@ -80,4 +80,14 @@ test('unknown pending migration or moved main cannot write; exhausted budget/sch
   try{await assert.rejects(runProtectedD1Repair(h),/REPAIR_/);assert.equal(h.applied.length,scenario.stopAfterApply||scenario.failSchema?1:0);}
   finally{process.chdir(root);rmSync(h.tmp,{recursive:true,force:true});}
  }
+});
+
+test('provider command diagnostics identify failure without printing any raw SQL or secrets',()=>{
+ const secret='PRIVATE_RAW_SQL_AND_TOKEN';
+ const d=classifyRepairCommandFailure({stdout:'Authentication error [code: 10000] '+secret,
+  stderr:'Forbidden 403 '+secret,status:1});
+ assert.equal(d.permission_denied,true);assert.deepEqual(d.provider_error_codes,['10000']);
+ assert.ok(!JSON.stringify(d).includes(secret));
+ assert.equal(classifyRepairCommandFailure({stderr:'ECONNRESET'}).network_failure,true);
+ assert.equal(classifyRepairCommandFailure({stderr:'no such table: '+secret}).missing_schema,true);
 });
