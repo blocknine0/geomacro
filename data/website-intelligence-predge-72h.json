@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T18:40:34.590Z",
+  "checked_at": "2026-11-07T22:40:07.805Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 24,
+  "item_count": 20,
   "counts": {
     "geopolitics": 2,
     "macro": 4,
-    "rare_earth": 18
+    "rare_earth": 14
   },
-  "source_native_ids_sha256": "7ac421194426f5cfd7072dd05fdbd3ee7f8de1fb8dcee012c84424bd5c215107",
+  "source_native_ids_sha256": "60d109d209476850af906a22d1a3a11b90457bff81581f0c08c973b3c6735482",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -396,82 +396,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T23:55:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-3ff37ca1",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5bn expansion, modernisation of Arizona copper project",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5bn expansion, modernisation of Arizona copper project. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T22:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-f358c48a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5bn expansion, modernisation of Arizona copper project - Mining Weekly",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5bn expansion, modernisation of Arizona copper project - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T22:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-a5fe2e1e",
-      "category": "rare_earth",
-      "title": "Geomacro finds India approved $297m incentive policy for lithium, nickel processing",
-      "what_changed": "A monitored source feed reports: India approved $297m incentive policy for lithium, nickel processing. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T22:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-4f3f11e7",
-      "category": "rare_earth",
-      "title": "Geomacro finds Tāiko Critical Minerals reported $3.8m loss for September half-year - BusinessDesk",
-      "what_changed": "A monitored source feed reports: Tāiko Critical Minerals reported $3.8m loss for September half-year - BusinessDesk. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T21:07:26.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
