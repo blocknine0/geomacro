@@ -67,7 +67,7 @@ jobs:
         with:
           node-version: "24"
       - name: Run actual jq source-code diagnostics and no-leak guard
-        run: node --test scripts/tests/p0b-capacity-canary-telemetry.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
+        run: node --test scripts/tests/p0b-capacity-canary-telemetry.test.mjs scripts/tests/p0b-cheap-poll-contract.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
 
   real-parity:
     needs: deploy_receipt
@@ -103,6 +103,26 @@ jobs:
           }
           TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
           echo "::add-mask::$TOKEN"
+          # Cheap queue/pending hint for asynchronous completion. Not an integrity
+          # verdict: only a subsequent explicit deep audit can certify parity.
+          wait_for_p0b_queue_hint() {
+            local hint
+            for i in 1 2 3 4 5 6; do
+              hint="$(curl --fail-with-body -fsS --max-time 20 \
+                -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+              if printf '%s' "$hint" | jq -e '
+                .ok==true and
+                .live_bundle_parity.provider_queue_metrics_available==true and
+                .live_bundle_parity.unacked_queue_items==0 and
+                (.live_bundle_parity.b2_objects_created // 0)>0 and
+                .live_bundle_parity.d1_committed_count==.live_bundle_parity.b2_objects_created and
+                .transactional_outbox_parity.pending_archive_bundles==0
+              ' >/dev/null; then
+                break
+              fi
+              sleep 10
+            done
+          }
           STATUS="$(curl --fail-with-body -fsS --max-time 20 \
             -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
           printf '%s' "$STATUS" | jq -c '{
@@ -187,14 +207,9 @@ jobs:
             printf '%s' "$CANARY" | jq -e '.ok==true and .due_selected>=3 and .due_selected<=5' >/dev/null || {
               echo "::error::P0B_CANARY_POLL_FAILED"; exit 7
             }
-            for i in 1 2 3 4 5 6; do
-              sleep 10
-              STATUS="$(curl --fail-with-body -fsS --max-time 20 \
-                -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
-              if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
-                break
-              fi
-            done
+            wait_for_p0b_queue_hint
+            STATUS="$(curl --fail-with-body -fsS --max-time 20 \
+              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
             printf '%s' "$STATUS" | jq -c '{live_bundle_parity}'
             printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null || {
               echo "::error::P0B_LIVE_CANARY_BUNDLE_D1_QUEUE_PARITY_MISSING"; exit 8
@@ -216,14 +231,9 @@ jobs:
           fi
           # Queue consumption is asynchronous: wait for the resulting ACKs
           # before asserting day-level parity, not merely latest-candidate proof.
-          for i in 1 2 3 4 5 6; do
-            STATUS="$(curl --fail-with-body -fsS --max-time 20 \
-              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
-            if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
-              break
-            fi
-            sleep 10
-          done
+          wait_for_p0b_queue_hint
+          STATUS="$(curl --fail-with-body -fsS --max-time 20 \
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
           printf '%s' "$STATUS" | jq -c '{live_bundle_parity}'
           printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null || {
             echo "::error::P0B_LIVE_DAY_PARITY_ASSERTION_FAILED"; exit 9

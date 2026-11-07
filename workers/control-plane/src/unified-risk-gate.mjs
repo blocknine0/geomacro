@@ -1120,9 +1120,12 @@ export async function scheduledUnifiedRisk(env,now=Date.now(),opts={}){
   if(!env?.DB?.prepare)return {ok:false,error:"UNIFIED_RECOVERY_D1_UNAVAILABLE"};
   try{
    const day=iso(now).slice(0,10);
+   // Recovery is scoped to the owner's exact 50 countries. A 195+12
+   // read is unnecessary here; global source intelligence stays separate.
+   const recoveryWhere=" WHERE day_utc=?"+(scoped?" AND "+HOT50_RISK_SQL:"");
    const [completed,attempts]=await Promise.all([
-    env.DB.prepare("SELECT entity_type,entity_id FROM unified_risk_snapshots WHERE day_utc=?").bind(day).all(),
-    env.DB.prepare("SELECT entity_type,entity_id,attempt_count,next_retry_at FROM unified_risk_generation_attempts WHERE day_utc=?").bind(day).all()
+    env.DB.prepare("SELECT entity_type,entity_id FROM unified_risk_snapshots"+recoveryWhere).bind(day).all(),
+    env.DB.prepare("SELECT entity_type,entity_id,attempt_count,next_retry_at FROM unified_risk_generation_attempts"+recoveryWhere).bind(day).all()
    ]);
    target=selectUnifiedRecoveryTarget(completed?.results??[],attempts?.results??[],now,targets);
   }catch{return {ok:false,error:"UNIFIED_RECOVERY_CENSUS_UNAVAILABLE"}}

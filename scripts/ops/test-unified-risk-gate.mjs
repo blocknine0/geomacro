@@ -203,6 +203,33 @@ test("rotating recovery selects ungenerated canonical cells but never optional T
  assert.equal(selectUnifiedRecoveryTarget(completed,[],Date.parse("2026-11-03T18:15:00Z")),null);
  assert.equal(selectUnifiedRecoveryTarget([],[],Date.parse("2026-11-03T19:00:00Z")),null);
 });
+test("Hot50 scheduled catch-up only scans owner-selected countries",async()=>{
+ const queries=[];
+ const db={prepare(sql){
+   queries.push(sql);
+   return {bind(){return this},
+    async all(){return {results:[]}},
+    async first(){return null}};
+ }};
+ const hot=await scheduledUnifiedRisk({
+  RISK_GATE_COUNTRY_SCOPE:"HOT50",DB:db,
+ },Date.parse("2026-11-03T09:20:00Z"));
+ assert.equal(hot.ok,true);
+ assert.equal(hot.skipped_retry_budget,true);
+ const selects=queries.filter(sql=>sql.startsWith("SELECT "));
+ assert.equal(selects.length,2);
+ assert.ok(selects.every(sql=>sql.includes(
+  "WHERE day_utc=? AND entity_type='COUNTRY' AND entity_id IN (")));
+ assert.ok(selects.every(sql=>sql.includes("'USA'")&&sql.includes("'MMR'")));
+ assert.ok(!selects.some(sql=>sql.includes("entity_type='CORRIDOR'")));
+ queries.length=0;
+ const global=await scheduledUnifiedRisk({DB:db},Date.parse("2026-11-03T09:20:00Z"));
+ assert.equal(global.ok,true);
+ assert.equal(global.skipped_retry_budget,true);
+ const unrestricted=queries.filter(sql=>sql.startsWith("SELECT "));
+ assert.equal(unrestricted.length,2);
+ assert.ok(unrestricted.every(sql=>sql.endsWith(" WHERE day_utc=?")));
+});
 test("missed-slot catch-up fails closed if remote D1 is unavailable",async()=>{
  const r=await scheduledUnifiedRisk({},Date.parse("2026-11-03T09:30:00Z"));
  assert.equal(r.ok,false);
