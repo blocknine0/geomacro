@@ -110,8 +110,16 @@ export function classifyGraphQLFailure(body:unknown):string{
   return 'RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE';
  return 'RELEASE_GRAPHQL_PROVIDER_ERRORS';
 }
-export async function graphql(query:string,variables:Record<string,unknown>){
- const token=envString('CLOUDFLARE_BILLING_READ_TOKEN',20);
+export type VerifiedGraphQLCredential='CLOUDFLARE_BILLING_READ_TOKEN'|'CLOUDFLARE_API_TOKEN';
+export async function graphql(
+ query:string,variables:Record<string,unknown>,
+ credential:VerifiedGraphQLCredential='CLOUDFLARE_BILLING_READ_TOKEN',
+){
+ // Explicitly limit the selectable credentials to two pre-existing, protected
+ // production environment secrets. This is NOT a public bearer override.
+ need(credential==='CLOUDFLARE_BILLING_READ_TOKEN'||credential==='CLOUDFLARE_API_TOKEN',
+  'RELEASE_GRAPHQL_CREDENTIAL_NOT_ALLOWED');
+ const token=envString(credential,20);
  const res=await fetch('https://api.cloudflare.com/client/v4/graphql',{
   method:'POST',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(20000),
   headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},

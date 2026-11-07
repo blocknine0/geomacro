@@ -36,6 +36,7 @@ on:
       - 'scripts/release-static-check.mjs'
       - 'scripts/release-five-gate-contract.test.mjs'
       - 'scripts/release-security-regression.test.mjs'
+      - 'scripts/tests/verify-d1-existing-credentials.test.mjs'
       - 'scripts/ops/prepare-five-gate-control-token.mjs'
       - 'scripts/tests/prepare-five-gate-control-token.test.mjs'
 permissions:
@@ -61,6 +62,7 @@ jobs:
           test -f config/d1-hotspot-v2-canary.hold
           node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
           node --test scripts/tests/prepare-five-gate-control-token.test.mjs
+          node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs
   protected-release:
     needs: static-contract
     if: >-
