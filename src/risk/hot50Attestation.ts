@@ -61,6 +61,8 @@ function validateEvent(e:Event,now:number){
  // Pinned existing methodology recomputes score evidence and verifies two
  // INDEPENDENT Ed25519 attestors: machine facts and machine source rights.
  // SIGNING_JWK alone is only integrator integrity, NEVER a replacement.
+ need(e.facts_rights_proof!==null&&typeof e.facts_rights_proof==='object'&&
+   !Array.isArray(e.facts_rights_proof),'HOT50_FACTS_RIGHTS_PROOF_TYPE_INVALID');
  need(verifyPinnedFactsOnlyGriV12Proof(e.facts_rights_proof),'HOT50_FACTS_AND_RIGHTS_ATTESTATION_UNVERIFIED');
  return e;
 }
