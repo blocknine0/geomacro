@@ -261,8 +261,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/verify-hot50-continuity-run.mjs --source-health \
-            "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" ADMITTED
+          cat "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" | \
+            node scripts/ops/verify-hot50-continuity-run.mjs --source-health ADMITTED
       - name: Retain source-wise runtime health and D1 readback counts (no publisher article bytes)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -336,8 +336,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/verify-hot50-continuity-run.mjs --source-health \
-            "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" HELD
+          cat "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" | \
+            node scripts/ops/verify-hot50-continuity-run.mjs --source-health HELD
       - name: Mirror held ciphertext to dedicated private R2 when configured
         id: held_r2_mirror
         continue-on-error: true
