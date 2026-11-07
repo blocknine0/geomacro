@@ -1,7 +1,8 @@
-/** Polygon native-USDC verification utilities. NO settlement or broadcasting.
- * Not wired into the production Worker or commercial SQL ledger.
+/** Polygon native USDC authorization/chain receipt verification. Facilitator
+ * settlement is available for an explicitly authorized FUTURE launch only;
+ * no-funds Worker deploy permanently keeps all payment rails disabled.
  */
-import { createPublicClient,http,recoverTypedDataAddress,decodeEventLog } from 'viem';
+import { createPublicClient,http,recoverTypedDataAddress,decodeEventLog,parseSignature,getAddress } from 'viem';
 import { polygon } from 'viem/chains';
 import { PaymentError,requireValue,readJsonResponse } from './common.mjs';
 import { authorizationTypes,usdcAbi } from './base.mjs';
@@ -85,11 +86,21 @@ export class PolygonVerifier {
    functionName:'authorizationState',args:[authorization.from,authorization.nonce]});
   requireValue(spent===false,'POLYGON_AUTHORIZATION_SPENT',402);
  }
+ async checkUnusedAndSimulate(auth,signature){
+  await this.verifyUnused(auth);
+  const {r,s,v,yParity}=parseSignature(signature);
+  await this.client.simulateContract({address:POLYGON_NATIVE_USDC,abi:usdcAbi,
+   functionName:'transferWithAuthorization',account:getAddress(auth.to),
+   args:[auth.from,auth.to,BigInt(auth.value),BigInt(auth.validAfter),
+    BigInt(auth.validBefore),auth.nonce,v??BigInt(27+yParity),r,s]});
+ }
  async findAuthorization(intent){
   await this.assertChain();
   const head=await this.client.getBlockNumber();
+  const start=BigInt(intent.scan_from_block);
+  requireValue(start>=0n&&head>=start&&head-start<=40000n,'POLYGON_RECONCILE_SCAN_LIMIT',503);
   const event=usdcAbi.find(x=>x.type==='event'&&x.name==='AuthorizationUsed');
-  for(let from=BigInt(intent.scan_from_block);from<=head;from+=2000n){
+  for(let from=start;from<=head;from+=2000n){
    const to=from+1999n<head?from+1999n:head;
    const logs=await this.client.getLogs({address:POLYGON_NATIVE_USDC,event,
     args:{authorizer:intent.payer_address,nonce:intent.nonce},fromBlock:from,toBlock:to});
@@ -142,5 +153,30 @@ export class DexterPolygonVerifier {
    (data.payer===undefined||typeof data.payer==='string'&&ADDRESS.test(data.payer)&&
     data.payer.toLowerCase()===local.payer),'DEXTER_VERIFICATION_INVALID',402);
   return {isValid:true,payer:local.payer,network:POLYGON_NETWORK};
+ }
+}
+
+/** Strict x402 v2 settlement adapter. No wallet keys live here. Only the
+ * protected, signed and claimed payment engine may invoke this method. */
+export class DexterPolygonFacilitator extends DexterPolygonVerifier {
+ async settle(payment,expected){
+  const local=await validatePolygonAuthorization(payment,expected);
+  let response;
+  try{
+   response=await this.fetch(DEXTER_URL+'/settle',{
+    method:'POST',redirect:'manual',signal:AbortSignal.timeout(30000),
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({x402Version:2,paymentPayload:payment,paymentRequirements:expected})
+   });
+  }catch{throw new PaymentError('DEXTER_SETTLEMENT_UNCERTAIN',503)}
+  requireValue(response.ok,'DEXTER_SETTLEMENT_UNCERTAIN',503);
+  const result=await readJsonResponse(response,131072);
+  requireValue(result&&result.success===true&&!result.errorReason&&
+   result.network===POLYGON_NETWORK&&typeof result.payer==='string'&&
+   ADDRESS.test(result.payer)&&result.payer.toLowerCase()===local.payer&&
+   typeof result.transaction==='string'&&HASH.test(result.transaction),
+   'DEXTER_SETTLEMENT_NOT_PROVEN',503);
+  return {success:true,payer:local.payer,network:POLYGON_NETWORK,
+   transaction:result.transaction.toLowerCase()};
  }
 }
