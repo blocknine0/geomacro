@@ -132,7 +132,7 @@ function PricingPage() {
             Production paid API delivery is not yet active. This section lists endpoints, not purchasable per-delivery products.
           </p>
         </div>
-        <CategoryApiPricing />
+        <CategoryApiPricing showPrices />
       </section>
 
       <section id="prepare" className="scroll-mt-40 pt-14 sm:pt-20">
