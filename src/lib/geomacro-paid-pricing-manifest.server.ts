@@ -1,3 +1,5 @@
+import {GEOMACRO_CREDIT_CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS} from "./commercial-access-contract";
+import {GEOMACRO_NEW_SALE_TIER_CAPABILITIES,GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES} from "./credit-metering-policy.mjs";
 import {corridorEnterprisePricingDiscovery} from "./enterprise-corridor-pricing";
 import { GEOMACRO_CARD_TO_USDC_READINESS, GEOMACRO_CARD_TO_USDC_PRODUCTS } from "./card-to-usdc-readiness";
 import { GEOMACRO_PAYPAL_READINESS, GEOMACRO_PAYPAL_PRODUCT_CATALOG } from "./paypal-checkout-readiness";
@@ -31,6 +33,8 @@ export function publicGeomacroPaidPricingManifest(){
     variants:variants.map(price=>({
       variant:price.variant,
       price_usdc:price.amount_usdc,
+      prepaid_credit_cost:GEOMACRO_CREDIT_COSTS[capability],
+      prepaid_customer_metering_staged:GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES.includes(capability),
       amount_atomic:price.amount_atomic,
       currency:"USDC" as const,
       decimals:6 as const,
@@ -56,6 +60,13 @@ export function publicGeomacroPaidPricingManifest(){
     pricing_status:"FOUNDER_APPROVED_LOW_BARRIER_SCHEDULE" as const,
     launch_pricing_version:GEOMACRO_LOW_BARRIER_VERSION,
     subscriptions:GEOMACRO_SUBSCRIPTIONS,
+    prepaid_credit_contract_version:GEOMACRO_CREDIT_CONTRACT_VERSION,
+    prepaid_credit_costs:GEOMACRO_CREDIT_COSTS,
+    prepaid_new_sale_tier_capabilities:GEOMACRO_NEW_SALE_TIER_CAPABILITIES,
+    prepaid_customer_meterable_capabilities:GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES,
+    prepaid_credit_billing_unit:"PER_QUALIFIED_DELIVERY" as const,
+    prepaid_vs_direct_usdc:"SEPARATE_BILLING_MODES_NO_IMPLIED_USDC_PER_CREDIT" as const,
+    customer_paid_api_activation_authorized:false as const,
     corridor_enterprise_discovery:corridorEnterprisePricingDiscovery(),
     one_time_credit_packs:GEOMACRO_ONE_TIME_PACKS,
     agent_x402:GEOMACRO_AGENT_MICROPAYMENT,

@@ -1,15 +1,7 @@
-export const GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.1.0" as const;
-
-export const GEOMACRO_CREDIT_COSTS = {
-  intelligence_query: 1,
-  gri_read: 1,
-  structural_country_digest: 3,
-  structural_corridor_digest: 5,
-  structural_country_profile: 8,
-  structural_corridor_profile: 12,
-  signed_risk_object: 10,
-  risk_gate_bundle: 15,
-} as const;
+import {GEOMACRO_CREDIT_CONTRACT_VERSION as CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS as CREDIT_COSTS} from "./credit-metering-policy.mjs";
+import {GEOMACRO_SUBSCRIPTIONS} from "./low-barrier-pricing";
+export const GEOMACRO_CREDIT_CONTRACT_VERSION=CONTRACT_VERSION;
+export const GEOMACRO_CREDIT_COSTS=CREDIT_COSTS;
 
 export type GeomacroCreditCapability = keyof typeof GEOMACRO_CREDIT_COSTS;
 
@@ -69,8 +61,8 @@ export const GEOMACRO_ACCESS_TIERS = {
   starter_dev: {
     id: "starter_dev",
     label: "Starter / Dev",
-    credits_per_30_days: 1_000,
-    public_price_usd: 9,
+    credits_per_30_days: GEOMACRO_SUBSCRIPTIONS[0].credits_per_30_days,
+    public_price_usd: GEOMACRO_SUBSCRIPTIONS[0].price_usd,
     access_mode: "paid_api_and_dashboard",
     structured_data: {
       api_access: true,
@@ -84,14 +76,14 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: true,
+      risk_gate: false,
     },
   },
   pro_analyst: {
     id: "pro_analyst",
     label: "Pro Analyst",
-    credits_per_30_days: 5_000,
-    public_price_usd: 29,
+    credits_per_30_days: GEOMACRO_SUBSCRIPTIONS[1].credits_per_30_days,
+    public_price_usd: GEOMACRO_SUBSCRIPTIONS[1].price_usd,
     access_mode: "paid_api_and_dashboard",
     structured_data: {
       api_access: true,
@@ -105,14 +97,14 @@ export const GEOMACRO_ACCESS_TIERS = {
       provenance_mode: "internal_provenance_only_no_news_source_identity",
       bulk_export: "agreed structured exports only",
       signed_risk_objects: false,
-      risk_gate: true,
+      risk_gate: false,
     },
   },
   business_pilot: {
     id: "business_pilot",
     label: "Business Pilot",
-    credits_per_30_days: 25_000,
-    public_price_usd: 99,
+    credits_per_30_days: GEOMACRO_SUBSCRIPTIONS[2].credits_per_30_days,
+    public_price_usd: GEOMACRO_SUBSCRIPTIONS[2].price_usd,
     access_mode: "paid_api_and_agent",
     structured_data: {
       api_access: true,
