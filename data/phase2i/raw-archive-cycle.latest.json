@@ -1,8 +1,8 @@
 {
   "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
-  "production_main_sha": "cbaf222b675bd5447d56875542a5799c2ab63a3c",
-  "github_run_id": "42376664950",
-  "checked_at": "2026-11-07T13:22:52.731Z",
+  "production_main_sha": "d73b9b6922ebae20767a8df500f69ae5da8b3852",
+  "github_run_id": "42419112104",
+  "checked_at": "2026-11-07T22:08:02.048Z",
   "provider_maintenance_admitted": false,
   "archive_schedule": "EVERY_SIX_HOURS_00_06_12_18_UTC",
   "archive_cycle_hours": 6,
