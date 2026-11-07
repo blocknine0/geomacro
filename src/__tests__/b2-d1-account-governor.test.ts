@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createB2D1AccountGovernor } from "../../scripts/ops/b2-d1-account-governor.mjs";
-import { createB2Client,assertGitHubActionsB2AccountGovernor } from "../../scripts/ops/b2-s3-client.mjs";
+import { createB2Client,assertGitHubActionsB2AccountGovernor,assertCanonicalB2AccountGovernor } from "../../scripts/ops/b2-s3-client.mjs";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const env = {
@@ -116,10 +116,29 @@ describe("#1827 D1-account B2 preflight bridge",()=>{
     expect(b2.usage().global_account_quota_guard_enabled).toBe(true);
   });
 
-  it("keeps current optional rollout explicit until all B2 producers use the ledger",()=>{
+  it("keeps only isolated Vitest synthetic clients ungoverned",()=>{
     delete process.env.B2_ACCOUNT_QUOTA_REQUIRED;
     const b2=makeClient();
     expect(b2.usage().global_account_quota_guard_enabled).toBe(false);
+  });
+  it("blocks non-GitHub and local production B2 calls without an account-wide ticket",()=>{
+    for(const flags of [
+      {GITHUB_ACTIONS:"false",VITEST:"false",NODE_ENV:"production",B2_ACCOUNT_QUOTA_REQUIRED:""},
+      {GITHUB_ACTIONS:"false",VITEST:"false",NODE_ENV:"",B2_ACCOUNT_QUOTA_REQUIRED:"0"},
+      {GITHUB_ACTIONS:"",VITEST:"true",NODE_ENV:"production",B2_ACCOUNT_QUOTA_REQUIRED:""},
+      {GITHUB_ACTIONS:"",VITEST:"false",NODE_ENV:"test",B2_ACCOUNT_QUOTA_REQUIRED:""},
+    ]) {
+      expect(()=>assertCanonicalB2AccountGovernor(flags)).toThrow("B2_ACCOUNT_GLOBAL_QUOTA_REQUIRED");
+    }
+    expect(()=>assertCanonicalB2AccountGovernor({
+      GITHUB_ACTIONS:"false",VITEST:"false",NODE_ENV:"production",B2_ACCOUNT_QUOTA_REQUIRED:"1",
+    })).not.toThrow();
+    expect(()=>assertCanonicalB2AccountGovernor({
+      GITHUB_ACTIONS:"false",VITEST:"true",NODE_ENV:"test",B2_ACCOUNT_QUOTA_REQUIRED:"",
+    })).not.toThrow();
+    expect(()=>assertCanonicalB2AccountGovernor({
+      GITHUB_ACTIONS:"true",VITEST:"false",NODE_ENV:"production",B2_ACCOUNT_QUOTA_REQUIRED:"0",
+    })).toThrow("B2_ACTIONS_ACCOUNT_GOVERNOR_REQUIRED");
   });
   it("blocks canonical B2 client in real Actions without the shared D1 ledger flag",()=>{
     const actions={GITHUB_ACTIONS:"true",VITEST:"false",B2_ACCOUNT_QUOTA_REQUIRED:""};

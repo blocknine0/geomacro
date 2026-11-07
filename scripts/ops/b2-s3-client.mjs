@@ -73,6 +73,19 @@ export function assertGitHubActionsB2AccountGovernor(env = process.env) {
   }
 }
 
+// The account ledger is mandatory for EVERY real canonical Node B2 caller,
+// including local operators and non-GitHub cron. A per-process request budget
+// is not an account-level quota. Only isolated Vitest unit tests can construct
+// synthetic unguided clients; no production network call may skip reservation.
+export function assertCanonicalB2AccountGovernor(env = process.env) {
+  assertGitHubActionsB2AccountGovernor(env);
+  const isolatedUnitTest =
+    env.VITEST === "true" && env.NODE_ENV === "test";
+  if (!isolatedUnitTest && env.B2_ACCOUNT_QUOTA_REQUIRED !== "1") {
+    throw new Error("B2_ACCOUNT_GLOBAL_QUOTA_REQUIRED");
+  }
+}
+
 export function createB2Client({
   endpointUrl,
   accessKey,
@@ -82,7 +95,7 @@ export function createB2Client({
   readSecretKey,
   allowedKeyPrefixes = null,
 }) {
-  assertGitHubActionsB2AccountGovernor();
+  assertCanonicalB2AccountGovernor();
   const endpoint = parseB2Endpoint(endpointUrl);
   if (endpoint.endpoint !== "https://s3.us-east-005.backblazeb2.com" ||
       bucket !== "geomacro-private-archive" || !accessKey || !secretKey) throw new Error("B2_ARCHIVE_CONFIG_INVALID");
@@ -128,8 +141,8 @@ export function createB2Client({
 
   const allowedPrefixes = normalizeAllowedPrefixes(allowedKeyPrefixes);
   const requestBudget = parseRequestBudget();
-  // Explicit gated rollout: existing production jobs must be wired one by one,
-  // otherwise their ungoverned requests cannot count towards the shared cap.
+  // For non-test callers the shared governor is mandatory; a missing flag
+  // fails above before any B2 credentials, network calls or object mutation.
   const globalAccountGovernor = process.env.B2_ACCOUNT_QUOTA_REQUIRED === "1"
     ? createB2D1AccountGovernor() : null;
   let requestsStarted = 0;
