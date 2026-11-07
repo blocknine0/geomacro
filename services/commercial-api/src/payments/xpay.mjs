@@ -29,7 +29,9 @@ export class XpayFacilitator extends Facilitator {
   const payer=this.assertPayment(payment,expected);
   const r=await this.call('verify',payment,expected);
   requireValue(r&&typeof r==='object'&&
-   (r.isValid===true||r.valid===true)&&r.isValid!==false&&r.valid!==false,
+   (r.isValid===true||r.valid===true)&&
+   (r.isValid===undefined||r.isValid===true)&&
+   (r.valid===undefined||r.valid===true),
    'XPAY_VERIFICATION_REJECTED',402);
   if(r.payer!==undefined)requireValue(typeof r.payer==='string'&&
    ADDRESS.test(r.payer)&&r.payer.toLowerCase()===payer,'XPAY_PAYER_MISMATCH',402);
@@ -39,7 +41,10 @@ export class XpayFacilitator extends Facilitator {
   const payer=this.assertPayment(payment,expected);
   const r=await this.call('settle',payment,expected);
   requireValue(r&&typeof r==='object'&&
-   (r.success===true||r.settled===true)&&r.success!==false&&r.settled!==false,
+   (r.success===true||r.settled===true)&&
+   (r.success===undefined||r.success===true)&&
+   (r.settled===undefined||r.settled===true)&&
+   !r.errorReason,
    'XPAY_SETTLEMENT_UNCONFIRMED');
   const transaction=r.transaction??r.txHash;
   requireValue(typeof transaction==='string'&&HASH.test(transaction)&&
