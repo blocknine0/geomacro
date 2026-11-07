@@ -96,3 +96,23 @@ test("bad baseline, unverified bookmark or provider 403 never count as canary-re
   })})});
  assert.equal(stale.reason,"WORKER_DEPLOYED_VERSION_UNVERIFIED");
 });
+
+test("early UTC burn-rate spike HOLDS even below 140k; emergency writes never release",async()=>{
+ const early=new Date("2026-11-07T01:00:00.000Z");
+ const base={env,now:early,fetchImpl:mockFetch};
+ const highReads=await verifyProtectedD1CanaryPreflight({...base,
+  plan:async()=>({...allowedPlan,observed_rows_read:11000,observed_rows_written:1000})
+ });
+ assert.equal(highReads.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
+ assert.equal(highReads.pacing_or_daily_ceiling_held,true);
+ assert.equal(highReads.account_wide_atomic_140k_guaranteed,false);
+ const highWrites=await verifyProtectedD1CanaryPreflight({...base,
+  plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:9000})
+ });
+ assert.equal(highWrites.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
+ assert.equal(highWrites.emergency_write_reserve,40000);
+ const safe=await verifyProtectedD1CanaryPreflight({...base,
+  plan:async()=>({...allowedPlan,observed_rows_read:100,observed_rows_written:100})
+ });
+ assert.equal(safe.eligible_for_zero_traffic_stage,true);
+});
