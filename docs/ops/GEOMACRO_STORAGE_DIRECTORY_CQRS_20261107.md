@@ -13,7 +13,9 @@
 | Ingestion transport | Cloudflare Queues | `INGEST_QUEUE` | Queue only, not database |
 | Source polling transport | Cloudflare Queues | `SOURCE_POLL_QUEUE` | Queue only, not database |
 
-This is a code-derived logical map. It cannot discover every D1 database in the Cloudflare account or assert which optional buckets exist. Cloudflare D1 `d1 list --json`, Worker version resources, B2 bucket listing, R2 inventories and actual Supabase project records must provide separate provider-backed inventory receipts.
+Supabase connector provider readback (2026-11-07): **geomacro-risk-corridor-7d** is an ACTIVE_HEALTHY project in **eu-west-1**. Exactly 12 `public` tables were listed, all with RLS enabled: `geomacro_risk_signal_7d`, `geomacro_corridor_candidate_7d`, `geomacro_risk_assessment_7d`, `geomacro_buffer_operational_state`, `geomacro_daily_tiered_risk_gates`, `geomacro_unified_risk_daily`, `country_risk_state`, `gm_research_stream20m_runs`, `phase2h_private_raw_news`, `gro_evidence_jobs`, `gro_evidence`, and `gro_evidence_backfill_state`. Project health/table existence is **not** proof of app-level live delivery, signed evidence, or currency of source records.
+
+All other locations remain code-derived expected bindings until their own provider receipts. This catalog cannot discover every D1 database in the Cloudflare account or assert which optional buckets exist. Cloudflare D1 `d1 list --json`, Worker version resources, B2 bucket listing and R2 inventories must provide separate provider-backed inventory receipts.
 
 ## Read path
 
