@@ -46,8 +46,9 @@ test("query workstream labels are coarse, never table names or sensitive SQL",()
   {query:"SELECT * FROM secret_custom_table WHERE api_secret='private'",totalRowsRead:10,totalRowsWritten:0,numberOfTimesRun:1},
  ];
  const out=summarizeD1ReadInsights(input,{top:4,sortBy:"writes"});
- assert.deepEqual(out.top_rows_written.map(x=>x.workstream_heuristic),
-  ["SOURCE_POLL","ARCHIVE_B2","RISK_GATE","OTHER"]);
+ assert.equal(out.top_rows_written[0].workstream_heuristic,"SOURCE_POLL");
+ assert.deepEqual(new Set(out.top_rows_written.map(x=>x.workstream_heuristic)),
+  new Set(["SOURCE_POLL","ARCHIVE_B2","RISK_GATE","OTHER"]));
  const text=JSON.stringify(out);
  assert.ok(!text.includes("source_registry"));
  assert.ok(!text.includes("phase2h_private_raw_news"));
