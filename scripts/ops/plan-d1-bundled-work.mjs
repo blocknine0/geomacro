@@ -40,8 +40,12 @@ const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==18_000_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==120_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==120_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==180_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.durable_objects?.threshold_cents!==1)
   throw Error("CLOUDFLARE_CENTRAL_FIVE_USD_POLICY_WEAKENED");
@@ -233,9 +237,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     return held("D1_ACCOUNT_USAGE_UNVERIFIED",now);
 
 
-  // Provider-verified, account-scoped Workers Paid has no 5M/day hard
-  // physical read stop. Retain an independent, CONSERVATIVE 18M/180k
-  // account-wide DAILY soft budget (well below official monthly allotments).
+  // Verified Workers Paid has no Free-plan 5M read/100k write daily stop.
+  // GeoMacro STILL keeps the owner's 120k read / 180k write internal UTC
+  // account-wide target. Paid provider monthly inclusion is not a daily budget.
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
   const paid=spendGuardProof?.schema===FIVE_USD_SPEND_GUARD_SCHEMA&&
@@ -258,14 +262,18 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
   if(paid){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const dailyReads=Math.floor(4_000_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-4_000_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const dailyWrites=Math.floor(40_000+
-      (FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-40_000)*
-      Math.max(0,Math.min(1,elapsed)));
-    const admitted=snapshot.observed_rows_read<dailyReads&&
-      snapshot.observed_rows_written<dailyWrites;
+    const progress=Math.max(0,Math.min(1,elapsed));
+    // 5% of the day allowance at UTC reset, pacing the remainder across
+    // 24h. Bounded safety buffer prevents a read-only counter snapshot from
+    // granting work with effectively zero headroom.
+    const dailyReads=Math.floor(
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max*
+      (0.05+0.95*progress));
+    const dailyWrites=Math.floor(
+      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max*
+      (0.05+0.95*progress));
+    const admitted=snapshot.observed_rows_read+4_000<dailyReads&&
+      snapshot.observed_rows_written+2_000<dailyWrites;
     const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
     const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
     const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
@@ -283,6 +291,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     // would incorrectly stop intake immediately after every UTC reset.
     const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
       D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
+    // The existing 3x15m + 20m read-worst-case envelope is often >120k/day.
+    // Keep source intake HELD until that workload is truly reduced and
+    // provider readback leaves enough room; never pretend one D1 call = 1 row.
     const sourceIntake=admitted&&rowsPerSlot>=3&&
       writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
       readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
