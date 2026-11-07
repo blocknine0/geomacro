@@ -12,7 +12,7 @@ test("bounded original-table probe executes at most N+1 scanned entries per tabl
  try{
   for(const table of Object.keys(P0B_DEEP_CENSUS_PROBE_LIMITS))
    db.exec("CREATE TABLE "+table+" (row TEXT)");
-  assert.deepEqual(db.prepare(P0B_DEEP_CENSUS_BOUND_SQL).get(),zero);
+  assert.deepEqual({...db.prepare(P0B_DEEP_CENSUS_BOUND_SQL).get()},zero);
   assert.equal(assessP0bDeepCensusBound(zero).safe_to_run_exact_deep,true);
   for(let i=0;i<=64;i++)db.prepare(
    "INSERT INTO ingestion_spool_queue (row) VALUES (?)").run("x");
