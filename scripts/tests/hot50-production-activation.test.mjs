@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {RISK_GATE_HOT50} from "../../workers/control-plane/src/risk-gate-hot50-scope.mjs";
-import {readHot50ActivationCensus,readP0bParityManifest} from "../../workers/control-plane/src/hot50-production-activation-census.mjs";
+import {readHot50ActivationCensus,readP0bParityManifest,HOT50_ACTIVATION_COVERAGE_SQL} from "../../workers/control-plane/src/hot50-production-activation-census.mjs";
 import {serveReviewedSignedRiskIndices} from "../../workers/control-plane/src/reviewed-risk-indices-delivery.mjs";
 const now=Date.parse("2026-11-06T04:00:00.000Z");
 const when=new Date(now).toISOString();
@@ -158,5 +158,37 @@ test("real SQLite activation views reject future evidence and count unknown debt
  db.exec("INSERT INTO p0b_archive_outbox(state,b2_uri,b2_object_sha256,item_count) VALUES('ARCHIVED','b2://missing','abc',1)");
  const damaged=await (await readHot50ActivationCensus({DB:{prepare:sql=>stmt(sql)}},Date.now())).json();
  assert.equal(damaged.backlog.exact_bundle_journal_mismatch,1);
+ }finally{db.close()}
+});
+
+test("Hot50 activation uses 50 indexed country+clock probes, never global facts scans",async()=>{
+ const {DatabaseSync}=await import("node:sqlite");
+ const db=new DatabaseSync(":memory:");
+ try{
+  db.exec("CREATE TABLE progressive_risk_gate_facts(country_iso3 TEXT,category TEXT,event_fingerprint TEXT,clock_basis TEXT,publisher_domain TEXT,event_clock TEXT);");
+  db.exec("CREATE INDEX idx_progressive_risk_gate_facts_country_time ON progressive_risk_gate_facts(country_iso3,event_clock DESC);");
+  const stamp=new Date(now).toISOString(),old=new Date(now-72*3600000).toISOString();
+  const add=db.prepare("INSERT INTO progressive_risk_gate_facts VALUES(?,?,?,?,?,?)");
+  // Non-Hot50/global facts may vastly outnumber legitimate Hot50 evidence.
+  for(let i=0;i<600;i++)add.run("NZL","macro","old"+i,"ORIGINAL_PUBLICATION","source.nz",stamp);
+  add.run("IND","macro","same-evt","ORIGINAL_PUBLICATION","first.example",stamp);
+  add.run("IND","macro","same-evt","ORIGINAL_PUBLICATION","second.example",stamp);
+  add.run("USA","geopolitics","future","ORIGINAL_PUBLICATION","source.example",
+   new Date(now+3600000).toISOString());
+  add.run("CHN","rare_earth","ancient","ORIGINAL_PUBLICATION","source.example",
+   new Date(now-100*3600000).toISOString());
+  const plan=db.prepare("EXPLAIN QUERY PLAN "+HOT50_ACTIVATION_COVERAGE_SQL)
+   .all(old,stamp);
+  assert.ok(plan.some(x=>/SEARCH f USING INDEX idx_progressive_risk_gate_facts_country_time/.test(x.detail)),
+   JSON.stringify(plan));
+  assert.ok(!plan.some(x=>/SCAN f(?:\b|$)/u.test(x.detail)),JSON.stringify(plan));
+  const rows=db.prepare(HOT50_ACTIVATION_COVERAGE_SQL).all(old,stamp);
+  assert.equal(rows.length,150);
+  const matched=rows.find(x=>x.country_iso3==="IND"&&x.category==="macro");
+  assert.equal(matched.two_publisher_same_event,1);
+  assert.equal(matched.max_independent_publishers,2);
+  assert.equal(rows.find(x=>x.country_iso3==="CHN"&&x.category==="rare_earth").observed_events,0);
+  assert.equal(rows.find(x=>x.country_iso3==="USA"&&x.category==="geopolitics").observed_events,0);
+  assert.ok(!rows.some(x=>x.country_iso3==="NZL"));
  }finally{db.close()}
 });
