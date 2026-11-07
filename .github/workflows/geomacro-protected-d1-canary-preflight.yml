@@ -8,6 +8,9 @@ on:
     paths:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
+      - "scripts/ops/verify-protected-d1-migration-gate.mjs"
+      - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
+      - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
       - "scripts/lib/d1-owner-daily-envelope.test.mjs"
       - "scripts/ops/plan-d1-bundled-work.mjs"
@@ -28,6 +31,9 @@ on:
     paths:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
+      - "scripts/ops/verify-protected-d1-migration-gate.mjs"
+      - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
+      - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
       - "scripts/lib/d1-owner-daily-envelope.test.mjs"
@@ -59,7 +65,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
@@ -92,3 +98,116 @@ jobs:
           path: artifacts/protected-canary/preflight-no-funds.json
           retention-days: 7
           if-no-files-found: ignore
+
+
+  # Stage B executes only after Stage A's actual same-run provider PASS.
+  # There is no Worker upload, traffic promotion, payment or destructive restore.
+  protected-0204-0211-migration:
+    needs: provider-readonly-preflight
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      needs.provider-readonly-preflight.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: geomacro-d1-control-plane-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      WRANGLER_VERSION: "4.136.3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Recheck current main SHA and 80k-row migration budget
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          node scripts/ops/verify-protected-d1-migration-gate.mjs
+      - name: Resolve canonical existing D1 without creating databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          npx -y "wrangler@$WRANGLER_VERSION" d1 list --json > "$RUNNER_TEMP/d1-list.json" 2>/dev/null
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const all=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/d1-list.json','utf8'));
+          const matches=all.filter(x=>x.name==='geomacro-control-plane');
+          if(matches.length!==1||!/^[0-9a-f-]{36}$/i.test(matches[0].uuid??''))
+            throw Error('CANARY_D1_BINDING_NOT_UNIQUE');
+          const t=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8'));
+          const db=t.d1_databases?.find(x=>x.binding==='DB');
+          if(!db||db.database_name!=='geomacro-control-plane')
+            throw Error('CANARY_D1_TEMPLATE_BINDING_MISMATCH');
+          // D1-only config cannot accidentally deploy or alter queues/routes/secrets.
+          writeFileSync('workers/control-plane/wrangler.canary-d1.jsonc',
+            JSON.stringify({name:t.name,main:t.main,compatibility_date:t.compatibility_date,
+              d1_databases:[{...db,database_id:matches[0].uuid}]})+'\n',{mode:0o600});
+          NODE
+      - name: Confirm D1 production Time Travel backup before migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          cd workers/control-plane
+          npx -y "wrangler@$WRANGLER_VERSION" d1 info DB --json \
+            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-info.json" 2>/dev/null
+          npx -y "wrangler@$WRANGLER_VERSION" d1 time-travel info DB --json \
+            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-bookmark.json" 2>/dev/null
+          cd ../..
+          node scripts/ops/verify-protected-d1-migration-gate.mjs \
+            --backup "$RUNNER_TEMP/d1-info.json" "$RUNNER_TEMP/d1-bookmark.json"
+      - name: Require every pending migration to be 0204 or 0211
+        id: pending
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/control-plane
+          npx -y "wrangler@$WRANGLER_VERSION" d1 migrations list DB --remote \
+            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-pending.txt" 2>/dev/null
+          cd ../..
+          node scripts/ops/verify-protected-d1-migration-gate.mjs \
+            --pending "$RUNNER_TEMP/d1-pending.txt"
+      - name: Apply only approved pending migrations through Wrangler migration history
+        if: steps.pending.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/control-plane
+          npx -y "wrangler@$WRANGLER_VERSION" d1 migrations apply DB --remote \
+            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-migration-private.log" 2>/dev/null
+      - name: Verify migrations empty and exact schema objects present
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/control-plane
+          npx -y "wrangler@$WRANGLER_VERSION" d1 migrations list DB --remote \
+            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-after.txt" 2>/dev/null
+          npx -y "wrangler@$WRANGLER_VERSION" d1 execute DB --remote --json \
+            --config wrangler.canary-d1.jsonc \
+            --command "SELECT name FROM sqlite_master WHERE name IN ('materialized_cache','idx_private_osint_country_category_clock_v2','idx_private_osint_check_category_status_v2','idx_website_derived_hot_order_v2','p0b_committed_day_totals','trg_p0b_day_committed_insert','trg_p0b_day_committed_delete','trg_p0b_day_committed_clock_change')" \
+            > "$RUNNER_TEMP/d1-schema.json" 2>/dev/null
+          cd ../..
+          node scripts/ops/verify-protected-d1-migration-gate.mjs \
+            --schema "$RUNNER_TEMP/d1-after.txt" "$RUNNER_TEMP/d1-schema.json"
+      - name: Retain nonsecret UTC budget and schema receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-protected-migration-0204-0211
+          path: artifacts/protected-canary/migration-*.json
+          if-no-files-found: ignore
+          retention-days: 7
