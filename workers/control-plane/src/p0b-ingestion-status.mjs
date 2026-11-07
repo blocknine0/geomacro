@@ -2,6 +2,47 @@
  * Never returns source URLs, original titles, original IDs, tokens, B2 URIs
  * or individual candidate SHAs. Admin bearer is enforced by index.mjs.
  */
+/**
+ * Hard per-request bounds on the costly root-admin deep census. SQLite
+ * COUNT(*) and correlated COUNT(*) subqueries do not become cheap with a
+ * trailing LIMIT. Instead probe at most N+1 actual rows per table BEFORE
+ * any whole-table aggregate. A large table defers only this expensive
+ * audit, never the intake pipeline or the cheap status endpoint.
+ *
+ * Deferred audit cannot stand in for certified B2 parity. Its response has
+ * assertion_passed:false and needs independent B2 physical proof.
+ * This local read bound is not an account-wide D1 atomic quota guarantee.
+ */
+export const P0B_DEEP_CENSUS_PROBE_LIMITS=Object.freeze({
+ source_registry:256,ingestion_spool_queue:64,
+ normalized_articles:64,ingestion_spool_bundles:32,
+ p0b_archive_outbox:8
+});
+const DEEP_LIMIT_COLUMNS=Object.freeze({
+ source_registry:"sources_over",
+ ingestion_spool_queue:"queue_over",
+ normalized_articles:"normalized_over",
+ ingestion_spool_bundles:"bundles_over",
+ p0b_archive_outbox:"outbox_over"
+});
+export const P0B_DEEP_CENSUS_BOUND_SQL="SELECT "+
+ Object.entries(P0B_DEEP_CENSUS_PROBE_LIMITS).map(([table,n])=>
+  "EXISTS(SELECT 1 FROM "+table+" LIMIT 1 OFFSET "+n+") AS "+
+  DEEP_LIMIT_COLUMNS[table]).join(", ");
+export function assessP0bDeepCensusBound(row){
+ if(!row||typeof row!=="object")throw Error("P0B_DEEP_PROBE_UNVERIFIED");
+ const keys=Object.values(DEEP_LIMIT_COLUMNS);
+ if(keys.some(k=>row[k]!==0&&row[k]!==1))
+  throw Error("P0B_DEEP_PROBE_UNVERIFIED");
+ const tooLarge=keys.some(k=>row[k]===1);
+ return Object.freeze({
+  safe_to_run_exact_deep:!tooLarge,
+  deferred_due_to_existing_table_size:tooLarge,
+  observed_tables:keys.length,
+  account_daily_billed_row_cap_proven:false
+ });
+}
+
 const resp=(value,status=200)=>Response.json(value,{status,headers:{
  'Cache-Control':'private, no-store','X-Robots-Tag':'noindex,nofollow',
  'X-Content-Type-Options':'nosniff'
@@ -9,6 +50,30 @@ const resp=(value,status=200)=>Response.json(value,{status,headers:{
 export async function getP0bIngestionStatus(env,{deep=false}={}){
  if(!env?.DB?.prepare||typeof deep!=='boolean')
   return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
+ if(deep){
+  try{
+   const probe=assessP0bDeepCensusBound(
+    await env.DB.prepare(P0B_DEEP_CENSUS_BOUND_SQL).first());
+   if(!probe.safe_to_run_exact_deep){
+    // Cheap status is still available to the operator, but never substitute
+    // this for complete queue/outbox/B2 parity. No full table scan is made.
+    const fast=await getP0bIngestionStatus(env,{deep:false});
+    if(fast.status!==200)return fast;
+    const shallow=await fast.json();
+    return resp({...shallow,
+     deep_census_requested:true,deep_census_deferred:true,
+     deep_census_deferred_reason:"P0B_DEEP_ROW_EXPOSURE_UNSAFE",
+     deep_census_bound_proof:probe,
+     recommended_path:"BOUNDED_KEYSET_OR_PROVIDER_VERIFIED_PARITY",
+     ready_for_real_acceptance:false,
+     genuine_end_to_end_b2_remote_acceptance_proven:false});
+   }
+  }catch{
+   return resp({ok:false,error:"P0B_DEEP_PROBE_UNVERIFIED",
+    deep_census_requested:true,deep_census_deferred:true,
+    genuine_end_to_end_b2_remote_acceptance_proven:false},503);
+  }
+ }
  try{
   const utcDay=new Date().toISOString().slice(0,10)+'T00:00:00.000Z';
   const [sources,states,admitted,guard,bundles,outbox]=await Promise.all([
