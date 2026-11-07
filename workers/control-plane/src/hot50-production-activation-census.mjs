@@ -16,16 +16,23 @@ function assertedCount(value){
  return n;
 }
 const hotRows=RISK_GATE_HOT50.map(x=>"('"+x+"')").join(",");
-const COVERAGE_SQL=`WITH hot(iso3) AS (VALUES ${hotRows}),
+// Use the existing (country_iso3,event_clock DESC) index to visit only
+// Hot50 originals in the requested 72h window. A materialized GLOBAL
+// GROUP BY scanned all 195-country facts even when only 50 were requested.
+// CROSS JOIN pins the 50-row input outermost, so each country runs an
+// indexed bounded range probe rather than a historical full-table scan.
+export const HOT50_ACTIVATION_COVERAGE_SQL=`WITH hot(iso3) AS (VALUES ${hotRows}),
  cats(cat) AS (VALUES ('geopolitics'),('macro'),('rare_earth')),
  events AS (
-  SELECT country_iso3,category,event_fingerprint,
-   COUNT(DISTINCT CASE WHEN clock_basis='ORIGINAL_PUBLICATION'
-     THEN publisher_domain END) AS original_publishers,
-   MAX(event_clock) AS latest_event
-  FROM progressive_risk_gate_facts
-  WHERE event_clock>=? AND event_clock<=?
-  GROUP BY country_iso3,category,event_fingerprint
+  SELECT f.country_iso3,f.category,f.event_fingerprint,
+   COUNT(DISTINCT CASE WHEN f.clock_basis='ORIGINAL_PUBLICATION'
+     THEN f.publisher_domain END) AS original_publishers,
+   MAX(f.event_clock) AS latest_event
+  FROM hot CROSS JOIN progressive_risk_gate_facts AS f
+    INDEXED BY idx_progressive_risk_gate_facts_country_time
+  WHERE f.country_iso3=hot.iso3 AND f.event_clock>=? AND f.event_clock<=?
+    AND f.category IN ('geopolitics','macro','rare_earth')
+  GROUP BY f.country_iso3,f.category,f.event_fingerprint
  ),
  cells AS (
   SELECT country_iso3,category,COUNT(*) AS distinct_events,
@@ -73,7 +80,7 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
    env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_bundles GROUP BY state").all(),
    env.DB.prepare("SELECT state,COUNT(*) n FROM p0b_private_r2_fallback GROUP BY state").all(),
    env.DB.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).first(),
-   env.DB.prepare(COVERAGE_SQL).bind(cutoff,day).all()
+   env.DB.prepare(HOT50_ACTIVATION_COVERAGE_SQL).bind(cutoff,day).all()
   ]);
   const queueStates={},bundleStates={},r2States={};
   for(const [values,output] of [[queue?.results,queueStates],[bundles?.results,bundleStates],[r2?.results,r2States]]){
