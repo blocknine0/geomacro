@@ -16,7 +16,9 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
     'SUM(CASE WHEN last_polled_at IS NOT NULL THEN 1 ELSE 0 END) AS ever_polled '+
     'FROM source_registry').first(),
    env.DB.prepare('SELECT state,COUNT(*) AS n FROM ingestion_spool_queue GROUP BY state').all(),
-   env.DB.prepare('SELECT COUNT(*) AS n FROM normalized_articles').first(),
+   // Only an explicitly requested deep audit scans the normalized article count.
+   // Routine operational health must not spend D1 rows on a non-critical total.
+   (deep?env.DB.prepare('SELECT COUNT(*) AS n FROM normalized_articles').first():Promise.resolve(null)),
    env.DB.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit WHERE singleton=1').first(),
    env.DB.prepare('SELECT COUNT(*) AS created,'+
     "SUM(CASE WHEN state='D1_COMMITTED' AND acked_at IS NOT NULL THEN 1 ELSE 0 END) AS committed,"+
@@ -86,7 +88,8 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
    activation_flag:env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1',
    source_registry:{total:sources?.total??0,enabled:sources?.enabled??0,
     ever_polled:sources?.ever_polled??0},
-   queue_state:queueState,normalized_metadata_rows:admitted?.n??0,
+   queue_state:queueState,normalized_metadata_rows:deep?(admitted?.n??0):null,
+   normalized_metadata_count_verified:deep,
    transactional_outbox_parity:{
     state:"D1_FIRST_ENCRYPTED_THEN_B2_VERIFIED",
     total_bundle_records:outbox?.total??null,
