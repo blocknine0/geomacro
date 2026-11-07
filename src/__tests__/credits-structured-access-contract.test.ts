@@ -9,7 +9,8 @@ describe("credits and structured access contract", () => {
   it("keeps Free Explorer website-only with no commercial API credits", () => {
     const contract = read("src/lib/commercial-access-contract.ts");
 
-    expect(contract).toContain('GEOMACRO_CREDIT_CONTRACT_VERSION = "credits-v1.1.0"');
+    expect(contract).toContain('GEOMACRO_CREDIT_CONTRACT_VERSION=CONTRACT_VERSION');
+    expect(read("src/lib/credit-metering-policy.mjs")).toContain('GEOMACRO_CREDIT_CONTRACT_VERSION="credits-v1.1.0"');
     expect(contract).toContain('label: "Free Explorer"');
     expect(contract).toContain('access_mode: "public_web_only"');
     expect(contract).toContain("credits_per_30_days: 0");
