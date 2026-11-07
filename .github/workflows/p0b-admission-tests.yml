@@ -7,6 +7,8 @@ on:
       - 'workers/control-plane/migrations/0115_p0_b_storage_circuit.sql'
       - 'workers/control-plane/migrations/0116_p0b_microbatch_spool.sql'
       - 'workers/control-plane/migrations/0118_p0b_archive_outbox.sql'
+      - 'workers/control-plane/migrations/0211_p0b_daily_committed_count.sql'
+      - 'scripts/tests/p0b-daily-committed-counter.test.mjs'
       - 'workers/control-plane/migrations/0122_p0b_private_r2_fallback.sql'
       - 'scripts/ops/p0b-b2-scope-preflight.mjs'
       - 'scripts/tests/p0b-b2-scope-preflight.test.mjs'
@@ -51,7 +53,7 @@ jobs:
           node --check workers/control-plane/src/index.mjs
           node --check workers/control-plane/src/p0a-source-registry.mjs
           npm run test:p0-b
-          node --test scripts/tests/p0a-source-registry-engine.test.mjs
+          node --test scripts/tests/p0a-source-registry-engine.test.mjs scripts/tests/p0b-daily-committed-counter.test.mjs
       - name: Compile Cloudflare control-plane Worker without deploying
         run: |
           node -e "const fs=require('fs');const p='workers/control-plane/wrangler.example.jsonc';const c=JSON.parse(fs.readFileSync(p));c.d1_databases[0].database_id='00000000-0000-4000-8000-000000000000';fs.writeFileSync('workers/control-plane/wrangler.p0b-ci.jsonc',JSON.stringify(c))"
