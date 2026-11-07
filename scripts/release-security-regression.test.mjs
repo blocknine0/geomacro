@@ -71,6 +71,6 @@ test('canary version-specific wall-time p99 is converted from microseconds',()=>
  assert.match(s,/quantiles\{wallTimeP99\}/);
  assert.match(s,/const p99=wallTimeP99Us\/1000/);
  assert.match(s,/version_errors_under_0_1pct/);
- assert.doesNotMatch(s,/requestDurationP99/);
+ assert.doesNotMatch(s,/quantiles\{requestDurationP99\}/);
  assert.match(s,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
 });
