@@ -80,10 +80,27 @@ export function assessWorkerPromotion({
   const newBindings=readBindings(candidateVersion);
   if(JSON.stringify(oldBindings)!==JSON.stringify(newBindings))
    return refuse("VERSION_BINDING_PARITY_MISMATCH");
-  if(!newBindings.some(x=>x.name==="DB")||
-     !newBindings.some(x=>x.name==="INGEST_QUEUE")||
-     !newBindings.some(x=>x.name==="SOURCE_POLL_QUEUE"))
-   return refuse("P0B_D1_QUEUE_BINDING_MISSING");
+  for(const required of ["DB","INGEST_QUEUE","SOURCE_POLL_QUEUE",
+   "CONTROL_PLANE_TOKEN","RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64",
+   "RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64",
+   "RISK_GATE_DECISION_ED25519_KEY_ID"]){
+    if(!newBindings.some(x=>x.name===required))
+     return refuse("PROTECTED_BINDING_MISSING");
+  }
+  const findVar=name=>{
+   const raw=candidateVersion?.resources?.bindings;
+   // Unknown response layout or invisible value is not proof that a
+   // production feature flag is enabled.
+   if(!Array.isArray(raw))return null;
+   const v=raw.find(x=>x.name===name);
+   return typeof v?.text==="string"?v.text:
+    typeof v?.value==="string"?v.value:null;
+  };
+  if(findVar("GEOMACRO_SOURCE_SHA")!==sourceSha||
+     findVar("RISK_GATE_COUNTRY_SCOPE")!=="HOT50"||
+     findVar("GEOMACRO_P0B_ADMISSION_ACTIVE")!=="1"||
+     findVar("GEOMACRO_P1_BUNDLED_LEASES_ENABLED")!=="1")
+   return refuse("CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
   const limits=quota?.owner_d1_utc_daily_targets;
   if(limits?.rows_read!==140000||limits?.rows_written!==140000||
      limits?.emergency_rows_written!==0)
