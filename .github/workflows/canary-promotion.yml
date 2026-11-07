@@ -116,6 +116,13 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
+          # Never schedule a full physical B2/R2 LIST+GET parity census.
+          # The scheduled path checks only the CLOSED UTC-day D1 billable rows.
+          # All five protected gates run together only by manual dispatch.
+          if test "$EVENT_NAME" = schedule; then
+            npm run release:quota
+            exit 0
+          fi
           case "${OPERATION:-verify}" in
             verify)
               npm run release:remediate ;;
