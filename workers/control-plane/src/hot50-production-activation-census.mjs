@@ -4,6 +4,7 @@
  * Physical B2 parity is checked separately by the independent GET audit.
  */
 import {RISK_GATE_HOT50} from "./risk-gate-hot50-scope.mjs";
+import {PHASE2H_ARCHIVE_HOT50_TOTALS_SQL} from "./phase2h-archive-counter-census.mjs";
 const MAX_PAGE=25,HEX=/^[a-f0-9]{64}$/u;
 const reply=(value,status=200)=>Response.json(value,{status,headers:{
  "Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff",
@@ -71,7 +72,7 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
    env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_queue GROUP BY state").all(),
    env.DB.prepare("SELECT state,COUNT(*) n FROM ingestion_spool_bundles GROUP BY state").all(),
    env.DB.prepare("SELECT state,COUNT(*) n FROM p0b_private_r2_fallback GROUP BY state").all(),
-   env.DB.prepare("SELECT COUNT(*) total,COALESCE(SUM(CASE WHEN b2_object_sha256 IS NULL THEN 1 ELSE 0 END),0) unarchived FROM phase2h_private_raw_news").first(),
+   env.DB.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).first(),
    env.DB.prepare(COVERAGE_SQL).bind(cutoff,day).all()
   ]);
   const queueStates={},bundleStates={},r2States={};
@@ -83,6 +84,10 @@ export async function readHot50ActivationCensus(env, now=Date.now()){
     output[item.state]=assertedCount(item.n);
    }
   }
+  // A missing/partial migration or damaged counter cannot assert zero debt.
+  if(assertedCount(historical?.categories)!==3||
+     assertedCount(historical?.total)<assertedCount(historical?.unarchived))
+    throw Error("ACTIVATION_ARCHIVE_COUNTERS_UNVERIFIED");
   const unhandled={
     outbox:assertedCount(outbox.total)-assertedCount(outbox.archived),
     queue:Object.entries(queueStates).filter(([k])=>!["ACKNOWLEDGED","D1_COMMITTED"].includes(k)).reduce((v,[,n])=>v+n,0),
