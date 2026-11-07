@@ -27,6 +27,10 @@ on:
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
       - "workers/control-plane/migrations/0036_phase2h_72h_retention_index.sql"
+      - "workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql"
+      - "workers/control-plane/src/phase2h-archive-counter-census.mjs"
+      - "scripts/tests/phase2h-archive-counter-census.test.mjs"
+      - "scripts/ops/phase2h-permanent-production-acceptance.mjs"
       - "scripts/lib/macro-*.mjs"
       - "scripts/lib/p0b-event-grounded-projection.mjs"
       - "scripts/lib/p0b-live-global-search.mjs"
@@ -276,7 +280,7 @@ jobs:
         with:
           node-version: "24"
       - name: Test complete Hot50 D1 census, fail-closed certification and parity cursors
-        run: node --test scripts/tests/hot50-production-activation.test.mjs
+        run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/phase2h-archive-counter-census.test.mjs
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |
@@ -680,6 +684,30 @@ jobs:
         run: |
           set -euo pipefail
           npx -y "wrangler@${WRANGLER_VERSION}" d1 migrations apply DB --remote --config wrangler.runtime.jsonc
+
+      - name: Verify transactional raw-news archive counters against canonical D1
+        working-directory: workers/control-plane
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Protected deploy readback: compare three materialized rows against
+          # canonical immutable source truth before the Worker changes traffic.
+          data="$(npx -y "wrangler@${WRANGLER_VERSION}" d1 execute DB --remote --json \
+            --config wrangler.runtime.jsonc \
+            --command "SELECT COUNT(*) AS categories,COALESCE(SUM(CASE WHEN c.staged_count<>(SELECT COUNT(*) FROM phase2h_private_raw_news r WHERE r.category=c.category) OR c.archived_count<>(SELECT COUNT(*) FROM phase2h_private_raw_news r WHERE r.category=c.category AND r.b2_object_sha256 IS NOT NULL) THEN 1 ELSE 0 END),0) AS mismatches FROM phase2h_archive_totals c;")"
+          printf '%s' "$data" | node -e '
+            let text="";
+            process.stdin.on("data",x=>text+=x);
+            process.stdin.on("end",()=>{
+              const payload=JSON.parse(text);
+              const rows=(Array.isArray(payload)?payload:[payload])
+                .flatMap(x=>x?.results??x?.result?.[0]?.results??[]);
+              if(rows.length!==1||Number(rows[0].categories)!==3||
+                  Number(rows[0].mismatches)!==0)
+                throw Error("PHASE2H_COUNTERS_CANONICAL_PARITY_UNVERIFIED");
+              console.log("PASS: three category counters match canonical D1 on deploy.");
+            });
+          '
 
       - name: Confirm progressive Risk Gate D1 fact tables are durable before deployment
         working-directory: workers/control-plane
