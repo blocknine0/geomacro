@@ -47,10 +47,10 @@ test("bookmark requires production Time Travel and never logs restoration key",(
  assert.throws(()=>checkTimeTravel(JSON.stringify({version:"alpha"}),
  JSON.stringify({bookmark:b})));
 });
-test("Stage B executes only after actual Stage A PASS and leaves canary hold",()=>{
+test("Stage B executes only after migration-only provider PASS and leaves normal canary hold",()=>{
  const y=readFileSync(new URL("../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",import.meta.url),"utf8");
- assert.match(y,/needs: provider-readonly-preflight/);
- assert.match(y,/needs\.provider-readonly-preflight\.result == 'success'/);
+ assert.match(y,/needs: provider-migration-headroom/);
+ assert.match(y,/needs\.provider-migration-headroom\.result == 'success'/);
  assert.ok(y.includes("config/d1-hotspot-v2-canary.hold"));
  assert.ok(y.includes("d1 migrations apply DB --remote"));
  assert.ok(!y.includes("d1 time-travel restore"));
