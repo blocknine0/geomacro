@@ -40,8 +40,8 @@ export async function privateOsintBundleRead(env,query=new URLSearchParams(),now
    const where=["category=?","native_feed_published_at>=?","first_seen_at<=?"],args=[d,new Date(now-age).toISOString(),cursor.snapshot_at];
    if(country){where.push("country_iso3=?");args.push(country)}
    if(cursor.after[d]){
-    where.push("(native_feed_published_at<? OR (native_feed_published_at=? AND item_id<?))");
-    args.push(cursor.after[d][0],cursor.after[d][0],cursor.after[d][1]);
+    where.push("(native_feed_published_at,item_id)<(?,?)");
+    args.push(cursor.after[d][0],cursor.after[d][1]);
    }
    // The country-specific path uses the 0203 composite index; generic
    // domain reads retain the preexisting 0029 ordered keyset index.
