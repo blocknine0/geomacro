@@ -71,7 +71,7 @@ function safeFeedRedirect(from,to){
  * refusing cross-site redirect chains or protocol downgrades. No redirects
  * are used for article URLs; this is only the pinned feed transport.
  */
-async function fetchPrivateFeedSafely(url,options,fetchImpl){
+export async function fetchPrivateFeedSafely(url,options,fetchImpl){
  const original=new URL(url);
  let current=original,didRedirect=false;
  const headers=new Headers(options?.headers??{});
