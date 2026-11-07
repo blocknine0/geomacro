@@ -13,7 +13,7 @@ import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{40}$/;
-const STAGES=[1,5,25,50,100];
+const STAGES=[0,1,5,25,50,100];
 const OWNER_POLICY=JSON.parse(readFileSync(
  new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"
 )).d1_budget_policy;
@@ -59,15 +59,13 @@ export function assessWorkerPromotion({
   if(!SHA.test(sourceSha)||!UUID.test(baselineId)||!UUID.test(candidateId)||
      baselineId===candidateId||!STAGES.includes(targetPercent))
    return refuse("INVALID_PROMOTION_INPUT");
-  const preceding=STAGES.indexOf(targetPercent)===0?0:STAGES[STAGES.indexOf(targetPercent)-1];
+  const preceding=STAGES.indexOf(targetPercent)===0?-1:STAGES[STAGES.indexOf(targetPercent)-1];
   const versions=deploymentVersions(deployment);
   const observedBaseline=versions.find(x=>x.version_id.toLowerCase()===baselineId.toLowerCase());
   const observedCandidate=versions.find(x=>x.version_id.toLowerCase()===candidateId.toLowerCase());
-  if(preceding===0){
+  if(preceding===-1){
    if(versions.length!==1||Number(observedBaseline?.percentage)!==100)
     return refuse("BASELINE_NOT_100_PERCENT");
-  }else if(preceding===100){
-   return refuse("ALREADY_FULLY_PROMOTED");
   }else{
    if(versions.length!==2||Number(observedCandidate?.percentage)!==preceding||
       Number(observedBaseline?.percentage)!==100-preceding)
