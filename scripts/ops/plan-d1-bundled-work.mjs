@@ -650,19 +650,56 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // valid Paid capacity; provider inclusion is monthly, not owner approval
     // for unlimited physical D1 rows. Buffer for non-atomic telemetry lag.
     const ownerBudget=FIVE_USD_BUDGET.owner_d1_utc_daily_targets;
-    const ownerHold=quota.observed_rows_read+ownerBudget.safety_buffer_rows_read>=
-        ownerBudget.rows_read||
-      quota.observed_rows_written+ownerBudget.safety_buffer_rows_written>=
-        ownerBudget.rows_written;
+    const ownerNormalHold=quota.observed_rows_read+
+        ownerBudget.safety_buffer_rows_read>=ownerBudget.rows_read||
+      quota.observed_rows_written+
+        ownerBudget.safety_buffer_rows_written>=ownerBudget.normal_rows_written;
     const spendHold=paidSubscriptionVerified&&spendGuardProof?.verified!==true;
-    const result=ownerHold?held("GEOMACRO_OWNER_D1_UTC_DAILY_BUDGET_HELD",now):
-      spendHold?held("WORKERS_PAID_SPEND_POLICY_UNVERIFIED",now):
+    // Policy API 404 must not turn a previously safe Free-envelope ingestion
+    // into a paid admission. Allow only the existing conservative, bounded,
+    // non-commercial Free-safe source lane if provider snapshots support it;
+    // do not grant paid critical signing, revenue or backlog drains.
+    const fallback=spendHold&&!ownerNormalHold?
+      planD1BundledWork(quota,{now}):null;
+    const safeFallback=fallback&&fallback.source_intake===true&&
+      // The full-day Free-intake reserve must ALSO fit the owner's much
+      // smaller 140k read/140k normal write budgets, not the Free 5M cap.
+      quota.observed_rows_read+ownerBudget.safety_buffer_rows_read+
+        (fallback.source_intake_budget_to_utc_reset?.rows_read??Infinity)<
+        ownerBudget.rows_read&&
+      quota.observed_rows_written+ownerBudget.safety_buffer_rows_written+
+        (fallback.source_intake_budget_to_utc_reset?.rows_written??Infinity)<
+        ownerBudget.normal_rows_written;
+    const result=ownerNormalHold?
+      held("GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
+      spendHold?Object.freeze({
+        ...held("WORKERS_PAID_SPEND_POLICY_UNVERIFIED_SAFE_DEGRADE",now),
+        source_intake:safeFallback===true,
+        source_intake_interval_minutes:safeFallback===true?
+          fallback.source_intake_interval_minutes:null,
+        source_intake_max_new_rows:safeFallback===true?
+          fallback.source_intake_max_new_rows:0,
+        source_intake_budget_to_utc_reset:safeFallback===true?
+          fallback.source_intake_budget_to_utc_reset:null,
+        phase2h_raw_archive:false,
+        degraded_noncommercial_free_safe_only:true,
+      }):
       planD1BundledWork(quota,{now,paidProof,spendGuardProof});
+    // 40k write rows are deliberately unavailable to the ordinary planner.
+    // Emergency restoration requires separate explicit authorization; this
+    // read-only receipt does NOT grant any emergency query or write.
+    const emergencyWriteRemaining=Math.max(0,
+      ownerBudget.rows_written-Math.max(
+        ownerBudget.normal_rows_written,quota.observed_rows_written));
     return {...result,
       paid_capacity_probe_status:paidProbe,
       workers_paid_subscription_verified:paidSubscriptionVerified,
       owner_d1_utc_daily_targets:ownerBudget,
-      owner_d1_utc_budget_held:ownerHold,
+      owner_d1_utc_budget_held:ownerNormalHold,
+      owner_d1_regular_lane_held:ownerNormalHold,
+      emergency_d1_write_rows_remaining:emergencyWriteRemaining,
+      emergency_d1_write_budget_auto_admitted:false,
+      cached_public_delivery_not_disabled_by_planner:true,
       observed_rows_read:quota.observed_rows_read,
       observed_rows_written:quota.observed_rows_written,
       // Free-plan remaining counters are retained only for legacy offline
