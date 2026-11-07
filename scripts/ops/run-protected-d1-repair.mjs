@@ -7,6 +7,18 @@ import {pathToFileURL} from 'node:url';
 import {evaluateMigrationBudget,checkTimeTravel} from './verify-protected-d1-migration-gate.mjs';
 import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
 import {REPAIR_SCHEMA_OBJECTS,verifyRepairSchema,pendingRepairPlans,verifyRepairSql,repairProbeSql,verifyRepairProbe,admitRepairCost} from './protected-d1-repair-plan.mjs';
+export function classifyRepairCommandFailure(error){
+ const raw=String(error?.stdout??'')+'\n'+String(error?.stderr??'');
+ return {
+  provider_error_codes:[...new Set([...raw.matchAll(/\[code:\s*(\d{3,6})\]/gu)].map(m=>m[1]))].slice(0,5),
+  permission_denied:/authentication error|not authorized|permission denied|unauthorized|forbidden|\b403\b/iu.test(raw),
+  missing_schema:/no such table|no such column|SQLITE_CONSTRAINT/iu.test(raw),
+  config_invalid:/No configuration file|Invalid.*config|invalid.*binding|Couldn't find|Cannot find|not found/iu.test(raw),
+  network_failure:/fetch failed|ENOTFOUND|ECONNRESET|timed? ?out|ETIMEDOUT/iu.test(raw),
+  command_exit_status:Number.isInteger(error?.status)?error.status:null,
+  command_signal:['SIGTERM','SIGKILL'].includes(error?.signal)?error.signal:null,
+ };
+}
 export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
     env.GITHUB_REF!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??'')||
@@ -29,7 +41,16 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
  const original=JSON.parse(readFileSync(configPath,'utf8'));
  if(original.d1_databases?.length!==1||original.d1_databases[0].database_name!=='geomacro-control-plane'||
     !/^[a-f0-9-]{36}$/i.test(original.d1_databases[0].database_id??''))throw Error('REPAIR_CONFIG_UNVERIFIED');
- const wrangler=(config,args)=>execute('npx',['-y','wrangler@4.136.3',...args,'--config',config]);
+ const wrangler=(config,args)=>{
+  try{return execute('npx',['-y','wrangler@4.136.3',...args,'--config',config]);}
+  catch(error){
+   const diagnostic={schema:'geomacro.d1-repair-command-diagnostic.v1',
+    operation:args.slice(0,3).join(' '),...classifyRepairCommandFailure(error),
+    raw_command_output_logged:false};
+   record('command-error',diagnostic);console.error(JSON.stringify(diagnostic));
+   throw Error('REPAIR_PROVIDER_COMMAND_FAILED');
+  }
+ };
  await budget();
  const pending=()=>pendingRepairPlans(wrangler(configPath,['d1','migrations','list','DB','--remote']));
  const planned=pending();

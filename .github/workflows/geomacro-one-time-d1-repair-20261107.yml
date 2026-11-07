@@ -10,6 +10,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/ops/run-protected-d1-repair.mjs'
       - '.github/workflows/geomacro-one-time-d1-repair-20261107.yml'
       - 'scripts/ops/one-time-d1-repair-20261107.mjs'
       - 'scripts/ops/run-one-time-d1-repair-20261107.mjs'
