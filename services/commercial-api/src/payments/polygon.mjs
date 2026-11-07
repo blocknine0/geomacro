@@ -34,8 +34,13 @@ export function polygonTypedAuthorization(auth){
 /** Checks every bound property *before* any facilitator request. */
 export async function validatePolygonAuthorization(payment,expected,{now=Math.floor(Date.now()/1000)}={}){
  const a=payment?.payload?.authorization,sig=payment?.payload?.signature,accepted=payment?.accepted;
- requireValue(payment?.x402Version===2&&expected?.network===POLYGON_NETWORK&&
+ requireValue(payment?.x402Version===2&&expected?.scheme==='exact'&&
+  expected?.network===POLYGON_NETWORK&&
   expected.asset?.toLowerCase()===POLYGON_NATIVE_USDC&&
+  ADDRESS.test(expected.payTo??'')&&expected.payTo!=='0x'+'0'.repeat(40)&&
+  money.test(expected.amount??'')&&expected.maxTimeoutSeconds===120&&
+  expected.extra?.name==='USD Coin'&&expected.extra?.version==='2'&&
+  expected.extra?.assetTransferMethod==='eip3009'&&
   accepted?.scheme==='exact'&&accepted.network===POLYGON_NETWORK&&
   accepted.asset?.toLowerCase()===POLYGON_NATIVE_USDC&&
   accepted.payTo?.toLowerCase()===expected.payTo&&
@@ -132,6 +137,7 @@ export class DexterPolygonVerifier {
   requireValue(response.ok,'DEXTER_VERIFY_UNAVAILABLE');
   const data=await readJsonResponse(response,131072);
   requireValue(data&&data.isValid===true&&
+   !data.invalidReason&&
    (data.payer===undefined||typeof data.payer==='string'&&ADDRESS.test(data.payer)&&
     data.payer.toLowerCase()===local.payer),'DEXTER_VERIFICATION_INVALID',402);
   return {isValid:true,payer:local.payer,network:POLYGON_NETWORK};
