@@ -10,6 +10,7 @@ import { resolve } from 'node:path';
 
 const SCHEMA='geomacro.commercial-qualified-evidence-no-funds.v1';
 const ORIGIN='https://api.geomacro.live';
+const DIRECT='https://geomacro-control-plane.daspallab202391.workers.dev';
 const tiers=['basic','standard','complex'];
 const ERRORS=new Set([
  'RISK_UPSTREAM_CONTRACT_INVALID','RISK_UPSTREAM_STALE','RISK_UPSTREAM_PROOF_INVALID',
@@ -19,9 +20,11 @@ const ERRORS=new Set([
 const statusOf=r=>r.status;
 const errorCode=e=>ERRORS.has(e?.code)?e.code:'EVIDENCE_CONTRACT_NOT_VERIFIED';
 
-export async function checkEvidenceNoFunds({token=process.env.RISK_GATE_TIERED_TOKEN,fetchImpl=fetch,subject='USA'}={}){
+export async function checkEvidenceNoFunds({token=process.env.RISK_GATE_TIERED_TOKEN,fetchImpl=fetch,subject='USA',origin=process.env.GEOMACRO_EVIDENCE_PROBE_ORIGIN??ORIGIN}={}){
  const result={schema:SCHEMA,mode:'READ_ONLY_NO_FUNDS',subject,
+  origin:origin===ORIGIN?'canonical-api':origin===DIRECT?'direct-control-plane':'unapproved',
   payment_attempted:false,payment_enabled:false,certified_gri_claimed:false,tiers:[]};
+ if(origin!==ORIGIN&&origin!==DIRECT)return {...result,classification:'BLOCKED_NO_CHARGE',reason:'EVIDENCE_ORIGIN_NOT_APPROVED'};
  if(!/^[a-f0-9]{64}$/u.test(String(token??''))){
   return {...result,classification:'BLOCKED_NO_CHARGE',reason:'QUALIFIED_RISK_TOKEN_NOT_CONFIGURED'};
  }
@@ -31,7 +34,7 @@ export async function checkEvidenceNoFunds({token=process.env.RISK_GATE_TIERED_T
   const body={target_type:'COUNTRY',target_id:subject,client_policy:'STRICT',product_tier:TIER_NAMES[tier]};
   let response;
   try{
-   response=await fetchImpl(ORIGIN+'/v1/risk-gate/unified/evaluate',{
+   response=await fetchImpl(origin+'/v1/risk-gate/unified/evaluate',{
     method:'POST',redirect:'manual',signal:AbortSignal.timeout(12000),
     headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
     body:JSON.stringify(body)
