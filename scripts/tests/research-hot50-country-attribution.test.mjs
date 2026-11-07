@@ -62,7 +62,7 @@ test("reject multiple-country and ambiguous claims rather than picking longer sp
 
 test("boundaries forbid substring country promotion and retain older direct matches",()=>{
  assert.equal(parse("Germanium export restrictions announced"),null);
- assert.equal(parse("British Columbia mining policy announced"),"GBR");
+ assert.equal(parse("British Columbia mining policy announced"),"CAN");
  assert.equal(parse("Australia launches new lithium program"),"AUS");
  assert.equal(parse("Ukraine announces border closure"),"UKR");
  assert.equal(parse("Palestinian government announces a decision"),"PSE");
