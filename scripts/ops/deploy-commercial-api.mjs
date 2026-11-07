@@ -36,13 +36,17 @@ const x402Complete=!!(secrets.X402_PAYEE_ADDRESS&&secrets.BASE_RPC_URL&&env.COMM
 // This Step B xpay integration is no-funds-only even if an old real-funds ACK exists.
 // A separately reviewed future release must explicitly lift this hard code gate.
 const xpayNoFundsOnly=String(env.COMMERCIAL_X402_FACILITATOR_URL??'').replace(/\/$/u,'')==='https://facilitator.xpay.sh';
+// Immutable release policy: neither PayPal nor Base/Polygon x402 can collect funds.
+// The future owner-authorized launch must explicitly change reviewed source code.
+const commercialNoFundsOnly=true;
 config.vars={...config.vars,DEPLOYED_SHA:env.GITHUB_SHA,COMMERCIAL_SIGNING_KEY_ID:keyId,
  PAYPAL_MODE:env.GEOMACRO_PAYPAL_ENVIRONMENT||'sandbox',
- PAYPAL_ENABLED:String(Boolean(paypalComplete)),X402_ENABLED:String(Boolean(x402Complete&&!xpayNoFundsOnly)),
+ PAYPAL_ENABLED:String(!commercialNoFundsOnly&&Boolean(paypalComplete)),X402_ENABLED:String(!commercialNoFundsOnly&&Boolean(x402Complete&&!xpayNoFundsOnly)),
+ POLYGON_X402_ENABLED:'false',
  X402_FACILITATOR_URL:env.COMMERCIAL_X402_FACILITATOR_URL||'',
  PAYPAL_CATALOG_JSON:env.PAYPAL_CATALOG_JSON||'',
- GEOMACRO_COMMERCIAL_LAUNCH_ACK:'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH',
- GEOMACRO_REAL_FUNDS_SECURITY_ACK:env.GEOMACRO_REAL_FUNDS_SECURITY_ACK||'',
+ GEOMACRO_COMMERCIAL_LAUNCH_ACK:commercialNoFundsOnly?'':'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH',
+ GEOMACRO_REAL_FUNDS_SECURITY_ACK:commercialNoFundsOnly?'':env.GEOMACRO_REAL_FUNDS_SECURITY_ACK||'',
  GEOMACRO_PAYPAL_KYC_RECEIVE_ACK:env.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK||'',
  GEOMACRO_COMMERCE_EMERGENCY_FREEZE:env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE||'',
  GEOMACRO_COMMERCE_DISABLED_PROVIDERS:env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS||'',
@@ -104,7 +108,8 @@ try{
   public_api_origin:config.vars.PUBLIC_API_ORIGIN,custom_api_route_attached:Boolean(config.routes?.length),
   ledger_verified:true,signer_verified:health.signer_configured===true,
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
-  blockers:health.blockers,evidence_proof:evidenceProof,xpay_no_funds_only:xpayNoFundsOnly,real_payment_attempted:false};
+  blockers:health.blockers,evidence_proof:evidenceProof,xpay_no_funds_only:xpayNoFundsOnly,
+  polygon_no_funds_only:true,commercial_no_funds_only:commercialNoFundsOnly,real_payment_attempted:false};
  console.log(JSON.stringify(summary));
  if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'\n'+JSON.stringify(summary,null,2)+'\n');
 }catch(error){console.error(error.message);process.exitCode=1;}

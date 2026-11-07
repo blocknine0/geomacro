@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
+      - name: Test Polygon Dexter no-funds chain and contract validator with fixtures
+        run: node --test scripts/tests/check-commercial-polygon-no-funds.test.mjs
       - name: Test no-funds xpay configuration validator with fixtures
         run: node --test scripts/tests/check-commercial-xpay-no-funds.test.mjs
       - name: Install isolated locked commercial service dependencies
@@ -146,3 +148,23 @@ jobs:
           GEOMACRO_COMMERCE_DISABLED_PROVIDERS: ${{ vars.GEOMACRO_COMMERCE_DISABLED_PROVIDERS }}
           GEOMACRO_REAL_FUNDS_SECURITY_ACK: ${{ vars.GEOMACRO_REAL_FUNDS_SECURITY_ACK }}
         run: node scripts/ops/check-commercial-xpay-no-funds.mjs
+
+  polygon-no-funds-check:
+    # An independent protected, READ-ONLY job. Never blocks Base settlement
+    # (which remains disabled) due to a transient public Polygon RPC outage.
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Verify Polygon 137 native USDC and Dexter v2 exact with no funds
+        env:
+          GEOMACRO_COMMERCE_DISABLED_PROVIDERS: ${{ vars.GEOMACRO_COMMERCE_DISABLED_PROVIDERS }}
+          GEOMACRO_REAL_FUNDS_SECURITY_ACK: ${{ vars.GEOMACRO_REAL_FUNDS_SECURITY_ACK }}
+        run: node scripts/ops/check-commercial-polygon-no-funds.mjs
