@@ -12,7 +12,11 @@ const CONFIG='workers/control-plane/wrangler.canary-d1.jsonc';
 const HOT_QUERIES=[
  {table:'private_osint_news_25h',index:'idx_private_osint_country_category_clock_v2',sql:"SELECT item_id FROM private_osint_news_25h WHERE country_iso3='USA' AND category='geopolitics' ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 10"},
  {table:'private_osint_source_checks_24h',index:'idx_private_osint_check_category_status_v2',sql:"SELECT source_ref FROM private_osint_source_checks_24h WHERE category='geopolitics' ORDER BY checked_at DESC LIMIT 10"},
- {table:'website_derived_intelligence',index:'idx_website_derived_hot_order_v2',sql:'SELECT id FROM website_derived_intelligence ORDER BY published_at DESC,id DESC LIMIT 10'},
+ // Migration 0017 already provides this exact, narrower ordered index. SQLite
+ // correctly selected it in provider run #42415525486. The newer, broader
+ // v2 index is separately required by REPAIR_SCHEMA_OBJECTS, but natural
+ // plan selection of the verified equivalent must not be marked a failure.
+ {table:'website_derived_intelligence',index:'idx_website_derived_intelligence_latest',sql:'SELECT id FROM website_derived_intelligence ORDER BY published_at DESC,id DESC LIMIT 10'},
  {table:'source_registry',index:'idx_p1_dispatch_due',sql:"SELECT source_id FROM source_registry WHERE enabled=1 AND next_poll_at<'9999-01-01' ORDER BY next_poll_at,source_id LIMIT 10"},
 ];
 function verifiedSql():void{
@@ -47,6 +51,17 @@ async function verifySchema(uuid:string):Promise<Record<string,unknown>>{
   const list=await queryD1(uuid,`PRAGMA index_list('${h.table}')`);
   const defined=list.rows.some(x=>x.name===h.index);
   need(defined,`RELEASE_HOT_INDEX_MISSING_${h.table.toUpperCase()}`);
+  if(h.table==='website_derived_intelligence'){
+   // Require physical SQLite btree key shape, not just an index with a
+   // matching name. PRAGMA index_xinfo key=1 are indexed key columns; desc=1
+   // verifies descending ordering for both published_at and id.
+   const keyInfo=await queryD1(uuid,`PRAGMA index_xinfo('${h.index}')`);
+   const keys=keyInfo.rows.filter(x=>x.key===1).sort((a,b)=>a.seqno-b.seqno);
+   need(keys.length===2&&keys[0].name==='published_at'&&keys[1].name==='id'&&
+    keys[0].desc===1&&keys[1].desc===1,
+    'RELEASE_WEBSITE_NATIVE_ORDER_INDEX_SHAPE_INVALID');
+   chargedRows+=keyInfo.meta.rows_read;
+  }
   const explain=await queryD1(uuid,`EXPLAIN QUERY PLAN ${h.sql}`);
   const plans=explain.rows.map(r=>String(r.detail??''));
   if(!plans.some(x=>x.includes(h.index))){
