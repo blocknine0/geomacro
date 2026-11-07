@@ -116,7 +116,9 @@ jobs:
         with:
           node-version: "24"
       - name: Prove bounded Hot50 SQL index plans and 20m evidence contract
-        run: node --test scripts/tests/risk-gap-hot50-index-plans.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
+        run: |
+          node --check scripts/ops/verify-hot50-risk-gate-tiers.mjs
+          node --test scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gap-hot50-index-plans.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs
 
   proof:
     if: github.event_name == 'workflow_dispatch'
