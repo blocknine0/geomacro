@@ -12,6 +12,8 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {runPhase2hGovernedRawB2} from "./phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "./phase2h-verify-private-question-delivery.mjs";
+import {PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL}
+ from "../../workers/control-plane/src/phase2h-archive-counter-census.mjs";
 const PREFIX="geomacro-evidence/v1/private/phase2h-raw-news/";
 const SHA=/^[a-f0-9]{64}$/u;
 const hash=x=>createHash("sha256").update(x).digest("hex");
@@ -41,24 +43,16 @@ export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetc
  protectedEnv(env);
  const endpoint="https://api.cloudflare.com/client/v4/accounts/"+
   env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query";
- // One fixed SQL SELECT counts archived, eligible pending and expired pending.
- // UTC SQLite clocks avoid the Cloudflare REST 400/7500 date bind regression.
- const cutoff="strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours')";
- const sql="SELECT category,COUNT(*) AS staged,"+
-  "SUM(CASE WHEN b2_object_sha256 IS NULL THEN 1 ELSE 0 END) AS pending,"+
-  "SUM(CASE WHEN b2_object_sha256 IS NOT NULL THEN 1 ELSE 0 END) AS archived,"+
-  "SUM(CASE WHEN b2_object_sha256 IS NULL AND first_ingested_at>"+cutoff+
-  " THEN 1 ELSE 0 END) AS pending_eligible_72h,"+
-  "SUM(CASE WHEN b2_object_sha256 IS NULL AND first_ingested_at<="+cutoff+
-  " THEN 1 ELSE 0 END) AS pending_expired_72h "+
-  "FROM phase2h_private_raw_news GROUP BY category";
+ // Migration 0208's D1-transactional counters avoid a recurring all-raw
+ // table GROUP BY scan. Only indexed eligible pending rows are counted now.
+ const sql=PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL;
  const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
   headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
    "Content-Type":"application/json"},
   body:JSON.stringify({sql,params:[]}),signal:AbortSignal.timeout(15000)});
  const data=await response.json(),rows=data?.result?.[0]?.results;
  if(!response.ok||data?.success!==true||!Array.isArray(rows)||
-    rows.length>3||data.result?.[0]?.success===false)
+    rows.length!==3||data.result?.[0]?.success===false)
   fail("CANONICAL_D1_CENSUS_UNAVAILABLE");
  const empty=()=>({staged:0,archived:0,pending:0,
   pending_eligible_72h:0,pending_expired_72h:0});
