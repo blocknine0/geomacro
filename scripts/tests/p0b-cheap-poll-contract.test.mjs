@@ -14,14 +14,15 @@ function mockStatusDatabase(){
       bind(){return this},
       async all(){return {results:[]}},
       async first(){
+        // Deep journal SQL embeds bundle/article subqueries; classify it first.
+        if(sql.includes("FROM p0b_archive_outbox"))
+          return {total:1,pending:0,archived:1,archived_missing_b2:0,
+            bundle_journal_mismatch:0,item_journal_mismatch:0};
         if(sql.includes("FROM source_registry"))return {total:1,enabled:1,ever_polled:1};
         if(sql.includes("FROM normalized_articles"))return {n:47};
         if(sql.includes("FROM p0b_storage_circuit"))return null;
         if(sql.includes("FROM ingestion_spool_bundles"))
           return {created:1,committed:1,dead_letter:0};
-        if(sql.includes("FROM p0b_archive_outbox"))
-          return {total:1,pending:0,archived:1,archived_missing_b2:0,
-            bundle_journal_mismatch:0,item_journal_mismatch:0};
         throw Error("UNEXPECTED_SQL");
       }
     };
