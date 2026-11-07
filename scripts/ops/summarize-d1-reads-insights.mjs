@@ -11,9 +11,10 @@ import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 
 const integer=n=>Number.isSafeInteger(n)&&n>=0;
-export function summarizeD1ReadInsights(input,{top=10}={}){
+export function summarizeD1ReadInsights(input,{top=10,sortBy="reads"}={}){
   if(!Array.isArray(input)||input.length<1||input.length>200||
-     !Number.isSafeInteger(top)||top<1||top>25)
+     !Number.isSafeInteger(top)||top<1||top>25||
+     !["reads","writes"].includes(sortBy))
     throw Error("D1_INSIGHTS_PROVIDER_SCHEMA_UNVERIFIED");
   const seen=new Set();
   const rows=input.map(item=>{
@@ -30,7 +31,9 @@ export function summarizeD1ReadInsights(input,{top=10}={}){
       total_rows_written:item.totalRowsWritten,
       executions:item.numberOfTimesRun,
     };
-  }).sort((a,b)=>b.total_rows_read-a.total_rows_read||
+  }).sort((a,b)=>
+     (sortBy==="writes"?b.total_rows_written-a.total_rows_written:
+       b.total_rows_read-a.total_rows_read)||
      a.query_sha256.localeCompare(b.query_sha256)).slice(0,top);
   return Object.freeze({
     schema:"geomacro.d1-reads-pressure-hashed.v1",
@@ -38,14 +41,16 @@ export function summarizeD1ReadInsights(input,{top=10}={}){
     raw_query_sql_logged:false,
     bound_parameters_logged:false,
     query_count_observed:input.length,
-    top_rows_read:rows,
+    sort_by:sortBy,
+    ...(sortBy==="writes"?{top_rows_written:rows}:{top_rows_read:rows}),
   });
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   try{
-    if(process.argv.length!==3)throw Error("D1_INSIGHTS_FILE_REQUIRED");
+    if(process.argv.length<3||process.argv.length>4)throw Error("D1_INSIGHTS_FILE_REQUIRED");
     const data=JSON.parse(readFileSync(process.argv[2],"utf8"));
-    console.log(JSON.stringify(summarizeD1ReadInsights(data)));
+    const sortBy=process.argv[3]??"reads";
+    console.log(JSON.stringify(summarizeD1ReadInsights(data,{sortBy})));
   }catch{
     console.error("D1_READ_PRESSURE_INSIGHTS_UNVERIFIED");
     process.exitCode=2;

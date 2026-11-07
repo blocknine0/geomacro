@@ -23,3 +23,17 @@ test("unknown or duplicate Wrangler Insights schema fails closed",()=>{
  assert.throws(()=>summarizeD1ReadInsights([{query:"SELECT 1",totalRowsRead:1,totalRowsWritten:0,numberOfTimesRun:1},{query:"SELECT 1",totalRowsRead:1,totalRowsWritten:0,numberOfTimesRun:1}]),/DUPLICATE/);
  assert.throws(()=>summarizeD1ReadInsights([{query:"",totalRowsRead:1,totalRowsWritten:0,numberOfTimesRun:1}]),/UNVERIFIED/);
 });
+
+test("top D1 write hotspots are sorted by provider physical rows, without raw SQL",()=>{
+ const raw=[
+  {query:"INSERT INTO confidential_batch VALUES (?)",totalRowsRead:30,totalRowsWritten:9000,numberOfTimesRun:80},
+  {query:"SELECT * FROM private_source",totalRowsRead:30000,totalRowsWritten:0,numberOfTimesRun:200},
+ ];
+ const result=summarizeD1ReadInsights(raw,{top:2,sortBy:"writes"});
+ assert.equal(result.sort_by,"writes");
+ assert.equal(result.top_rows_written[0].total_rows_written,9000);
+ assert.equal(result.top_rows_written[1].total_rows_written,0);
+ assert.equal(result.top_rows_read,undefined);
+ assert.ok(!JSON.stringify(result).includes("confidential_batch"));
+ assert.throws(()=>summarizeD1ReadInsights(raw,{sortBy:"unknown"}),/UNVERIFIED/);
+});

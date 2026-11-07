@@ -70,9 +70,23 @@ export async function readFiveUsdSpendGuard({
      });
  }catch{throw Error("CLOUDFLARE_FIVE_USD_SPEND_POLICIES_UNAVAILABLE")}
  if(response?.status!==200){
-   // Provider response status is useful to diagnose a scoped 401/403/404;
-   // never expose the token, account ID, body, or sensitive headers.
+   // HTTP 404 may mean a missing route, account feature, or an API policy.
+   // A bounded, numeric Cloudflare error code disambiguates the rejection;
+   // NEVER log provider message, response JSON, headers, token or account ID.
    const status=Number(response?.status);
+   let safeCode=null;
+   if(status===404&&typeof response?.json==="function"){
+     try{
+       const body=await response.json();
+       const errors=body?.errors;
+       const code=Array.isArray(errors)&&errors.length>=1&&errors.length<=8?
+         errors[0]?.code:null;
+       if(Number.isSafeInteger(code)&&code>=0&&code<=999999)
+         safeCode=code;
+     }catch{/* non-JSON 404 is still a held provider error */}
+   }
+   if(status===404)throw Error("CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404"+
+     (safeCode===null?"_NO_PROVIDER_CODE":"_CF_CODE_"+safeCode));
    throw Error(Number.isInteger(status)&&status>=400&&status<=599?
      "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_"+status:
      "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_READ_REJECTED");

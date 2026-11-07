@@ -63,6 +63,27 @@ test("real guard is read-only, fails closed without a restricted Billing Read to
  }),/CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_403/);
 });
 
+test("provider HTTP 404 reports numeric error code only; all other content remains private",async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  CLOUDFLARE_BILLING_READ_TOKEN:"b".repeat(32)};
+ const response=(payload)=>({status:404,json:async()=>payload});
+ await assert.rejects(
+  ()=>readFiveUsdSpendGuard({env,fetchImpl:async()=>response({
+   success:false,errors:[{code:1003,message:"private billing account ID and token"}],
+  })}),
+  {message:"CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003"});
+ await assert.rejects(
+  ()=>readFiveUsdSpendGuard({env,fetchImpl:async()=>({
+   status:404,json:async()=>{throw Error("HTML not JSON");},
+  })}),
+  {message:"CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_NO_PROVIDER_CODE"});
+ await assert.rejects(
+  ()=>readFiveUsdSpendGuard({env,fetchImpl:async()=>response({
+   errors:[{code:"private-payload",message:"do not leak"}],
+  })}),
+  {message:"CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_NO_PROVIDER_CODE"});
+});
+
 test("spend block provisioning requires explicit owner confirmation and never upgrades a plan",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   CLOUDFLARE_BILLING_WRITE_TOKEN:"b".repeat(32)};
