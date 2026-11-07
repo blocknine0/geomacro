@@ -14,6 +14,10 @@ function mockStatusDatabase(){
       bind(){return this},
       async all(){return {results:[]}},
       async first(){
+        // Bounded deep gate is cheap and runs before any full-table SQL.
+        if(sql.includes("AS sources_over") && sql.includes("AS outbox_over"))
+          return {sources_over:0,queue_over:0,normalized_over:0,
+            bundles_over:0,outbox_over:0};
         // Deep journal SQL embeds bundle/article subqueries; classify it first.
         if(sql.includes("FROM p0b_archive_outbox"))
           return sql.includes("EXISTS(")?

@@ -87,7 +87,9 @@ test("paged Website journal can be traced structurally while retained as nonexac
 test('provider P0B hotspot fingerprints match actual protected source statements',async()=>{
  const {getP0bIngestionStatus}=await import('../../workers/control-plane/src/p0b-ingestion-status.mjs');
  const statements=[];
- const DB={prepare(sql){statements.push(sql);const s={bind(){return s},async first(){return {}},async all(){return {results:[]}}};return s;}};
+ const DB={prepare(sql){statements.push(sql);const s={bind(){return s},async first(){return sql.includes("AS sources_over")?
+  {sources_over:0,queue_over:0,normalized_over:0,bundles_over:0,outbox_over:0}:{}
+ },async all(){return {results:[]}}};return s;}};
  await getP0bIngestionStatus({DB},{deep:true});
  const deep=statements.find(sql=>sql.includes('bundle_journal_mismatch'));
  const report=attributeD1ReadInsights([row(deep),row('SELECT COUNT(*) AS n FROM normalized_articles'),
