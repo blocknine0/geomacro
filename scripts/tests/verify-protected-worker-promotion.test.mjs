@@ -50,7 +50,9 @@ test("ordered stages admit only exact previous-version percentage",()=>{
  }
 });
 test("never treat an old or unannotated Worker as same-main candidate",()=>{
- assert.equal(check(1,0,{candidateVersion:version(B)}).eligible,false);
+ // Cloudflare's get-version response may omit upload annotations, but
+ // provider-returned public SHA binding remains mandatory.
+ assert.equal(check(1,0,{candidateVersion:version(B)}).eligible,true);
  assert.equal(check(1,0,{candidateVersion:version(B,"geomacro-main:"+"b".repeat(40))}).eligible,false);
  assert.equal(check(1,0,{baselineId:B}).eligible,false);
 });
@@ -83,6 +85,13 @@ test("empty, split, unrelated or over-100 percent deployed states hold",()=>{
  ]}]}}).eligible,false);
 });
 
+test("provider runtime source SHA must equal exact reviewed main",()=>{
+ const wrong=bindings.map(x=>x.name==="GEOMACRO_SOURCE_SHA"?
+  {...x,text:"b".repeat(40)}:x);
+ assert.equal(check(1,0,{candidateVersion:{
+  ...version(B),resources:{bindings:wrong}
+ }}).reason,"CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+});
 test("0% upload alone is not a 1% readiness receipt",()=>{
  assert.equal(check(1,0,{deployment:at(0,false)}).eligible,false);
 });
