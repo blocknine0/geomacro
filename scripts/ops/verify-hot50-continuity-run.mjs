@@ -80,7 +80,7 @@ export function inspectHot50ScheduledRun(needs,{event}={}){
  const admitted=res("collect-direct-20m");
  const held=res("encrypted-held-three-domain-20m");
  const quota=res("quota-admission");
- if(!["success","failure"].includes(quota))
+ if(!["success","failure","skipped"].includes(quota))
   return reply(false,"HOT50_QUOTA_PROVIDER_RUN_UNAVAILABLE",null);
  if(admitted==="success"&&held==="skipped"&&quota==="success")
   return reply(true,"HOT50_ADMITTED_SOURCE_SWEEP_EXECUTED","ADMITTED");

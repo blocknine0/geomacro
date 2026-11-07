@@ -18,8 +18,10 @@ test("Hot50 20-minute direct poll survives both quota HELD and failed D1 writer 
  assert.ok(held.includes("needs: [source-contract, quota-admission, collect-direct-20m]"));
  assert.ok(held.includes("needs.quota-admission.result == 'failure'"));
  assert.ok(held.includes("needs.quota-admission.outputs.source_intake != 'true'"));
- assert.ok(held.includes("needs.quota-admission.outputs.source_intake == 'true'"));
- assert.ok(held.includes("needs.collect-direct-20m.result == 'failure'"));
+ assert.ok(held.includes("needs.quota-admission.result == 'success'"));
+ assert.ok(held.includes("needs.collect-direct-20m.result != 'success'"));
+ assert.ok(held.includes("needs.collect-direct-20m.result != 'success'"));
+ assert.ok(held.includes("needs.quota-admission.result == 'skipped'"));
  assert.ok(held.includes('GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"'));
  assert.ok(held.includes("bun scripts/ops/private-osint-stage-held.ts"));
  assert.ok(!held.includes("d1 migrations apply"));
