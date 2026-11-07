@@ -117,3 +117,23 @@ test('Hot50 missing manifest gives an explicit HOLD rather than opaque exception
  assert.match(s,/need\(existsSync\(path\),'HOT50_EVENT_MANIFEST_MISSING'\)/u);
  assert.match(s,/HOT50_150_CELL_INPUT_MISSING/u);
 });
+
+test('website schema check respects actual SQLite original ordered index with physical key proof',()=>{
+ const migration=readFileSync('workers/control-plane/migrations/0017_website_derived_news_only.sql','utf8');
+ const code=readFileSync('scripts/apply-d1-migrations.ts','utf8');
+ // The real Cloudflare EXPLAIN in run 42415525486 selected the original
+ // idx_website_derived_intelligence_latest from migration 0017, which has
+ // exactly the published_at DESC / id DESC order for this bounded query.
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS idx_website_derived_intelligence_latest[\s\S]*?\(published_at DESC,id DESC\)/u);
+ assert.match(code,/table:'website_derived_intelligence',index:'idx_website_derived_intelligence_latest'/u);
+ assert.match(code,/PRAGMA index_xinfo/u);
+ assert.match(code,/keys\.length===2/u);
+ assert.match(code,/keys\[0\]\.name==='published_at'/u);
+ assert.match(code,/keys\[1\]\.name==='id'/u);
+ assert.match(code,/keys\[0\]\.desc===1&&keys\[1\]\.desc===1/u);
+ assert.match(code,/RELEASE_WEBSITE_NATIVE_ORDER_INDEX_SHAPE_INVALID/u);
+ // Newly-added v2 index stays protected by the existing 0204–0211
+ // schema-object and history checks, even when SQLite chooses original.
+ assert.match(code,/REPAIR_SCHEMA_OBJECTS/u);
+ assert.match(code,/RELEASE_SCHEMA_OBJECTS_INCOMPLETE/u);
+});
