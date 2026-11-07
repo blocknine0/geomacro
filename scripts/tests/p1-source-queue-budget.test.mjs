@@ -132,3 +132,22 @@ test("ambiguous Queue failure conservatively retains an atomic ticket",async()=>
   assert.equal(f.db.prepare("SELECT operations_reserved n FROM cloudflare_source_poll_queue_budget").get().n,5);
  }finally{f.close()}
 });
+
+test("source Queue reserves with one atomic D1 statement per send instead of three",async()=>{
+ const f=fixture();
+ try{
+  const statements=[];
+  const db={prepare(sql){statements.push(sql);return f.DB.prepare(sql)}};
+  const first=await reserveP1SourceQueueMessages(db,{now,messages:7});
+  assert.equal(first.admitted,true);
+  assert.equal(statements.length,1);
+  assert.match(statements[0],/ON CONFLICT\(month_utc\) DO UPDATE SET/u);
+  assert.match(statements[0],/RETURNING operations_reserved,source_messages_reserved/u);
+  statements.length=0;
+  const again=await reserveP1SourceQueueMessages(db,{now,messages:2});
+  assert.equal(again.admitted,true);
+  assert.equal(again.operations_reserved,45);
+  assert.equal(statements.length,1);
+  assert.equal(f.db.prepare("SELECT count(*) n FROM cloudflare_source_poll_queue_budget").get().n,1);
+ }finally{f.close()}
+});
