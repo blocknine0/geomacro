@@ -4,6 +4,7 @@
  */
 import {B2SpoolManager,p0bSha256} from '../storage/b2-spool-manager.ts';
 import {canonicalJson} from '../lib/canonical-json.ts';
+import {sendBudgetedP0BMessage} from './p0b-queue-admission.ts';
 import {stageP0bR2Fallback} from '../storage/p0b-r2-fallback.ts';
 import type {R2FallbackEnv} from '../storage/p0b-r2-fallback.ts';
 import {openP0bArchiveOutbox,p0bOutboxCommitStatement,verifyP0bOutboxCommitted}
@@ -96,11 +97,11 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
        'SELECT bundle_sha256,item_count FROM ingestion_spool_bundles WHERE b2_spool_uri=?'
       ).bind(old.b2_spool_uri).first();
       if(!bundle)throw Error('P0B_BUNDLE_JOURNAL_MISSING');
-      await env.INGEST_QUEUE.send({kind:'P0B_BUNDLE_V1',
+      await sendBudgetedP0BMessage(env,{kind:'P0B_BUNDLE_V1',
        b2Uri:old.b2_spool_uri,bundleSha256:bundle.bundle_sha256,
-       candidateCount:bundle.item_count});
-     }else await env.INGEST_QUEUE.send({
-      candidateSha256:c.candidateSha256,sourceId:c.sourceId,b2Uri:old.b2_spool_uri});
+       candidateCount:bundle.item_count},{now:now().getTime()});
+     }else await sendBudgetedP0BMessage(env,{
+      candidateSha256:c.candidateSha256,sourceId:c.sourceId,b2Uri:old.b2_spool_uri},{now:now().getTime()});
      if(bundled)redispatched.set(old.b2_spool_uri,'QUEUED');
      status(c,'QUEUED');
     }catch{
@@ -193,9 +194,9 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
    }
    bundles_created++;
    let kind='QUEUED';
-   try{await env.INGEST_QUEUE.send({kind:'P0B_BUNDLE_V1',
+   try{await sendBudgetedP0BMessage(env,{kind:'P0B_BUNDLE_V1',
     b2Uri:verified.b2Uri,bundleSha256:verified.batchSha256,
-    candidateCount:chunk.length});}
+    candidateCount:chunk.length},{now:now().getTime()});}
    catch{kind='DURABLE_PENDING_REDISPATCH';}
    for(const p of chunk)status(p.candidate,kind);
   }catch(error){

@@ -19,6 +19,7 @@ function fixture(){
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0116_p0b_microbatch_spool.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0118_p0b_archive_outbox.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0128_cloudflare_queue_monthly_source_budget.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0211_p0b_daily_committed_count.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");

@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
+import {sendBudgetedP0BMessage} from "../../src/workers/p0b-queue-admission.ts";
 import {readFileSync} from "node:fs";
 import {
- reserveP1SourceQueueMessages,P1_MONTHLY_OPERATIONS_MAX,
- P1_QUEUE_RESERVED_OPS_PER_MESSAGE,
+ reserveP1SourceQueueMessages,reserveP0BIngestQueueMessage,
+ P1_MONTHLY_OPERATIONS_MAX,P1_QUEUE_RESERVED_OPS_PER_MESSAGE,
 } from "../../workers/control-plane/src/p1-queue-monthly-budget.mjs";
 
 const centralBudget=JSON.parse(readFileSync(new URL(
@@ -85,4 +86,49 @@ test("central $5 budget manifest pins exact source Queue monthly reservation and
  assert.equal(centralBudget.automatic_paid_activation,false);
  assert.equal(centralBudget.automatic_cloudflare_subscription_changes,false);
  assert.equal(centralBudget.commercial_payment_switch_unchanged,true);
+});
+
+test("P1 source and P0B ingest use the same atomic monthly operations budget",async()=>{
+ const f=fixture();
+ try{
+  const source=await reserveP1SourceQueueMessages(f.DB,{now,messages:7});
+  assert.equal(source.admitted,true);
+  const ingest=await reserveP0BIngestQueueMessage(f.DB,{now});
+  assert.equal(ingest.admitted,true);
+  assert.equal(ingest.reservation_operations,5);
+  assert.equal(ingest.operations_reserved,40);
+  assert.equal(ingest.source_messages_reserved,7);
+  const after=await reserveP1SourceQueueMessages(f.DB,{now,messages:1});
+  assert.equal(after.admitted,true);
+  assert.equal(after.operations_reserved,45);
+  assert.equal(f.db.prepare("SELECT count(*) n FROM cloudflare_source_poll_queue_budget").get().n,1);
+ }finally{f.close()}
+});
+test("ingest shared budget fails closed before actual Queue traffic",async()=>{
+ const f=fixture(),sent=[];
+ try{
+  const env={DB:f.DB,INGEST_QUEUE:{async send(body){sent.push(body)}}};
+  await sendBudgetedP0BMessage(env,{kind:"P0B_BUNDLE_V1"},{now});
+  assert.equal(sent.length,1);
+  assert.equal(f.db.prepare("SELECT operations_reserved n FROM cloudflare_source_poll_queue_budget").get().n,5);
+  f.db.prepare("UPDATE cloudflare_source_poll_queue_budget SET operations_reserved=?")
+   .run(P1_MONTHLY_OPERATIONS_MAX-4);
+  await assert.rejects(sendBudgetedP0BMessage(env,{kind:"P0B_BUNDLE_V1"},{now}),
+   /P0B_QUEUE_SHARED_BUDGET_HELD/);
+  assert.equal(sent.length,1);
+  assert.equal(f.db.prepare("SELECT operations_reserved n FROM cloudflare_source_poll_queue_budget").get().n,P1_MONTHLY_OPERATIONS_MAX-4);
+  const missing={DB:{prepare(){throw Error("MISSING_D1")}},INGEST_QUEUE:env.INGEST_QUEUE};
+  await assert.rejects(sendBudgetedP0BMessage(missing,{kind:"P0B_BUNDLE_V1"},{now}),
+   /P0B_QUEUE_SHARED_BUDGET_HELD/);
+  assert.equal(sent.length,1);
+ }finally{f.close()}
+});
+test("ambiguous Queue failure conservatively retains an atomic ticket",async()=>{
+ const f=fixture();
+ try{
+  const env={DB:f.DB,INGEST_QUEUE:{async send(){throw Error("QUEUE_NETWORK_FAILED")}}};
+  await assert.rejects(sendBudgetedP0BMessage(env,{kind:"P0B_BUNDLE_V1"},{now}),
+   /QUEUE_NETWORK_FAILED/);
+  assert.equal(f.db.prepare("SELECT operations_reserved n FROM cloudflare_source_poll_queue_budget").get().n,5);
+ }finally{f.close()}
 });
