@@ -62,10 +62,10 @@ test("invalid committed day rolls back candidate insert rather than corrupting t
  }finally{db.close()}
 });
 test("live backlog gate never repeats legacy committed COUNT and fails closed when counter absent",()=>{
- assert.match(runtime,/SELECT committed_count AS committed_today FROM p0b_committed_day_totals WHERE day_utc=\\?/);
- assert.doesNotMatch(runtime,/SELECT COUNT\\(\\*\\) AS committed_today FROM ingestion_spool_queue/);
- assert.match(runtime,/D1_QUOTA_STATUS_UNAVAILABLE/);
- assert.match(runtime,/count\\.committed_today>=90000/);
- assert.match(migration,/CREATE TRIGGER IF NOT EXISTS trg_p0b_day_committed_clock_change/);
- assert.doesNotMatch(migration,/DROP TABLE ingestion_spool_queue/);
+ assert.ok(runtime.includes("SELECT committed_count AS committed_today FROM p0b_committed_day_totals WHERE day_utc=?"));
+ assert.ok(!runtime.includes("SELECT COUNT(*) AS committed_today FROM ingestion_spool_queue"));
+ assert.ok(runtime.includes("D1_QUOTA_STATUS_UNAVAILABLE"));
+ assert.ok(runtime.includes("count.committed_today>=90000"));
+ assert.ok(migration.includes("CREATE TRIGGER IF NOT EXISTS trg_p0b_day_committed_clock_change"));
+ assert.ok(!migration.includes("DROP TABLE ingestion_spool_queue"));
 });
