@@ -68,7 +68,7 @@ describe("#1827 actual D1 account-wide before-source-recovery quota audit",()=>{
    "https://api.cloudflare.com/client/v4/accounts/"+env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions",
   ]);
   expect(fetchImpl.mock.calls[2][1].method).toBe("GET");
-  expect(out.paid_capacity_probe_status).toBe("WORKERS_PAID_BILLING_READ_REJECTED");
+  expect(out.paid_capacity_probe_status).toBe("WORKERS_PAID_BILLING_READ_HTTP_403");
   expect(out.reason).not.toBe("D1_ACCOUNT_QUOTA_PROBE_FAILED");
   expect(out.d1_queries).toBe(0);
   expect(out.predge_request_governor_is_separate_and_unchanged).toBe(true);
