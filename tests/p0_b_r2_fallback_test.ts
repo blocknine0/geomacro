@@ -26,12 +26,13 @@ function fixture(){
   async all(){return {results:db.prepare(sql).all(...params)}}
  });
  const objects=new Map<string,Uint8Array>();
- let corrupt=false;
+ let corrupt=false,reads=0;
  const r2={
   async put(key:string,body:Uint8Array){
    objects.set(key,new Uint8Array(body));return {etag:"private-encrypted"}
   },
   async get(key:string){
+   reads++;
    const bytes=objects.get(key);
    if(!bytes)return null;
    const copy=new Uint8Array(bytes);
@@ -57,7 +58,7 @@ function fixture(){
   P0B_PRIVATE_FALLBACK_R2:r2
  };
  return {db,env,objects,setCorrupt:(b:boolean)=>{corrupt=b},
-  close:()=>db.close()};
+  getReads:()=>reads,close:()=>db.close()};
 }
 const raw=(i:number)=>({title:"Sensitive original headline "+i,
  native_published_at:"2026-11-04T02:15:00.000Z",
@@ -74,6 +75,8 @@ test("100 encrypted R2 originals are independently readback-verified and private
   const staged=await stageP0bR2Fallback(f.env,items,new Date(now));
   assert.equal(staged.verified,true);assert.equal(staged.itemCount,100);
   assert.equal(staged.pendingB2,true);assert.equal(f.objects.size,1);
+  // New exact-pointer batch: one independent R2 GET, not two.
+  assert.equal(f.getReads(),1);
   const pointer=f.db.prepare("SELECT * FROM p0b_private_r2_fallback").get();
   assert.equal(pointer.state,"PENDING_B2");
   const content=JSON.stringify(pointer);
@@ -82,8 +85,11 @@ test("100 encrypted R2 originals are independently readback-verified and private
   assert.equal(Buffer.from(ciphertext).includes(Buffer.from("Sensitive original headline")),false);
   const restored=await restoreP0bR2Fallback(f.env,pointer);
   assert.deepEqual(restored.map(x=>x.candidateSha256),items.map(x=>x.candidateSha256));
+  assert.equal(f.getReads(),2);
   const again=await stageP0bR2Fallback(f.env,items,new Date(now));
   assert.equal(again.reused,true);assert.equal(f.objects.size,1);
+  // Existing pointer still requires real R2 readback, not cached success.
+  assert.equal(f.getReads(),3);
  }finally{f.close()}
 });
 test("failed B2 canary produces durable R2_PENDING_B2, never false B2 success",async()=>{
