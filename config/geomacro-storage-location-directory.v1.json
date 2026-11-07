@@ -43,10 +43,27 @@
       "id": "risk_gate_seven_day_buffer",
       "provider": "supabase_postgres",
       "symbolic_locator": "RISK_GATE_SUPABASE_URL",
-      "configured_name": null,
+      "configured_name": "geomacro-risk-corridor-7d",
       "role": "SUPPLEMENTARY_PRIVATE_ROLLUP",
       "lookup": "EXACT_TARGET_KEY",
-      "verified_live": false
+      "verified_live": false,
+      "provider_region": "eu-west-1",
+      "provider_project_exists_verified": true,
+      "provider_project_status_observed": "ACTIVE_HEALTHY",
+      "actual_public_schema_table_names": [
+        "geomacro_risk_signal_7d",
+        "geomacro_corridor_candidate_7d",
+        "geomacro_risk_assessment_7d",
+        "geomacro_buffer_operational_state",
+        "geomacro_daily_tiered_risk_gates",
+        "geomacro_unified_risk_daily",
+        "country_risk_state",
+        "gm_research_stream20m_runs",
+        "phase2h_private_raw_news",
+        "gro_evidence_jobs",
+        "gro_evidence",
+        "gro_evidence_backfill_state"
+      ]
     },
     {
       "id": "commerce_idempotency",
