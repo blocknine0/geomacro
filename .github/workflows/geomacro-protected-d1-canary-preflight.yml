@@ -8,6 +8,10 @@ on:
     paths:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.test.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "config/geomacro-cloudflare-five-usd-budget.json"
       - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
       - "workers/control-plane/src/hot50-production-activation-census.mjs"
       - "workers/control-plane/src/p0b-ingestion-status.mjs"
@@ -18,13 +22,17 @@ on:
   # first hour of actual production load. It cannot upload a Worker version,
   # change traffic, migrate D1, touch B2 or activate funds.
   schedule:
-    - cron: "15 1 * * *"
+    - cron: "15,35,55 * * * *"
   workflow_dispatch: {}
   pull_request:
     paths:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
       - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.test.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "config/geomacro-cloudflare-five-usd-budget.json"
       - "workers/control-plane/src/hot50-production-activation-census.mjs"
       - "workers/control-plane/src/p0b-ingestion-status.mjs"
       - "workers/control-plane/migrations/0211_p0b_daily_committed_count.sql"
@@ -51,7 +59,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
