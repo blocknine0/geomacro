@@ -785,44 +785,6 @@
       "full_duplicate_news_coverage_verified": false
     },
     {
-      "id": "private_replacement_54e0c06e4c4ba83495c8",
-      "retired_source_id": "private_repo_b43996d173bd42476265",
-      "url": "https://es.euronews.com/rss?format=mrss&level=theme&name=news",
-      "type": "rss",
-      "categories": [
-        "geopolitics",
-        "macro",
-        "rare_earth"
-      ],
-      "continent": "europe",
-      "publisher_country_iso3": null,
-      "checked_at": "2026-11-07T22:51:45.242Z",
-      "native_72h_items_at_probe": 50,
-      "same_article_url_hashes": [
-        "1c8ed5a948c55678608c332bfda60090579d654e6d20fb166b3307b45734e351",
-        "6c991aacb1087857c9e5f716bad5bb1b8c66489d83882f6565853ba04803f704",
-        "fe7da90f08a71c00060c9af6e11efd3e8413bb78ad066375e011b9e6253fc059",
-        "79de9e069c033a46e08ddfb5a7ea867362c99f8279bf784eb65149a83e49cb60",
-        "b234bffda861c626b932e195326cd3ac37ed7e90c05c4d6beca3128befbcda98",
-        "1f1d3dc9c6fec292e994ad88b07949ab950ea64d19cdb7052d6e8e20094d6d1e",
-        "57b101623d388b5c40437232dc3354a015884a5b2e644d266aa41d95c4119438",
-        "9da674382a6929a0a51aed07cb60fe43c2f72ac5f0a77c44c4ee03a63a5210eb",
-        "5b0d006c9dc2707cf919fab8695522fda3d76d74622db32058f79462f4603a3e",
-        "b67a1fcf01921b1e0cdc9d2b8b0ed1d6c3d08bddbc22df25fd5019d668b70351",
-        "dbe6ab94bcc5ae706c468a53e6d9b5c1dc3c9fbdefb8165b6419027778304ecf",
-        "bdf330ddbd72931ae035b09944d067f35f431226a33c01e03b2a7cf23098a64c",
-        "9da063d6e27357e99fcad0d308ab1aa99378f6ae36962476911fa9dff9d8705e",
-        "107e54c7c73bababd55bddd2b9e344c6f432d7e5cbb77f13833685ad82054286",
-        "7cb0d54b38261466be3cb9d0d4c93f2004652fb5acf0ca3429a049d9c3cce6f8",
-        "4b905403b548623c9d12ae8dd6204bbd123e186ecd4594e93eacc9dc18e2b544",
-        "bb9e04ec5d3ebc0139ba0b85e261160db1dfd3465c271a685aad07608573162d",
-        "408806534f02a91ff735bdcbb5f4b3ca1c76c8c6dfdc202523eb973a77f49f35",
-        "5c8d08332218c0e71b5e9a00094230bb27912b55ad9d46db4821da4d1d135b1e"
-      ],
-      "full_duplicate_news_coverage_verified": false,
-      "discovery_reference_url": "https://es.euronews.com/widgets"
-    },
-    {
       "id": "private_replacement_36c61c32f0d69c1cd2e7",
       "retired_source_id": "private_gaplane_blr_13",
       "url": "https://charter97.org/rss.php",
@@ -1068,6 +1030,46 @@
       ],
       "full_duplicate_news_coverage_verified": false,
       "discovery_reference_url": "https://ru.euronews.com/widgets",
+      "activation_state": "PRODUCTION_TRANSPORT_UNAVAILABLE",
+      "github_runner_http_status": 406
+    },
+    {
+      "id": "private_replacement_54e0c06e4c4ba83495c8",
+      "retired_source_id": "private_repo_b43996d173bd42476265",
+      "url": "https://es.euronews.com/rss?format=mrss&level=theme&name=news",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "1c8ed5a948c55678608c332bfda60090579d654e6d20fb166b3307b45734e351",
+        "6c991aacb1087857c9e5f716bad5bb1b8c66489d83882f6565853ba04803f704",
+        "fe7da90f08a71c00060c9af6e11efd3e8413bb78ad066375e011b9e6253fc059",
+        "79de9e069c033a46e08ddfb5a7ea867362c99f8279bf784eb65149a83e49cb60",
+        "b234bffda861c626b932e195326cd3ac37ed7e90c05c4d6beca3128befbcda98",
+        "1f1d3dc9c6fec292e994ad88b07949ab950ea64d19cdb7052d6e8e20094d6d1e",
+        "57b101623d388b5c40437232dc3354a015884a5b2e644d266aa41d95c4119438",
+        "9da674382a6929a0a51aed07cb60fe43c2f72ac5f0a77c44c4ee03a63a5210eb",
+        "5b0d006c9dc2707cf919fab8695522fda3d76d74622db32058f79462f4603a3e",
+        "b67a1fcf01921b1e0cdc9d2b8b0ed1d6c3d08bddbc22df25fd5019d668b70351",
+        "dbe6ab94bcc5ae706c468a53e6d9b5c1dc3c9fbdefb8165b6419027778304ecf",
+        "bdf330ddbd72931ae035b09944d067f35f431226a33c01e03b2a7cf23098a64c",
+        "9da063d6e27357e99fcad0d308ab1aa99378f6ae36962476911fa9dff9d8705e",
+        "107e54c7c73bababd55bddd2b9e344c6f432d7e5cbb77f13833685ad82054286",
+        "7cb0d54b38261466be3cb9d0d4c93f2004652fb5acf0ca3429a049d9c3cce6f8",
+        "4b905403b548623c9d12ae8dd6204bbd123e186ecd4594e93eacc9dc18e2b544",
+        "bb9e04ec5d3ebc0139ba0b85e261160db1dfd3465c271a685aad07608573162d",
+        "408806534f02a91ff735bdcbb5f4b3ca1c76c8c6dfdc202523eb973a77f49f35",
+        "5c8d08332218c0e71b5e9a00094230bb27912b55ad9d46db4821da4d1d135b1e"
+      ],
+      "full_duplicate_news_coverage_verified": false,
+      "discovery_reference_url": "https://es.euronews.com/widgets",
       "activation_state": "PRODUCTION_TRANSPORT_UNAVAILABLE",
       "github_runner_http_status": 406
     }

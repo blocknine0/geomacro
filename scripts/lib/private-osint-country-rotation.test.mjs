@@ -52,7 +52,7 @@ test("country search indices never masquerade as country-local issuer feeds",()=
  const base=[{id:"pinned_issuer",url:"https://pinned.example.org/rss.xml",
   categories:["macro"],continent:"global",publisher_country_iso3:null,supported:true,type:"rss"}];
  const merged=privateOsintRuntimeSources(at,base);
- assert.equal(merged.length,58);
+ assert.equal(merged.length,57);
  assert.equal(merged[0].id,base[0].id);
  assert.equal(merged.filter(s=>s.private_discovery_index_only&&s.publisher_country_iso3).length,0);
  assert.equal(merged.filter(s=>s.private_discovery_index_only).length,49);
