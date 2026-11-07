@@ -13,11 +13,6 @@ on:
       - 'scripts/tests/verify-actual-d1-deploy-receipt.test.mjs'
       - 'scripts/tests/p0b-capacity-canary-telemetry.test.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/p0b-production-parity-hourly.yml'
       - 'scripts/ops/verify-actual-d1-deploy-receipt.mjs'
       - 'scripts/tests/verify-actual-d1-deploy-receipt.test.mjs'
   workflow_run:
@@ -82,7 +77,6 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' ||
        github.event_name == 'workflow_dispatch' ||
-       github.event_name == 'push' ||
        (github.event_name == 'workflow_run' &&
         needs.deploy_receipt.result == 'success' &&
         needs.deploy_receipt.outputs.actual_deploy == 'true'))
