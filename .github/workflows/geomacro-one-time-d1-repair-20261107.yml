@@ -1,0 +1,91 @@
+name: Owner-approved one-time D1 migration — 2026-11-07
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/geomacro-one-time-d1-repair-20261107.yml'
+      - 'scripts/ops/one-time-d1-repair-20261107.mjs'
+      - 'scripts/ops/run-one-time-d1-repair-20261107.mjs'
+      - 'scripts/ops/run-protected-d1-repair.mjs'
+      - 'scripts/tests/one-time-d1-repair-20261107.test.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/geomacro-one-time-d1-repair-20261107.yml'
+      - 'scripts/ops/one-time-d1-repair-20261107.mjs'
+      - 'scripts/ops/run-one-time-d1-repair-20261107.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-one-time-d1-repair-20261107
+  cancel-in-progress: false
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Verify one-time expiry, fixed allowance, normal policy and migration guards
+        run: |
+          node --check scripts/ops/run-one-time-d1-repair-20261107.mjs
+          node --test scripts/tests/one-time-d1-repair-20261107.test.mjs scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs
+  migration:
+    needs: contract
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: geomacro-d1-control-plane-production
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      WRANGLER_VERSION: '4.136.3'
+      GEOMACRO_ONE_TIME_D1_REPAIR: OWNER_20261107_COMPLETE_D1_MIGRATION
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Refuse expired authorization before provider access
+        run: |
+          node --input-type=module <<'NODE'
+          import {ONE_TIME_D1_REPAIR as approval} from './scripts/ops/one-time-d1-repair-20261107.mjs';
+          if(new Date().toISOString().slice(0,10)!==approval.day_utc)throw Error('ONE_TIME_D1_REPAIR_EXPIRED');
+          NODE
+      - name: Resolve the existing canonical database and D1-only configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          npx -y wrangler@4.136.3 d1 list --json > "$RUNNER_TEMP/one-time-d1-list.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const databases=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/one-time-d1-list.json','utf8'));
+          const matches=databases.filter(x=>x.name==='geomacro-control-plane');
+          if(matches.length!==1||!/^[a-f0-9-]{36}$/i.test(matches[0].uuid??''))throw Error('ONE_TIME_CANONICAL_DB_UNVERIFIED');
+          const template=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8'));
+          writeFileSync('workers/control-plane/wrangler.canary-d1.jsonc',JSON.stringify({
+            name:'geomacro-d1-one-time-repair',compatibility_date:template.compatibility_date,
+            d1_databases:[{binding:'DB',database_name:'geomacro-control-plane',database_id:matches[0].uuid,migrations_dir:'migrations'}]
+          }),{mode:0o600});
+          NODE
+      - name: Execute original hash-pinned migrations within the fixed same-day allowance
+        run: node scripts/ops/run-one-time-d1-repair-20261107.mjs
+      - name: Retain sanitized backup, budget, history and schema receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-owner-one-time-d1-repair-20261107
+          path: artifacts/protected-canary/repair-*.json
+          retention-days: 14
+          if-no-files-found: warn
