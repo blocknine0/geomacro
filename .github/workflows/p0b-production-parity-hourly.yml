@@ -1,20 +1,20 @@
 name: P0-B Real B2 D1 Production Parity
 
 on:
+  # Independent parity proof four times daily; the actual 20-minute
+  # source collector remains unchanged. Avoid 25 mutating canary checks/day.
   schedule:
-    - cron: '23 * * * *'
-    - cron: '7 0 * * *'
+    - cron: '23 0,6,12,18 * * *'
   workflow_dispatch:
   pull_request:
     paths:
       - '.github/workflows/p0b-production-parity-hourly.yml'
+      - 'scripts/ops/verify-actual-d1-deploy-receipt.mjs'
+      - 'scripts/tests/verify-actual-d1-deploy-receipt.test.mjs'
       - 'scripts/tests/p0b-capacity-canary-telemetry.test.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/p0b-production-parity-hourly.yml'
+      - 'scripts/ops/verify-actual-d1-deploy-receipt.mjs'
+      - 'scripts/tests/verify-actual-d1-deploy-receipt.test.mjs'
   workflow_run:
     workflows:
       - Deploy D1 Control Plane
@@ -31,6 +31,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  deploy_receipt:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      actual_deploy: ${{ steps.confirm.outputs.actual_deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify exact-main real D1 deployment, not only a green hold job
+        id: confirm
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: node scripts/ops/verify-actual-d1-deploy-receipt.mjs
+
   sanitized-canary-diagnostics-contract:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
@@ -43,10 +67,19 @@ jobs:
         with:
           node-version: "24"
       - name: Run actual jq source-code diagnostics and no-leak guard
-        run: node --test scripts/tests/p0b-capacity-canary-telemetry.test.mjs
+        run: node --test scripts/tests/p0b-capacity-canary-telemetry.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
 
   real-parity:
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    needs: deploy_receipt
+    if: >-
+      always() &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        needs.deploy_receipt.result == 'success' &&
+        needs.deploy_receipt.outputs.actual_deploy == 'true'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: production
@@ -103,6 +136,10 @@ jobs:
           # zero unacknowledged messages (not just local acked_at flags).
           PARITY="$(printf '%s' "$STATUS" | jq -r '.live_bundle_parity.assertion_passed // false')"
           if [ "$PARITY" != true ]; then
+            if [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
+              echo "::notice::P0B_PARITY_AWAITING_OWNER_CANARY; scheduled proof never mutates D1 or polls sources"
+              exit 9
+            fi
             if ! printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.GET < .limits.GET and .used.total < .limits.total' >/dev/null ||
                ! printf '%s' "$STATUS" | jq -e '.b2_storage_guard.open != true' >/dev/null; then
               echo "::error::P0B_CANARY_BLOCKED_BY_ACCOUNT_QUOTA_OR_CIRCUIT"; exit 5
@@ -165,7 +202,8 @@ jobs:
           fi
           # Regular poll only AFTER verified canary, with existing source
           # admission and quota guards (never a blind all-source burst).
-          if printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.GET < .limits.GET and .used.total < .limits.total' >/dev/null; then
+          if [ "$GITHUB_EVENT_NAME" != "schedule" ] &&
+             printf '%s' "$QUOTA" | jq -e '.used.PUT < .limits.PUT and .used.GET < .limits.GET and .used.total < .limits.total' >/dev/null; then
             POLL="$(curl --fail-with-body -fsS --max-time 65 -X POST \
               -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0a/poll")"
             printf '%s' "$POLL" | jq -c '{

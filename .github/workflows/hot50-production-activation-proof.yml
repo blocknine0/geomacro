@@ -6,6 +6,8 @@ on:
       - "scripts/tests/hot50*"
       - "workers/control-plane/src/hot50-production-activation-census.mjs"
       - ".github/workflows/hot50-production-activation-proof.yml"
+      - "scripts/ops/verify-actual-d1-deploy-receipt.mjs"
+      - "scripts/tests/verify-actual-d1-deploy-receipt.test.mjs"
   workflow_dispatch: {}
   workflow_run:
     workflows: ["Deploy D1 Control Plane"]
@@ -16,6 +18,30 @@ concurrency:
   group: geomacro-hot50-production-proof
   cancel-in-progress: false
 jobs:
+  deploy_receipt:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      actual_deploy: ${{ steps.confirm.outputs.actual_deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Demand actual bootstrap deploy job success and exact live main SHA
+        id: confirm
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: node scripts/ops/verify-actual-d1-deploy-receipt.mjs
+
   contracts:
     # Synthetic fake-credential tests only; this job has no production environment.
     env:
@@ -28,10 +54,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs scripts/tests/hot50-redrive.test.mjs
+      - run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/hot50-parity-proof.test.mjs scripts/tests/hot50-ask-context.test.mjs scripts/tests/hot50-redrive.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
   acceptance:
-    needs: contracts
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.head_branch == 'main')
+    needs: [contracts, deploy_receipt]
+    if: >-
+      always() &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      needs.contracts.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        needs.deploy_receipt.result == 'success' &&
+        needs.deploy_receipt.outputs.actual_deploy == 'true'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
