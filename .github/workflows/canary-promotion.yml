@@ -128,6 +128,7 @@ jobs:
               npm run release:remediate ;;
             migrate)
               test "$EVENT_NAME" = workflow_dispatch
+              test "$RELEASE_CONFIRMATION" = MIGRATE_D1_0204_0211_NO_FUNDS
               node --experimental-strip-types scripts/apply-d1-migrations.ts --apply ;;
             promote)
               test "$EVENT_NAME" = workflow_dispatch
