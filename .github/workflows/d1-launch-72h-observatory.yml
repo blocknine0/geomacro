@@ -204,10 +204,17 @@ jobs:
   query-insights:
     # Provider metadata only: no D1 SQL, signing, ingestion or PREDGE calls.
     # Independent of the 72h verdict: a pending window must not skip diagnosis.
+    # Deployment completion is the critical observation moment: capture the
+    # actual dominant SQL after each production Worker deploy, rather than
+    # skipping query-insights during workflow_run as in #42421188378.
+    # Same-origin, exact-main guard rejects untrusted/forked event payloads.
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.head_branch == 'main') ||
        github.event.schedule == '17 1 * * *')
     runs-on: ubuntu-24.04
     timeout-minutes: 6

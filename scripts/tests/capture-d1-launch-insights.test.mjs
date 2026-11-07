@@ -45,3 +45,19 @@ test("CLI retains sanitized insights at repository root even from Worker cwd",as
   assert.equal(JSON.stringify(report).includes('SELECT version'),false);
  } finally {rmSync(root,{recursive:true,force:true})}
 });
+
+test("deployment completion triggers physical query Insights under exact main protection",async()=>{
+ const {readFileSync}=await import('node:fs');
+ const workflow=readFileSync('.github/workflows/d1-launch-72h-observatory.yml','utf8');
+ const job=workflow.split('  query-insights:')[1];
+ assert.ok(job,'query-insights job must exist');
+ assert.match(job,/github\.event_name == 'workflow_run'/u);
+ assert.match(job,/github\.event\.workflow_run\.head_repository\.full_name == github\.repository/u);
+ assert.match(job,/github\.event\.workflow_run\.head_branch == 'main'/u);
+ assert.match(job,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(job,/npx -y "wrangler@4\.136\.3" d1 insights geomacro-control-plane/u);
+ assert.match(job,/node \.\.\/\.\.\/scripts\/ops\/capture-d1-launch-insights\.mjs/u);
+ assert.match(job,/node \.\.\/\.\.\/scripts\/ops\/attribute-d1-query-insights\.mjs/u);
+ assert.match(job,/geomacro-d1-query-attribution/u);
+ assert.doesNotMatch(job,/wrangler.* d1 execute|wrangler.* d1 migrations apply|curl.*\/d1\/database\//u);
+});
