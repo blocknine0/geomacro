@@ -6,6 +6,7 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
+import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
 export function candidateConfig(version,sha){
@@ -68,6 +69,11 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||
     !UUID.test(versions[0].version_id??''))throw Error('CANDIDATE_BASELINE_NOT_100_PERCENT');
  const baselineId=versions[0].version_id,baseline=await get('/versions/'+baselineId);
+ const quota=await checkD1BundledWork({env,fetchImpl});
+ const quotaSummary={checked_at:new Date().toISOString(),day_utc:quota.day_utc??null,
+  state:quota.state??null,observed_rows_read:quota.observed_rows_read??null,
+  observed_rows_written:quota.observed_rows_written??null,
+  normal_budget_held:quota.owner_d1_utc_budget_held??null};
  const config=candidateConfig(baseline,env.GITHUB_SHA);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
@@ -96,6 +102,25 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  }
  if(found.length!==1)throw Error('CANDIDATE_VERSION_IDENTITY_AMBIGUOUS');
  const candidate=found[0];
+ // Preserve a safe provider receipt even when parity rejects a version.
+ // Runtime metadata contains execution settings, never binding credentials.
+ const runtimeFields=['compatibility_date','compatibility_flags','usage_model','limits','cache_options'];
+ const runtimeSummary=v=>Object.fromEntries(runtimeFields.filter(k=>
+  Object.hasOwn(v.resources?.script_runtime??{},k)).map(k=>[k,v.resources.script_runtime[k]]));
+ const runtimeKeys=new Set([...Object.keys(baseline.resources.script_runtime??{}),
+  ...Object.keys(candidate.resources.script_runtime??{})]);
+ const changedRuntimeKeys=[...runtimeKeys].filter(k=>
+  canonical(baseline.resources.script_runtime?.[k])!==canonical(candidate.resources.script_runtime?.[k]));
+ mkdirSync('artifacts/protected-canary',{recursive:true});
+ writeFileSync('artifacts/protected-canary/optimized-worker-candidate.json',JSON.stringify({
+  schema:'geomacro.optimized-worker-candidate.v1',status:'PARITY_VERIFICATION_PENDING',
+  source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
+  baseline_runtime:runtimeSummary(baseline),candidate_runtime:runtimeSummary(candidate),
+  owner_quota:quotaSummary,runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>
+   ['GEOMACRO_D1_READ_HOTSPOT_V2','GEOMACRO_P1_FANOUT_ENABLED','GEOMACRO_P1_BUNDLED_LEASES_ENABLED',
+    'GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'].includes(x.name)).map(x=>[x.name,x.text??null])),
+  changed_runtime_keys:changedRuntimeKeys,d1_sql_queries:0,traffic_promoted:false,payments:0
+ },null,2)+'\n');
  verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA);
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))
@@ -107,7 +132,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   binding_resource_and_value_parity_verified:true,runtime_parity_verified:true,
   runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>knownFlags.includes(x.name))
    .map(x=>[x.name,x.text??null])),
-  production_split_unchanged:true,d1_sql_queries:0,traffic_promoted:false,payments:0};
+  production_split_unchanged:true,owner_quota:quotaSummary,d1_sql_queries:0,traffic_promoted:false,payments:0};
  mkdirSync('artifacts/protected-canary',{recursive:true});
  writeFileSync('artifacts/protected-canary/optimized-worker-candidate.json',JSON.stringify(result,null,2)+'\n');
  return result;
