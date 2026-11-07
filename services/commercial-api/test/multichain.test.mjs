@@ -14,7 +14,7 @@ const params=[
  'request_id','request_hash','subject','billed_tier','chain_id','network',
  'token_address','facilitator','payment_rail','payer_address','payee_address',
  'authorization_nonce','amount_atomic','quote_sha256','evidence_receipt_sha256',
- 'canonical_delivery_sha256','issued_at','expires_at'
+ 'canonical_delivery_sha256','issued_at','expires_at','proof_state'
 ];
 function proof(chain=8453,override={}){
  return {
@@ -28,7 +28,7 @@ function proof(chain=8453,override={}){
   amount_atomic:150000,quote_sha256:'b'.repeat(64),
   evidence_receipt_sha256:'c'.repeat(64),
   canonical_delivery_sha256:'d'.repeat(64),
-  issued_at:now,expires_at:new Date(now.getTime()+2*3600*1000),...override
+  issued_at:now,expires_at:new Date(now.getTime()+2*3600*1000),proof_state:'NO_FUNDS_ONLY',...override
  };
 }
 async function insert(pool,datum){
