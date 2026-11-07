@@ -90,7 +90,8 @@ It never touches a provider, creates secrets, or enables payments.
 `.github/workflows/canary-promotion.yml` uses the existing exact-main
 production environment and serializes production-mutating workflows using
 `geomacro-d1-control-plane-production`. Manual `operation=migrate` is a
-protected, one-at-a-time production migration run. `operation=promote` validates
+protected, one-at-a-time production migration run; the operator must provide
+`confirmation=MIGRATE_D1_0204_0211_NO_FUNDS` in the protected workflow dispatch. `operation=promote` validates
 D1 schema and does a true Cloudflare REST rollout, checking metrics after a
 full 15 minutes per stage. `operation=verify` is a parallel no-funds audit.
 `operation=release-hold` demands all five real signed receipts and a closed
