@@ -63,3 +63,16 @@ test("separate UTC migration headroom never changes ordinary Stage A exit semant
  assert.ok(y.includes("config/d1-hotspot-v2-canary.hold"));
  assert.ok(!y.includes("versions deploy"));
 });
+
+test("protected migration uses only two near-reset UTC schedules, never 72 all-day API checks",()=>{
+ const yaml=readFileSync(new URL(
+  "../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",import.meta.url),"utf8");
+ const cron=[...yaml.matchAll(/^\s+- cron: "([^"]+)"$/gmu)].map(m=>m[1]);
+ assert.deepEqual(cron,["4 0 * * *","9 0 * * *"]);
+ assert.doesNotMatch(yaml,/15,35,55 \* \* \* \*/u);
+ assert.match(yaml,/workflow_dispatch: \{\}/u);
+ assert.match(yaml,/needs\.provider-migration-headroom\.result == 'success'/u);
+ assert.match(yaml,/group: geomacro-d1-control-plane-production/u);
+ assert.match(yaml,/test -f config\/d1-hotspot-v2-canary\.hold/u);
+ assert.doesNotMatch(yaml,/continue-on-error: true/u);
+});
