@@ -13,6 +13,10 @@ on:
       - "workers/control-plane/src/index.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/d1-read-hotspot-v2.test.mjs"
+      - "scripts/tests/storage-directory-read-model.test.mjs"
+      - "workers/control-plane/src/operational-read-model.mjs"
+      - "config/geomacro-storage-location-directory.v1.json"
+      - "docs/ops/staged-migrations/0212_storage_directory_read_model.sql"
   push:
     branches: [main]
     paths:
@@ -20,6 +24,9 @@ on:
       - "workers/control-plane/src/**"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/d1-read-hotspot-v2.test.mjs"
+      - "scripts/tests/storage-directory-read-model.test.mjs"
+      - "config/geomacro-storage-location-directory.v1.json"
+      - "docs/ops/staged-migrations/0212_storage_directory_read_model.sql"
 permissions:
   contents: read
 jobs:
@@ -39,7 +46,7 @@ jobs:
           for p in workers/control-plane/src/{cache-middleware,public-free-d1-cache,hot50-materialized-news,website-derived-intelligence,private-osint-bundle,signed-gro-read-cache,predge-risk-gate-d1,index}.mjs; do
             node --check "$p"
           done
-          node --test scripts/tests/d1-read-hotspot-v2.test.mjs scripts/tests/public-free-d1-cache.test.mjs
+          node --test scripts/tests/d1-read-hotspot-v2.test.mjs scripts/tests/public-free-d1-cache.test.mjs scripts/tests/storage-directory-read-model.test.mjs
       - name: SQLite migrations, indexes, CQRS plan and bounded OSINT keyset plan
         run: |
           python3 - <<'PY'
