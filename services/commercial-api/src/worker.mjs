@@ -11,6 +11,8 @@ import {loadCatalog} from './payments/catalog.mjs';
 import {BaseVerifier} from './payments/base.mjs';
 import {createCommercialFacilitator} from './payments/xpay.mjs';
 import {X402Engine} from './payments/x402.mjs';
+import {PolygonVerifier,DEXTER_URL,DexterPolygonFacilitator} from './payments/polygon.mjs';
+import {PolygonX402Engine,MultiChainX402Router} from './payments/multichain.mjs';
 import {createPaymentHandler,supabaseAuthenticator} from './payments/http.mjs';
 import {PaymentError} from './payments/common.mjs';
 const cache=new WeakMap();
@@ -31,7 +33,7 @@ export function buildWorkerRuntime(env){
  const disabled=new Set(String(env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS??'').split(',').map(x=>x.trim().toLowerCase()));
  const fundsAccepted=env.GEOMACRO_REAL_FUNDS_SECURITY_ACK==='I_ACCEPT_REAL_FUNDS_SECURITY_GATES';
  const resolveRisk=createQualifiedRiskResolver({origin:env.RISK_EVIDENCE_ORIGIN??'https://geomacro-control-plane.daspallab202391.workers.dev',token:env.RISK_GATE_TIERED_TOKEN});
- let paypal,x402;
+ let paypal,x402,baseX402,polygonX402;
  if(env.PAYPAL_ENABLED==='true'&&launched&&!disabled.has('paypal')&&pool&&(env.PAYPAL_MODE!=='live'||fundsAccepted&&env.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK==='VERIFIED_LIVE_CROSS_BORDER_MERCHANT')){try{
   paypal=new PayPalEngine({pool,client:new PayPalClient({mode:env.PAYPAL_MODE,clientId:env.PAYPAL_CLIENT_ID,
    clientSecret:env.PAYPAL_CLIENT_SECRET,webhookId:env.PAYPAL_WEBHOOK_ID}),
@@ -39,16 +41,28 @@ export function buildWorkerRuntime(env){
  }catch{blockers.push('PAYPAL_CONFIGURATION_INCOMPLETE');}}
  else blockers.push('PAYPAL_NOT_ACTIVATED');
  if(env.X402_ENABLED==='true'&&launched&&fundsAccepted&&!disabled.has('x402')&&!disabled.has('coinbase_x402')&&pool&&privateKey&&publicKey){try{
-  x402=new X402Engine({pool,payee:env.X402_PAYEE_ADDRESS,siteOrigin:env.PUBLIC_API_ORIGIN??env.SITE_ORIGIN,
+  baseX402=new X402Engine({pool,payee:env.X402_PAYEE_ADDRESS,siteOrigin:env.PUBLIC_API_ORIGIN??env.SITE_ORIGIN,
    base:new BaseVerifier({rpcUrl:env.BASE_RPC_URL}),facilitator:createCommercialFacilitator({url:env.X402_FACILITATOR_URL,
     headers:JSON.parse(env.X402_FACILITATOR_HEADERS_JSON??'{}')}),privateKey,publicKeyId,publicKeys:{[publicKeyId]:publicKey},
    resolveRisk});
  }catch{blockers.push('X402_CONFIGURATION_INCOMPLETE');}}
  else blockers.push('X402_NOT_ACTIVATED');
+ if(env.POLYGON_X402_ENABLED==='true'&&launched&&fundsAccepted&&
+  !disabled.has('x402')&&!disabled.has('coinbase_x402')&&pool&&privateKey&&publicKey){try{
+  const polygonRpc=env.POLYGON_RPC_URL;
+  polygonX402=new PolygonX402Engine({
+   pool,payee:env.X402_PAYEE_ADDRESS,siteOrigin:env.PUBLIC_API_ORIGIN??env.SITE_ORIGIN,
+   polygon:new PolygonVerifier({rpcUrl:polygonRpc,confirmations:2}),
+   facilitator:new DexterPolygonFacilitator({url:DEXTER_URL}),
+   privateKey,publicKeyId,publicKeys:{[publicKeyId]:publicKey},resolveRisk,
+  });
+ }catch{blockers.push('POLYGON_X402_CONFIGURATION_INCOMPLETE');}}
+ else blockers.push('POLYGON_X402_NOT_ACTIVATED');
+ x402=baseX402||polygonX402?new MultiChainX402Router({pool,base:baseX402,polygon:polygonX402}):null;
  const authenticate=pool?supabaseAuthenticator({url,publishableKey:key}):async()=>{throw new PaymentError('AUTH_NOT_CONFIGURED');};
  const handle=createPaymentHandler({paypal,x402,pool,authenticate,siteOrigin:env.SITE_ORIGIN});
  const runtime={pool,privateKey,publicKey,publicKeyId,publicKeys:{...(publicKey?{[publicKeyId]:publicKey}:{})},
-   paypal,x402,handle,authenticate,resolveRisk,blockers,launched};
+   paypal,x402,baseX402,polygonX402,handle,authenticate,resolveRisk,blockers,launched};
  if(env.COMMERCIAL_VERIFY_KEYS_JSON){
   try{for(const [id,key]of Object.entries(JSON.parse(env.COMMERCIAL_VERIFY_KEYS_JSON))){
    if(!/^[A-Za-z0-9._:-]{1,120}$/.test(id))throw Error();
@@ -56,7 +70,8 @@ export function buildWorkerRuntime(env){
    if(parsed.asymmetricKeyType!=='ed25519'||id===publicKeyId)throw Error();runtime.publicKeys[id]=parsed;
   }}catch{throw new PaymentError('VERIFY_KEY_REGISTRY_INVALID');}
  }
- if(x402)x402.publicKeys=runtime.publicKeys;
+ if(baseX402)baseX402.publicKeys=runtime.publicKeys;
+ if(polygonX402)polygonX402.publicKeys=runtime.publicKeys;
  runtime.riskApi=createRiskApi(runtime,env);return runtime;
 }
 export default {
@@ -66,7 +81,7 @@ export default {
   if(request.method==='GET'&&url.pathname==='/v1/commercial/openapi.json')return Response.json({...openapi,servers:[{url:env.PUBLIC_API_ORIGIN??new URL(request.url).origin}]},{headers:{'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff'}});
   if(request.method==='GET'&&['/health','/v1/commercial/health'].includes(url.pathname))return response({ok:true,schema:'geomacro.commercial-api.v1',
    deployed_sha:env.DEPLOYED_SHA??null,paypal_configured:!!runtime.paypal,x402_configured:!!runtime.x402,
-   polygon_x402_configured:false,ledger_configured:!!runtime.pool,signer_configured:!!runtime.publicKey,blockers:runtime.blockers});
+   polygon_x402_configured:!!runtime.polygonX402,ledger_configured:!!runtime.pool,signer_configured:!!runtime.publicKey,blockers:runtime.blockers});
   if(request.method==='GET'&&['/v1/readiness','/v1/commercial/readiness'].includes(url.pathname)){
    let ledger=false,ledgerError=null;try{ledger=(await runtime.pool?.call('health'))?.ready===true;}catch(e){ledgerError=e.code??'LEDGER_READ_FAILED';}
    return response({ok:ledger,ledger_verified:ledger,ledger_error:ledgerError,blockers:runtime.blockers},ledger?200:503);
