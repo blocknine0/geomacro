@@ -138,6 +138,7 @@ export class DexterPolygonVerifier {
   const data=await readJsonResponse(response,131072);
   requireValue(data&&data.isValid===true&&
    !data.invalidReason&&
+   (data.network===undefined||data.network===POLYGON_NETWORK)&&
    (data.payer===undefined||typeof data.payer==='string'&&ADDRESS.test(data.payer)&&
     data.payer.toLowerCase()===local.payer),'DEXTER_VERIFICATION_INVALID',402);
   return {isValid:true,payer:local.payer,network:POLYGON_NETWORK};
