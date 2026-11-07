@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import { createB2D1AccountGovernor } from "../../scripts/ops/b2-d1-account-governor.mjs";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -6,6 +7,18 @@ const B2_REGION = "us-east-005";
 const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authorize_account";
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_BYTES = 20_000_000;
+const QUOTA_WORKFLOW = "private_archive_read";
+
+// The private Node archive restore is separate from the canonical B2 client.
+// All S3 GET, native authorize and native GET HTTP attempts must still consume
+// the same atomic D1 account-wide tickets. No per-process budget substitute.
+type B2QuotaKind = "GET" | "NATIVE_AUTH";
+type B2Quota = { reserve: (kind: B2QuotaKind) => Promise<unknown> };
+function privateArchiveQuota(): B2Quota {
+  return createB2D1AccountGovernor({
+    env: {...process.env, B2_ACCOUNT_QUOTA_WORKFLOW_ID: QUOTA_WORKFLOW},
+  });
+}
 
 const sha256 = (value: Buffer | string) =>
   createHash("sha256").update(value).digest("hex");
@@ -107,6 +120,7 @@ function safeErrorCode(text: string) {
 async function authorizeNativeRead(
   credential: ReadCredential,
   timeoutMs: number,
+  quota: B2Quota,
 ): Promise<NativeAuthorization> {
   const fingerprint = `${credential.accessKey}\u0000${credential.secretKey}`;
   const now = Date.now();
@@ -119,6 +133,7 @@ async function authorizeNativeRead(
       `${credential.accessKey}:${credential.secretKey}`,
       "utf8",
     ).toString("base64");
+    await quota.reserve("NATIVE_AUTH");
     const response = await fetch(B2_NATIVE_AUTHORIZE_URL, {
       method: "GET",
       headers: { Authorization: `Basic ${basic}` },
@@ -183,8 +198,9 @@ async function nativeRead(
   credential: ReadCredential,
   key: string,
   timeoutMs: number,
+  quota: B2Quota,
 ): Promise<Buffer> {
-  const authorization = await authorizeNativeRead(credential, timeoutMs);
+  const authorization = await authorizeNativeRead(credential, timeoutMs, quota);
   if (authorization.namePrefix && !key.startsWith(authorization.namePrefix)) {
     throw new Error("B2_PRIVATE_NATIVE_PREFIX_NOT_ALLOWED");
   }
@@ -192,6 +208,7 @@ async function nativeRead(
     .split("/")
     .map(encodeURIComponent)
     .join("/")}`;
+  await quota.reserve("GET");
   const response = await fetch(`${authorization.downloadUrl}${nativePath}`, {
     method: "GET",
     headers: { Authorization: authorization.token },
@@ -210,6 +227,7 @@ async function s3Read(
   credential: ReadCredential,
   key: string,
   timeoutMs: number,
+  quota: B2Quota,
 ): Promise<{ status: number; bytes?: Buffer; errorCode?: string }> {
   const path = `/${[B2_BUCKET, ...key.split("/")].map(encodeURIComponent).join("/")}`;
   const host = new URL(B2_ENDPOINT).host;
@@ -248,6 +266,7 @@ async function s3Read(
     .update(stringToSign)
     .digest("hex");
 
+  await quota.reserve("GET");
   const response = await fetch(`${B2_ENDPOINT}${path}`, {
     method: "GET",
     headers: {
@@ -294,21 +313,30 @@ export async function readPrivateB2Object(
   );
   const normalizedKey = validateKey(key);
   const credentials = readCredentials();
+  // Missing Cloudflare D1 credentials or quota schema must block this private
+  // restore route only. It cannot silently fall back to unmetered B2.
+  const quota = privateArchiveQuota();
   let lastError: unknown = null;
 
   for (const credential of credentials) {
     try {
-      const s3 = await s3Read(credential, normalizedKey, timeoutMs);
+      const s3 = await s3Read(credential, normalizedKey, timeoutMs, quota);
       if (s3.bytes) return validateSize(s3.bytes, maxBytes);
       if (s3.status !== 403 || s3.errorCode !== "AccessDenied") {
         throw new Error(
           `B2_PRIVATE_ARCHIVE_GET_FAILED_${s3.status}_${s3.errorCode ?? "unknown"}`,
         );
       }
-      const nativeBytes = await nativeRead(credential, normalizedKey, timeoutMs);
+      const nativeBytes = await nativeRead(credential, normalizedKey, timeoutMs, quota);
       return validateSize(nativeBytes, maxBytes);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // Reservation failures are terminal. Rotating credentials cannot create
+      // account quota, and repeated attempts would burn needless D1 reads.
+      if (message.startsWith("B2_ACCOUNT_GLOBAL_QUOTA_") ||
+          message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED") {
+        throw new Error("B2_PRIVATE_ACCOUNT_QUOTA_HELD");
+      }
       if (message.endsWith("_403_download_cap_exceeded")) {
         throw new Error("B2_DOWNLOAD_CAP_EXCEEDED");
       }
