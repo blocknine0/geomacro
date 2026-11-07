@@ -153,7 +153,7 @@ function originalUrl(raw){
 const HOT50_ORIGINAL_TITLE_ALIASES=Object.freeze({
  USA:["U.S."],CHN:["Chinese"],IND:["Indian"],RUS:["Russian"],
  GBR:["British"],DEU:["German"],FRA:["French"],JPN:["Japanese"],
- KOR:["South Korean"],BEL:["Belgian"],CAN:["Canadian"],AUS:["Australian"],
+ KOR:["South Korean"],BEL:["Belgian"],CAN:["Canadian","British Columbia"],AUS:["Australian"],
  BRA:["Brazilian"],MEX:["Mexican"],ITA:["Italian"],ESP:["Spanish"],
  NLD:["Dutch"],CHE:["Swiss"],NOR:["Norwegian"],SWE:["Swedish"],
  POL:["Polish"],UKR:["Ukrainian"],TUR:["Turkish"],SAU:["Saudi"],
@@ -178,6 +178,9 @@ function countryFromTitle(t){
    const needle=phrase.toLocaleLowerCase("en");
    const at=normalized.indexOf(needle);
    if(at<0)continue;
+   // A named Canadian province is not a UK government actor.
+   if(c.iso3==="GBR"&&needle==="british"&&
+      /^\s+columbia\b/u.test(normalized.slice(at+needle.length)))continue;
    const left=at===0||!/\p{L}/u.test(normalized[at-1]);
    const right=at+needle.length===normalized.length||
     !/\p{L}/u.test(normalized[at+needle.length]);
