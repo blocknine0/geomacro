@@ -188,3 +188,8 @@ jobs:
         env:
           RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
         run: node scripts/ops/check-commercial-qualified-evidence-no-funds.mjs
+      - name: Compare approved direct control-plane evidence transport without money
+        env:
+          RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+          GEOMACRO_EVIDENCE_PROBE_ORIGIN: https://geomacro-control-plane.daspallab202391.workers.dev
+        run: node scripts/ops/check-commercial-qualified-evidence-no-funds.mjs
