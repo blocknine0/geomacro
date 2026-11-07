@@ -3,6 +3,17 @@ import assert from "node:assert/strict";
 import {normalizeNativeFeedXml,verifiedRdfItemClock}
  from "./native-feed-xml-normalizer.mjs";
 
+test("publisher stylesheet instructions do not discard a native RSS feed or authorize fetching XSL",()=>{
+ const item='<item><title>Native policy announcement</title><pubDate>Sat, 07 Nov 2026 22:00:00 GMT</pubDate></item>';
+ const raw='<?xml version="1.0"?><?xml-stylesheet type="text/xsl" href="https://untrusted.invalid/presentation.xsl"?><rss><channel>'+item+'</channel></rss>';
+ const normalized=normalizeNativeFeedXml(raw);
+ assert.ok(normalized.includes(item));
+ assert.ok(!normalized.includes("xml-stylesheet"));
+ assert.equal(normalizeNativeFeedXml(raw.replace('<rss>','<!DOCTYPE rss SYSTEM "https://untrusted.invalid/dtd"><rss>')),null);
+ assert.equal(normalizeNativeFeedXml('<?xml-stylesheet href="x"?><html/>'),null);
+ assert.equal(normalizeNativeFeedXml('<?xml-stylesheet href="unterminated"<rss/>'),null);
+});
+
 test("repairs only in-memory bare XML ampersands and unsafe control characters",()=>{
  const raw='<?xml version="1.0"?><rss><channel><item><title>Rates & currency</title>'+
   '<link>https://example.org/news?a=1&b=2</link>'+

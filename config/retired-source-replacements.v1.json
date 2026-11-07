@@ -1,0 +1,1227 @@
+{
+  "schema": "geomacro.retired-source-replacements.v1",
+  "as_of": "2026-11-08",
+  "scope": "PROTECTED_INTERNAL_OSINT_ONLY",
+  "retired": [
+    {
+      "id": "private_priority_aus_ga_news",
+      "url": "https://www.ga.gov.au/news-events/news/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_priority_iea_news",
+      "url": "https://www.iea.org/news/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mineral_aus_industry_news",
+      "url": null,
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_au_industry_news",
+      "url": "https://www.industry.gov.au/news.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_australian_mining",
+      "url": "https://www.australianmining.com.au/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_eiti_disclosures",
+      "url": "https://eiti.org/rss.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_ind_tax_press",
+      "url": "https://wm.incometaxindia.gov.in/press-release-rss-feed/-/asset_publisher/bxhj/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_kr_msit_press",
+      "url": "https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_lka_cbsl_monthly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/meirss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_lka_cbsl_mpr",
+      "url": "https://www.cbsl.gov.lk/en/press/press-releases/mprrss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_lka_cbsl_weekly_indicators",
+      "url": "https://www.cbsl.gov.lk/en/statistics/economic-indicators/weirss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_mining_dot_com",
+      "url": "https://www.mining.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_ph_pna_news",
+      "url": "https://www.pna.gov.ph/latest.rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_railjournal_trade",
+      "url": "https://www.railjournal.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_rotterdam_port_news",
+      "url": "https://www.portofrotterdam.com/en/news-and-press-releases/rss.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_ukr_presidential_official_original",
+      "url": "https://www.president.gov.ua/en/rss/news/all.rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_expansion_za_engineering_mining",
+      "url": "https://www.engineeringnews.co.za/page/mining-news/feed",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_lby_supplement",
+      "url": "https://libyaobserver.ly/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_lie_supplement",
+      "url": "https://www.vaterland.li/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_lso_supplement",
+      "url": "https://lestimes.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_mdv_39",
+      "url": "https://mihaaru.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_mlt_supplement",
+      "url": "https://timesofmalta.com/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_mrt_supplement",
+      "url": "https://cridem.org/rss.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_gaplane_slv_first",
+      "url": "https://diario.elmundo.sv/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_972_magazine",
+      "url": "https://www.972mag.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_asharq_business",
+      "url": "https://asharqbusiness.com/rss.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_globenewswire",
+      "url": "https://www.globenewswire.com/RssFeed/subjectcode/22/feedTitle/GlobeNewswire",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_indian_express",
+      "url": "https://indianexpress.com/section/india/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_telex",
+      "url": "https://telex.hu/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg1",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg17",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=17",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg20",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=20",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg22",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=22",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg3",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg5",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=5",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_official_ind_pib_press_reg6",
+      "url": "https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=6",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo8_can_boc_release",
+      "url": "https://www.bankofcanada.ca/feeds/media-releases/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo8_imf_release",
+      "url": "https://www.imf.org/en/news/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo8_us_bea_release",
+      "url": "https://www.bea.gov/rss/news_releases.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo8_us_bls_release",
+      "url": "https://www.bls.gov/feed/news_release/rss.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo8_world_bank_release",
+      "url": "https://www.worldbank.org/en/news/rss",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_0d2728a58f6f8c835917",
+      "url": "https://news.google.com/rss/search?q=(\"corporate+bond\"+OR+\"high+yield\"+OR+\"investment+grade\"+OR+\"credit+spread\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_10f600c126a7ae86b7a4",
+      "url": "https://news.google.com/rss/search?q=(\"sovereign+wealth+fund\"+OR+\"pension+fund\"+OR+\"institutional+investor\")+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_1265c67781f34c2923f3",
+      "url": "https://www.timesofisrael.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_14de982a576a6695dc9b",
+      "url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+\"natural+gas\"+OR+pipeline+OR+LNG)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_181bdc7358877eb37675",
+      "url": "https://news.google.com/rss/search?q=(\"commodity+trading\"+OR+\"futures+market\"+OR+CME+OR+NYMEX+OR+COMEX)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_186095b924a2d3734ee9",
+      "url": "https://www.northernminer.com/feed/",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_2b135d7e3141a081c5de",
+      "url": "https://news.google.com/rss/search?q=(VIX+OR+\"market+volatility\"+OR+\"risk+off\"+OR+\"market+correction\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_33f7c53450e1f4cbb2a9",
+      "url": "https://news.google.com/rss/search?q=(gold+price+OR+silver+price+OR+copper+OR+platinum+OR+\"precious+metals\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_36b01fc3862e59bb6ce9",
+      "url": "https://news.google.com/rss/search?q=(lithium+OR+\"rare+earth\"+OR+cobalt+OR+mining)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_43dfda49275421da921b",
+      "url": "https://news.google.com/rss/search?q=(\"bond+market\"+OR+\"treasury+yields\"+OR+\"bond+yields\"+OR+\"fixed+income\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_495fb809304a18dccd31",
+      "url": "https://news.google.com/rss/search?q=(\"US+Treasury\"+OR+\"Treasury+auction\"+OR+\"10-year+yield\"+OR+\"2-year+yield\")+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_542bbdb1197cf101dca6",
+      "url": "https://news.google.com/rss/search?q=(\"China+tech+strategy\"+OR+\"Chinese+AI\"+OR+\"China+semiconductor\")+analysis+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_6036bc3dab2910295e6d",
+      "url": "https://news.google.com/rss/search?q=(PIF+OR+\"DP+World\"+OR+Mubadala+OR+ADNOC+OR+Masdar+OR+\"ACWA+Power\")+infrastructure+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_612d078555600e2a6ec2",
+      "url": "https://news.google.com/rss/search?q=(\"forex\"+OR+\"currency\"+OR+\"FX+market\")+trading+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_646ac9c1bc26f1428396",
+      "url": "https://news.google.com/rss/search?q=(\"rate+hike\"+OR+\"rate+cut\"+OR+\"interest+rate+decision\")+central+bank+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_6918af838ee2f35ca0fc",
+      "url": "https://news.google.com/rss/search?q=site:state.gov+OR+\"State+Department\"&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_6aa1e4af7a62927e7b19",
+      "url": "https://news.google.com/rss/search?q=(\"European+Central+Bank\"+OR+ECB+OR+Lagarde)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_721cb94a49e3095c4db8",
+      "url": "https://news.google.com/rss/search?q=(\"market+outlook\"+OR+\"stock+market+forecast\"+OR+\"bull+market\"+OR+\"bear+market\")+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_792f8d4602eb8b5ccbda",
+      "url": "https://news.google.com/rss/search?q=(CPI+OR+inflation+OR+GDP+OR+\"jobs+report\"+OR+\"nonfarm+payrolls\"+OR+PMI)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_84850b16dc1b790fba3a",
+      "url": "https://news.google.com/rss/search?q=(\"EU+tech+policy\"+OR+\"European+digital\"+OR+Bruegel+tech)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_8736ceb46aeec23a920d",
+      "url": "https://news.google.com/rss/search?q=site:dhs.gov+OR+\"Homeland+Security\"&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_880f91cf53cf8409316f",
+      "url": "https://news.google.com/rss/search?q=(\"hedge+fund\"+OR+\"Bridgewater\"+OR+\"Citadel\"+OR+\"Renaissance\")+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_90ee54d79aea77d887b3",
+      "url": "https://news.google.com/rss/search?q=(\"nuclear+energy\"+OR+\"nuclear+power\"+OR+uranium+OR+IAEA)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_930b7931d57552089aa4",
+      "url": "https://news.google.com/rss/search?q=(tariff+OR+\"trade+war\"+OR+\"trade+deficit\"+OR+sanctions)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_b77e7e6da0ae1adbfe86",
+      "url": "https://news.google.com/rss/search?q=(Africa+OR+Nigeria+OR+Kenya+OR+\"South+Africa\"+OR+Ethiopia)+when:2d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_ba8e6c6b93f4c54be8a2",
+      "url": "https://news.google.com/rss/search?q=(India+tech+policy+OR+ORF+technology+OR+\"Observer+Research+Foundation\"+tech)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_c0e362d98f2c0106d6f7",
+      "url": "https://news.google.com/rss/search?q=site:treasury.gov+OR+\"Treasury+Department\"&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_c214be2423bdab7edf97",
+      "url": "https://news.google.com/rss/search?q=site:justice.gov+OR+\"Justice+Department\"+DOJ&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_ca51fd6f836e645279d9",
+      "url": "https://news.google.com/rss/search?q=(\"Bank+of+Japan\"+OR+BoJ)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_ce0d4980296ca1e29183",
+      "url": "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_dd0a62d6489a311b3141",
+      "url": "https://news.google.com/rss/search?q=(\"housing+market\"+OR+\"home+prices\"+OR+\"mortgage+rates\"+OR+REIT)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_e456bbc65e773899eff2",
+      "url": "https://news.google.com/rss/search?q=(\"Bank+of+England\"+OR+BoE)+monetary+policy+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_e5c89686bb9ee6afca6d",
+      "url": "https://news.google.com/rss/search?q=(\"People%27s+Bank+of+China\"+OR+PBoC+OR+PBOC)+when:7d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_f201d116e0b87ec2b67e",
+      "url": "https://news.google.com/rss/search?q=(\"private+equity\"+OR+Blackstone+OR+KKR+OR+Apollo+OR+Carlyle)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_f797a1c11e607df50db5",
+      "url": "https://news.google.com/rss/search?q=(Sahel+OR+Mali+OR+Niger+OR+\"Burkina+Faso\"+OR+Wagner)+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_fa6c1368c29f2804562a",
+      "url": "https://news.google.com/rss/search?q=(\"Goldman+Sachs\"+OR+\"JPMorgan\"+OR+\"Morgan+Stanley\")+forecast+OR+outlook+when:3d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_fbc25e62574de37ef437",
+      "url": "https://news.google.com/rss/search?q=(oil+price+OR+OPEC+OR+\"natural+gas\"+OR+\"crude+oil\"+OR+WTI+OR+Brent)+when:1d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_repo_fd5d456f26c3f0816603",
+      "url": "https://news.google.com/rss/search?q=(\"Asia+Pacific\"+tech+policy+OR+\"Lowy+Institute\"+technology)+when:14d&hl=en-US&gl=US&ceid=US:en",
+      "reason": "PREVIOUSLY_RETIRED",
+      "evidence_run_id": null
+    },
+    {
+      "id": "private_mesh_pbs_newshour",
+      "url": "https://www.pbs.org/newshour/feeds/rss/headlines",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_infobae_americas",
+      "url": "https://www.infobae.com/arc/outboundfeeds/rss/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mining_technology",
+      "url": "https://www.mining-technology.com/news/feed/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_nos_nieuws",
+      "url": "https://feeds.nos.nl/nosnieuwsalgemeen",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_6aa8323245737bd59a6c",
+      "url": "https://www.brasilparalelo.com.br/noticias/feed.xml",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_cna",
+      "url": "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_lefaso_net",
+      "url": "https://lefaso.net/spip.php?page=backend",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_dawn",
+      "url": "https://www.dawn.com/feeds/home/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_expansion_miningweekly_africa",
+      "url": "https://www.miningweekly.com/page/latest-news/feed",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mesh_err_news",
+      "url": "https://news.err.ee/rss",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_expansion_za_dsti_news",
+      "url": "https://www.dsti.gov.za/rss.xml",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_expansion_ng_fmino_rss",
+      "url": "https://fmino.gov.ng/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_local_candidate_zw_newsday",
+      "url": "https://www.newsday.co.zw/feed/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_3a717bddc9306b392bdb",
+      "url": "https://de.euronews.com/rss?format=xml",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_b43996d173bd42476265",
+      "url": "https://es.euronews.com/rss?format=xml",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_6089f0804e11b1f84ee1",
+      "url": "https://fr.euronews.com/rss?format=xml",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_50592643e816ec2f2867",
+      "url": "https://www.haaretz.com/srv/middle-east-news-rss",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_143016f4f089bc2fb3ad",
+      "url": "https://pt.euronews.com/rss?format=xml",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_4fc76c8a74bf3b048b56",
+      "url": "https://ru.euronews.com/rss?format=xml",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_580d34e95fd121da2b3a",
+      "url": "https://tvn24.pl/swiat.xml",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_expansion_adb_asia_pacific",
+      "url": "https://www.adb.org/rss.xml",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_968c06a6ef758076c983",
+      "url": "https://www.militarytimes.com/feed/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_local_candidate_id_antara",
+      "url": "https://www.antaranews.com/en/rss/news",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gap_jor_ammon",
+      "url": "https://en.ammonnews.net/rss.php?id=2&type=news",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gap_sau_arabnews",
+      "url": "https://www.arabnews.com/rss.xml",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gap_ukr_cabinet",
+      "url": "https://www.kmu.gov.ua/api/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_repo_785b58e8749bd508f81a",
+      "url": "https://www.schneier.com/feed/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_priority_gdacs_24h",
+      "url": "https://www.gdacs.org/xml/rss_24h.xml",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_mineral_zaf_dmpr_media",
+      "url": "https://www.dmpr.gov.za/Media-Centre/News/ctl/rss/mid/2215",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_ago_28",
+      "url": "https://www.jornaldeangola.ao/feed/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_atg_supplement",
+      "url": "https://antiguanewsroom.com/feed/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_blr_13",
+      "url": "https://charter97.org/en/news/rss/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_brn_supplement",
+      "url": "https://borneobulletin.com.bn/feed/",
+      "reason": "DENIED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_btn_supplement",
+      "url": "https://kuenselonline.com/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_civ_27",
+      "url": "https://www.fratmat.info/rss",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_cmr_supplement",
+      "url": "https://www.cameroon-tribune.cm/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_cpv_supplement",
+      "url": "https://expressodasilhas.cv/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_gmb_34",
+      "url": "https://standard.gm/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_hnd_supplement",
+      "url": "https://www.laprensa.hn/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_irq_supplement",
+      "url": "https://shafaq.com/en/rss",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_svk_44",
+      "url": "https://spravy.pravda.sk/rss/xml/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_syc_supplement",
+      "url": "https://www.nation.sc/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_tgo_37",
+      "url": "https://www.republiquetogolaise.com/rss/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_tjk_supplement",
+      "url": "https://asiaplustj.info/en/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_tkm_supplement",
+      "url": "https://turkmenportal.com/en/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_tto_supplement",
+      "url": "https://newsday.co.tt/feed/",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_vut_supplement",
+      "url": "https://www.dailypost.vu/site/rss/",
+      "reason": "MALFORMED",
+      "evidence_run_id": 42419005003
+    },
+    {
+      "id": "private_gaplane_wsm_supplement",
+      "url": "https://www.samoaobserver.ws/rss",
+      "reason": "UNAVAILABLE",
+      "evidence_run_id": 42419005003
+    }
+  ],
+  "replacements": [
+    {
+      "id": "private_replacement_27ebe75f65657dad8865",
+      "retired_source_id": "private_mesh_infobae_americas",
+      "url": "https://www.infobae.com/arc/outboundfeeds/rss/category/america/mundo/",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "south_america",
+      "publisher_country_iso3": "ARG",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 70,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_54e0c06e4c4ba83495c8",
+      "retired_source_id": "private_repo_b43996d173bd42476265",
+      "url": "https://es.euronews.com/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "fbb82133fa4eb6a5be9ce6dcb16bd5b6153eaccbf5f4a4912087ef2e50f09fe5",
+        "4b905403b548623c9d12ae8dd6204bbd123e186ecd4594e93eacc9dc18e2b544",
+        "7cb0d54b38261466be3cb9d0d4c93f2004652fb5acf0ca3429a049d9c3cce6f8",
+        "6ce0b59d1ccaeda58f75f6fc370e744888e40caca39bde5b79d72f26d5fe3483",
+        "5c8d08332218c0e71b5e9a00094230bb27912b55ad9d46db4821da4d1d135b1e",
+        "9b53d0242ef0f739e78a3ff75aaa8e3e800de1a8f4cce3a452d08d5edc5e351f",
+        "8650403f7b5585fa354a81da0c25971fe51618a82cabad1b6f3ca48ee2c0a07c",
+        "1430083c426f0e0bbd380763ca3ada70dc71aa4e0850ea95fda2d620b1c4c767",
+        "d8a47fcc684f2176c5bbd09d3d2f3e73f5d6347190e1689d2c936bff53714cdb",
+        "69fa737e3869a1e732bdded9610bba1683906b70d8202d1137835ec28e0eb5c5",
+        "9da674382a6929a0a51aed07cb60fe43c2f72ac5f0a77c44c4ee03a63a5210eb",
+        "57b101623d388b5c40437232dc3354a015884a5b2e644d266aa41d95c4119438",
+        "5b0d006c9dc2707cf919fab8695522fda3d76d74622db32058f79462f4603a3e",
+        "ce8d84f426cc553cff9ab497fc85f64810faa01ed811ae0bdb840687d3ad907f",
+        "408806534f02a91ff735bdcbb5f4b3ca1c76c8c6dfdc202523eb973a77f49f35",
+        "9d6935e199045ebb10452b4eb0c1cd15b62c094cf970376d5445979aec6bd33a",
+        "1f1d3dc9c6fec292e994ad88b07949ab950ea64d19cdb7052d6e8e20094d6d1e",
+        "8edfd853338fbd253059af3b090b8a629398f804045602e7f5ad12b09b82f1a6",
+        "f651bc4dd3eb2bf8262288702fc406b3ceae2ca6e89ba1d6b8f0fc3d1a72d5b7",
+        "c07f7a3980d63fdcbd2b1238af1d67d0363e276d5df81b88362e57322b0a9f40",
+        "2478553074fdd0a31e3fb2f1f427a5240e87d4c316dd0bc7fefcf5ef35803158",
+        "b67a1fcf01921b1e0cdc9d2b8b0ed1d6c3d08bddbc22df25fd5019d668b70351",
+        "bdf330ddbd72931ae035b09944d067f35f431226a33c01e03b2a7cf23098a64c",
+        "e9c6de69624b1bf96732515bdeb76be2ba32a9b8fa5bbf31d94bda32c0356401",
+        "dbe6ab94bcc5ae706c468a53e6d9b5c1dc3c9fbdefb8165b6419027778304ecf",
+        "8557469d31d052d3424a07577947acf8ab87c12c3d1df253b13f0a677bc7d39e",
+        "bb9e04ec5d3ebc0139ba0b85e261160db1dfd3465c271a685aad07608573162d",
+        "5282451482832a32d5eb92c7b8e6758e71533278bdd15378ea31c7f87661bf3b",
+        "9fc0e2717ba6329dfc7fc0efb83112aa86638159001e9eca24cf72ec9e5094e4",
+        "9ff0e3d47a13c8545821bb66cba165d8f9452b7ea2f8cc0351ce00bfacd30665",
+        "532aa2ad1b0b07bc96282e7858f0bea3a132db1aec169ffabc02a4371b2acfb4",
+        "1aa655d93a7507f0fa756068b57ebf6786ba216101dd19eed16f9daa8f67fdec",
+        "cc21f9408085f778d38638583c707557697bf3b8255ffb393a66b0dc7d307633",
+        "af2e786749d05e125accde838b6c54a30f0cbe4b5195c024919bf85fe03f6714",
+        "3e41bb6fba3bca2f0ff46c38171346231fac5e579bbb7ccc11ad6ec37c1576a4",
+        "0c484139337606a237113f30f3f7aaa8c2be0ae809df0ea416013799fb4f7aa9",
+        "79de9e069c033a46e08ddfb5a7ea867362c99f8279bf784eb65149a83e49cb60",
+        "b234bffda861c626b932e195326cd3ac37ed7e90c05c4d6beca3128befbcda98",
+        "aa1076a48650bc821f5ea31506e498067c3842207fb84fc9f6a2f940577914bd",
+        "a6728cf71a14d7daf74c119175f40b502dc6cb7969d784763875021848e7ab4a",
+        "9e74c824bfc473bb1d8f8c0c572074989d586cd7b1b9e02a2b1005c1980d53bc",
+        "9deb1e454a882c57e7c7a1caf9da78d7dcd3d1c9eecb13892f9570c23e9a657c",
+        "c4505d63f542531644081b9f5dcb37759883b5df244ba6cd3249556a73b03b22",
+        "c38f49acd3dda8ec0f9ec0ede54b0bd022ea10c57233b12a88bb945d6c26516b",
+        "fe7da90f08a71c00060c9af6e11efd3e8413bb78ad066375e011b9e6253fc059",
+        "d6e03ccebb01c525cfb40bbbc95c2207e7936c714497c2ee73ec6e0e7c5ddeef",
+        "d9c281645e27c6823575c3ad7d4d75bebcfdf5121b2c1b13ef1cb4eca25e8744",
+        "f682982fbdb4517ddd675532e7ff81c4c027052203d3cd4e9b3340700c2f8033",
+        "9da063d6e27357e99fcad0d308ab1aa99378f6ae36962476911fa9dff9d8705e",
+        "107e54c7c73bababd55bddd2b9e344c6f432d7e5cbb77f13833685ad82054286"
+      ],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_c9aaccbbf5a672faa5e9",
+      "retired_source_id": "private_repo_6089f0804e11b1f84ee1",
+      "url": "https://fr.euronews.com/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "2c559d1e17f6051a7342237b0403073d65ecaa4f0748011b2bfdf004226651f1",
+        "5291aab35dd26634ad5744ecd4243e6b20df7ddff046c8d524053fe78527edab",
+        "1e1506cb419396938c745155f85891b964cb235be9c90418481c42ecd9e1dec8",
+        "8efd5b568fbce94da1312cd687839ef452631e4da863af2f5c94a6559257877e",
+        "0d390db489e35f5758a6d06ecaa03b3df332489899077611336bf5ad9ce11b8a",
+        "393d5d90c266fe02b44061f1f988304192884ec4f1f60b3e3417685b7ec8138c",
+        "e4055722fed50ba602dd591c477a4ac30b6576c209a5c2862b318583ecd6dec9",
+        "2529989406d517ec6c836c0fd3f1f94c2bfa73b8f9801616feb2932f3e657576",
+        "47c1c603f945a62209723e4fd6c28b4040e467d1686ea1714ba97a782d9b3944",
+        "827326349b8720e5abc94dbef0df9fe72f234795c490bacb6c3ae1d8e9031f34",
+        "dd86949b9f8ee3940b343ac5d48067e1cccec6b7301b0cb97f6c2b1d4b29d5c6",
+        "769e66b40c96a3047b365676619f54b114598fccadc36c817934e3e80b50fc90",
+        "83a6ab56a96e51d98d807342dbbcc7dac1b2304228765422b5c1b4f5a8f8f26b",
+        "b46ca681a5735699f66f949d17e2dc1a710b7fc5a630b3a63201a01fa2d2f947",
+        "594e5d160ecff6385dfb7c7b6dc680e6bb98254a0b9c424a063c9735c4441c57",
+        "9ec8f526f36c6bc9b6f0ba505bd57c02729fd6077f42bb3b3009e7f1809414c8",
+        "3432e9da6c131dab1ccbb25192aeaee7b090de055f5297bef17c8259b940b76f",
+        "e1e51f8549eaaf8ceef3f79f4ed9c532525131565937b1adcbcd7f8c6cea557a",
+        "34d90c97ece15a5ebd82a4e79a0ea42e9d7f40b3347b2825da0deee7320d5708",
+        "b817687a2c6f3b461b1ffc92310ff4cb48799e776129e7ff5dbfa03bbb53649c",
+        "17647dad25769f7efe34a5d391bea76f836878a788b504700d7800a56839649e",
+        "99db3fdba8c970991fb4ca4a6ba633142a43a71c0e655880c565ef7c066177e0",
+        "6fdda3e2b510883dd7872d7f68fb19ce51100e6e41135d23a7551e25c1e69bef",
+        "cf06eb8d9a1d7d40d612f71fb49a368e027bbb8a9608db903b609398de81e046",
+        "623bef4bb32273cf457fa5b2a5f9f9bdb5780b813280ae187027a515ae33fb71",
+        "825a63e99b5311bc6a2ffb4189353b0ef810063e8507f7d1fe696142d5910a79",
+        "ef480e87daf3e3e7cd1b928e7e3579d86d3a4d128d9773262e752967cec22719",
+        "70eab8742d89ecbc6a330398a1c26849ec650353e3573c1179e08fc59344b5e4",
+        "2ae0f8a4826133becb2ebe98d0ac3952080fe8ac73d9b6eef36f3e09051313f6",
+        "3f205a00998c03b01361a691e60e60ee3e571a8d7a175df300113af8d955e194",
+        "06b9461ff4fd6e98df7bd5c67e3d235263d79076159c64f3b9157d5b554c9f27",
+        "b21a165f8a89dd183c85a5d8a8722c60eeee6ee298bd4a175efb839bd37d3ac0",
+        "85b8cf5082304f3e9299ead68d8024d3a6cdd5e0a0d588e89280d4e50fa1e565",
+        "2295f562184150a7218566d230ba70ac2c07a21cd391f1a808761d48af0f064e",
+        "ca778445b93240dceb3fc453fc2ee3894b86931f2fdaee2b999e4d19affea38a",
+        "c62f7816b91bc7e5fb404d28b5682501a6271ae67e7f034961829f792a14f222",
+        "f8399390e7303df5b91251ea6dec6a15703db20f787e013a323e7fc294a219b5",
+        "228c88ef864fd620fee89869c2d242ea9f4ec0329cea138590fbf6572da011da",
+        "68c3865793be22a2d6a85e9cda10ec9becea0748d8e144c450e0df4ced88f357",
+        "eafc8f11958e4906ee7f4c53c8b06fe0c501a9477f6550ba3bf56132ee7abe6a",
+        "51e7e7a7f78303c8f2e6e4fc0d5e6b664409125fec112d821f9c454040de6d9d",
+        "db97f30603a7df53eb2b99b6041f78e2dffc0595bf149303a1e549b34bb95b1d",
+        "d2c611c11a306699b89930b98d5ef2aca811099f65d5a2aa4faa7e2065841162",
+        "503472db55b8dc36eb348c3fc02a2896ed0bf200ade2128d95460d41dd1c8bc2",
+        "f2eddc98a6fff2c7dec5a5a90f38be44846ecf9370adfd288803a8a89c48c96e",
+        "eeadc3587536377908bd81c7a566f5347a10113e3e7967258af514d3b11005e8",
+        "43b02dae37bbd1d6bc27fd9bbfd62acb231eab1b3c416b38c84752e31b6b80ed",
+        "e7356c59580c095cddf2367bcb04af325771d15be672527336a442a900dced76",
+        "fa9aec078ef0cd989d9e3dbd70e6f0266249256dfdc771aa5b9ce8714dd6a843",
+        "e1fbebaaebde1194b52129653274cad3fc1e6ddd1905a7f627970af61eb805d7"
+      ],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_bb056c43250562d784b5",
+      "retired_source_id": "private_repo_143016f4f089bc2fb3ad",
+      "url": "https://pt.euronews.com/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "cde310cb52ff0653854788be63a7ae5a469dc622b12ec89483a0681b4bc5ff5b",
+        "70fc4c164e719d63cc70070ad12ac9e2bc219cb522d87ea7184c1d06f453883c",
+        "a1946e4af3396d3a409c9d0b571eee78e8a544c0a5e09ddbd7fac9925ca09543",
+        "4f9538f2c590f90600ef02433fe13aaf1891f1fba330594fe5015cded7edcab7",
+        "0127fc7b19885f2947d6e966f37272b6b8b3c0034f8d68741be55e7e75804312",
+        "3c8ba949fc8ea38d0faca430e93bb2897643724151cf34610d1398c20828b923",
+        "2de27a1f3455b92782abe87e6e9cc450685644dd15e0cb1c0606c5585d517a13",
+        "983d32b00fafa7d9641d8edbae4fe933b66599ac22bd913ada256834b0b36abb",
+        "c7c065810d689b1f08939ebed42c86a28c2994f4f5dc74f98d2993f31ab97b08",
+        "db1d7e37eaae641b5e68d86f8b1cdf9d147367951d2617f412f0140eb3f36f03",
+        "cb806e1fdfbf3f4c13e6b6073592cbbc29e7c37b6122b8fc5de351949765a816",
+        "1270808b2a23da392f7b5a234a84131826e0af71302d5f7fe5ede052ca6bedf8",
+        "e9c2fd9d21ce4157b5356bf0703e23a5c39702bf4f7d5bb83ad270e7f82f077f",
+        "06094b519ece4b8369683268fa5cdb242d3fd3a40a5e4a79ab6500c1554a4cd8",
+        "dc51fa19ee20b9a8daad6fa3448e8addb57c2877e8c8e51c6b6647980635fe51",
+        "6701a1b7b36058c2cfe76db35d99c2a6bddfc8c566dc91bfebbc583bd4547dfe",
+        "4338fcb35710f72f77f0134b5af55cfea9ca0dd738c37770d81f12843b9d64d1",
+        "5223062d9b83aa62ac4e498864f29c6f169a491efe08ec96f254cb4f44c4e4f7",
+        "abc4ead68903d48d7c93d40dd25e921534d34855be8664188520d1c6df79f0d7",
+        "9925e8009f2f1d1de3e337a2a24b9842b391580b8421fa9a42247041d3513d2e",
+        "7919a75988ca5ae1ff8900c2f37c02c0a3ebf7bfa1b865a6236bce81d4252358",
+        "2a61250e2fd5539cac7dac80343494a0762f41b9b2028ac553c9b820ef9ba29e",
+        "e4a7fa0b50bd983b907dbf981128e7cbff90fac3c3d8545f0f7d3bc1f96c5b25",
+        "2ad3cff054ffdd5f22b29f3bec81ca60103d11cee25123fca46d78716aa5294f",
+        "5348df0aeb37aff416625be1a13b8f99ab306643c07a7c7e0252016d3d2fc6f7",
+        "3b6cc1d35688a3a9c719caef06d4733f583ebcb6381db2495cbf5227bb702252",
+        "fe34928b3c1e78a230b7f880a57e26bacf0571409203acb91b062a2bf9fdd3dd",
+        "65d1e01ec4b1e3e94c884ee101f680a4528289f5b561f5e23fd2d7dadd728799",
+        "db6acb6a36515aa87f7d8260c33ee7655c49cf9973df6d2618fcca4fc4a2834d",
+        "22a538e90019dd66195613305d7038234de849ee4056a4656eea8088ac8c8001",
+        "8728179bf7b9bdd228fa319f338e278d705a43f6ea927fba0c502e019b22975b",
+        "8a76ddd3586792215a2d9280bdf9a749311203343746dab5472db0aabe3ef5e9",
+        "86d62de85fa3f2a452f15c9c5af03511e0e5c537e69d9ea8a50e79e525a84e80",
+        "a262e764366221fad5b4ecbcad7418152cde9569aa0c03f29cdad0edb142ffeb",
+        "8914153c6ca218f4dba804e1d10329da614326046902fec109718c6032e02d5a",
+        "a75969eed89633cf011ae878630a5aecfb17844aa2bf6c958ecda12b24ce72f3",
+        "bc89f5ee2cd90368d0107617a9fb6a7afb1e491f4bbe248d647088ddaec5595e",
+        "61614f337f49e2bf84b2be35c12e8ab77558c0f391f616ed6f9b6d7feb312e46",
+        "14b3b9f053658f4edfe070d0edc2a3081e7e6a5e08596c9ecf46dea39c73f0cf",
+        "13175b0ea6523edd15ba6954306f364b5202b6a6da8f62b08838a61d11a8540b",
+        "0e90ab1782f37e972d93a16f7b60969abd223c6df65a3e4b4ab2443d32ee755c",
+        "b9550270a8e03cd4764d409ed6507d95e7e28e8febf117ee9dce0aaf30fb1d14",
+        "473e237ef62e4051a223cc88588286fc9c5f4e5a31d9424924a9ee05a3ec0418",
+        "b905795116480072ab29298a0db3f1678209d89d2ff3d79e77ca8d34a3aca878",
+        "d6c45673aa1ff92f5d7830f28dd929776b7ceb7d1f702ced4b4cd68e28d84daf",
+        "53cdff12156afeb4afd4e9fcc6683f4b716b338f0a9363dc0c1625dc65bed28f",
+        "f3d9bb8187a1237996b70010a3172a1263d258e90af9c3db618bbefb0d9597a5",
+        "55dd00ec5e2bdc4256999935c99b9907fe3e9a0ed9545f83e51b65f371b523ba",
+        "d558dd2f935ce7f6655b210380f6be1a8eabc8a1b201a97e457839b08b69e397",
+        "6c306344fc31f74f1efb3a1056abdf73b2f7af43ae95501542842e9a196905f4"
+      ],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_5f78542cb2439fb8fe70",
+      "retired_source_id": "private_repo_3a717bddc9306b392bdb",
+      "url": "https://de.euronews.com/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "9c45a6614a4c346cb2205b1357373096951b01779a94de66390f52a67eefbeed",
+        "e84aa1634383e5cdd085f402aaca5d5ede6d2521b060bcb0a34e4c2eff2cb26f",
+        "9735b889526bea8a855a6b223b6fc51514a7a2caf2377cbfa798991075dee046",
+        "65a467eca9ac185d11682dad46bc7bf805ecb3393ec02621d798d537a3559d30",
+        "8c5e5e85fe10be7c0f69723d6e367b4e0ce4f43342e22e20d71f925100d277b9",
+        "fd4ee7cbf25e6d48cb3ad3219624113c33c0507e62f0078b21662ff79b089331",
+        "4ea586b77e010eac14711f1ae713234d3d7a49cbe26631c83422ee95ab91e649",
+        "354a62cc41ac2c5c08a697ad55ae8400a1f5c61df8a2b430eef30bef75f5beae",
+        "71e910305c4f2dac818a7f640d25a3b19b2ca28110f49917a0d72cc8f1e86671",
+        "2402a60afbb81de6288bcbf687b5081d7847569339daf81db820d87bc798331e",
+        "a91c643555f87ba227c61b89f24c929fe161febf389fd84dec913d563e52ff32",
+        "d452cada751aa7d9f03908714cd88c127dc17343556745e6c40bed7cf9ac1f33",
+        "12641fda911add245d0b23cd70d6556614404320f4120839b554e753bf81056d",
+        "ee36ef67814d0f25cab8e1fda7801d93c124a06ab2452ebe28690f3e97ef6723",
+        "a423c61c3f81d6df9a7d750f724dc5db3fecd37fe99092130b6e92f18520db83",
+        "b8d50990fb36a7f3978cd3bbbac06ce11941a3330b9267ea668cc8dd45bf21f1",
+        "ba061727c5954b88a49f037620257b794a44c7d0d1f4cf0b2569430518ec4d26",
+        "14ce782dc52c176535a4a9113fb9e9c13858d6d412c2db3d4df7054533debafb",
+        "ba2de6eb4f8a05e873792863171cdeb686a4680ad5ecf9703b18ee0d4f6118d1",
+        "11d8c76d939c8d8acdcea165ced6cbe8133032ff669aff428f52c2b8464d4f48",
+        "caf293e7128462db4d15926ced87e5cc4563163d949cbaff5ce13a5aaaf8f5e9",
+        "4c3ebfa6e3e289bd1635bca9a81d118195638a6addbe6535b4eaf8e06d0806de",
+        "4c46b6a45e9a9bebbb2376972eb29942ee4f56263695da9635a8417568469614",
+        "77dead93ec0ec000a919954bbc5f04832e24dfd91105cd90bcc0ef8ec8f585dd",
+        "bb57c086b3aff1e4e219935e97880175d481033fbdb936af4b755a39dbc34def",
+        "ad928fbf7612cf50a4fd6bda31383940751f8d12614f35fa3025a1222b2a8d32",
+        "705834539b656538608eb41dd31a014055c94a60cf54f3853ef5b32f02a7f2b2",
+        "0a97c293e1056b8f513e3eb84180545e827615d22ebfef0e2630ecd6e6bc77e3",
+        "896a1390599cce753bfeaa2b76873a6042886550d14d7b38c424e192334a216c",
+        "cbee9b2313c6eb0d64070cd97023a57d604470517d347154f13fe679aad68117",
+        "db7c7fd580e179902846979e9821016e936a35659adffd80931807c57d0206f6",
+        "227fa493b61ea0dfdbcce20649e0352a797220b5129375e4ce16397065aab814",
+        "e6d7a82368593764d0840ee14d8dead21a1deca0db0498771a0d73a2b425d8df",
+        "1ee172593a19444089614815f378d5804a972478784574aff70d841690c7e950",
+        "c786f254bd3619f9816c2df9993f9caf69f913f14723b81e4c2054cea0d26821",
+        "ba9325092732ba99b35565218756a83b6f6fee0d67b10706ffe9c8cac93d97e9",
+        "b0525c32001eb8cde254df2e8417e2aa623a3b5183e8d457ed5c8d69bcda4973",
+        "b42fb849a2b81fe6ffcdd38a930fcd776a83d512fff574312dc9a6736039ddd1",
+        "a43c25355786e21b1980510e5d5be7dbeaa30a6dcf5cee65579a612eb4b2cb35",
+        "622bc8da24814f069658e134d59c74df26ce50bcb61397365ccca2ebef853ec8",
+        "f0b3591c07d98d7f95fdadfde81f96b68374c7220468100a946e3e8393551a85",
+        "1b27318743183cb155f299506f73d157286d6a0e9edbefdb25b28d6cf5a68130",
+        "d36196048149bc75fc64a4499bd101f39894b7d3c1b0e46dfced090a1b392c79",
+        "59ab705f4e5886ab6f5f4d17385591464fc446cc261e6e5a2f73b0648a99a321",
+        "38e8b3db66ede5df637a29f12be890be5821a85ded65b4cb8774ebd1b5797750",
+        "67b773c0c795f80f90d8ad3e5d15280d62fd2c137258d9d1cf309d700b04b634",
+        "fa09169eb8e409795494e6aa79968a52abb7693be030cc3544be94af183bcef8",
+        "cddb6e9b979b4768c5a648350377b68aa7c60fb8b69f8e5dd5762c29a64195cc",
+        "eba0520ec27e374f6364c8c67812d8b85083077f84c1c4db7e5dc4f431d6308d",
+        "f228fa16a871655a9c96e4d4804c1f607e982e864e0b0acae648433caaab8bd8"
+      ],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_36c61c32f0d69c1cd2e7",
+      "retired_source_id": "private_gaplane_blr_13",
+      "url": "https://charter97.org/rss.php",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "global",
+      "publisher_country_iso3": "BLR",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_84b9234514b356e4c28c",
+      "retired_source_id": "private_repo_4fc76c8a74bf3b048b56",
+      "url": "https://ru.euronews.com/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "europe",
+      "publisher_country_iso3": null,
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [
+        "0c98e385c1c11dbd32dc9953d3d9c24ba1874c434676fab57df67906c23e0f4f",
+        "972144fef0320db7475da9e612336eb4d959eb30c39458984e3301cf9010decd",
+        "c20e64e92968ce912444749699a01cce52930f81f0ed2971878e0ca244f217f9",
+        "ade5788ea96a37e1e1a377357c431ebad3b06056d3dcd8636cd835fe8b998273",
+        "f7848df9e3f51a73ba36fc56eaf4cf7bed8f353cc3811d196d8feace279a7ce8",
+        "7accdd0ea115ea14857dd77ca909cb04fc6d0a4689d3ace847b49112cb77661a",
+        "a7fb69cd3f0f78aaf8284901e4971157a2cdc2436e0dd14fd839a5bc076218dc",
+        "872c6478941a76b8f636f85dfe6129f1a52c2b62436d4d376bdc2e805288b31a",
+        "bdd8c352f2611ad3b762b63caa6c9643b3e4b9d556c501db749f09364ab029fe",
+        "f3fe9db76fa4b2992fc0627a5d67e27108f2647faa63b35452dd9abb2ec84a4f",
+        "87701036f34c2771892a2055eea2cc4e958523c97c4537ec239fd67ffa81f232",
+        "c492f6126459dbf69c7375d90b562ad94e01ee78fb94951144da4ce38ea257eb",
+        "b878d5ce1ee42c723b3d1545b3ff902ed973f4a36eb46c7a144b4fd2801c3c41",
+        "4d3de087449f4dc8c47139154b251220b6b0712d97806b5932b237df81fa9956",
+        "a391f9c8238d6fbb5d07589dd4d13bc1c79e463fc97d06b38e5c736faf192680",
+        "7444c4101593016adf7ed1c9270ee952d353c3e9494ddcd9f80b1a0a54609363",
+        "b290df5202b162491dc18c076ddd2b8d015aba8dfbfe519b1ef2f0dc4883e3ee",
+        "470df6a5b0cdf13d7492f8de4afa1addf06258ef6cf3f5f611d83556e5cf58b5",
+        "4c6d94e17a83276956499fb3c7d07f611401ec2fee3005ae617b52b99e72c6df",
+        "6a1af664bcb98d46ce61bdbf59a12547f49f471a09b71011c92b37cfd2be3ad1",
+        "0fd36e5c7d727c2e250a999577fa12697cad8e8b3c80f1bfe4b0944e0d47240c",
+        "8c7f48b0837c9ac3814788913ef9180eb76901c3ef9aef0eb95c48df409c4118",
+        "9905c56c632e99fbcdf1384c3c3e4867d0571e8918c38c8d6a845266d3dbd2b0",
+        "6b62501cf55ad4a83409f9eb4b7af2722b2bbd2c5c909bd9743d616586e7ca07",
+        "93777ea6504ea8e4e159f951b28857964b26c33e8c958248128d4ea5b8fe8d53",
+        "b0cb630b6760d7f14d1f17269d794e134297dbc57a6e4b63e7cd69e54f1557fd",
+        "6b2923ee1834cd0e2eb465890e86dba4e1bca8a2e7cca9c140d4950f2fa2f1c8",
+        "322c6fdc63be304c4e5bdab9cabb58578c4c7026699e602d213f1d35e1425844",
+        "c34dbfd77bc30cfcbf00c01f29f3118c2405e046d1afd41c6b86d668e0d4568e",
+        "6a8bd546f927602092513f9618039eaf7f7cc673c5352cf5dfcaa48afed2e5b5",
+        "b40f2da4bf8d45aea52fb75875c00211b2abddbfcd8009f0571bf27f25e6ac01",
+        "60d164bebef7b46f4a56b3e4429f84b827b14be25178abcc3df12932a32f06ba",
+        "2de11610ba6a058a2db0c8fedc7e63c328c185a2ad9b0581591d8d499dc3f922",
+        "b9e052c181df0a916c765dede33df5727cf0c61eeae8f3367c358e724d2da1c2",
+        "fdb6b794c5026a358bd1df8d80c9033c4f02f11ce1cf372028ffab692bdbbf76",
+        "f277e3184de88f2b2dff6f2d7bd796cea9aa6c4c6d13c808ffd12a26b1273551",
+        "9aa597a2d14b897f23218ecbd882f55d8f81a47168db9e50bd1f7b2765162b1b",
+        "71a3953b333ec5f2183c833ab17e9d3f7ede48d840c8cbf41741b895790c3881",
+        "0aa795d45aca88b727344245d826c6d9ebcf8722f9848a55942fcbb8006126f6",
+        "17042ba575f38f9522311d35ec3983ce2971a216e5c4fd5a8bc94df156c382c9",
+        "a4b6369f45bba9056cdc19c00f361877b242fe661b7824c772709f60cfb304ed",
+        "807c77551ab7de1cebc13b372d6a85b9f3d520f4bd7c031af29e999d3627641c",
+        "37231ce080fb6f0d121694c492458bb4235611b3b0cf180f47b6a7af42a8dbaf",
+        "072466f6868ad6acbb1b10085a8b1397c4dc4ca86775ab3b5306b0d1d4748fa5",
+        "8b31eef2ab10ad80df864e398db2a66630f00d2fe678f41a3d40d8a358f25952",
+        "093a1c7dbb5355aa41fd48f098d255534d7972f141c6965181654f26c96ac3eb",
+        "2e5028f6e7a35a3882573033816b807ac8db05039b76134f63a4eb0fa90a4607",
+        "506bbd00044f892935102ea6fb6932fbed3722e1e6b34fc7f018dad3692e7d0a",
+        "599ac156cd091ed4c646c1c7a7b3b352484a86a92c65e41d0edb5c5603c70bf4",
+        "0955cc5c75c3539a66f6cc4539a99c76c1709e83e6653e5f65456b531d883cfe"
+      ],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_5a2263b90455d31c28a4",
+      "retired_source_id": "private_local_candidate_id_antara",
+      "url": "https://en.antaranews.com/rss/news",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "asia",
+      "publisher_country_iso3": "IDN",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 50,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_5ed49cbd9cc83c8719ab",
+      "retired_source_id": "private_gaplane_lso_supplement",
+      "url": "https://lestimes.com/?feed=rss2",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "global",
+      "publisher_country_iso3": "LSO",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 10,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_4ad53b92f23fab6765cc",
+      "retired_source_id": "private_gaplane_cpv_supplement",
+      "url": "https://expressodasilhas.cv/rss",
+      "type": "rss",
+      "categories": [
+        "geopolitics",
+        "macro",
+        "rare_earth"
+      ],
+      "continent": "global",
+      "publisher_country_iso3": "CPV",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 10,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_5d1622ab75741102d3d2",
+      "retired_source_id": "private_repo8_can_boc_release",
+      "url": "https://www.bankofcanada.ca/content_type/press/feed/",
+      "type": "rss",
+      "categories": [
+        "macro"
+      ],
+      "continent": "north_america",
+      "publisher_country_iso3": "CAN",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 3,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    },
+    {
+      "id": "private_replacement_7141f81245c621ae439f",
+      "retired_source_id": "private_repo8_us_bls_release",
+      "url": "https://www.bls.gov/feed/bls_latest.rss",
+      "type": "rss",
+      "categories": [
+        "macro"
+      ],
+      "continent": "north_america",
+      "publisher_country_iso3": "USA",
+      "checked_at": "2026-11-07T22:51:45.242Z",
+      "native_72h_items_at_probe": 1,
+      "same_article_url_hashes": [],
+      "full_duplicate_news_coverage_verified": false
+    }
+  ],
+  "exact_duplicate_coverage_complete": false
+}

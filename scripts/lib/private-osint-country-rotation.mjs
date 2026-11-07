@@ -7,6 +7,7 @@ import {qualifyPrivateNationalPrimaryScope} from "./private-osint-national-prima
 import {privateOsintOfficialPrioritySources} from "./private-osint-official-priority-sources.mjs";
 import {privateMineralNationalRssSources} from "./private-osint-mineral-first-party-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
+import {applyRetiredSourceReplacements} from "./retired-source-replacements.mjs";
 /**
  * Private-only 195-country topical discovery over one pinned public news-index
  * host. An index query is NOT an original publisher, event location, native
@@ -101,7 +102,10 @@ export function privateOsintRuntimeSources(now=new Date(),base=privateOsintGloba
  if(!Array.isArray(base)||base.length===0||base.length>512||
    typeof includeLocalGapLane!=="boolean")
   throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_INVALID");
- const activeBase=base.filter(s=>!isRetiredPrivateOsintSource(s));
+ const retainedBase=base.filter(s=>!isRetiredPrivateOsintSource(s));
+ if(new Set(retainedBase.map(s=>s.url)).size!==retainedBase.length)
+  throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
+ const activeBase=applyRetiredSourceReplacements(retainedBase);
  const urls=new Set(activeBase.map(s=>s.url));
  if(urls.size!==activeBase.length)throw Error("PRIVATE_OSINT_COUNTRY_INDEX_BASE_DUPLICATE");
  // First preserve every active pinned base / official priority / minerals

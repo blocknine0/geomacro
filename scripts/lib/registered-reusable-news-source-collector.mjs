@@ -12,6 +12,7 @@ import {sourceIsPinnedNationalPrimary,qualifyPrivateNationalPrimaryScope,pinnedN
 import {GLOBAL_OFFICIAL_RELEASE_FEEDS} from "./global-official-release-feeds.mjs";
 import {EXPANDED_OFFICIAL_SOURCES} from "../ops/probe-expanded-official-source-mesh.mjs";
 import {PUBLIC_FEED_ROTATION} from "../ops/observe-operator-free-feed-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 
 const CATEGORY=["geopolitics","macro","rare_earth"];
 const MAX_FEED_BYTES=192*1024;
@@ -134,6 +135,7 @@ export function registeredReusableNewsSources(){
   ];
   const map=new Map();
   for(const item of inputs){
+    if(isRetiredPrivateOsintSource(item))continue;
     const source=normalizeCatalogueSource(item);
     if(!source)throw Error("REUSABLE_SOURCE_REGISTRY_INVALID");
     // Never claim repeated alias/host variants are separate original issuers.

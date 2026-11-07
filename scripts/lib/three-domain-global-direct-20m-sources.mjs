@@ -17,6 +17,7 @@ import {macroMineralsContinuitySources} from "./macro-minerals-continuity-source
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
+import {retiredSourceReplacements} from "./retired-source-replacements.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
 
 export const GLOBAL_DIRECT_20M_MAX_REQUESTS=512;
@@ -31,7 +32,7 @@ const directSource=s=>{
     !TYPES.has(s.type)||!Array.isArray(s.categories)||
     !s.categories.length||s.categories.some(c=>!CATS.includes(c))||
     s.private_discovery_index_only===true||
-    (isRetiredPrivateOsintSource(s)&&s.private_hot50_retired_reprobe!==true))
+    isRetiredPrivateOsintSource(s))
   return false;
  let u;
  try{u=new URL(s.url)}catch{return false}
@@ -65,6 +66,7 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  const backups=hot50RetiredBackupSources();
  const merged=new Map(),hotUrls=new Set();
  const add=(s,priority)=>{
+  if(isRetiredPrivateOsintSource(s))return;
   if(!directSource(s)){
    if(priority)throw Error("THREE_DOMAIN_20M_HOT_SOURCE_INVALID");
    return;
@@ -85,6 +87,7 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
  };
  for(const s of first)add(s,true);
  const oldPinnedCount=hotUrls.size;
+ for(const s of retiredSourceReplacements())add(s,true);
  // Guarantee a source-specific replacement for all 14 retired Hot-50 IDs.
  // Existing publisher URLs are merged into one GET and promoted to priority;
  // distinct replacement feeds are fetched ahead of rotating global feeds.
