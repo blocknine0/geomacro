@@ -12,8 +12,11 @@ import {checkD1BundledWork}
  from "./plan-d1-bundled-work.mjs";
 import {SPEND_POLICY_VERIFICATION_ENFORCED}
  from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
+import {readFileSync} from "node:fs";
 const HEX32=/^[a-f0-9]{32}$/u,UUID=/^[a-f0-9-]{36}$/iu;
 const SHA=/^[a-f0-9]{40}$/u;
+const OWNER_POLICY=JSON.parse(readFileSync(new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8")).d1_budget_policy;
 const ACCEPT_REASONS=new Set(["CANARY_PROVIDER_DENIED","D1_BOOKMARK_UNVERIFIED",
  "WORKER_DEPLOYED_VERSION_UNVERIFIED","CANARY_ACCOUNT_D1_BUDGET_HELD",
  "WORKERS_PAID_SPEND_POLICY_UNVERIFIED","WORKERS_PAID_SUBSCRIPTION_UNVERIFIED",
@@ -86,10 +89,11 @@ export async function verifyProtectedD1CanaryPreflight({
   limits?.normal_rows_written===140000&&limits?.rows_written===180000&&
   limits?.emergency_rows_written===40000&&
   limits?.emergency_auto_admission===false;
- const budget=trustedLimits&&Number.isSafeInteger(read)&&
-  Number.isSafeInteger(write)&&read>=0&&write>=0&&
-  read+limits.safety_buffer_rows_read<limits.rows_read&&
-  write+limits.safety_buffer_rows_written<limits.normal_rows_written;
+ const envelope=evaluateOwnerD1DailyEnvelope({
+  observedRowsRead:read,observedRowsWritten:write,now,policy:OWNER_POLICY,
+ });
+ const budget=trustedLimits&&envelope.held===false&&
+   (quota?.day_utc===undefined||quota?.day_utc===now.toISOString().slice(0,10));
  const reason=!capacity?"WORKERS_PAID_SUBSCRIPTION_UNVERIFIED":
   SPEND_POLICY_VERIFICATION_ENFORCED&&!spend?"WORKERS_PAID_SPEND_POLICY_UNVERIFIED":
   !budget?"CANARY_ACCOUNT_D1_BUDGET_HELD":"ZERO_TRAFFIC_PREFLIGHT_READY";
@@ -99,6 +103,11 @@ export async function verifyProtectedD1CanaryPreflight({
   spend_policy_verification_status:spend?"VERIFIED":"UNVERIFIED_ADVISORY",
   daily_read_rows:read??null,daily_written_rows:write??null,
   normal_read_target:140000,normal_write_target:140000,
+  hourly_burn_alert_rows:5833,
+  paced_read_limit:envelope.paced_rows_read_ceiling??null,
+  paced_write_limit:envelope.paced_rows_written_ceiling??null,
+  pacing_or_daily_ceiling_held:envelope.held,
+  account_wide_atomic_140k_guaranteed:false,
   emergency_write_reserve:40000,
   d1_bookmark_obtained:true,worker_baseline_verified:true,
   d1_migration_state_verified:false,
