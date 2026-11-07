@@ -36,6 +36,8 @@ on:
       - 'scripts/release-static-check.mjs'
       - 'scripts/release-five-gate-contract.test.mjs'
       - 'scripts/release-security-regression.test.mjs'
+      - 'scripts/ops/prepare-five-gate-control-token.mjs'
+      - 'scripts/tests/prepare-five-gate-control-token.test.mjs'
 permissions:
   contents: read
 concurrency:
@@ -58,6 +60,7 @@ jobs:
           node --experimental-strip-types --test scripts/release-five-gate-contract.test.mjs scripts/release-security-regression.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
           node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
+          node --test scripts/tests/prepare-five-gate-control-token.test.mjs
   protected-release:
     needs: static-contract
     if: >-
@@ -108,6 +111,17 @@ jobs:
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           # Never swallow a failed provider gate as an authorized rollout.
           test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+      - name: Validate existing Control Plane admin secret or derive from existing root
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Derive only from the existing protected root. Check the actual live
+          # Worker's read-only admin status BEFORE GITHUB_ENV export.
+          # NEVER write or rotate the Worker secret in this release workflow.
+          node scripts/ops/prepare-five-gate-control-token.mjs
       - name: Execute ONLY selected gated operation
         shell: bash
         env:
