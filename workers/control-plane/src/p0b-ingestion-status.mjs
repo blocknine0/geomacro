@@ -6,8 +6,9 @@ const resp=(value,status=200)=>Response.json(value,{status,headers:{
  'Cache-Control':'private, no-store','X-Robots-Tag':'noindex,nofollow',
  'X-Content-Type-Options':'nosniff'
 }});
-export async function getP0bIngestionStatus(env){
- if(!env?.DB?.prepare)return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
+export async function getP0bIngestionStatus(env,{deep=false}={}){
+ if(!env?.DB?.prepare||typeof deep!=='boolean')
+  return resp({ok:false,error:'P0B_D1_BINDING_UNAVAILABLE'},503);
  try{
   const utcDay=new Date().toISOString().slice(0,10)+'T00:00:00.000Z';
   const [sources,states,admitted,guard,bundles,outbox]=await Promise.all([
@@ -21,9 +22,10 @@ export async function getP0bIngestionStatus(env){
     "SUM(CASE WHEN state='D1_COMMITTED' AND acked_at IS NOT NULL THEN 1 ELSE 0 END) AS committed,"+
     "SUM(CASE WHEN state='DEAD_LETTER' THEN 1 ELSE 0 END) AS dead_letter "+
     'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first(),
-   // Correlated checks use the existing unique B2 bundle URI and the
-   // b2_spool_uri item index; they never fetch protected source JSON.
-   env.DB.prepare(
+   // Only explicit root-admin deep parity performs correlated bundle/item
+   // journal joins. Routine health uses small bounded state totals; unknown
+   // cross-storage integrity is NEVER represented as a positive proof.
+   (deep?env.DB.prepare(
     "SELECT COUNT(*) AS total,"+
     "COALESCE(SUM(CASE WHEN state IN ('PENDING_ARCHIVE','REPLAYING') THEN 1 ELSE 0 END),0) AS pending,"+
     "COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) AS archived,"+
@@ -39,7 +41,15 @@ export async function getP0bIngestionStatus(env){
     "WHERE q.b2_spool_uri=p0b_archive_outbox.b2_uri)<>item_count "+
     "THEN 1 ELSE 0 END),0) AS item_journal_mismatch "+
     "FROM p0b_archive_outbox"
-   ).first(),
+   ).first():
+    env.DB.prepare(
+     "SELECT COUNT(*) AS total,"+
+     "COALESCE(SUM(CASE WHEN state IN ('PENDING_ARCHIVE','REPLAYING') THEN 1 ELSE 0 END),0) AS pending,"+
+     "COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) AS archived,"+
+     "COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (b2_uri IS NULL OR b2_object_sha256 IS NULL) THEN 1 ELSE 0 END),0) AS archived_missing_b2 "+
+     "FROM p0b_archive_outbox"
+    ).first()),
+
   ]);
   const queueState={PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
    RETRY:0,QUARANTINED:0,DEAD_LETTER:0};
@@ -62,7 +72,7 @@ export async function getP0bIngestionStatus(env){
    }
   }catch{/* Not a provider ACK proof; fail closed. */}
   const objects=bundles?.created??0,committedBundles=bundles?.committed??0;
-  const noOutboxMismatch=outbox!==null&&
+  const noOutboxMismatch=deep&&outbox!==null&&
    (outbox?.archived_missing_b2??-1)===0&&
    (outbox?.bundle_journal_mismatch??-1)===0&&
    (outbox?.item_journal_mismatch??-1)===0;
@@ -85,6 +95,7 @@ export async function getP0bIngestionStatus(env){
     archived_without_b2_pointer:outbox?.archived_missing_b2??null,
     archived_without_exact_bundle_journal:outbox?.bundle_journal_mismatch??null,
     archived_item_count_mismatch:outbox?.item_journal_mismatch??null,
+    parity_deep_check_performed:deep,
     integrity_zero_mismatch:noOutboxMismatch,
     fully_drained:noOutboxMismatch&&outboxDrained,
     bundle_objects_not_equated_with_candidate_rows:true,
