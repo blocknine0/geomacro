@@ -6,6 +6,7 @@
 import {readP0bSealedOutbox} from "./p0b-transactional-outbox.ts";
 import {restoreP0bR2Fallback} from "../storage/p0b-r2-fallback.ts";
 import {processFetchedBatch} from "./ingest-producer.ts";
+import {sendBudgetedP0BMessage} from "./p0b-queue-admission.ts";
 import type {ProducerEnv} from "./ingest-producer.ts";
 import type {R2FallbackEnv} from "../storage/p0b-r2-fallback.ts";
 
@@ -59,17 +60,17 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
  let sent=0,failed=0;
  for(const bundle of bundles){
   try{
-   await env.INGEST_QUEUE.send({kind:'P0B_BUNDLE_V1',
+   await sendBudgetedP0BMessage(env,{kind:'P0B_BUNDLE_V1',
     b2Uri:bundle.b2_spool_uri,bundleSha256:bundle.bundle_sha256,
-    candidateCount:bundle.item_count});sent++;
+    candidateCount:bundle.item_count},{now});sent++;
   }catch{failed++}
  }
  for(const row of rows){
   try{
-   await env.INGEST_QUEUE.send({
+   await sendBudgetedP0BMessage(env,{
     candidateSha256:row.candidate_sha256,
     sourceId:row.source_id,b2Uri:row.b2_spool_uri
-   });sent++;
+   },{now});sent++;
   }catch{failed++}
  }
  return {status:failed?'DRAIN_PARTIAL':'DRAINED_BATCH',count:sent,failed,
