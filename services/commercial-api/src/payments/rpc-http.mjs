@@ -27,6 +27,6 @@ export class SupabaseRpcPool {
   if(!match)throw new Error('HTTP_RPC_REQUIRES_SINGLE_ATOMIC_FUNCTION');
   const value=await this.call(match[1],args);
   const alias=match[2];
-  return {rows:match[1]==='x402_pending'?value.map(result=>({[alias]:result})):[{[alias]:value}]};
+  return {rows:['x402_pending','polygon_x402_pending'].includes(match[1])?value.map(result=>({[alias]:result})):[{[alias]:value}]};
  }
 }
