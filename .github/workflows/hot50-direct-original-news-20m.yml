@@ -90,7 +90,6 @@ on:
 permissions:
   contents: read
   actions: read
-  checks: read
 
 # Prevent push/PR verification from replacing an actual 20-minute source run.
 concurrency:
@@ -401,40 +400,3 @@ jobs:
           node-version: "24"
       - name: Refuse vacuous schedule success unless actual publisher collection job completed
         run: node scripts/ops/verify-hot50-continuity-run.mjs --scheduled-run
-
-
-  codeql-pr-annotation-diagnostic:
-    # Read-only diagnostic of the exact PR CodeQL finding (no dismiss, no secret).
-    # It cannot override CodeQL failure or approve any production deployment.
-    needs: source-contract
-    if: >-
-      always() &&
-      github.repository == 'blocknine0/geomacro' &&
-      github.event_name == 'pull_request'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 7
-    permissions:
-      contents: read
-      checks: read
-    env:
-      GH_TOKEN: ${{ github.token }}
-      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-    steps:
-      - name: Report only exact-head CodeQL warning path, line and title
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$PR_HEAD_SHA" =~ ^[a-f0-9]{40}$ ]] || exit 1
-          for attempt in $(seq 1 35); do
-            checks="$(gh api "repos/$GITHUB_REPOSITORY/commits/$PR_HEAD_SHA/check-runs?per_page=100")"
-            id="$(printf '%s' "$checks" | jq -r '[.check_runs[] | select(.name == "CodeQL")] | max_by(.id) | .id // empty')"
-            conclusion="$(printf '%s' "$checks" | jq -r '[.check_runs[] | select(.name == "CodeQL")] | max_by(.id) | .conclusion // empty')"
-            if [[ "$id" =~ ^[0-9]+$ && -n "$conclusion" ]]; then
-              echo "EXACT_PR_CODEQL_CONCLUSION=$conclusion"
-              gh api "repos/$GITHUB_REPOSITORY/check-runs/$id/annotations?per_page=100" \
-                --jq '.[] | {path, line: .start_line, severity: .annotation_level, title}'
-              exit 0
-            fi
-            sleep 7
-          done
-          echo "::warning::EXACT_PR_CODEQL_ANNOTATION_NOT_READY"
