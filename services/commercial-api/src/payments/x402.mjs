@@ -67,10 +67,21 @@ export class X402Engine {
   if(payment.resource)requireValue(payment.resource.url===this.resource(input).url,'PAYMENT_RESOURCE_MISMATCH',402);
   const {authorization,payer,nonce}=await this.rail.validateAuthorization(payment,expected);
   const block=await this.base.blockNumber();
+  const issuedAtMs=Date.now(),generatedAt=new Date(issuedAtMs).toISOString();
+  const evidenceExpires=Date.parse(risk.evidence_valid_until);
+  const expiresAtMs=Number.isFinite(evidenceExpires)
+   ?Math.min(issuedAtMs+3*3600000,evidenceExpires):issuedAtMs+3*3600000;
+  requireValue(expiresAtMs>issuedAtMs,'EVIDENCE_EXPIRED_NO_CHARGE',503);
+  const polygon=this.rail.paymentRail==='polygon_usdc';
+  const railSigned=polygon?{
+   payment_network:this.rail.network,payment_facilitator:'dexter',
+   payment_token_address:expected.asset.toLowerCase(),
+   verdict_expires_at:new Date(expiresAtMs).toISOString(),
+  }:{};
   const payload={request_id:input.request_id,subject:input.subject,requested_tier:input.tier,
-   ...safeRiskFields(risk),billed_tier:tier,credits_deducted:0,
+   ...safeRiskFields(risk),...railSigned,billed_tier:tier,credits_deducted:0,
    payment_rail:this.rail.paymentRail,payment_amount_atomic:String(amounts[tier]),payer,payee:this.payee,payment_nonce:nonce,
-   execution_authorized:false,generated_at:new Date().toISOString(),public_key_id:this.publicKeyId};
+   execution_authorized:false,generated_at:generatedAt,public_key_id:this.publicKeyId};
   const canonical=canonicalize(payload),signature=sign(null,Buffer.from(canonical),this.privateKey).toString('base64');
   requireValue(verifyReceipt(canonical,{signature,public_key_id:this.publicKeyId,timestamp:payload.generated_at,hash:hash(canonical)},
    this.publicKeys[this.publicKeyId]),'SIGNATURE_VERIFICATION_FAILED');
@@ -78,6 +89,9 @@ export class X402Engine {
   // authorization to a facilitator. A durable result survives process crashes.
   JSON.stringify({...payload,audit_receipt:{signature}});signal?.throwIfAborted();
   intent=await rpc(this.pool,this.rail.ops.prepare,[JSON.stringify({request_id:input.request_id,request_hash:this.fingerprint(input),
+   ...(polygon?{network:this.rail.network,token_address:expected.asset.toLowerCase(),
+    facilitator:'dexter',evidence_receipt_hash:risk.evidence_receipt_hash,
+    verdict_issued_at:generatedAt,verdict_expires_at:railSigned.verdict_expires_at}:{}),
    subject:input.subject,requested_tier:input.tier,billed_tier:tier,amount_atomic:String(amounts[tier]),
    payer_address:payer,payee_address:this.payee,nonce,payment_hash:hash(canonicalize(payment)),payment_payload:payment,
    canonical_payload:canonical,signature,public_key_id:this.publicKeyId,scan_from_block:String(block)})]);
