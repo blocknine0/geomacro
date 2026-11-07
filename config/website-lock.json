@@ -1254,7 +1254,7 @@
   },
   "approved_store_api_credit_parity_20261108": {
     "approval": "Founder directly requested on 2026-11-08 that GeoMacro Store pricing, API pricing and prepaid credit deduction be made consistent and published live. Approval covers only those two no-funds presentation blobs; backend parity is separate PR #3715.",
-    "approved_source_commit": "b2107a958e77b9a177bc2d1da32a98291f6aa0c3",
+    "approved_source_commit": "cb0afb6cc95ef2a130aed6d24c6e0e84e8f799be",
     "approved_paths": [
       "src/components/category-api-pricing.tsx",
       "src/routes/pricing.tsx"
