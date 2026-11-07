@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readPrivateB2Object } from "../lib/b2-private-archive-read.server";
+import { b2PrivateArchiveReadConfigured,readPrivateB2Object } from "../lib/b2-private-archive-read.server";
 
 const KEYS = [
   "B2_ARCHIVE_READ_KEY_ID",
@@ -14,6 +14,9 @@ const KEYS = [
   "D1_DATABASE_ID",
   "B2_ACCOUNT_QUOTA_REQUIRED",
   "B2_ACCOUNT_QUOTA_WORKFLOW_ID",
+  "GEOMACRO_CONTROL_PLANE_TOKEN",
+  "CONTROL_PLANE_TOKEN",
+  "GEOMACRO_COMMERCE_LEDGER_TOKEN",
 ] as const;
 const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
 
@@ -49,6 +52,49 @@ function quotaReceipt(url: string, init: any): Response | null {
 }
 
 describe("private B2 server native fallback", () => {
+  it("uses authenticated Control Plane tickets without privileged D1 API secrets",async()=>{
+    setReadCredentials("worker-authorized");
+    delete process.env.CLOUDFLARE_ACCOUNT_ID;
+    delete process.env.CLOUDFLARE_API_TOKEN;
+    delete process.env.D1_DATABASE_ID;
+    process.env.GEOMACRO_CONTROL_PLANE_TOKEN="q".repeat(64);
+    expect(b2PrivateArchiveReadConfigured()).toBe(true);
+    const seen: string[]=[];
+    vi.stubGlobal("fetch",vi.fn(async (input,init:any={})=>{
+      const url=String(input);seen.push(url);
+      if(url.endsWith("/v1/b2-quota/reserve")){
+        expect(init.headers.Authorization).toBe("Bearer "+"q".repeat(64));
+        const payload=JSON.parse(init.body);
+        expect(payload).toEqual({kind:"GET",workflow_id:"private_archive_read"});
+        return Response.json({ok:true,schema:"geomacro.b2-account-request-reservation.v1",
+          reserved:true,kind:"GET",b2_operation_performed:false,chargeable:false});
+      }
+      if(url.startsWith("https://s3.us-east-005.backblazeb2.com/"))
+        return new Response("protected-verified-bytes",{status:200});
+      throw Error("UNEXPECTED_QUOTA_TRANSPORT");
+    }));
+    const bytes=await readPrivateB2Object("geomacro-evidence/v1/review.json");
+    expect(bytes.toString()).toBe("protected-verified-bytes");
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toContain("/v1/b2-quota/reserve");
+  });
+  it("never contacts B2 or falls back to D1 when the selected Control Plane rejects a reservation",async()=>{
+    setReadCredentials("worker-denied");
+    // Even with an alternate primary credential, one denied shared quota
+    // ticket must be terminal; never rotate credentials or retry admission.
+    process.env.B2_KEY_ID="primary-alternate";
+    process.env.B2_APPLICATION_KEY="alternate-secret";
+    process.env.GEOMACRO_CONTROL_PLANE_TOKEN="q".repeat(64);
+    const seen:string[]=[];
+    vi.stubGlobal("fetch",vi.fn(async (input)=>{
+      seen.push(String(input));
+      return Response.json({ok:false,error:"B2_GLOBAL_DAILY_QUOTA_EXHAUSTED"},{status:429});
+    }));
+    await expect(readPrivateB2Object("geomacro-evidence/v1/review.json"))
+      .rejects.toThrow("B2_PRIVATE_ACCOUNT_QUOTA_HELD");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toContain("/v1/b2-quota/reserve");
+  });
   it("holds the private restore before B2 when the shared D1 quota is unavailable", async () => {
     setReadCredentials("quota-denied");
     const seen: string[] = [];
