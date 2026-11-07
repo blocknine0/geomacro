@@ -127,23 +127,32 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
        WHERE website_derived_intelligence.category=excluded.category
         AND website_derived_intelligence.published_at=excluded.published_at
         AND website_derived_intelligence.date_precision=excluded.date_precision
-        AND website_derived_intelligence.story_json <> excluded.story_json`
+        AND website_derived_intelligence.story_json <> excluded.story_json
+       RETURNING id,category,published_at,date_precision,story_json`
     ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
     // D1 migration 0033 automatically bumps data_revision on any canonical
     // INSERT/UPDATE/DELETE (transactionally in the original 50-write batch).
     // Trigger fencing avoids a dangerous 51st statement in a full batch.
     if(statements.length){
-      await env.DB.batch(statements);
+      const writes=await env.DB.batch(statements);
+      if(!Array.isArray(writes)||writes.length!==statements.length||writes.some(r=>r?.success===false||!Array.isArray(r.results)))
+        throw Error("DERIVED_NEWS_RETURNING_INVALID");
+      const returned=writes.flatMap(r=>r.results);
+      const returnedIds=new Set(returned.map(r=>r.id));
+      const unresolved=body.signals.filter(s=>!returnedIds.has(s.id));
+      // Conditional no-ops include both unchanged rows and immutable conflicts.
+      // Only these IDs require canonical verification; changed rows use RETURNING.
       // One bounded indexed read of the exact 1..50 IDs, not a full journal
       // scan. SQLite's ON CONFLICT(id) ... WHERE is a silent no-op for a
       // different source-native date, precision or category. A bare batch
       // success cannot be a truthful persisted-record ACK without this check.
       const expected=new Map(body.signals.map(story=>[story.id,story]));
-      const placeholders=body.signals.map(()=>"?").join(",");
-      const {results:observed=[]}=await env.DB.prepare(
+      const placeholders=unresolved.map(()=>"?").join(",");
+      const {results:unchanged=[]}=unresolved.length?await env.DB.prepare(
         "SELECT id,category,published_at,date_precision,story_json "+
         "FROM website_derived_intelligence WHERE id IN ("+placeholders+")"
-      ).bind(...body.signals.map(story=>story.id)).all();
+      ).bind(...unresolved.map(story=>story.id)).all():{results:[]};
+      const observed=[...returned,...unchanged];
       if(!Array.isArray(observed)||observed.length!==expected.size)
         return json({ok:false,error:"DERIVED_NEWS_ACK_ID_NOT_PERSISTED",
           accepted:0,chargeable:false},409);

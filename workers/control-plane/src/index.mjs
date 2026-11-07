@@ -1,3 +1,4 @@
+import {attributeD1} from "./d1-query-attribution.mjs";
 import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
 import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
@@ -1315,7 +1316,7 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
   }
 }
 
-export default {
+const worker = {
   async scheduled(controller,env,ctx){
     // At most one daily bounded TTL cleanup; never blocks the source ingest.
     const askTtlAt=new Date(controller?.scheduledTime??Date.now());
@@ -2289,3 +2290,14 @@ export default {
     }
   },
 };
+
+export default Object.fromEntries(Object.entries(worker).map(([name,handler])=>[name,async function(event,env,ctx){
+ if(!env?.DB)return handler.call(worker,event,env,ctx);
+ const telemetry=attributeD1(env.DB);
+ const context=ctx?new Proxy(ctx,{get(target,key){
+   if(key==='waitUntil')return task=>target.waitUntil(Promise.resolve(task).finally(()=>telemetry.flush()));
+   const value=Reflect.get(target,key,target);return typeof value==='function'?value.bind(target):value;
+ }}):ctx;
+ try{return await handler.call(worker,event,{...env,DB:telemetry.db},context)}
+ finally{telemetry.flush()}
+}]));
