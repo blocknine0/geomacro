@@ -8,7 +8,14 @@ const bindings=[
  {name:"DB",type:"d1"},
  {name:"INGEST_QUEUE",type:"queue"},
  {name:"SOURCE_POLL_QUEUE",type:"queue"},
- {name:"CONTROL_PLANE_TOKEN",type:"secret_text"}
+ {name:"CONTROL_PLANE_TOKEN",type:"secret_text"},
+ {name:"RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"},
+ {name:"RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64",type:"secret_text"},
+ {name:"RISK_GATE_DECISION_ED25519_KEY_ID",type:"secret_text"},
+ {name:"GEOMACRO_SOURCE_SHA",type:"plain_text",text:SHA},
+ {name:"RISK_GATE_COUNTRY_SCOPE",type:"plain_text",text:"HOT50"},
+ {name:"GEOMACRO_P0B_ADMISSION_ACTIVE",type:"plain_text",text:"1"},
+ {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"}
 ];
 const version=(id,message="")=>({
  id,annotations:{"workers/message":message},resources:{bindings}
@@ -74,4 +81,15 @@ test("empty, split, unrelated or over-100 percent deployed states hold",()=>{
  assert.equal(check(5,1,{deployment:{deployments:[{versions:[
   {version_id:A,percentage:90},{version_id:B,percentage:20}
  ]}]}}).eligible,false);
+});
+
+test("0% upload alone is not a 1% readiness receipt",()=>{
+ assert.equal(check(1,0,{deployment:at(0,false)}).eligible,false);
+});
+test("P1 and Hot50 runtime flags must be provider-readable and enabled",()=>{
+ const bad=bindings.map(x=>x.name==="GEOMACRO_P1_BUNDLED_LEASES_ENABLED"?
+   {...x,text:"0"}:x);
+ const candidate={...version(B,"geomacro-main:"+SHA),resources:{bindings:bad}};
+ assert.equal(check(1,0,{candidateVersion:candidate}).reason,
+  "CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
 });
