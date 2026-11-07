@@ -1,3 +1,4 @@
+import {admitP0bSourceStorage} from './p0b-source-storage-admission.mjs';
 /**
  * P1 source fan-out on the EXISTING private Cloudflare control-plane Worker.
  *
@@ -30,6 +31,9 @@ export async function dispatchP1DueSources(env,{now=Date.now(),limit=MAX_DUE}={}
     !Number.isSafeInteger(limit)||limit<1||limit>MAX_DUE||
     !Number.isFinite(now))
   return {status:"P1_DISPATCH_BINDING_UNAVAILABLE",selected:0,queued:0};
+ const storage=await admitP0bSourceStorage(env,now);
+ if(!storage.admitted)return {status:storage.reason,selected:0,queued:0,
+  ...(storage.retry_at?{retry_at:storage.retry_at}:{}),storage_held:true};
  // Existing 1077-source fanout stays enabled, but one bundled lease row
  // replaces up to 108 physical per-source dispatcher lease writes.
  if(env.GEOMACRO_P1_BUNDLED_LEASES_ENABLED==="1")
