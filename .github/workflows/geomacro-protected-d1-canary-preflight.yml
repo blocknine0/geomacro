@@ -9,6 +9,8 @@ on:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
       - "scripts/ops/verify-protected-d1-migration-gate.mjs"
+      - "scripts/ops/verify-protected-d1-migration-headroom.mjs"
+      - "scripts/tests/verify-protected-d1-migration-headroom.test.mjs"
       - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
@@ -26,12 +28,17 @@ on:
   # change traffic, migrate D1, touch B2 or activate funds.
   schedule:
     - cron: "15,35,55 * * * *"
+    # Early-UTC corrective schema window before old Worker burns daily headroom.
+    # Provider counters still independently gate every real migration.
+    - cron: "4 0 * * *"
   workflow_dispatch: {}
   pull_request:
     paths:
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
       - "scripts/ops/verify-protected-d1-migration-gate.mjs"
+      - "scripts/ops/verify-protected-d1-migration-headroom.mjs"
+      - "scripts/tests/verify-protected-d1-migration-headroom.test.mjs"
       - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
@@ -65,7 +72,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
@@ -100,15 +107,51 @@ jobs:
           if-no-files-found: ignore
 
 
-  # Stage B executes only after Stage A's actual same-run provider PASS.
+  # Separate migration-only read-only proof: existing Worker can burn hourly
+  # pacing faster than a corrective schema migration can be applied.
+  # This does NOT change the regular Stage A outcome or unlock Worker traffic.
+  provider-migration-headroom:
+    needs: no-funds-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify real baseline, bookmark, paid plan and 80k read/write repair reserve
+        run: node scripts/ops/verify-protected-d1-migration-headroom.mjs
+      - name: Save nonsecret migration-only headroom receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-protected-d1-migration-headroom
+          path: artifacts/protected-canary/migration-preflight-only.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Stage B executes only after fresh independent migration-only headroom PASS.
+  # A normal 0%-canary Stage A pacing HOLD is not silently treated as a PASS.
   # There is no Worker upload, traffic promotion, payment or destructive restore.
   protected-0204-0211-migration:
-    needs: provider-readonly-preflight
+    needs: provider-migration-headroom
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request' &&
-      needs.provider-readonly-preflight.result == 'success'
+      needs.provider-migration-headroom.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: production

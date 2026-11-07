@@ -19,8 +19,11 @@ export function evaluateMigrationBudget(plan,now=new Date()){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
   plan?.day_utc!==now.toISOString().slice(0,10)||
   plan?.workers_paid_subscription_verified!==true||
-  plan?.owner_d1_normal_envelope?.held!==false||
-  plan?.critical!==true||
+  !(
+   (plan?.owner_d1_normal_envelope?.held===false&&plan?.critical===true)||
+   (plan?.owner_d1_normal_envelope?.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"&&
+    plan?.reason==="GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD")
+  )||
   plan?.owner_d1_utc_daily_targets?.rows_read!==140000||
   plan?.owner_d1_utc_daily_targets?.normal_rows_written!==140000||
   plan?.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
