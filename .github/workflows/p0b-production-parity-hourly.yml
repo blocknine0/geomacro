@@ -104,7 +104,7 @@ jobs:
           TOKEN="$(node -e "const c=require('node:crypto');process.stdout.write(c.createHmac('sha256',process.env.ROOT_LEDGER_TOKEN).update('geomacro-control-plane-v1').digest('hex'))")"
           echo "::add-mask::$TOKEN"
           STATUS="$(curl --fail-with-body -fsS --max-time 20 \
-            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+            -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
           printf '%s' "$STATUS" | jq -c '{
             schema,checked_at,activation_flag,
             source_registry,queue_state,normalized_metadata_rows,b2_storage_guard,
@@ -190,7 +190,7 @@ jobs:
             for i in 1 2 3 4 5 6; do
               sleep 10
               STATUS="$(curl --fail-with-body -fsS --max-time 20 \
-                -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+                -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
               if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
                 break
               fi
@@ -218,7 +218,7 @@ jobs:
           # before asserting day-level parity, not merely latest-candidate proof.
           for i in 1 2 3 4 5 6; do
             STATUS="$(curl --fail-with-body -fsS --max-time 20 \
-              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status")"
+              -H "authorization: Bearer $TOKEN" "$WORKER_ROOT/v1/internal/p0b/status?deep=1")"
             if printf '%s' "$STATUS" | jq -e '.live_bundle_parity.assertion_passed==true' >/dev/null; then
               break
             fi
