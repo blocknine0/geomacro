@@ -35,7 +35,15 @@ test("owner admission respects total write cap with provider lag explicitly stat
 });
 test("Hot50 20-minute sealed transport remains independent of total D1 cap",()=>{
  const w=readFileSync(new URL("../../.github/workflows/hot50-direct-original-news-20m.yml",import.meta.url),"utf8");
- assert.ok(w.includes("needs.collect-direct-20m.result == 'failure'"));
+ // The writer can FAIL or be SKIPPED after a quota PASS; both must
+ // activate encrypted no-D1 holding. The previous test pinned the retired
+ // failure-only spelling and incorrectly blocked protected D1 migration.
+ assert.ok(w.includes("needs.quota-admission.result == 'failure'"));
+ assert.ok(w.includes("needs.quota-admission.result == 'skipped'"));
+ assert.ok(w.includes("needs.quota-admission.outputs.source_intake != 'true'"));
+ assert.ok(w.includes("needs.collect-direct-20m.result != 'success'"));
+ assert.ok(w.includes("always() &&"));
+ assert.ok(w.includes("needs.source-contract.result == 'success'"));
  assert.ok(w.includes('GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"'));
  assert.ok(w.includes('cron: "6,26,46 * * * *"'));
  assert.ok(!w.includes('GEOMACRO_RISK_GATE_COMMERCIAL_ENABLED: "true"'));
