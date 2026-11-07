@@ -124,13 +124,13 @@ test('website schema check respects actual SQLite original ordered index with ph
  // The real Cloudflare EXPLAIN in run 42415525486 selected the original
  // idx_website_derived_intelligence_latest from migration 0017, which has
  // exactly the published_at DESC / id DESC order for this bounded query.
- assert.match(migration,/CREATE INDEX IF NOT EXISTS idx_website_derived_intelligence_latest[\\s\\S]*?\\(published_at DESC,id DESC\\)/u);
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS idx_website_derived_intelligence_latest[\s\S]*?\(published_at DESC,id DESC\)/u);
  assert.match(code,/table:'website_derived_intelligence',index:'idx_website_derived_intelligence_latest'/u);
  assert.match(code,/PRAGMA index_xinfo/u);
- assert.match(code,/keys\\.length===2/u);
- assert.match(code,/keys\\[0\\]\\.name==='published_at'/u);
- assert.match(code,/keys\\[1\\]\\.name==='id'/u);
- assert.match(code,/keys\\[0\\]\\.desc===1&&keys\\[1\\]\\.desc===1/u);
+ assert.match(code,/keys\.length===2/u);
+ assert.match(code,/keys\[0\]\.name==='published_at'/u);
+ assert.match(code,/keys\[1\]\.name==='id'/u);
+ assert.match(code,/keys\[0\]\.desc===1&&keys\[1\]\.desc===1/u);
  assert.match(code,/RELEASE_WEBSITE_NATIVE_ORDER_INDEX_SHAPE_INVALID/u);
  // Newly-added v2 index stays protected by the existing 0204–0211
  // schema-object and history checks, even when SQLite chooses original.
