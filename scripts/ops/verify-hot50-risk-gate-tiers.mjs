@@ -8,7 +8,6 @@ const token=process.env.RISK_GATE_TIERED_TOKEN;
 if(!/^[a-f0-9]{64}$/.test(token??""))throw Error("HOT50_TIER_PROOF_SECRET_MISSING");
 const full=process.env.HOT50_TIER_FULL_CENSUS==="1";
 const ids=full?RISK_GATE_HOT50:[RISK_GATE_HOT50[Math.floor(Date.now()/1200000)%50]];
-const receipts=[];
 let rollup=null;
 if(full){
  const root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
@@ -49,7 +48,8 @@ await Promise.all(Array.from({length:concurrency},async(_,worker)=>{
 }));
 const cells=ids.flatMap(id=>HOT50_CATEGORY_KEYS.map(category=>{
  const valid=receipts.filter(x=>x.country_iso3===id&&x.contract_valid);
- const verified=valid.some(x=>x.verified_current_three_category);
+ const verified=valid.some(x=>x.verified_current_three_category&&
+   x.category_statuses?.[category]==="VERIFIED_SIGNED_GRO");
  const state=valid.find(x=>x.category_statuses?.[category])?.category_statuses?.[category]??"INVALID_OR_MISSING";
  return {country_iso3:id,category,status:verified?"VERIFIED_CURRENT_SIGNED_GRO":state,verified_current_signed_gro:verified};
 }));

@@ -54,3 +54,12 @@ test("expiry, missing category, unknown categories, bad prices and charged respo
  }
  assert.equal(inspect(response(),503).contract_valid,false);
 });
+
+test("a claimed signed score never upgrades an observed-only cell to verified",()=>{
+ const body=response();
+ body.categories.MACRO_FX.status="OBSERVED_UNVERIFIED";
+ const got=inspect(body);
+ assert.equal(got.contract_valid,true);
+ assert.equal(got.verified_current_three_category,false);
+ assert.equal(got.category_statuses.MACRO_FX,"OBSERVED_UNVERIFIED");
+});
