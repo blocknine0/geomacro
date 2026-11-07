@@ -44,6 +44,8 @@ test('user-required controls and no-funds release architecture remain explicit',
  const audit=readFileSync('scripts/release-remediate.ts','utf8');
  assert.match(workflow,/environment: production/);
  assert.match(workflow,/cancel-in-progress: false/);
+ assert.match(workflow,/MIGRATE_D1_0204_0211_NO_FUNDS/);
+ assert.match(workflow,/npm run release:quota/);
  assert.match(workflow,/test -f config\/d1-hotspot-v2-canary\.hold/);
  assert.doesNotMatch(workflow,/continue-on-error: true/);
  assert.match(source,/const STAGES=\[0,1,10,100\]/);
