@@ -4,11 +4,14 @@
  * Cloudflare's enabled usage_block spend policy can stop Workers and Durable
  * Objects after product-metered threshold crossing. It does NOT cap D1, R2,
  * KV, Queues, taxes, the $5 subscription, or other account charges; metering
- * and enforcement may lag. Therefore this is an admission prerequisite, not
+ * and enforcement may lag. Verification is advisory by owner authorization, not
  * a universal hard-billing limit. Never treat an email budget alert as a lock.
  *
  * This module is READ-ONLY. It cannot create subscriptions/spend policies.
  */
+// Owner authorization 2026-11-07: verification is advisory only. Preserve
+// actual provider results; never manufacture a verified policy or change it.
+export const SPEND_POLICY_VERIFICATION_ENFORCED=false;
 export const FIVE_USD_SPEND_GUARD_SCHEMA="geomacro.cloudflare-five-usd-spend-lock.v1";
 export const FIVE_USD_MINIMUM_THRESHOLD_CENTS=1;
 export const FIVE_USD_PRODUCTS=Object.freeze(["workers","durable_objects"]);

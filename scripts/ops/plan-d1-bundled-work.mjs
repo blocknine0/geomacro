@@ -10,7 +10,7 @@ import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
-import {readFiveUsdSpendGuard,FIVE_USD_SPEND_GUARD_SCHEMA} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {readFiveUsdSpendGuard,SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -226,7 +226,7 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
-export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendGuardProof=null}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -246,16 +246,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   // authorized emergency recovery. Paid monthly inclusion != daily permission.
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
-  const paid=spendGuardProof?.schema===FIVE_USD_SPEND_GUARD_SCHEMA&&
-    spendGuardProof.verified===true&&
-    spendGuardProof.usage_block_threshold_cents===1&&
-    Array.isArray(spendGuardProof.products)&&
-    spendGuardProof.products.join(",")==="workers,durable_objects"&&
-    spendGuardProof.source==="CLOUDFLARE_ACCOUNT_READONLY_SPEND_POLICIES"&&
-    Number.isFinite(Date.parse(spendGuardProof.observed_at))&&
-    Date.parse(spendGuardProof.observed_at)<=now.getTime()&&
-    now.getTime()-Date.parse(spendGuardProof.observed_at)<=5*60_000&&
-    paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
+  // Spend-policy verification is advisory; verified subscription and all
+  // existing owner daily budgets remain mandatory for Paid admission.
+  const paid=paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
     paidProof.verified===true&&
     paidProof.source==="CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ"&&
     paidProof.subscription_changed===false&&
@@ -628,17 +621,16 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     let paidSubscriptionVerified=false;
     // An existing account token may already have Billing Read permission.
     // Try its read-only provider endpoints before requiring another secret;
-    // a 403, missing policy or ambiguous proof still cannot unlock capacity.
+    // Missing subscription evidence cannot unlock Paid capacity. Spend policy
+    // failures remain visible as advisory diagnostics.
     const billingEnv=env.CLOUDFLARE_BILLING_READ_TOKEN?env:
       {...env,CLOUDFLARE_BILLING_READ_TOKEN:env.CLOUDFLARE_API_TOKEN};
     if(billingEnv.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
         const candidate=await readCloudflareWorkersPaidProof({env:billingEnv,fetchImpl,now});
         paidSubscriptionVerified=true;
-        // The $5 subscription is NOT a spending limit. The Paid source lane
-        // stays on the Free-plan quota unless BOTH provider-side usage_block
-        // policies (Workers and Durable Objects) are independently verified.
-        // This protects paid admission, not ungoverned D1/other operations.
+        paidProof=candidate;
+        // Keep the real policy diagnostic without making it a capacity gate.
         const guard=await readFiveUsdSpendGuard({env:billingEnv,fetchImpl,now});
         if(guard.verified===true){paidProof=candidate;spendGuardProof=guard;paidProbe="VERIFIED";}
       }catch(error){
@@ -654,36 +646,8 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         ownerBudget.safety_buffer_rows_read>=ownerBudget.rows_read||
       quota.observed_rows_written+
         ownerBudget.safety_buffer_rows_written>=ownerBudget.normal_rows_written;
-    const spendHold=paidSubscriptionVerified&&spendGuardProof?.verified!==true;
-    // Policy API 404 must not turn a previously safe Free-envelope ingestion
-    // into a paid admission. Allow only the existing conservative, bounded,
-    // non-commercial Free-safe source lane if provider snapshots support it;
-    // do not grant paid critical signing, revenue or backlog drains.
-    const fallback=spendHold&&!ownerNormalHold?
-      planD1BundledWork(quota,{now}):null;
-    const safeFallback=fallback&&fallback.source_intake===true&&
-      // The full-day Free-intake reserve must ALSO fit the owner's much
-      // smaller 140k read/140k normal write budgets, not the Free 5M cap.
-      quota.observed_rows_read+ownerBudget.safety_buffer_rows_read+
-        (fallback.source_intake_budget_to_utc_reset?.rows_read??Infinity)<
-        ownerBudget.rows_read&&
-      quota.observed_rows_written+ownerBudget.safety_buffer_rows_written+
-        (fallback.source_intake_budget_to_utc_reset?.rows_written??Infinity)<
-        ownerBudget.normal_rows_written;
     const result=ownerNormalHold?
       held("GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
-      spendHold?Object.freeze({
-        ...held("WORKERS_PAID_SPEND_POLICY_UNVERIFIED_SAFE_DEGRADE",now),
-        source_intake:safeFallback===true,
-        source_intake_interval_minutes:safeFallback===true?
-          fallback.source_intake_interval_minutes:null,
-        source_intake_max_new_rows:safeFallback===true?
-          fallback.source_intake_max_new_rows:0,
-        source_intake_budget_to_utc_reset:safeFallback===true?
-          fallback.source_intake_budget_to_utc_reset:null,
-        phase2h_raw_archive:false,
-        degraded_noncommercial_free_safe_only:true,
-      }):
       planD1BundledWork(quota,{now,paidProof,spendGuardProof});
     // 40k write rows are deliberately unavailable to the ordinary planner.
     // Emergency restoration requires separate explicit authorization; this
@@ -693,6 +657,9 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         ownerBudget.normal_rows_written,quota.observed_rows_written));
     return {...result,
       paid_capacity_probe_status:paidProbe,
+      spend_policy_verification_enforced:SPEND_POLICY_VERIFICATION_ENFORCED,
+      spend_policy_verification_status:spendGuardProof?.verified===true?"VERIFIED":"UNVERIFIED_ADVISORY",
+      spend_policy_verified:spendGuardProof?.verified===true,
       workers_paid_subscription_verified:paidSubscriptionVerified,
       owner_d1_utc_daily_targets:ownerBudget,
       owner_d1_utc_budget_held:ownerNormalHold,
