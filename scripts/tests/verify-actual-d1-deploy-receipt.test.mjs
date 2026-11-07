@@ -37,3 +37,25 @@ test("PR, stale SHA, wrong repository, missing API page or duplicate job is deni
  for(const input of altered)
   assert.equal(assessActualD1Deploy(input).admitted,false);
 });
+
+test("all three production proof workflows refuse hold-only deploy events",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const files=[
+  ".github/workflows/hot50-production-activation-proof.yml",
+  ".github/workflows/p0b-production-parity-hourly.yml",
+  ".github/workflows/p0b-source-first-production-acceptance.yml",
+ ];
+ for(const path of files){
+  const data=readFileSync(new URL("../../"+path,import.meta.url),"utf8");
+  assert.match(data,/needs\.deploy_receipt\.outputs\.actual_deploy == 'true'/);
+  assert.match(data,/DEPLOY_WORKFLOW_RUN_ID:/);
+  assert.match(data,/verify-actual-d1-deploy-receipt\.mjs/);
+ }
+ const parity=readFileSync(new URL(
+  "../../.github/workflows/p0b-production-parity-hourly.yml",
+  import.meta.url),"utf8");
+ assert.match(parity,/cron: '23 0,6,12,18 \* \* \*'/);
+ assert.match(parity,/\$GITHUB_EVENT_NAME" = "schedule"/);
+ assert.match(parity,/\$GITHUB_EVENT_NAME" != "schedule"/);
+ assert.doesNotMatch(parity,/cron: '23 \* \* \* \*'/);
+});
