@@ -14,9 +14,11 @@ const start=src.indexOf("const HOT50_ORIGINAL_TITLE_ALIASES=");
 const end=src.indexOf("\nfunction severity(",start);
 assert.ok(start>0&&end>start);
 const pure=src.slice(start,end);
-const ctx={COUNTRIES:countries};
-const parse=runInNewContext(pure+"\ncountryFromTitle;",ctx);
-const aliases=runInNewContext(pure+"\nHOT50_ORIGINAL_TITLE_ALIASES;",ctx);
+// Run the immutable pure source exactly once: a second evaluation in the
+// same VM context would redeclare its const binding and falsely fail CI.
+const {parse,aliases}=runInNewContext(pure+
+ "\n({parse:countryFromTitle,aliases:HOT50_ORIGINAL_TITLE_ALIASES});",
+ {COUNTRIES:countries});
 
 test("all owner-selected Hot50 countries get conservative explicit native-title aliases",()=>{
  const hot50=("USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AUS BRA MEX ITA ESP "+
