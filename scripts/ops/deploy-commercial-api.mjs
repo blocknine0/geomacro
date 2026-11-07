@@ -84,6 +84,25 @@ try{
  if(!r.ok||ready.ledger_verified!==true)throw Error('COMMERCIAL_POSTGRES_READBACK_FAILED');
  const jwks=await (await fetch(origin+'/.well-known/jwks.json')).json();
  if(!jwks.keys?.some(k=>k.kid===keyId&&k.crv==='Ed25519'))throw Error('COMMERCIAL_PUBLIC_KEY_READBACK_FAILED');
+ // Owner explicitly chose a NO FUNDS release. Prove externally that nothing
+ // can charge or issue a 402 even when risk evidence becomes available.
+ let noFundsPaymentGate={status:'NOT_CHECKED'};
+ if(commercialNoFundsOnly){
+  if(health.paypal_configured!==false||health.x402_configured!==false||
+    health.polygon_x402_configured!==false||health.execution_authorized!==false||
+    !health.blockers?.includes('X402_NOT_ACTIVATED'))
+   throw Error('COMMERCIAL_NO_FUNDS_HEALTH_MISMATCH');
+  const blocked=await fetch(origin+'/v1/risk-gate',{method:'POST',redirect:'manual',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({request_id:'e4321467-a5e0-40d5-893b-77abc6d99401',
+    subject:'USA',tier:'basic'}),signal:AbortSignal.timeout(15000)});
+  const blockedBody=await blocked.json();
+  if(blocked.status!==423||blockedBody.error!=='COMMERCIAL_LAUNCH_FROZEN_OR_NOT_AUTHORIZED'||
+   blockedBody.execution_authorized!==false||blocked.headers.has('PAYMENT-REQUIRED')||
+   blocked.headers.has('PAYMENT-RESPONSE'))
+   throw Error('COMMERCIAL_NO_FUNDS_PUBLIC_ROUTE_MISMATCH');
+  noFundsPaymentGate={status:'PASS_423_FROZEN_NO_PAYMENT',payment_attempted:false};
+ }
  let evidenceProof={status:'NOT_PROBED'};
  if(config.vars.PUBLIC_API_ORIGIN){
   const canonical=await fetch(config.vars.PUBLIC_API_ORIGIN+'/v1/commercial/health',{signal:AbortSignal.timeout(15000)});
@@ -109,7 +128,8 @@ try{
   ledger_verified:true,signer_verified:health.signer_configured===true,
   paypal_configured:health.paypal_configured,x402_configured:health.x402_configured,
   blockers:health.blockers,evidence_proof:evidenceProof,xpay_no_funds_only:xpayNoFundsOnly,
-  polygon_no_funds_only:true,commercial_no_funds_only:commercialNoFundsOnly,real_payment_attempted:false};
+  polygon_no_funds_only:true,commercial_no_funds_only:commercialNoFundsOnly,
+  no_funds_public_route:noFundsPaymentGate,real_payment_attempted:false};
  console.log(JSON.stringify(summary));
  if(env.GITHUB_STEP_SUMMARY)appendFileSync(env.GITHUB_STEP_SUMMARY,'\n'+JSON.stringify(summary,null,2)+'\n');
 }catch(error){console.error(error.message);process.exitCode=1;}
