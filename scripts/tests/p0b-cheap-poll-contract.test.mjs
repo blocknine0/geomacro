@@ -56,14 +56,14 @@ test("only explicitly requested deep audit computes exact count and journal pari
   assert.ok(queries.some(q=>q.includes("NOT EXISTS (")));
 });
 test("production wait uses cheap status, but actual parity verdict requires deep proof",()=>{
-  const deepRequests=(workflow.match(/p0b\\/status\\?deep=1/g)||[]).length;
-  const cheapRequests=(workflow.match(/p0b\\/status"\\)/g)||[]).length;
-  const helperCalls=(workflow.match(/^\\s*wait_for_p0b_queue_hint\\s*$/gm)||[]).length;
+  const deepRequests=workflow.split("p0b/status?deep=1").length-1;
+  const cheapRequests=workflow.split('p0b/status")').length-1;
+  const helperCalls=workflow.split("\n").filter(line=>line.trim()==="wait_for_p0b_queue_hint").length;
   assert.equal(deepRequests,3,"initial + two separately verified phases");
   assert.equal(cheapRequests,1,"one shallow status request in bounded helper");
   assert.equal(helperCalls,2,"both phases wait on lightweight hints");
-  assert.match(workflow,/\\.live_bundle_parity\\.assertion_passed==true/g);
-  assert.match(workflow,/P0B_LIVE_CANARY_BUNDLE_D1_QUEUE_PARITY_MISSING/);
-  assert.match(workflow,/P0B_LIVE_DAY_PARITY_ASSERTION_FAILED/);
-  assert.match(workflow,/P0B_REAL_B2_D1_PARITY_VERIFIED/);
+  assert.ok(workflow.includes(".live_bundle_parity.assertion_passed==true"));
+  assert.ok(workflow.includes("P0B_LIVE_CANARY_BUNDLE_D1_QUEUE_PARITY_MISSING"));
+  assert.ok(workflow.includes("P0B_LIVE_DAY_PARITY_ASSERTION_FAILED"));
+  assert.ok(workflow.includes("P0B_REAL_B2_D1_PARITY_VERIFIED"));
 });
