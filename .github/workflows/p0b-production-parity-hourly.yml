@@ -14,6 +14,10 @@ on:
       - 'scripts/tests/p0b-capacity-canary-telemetry.test.mjs'
       - 'scripts/ops/verify-p0b-deep-census-budget.mjs'
       - 'scripts/tests/verify-p0b-deep-census-budget.test.mjs'
+      - 'scripts/tests/p0b-deep-bounded-cost.test.mjs'
+      - 'workers/control-plane/src/p0b-ingestion-status.mjs'
+      - 'scripts/tests/p0b-cheap-poll-contract.test.mjs'
+      - 'scripts/tests/attribute-d1-query-insights.test.mjs'
       - 'workers/control-plane/src/p0a-source-registry.mjs'
       - 'scripts/ops/verify-actual-d1-deploy-receipt.mjs'
       - 'scripts/tests/verify-actual-d1-deploy-receipt.test.mjs'
@@ -69,7 +73,7 @@ jobs:
         with:
           node-version: "24"
       - name: Run actual jq source-code diagnostics and no-leak guard
-        run: node --test scripts/tests/verify-p0b-deep-census-budget.test.mjs scripts/tests/p0b-capacity-canary-telemetry.test.mjs scripts/tests/p0b-cheap-poll-contract.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
+        run: node --test scripts/tests/p0b-deep-bounded-cost.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/verify-p0b-deep-census-budget.test.mjs scripts/tests/p0b-capacity-canary-telemetry.test.mjs scripts/tests/p0b-cheap-poll-contract.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
 
   real-parity:
     needs: deploy_receipt
