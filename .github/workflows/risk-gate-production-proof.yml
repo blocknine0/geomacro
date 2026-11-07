@@ -6,6 +6,8 @@ on:
       - "workers/control-plane/src/risk-gap-enrichment.mjs"
       - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
+      - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
       - ".github/workflows/risk-gate-production-proof.yml"
   schedule:
@@ -25,6 +27,8 @@ on:
       - "scripts/tests/risk-gate-activation-triggers.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
       - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
+      - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/lib/hot50-production-proof.mjs"
       - "scripts/lib/hot50-production-proof.test.mjs"
