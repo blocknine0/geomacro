@@ -83,3 +83,18 @@ test("paged Website journal can be traced structurally while retained as nonexac
  assert.equal(v.historical_source_pattern.pattern,"PAGED_WEBSITE_DERIVED_JOURNAL_READ");
  assert.equal(v.historical_source_pattern.attribution,"STRUCTURAL_MATCH_NONEXACT");
 });
+
+test('provider P0B hotspot fingerprints match actual protected source statements',async()=>{
+ const {getP0bIngestionStatus}=await import('../../workers/control-plane/src/p0b-ingestion-status.mjs');
+ const statements=[];
+ const DB={prepare(sql){statements.push(sql);const s={bind(){return s},async first(){return {}},async all(){return {results:[]}}};return s;}};
+ await getP0bIngestionStatus({DB},{deep:true});
+ const deep=statements.find(sql=>sql.includes('bundle_journal_mismatch'));
+ const report=attributeD1ReadInsights([row(deep),row('SELECT COUNT(*) AS n FROM normalized_articles'),
+  row('SELECT COUNT(*) AS committed_today FROM ingestion_spool_queue WHERE d1_committed_at>=?')]);
+ assert.equal(report.exact_sql_callsite_matches,3);
+ assert.ok(report.top_rows_read.some(x=>x.query_sha256==='fa578c6e5f335b9765e714ce1793b95f7f6680c67353705a3a71a7b9f118ad7d'&&x.query_id==='P0B_DEEP_OUTBOX_PARITY_V1'));
+ assert.ok(report.top_rows_read.some(x=>x.query_sha256==='b37dabd5f591b130c997e7b9a578f46e40aa5bf839781c7209f9238c8a3db109'&&x.query_id==='P0B_DAILY_COMMITTED_CEILING_V1'));
+ assert.ok(!JSON.stringify(report).includes(deep));
+ assert.equal(attributeD1ReadInsights([row(deep+' WHERE 1=1')]).exact_sql_callsite_matches,0);
+});

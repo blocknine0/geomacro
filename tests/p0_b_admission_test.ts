@@ -633,3 +633,35 @@ test('default Workerd fetch keeps its global receiver for B2 PUT and independent
   assert.equal(f.requests[0].method,'PUT');assert.equal(f.requests[1].method,'GET');
  }finally{globalThis.fetch=original;f.close()}
 });
+
+
+test('idle redrive never recounts the committed journal',async()=>{
+ const f=fixture();
+ try{
+  const prepare=f.env.DB.prepare;
+  f.env.DB.prepare=(sql)=>{
+   assert.ok(!sql.includes('committed_today'),'idle cron must not scan committed rows');
+   return prepare(sql);
+  };
+  const receipt=await drainBacklog(f.env,{now:NOW});
+  assert.equal(receipt.status,'DRAIN_CLEAN');
+  assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+ }finally{f.close()}
+});
+test('nonempty redrive still enforces exact daily ceiling and refuses missing telemetry',async()=>{
+ for(const value of [90000,null,-1,1.5]){
+  const f=fixture();
+  try{
+   const c=await candidate(900);
+   f.db.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,spooled_at) VALUES(?,?,?,?,?,?)")
+    .run(crypto.randomUUID(),c.candidateSha256,c.sourceId,'b2://spool/test',100,new Date(NOW-600000).toISOString());
+   const prepare=f.env.DB.prepare;
+   f.env.DB.prepare=(sql)=>sql.includes('committed_today')?{
+    bind(){return this},async first(){return {committed_today:value}}
+   }:prepare(sql);
+   const r=await drainBacklog(f.env,{now:NOW});
+   assert.equal(r.status,value===90000?'QUOTA_HOLD':'D1_QUOTA_STATUS_UNAVAILABLE');
+   assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+  }finally{f.close()}
+ }
+});
