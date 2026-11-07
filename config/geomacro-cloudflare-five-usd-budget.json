@@ -19,14 +19,18 @@
     "require_verified_workers_paid_subscription": true,
     "require_both_provider_usage_blocks": true,
     "fallback_when_unverified": "CONSERVATIVE_FREE_QUOTA_OR_HOLD",
-    "d1_source_daily_soft_rows_read_max": 120000,
-    "d1_source_daily_soft_rows_written_max": 180000,
-    "d1_account_wide_atomic_guarantee": false
+    "d1_source_daily_soft_rows_read_max": 140000,
+    "d1_source_daily_soft_rows_written_max": 140000,
+    "d1_account_wide_atomic_guarantee": false,
+    "daily_normal_writes_cap": 140000,
+    "emergency_write_reserve_rows": 40000,
+    "emergency_funds_autorelease": false,
+    "verified_subscription_without_spend_policy": "FALLBACK_TO_CONSERVATIVE_FREE_ADMISSION_WITH_DAILY_OWNER_CAP"
   },
   "monthly_guardrail_targets_not_provider_hard_caps": {
     "workers_requests": 8000000,
     "workers_cpu_ms": 24000000,
-    "d1_rows_read": 3720000,
+    "d1_rows_read": 4340000,
     "d1_rows_written": 5580000,
     "d1_stored_gb": 4,
     "durable_objects_requests": 800000,
@@ -45,13 +49,18 @@
     "D1, Queues, KV, R2, storage, taxes and independent provider bills are not controlled by Workers/DO spend blocks.",
     "Soft quotas can be bypassed by independent Workers, cron, GitHub Actions, third-party clients and delayed provider counters unless individually integrated.",
     "A strict never-exceed-$5 invoice cannot be guaranteed with a metered Workers Paid account.",
-    "Owner daily D1 targets 120k rows read and 180k written are internal account-wide soft targets and cannot be guaranteed by non-atomic GraphQL counters; Cloudflare Workers Paid has monthly D1 included allowance instead of Free daily physical limits."
+    "Owner daily: normal D1 <=140k rows read and <=140k rows written; existing 180k written total ceiling leaves exactly 40k rows of emergency write capacity. Read ceiling remains 140k total. Budget counters are non-atomic and cannot guarantee a hard stop.",
+    "Emergency headroom is not automatically available to ingestion, signing, risk gates or payments. A separately authorized, bounded recovery run is required."
   ],
   "owner_d1_utc_daily_targets": {
-    "rows_read": 120000,
+    "rows_read": 140000,
     "rows_written": 180000,
+    "normal_rows_read": 140000,
+    "normal_rows_written": 140000,
+    "emergency_rows_written": 40000,
     "safety_buffer_rows_read": 4000,
     "safety_buffer_rows_written": 2000,
-    "basis": "OWNER_INTERNAL_ACCOUNT_WIDE_SOFT_TARGET_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
+    "emergency_auto_admission": false,
+    "basis": "OWNER_140K_NORMAL_DAILY_CEILING_WITH_40K_WRITE_EMERGENCY_RESERVE_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
   }
 }
