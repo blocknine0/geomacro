@@ -44,3 +44,14 @@ test('failed readback cannot mark SIGNED, retry has backoff, and expired input i
   assert.equal(sqlite.prepare('SELECT state FROM gro_auto_signing_jobs').get().state,'EXPIRED');
  }finally{sqlite.close()}
 });
+
+test('never marks an expired original proof or overlong GRO as signed, even if worker previously returned success',async()=>{
+ const {db,sqlite}=setup();try{
+  await enqueueSigningJob(db,input,now);
+  const job=await claimSigningJob(db,{now});
+  const staleNow=now+3600001;
+  await assert.rejects(()=>finishSigningJob(db,job,{...result,gro_expires_at:new Date(staleNow+60000).toISOString()},staleNow),/PUBLICATION_UNVERIFIED/);
+  await assert.rejects(()=>finishSigningJob(db,job,{...result,gro_expires_at:new Date(now+4*3600000).toISOString()},now),/PUBLICATION_UNVERIFIED/);
+  assert.equal(sqlite.prepare('SELECT state FROM gro_auto_signing_jobs').get().state,'LEASED');
+ }finally{sqlite.close()}
+});

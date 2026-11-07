@@ -40,7 +40,11 @@ export async function claimSigningJob(db,{now=Date.now(),sha256=null}={}){
 export async function finishSigningJob(db,job,result,now=Date.now()){
  if(result?.ok!==true||result.country_iso3!==job.country_iso3||!SHA.test(result.record_sha256??'')||
     result.b2_archive_readback_verified!==true||result.canonical_d1_hot_readback_verified!==true||
-    result.live_worker_signed_hot_verified!==true||!Number.isFinite(Date.parse(result.gro_expires_at))||Date.parse(result.gro_expires_at)<=now)
+    result.live_worker_signed_hot_verified!==true||!Number.isFinite(Date.parse(result.gro_expires_at))||
+    Date.parse(result.gro_expires_at)<=now||Date.parse(result.gro_expires_at)>now+3*3600000+60000||
+    !Number.isFinite(Date.parse(job.expires_at))||Date.parse(job.expires_at)<=now||
+    job.b2_key!==PREFIX+job.input_sha256+'.json'||!SHA.test(job.input_sha256??'')||
+    !/^[A-Z]{3}$/.test(job.country_iso3??''))
   throw Error('GRO_AUTO_SIGNING_PUBLICATION_UNVERIFIED');
  const rows=await db.query("UPDATE gro_auto_signing_jobs SET state='SIGNED',signed_record_sha256=?,signed_gro_expires_at=?,lease_token=NULL,lease_until=NULL,last_error_code=NULL,updated_at=? WHERE input_sha256=? AND state='LEASED' AND lease_token=? RETURNING input_sha256",
   [result.record_sha256,result.gro_expires_at,iso(now),job.input_sha256,job.lease_token]);

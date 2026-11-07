@@ -28,7 +28,10 @@ export async function runAutomaticGroSigning(){
  await db.query("INSERT OR IGNORE INTO gro_auto_signing_cycles(run_id,source_sha,started_at,signer_key_id,signer_pair_verified,state) VALUES(?,?,?,?,1,'RUNNING')",
   [runId,sourceSha,new Date(start).toISOString(),process.env.RISK_OBJECT_SIGNING_KEY_ID]);
  const report={schema:'geomacro.automatic-gro-signing-cycle.v1',signer_pair_verified:true,
-  claimed:0,signed:0,failed:0,no_funds:true,payment_performed:false};
+  claimed:0,signed:0,failed:0,no_funds:true,payment_performed:false,
+  qualified_input_received:false,
+  qualification_state:'AWAITING_REAL_DUAL_ATTESTED_INPUT',
+  paid_customer_delivery_proven:false};
  for(let index=0;index<50&&Date.now()-start<20*60000;index++){
   const job=await claimSigningJob(db);
   if(!job)break;
@@ -38,6 +41,10 @@ export async function runAutomaticGroSigning(){
    await finishSigningJob(db,job,result);report.signed++;
   }catch{await retrySigningJob(db,job);report.failed++;}
  }
+ report.qualified_input_received=report.claimed>0;
+ report.qualification_state=report.failed?'SIGNED_DELIVERY_RECHECK_REQUIRED':
+   report.signed>0?'GRO_SIGNED_AND_READBACK_VERIFIED_THIS_CYCLE':
+   report.claimed>0?'NO_SIGNED_DELIVERY_YET':'AWAITING_REAL_DUAL_ATTESTED_INPUT';
  await db.query("UPDATE gro_auto_signing_cycles SET finished_at=?,claimed=?,signed=?,failed=?,state=? WHERE run_id=?",
   [new Date().toISOString(),report.claimed,report.signed,report.failed,report.failed?'PARTIAL':'DONE',runId]);
  console.log(JSON.stringify(report));
