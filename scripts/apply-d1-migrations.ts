@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** GeoMacro reviewed D1 0204–0211 runner. No unreviewed schema or quota bypass. */
 import {existsSync,readFileSync,writeFileSync} from 'node:fs';
-import {assertOfficialMain,api,canonicalD1,need,queryD1,signedReport,holdError} from './release-common.ts';
+import {assertOfficialMain,api,canonicalD1,need,queryD1,signedReport,holdError,persist} from './release-common.ts';
 import {REPAIR_PLANS,REPAIR_SCHEMA_OBJECTS,verifyRepairSql} from './ops/protected-d1-repair-plan.mjs';
 import {runProtectedD1Repair} from './ops/run-protected-d1-repair.mjs';
 import {checkD1BundledWork} from './ops/plan-d1-bundled-work.mjs';
@@ -49,7 +49,26 @@ async function verifySchema(uuid:string):Promise<Record<string,unknown>>{
   need(defined,`RELEASE_HOT_INDEX_MISSING_${h.table.toUpperCase()}`);
   const explain=await queryD1(uuid,`EXPLAIN QUERY PLAN ${h.sql}`);
   const plans=explain.rows.map(r=>String(r.detail??''));
-  need(plans.some(x=>x.includes(h.index)),'RELEASE_HOT_QUERY_NOT_INDEXED');
+  if(!plans.some(x=>x.includes(h.index))){
+   // An index can physically exist while SQLite chooses a different access
+   // path on real data (or due to stale statistics). Preserve HOLD; do not
+   // forge the expected EXPLAIN result or infer that migrations are absent.
+   // Capture only EXPLAIN operation/index names, never SQL parameters, rows,
+   // original news, account identifiers, credentials, or source bodies.
+   const planner=plans.map(detail=>({
+    operation:/\bSCAN\b/iu.test(detail)?'SCAN':/\bSEARCH\b/iu.test(detail)?'SEARCH':'OTHER',
+    used_index:/\bUSING (?:COVERING )?INDEX ([A-Za-z0-9_]+)/iu.exec(detail)?.[1]??null,
+   }));
+   persist('artifacts/release/d1-hot-query-plan-diagnostic.json',{
+    schema:'geomacro.d1-hot-query-physical-plan-hold.v1',
+    status:'HOLD',verified_at:new Date().toISOString(),
+    table:h.table,expected_index:h.index,actual_provider_planner:planner,
+    index_physically_present:true,required_expected_index_not_selected:true,
+    no_migration_history_rollback_inferred:true,provider_rows_read:explain.meta.rows_read,
+    database_modified:false,no_funds:true
+   });
+   throw Error('RELEASE_HOT_QUERY_NOT_INDEXED_'+h.table.toUpperCase());
+  }
   chargedRows+=list.meta.rows_read+explain.meta.rows_read;
   probes.push({table:h.table,index:h.index,index_present:true,explain_uses_index:true,details_sha256:await import('node:crypto').then(m=>m.createHash('sha256').update(plans.join('\n')).digest('hex'))});
  }
