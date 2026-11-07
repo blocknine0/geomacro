@@ -23,7 +23,7 @@
     "d1_source_daily_soft_rows_written_max": 140000,
     "d1_account_wide_atomic_guarantee": false,
     "daily_normal_writes_cap": 140000,
-    "emergency_write_reserve_rows": 40000,
+    "emergency_write_reserve_rows": 0,
     "emergency_funds_autorelease": false,
     "verified_subscription_without_spend_policy": "FALLBACK_TO_CONSERVATIVE_FREE_ADMISSION_WITH_DAILY_OWNER_CAP"
   },
@@ -31,7 +31,7 @@
     "workers_requests": 8000000,
     "workers_cpu_ms": 24000000,
     "d1_rows_read": 4340000,
-    "d1_rows_written": 5580000,
+    "d1_rows_written": 4340000,
     "d1_stored_gb": 4,
     "durable_objects_requests": 800000,
     "queues_standard_operations": 800000,
@@ -49,20 +49,20 @@
     "D1, Queues, KV, R2, storage, taxes and independent provider bills are not controlled by Workers/DO spend blocks.",
     "Soft quotas can be bypassed by independent Workers, cron, GitHub Actions, third-party clients and delayed provider counters unless individually integrated.",
     "A strict never-exceed-$5 invoice cannot be guaranteed with a metered Workers Paid account.",
-    "Owner daily: normal D1 <=140k rows read and <=140k rows written; existing 180k written total ceiling leaves exactly 40k rows of emergency write capacity. Read ceiling remains 140k total. Budget counters are non-atomic and cannot guarantee a hard stop.",
-    "Emergency headroom is not automatically available to ingestion, signing, risk gates or payments. A separately authorized, bounded recovery run is required.",
+    "Owner daily TOTAL D1 target: <=140k billed rows read and <=140k billed rows written, including all recovery work. There is no automatic or manual 40k D1 write extension; provider counters are delayed and non-atomic, so a global hard stop is not yet guaranteed.",
+    "Emergency writes share the same 140k TOTAL D1 daily target and are never granted an extra 40k; recovery work must pass the same actual provider-budget checks.",
     "A KV get/put quota counter is not atomic; quota control uses provider-observed rows and UTC burn-rate pacing for admission-gated work, not a provider-enforced account-wide 140k hard stop."
   ],
   "owner_d1_utc_daily_targets": {
     "rows_read": 140000,
-    "rows_written": 180000,
+    "rows_written": 140000,
     "normal_rows_read": 140000,
     "normal_rows_written": 140000,
-    "emergency_rows_written": 40000,
+    "emergency_rows_written": 0,
     "safety_buffer_rows_read": 4000,
     "safety_buffer_rows_written": 2000,
     "emergency_auto_admission": false,
-    "basis": "OWNER_140K_NORMAL_DAILY_CEILING_WITH_40K_WRITE_EMERGENCY_RESERVE_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
+    "basis": "OWNER_TOTAL_140K_UTC_READ_AND_WRITE_NO_EMERGENCY_EXTENSION_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
   },
   "d1_budget_policy": {
     "max_daily_reads": 140000,

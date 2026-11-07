@@ -78,7 +78,7 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.equal(grant.snapshot_refresh,false);
  assert.equal(grant.structural_snapshot,false);
  assert.ok(grant.daily_account_soft_limit_read<=140_000);
- assert.ok(grant.daily_account_soft_limit_write<=180_000);
+ assert.ok(grant.daily_account_soft_limit_write<=140_000);
  assert.equal(grant.paid_subscription_change_performed,false);
  const reset=new Date("2026-10-27T00:00:00.000Z");
  const atReset=planD1BundledWork(usage(0,0),{now:reset,
@@ -207,7 +207,7 @@ test("owner 120k reads / 180k writes cap applies independently of Paid allowance
  assert.equal(granted.paid_capacity_probe_status,"VERIFIED");
  assert.equal(granted.owner_d1_utc_budget_held,false);
  assert.equal(granted.owner_d1_utc_daily_targets.rows_read,140000);
- assert.equal(granted.owner_d1_utc_daily_targets.rows_written,180000);
+ assert.equal(granted.owner_d1_utc_daily_targets.rows_written,140000);
  const blocked=await checkD1BundledWork({env,now,
   fetchImpl:mock(137000,2000)});
  assert.equal(blocked.reason,"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD");
@@ -233,7 +233,7 @@ test("owner 120k reads / 180k writes cap applies independently of Paid allowance
  assert.equal(missingSpend.paid_calls,0);
 });
 
-test("140k daily regular max reserves last 40k writes for explicitly authorized emergency only",async()=>{
+test("140k account owner total daily write target forbids 40k emergency extension",async()=>{
  const proof=assessProviderWorkersPaidSubscription(paid,now);
  const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
   "workers","durable_objects"].map((product_id,i)=>({
