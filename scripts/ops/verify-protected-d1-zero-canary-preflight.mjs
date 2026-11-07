@@ -17,7 +17,7 @@ const ACCEPT_REASONS=new Set(["CANARY_PROVIDER_DENIED","D1_BOOKMARK_UNVERIFIED",
  "WORKERS_PAID_SPEND_POLICY_UNVERIFIED","WORKERS_PAID_SUBSCRIPTION_UNVERIFIED",
  "CANARY_IDENTITY_UNVERIFIED","CANARY_PROVIDER_READ_FAILED"]);
 export async function verifyProtectedD1CanaryPreflight({
- env=process.env,fetchImpl=fetch,now=new Date()
+ env=process.env,fetchImpl=fetch,now=new Date(),plan=checkD1BundledWork
 }={}){
  const refuse=(reason,detail={})=>Object.freeze({
   schema:"geomacro.d1.zero-traffic-canary-preflight.v1",
@@ -71,7 +71,7 @@ export async function verifyProtectedD1CanaryPreflight({
      Number(versions[0]?.percentage)!==100)
    return refuse("WORKER_DEPLOYED_VERSION_UNVERIFIED");
   version=versions[0].version_id??versions[0].id;
-  quota=await checkD1BundledWork({env,fetchImpl,now});
+  quota=await plan({env,fetchImpl,now});
  }catch{
   return refuse("CANARY_PROVIDER_READ_FAILED");
  }
