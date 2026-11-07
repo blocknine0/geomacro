@@ -1,0 +1,15 @@
+{
+  "name": "geomacro-d1-quota-governor",
+  "main": "src/middleware/quotaWorker.ts",
+  "compatibility_date": "2026-11-08",
+  "workers_dev": false,
+  "triggers": {"crons": ["*/2 * * * *"]},
+  "durable_objects": {
+    "bindings": [
+      {"name":"D1_QUOTA_DO","class_name":"QuotaBudgetDO"}
+    ]
+  },
+  "migrations": [
+    {"tag":"geomacro-quota-v1","new_sqlite_classes":["QuotaBudgetDO"]}
+  ]
+}
