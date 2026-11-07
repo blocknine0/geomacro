@@ -12,6 +12,16 @@ export const REPAIR_PLANS=Object.freeze([
  ['0211_p0b_daily_committed_count.sql','3714cb9d334c2de8c7a4579a4f950de2342e3ed4fd335e1ea2d5dc9833c39681',{ingestion_spool_queue:12000},1,3],
 ].map(([file,sha256,tables,readFactor,writeFactor])=>Object.freeze({file,sha256,
  tables:Object.freeze(tables),readFactor,writeFactor})));
+// Extended probes are used only by the explicitly approved same-day repair.
+// The normal migration path retains its original conservative table bounds.
+const extendedPlans=new WeakSet();
+const reviewedPlan=plan=>REPAIR_PLANS.includes(plan)||extendedPlans.has(plan);
+export function extendApprovedRepairBounds(plan){
+ if(!REPAIR_PLANS.includes(plan))throw Error('REPAIR_PLAN_UNVERIFIED');
+ const extended=Object.freeze({...plan,tables:Object.freeze(Object.fromEntries(
+  Object.keys(plan.tables).map(table=>[table,24000])))});
+ extendedPlans.add(extended);return extended;
+}
 export function pendingRepairPlans(raw){
  if(typeof raw!=='string'||!raw.trim()||raw.length>65536)throw Error('REPAIR_PENDING_UNVERIFIED');
  const files=[...new Set(raw.match(/\b[0-9]{4}_[A-Za-z0-9_-]+\.sql\b/gu)??[])];
@@ -20,12 +30,12 @@ export function pendingRepairPlans(raw){
  return REPAIR_PLANS.filter(p=>files.includes(p.file));
 }
 export function verifyRepairSql(plan,sql){
- if(!REPAIR_PLANS.includes(plan)||createHash('sha256').update(sql).digest('hex')!==plan.sha256)
+ if(!reviewedPlan(plan)||createHash('sha256').update(sql).digest('hex')!==plan.sha256)
   throw Error('REPAIR_SQL_REVISION_CHANGED');
 }
 /** Probe table existence first: 0205 creates a table which may not exist yet. */
 export function repairProbeSql(plan,present){
- if(!REPAIR_PLANS.includes(plan)||!Array.isArray(present))throw Error('REPAIR_PLAN_UNVERIFIED');
+ if(!reviewedPlan(plan)||!Array.isArray(present))throw Error('REPAIR_PLAN_UNVERIFIED');
  const tables=Object.keys(plan.tables);
  if(tables.some(t=>t!=='events'&&!present.includes(t)))throw Error('REPAIR_PREREQUISITE_TABLE_MISSING');
  const probes=tables.filter(t=>present.includes(t)).map(t=>
@@ -45,7 +55,7 @@ export function verifyRepairProbe(plan,present,doc){
   throw Error('REPAIR_TABLE_BOUND_UNVERIFIED');
 }
 export function repairCostEnvelope(plan){
- if(!REPAIR_PLANS.includes(plan))throw Error('REPAIR_PLAN_UNVERIFIED');
+ if(!reviewedPlan(plan))throw Error('REPAIR_PLAN_UNVERIFIED');
  const bound=Object.values(plan.tables).reduce((a,b)=>a+b,0);
  // Includes index rebuild/removal and seed overhead; not a provider hard cap.
  return {rows_read:bound*plan.readFactor+20000,rows_written:bound*plan.writeFactor+20000};

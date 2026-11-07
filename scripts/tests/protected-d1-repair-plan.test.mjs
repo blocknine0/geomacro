@@ -4,7 +4,7 @@ import {readFileSync,mkdtempSync,mkdirSync,writeFileSync,readdirSync,rmSync} fro
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {REPAIR_PLANS,REPAIR_SCHEMA_OBJECTS,pendingRepairPlans,verifyRepairSql,
- repairProbeSql,verifyRepairProbe,admitRepairCost,verifyRepairSchema} from '../ops/protected-d1-repair-plan.mjs';
+ repairProbeSql,verifyRepairProbe,extendApprovedRepairBounds,admitRepairCost,verifyRepairSchema} from '../ops/protected-d1-repair-plan.mjs';
 import {runProtectedD1Repair,classifyRepairCommandFailure} from '../ops/run-protected-d1-repair.mjs';
 const root=resolve('.');
 const provider=(results,rows_read=10)=>[{success:true,results,meta:{rows_read,rows_written:0}}];
@@ -90,4 +90,26 @@ test('provider command diagnostics identify failure without printing any raw SQL
  assert.ok(!JSON.stringify(d).includes(secret));
  assert.equal(classifyRepairCommandFailure({stderr:'ECONNRESET'}).network_failure,true);
  assert.equal(classifyRepairCommandFailure({stderr:'no such table: '+secret}).missing_schema,true);
+});
+
+test('approved one-time larger tables still require bounded proof and a fitting physical-row envelope',()=>{
+ const base=REPAIR_PLANS[2],plan=extendApprovedRepairBounds(base);
+ assert.equal(base.tables.ingestion_spool_queue,12000);
+ assert.equal(base.tables.source_registry,3000);
+ assert.equal(plan.tables.ingestion_spool_queue,24000);
+ assert.equal(plan.tables.source_registry,24000);
+ assert.match(repairProbeSql(plan,['source_registry','ingestion_spool_queue']),/OFFSET 24000/);
+ verifyRepairSql(plan,readFileSync(join(root,'workers/control-plane/migrations',base.file),'utf8'));
+ assert.throws(()=>admitRepairCost(plan,{admitted:true,headroom_read:140000,headroom_write:140000}),/COST_HEADROOM/);
+ assert.equal(admitRepairCost(plan,{admitted:true,headroom_read:530000,headroom_write:590000}).rows_written,308000);
+ verifyRepairProbe(plan,['source_registry','ingestion_spool_queue'],provider([{source_registry_over:0,ingestion_spool_queue_over:0}],48002));
+ assert.throws(()=>verifyRepairProbe(plan,['source_registry','ingestion_spool_queue'],provider([{source_registry_over:0,ingestion_spool_queue_over:1}])),/BOUND/);
+ assert.throws(()=>repairProbeSql({...plan},['source_registry','ingestion_spool_queue']),/PLAN_UNVERIFIED/);
+});
+test('single-file history checks support the approved extended plan without changing SQL identity',async()=>{
+ const h=harness();h.selectPlan=extendApprovedRepairBounds;
+ h.assessBudget=()=>({admitted:true,headroom_read:530000,headroom_write:590000});
+ process.chdir(h.tmp);
+ try{const result=await runProtectedD1Repair(h);assert.equal(result.completed.length,2);}
+ finally{process.chdir(root);rmSync(h.tmp,{recursive:true,force:true});}
 });

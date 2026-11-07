@@ -20,7 +20,7 @@ export function classifyRepairCommandFailure(error){
   command_signal:['SIGTERM','SIGKILL'].includes(error?.signal)?error.signal:null,
  };
 }
-export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget,productionInfo=readProductionD1Info}={}){
+export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget,productionInfo=readProductionD1Info,selectPlan=plan=>plan}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
     env.GITHUB_REF!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??'')||
     !env.RUNNER_TEMP||env.WRANGLER_VERSION!=='4.136.3'||
@@ -56,7 +56,12 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
  const pending=()=>pendingRepairPlans(wrangler(configPath,['d1','migrations','list','DB','--remote']));
  const planned=pending();
  const completed=[];
- for(const migration of planned){
+ for(const pendingMigration of planned){
+  const migration=selectPlan(pendingMigration);
+  if(migration?.file!==pendingMigration.file||migration?.sha256!==pendingMigration.sha256)
+   throw Error("REPAIR_PLAN_IDENTITY_CHANGED");
+  // Cost must fit before spending the bounded probe rows as well as before DDL.
+  admitRepairCost(migration,await budget());
   verifyRepairSql(migration,readFileSync('workers/control-plane/migrations/'+migration.file,'utf8'));
   // Every iteration checks exact main and fresh account-wide provider usage.
   await budget();
@@ -85,7 +90,7 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
   writeFileSync(single,JSON.stringify({name:'geomacro-d1-repair-only',compatibility_date:original.compatibility_date,
    d1_databases:[{...original.d1_databases[0],migrations_dir:dir}]}),{mode:0o600});
   const one=pendingRepairPlans(wrangler(single,['d1','migrations','list','DB','--remote']));
-  if(one.length!==1||one[0]!==migration)throw Error('REPAIR_HISTORY_CHANGED');
+  if(one.length!==1||one[0].file!==migration.file||one[0].sha256!==migration.sha256)throw Error('REPAIR_HISTORY_CHANGED');
   // Account for probes/bookmark/history latency before final mutation.
   admitRepairCost(migration,await budget());
   wrangler(single,['d1','migrations','apply','DB','--remote']);
