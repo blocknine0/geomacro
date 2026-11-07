@@ -24,7 +24,7 @@ const fixture=()=>{
  return {db,add};
 };
 const counters=db=>db.prepare(
- "SELECT category,staged_count,archived_count FROM phase2h_archive_totals ORDER BY category").all();
+ "SELECT category,staged_count,archived_count FROM phase2h_archive_totals ORDER BY category").all().map(x=>({...x}));
 
 test("0208 seeds existing immutable D1 raw originals and tracks insert/archive/delete atomically",()=>{
  const {db,add}=fixture();
@@ -82,7 +82,7 @@ test("0208 counter census equals full original category truth, with indexed only
   assert.equal(all.find(x=>x.category==="geopolitics").pending_eligible_72h,1);
   assert.equal(all.find(x=>x.category==="geopolitics").pending_expired_72h,1);
   const summary=db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get();
-  assert.deepEqual(summary,{categories:3,total:4,unarchived:3});
+  assert.deepEqual({...summary},{categories:3,total:4,unarchived:3});
   const explain=db.prepare("EXPLAIN QUERY PLAN "+PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all();
   assert.ok(explain.some(x=>
     /idx_phase2h_pending_recent_ingested_category/u.test(x.detail)),
