@@ -7,7 +7,7 @@ interface QuotaWorkerEnv {
  D1_BUDGET_INTERNAL_SECRET:string;
  D1_QUOTA_DO:any;
 }
-const query=`query D1Today($accountTag:String!,$start:Date!,$end:Date!){
+const query=`query D1Today($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
    sum{rowsRead rowsWritten} dimensions{databaseId date}
