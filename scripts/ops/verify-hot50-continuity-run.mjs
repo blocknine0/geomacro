@@ -6,7 +6,6 @@
  * Source runtime evidence is not a B2/GRO/RiskGate coverage certificate.
  */
 import {readFileSync} from "node:fs";
-import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
@@ -90,9 +89,12 @@ export function inspectHot50ScheduledRun(needs,{event}={}){
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
-  if(process.argv[2]==="--source-health"&&process.argv.length===5){
+  if(process.argv[2]==="--source-health"&&process.argv.length===4){
+   // File selection and path validation remain in GitHub's protected shell.
+   // The verifier consumes only an already-open stdin descriptor; no
+   // externally controlled path reaches a filesystem API.
    const result=inspectHot50ActualSourceHealth(JSON.parse(
-    readFileSync(process.argv[3],"utf8")),{mode:process.argv[4]});
+    readFileSync(0,"utf8")),{mode:process.argv[3]});
    console.log(JSON.stringify(result));
    if(!result.accepted)process.exitCode=2;
   }else if(process.argv[2]==="--scheduled-run"&&process.argv.length===3){
