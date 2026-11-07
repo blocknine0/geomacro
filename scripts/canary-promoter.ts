@@ -11,11 +11,14 @@ const INTERVAL_MS=30000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
-const GRAPH=`query CanaryObservability($accountTag:String!,$script:String!,$zoneTag:String!,$host:String!,$start:Time!,$end:Time!){
+// Cloudflare Workers invocation quantiles expose wallTimeP99 in MICROSECONDS,
+// not requestDurationP99 in milliseconds. Query the exact routed Worker
+// version, not the aggregate script; a 1% canary can be hidden by 99% baseline.
+const GRAPH=`query CanaryObservability($accountTag:String!,$script:String!,$version:String!,$zoneTag:String!,$host:String!,$start:Time!,$end:Time!){
  viewer{
   accounts(filter:{accountTag:$accountTag}){
-   workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,datetime_geq:$start,datetime_leq:$end}){
-    sum{requests errors} quantiles{requestDurationP99}
+   workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
+    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP99}
    }
   }
   zones(filter:{zoneTag:$zoneTag}){
@@ -65,28 +68,35 @@ async function checkVersionParity(base:string,candidate:string){
  };
  need(a.id===base&&b.id===candidate&&bindingList(a)===bindingList(b),'CANARY_BINDINGS_PARITY_FAILURE');
 }
-async function verifiedLiveObservability(start:string,end:string,requireVolume=true){
+async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
  const account=envString('CLOUDFLARE_ACCOUNT_ID',32),zone=envString('CLOUDFLARE_ZONE_ID',32);
- const graph=await graphql(GRAPH,{accountTag:account,script:WORKER,zoneTag:zone,host:'api.geomacro.live',start,end});
+ const graph=await graphql(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
  const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
  const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
- const p99=worker?.quantiles?.requestDurationP99;
- // 5xx is zone-host HTTP response ratio; Workers errors != HTTP 5xx.
- // requestDurationP99 is only available on eligible Worker observability.
- need(Number.isSafeInteger(requests)&&Number.isSafeInteger(errors)&&
+ const wallTimeP99Us=worker?.quantiles?.wallTimeP99;
+ // HTTP 5xx remains zone-host aggregate; Workers invocation errors are
+ // exact scriptVersion. Both must pass, and low candidate volume holds.
+ // wallTimeP99 is microseconds; convert to milliseconds for the 50ms SLO.
+ need(worker?.dimensions?.scriptVersion===version&&
+  Number.isSafeInteger(requests)&&Number.isSafeInteger(errors)&&
   Number.isSafeInteger(siteCount)&&
   typeof ratio==='number'&&ratio>=0&&ratio<=1&&
-  typeof p99==='number'&&Number.isFinite(p99)&&p99>=0,'CANARY_PROVIDER_METRICS_UNAVAILABLE_OR_LOW_VOLUME');
+  typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0,
+  'CANARY_PROVIDER_VERSION_METRICS_UNAVAILABLE');
+ const p99=wallTimeP99Us/1000;
  if(requests<1000||siteCount<1000){
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
- return {worker_requests:requests,worker_errors:errors,host_requests:siteCount,
-  http_5xx_ratio:ratio,worker_request_duration_p99_ms:p99,
-  http_5xx_under_0_1pct:ratio<0.001,p99_under_50ms:p99<50,
-  observed_worker_and_host_metrics_not_candidate_isolated:true};
+ return {worker_script_version:version,worker_requests:requests,worker_errors:errors,
+  worker_error_ratio:errors/requests,host_requests:siteCount,
+  http_5xx_ratio:ratio,worker_wall_time_p99_ms:p99,
+  http_5xx_under_0_1pct:ratio<0.001,
+  version_errors_under_0_1pct:errors/requests<0.001,
+  p99_under_50ms:p99<50,
+  host_http_5xx_not_version_isolated:true,worker_metrics_version_isolated:true};
 }
 // Observe all account D1 databases during the rollout. Provider analytics
 // are delayed: this triggers a rollback as soon as an overage is OBSERVED,
@@ -131,15 +141,19 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
    // Early complete provider windows may be under the statistical floor; once
    // 1000 real observations exist, any 5xx/latency regression rolls back now.
    if(Date.now()-began>=120000){
-    const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),false);
-    if(result)need(result.http_5xx_under_0_1pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
+    const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
+     pct===0?base:candidate,false);
+    if(result)need(result.http_5xx_under_0_1pct&&
+     result.version_errors_under_0_1pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
    }
   }
   await wait(Math.min(INTERVAL_MS,Math.max(1,WINDOW_MS-(Date.now()-began))));
  }
  d1=await checkLiveD1Budget();
- const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),true);
- need(result.http_5xx_under_0_1pct&&result.p99_under_50ms,'CANARY_SLO_BREACH');
+ const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
+  pct===0?base:candidate,true);
+ need(result.http_5xx_under_0_1pct&&result.version_errors_under_0_1pct&&result.p99_under_50ms,
+  'CANARY_SLO_BREACH');
  return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,...result,
   latest_d1_provider_observation:d1};
 }
