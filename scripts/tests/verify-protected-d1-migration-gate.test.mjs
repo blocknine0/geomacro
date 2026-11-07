@@ -52,7 +52,7 @@ test("Stage B executes only after migration-only provider PASS and leaves normal
  assert.match(y,/needs: provider-migration-headroom/);
  assert.match(y,/needs\.provider-migration-headroom\.result == 'success'/);
  assert.ok(y.includes("config/d1-hotspot-v2-canary.hold"));
- assert.ok(y.includes("d1 migrations apply DB --remote"));
+ assert.ok(y.includes("node scripts/ops/run-protected-d1-repair.mjs"));
  assert.ok(!y.includes("d1 time-travel restore"));
  assert.ok(!y.includes("versions deploy"));
 });

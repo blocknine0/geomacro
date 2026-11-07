@@ -50,6 +50,7 @@ export async function readIncrementalWebsiteCategoryFeed(env,category,now=Date.n
    "X-GeoMacro-Original-Clock":"source-native",
    "X-Content-Type-Options":"nosniff",
    "Access-Control-Allow-Origin":"*",
+   "Access-Control-Expose-Headers":"X-GeoMacro-Data-Origin, X-GeoMacro-Original-Clock",
    "Vary":"Accept-Encoding",
   }});
  }catch{

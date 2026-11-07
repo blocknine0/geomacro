@@ -75,7 +75,7 @@ test("current 20-minute Hot50 source path is independent of root-admin deep audi
  const path=new URL("../../.github/workflows/hot50-direct-original-news-20m.yml",import.meta.url);
  const workflow=readFileSync(path,"utf8");
  assert.match(workflow,/cron: "6,26,46 \* \* \* \*"/);
- assert.ok(workflow.includes("needs.collect-direct-20m.result == 'failure'"));
+ assert.ok(workflow.includes("needs.collect-direct-20m.result != 'success'"));
  assert.ok(workflow.includes("encrypted-held-three-domain-20m"));
  assert.ok(!workflow.includes("p0b/status?deep=1"));
 });

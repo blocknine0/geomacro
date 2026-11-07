@@ -409,16 +409,20 @@ export async function fetchCurrentCanonicalWebsiteNews(
 ):Promise<StatelessIntelligenceSignal[]> {
  if(!Number.isFinite(now))throw Error("CANONICAL_CATEGORY_FEED_CLOCK_INVALID");
  const categories=["geopolitics","macro","rare_earth"] as const;
- const batches=await Promise.all(categories.map(async category=>{
+ const batches=await Promise.allSettled(categories.map(async category=>{
   const target="https://geomacro-control-plane.daspallab202391.workers.dev"+
    "/api/v1/feed/"+category;
   const response=await fetchPublicReadWithRetry(fetchImpl,target,{
    method:"GET",redirect:"error",
    headers:{Accept:"application/json"},
   },8000);
+  // Older deployed Workers do not expose this custom header through CORS.
+  // The exact HTTPS origin and full body contract are required below in all cases.
+  // If the header is browser-visible it must agree; absence is not an outage.
   if(response.status!==200||
      Number(response.headers.get("content-length")??0)>1_000_000||
-     response.headers.get("X-GeoMacro-Data-Origin")!=="canonical-d1")
+     (response.headers.get("X-GeoMacro-Data-Origin")!==null&&
+      response.headers.get("X-GeoMacro-Data-Origin")!=="canonical-d1"))
    throw Error("CANONICAL_CATEGORY_FEED_UNAVAILABLE");
   const raw=await response.text();
   if(raw.length>1_000_000)throw Error("CANONICAL_CATEGORY_FEED_OVERSIZE");
@@ -445,7 +449,12 @@ export async function fetchCurrentCanonicalWebsiteNews(
    throw Error("CANONICAL_CATEGORY_FEED_INVALID_STORY");
   return signals;
  }));
- const records=batches.flat(),seen=new Set<string>();
+ // A single category outage must not discard two independently validated feeds.
+ // Failed categories contribute no records; their timestamps are never refreshed.
+ const available=batches.filter((result):result is PromiseFulfilledResult<StatelessIntelligenceSignal[]>=>
+  result.status==="fulfilled");
+ if(available.length===0)throw Error("CANONICAL_CATEGORY_FEED_UNAVAILABLE");
+ const records=available.flatMap(result=>result.value),seen=new Set<string>();
  for(const x of records){
   if(seen.has(x.id))throw Error("CANONICAL_CATEGORY_FEED_DUPLICATE_STORY");
   seen.add(x.id);

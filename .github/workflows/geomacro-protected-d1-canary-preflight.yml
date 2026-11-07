@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/ops/protected-d1-repair-plan.mjs"
+      - "scripts/ops/run-protected-d1-repair.mjs"
+      - "scripts/tests/protected-d1-repair-plan.test.mjs"
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
       - "scripts/ops/verify-protected-d1-migration-gate.mjs"
@@ -36,6 +39,9 @@ on:
   workflow_dispatch: {}
   pull_request:
     paths:
+      - "scripts/ops/protected-d1-repair-plan.mjs"
+      - "scripts/ops/run-protected-d1-repair.mjs"
+      - "scripts/tests/protected-d1-repair-plan.test.mjs"
       - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
       - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
       - "scripts/ops/verify-protected-d1-migration-gate.mjs"
@@ -76,7 +82,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/tests/verify-protected-d1-index-build-bound.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/tests/verify-protected-d1-index-build-bound.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
@@ -146,6 +152,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Stage B repairs the reviewed 0204–0211 chain one migration per budget check.
   # Stage B executes only after fresh independent migration-only headroom PASS.
   # A normal 0%-canary Stage A pacing HOLD is not silently treated as a PASS.
   # There is no Worker upload, traffic promotion, payment or destructive restore.
@@ -217,44 +224,8 @@ jobs:
           cd ../..
           node scripts/ops/verify-protected-d1-migration-gate.mjs \
             --backup "$RUNNER_TEMP/d1-info.json" "$RUNNER_TEMP/d1-bookmark.json"
-      - name: Require every pending migration to be 0204 or 0211
-        id: pending
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd workers/control-plane
-          npx -y "wrangler@$WRANGLER_VERSION" d1 migrations list DB --remote \
-            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-pending.txt" 2>/dev/null
-          cd ../..
-          node scripts/ops/verify-protected-d1-migration-gate.mjs \
-            --pending "$RUNNER_TEMP/d1-pending.txt"
-      - name: Bound old-table row exposure before index build or backfill (D1 reads counted)
-        if: steps.pending.outputs.apply == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          umask 077
-          node scripts/ops/verify-protected-d1-migration-gate.mjs \
-            --emit-size-probe "$RUNNER_TEMP/d1-pending.txt" > "$RUNNER_TEMP/d1-probe.sql"
-          cd workers/control-plane
-          npx -y "wrangler@$WRANGLER_VERSION" d1 execute DB --remote --json \
-            --config wrangler.canary-d1.jsonc \
-            --command "$(cat "$RUNNER_TEMP/d1-probe.sql")" \
-            > "$RUNNER_TEMP/d1-probe.json" 2>/dev/null
-          cd ../..
-          node scripts/ops/verify-protected-d1-migration-gate.mjs \
-            --verify-size-probe "$RUNNER_TEMP/d1-pending.txt" "$RUNNER_TEMP/d1-probe.json"
-          # Provider rows just spent by this small bounded probe count too.
-          # Re-read official UTC usage, never assume earlier headroom persisted.
-          node scripts/ops/verify-protected-d1-migration-gate.mjs
-      - name: Apply only approved pending migrations through Wrangler migration history
-        if: steps.pending.outputs.apply == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd workers/control-plane
-          npx -y "wrangler@$WRANGLER_VERSION" d1 migrations apply DB --remote \
-            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-migration-private.log" 2>/dev/null
+      - name: Apply reviewed repair migrations individually with fresh quota and backup
+        run: node scripts/ops/run-protected-d1-repair.mjs
       - name: Verify migrations empty and exact schema objects present
         shell: bash
         run: |
@@ -274,6 +245,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-protected-migration-0204-0211
-          path: artifacts/protected-canary/migration-*.json
+          path: |
+            artifacts/protected-canary/migration-*.json
+            artifacts/protected-canary/repair-*.json
           if-no-files-found: ignore
           retention-days: 7
