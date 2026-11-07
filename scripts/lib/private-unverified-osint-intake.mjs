@@ -9,6 +9,7 @@
 import {readFileSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {collectPrivateOsint15m} from "./private-osint-15m-collector.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 const domains={geopolitics:"geopolitics",macro:"macro",rare_earth:"rare_earth"};
 const accepted=new Set(["rss","api","bulk"]);
 const ref=(s,c)=>createHash("sha256").update([s.id,s.url,c].join("\n")).digest("hex");
@@ -127,7 +128,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
   if(seen.size!==2)throw Error("UNVERIFIED_OSINT_NONRSS_COUNTRIES_INCOMPLETE");
  }
  if(!items.length||items.length>128)throw Error("UNVERIFIED_OSINT_CANDIDATES_MISSING");
- return Object.freeze(items);
+ return Object.freeze(items.filter(s=>!isRetiredPrivateOsintSource(s)));
 }
 async function unauthenticatedTransportCheck(s,fetchImpl,now){
  try{
@@ -154,6 +155,8 @@ export async function collectPrivateUnverifiedOsint({
     !registry.length||registry.length>128||
     registry.some(s=>s.activation_state!=="PRIVATE_UNVERIFIED_OBSERVATION"))
   throw Error("UNVERIFIED_OSINT_COLLECTOR_CONFIG_INVALID");
+ const originalCount=registry.length;
+ registry=registry.filter(s=>!isRetiredPrivateOsintSource(s));
  const feeds=registry.filter(s=>s.access==="rss");
  const other=registry.filter(s=>s.access!=="rss");
  const feedResult=feeds.length?await collectPrivateOsint15m({
@@ -190,6 +193,7 @@ export async function collectPrivateUnverifiedOsint({
   summary:{
    schema:"geomacro.private-unverified-source-intake.v1",
    candidate_source_count:registry.length,
+   owner_retired_sources_excluded:originalCount-registry.length,
    native_feed_candidates:feeds.length,
    api_or_bulk_transport_only:other.length,
    source_checks:checks.length,source_states:states,

@@ -15,6 +15,7 @@ import {observedHot50FourLaneSourceState} from "./hot-50-four-lane-source-crossw
 import {HOT50_COUNTRY_SET,hot50NominalIndexCadence} from "./hot-50-country-watch.mjs";
 import {privateOsintRuntimeSources,nominalPrivateCountryIndexCycleMinutes} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources,PRIVATE_OSINT_TOPICS,privateOsintContinentCoverage,privateOsintCorridorReferenceCoverage,privateOsintPublisherCountryCoverage,privateOsintCountryCategoryCoverage,privateOsintCorridorSourceCoverage,privateOsintCategoryLiveCoverage} from "./private-osint-global-sources.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
@@ -110,6 +111,8 @@ export async function collectPrivateOsint15m({
      !(onOriginalCandidate===null||typeof onOriginalCandidate==="function")||
      !Number.isSafeInteger(concurrency)||concurrency<1||concurrency>8)
     throw Error("PRIVATE_OSINT_COLLECTOR_CONFIG_INVALID");
+  const sourceEndpointsBeforeRetirement=registry.length;
+  registry=registry.filter(source=>!isRetiredPrivateOsintSource(source));
   const seenUrls=new Set();
   for(const source of registry){
     if(!source||typeof source.url!=="string"||!source.url.startsWith("https://")||
@@ -218,6 +221,7 @@ export async function collectPrivateOsint15m({
     summary:{
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
+      owner_retired_sources_excluded:sourceEndpointsBeforeRetirement-registry.length,
       rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
       rotating_country_index_nominal_full_cycle_minutes:
         nominalPrivateCountryIndexCycleMinutes(registry),

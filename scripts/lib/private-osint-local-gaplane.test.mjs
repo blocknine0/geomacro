@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {privateUnverifiedOsintRegistry,collectPrivateUnverifiedOsint} from "./private-unverified-osint-intake.mjs";
 import {CONTINENT_COUNTRIES_195} from "./continent-country-195-rotation.mjs";
+import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 
 const file=new URL("../../config/private-osint-local-gaplane.v1.json",import.meta.url);
 const now=new Date("2026-10-27T12:00:00Z");
@@ -11,7 +12,7 @@ const normalize=x=>({
  source:{publisher_name:null,original_url:null,original_published_at:x.published_at},
  usage_rights:{commercial_reuse_authorized:false},delivery:{raw_article_included:false},
 });
-test("independent source gap lane leaves 511-source production collector untouched",()=>{
+test("isolated local-gap intake shares owner retirement policy within its original request cap",()=>{
  const manifest=JSON.parse(readFileSync(file,"utf8"));
  assert.equal(manifest.schema,"geomacro.private-osint-local-gaplane.v1");
  assert.ok(manifest.sources.length>30&&manifest.sources.length<=100);
@@ -20,16 +21,18 @@ test("independent source gap lane leaves 511-source production collector untouch
  const legacy=privateUnverifiedOsintRegistry();
  assert.equal(legacy.length,25);
  const merged=privateUnverifiedOsintRegistry(undefined,{includeGapLane:true});
- assert.equal(merged.length,25+manifest.sources.length+2);
+ const eligible=manifest.sources.filter(s=>!isRetiredPrivateOsintSource(s));
+ assert.equal(merged.length,legacy.length+eligible.length+2);
  assert.ok(merged.length<=128);
  assert.equal(new Set(merged.map(x=>x.url)).size,merged.length);
  const gaps=merged.filter(x=>x.id.startsWith("private_gaplane_"));
- assert.equal(gaps.length,manifest.sources.length);
+ assert.equal(gaps.length,eligible.length);
+ assert.ok(merged.every(s=>!isRetiredPrivateOsintSource(s)));
  assert.ok(gaps.every(s=>s.access==="rss"&&s.supported===true&&
    s.categories.length===3&&s.activation_state==="PRIVATE_UNVERIFIED_OBSERVATION"&&
    s.publisher_country_iso3===s.publisher_countries[0]&&
    s.rights_verified===false&&s.publicly_deliverable===false));
- assert.equal(new Set(gaps.map(s=>s.publisher_country_iso3)).size,gaps.length-2);
+ assert.equal(new Set(gaps.map(s=>s.publisher_country_iso3)).size,69);
  const nonRss=merged.filter(s=>s.id.startsWith("private_official_nonrss_"));
  assert.deepEqual(nonRss.map(s=>s.publisher_country_iso3).sort(),["NRU","PRK"]);
  assert.ok(nonRss.every(s=>s.supported===false&&s.access==="bulk"&&

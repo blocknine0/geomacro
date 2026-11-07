@@ -13,6 +13,17 @@ const mk=(id,url,category,access)=>({
  rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
 });
 const rss='<rss><channel><item><title>India central bank announces inflation interest rate policy changes</title><pubDate>Sun, 25 Oct 2026 11:55:00 GMT</pubDate><link>https://secret.example.gov/article/1</link></item></channel></rss>';
+test("isolated unverified intake cannot re-probe removed feeds as RSS or generic API endpoints",async()=>{
+ let calls=0;
+ const result=await collectPrivateUnverifiedOsint({now,
+  registry:[mk("alias_feed","https://www.pbs.org/newshour/feeds/rss/headlines","macro","rss"),
+   mk("alias_api","https://www.pbs.org/newshour/feeds/rss/headlines","macro","api")],
+  normalize,resolveCountry:()=>null,fetchImpl:async()=>{calls++;return new Response(rss)}});
+ assert.equal(calls,0);
+ assert.equal(result.summary.owner_retired_sources_excluded,2);
+ assert.equal(result.summary.source_checks,0);
+ assert.equal(result.items.length,0);
+});
 test("private intake selects exactly the unverified state; never switches on held or paid endpoints",()=>{
  const sources=privateUnverifiedOsintRegistry();
  assert.equal(sources.length,25);
