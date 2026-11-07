@@ -1271,8 +1271,8 @@ jobs:
             .worker_queue_binding_present == true and
             .worker_b2_credentials_present == true and
             .ready_for_real_acceptance == true and
-            .source_registry.enabled > 0 and
-            .source_registry.total >= .source_registry.enabled
+            .source_registry.has_enabled == true and
+            .source_registry.counts_exhaustive == false
           ' >/dev/null || { echo "::error::P0B_PRODUCTION_READINESS_UNVERIFIED"; exit 31; }
           echo "P0B_REMOTE_D1_AND_QUEUE_CONFIG_VERIFIED=true"
           echo "P0B_REAL_B2_CANDIDATE_ACCEPTANCE=NOT_YET_PROVEN"

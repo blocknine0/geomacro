@@ -12,18 +12,29 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
  try{
   const utcDay=new Date().toISOString().slice(0,10)+'T00:00:00.000Z';
   const [sources,states,admitted,guard,bundles,outbox]=await Promise.all([
-   env.DB.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) AS enabled, '+
+   (deep?env.DB.prepare('SELECT COUNT(*) AS total, SUM(CASE WHEN enabled=1 THEN 1 ELSE 0 END) AS enabled, '+
     'SUM(CASE WHEN last_polled_at IS NOT NULL THEN 1 ELSE 0 END) AS ever_polled '+
-    'FROM source_registry').first(),
-   env.DB.prepare('SELECT state,COUNT(*) AS n FROM ingestion_spool_queue GROUP BY state').all(),
+    'FROM source_registry').first():
+    // Uses idx_p0a_registry_due(enabled,...), stops at one registered source.
+    env.DB.prepare('SELECT EXISTS(SELECT 1 FROM source_registry WHERE enabled=1 LIMIT 1) AS has_enabled').first()),
+   (deep?env.DB.prepare('SELECT state,COUNT(*) AS n FROM ingestion_spool_queue GROUP BY state').all():
+    Promise.resolve({results:[]})),
    // Only an explicitly requested deep audit scans the normalized article count.
    // Routine operational health must not spend D1 rows on a non-critical total.
    (deep?env.DB.prepare('SELECT COUNT(*) AS n FROM normalized_articles').first():Promise.resolve(null)),
    env.DB.prepare('SELECT hold_until,last_error_code FROM p0b_storage_circuit WHERE singleton=1').first(),
-   env.DB.prepare('SELECT COUNT(*) AS created,'+
+   (deep?env.DB.prepare('SELECT COUNT(*) AS created,'+
     "SUM(CASE WHEN state='D1_COMMITTED' AND acked_at IS NOT NULL THEN 1 ELSE 0 END) AS committed,"+
     "SUM(CASE WHEN state='DEAD_LETTER' THEN 1 ELSE 0 END) AS dead_letter "+
-    'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first(),
+    'FROM ingestion_spool_bundles WHERE created_at>=?').bind(utcDay).first():
+    // The committed-day probe uses idx_p0b_bundle_committed.
+    // This is a readiness hint, never a day-level count or a parity certificate.
+    env.DB.prepare(
+     "SELECT EXISTS(SELECT 1 FROM ingestion_spool_bundles "+
+     "WHERE d1_committed_at>=? AND state='D1_COMMITTED' AND acked_at IS NOT NULL LIMIT 1) AS has_committed_today,"+
+     "EXISTS(SELECT 1 FROM ingestion_spool_bundles "+
+     "WHERE state='DEAD_LETTER' AND created_at>=? LIMIT 1) AS has_dead_letter_today"
+    ).bind(utcDay,utcDay).first()),
    // Only explicit root-admin deep parity performs correlated bundle/item
    // journal joins. Routine health uses small bounded state totals; unknown
    // cross-storage integrity is NEVER represented as a positive proof.
@@ -44,18 +55,19 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
     "THEN 1 ELSE 0 END),0) AS item_journal_mismatch "+
     "FROM p0b_archive_outbox"
    ).first():
+    // Both EXISTS probes use idx_p0b_archive_outbox_pending(state,...).
+    // Never scan all archived items during routine /status monitoring.
     env.DB.prepare(
-     "SELECT COUNT(*) AS total,"+
-     "COALESCE(SUM(CASE WHEN state IN ('PENDING_ARCHIVE','REPLAYING') THEN 1 ELSE 0 END),0) AS pending,"+
-     "COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) AS archived,"+
-     "COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (b2_uri IS NULL OR b2_object_sha256 IS NULL) THEN 1 ELSE 0 END),0) AS archived_missing_b2 "+
-     "FROM p0b_archive_outbox"
+     "SELECT EXISTS(SELECT 1 FROM p0b_archive_outbox "+
+     "WHERE state IN ('PENDING_ARCHIVE','REPLAYING') LIMIT 1) AS has_pending,"+
+     "EXISTS(SELECT 1 FROM p0b_archive_outbox "+
+     "WHERE state='ARCHIVED' LIMIT 1) AS has_archived"
     ).first()),
 
   ]);
-  const queueState={PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
-   RETRY:0,QUARANTINED:0,DEAD_LETTER:0};
-  for(const state of states.results??[]){
+  const queueState=deep?{PENDING:0,PROCESSING:0,ACKNOWLEDGED:0,D1_COMMITTED:0,
+   RETRY:0,QUARANTINED:0,DEAD_LETTER:0}:null;
+  if(deep)for(const state of states.results??[]){
    if(!Object.hasOwn(queueState,state.state)||!Number.isSafeInteger(state.n)||state.n<0)
     throw Error('P0B_STATE_CENSUS_INVALID');
    queueState[state.state]=state.n;
@@ -73,7 +85,18 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
      providerBacklog=metrics.backlogCount;
    }
   }catch{/* Not a provider ACK proof; fail closed. */}
-  const objects=bundles?.created??0,committedBundles=bundles?.committed??0;
+  const objects=deep?(bundles?.created??0):null;
+  const committedBundles=deep?(bundles?.committed??0):null;
+  const cheapHint={
+   has_committed_today:!deep&&bundles?.has_committed_today===1,
+   dead_letter_today_observed:!deep&&bundles?.has_dead_letter_today===1,
+   outbox_pending_observed:!deep&&outbox?.has_pending===1,
+   ready_for_deep_check:!deep&&bundles?.has_committed_today===1&&
+     bundles?.has_dead_letter_today===0&&outbox?.has_pending===0&&
+     providerBacklog===0,
+   proves_integrity:false,proves_b2_object_get:false,
+   exact_counts_not_performed:!deep
+  };
   const noOutboxMismatch=deep&&outbox!==null&&
    (outbox?.archived_missing_b2??-1)===0&&
    (outbox?.bundle_journal_mismatch??-1)===0&&
@@ -86,15 +109,19 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
   return resp({
    schema:'geomacro.p0b.production-status.v1',ok:true,checked_at:checkedAt,
    activation_flag:env.GEOMACRO_P0B_ADMISSION_ACTIVE==='1',
-   source_registry:{total:sources?.total??0,enabled:sources?.enabled??0,
-    ever_polled:sources?.ever_polled??0},
-   queue_state:queueState,normalized_metadata_rows:deep?(admitted?.n??0):null,
+   source_registry:{total:deep?(sources?.total??0):null,
+    enabled:deep?(sources?.enabled??0):null,
+    ever_polled:deep?(sources?.ever_polled??0):null,
+    has_enabled:deep?(sources?.enabled??0)>0:sources?.has_enabled===1,
+    counts_exhaustive:deep},
+   queue_state:queueState,queue_state_counts_exhaustive:deep,
+   normalized_metadata_rows:deep?(admitted?.n??0):null,
    normalized_metadata_count_verified:deep,
    transactional_outbox_parity:{
     state:"D1_FIRST_ENCRYPTED_THEN_B2_VERIFIED",
-    total_bundle_records:outbox?.total??null,
-    pending_archive_bundles:outbox?.pending??null,
-    archived_verified_bundles:outbox?.archived??null,
+    total_bundle_records:deep?(outbox?.total??null):null,
+    pending_archive_bundles:deep?(outbox?.pending??null):null,
+    archived_verified_bundles:deep?(outbox?.archived??null):null,
     archived_without_b2_pointer:outbox?.archived_missing_b2??null,
     archived_without_exact_bundle_journal:outbox?.bundle_journal_mismatch??null,
     archived_item_count_mismatch:outbox?.item_journal_mismatch??null,
@@ -110,10 +137,11 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
     queue_metrics_best_effort:true,
     provider_queue_metrics_available:providerBacklog!==null,
     assertion_passed:journalParity&&providerBacklog===0,
-    dead_letter_bundles:bundles?.dead_letter??0,
+    dead_letter_bundles:deep?(bundles?.dead_letter??0):null,
     private_transactional_outbox_consistent:noOutboxMismatch,
     private_transactional_outbox_pending:outbox?.pending??null,
    },
+   cheap_queue_readiness_hint:cheapHint,
    b2_spool_scope:{prefix:env.B2_SPOOL_PREFIX??null,bucket:env.B2_SPOOL_BUCKET??null},
    b2_storage_guard:{open:Boolean(guard?.hold_until&&guard.hold_until>checkedAt),
     last_error_code:guard?.last_error_code??null,
@@ -121,7 +149,8 @@ export async function getP0bIngestionStatus(env,{deep=false}={}){
    worker_b2_credentials_present:Boolean(env.B2_KEY_ID)&&
     Boolean(env.B2_APPLICATION_KEY)&&Boolean(env.B2_SPOOL_ENCRYPTION_KEY),
    worker_queue_binding_present:typeof env.INGEST_QUEUE?.send==='function',
-   ready_for_real_acceptance:configured&&(sources?.enabled??0)>0,
+   ready_for_real_acceptance:configured&&
+    (deep?(sources?.enabled??0)>0:sources?.has_enabled===1),
    genuine_end_to_end_b2_remote_acceptance_proven:false,
    historical_registry_probes_not_current_live_receipts:true,
    source_rights_promoted:false,

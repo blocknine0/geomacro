@@ -16,13 +16,18 @@ function mockStatusDatabase(){
       async first(){
         // Deep journal SQL embeds bundle/article subqueries; classify it first.
         if(sql.includes("FROM p0b_archive_outbox"))
-          return {total:1,pending:0,archived:1,archived_missing_b2:0,
-            bundle_journal_mismatch:0,item_journal_mismatch:0};
-        if(sql.includes("FROM source_registry"))return {total:1,enabled:1,ever_polled:1};
+          return sql.includes("EXISTS(")?
+            {has_pending:0,has_archived:1}:
+            {total:1,pending:0,archived:1,archived_missing_b2:0,
+              bundle_journal_mismatch:0,item_journal_mismatch:0};
+        if(sql.includes("FROM source_registry"))
+          return sql.includes("EXISTS(")?{has_enabled:1}:{total:1,enabled:1,ever_polled:1};
         if(sql.includes("FROM normalized_articles"))return {n:47};
         if(sql.includes("FROM p0b_storage_circuit"))return null;
         if(sql.includes("FROM ingestion_spool_bundles"))
-          return {created:1,committed:1,dead_letter:0};
+          return sql.includes("EXISTS(")?
+            {has_committed_today:1,has_dead_letter_today:0}:
+            {created:1,committed:1,dead_letter:0};
         throw Error("UNEXPECTED_SQL");
       }
     };
@@ -38,6 +43,18 @@ test("routine P0B health omits the normalized-article full count",async()=>{
   assert.equal(body.ok,true);
   assert.equal(body.normalized_metadata_rows,null);
   assert.equal(body.normalized_metadata_count_verified,false);
+  assert.equal(body.source_registry.total,null);
+  assert.equal(body.source_registry.enabled,null);
+  assert.equal(body.source_registry.has_enabled,true);
+  assert.equal(body.queue_state,null);
+  assert.equal(body.queue_state_counts_exhaustive,false);
+  assert.equal(body.cheap_queue_readiness_hint.ready_for_deep_check,true);
+  assert.equal(body.cheap_queue_readiness_hint.proves_integrity,false);
+  assert.equal(body.live_bundle_parity.b2_objects_created,null);
+  assert.equal(body.transactional_outbox_parity.total_bundle_records,null);
+  assert.ok(queries.every(q=>!q.includes("GROUP BY state")));
+  assert.ok(queries.some(q=>q.includes("EXISTS(SELECT 1 FROM source_registry")));
+  assert.ok(queries.some(q=>q.includes("EXISTS(SELECT 1 FROM p0b_archive_outbox")));
   assert.equal(body.transactional_outbox_parity.parity_deep_check_performed,false);
   assert.equal(body.live_bundle_parity.assertion_passed,false);
   assert.ok(!queries.some(q=>q.includes("FROM normalized_articles")));
@@ -55,6 +72,9 @@ test("only explicitly requested deep audit computes exact count and journal pari
   assert.equal(body.live_bundle_parity.assertion_passed,true);
   assert.ok(queries.some(q=>q.includes("FROM normalized_articles")));
   assert.ok(queries.some(q=>q.includes("NOT EXISTS (")));
+  assert.equal(body.source_registry.enabled,1);
+  assert.equal(body.queue_state_counts_exhaustive,true);
+  assert.equal(body.cheap_queue_readiness_hint.proves_integrity,false);
 });
 test("production wait uses cheap status, but actual parity verdict requires deep proof",()=>{
   const deepRequests=workflow.split("p0b/status?deep=1").length-1;
@@ -64,6 +84,8 @@ test("production wait uses cheap status, but actual parity verdict requires deep
   assert.equal(cheapRequests,1,"one shallow status request in bounded helper");
   assert.equal(helperCalls,2,"both phases wait on lightweight hints");
   assert.ok(workflow.includes(".live_bundle_parity.assertion_passed==true"));
+  assert.ok(workflow.includes(".cheap_queue_readiness_hint.ready_for_deep_check==true"));
+  assert.ok(workflow.includes(".cheap_queue_readiness_hint.proves_integrity==false"));
   assert.ok(workflow.includes("P0B_LIVE_CANARY_BUNDLE_D1_QUEUE_PARITY_MISSING"));
   assert.ok(workflow.includes("P0B_LIVE_DAY_PARITY_ASSERTION_FAILED"));
   assert.ok(workflow.includes("P0B_REAL_B2_D1_PARITY_VERIFIED"));

@@ -113,10 +113,8 @@ jobs:
               if printf '%s' "$hint" | jq -e '
                 .ok==true and
                 .live_bundle_parity.provider_queue_metrics_available==true and
-                .live_bundle_parity.unacked_queue_items==0 and
-                (.live_bundle_parity.b2_objects_created // 0)>0 and
-                .live_bundle_parity.d1_committed_count==.live_bundle_parity.b2_objects_created and
-                .transactional_outbox_parity.pending_archive_bundles==0
+                .cheap_queue_readiness_hint.ready_for_deep_check==true and
+                .cheap_queue_readiness_hint.proves_integrity==false
               ' >/dev/null; then
                 break
               fi
@@ -132,7 +130,7 @@ jobs:
           }'
           printf '%s' "$STATUS" | jq -e '
             .ok==true and .ready_for_real_acceptance==true and
-            .source_registry.enabled>0 and .worker_b2_credentials_present==true and
+            .source_registry.has_enabled==true and .worker_b2_credentials_present==true and
             .worker_queue_binding_present==true
           ' >/dev/null || { echo "::error::P0B_REAL_QUEUE_NOT_ACTIVE"; exit 3; }
           # Source diagnostics are fully redacted before logging.

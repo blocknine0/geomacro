@@ -68,7 +68,11 @@ test('P0-B admin readiness returns D1 state only and refuses empty registry',asy
   const live=await getP0bIngestionStatus(env), data=await live.json();
   assert.equal(data.ready_for_real_acceptance,true);
   assert.equal(data.genuine_end_to_end_b2_remote_acceptance_proven,false);
-  assert.equal(data.source_registry.enabled,1);
+  assert.equal(data.source_registry.has_enabled,true);
+  assert.equal(data.source_registry.enabled,null);
+  assert.equal(data.source_registry.counts_exhaustive,false);
+  assert.equal(data.queue_state,null);
+  assert.equal(data.cheap_queue_readiness_hint.proves_integrity,false);
   const asText=JSON.stringify(data);
   assert.doesNotMatch(asText,/https?:\/\//u);
   assert.doesNotMatch(asText,/not-a-secret/u);
