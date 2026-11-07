@@ -237,8 +237,7 @@ test("140k daily regular max reserves last 40k writes for explicitly authorized 
   "workers","durable_objects"].map((product_id,i)=>({
    id:"lock-"+i,product_id,action:"usage_block",enabled:true,
    threshold_cents:1,version:1,current_state:{status:"below_limit"},
-  })),
- ]},now);
+  }))},now);
  const normal=planD1BundledWork(usage(3000,3000),{now,paidProof:proof,spendGuardProof});
  assert.equal(normal.critical,true);
  assert.ok(normal.daily_account_soft_limit_read<=140000);
