@@ -23,8 +23,8 @@ function mockDb({outbox=0,queue=[],bundles=[],r2=[],historical=0,events=[]}={}){
       if(query.includes("FROM p0b_archive_outbox"))
         return {total:outbox,pending:outbox,replaying:0,expired_leases:0,
           archived:0,journal_mismatch:0};
-      if(query.includes("FROM phase2h_private_raw_news"))
-        return {total:historical,unarchived:historical};
+      if(query.includes("FROM phase2h_archive_totals"))
+        return {categories:3,total:historical,unarchived:historical};
       throw Error("UNEXPECTED_SINGLE_QUERY");
     },
     async all(){
@@ -139,6 +139,9 @@ test("real SQLite activation views reject future evidence and count unknown debt
  CREATE TABLE ingestion_spool_bundles(state,b2_spool_uri,bundle_sha256,item_count,acked_at);
  CREATE TABLE p0b_private_r2_fallback(state);
  CREATE TABLE phase2h_private_raw_news(b2_object_sha256);
+ CREATE TABLE phase2h_archive_totals(category,staged_count,archived_count);
+ INSERT INTO phase2h_archive_totals VALUES
+ ('geopolitics',0,0),('macro',0,0),('rare_earth',0,0);
  CREATE TABLE progressive_risk_gate_facts(country_iso3,category,event_fingerprint,clock_basis,publisher_domain,event_clock);`);
  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0203_hot50_activation_fail_closed_views.sql",import.meta.url),"utf8"));
  assert.equal(db.prepare("SELECT COUNT(*) n FROM v_hot50_three_category_evidence").get().n,150);
