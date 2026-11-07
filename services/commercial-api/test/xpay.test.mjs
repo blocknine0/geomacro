@@ -32,7 +32,8 @@ test('standard x402 isValid works; explicit false or malformed response fails cl
   assert.equal((await client(valid).facilitator.verify(payment(),expected)).isValid,true);
  }
  for(const invalid of [null,{},[],{valid:'true'},{valid:false},{isValid:false},
-  {isValid:true,valid:false},{valid:true,isValid:false},{valid:true,payer:payee},
+  {isValid:true,valid:false},{valid:true,isValid:false},
+  {isValid:true,valid:null},{valid:true,isValid:'true'},{valid:true,payer:payee},
   {valid:true,payer:15}]){
   await assert.rejects(client(invalid).facilitator.verify(payment(),expected));
  }
@@ -51,6 +52,8 @@ test('xpay settled/txHash and standard success/transaction map only to Base inte
 test('xpay ambiguous, malformed and cross-chain settlement results reject',async()=>{
  const invalid=[null,{}, {settled:true},{settled:false,txHash:tx},
   {success:true,settled:false,transaction:tx},
+  {success:true,settled:null,transaction:tx},
+  {settled:true,txHash:tx,errorReason:'failed'},
   {settled:true,txHash:'0x1234'},
   {settled:true,txHash:tx,transaction:'0x'+'cc'.repeat(32)},
   {settled:true,txHash:tx,network:'eip155:137'},
