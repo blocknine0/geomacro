@@ -43,6 +43,7 @@ config.vars={...config.vars,DEPLOYED_SHA:env.GITHUB_SHA,COMMERCIAL_SIGNING_KEY_I
  PAYPAL_MODE:env.GEOMACRO_PAYPAL_ENVIRONMENT||'sandbox',
  PAYPAL_ENABLED:String(!commercialNoFundsOnly&&Boolean(paypalComplete)),X402_ENABLED:String(!commercialNoFundsOnly&&Boolean(x402Complete&&!xpayNoFundsOnly)),
  POLYGON_X402_ENABLED:'false',
+ POLYGON_RPC_URL:env.COMMERCIAL_POLYGON_RPC_URL||'https://polygon-bor-rpc.publicnode.com',
  // Public canonical api.geomacro.live transport is not production-verified.
  // Use the approved same-service control-plane Worker endpoint for internal
  // qualified evidence; existing strict subject/rights/signed proof checks stay.
