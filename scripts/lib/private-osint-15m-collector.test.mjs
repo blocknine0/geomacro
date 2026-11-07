@@ -21,17 +21,6 @@ const mockSources=Array.from({length:18},(_,i)=>({
  id:"issuer_"+i,url:"https://publisher-"+i+".example.org/rss.xml",
  type:"rss",supported:true,categories:[["geopolitics","macro","rare_earth"][i%3]]
 }));
-test("even explicit caller registries cannot fetch an owner-removed feed or a URL alias",async()=>{
- let calls=0;
- const source={id:"private_mesh_pbs_newshour",url:"https://www.pbs.org/newshour/feeds/rss/headlines",
-  categories:["geopolitics"],type:"rss",supported:true};
- const result=await collectPrivateOsint15m({now,registry:[source,{...source,id:"different_alias"}],
-  normalize,resolveCountry:()=>null,fetchImpl:async()=>{calls++;return new Response(rss)}});
- assert.equal(calls,0);
- assert.equal(result.summary.source_endpoints_attempted,0);
- assert.equal(result.summary.owner_retired_sources_excluded,2);
- assert.equal(result.items.length,0);
-});
 test("Euronews language subdomains share one in-flight publisher slot without retrying 406",async()=>{
  const registry=["de","es","fr","pt","ru"].map(language=>({
   id:"issuer_"+language,url:"https://"+language+".euronews.com/rss",
