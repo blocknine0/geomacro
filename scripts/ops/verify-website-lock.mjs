@@ -171,6 +171,8 @@ const approvedPricing = [
   config.approved_reviewer_gated_risk_indices_20261106,
   // Founder-authorized historical recovery, two exact Risk Indices UI blobs only.
   config.approved_verified_historical_indices_20261106,
+  // Founder-approved Store/API price-credit parity; exact two source blobs only.
+  config.approved_store_api_credit_parity_20261108,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
