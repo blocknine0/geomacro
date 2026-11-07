@@ -1,3 +1,4 @@
+import {GEOMACRO_NEW_SALE_TIER_CAPABILITIES} from "./credit-metering-policy.mjs";
 import {
   GEOMACRO_ACCESS_TIERS,
   GEOMACRO_CREDIT_CONTRACT_VERSION,
@@ -154,7 +155,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   starter_dev: {
     tier: "starter_dev",
     access_surfaces: ["paid_dashboard", "commercial_api", "agent_payment"],
-    included_capabilities: ["intelligence_query","structural_country_digest","structural_country_profile"],
+    included_capabilities: GEOMACRO_NEW_SALE_TIER_CAPABILITIES.starter_dev as readonly GeomacroCreditCapability[],
     api_access: true,
     history_mode: "bounded_history",
     max_subjects_per_request: 1,
@@ -171,7 +172,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   pro_analyst: {
     tier: "pro_analyst",
     access_surfaces: ["paid_dashboard", "commercial_api", "agent_payment"],
-    included_capabilities: ["intelligence_query","structural_country_digest","structural_corridor_digest","structural_country_profile","structural_corridor_profile"],
+    included_capabilities: GEOMACRO_NEW_SALE_TIER_CAPABILITIES.pro_analyst as readonly GeomacroCreditCapability[],
     api_access: true,
     history_mode: "bounded_history",
     max_subjects_per_request: 2,
@@ -188,7 +189,7 @@ export const STRUCTURED_TIER_REGISTRY: Record<
   business_pilot: {
     tier: "business_pilot",
     access_surfaces: ["paid_dashboard", "commercial_api", "agent_payment"],
-    included_capabilities: Object.keys(GEOMACRO_CREDIT_COSTS) as GeomacroCreditCapability[],
+    included_capabilities: GEOMACRO_NEW_SALE_TIER_CAPABILITIES.business_pilot as readonly GeomacroCreditCapability[],
     api_access: true,
     history_mode: "bounded_history",
     max_subjects_per_request: 2,
