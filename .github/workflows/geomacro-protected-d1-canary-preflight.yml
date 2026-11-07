@@ -12,6 +12,7 @@ on:
       - "scripts/ops/verify-protected-d1-migration-headroom.mjs"
       - "scripts/tests/verify-protected-d1-migration-headroom.test.mjs"
       - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
+      - "scripts/tests/verify-protected-d1-index-build-bound.test.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
       - "scripts/lib/d1-owner-daily-envelope.test.mjs"
@@ -40,6 +41,7 @@ on:
       - "scripts/ops/verify-protected-d1-migration-headroom.mjs"
       - "scripts/tests/verify-protected-d1-migration-headroom.test.mjs"
       - "scripts/tests/verify-protected-d1-migration-gate.test.mjs"
+      - "scripts/tests/verify-protected-d1-index-build-bound.test.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
       - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
@@ -72,7 +74,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/tests/verify-protected-d1-index-build-bound.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
@@ -224,6 +226,25 @@ jobs:
           cd ../..
           node scripts/ops/verify-protected-d1-migration-gate.mjs \
             --pending "$RUNNER_TEMP/d1-pending.txt"
+      - name: Bound old-table row exposure before index build or backfill (D1 reads counted)
+        if: steps.pending.outputs.apply == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          node scripts/ops/verify-protected-d1-migration-gate.mjs \
+            --emit-size-probe "$RUNNER_TEMP/d1-pending.txt" > "$RUNNER_TEMP/d1-probe.sql"
+          cd workers/control-plane
+          npx -y "wrangler@$WRANGLER_VERSION" d1 execute DB --remote --json \
+            --config wrangler.canary-d1.jsonc \
+            --command "$(cat "$RUNNER_TEMP/d1-probe.sql")" \
+            > "$RUNNER_TEMP/d1-probe.json" 2>/dev/null
+          cd ../..
+          node scripts/ops/verify-protected-d1-migration-gate.mjs \
+            --verify-size-probe "$RUNNER_TEMP/d1-pending.txt" "$RUNNER_TEMP/d1-probe.json"
+          # Provider rows just spent by this small bounded probe count too.
+          # Re-read official UTC usage, never assume earlier headroom persisted.
+          node scripts/ops/verify-protected-d1-migration-gate.mjs
       - name: Apply only approved pending migrations through Wrangler migration history
         if: steps.pending.outputs.apply == 'true'
         shell: bash
