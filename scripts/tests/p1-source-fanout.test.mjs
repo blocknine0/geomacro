@@ -163,7 +163,9 @@ test("P1 V3 queues 15 sources per message with bounded D1 reservation and no per
   assert.equal(first.base_table_dispatch_lease_rows,1);
   assert.equal(first.base_table_mutex_rows,1);
   assert.equal(first.provider_billed_index_write_overhead_unmeasured,true);
-  assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n-baseline,4);
+  // Source Queue reservation now uses one atomic UPSERT instead of an
+  // initial INSERT OR IGNORE plus UPDATE; preserves the two dispatcher writes.
+  assert.equal(f.db.prepare("SELECT total_changes() AS n").get().n-baseline,3);
   assert.equal(f.db.prepare("SELECT COUNT(*) AS n FROM source_registry WHERE poll_dispatch_token IS NOT NULL").get().n,0);
   assert.ok(batches.flat().every(m=>m.body.kind==="P1_SOURCE_POLL_V3"));
   assert.equal(first.queue_messages_reserved,7);

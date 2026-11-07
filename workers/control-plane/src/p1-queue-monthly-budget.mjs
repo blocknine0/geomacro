@@ -1,6 +1,6 @@
 /**
  * Conservative shared D1-backed monthly budget for source polling and P0-B ingestion.
- * Five operations per source-bundle message reserved before sending:
+ * One atomic UPSERT+RETURNING reserves five operations per message:
  * one write, up to two reads (one retry), delete and optional DLQ write.
  * Never releases an unused reservation after an ambiguous provider result.
  *
@@ -23,25 +23,24 @@ export async function reserveP1SourceQueueMessages(db,{now=Date.now(),messages}=
  const operations=messages*P1_QUEUE_RESERVED_OPS_PER_MESSAGE;
  const timestamp=new Date(now).toISOString();
  try{
-  await db.prepare(
-   "INSERT OR IGNORE INTO cloudflare_source_poll_queue_budget "+
-   "(month_utc,queue_name,operations_reserved,source_messages_reserved,updated_at) "+
-   "VALUES (?,'geomacro-source-poll',0,0,?)"
-  ).bind(month,timestamp).run();
-  const update=await db.prepare(
-   "UPDATE cloudflare_source_poll_queue_budget "+
-   "SET operations_reserved=operations_reserved+?,"+
-   "source_messages_reserved=source_messages_reserved+?,updated_at=? "+
-   "WHERE month_utc=? AND queue_name='geomacro-source-poll' "+
-   "AND operations_reserved<=?"
-  ).bind(operations,messages,timestamp,month,P1_MONTHLY_OPERATIONS_MAX-operations).run();
-  if(update?.meta?.changes!==1)
-   return {admitted:false,reason:"P1_QUEUE_MONTHLY_BUDGET_HELD",
-    operations_requested:operations};
+  // One atomic D1 statement instead of INSERT OR IGNORE + UPDATE + SELECT
+  // for each bundle dispatch. Returning values are the same transaction's
+  // exact reservation receipt; concurrent source and P0B messages contend on
+  // this single UTC-month row without creating a second quota.
   const r=await db.prepare(
-   "SELECT operations_reserved,source_messages_reserved "+
-   "FROM cloudflare_source_poll_queue_budget WHERE month_utc=?"
-  ).bind(month).first();
+   "INSERT INTO cloudflare_source_poll_queue_budget "+
+   "(month_utc,queue_name,operations_reserved,source_messages_reserved,updated_at) "+
+   "VALUES (?,'geomacro-source-poll',?,?,?) "+
+   "ON CONFLICT(month_utc) DO UPDATE SET "+
+   "operations_reserved=cloudflare_source_poll_queue_budget.operations_reserved+excluded.operations_reserved,"+
+   "source_messages_reserved=cloudflare_source_poll_queue_budget.source_messages_reserved+excluded.source_messages_reserved,"+
+   "updated_at=excluded.updated_at "+
+   "WHERE cloudflare_source_poll_queue_budget.operations_reserved<=? "+
+   "RETURNING operations_reserved,source_messages_reserved"
+  ).bind(month,operations,messages,timestamp,
+   P1_MONTHLY_OPERATIONS_MAX-operations).first();
+  if(!r)return {admitted:false,reason:"P1_QUEUE_MONTHLY_BUDGET_HELD",
+    operations_requested:operations};
   if(!valid(r?.operations_reserved)||
      r.operations_reserved> P1_MONTHLY_OPERATIONS_MAX ||
      !valid(r.source_messages_reserved)||r.source_messages_reserved<messages)
