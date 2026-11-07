@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T07:00:53.219Z",
+  "checked_at": "2026-11-07T13:06:16.542Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 42,
+  "item_count": 32,
   "counts": {
-    "geopolitics": 3,
-    "macro": 8,
-    "rare_earth": 31
+    "geopolitics": 2,
+    "macro": 5,
+    "rare_earth": 25
   },
-  "source_native_ids_sha256": "1e2fe58642e6fbe97de85d16c9e2a461274726b72b95f635553982c65358e4d2",
+  "source_native_ids_sha256": "d1a60f2a6a80d38fe592974df971a49ea534eba3a9c2ccb15d718d278a499bf0",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -624,194 +624,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T13:10:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9483cd3f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5B expansion of Arizona copper mine - StreetInsider. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T13:03:16.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-65ae2f81",
-      "category": "rare_earth",
-      "title": "Geomacro finds Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand",
-      "what_changed": "A monitored source feed reports: Japan raised concerns over rare earth export curbs at APEC meeting - Nation Thailand. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T12:59:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-3eec9cd1",
-      "category": "rare_earth",
-      "title": "Geomacro finds India approved $297 million incentive policy for lithium, nickel processing - Reuters",
-      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for lithium, nickel processing - Reuters. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T11:04:42.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-37d08d10",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine",
-      "what_changed": "A monitored source feed reports: Cabinet approved $297 million incentive policy for critical minerals processing - BusinessLine. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T10:19:07.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-0da8c86b",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cabinet: approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing · India",
-      "why_it_matters": "Mineral supply developments can matter for battery, electronics and industrial sourcing; project feasibility and production impacts need independent evidence.",
-      "what_changed": "Cabinet approved Capex Support Scheme to Promote Critical Mineral Processing with an Outlay of Rs.2,814 Crore for Lithium and Nickel processing. Country or region mentioned: India.",
-      "geography": "India",
-      "development_type": "approval",
-      "topic": "critical-mineral inputs",
-      "published_at": "2026-11-04T10:11:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ac664ba2",
-      "category": "macro",
-      "title": "Geomacro finds Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance",
-      "what_changed": "A monitored source feed reports: Sweden's Central Bank raised Rates for First Time in Three Years, Policy Rate to 2.0% on Middle East-Driven Inflation Concerns - BigGo Finance. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "monetary policy",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T09:55:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-93e2bfbb",
-      "category": "rare_earth",
-      "title": "Geomacro finds India approved $297 million incentive policy for critical minerals processing - TradingView",
-      "what_changed": "A monitored source feed reports: India approved $297 million incentive policy for critical minerals processing - TradingView. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T09:37:36.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-202c1363",
-      "category": "macro",
-      "title": "Geomacro finds Transcat raised FY2027 service organic growth outlook to low double digits while targeting at least 100 bps service gross margin expansion in 2H",
-      "what_changed": "A monitored source feed reports: Transcat raised FY2027 service organic growth outlook to low double digits while targeting at least 100 bps service gross margin expansion in 2H. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T07:36:46.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: seekingalpha.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7777e4ba",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said he will accept election results - Bangkok Post",
-      "what_changed": "A monitored source feed reports: Trump said he will accept election results - Bangkok Post. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T07:36:44.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-663fb28a",
-      "category": "macro",
-      "title": "Geomacro finds Alfen reported third quarter profit beat despite revenue miss By Investing.com - Investing.com Nigeria",
-      "what_changed": "A monitored source feed reports: Alfen reported third quarter profit beat despite revenue miss By Investing.com - Investing.com Nigeria. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T07:31:05.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
