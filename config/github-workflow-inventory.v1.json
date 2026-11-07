@@ -165,6 +165,7 @@
     "geomacro-first-customer-receipt-safety.yml",
     "geomacro-owner-partner-four-gates.yml",
     "geomacro-predge-email-acceptance.yml",
+    "geomacro-protected-d1-canary-preflight.yml",
     "geopolitical-production-diagnostics.yml",
     "global-195x3-human-machine-source-regression.yml",
     "global-country-raw-source-mesh.yml",
