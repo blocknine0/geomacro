@@ -176,3 +176,57 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
  assert.equal(denied.critical,false);
  assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_HTTP_403");
 });
+
+test("owner 120k reads / 180k writes cap applies independently of Paid allowance",async()=>{
+ const account="a".repeat(32);
+ const env={CLOUDFLARE_ACCOUNT_ID:account,
+  CLOUDFLARE_API_TOKEN:"d".repeat(32),
+  CLOUDFLARE_BILLING_READ_TOKEN:"e".repeat(32)};
+ const today="2026-10-27";
+ const makeGraphql=(rowsRead,rowsWritten)=>({data:{viewer:{accounts:[{
+  d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"db-"+account,date:today},
+   sum:{rowsRead,rowsWritten}}],
+ }]}}});
+ const policies={success:true,result:["workers","durable_objects"].map((product_id,i)=>({
+  id:"guard-"+i,product_id,enabled:true,action:"usage_block",
+  threshold_cents:1,version:1,current_state:{status:"below_limit"},
+ }))};
+ const mock=(rowsRead,rowsWritten,policyStatus=200)=>async(url)=>{
+  if(url.endsWith("/graphql"))return {ok:true,
+   json:async()=>makeGraphql(rowsRead,rowsWritten)};
+  if(url.endsWith("/subscriptions"))return {status:200,json:async()=>paid};
+  if(url.endsWith("/billing/spend-policies"))return policyStatus===200?
+   {status:200,json:async()=>policies}:
+   {status:404,json:async()=>({success:false,errors:[{code:1003}]})};
+  throw Error("unexpected provider API route");
+ };
+ const granted=await checkD1BundledWork({env,now,
+  fetchImpl:mock(1500,1500)});
+ assert.equal(granted.critical,true);
+ assert.equal(granted.source_intake,false); // 20m+15m read envelope > 120k.
+ assert.equal(granted.paid_capacity_probe_status,"VERIFIED");
+ assert.equal(granted.owner_d1_utc_budget_held,false);
+ assert.equal(granted.owner_d1_utc_daily_targets.rows_read,120000);
+ assert.equal(granted.owner_d1_utc_daily_targets.rows_written,180000);
+ const blocked=await checkD1BundledWork({env,now,
+  fetchImpl:mock(117000,2000)});
+ assert.equal(blocked.reason,"GEOMACRO_OWNER_D1_UTC_DAILY_BUDGET_HELD");
+ assert.equal(blocked.critical,false);
+ assert.equal(blocked.source_intake,false);
+ assert.equal(blocked.paid_capacity_probe_status,"VERIFIED");
+ assert.equal(blocked.workers_paid_subscription_verified,true);
+ const writes=await checkD1BundledWork({env,now,
+  fetchImpl:mock(1500,179000)});
+ assert.equal(writes.owner_d1_utc_budget_held,true);
+ assert.equal(writes.critical,false);
+ const missingSpend=await checkD1BundledWork({env,now,
+  fetchImpl:mock(1500,1500,404)});
+ assert.equal(missingSpend.owner_d1_utc_budget_held,false);
+ assert.equal(missingSpend.workers_paid_subscription_verified,true);
+ assert.equal(missingSpend.reason,"WORKERS_PAID_SPEND_POLICY_UNVERIFIED");
+ assert.equal(missingSpend.paid_capacity_probe_status,
+  "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003");
+ assert.equal(missingSpend.critical,false);
+ assert.equal(missingSpend.source_intake,false);
+ assert.equal(missingSpend.paid_calls,0);
+});
