@@ -548,7 +548,8 @@ export function phase2fQuotaDiagnostic(plan){
     Number.isSafeInteger(plan.remaining_rows_written);
   const readReserve=D1_BUNDLE_LANES.critical.read_reserve;
   const writeReserve=D1_BUNDLE_LANES.critical.write_reserve;
-  const physical=valid&&
+  const paidSubscription=plan?.workers_paid_subscription_verified===true;
+  const physical=valid&&!paidSubscription&&
     (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
   const protectedReserve=valid&&
     (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
@@ -556,6 +557,9 @@ export function phase2fQuotaDiagnostic(plan){
     (plan.observed_rows_read>=plan.paced_ceiling_by_lane?.critical?.rows_read||
      plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
+    plan?.owner_d1_utc_budget_held===true?"GEOMACRO_OWNER_DAILY_BUDGET_REACHED":
+    paidSubscription&&plan?.reason==="WORKERS_PAID_SPEND_POLICY_UNVERIFIED"?
+      "WORKERS_PAID_SPEND_POLICY_UNVERIFIED":
     physical?"PHYSICAL_FREE_LIMIT_REACHED":
     protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
     plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
@@ -572,6 +576,8 @@ export function phase2fQuotaDiagnostic(plan){
     remaining_rows_read:valid?plan.remaining_rows_read:null,
     remaining_rows_written:valid?plan.remaining_rows_written:null,
     physical_free_limit_reached:valid?physical:null,
+    workers_paid_subscription_verified:paidSubscription,
+    owner_d1_utc_budget_held:plan?.owner_d1_utc_budget_held===true,
     protected_critical_predge_reserve_held:valid?protectedReserve:null,
     utc_critical_pacing_held:valid?pacing:null,
     critical_read_reserve_rows:readReserve,
@@ -616,6 +622,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // enabled Billing Read or paid entitlement proof fails, remain on the
     // original conservative Free plan guard. No magic paid-mode env switch.
     let paidProof=null,spendGuardProof=null,paidProbe="NO_ACCOUNT_TOKEN";
+    let paidSubscriptionVerified=false;
     // An existing account token may already have Billing Read permission.
     // Try its read-only provider endpoints before requiring another secret;
     // a 403, missing policy or ambiguous proof still cannot unlock capacity.
@@ -624,6 +631,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     if(billingEnv.CLOUDFLARE_BILLING_READ_TOKEN){
       try{
         const candidate=await readCloudflareWorkersPaidProof({env:billingEnv,fetchImpl,now});
+        paidSubscriptionVerified=true;
         // The $5 subscription is NOT a spending limit. The Paid source lane
         // stays on the Free-plan quota unless BOTH provider-side usage_block
         // policies (Workers and Durable Objects) are independently verified.
@@ -635,8 +643,29 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
       }
     }
-    return {...planD1BundledWork(quota,{now,paidProof,spendGuardProof}),
-      paid_capacity_probe_status:paidProbe};
+    // Independent owner UTC daily cap applies even when Cloudflare reports
+    // valid Paid capacity; provider inclusion is monthly, not owner approval
+    // for unlimited physical D1 rows. Buffer for non-atomic telemetry lag.
+    const ownerBudget=FIVE_USD_BUDGET.owner_d1_utc_daily_targets;
+    const ownerHold=quota.observed_rows_read+ownerBudget.safety_buffer_rows_read>=
+        ownerBudget.rows_read||
+      quota.observed_rows_written+ownerBudget.safety_buffer_rows_written>=
+        ownerBudget.rows_written;
+    const spendHold=paidSubscriptionVerified&&spendGuardProof?.verified!==true;
+    const result=ownerHold?held("GEOMACRO_OWNER_D1_UTC_DAILY_BUDGET_HELD",now):
+      spendHold?held("WORKERS_PAID_SPEND_POLICY_UNVERIFIED",now):
+      planD1BundledWork(quota,{now,paidProof,spendGuardProof});
+    return {...result,
+      paid_capacity_probe_status:paidProbe,
+      workers_paid_subscription_verified:paidSubscriptionVerified,
+      owner_d1_utc_daily_targets:ownerBudget,
+      owner_d1_utc_budget_held:ownerHold,
+      observed_rows_read:quota.observed_rows_read,
+      observed_rows_written:quota.observed_rows_written,
+      owner_d1_headroom_rows_read:Math.max(0,
+        ownerBudget.rows_read-quota.observed_rows_read),
+      owner_d1_headroom_rows_written:Math.max(0,
+        ownerBudget.rows_written-quota.observed_rows_written)};
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }
