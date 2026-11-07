@@ -18,7 +18,7 @@ const policy=(product_id)=>({
 const policies={success:true,errors:[],result:[
  policy("workers"),policy("durable_objects"),
 ]};
-test("only active provider-side 1-cent usage blocks unlock Paid admission",()=>{
+test("only active provider-side 1-cent usage blocks count as verified policies",()=>{
  const proof=assessFiveUsdSpendPolicies(policies,now);
  assert.equal(proof.schema,FIVE_USD_SPEND_GUARD_SCHEMA);
  assert.equal(proof.verified,true);
@@ -26,7 +26,7 @@ test("only active provider-side 1-cent usage blocks unlock Paid admission",()=>{
  assert.equal(proof.account_wide_zero_overage_guaranteed,false);
  assert.deepEqual(proof.products,["workers","durable_objects"]);
 });
-test("missing, alert-only, disabled, too-high, used-up, or unknown policies HOLD",()=>{
+test("missing, alert-only, disabled, too-high, used-up, or unknown policies remain unverified",()=>{
  const bad=[
   {...policies,result:[policy("workers")]},
   {...policies,result:[{...policy("workers"),action:"notification"},policy("durable_objects")]},

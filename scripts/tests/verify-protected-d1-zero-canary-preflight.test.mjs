@@ -52,15 +52,17 @@ test("canary preflight only reads provider metadata, never promotes Worker or D1
  assert.ok(!out.includes(env.CLOUDFLARE_ACCOUNT_ID));
  assert.ok(!out.includes(env.CLOUDFLARE_API_TOKEN));
 });
-test("spend-policy 404 and owner 140k normal daily cap HOLD without touching emergency",async()=>{
+test("spend-policy 404 is advisory while owner daily cap still HOLDS without spending emergency",async()=>{
  const base={env,now:at,fetchImpl:mockFetch};
  const spend=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,paid_capacity_probe_status:
    "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003",
    paid_capacity_verified_by_provider:false})
  });
- assert.equal(spend.eligible_for_zero_traffic_stage,false);
- assert.equal(spend.reason,"WORKERS_PAID_SPEND_POLICY_UNVERIFIED");
+ assert.equal(spend.eligible_for_zero_traffic_stage,true);
+ assert.equal(spend.spend_policy_verified,false);
+ assert.equal(spend.spend_policy_verification_enforced,false);
+ assert.equal(spend.reason,"ZERO_TRAFFIC_PREFLIGHT_READY");
  const rows=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,observed_rows_read:136001})
  });

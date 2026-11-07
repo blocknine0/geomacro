@@ -223,10 +223,12 @@ test("owner 120k reads / 180k writes cap applies independently of Paid allowance
   fetchImpl:mock(1500,1500,404)});
  assert.equal(missingSpend.owner_d1_utc_budget_held,false);
  assert.equal(missingSpend.workers_paid_subscription_verified,true);
- assert.equal(missingSpend.reason,"WORKERS_PAID_SPEND_POLICY_UNVERIFIED_SAFE_DEGRADE");
+ assert.equal(missingSpend.reason,"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET");
+ assert.equal(missingSpend.spend_policy_verified,false);
+ assert.equal(missingSpend.spend_policy_verification_enforced,false);
  assert.equal(missingSpend.paid_capacity_probe_status,
   "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003");
- assert.equal(missingSpend.critical,false);
+ assert.equal(missingSpend.critical,true);
  assert.equal(missingSpend.source_intake,false);
  assert.equal(missingSpend.paid_calls,0);
 });
@@ -248,4 +250,27 @@ test("140k daily regular max reserves last 40k writes for explicitly authorized 
  const noOverride=planD1BundledWork(usage(3000,179999),{now,paidProof:proof,spendGuardProof});
  assert.equal(noOverride.critical,false);
  assert.equal(noOverride.phase2h_raw_archive,false);
+});
+
+test('advisory spend failures never forge policy verification or bypass subscription/daily budgets',async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),CLOUDFLARE_API_TOKEN:'b'.repeat(32)};
+ for(const status of [401,403,404,503]){
+  const calls=[];
+  const result=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
+   calls.push({url,method:init.method});
+   if(url.endsWith('/graphql'))return {ok:true,status:200,json:async()=>({data:{viewer:{accounts:[{
+    d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:'db-'+'a'.repeat(32),date:now.toISOString().slice(0,10)},sum:{rowsRead:1500,rowsWritten:1500}}]
+   }]}}})};
+   if(url.endsWith('/subscriptions'))return {status:200,json:async()=>paid};
+   return {status,json:async()=>({success:false,errors:[{code:1003}]})};
+  }});
+  assert.equal(result.critical,true);
+  assert.equal(result.workers_paid_subscription_verified,true);
+  assert.equal(result.spend_policy_verified,false);
+  assert.equal(result.spend_policy_verification_enforced,false);
+  assert.equal(result.spend_policy_verification_status,'UNVERIFIED_ADVISORY');
+  assert.notEqual(result.paid_capacity_probe_status,'VERIFIED');
+  assert.equal(result.emergency_d1_write_budget_auto_admitted,false);
+  assert.ok(calls.filter(x=>!x.url.endsWith('/graphql')).every(x=>x.method==='GET'));
+ }
 });

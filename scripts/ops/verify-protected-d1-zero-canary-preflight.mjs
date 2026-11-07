@@ -10,6 +10,8 @@ import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {checkD1BundledWork}
  from "./plan-d1-bundled-work.mjs";
+import {SPEND_POLICY_VERIFICATION_ENFORCED}
+ from "../lib/cloudflare-five-usd-spend-guard.mjs";
 const HEX32=/^[a-f0-9]{32}$/u,UUID=/^[a-f0-9-]{36}$/iu;
 const SHA=/^[a-f0-9]{40}$/u;
 const ACCEPT_REASONS=new Set(["CANARY_PROVIDER_DENIED","D1_BOOKMARK_UNVERIFIED",
@@ -89,10 +91,12 @@ export async function verifyProtectedD1CanaryPreflight({
   read+limits.safety_buffer_rows_read<limits.rows_read&&
   write+limits.safety_buffer_rows_written<limits.normal_rows_written;
  const reason=!capacity?"WORKERS_PAID_SUBSCRIPTION_UNVERIFIED":
-  !spend?"WORKERS_PAID_SPEND_POLICY_UNVERIFIED":
+  SPEND_POLICY_VERIFICATION_ENFORCED&&!spend?"WORKERS_PAID_SPEND_POLICY_UNVERIFIED":
   !budget?"CANARY_ACCOUNT_D1_BUDGET_HELD":"ZERO_TRAFFIC_PREFLIGHT_READY";
  const common={paid_subscription_verified:capacity,
   spend_policy_verified:spend,
+  spend_policy_verification_enforced:SPEND_POLICY_VERIFICATION_ENFORCED,
+  spend_policy_verification_status:spend?"VERIFIED":"UNVERIFIED_ADVISORY",
   daily_read_rows:read??null,daily_written_rows:write??null,
   normal_read_target:140000,normal_write_target:140000,
   emergency_write_reserve:40000,
