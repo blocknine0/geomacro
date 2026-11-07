@@ -25,7 +25,7 @@ const EXACT=Object.freeze([
    location:"workers/control-plane/src/p0b-ingestion-status.mjs:getP0bIngestionStatus (deep)",
    statement:"SELECT COUNT(*) AS total,COALESCE(SUM(CASE WHEN state IN ('PENDING_ARCHIVE','REPLAYING') THEN 1 ELSE 0 END),0) AS pending,COALESCE(SUM(CASE WHEN state='ARCHIVED' THEN 1 ELSE 0 END),0) AS archived,COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (b2_uri IS NULL OR b2_object_sha256 IS NULL) THEN 1 ELSE 0 END),0) AS archived_missing_b2,COALESCE(SUM(CASE WHEN state='ARCHIVED' AND NOT EXISTS (SELECT 1 FROM ingestion_spool_bundles AS b WHERE b.b2_spool_uri=p0b_archive_outbox.b2_uri AND b.bundle_sha256=p0b_archive_outbox.b2_object_sha256 AND b.item_count=p0b_archive_outbox.item_count) THEN 1 ELSE 0 END),0) AS bundle_journal_mismatch,COALESCE(SUM(CASE WHEN state='ARCHIVED' AND (SELECT COUNT(*) FROM ingestion_spool_queue AS q WHERE q.b2_spool_uri=p0b_archive_outbox.b2_uri)<>item_count THEN 1 ELSE 0 END),0) AS item_journal_mismatch FROM p0b_archive_outbox"},
   {id:"P0B_DAILY_COMMITTED_CEILING_V1",
-   location:"src/workers/backlog-drain-cron.ts:drainBacklog",
+   location:"src/workers/backlog-drain-cron.ts:drainBacklog (PRE_0211_DEPLOYMENT)",
    statement:"SELECT COUNT(*) AS committed_today FROM ingestion_spool_queue WHERE d1_committed_at>=?"},
   {id:"P0B_NORMALIZED_METADATA_COUNT_V1",
    location:"workers/control-plane/src/p0b-ingestion-status.mjs:getP0bIngestionStatus",

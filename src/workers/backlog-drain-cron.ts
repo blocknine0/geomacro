@@ -18,7 +18,7 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
     !Number.isSafeInteger(limit)||limit<1||limit>100)
   return {status:'DRAIN_CONFIG_UNAVAILABLE',count:0};
  const current=new Date(now).toISOString();
- const day=current.slice(0,10)+'T00:00:00.000Z';
+ const day=current.slice(0,10);
  let bundles:any[]=[],rows:any[]=[];
  try{
   const stale=new Date(now-5*60000).toISOString();
@@ -40,14 +40,16 @@ export async function drainBacklog(env:DrainEnv,{now=Date.now(),limit=100}={}){
   }
  }catch{return {status:'D1_BACKLOG_READ_UNAVAILABLE',count:0}}
  if(bundles.length===0&&rows.length===0)return {status:'DRAIN_CLEAN',count:0};
- // An idle redrive does not admit work. Avoid recounting every committed
- // candidate on all 144 daily ticks; keep the exact ceiling before dispatch.
+ // Migration 0211 maintains an exact, transactionally updated one-row/day
+ // counter. Never rescan thousands of committed candidates on every tick.
+ // Missing/damaged migration fails closed for backlog re-dispatch only.
  let count;
  try{
   count=await env.DB.prepare(
-   'SELECT COUNT(*) AS committed_today FROM ingestion_spool_queue WHERE d1_committed_at>=?'
+   'SELECT committed_count AS committed_today FROM p0b_committed_day_totals WHERE day_utc=?'
   ).bind(day).first();
  }catch{return {status:'D1_QUOTA_STATUS_UNAVAILABLE',count:0}}
+ if(count===null||count===undefined)count={committed_today:0};
  if(!Number.isSafeInteger(count?.committed_today)||count.committed_today<0)
   return {status:'D1_QUOTA_STATUS_UNAVAILABLE',count:0};
  // Explicit operator acceptance ceiling from the provided blueprint.
