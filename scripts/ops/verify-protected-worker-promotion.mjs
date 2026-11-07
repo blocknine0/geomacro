@@ -104,6 +104,8 @@ export function assessWorkerPromotion({
      findVar("GEOMACRO_P0B_ADMISSION_ACTIVE")!=="1"||
      findVar("GEOMACRO_P1_BUNDLED_LEASES_ENABLED")!=="1")
    return refuse("CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+  if(quota?.day_utc!==now.toISOString().slice(0,10))
+   return refuse("PROVIDER_UTC_DAY_RECEIPT_STALE_OR_MISSING");
   const limits=quota?.owner_d1_utc_daily_targets;
   if(limits?.rows_read!==140000||limits?.rows_written!==140000||
      limits?.emergency_rows_written!==0)
