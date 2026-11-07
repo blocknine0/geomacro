@@ -10,7 +10,8 @@ import {execFileSync} from "node:child_process";
 import {pathToFileURL} from "node:url";
 
 const DOMAINS=["geopolitics","macro","rare_earth"];
-const CATEGORIES={geopolitics:"geopolitics",macro:"macro / fx",rare_earth:"critical minerals"};
+const CATEGORIES={geopolitics:["geopolitics"],macro:["macro / fx","macro economics"],rare_earth:["critical minerals"]};
+const labelMatches=(text,domain)=>CATEGORIES[domain].some(label=>normalized(text).includes(label));
 const PUBLIC_D1="https://geomacro-control-plane.daspallab202391.workers.dev/v1/public/website-derived-news-immediate";
 const SITE="https://geomacro.live/intelligence";
 const DAY=86_400_000;
@@ -26,23 +27,39 @@ const normalized = txt => decode(String(txt)).replace(/<[^>]*>/gu," ")
 function realD1CardDomains(html,signals){
   const rendered=new Set();
   if(typeof html!=="string"||html.length>6_000_000)return rendered;
-  for(const article of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/giu)){
-    if(!/data-testid=["']geomacro-(?:find-card-v1|release-finding)["']/iu.test(article[1]))
-      continue;
+  const safe=new Map(signals
+    .filter(s=>DOMAINS.includes(s?.category)&&
+      /^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s?.id??""))
+    .map(s=>[s.id,s]));
+  for(const article of html.matchAll(/<article\\b([^>]*)>([\\s\\S]*?)<\\/article>/giu)){
+    const attrs=article[1];
+    const current=/data-testid=["']geomacro-concrete-intelligence-card["']/iu.test(attrs);
+    const legacy=/data-testid=["']geomacro-(?:find-card-v1|release-finding)["']/iu.test(attrs);
+    if(!current&&!legacy)continue;
     const text=normalized(article[2]);
+    if(current){
+      // The live React Story component carries the exact canonical source ID,
+      // avoiding fragile text matching against intentionally rewritten headlines.
+      // Merely rendering a lookalike headline without the D1 ID is not a pass.
+      const id=attrs.match(/data-geomacro-story-id=["']([^"']+)["']/iu)?.[1];
+      const row=safe.get(id);
+      if(row&&labelMatches(text,row.category))rendered.add(row.category);
+      continue;
+    }
+    // Retain historical markup support only when the exact verified source
+    // title is visibly present inside its own category-labelled article.
     for(const domain of DOMAINS){
-      if(!text.includes(CATEGORIES[domain]))continue;
+      if(!labelMatches(text,domain))continue;
       if(signals.some(s=>s.category===domain&&typeof s.title==="string"&&
-          text.includes(normalized(s.title.replace(/^Geomacro finds\s+/iu,"")))))
+          text.includes(normalized(s.title.replace(/^Geomacro finds\\s+/iu,"")))))
         rendered.add(domain);
     }
   }
   return rendered;
 }
 function categoryIsActive(html,domain){
-  const label=CATEGORIES[domain];
-  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/giu)]
-    .some(m=>/aria-pressed=["']true["']/iu.test(m[1])&&normalized(m[2]).includes(label));
+  return [...html.matchAll(/<button\\b([^>]*)>([\\s\\S]*?)<\\/button>/giu)]
+    .some(m=>/aria-pressed=["']true["']/iu.test(m[1])&&labelMatches(m[2],domain));
 }
 
 export function evaluatePublicNews(doc,dom,now=Date.now(),categoryPages={}) {
@@ -90,7 +107,7 @@ export function evaluatePublicNews(doc,dom,now=Date.now(),categoryPages={}) {
   for(const match of dom.matchAll(/<button\b[^>]*>([\s\S]*?)<\/button>/giu)){
     const label=match[1].replace(/<[^>]*>/gu," ").replace(/\s+/gu," ").toLowerCase();
     for(const domain of DOMAINS)
-      if(label.includes(CATEGORIES[domain]))tabs.add(domain);
+      if(labelMatches(label,domain))tabs.add(domain);
   }
   const browserTabs=[...tabs].sort();
   const browserDomains=[...rendered].sort();
