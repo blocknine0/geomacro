@@ -31,7 +31,7 @@ function realD1CardDomains(html,signals){
     .filter(s=>DOMAINS.includes(s?.category)&&
       /^(?:geopolitics|macro|rare_earth)-[0-9a-f]{8}$/u.test(s?.id??""))
     .map(s=>[s.id,s]));
-  for(const article of html.matchAll(/<article\\b([^>]*)>([\\s\\S]*?)<\\/article>/giu)){
+  for(const article of html.matchAll(/<article\b([^>]*)>([\s\S]*?)<\/article>/giu)){
     const attrs=article[1];
     const current=/data-testid=["']geomacro-concrete-intelligence-card["']/iu.test(attrs);
     const legacy=/data-testid=["']geomacro-(?:find-card-v1|release-finding)["']/iu.test(attrs);
@@ -51,14 +51,14 @@ function realD1CardDomains(html,signals){
     for(const domain of DOMAINS){
       if(!labelMatches(text,domain))continue;
       if(signals.some(s=>s.category===domain&&typeof s.title==="string"&&
-          text.includes(normalized(s.title.replace(/^Geomacro finds\\s+/iu,"")))))
+          text.includes(normalized(s.title.replace(/^Geomacro finds\s+/iu,"")))))
         rendered.add(domain);
     }
   }
   return rendered;
 }
 function categoryIsActive(html,domain){
-  return [...html.matchAll(/<button\\b([^>]*)>([\\s\\S]*?)<\\/button>/giu)]
+  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/giu)]
     .some(m=>/aria-pressed=["']true["']/iu.test(m[1])&&labelMatches(m[2],domain));
 }
 
