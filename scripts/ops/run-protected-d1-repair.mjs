@@ -5,6 +5,7 @@ import {readFileSync,writeFileSync,mkdirSync,mkdtempSync,existsSync} from 'node:
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {evaluateMigrationBudget,checkTimeTravel} from './verify-protected-d1-migration-gate.mjs';
+import {readProductionD1Info} from './read-protected-d1-info.mjs';
 import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
 import {REPAIR_SCHEMA_OBJECTS,verifyRepairSchema,pendingRepairPlans,verifyRepairSql,repairProbeSql,verifyRepairProbe,admitRepairCost} from './protected-d1-repair-plan.mjs';
 export function classifyRepairCommandFailure(error){
@@ -19,7 +20,7 @@ export function classifyRepairCommandFailure(error){
   command_signal:['SIGTERM','SIGKILL'].includes(error?.signal)?error.signal:null,
  };
 }
-export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget}={}){
+export async function runProtectedD1Repair({env=process.env,run,plan=checkD1BundledWork,assessBudget=evaluateMigrationBudget,productionInfo=readProductionD1Info}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
     env.GITHUB_REF!=='refs/heads/main'||!/^[a-f0-9]{40}$/.test(env.GITHUB_SHA??'')||
     !env.RUNNER_TEMP||env.WRANGLER_VERSION!=='4.136.3'||
@@ -73,7 +74,7 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
   if(probe)verifyRepairProbe(migration,present,JSON.parse(wrangler(configPath,
    ['d1','execute','DB','--remote','--json','--command',probe])));
   const cost=admitRepairCost(migration,await budget());
-  const info=wrangler(configPath,['d1','info','DB','--json']);
+  const info=JSON.stringify(await productionInfo({env,databaseId:original.d1_databases[0].database_id}));
   const bookmark=wrangler(configPath,['d1','time-travel','info','DB','--json']);
   record(migration.file.slice(0,4)+'-backup',checkTimeTravel(info,bookmark));
   // The temporary directory contains ONE original, hash-pinned SQL file.
@@ -110,6 +111,6 @@ export async function runProtectedD1Repair({env=process.env,run,plan=checkD1Bund
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  runProtectedD1Repair().then(x=>console.log(JSON.stringify(x))).catch(e=>{
   // Child-process errors may contain provider details. Emit allowlisted codes only.
-  console.error(JSON.stringify({status:'HOLD',code:/^REPAIR_[A-Z0-9_]+$/.test(e?.message??'')?e.message:'REPAIR_EXECUTION_UNAVAILABLE',payments:0}));process.exitCode=2;
+  console.error(JSON.stringify({status:'HOLD',code:/^(?:REPAIR|MIGRATION)_[A-Z0-9_]+$/.test(e?.message??'')?e.message:'REPAIR_EXECUTION_UNAVAILABLE',payments:0}));process.exitCode=2;
  });
 }

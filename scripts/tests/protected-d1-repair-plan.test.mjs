@@ -67,7 +67,7 @@ function harness({stopAfterApply=false,unknown=false,moved=false,failSchema=fals
   const p=REPAIR_PLANS.find(p=>p.file===applied.at(-1));
   return JSON.stringify(provider((failSchema?[]:REPAIR_SCHEMA_OBJECTS[p.file.slice(0,4)]).map(name=>({name}))));
  };
- return {tmp,env,plan,run,applied,budgets:()=>budgetCalls};
+ return {tmp,env,plan,run,applied,productionInfo:async()=>({version:'production'}),budgets:()=>budgetCalls};
 }
 test('runner applies each original separately and verifies history/schema, with repeated fresh quota',async()=>{
  const h=harness();process.chdir(h.tmp);
