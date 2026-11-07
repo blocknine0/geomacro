@@ -142,7 +142,8 @@ test("real SQLite activation views reject future evidence and count unknown debt
  CREATE TABLE phase2h_archive_totals(category,staged_count,archived_count);
  INSERT INTO phase2h_archive_totals VALUES
  ('geopolitics',0,0),('macro',0,0),('rare_earth',0,0);
- CREATE TABLE progressive_risk_gate_facts(country_iso3,category,event_fingerprint,clock_basis,publisher_domain,event_clock);`);
+ CREATE TABLE progressive_risk_gate_facts(country_iso3,category,event_fingerprint,clock_basis,publisher_domain,event_clock);
+ CREATE INDEX idx_progressive_risk_gate_facts_country_time ON progressive_risk_gate_facts(country_iso3,event_clock DESC);`);
  db.exec(readFileSync(new URL("../../workers/control-plane/migrations/0203_hot50_activation_fail_closed_views.sql",import.meta.url),"utf8"));
  assert.equal(db.prepare("SELECT COUNT(*) n FROM v_hot50_three_category_evidence").get().n,150);
  db.exec("INSERT INTO ingestion_spool_queue(state) VALUES('UNKNOWN_DEBT'); INSERT INTO p0b_private_r2_fallback VALUES('B2_VERIFIED');");
