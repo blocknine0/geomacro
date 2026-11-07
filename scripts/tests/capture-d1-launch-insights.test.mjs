@@ -48,7 +48,7 @@ test("CLI retains sanitized insights at repository root even from Worker cwd",as
 
 test("deployment completion triggers physical query Insights under exact main protection",async()=>{
  const {readFileSync}=await import('node:fs');
- const workflow=readFileSync('.github/workflows/d1-launch-72h-observatory.yml','utf8');
+ const workflow=readFileSync(new URL('../../.github/workflows/d1-launch-72h-observatory.yml',import.meta.url),'utf8');
  const job=workflow.split('  query-insights:')[1];
  assert.ok(job,'query-insights job must exist');
  assert.match(job,/github\.event_name == 'workflow_run'/u);
