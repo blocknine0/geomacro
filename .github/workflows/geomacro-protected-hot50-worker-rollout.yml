@@ -2,6 +2,11 @@ name: GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)
 # Manual protected release only; never activated by push/schedule/PR.
 # Existing D1/B2 quotas, signing authority, source polling and payment OFF stay authoritative.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/geomacro-protected-hot50-worker-rollout.yml"
+      - "scripts/ops/verify-protected-worker-promotion.mjs"
+      - "scripts/tests/verify-protected-worker-promotion.test.mjs"
   workflow_dispatch:
     inputs:
       baseline_version_id:
@@ -36,7 +41,7 @@ jobs:
 
   protected-zero-and-gradual-rollout:
     needs: offline-contract
-    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     environment: production
