@@ -48,6 +48,9 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
   !env.INGEST_QUEUE?.send)throw Error('P0B_PRODUCER_CONFIG_INVALID');
  const manager=opts.manager??new B2SpoolManager(env),now=opts.now??(()=>new Date());
  const receipts:any[]=[],seen=new Map<string,string>(),pending:Pending[]=[];
+ // Cache the outcome, including uncertain sends, so a redelivered 100-item
+ // bundle causes one queue dispatch per invocation, never 100 copies.
+ const redispatched=new Map<string,string>();
  const guard=await env.DB.prepare(
   'SELECT hold_until FROM p0b_storage_circuit WHERE singleton=1').first();
  let stopCode:string|null=guard?.hold_until>now().toISOString()?
@@ -83,6 +86,10 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
     }
     if(!['PENDING','RETRY','PROCESSING'].includes(old.state))
      throw Error('P0B_D1_QUEUE_STATE_INVALID');
+    const bundled=old.bundle_offset!==null&&old.bundle_offset!==undefined;
+    if(bundled&&redispatched.has(old.b2_spool_uri)){
+     status(c,redispatched.get(old.b2_spool_uri)!);continue;
+    }
     try{
      if(old.bundle_offset!==null&&old.bundle_offset!==undefined){
       const bundle=await env.DB.prepare(
@@ -94,8 +101,12 @@ export async function processFetchedBatch(candidates:IngestCandidate[],
        candidateCount:bundle.item_count});
      }else await env.INGEST_QUEUE.send({
       candidateSha256:c.candidateSha256,sourceId:c.sourceId,b2Uri:old.b2_spool_uri});
+     if(bundled)redispatched.set(old.b2_spool_uri,'QUEUED');
      status(c,'QUEUED');
-    }catch{status(c,'DURABLE_PENDING_REDISPATCH');}
+    }catch{
+     if(bundled)redispatched.set(old.b2_spool_uri,'DURABLE_PENDING_REDISPATCH');
+     status(c,'DURABLE_PENDING_REDISPATCH');
+    }
     continue;
    }
    const length=encoder.encode(canonicalJson({

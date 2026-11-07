@@ -45,9 +45,6 @@ export async function dispatchP1BundledDueSources(env,{
     throw Error("P1_BUNDLE_SOURCE_PAGE_UNVERIFIED");
   return rows.map(x=>x.source_id);
  };
- let pre;
- try{pre=await readDue()}catch{return {status:"P1_BUNDLE_D1_READ_UNAVAILABLE",selected:0,queued:0}}
- if(!pre.length)return {status:"P1_BUNDLE_IDLE",selected:0,queued:0};
  const token=crypto.randomUUID(),gateUntil=iso(now+60000);
  try{
   // Exactly one dispatcher holds the minute gate. A crash simply expires;
@@ -61,9 +58,10 @@ export async function dispatchP1BundledDueSources(env,{
  }catch{return {status:"P1_BUNDLE_D1_GATE_UNAVAILABLE",selected:0,queued:0}}
  let ids,expires;
  try{
-  // Recheck after the atomic gate. Never trust the earlier unleased page.
+  // Read the due page only after taking the atomic gate. Concurrent
+  // dispatchers never run the expensive active-lease join.
   ids=await readDue();
-  if(!ids.length)return {status:"P1_BUNDLE_IDLE_AFTER_GATE",selected:0,queued:0};
+  if(!ids.length)return {status:"P1_BUNDLE_IDLE",selected:0,queued:0};
   expires=iso(now+120000);
   const saved=await env.DB.prepare(
    "INSERT INTO p1_source_poll_bundles "+
@@ -136,25 +134,39 @@ export async function verifiedP1BundledLeasePairs(env,items,now){
      !Number.isFinite(Date.parse(x.scheduled_at))))
   throw Error("P1_BUNDLE_CONSUMER_INPUT_INVALID");
  const tokens=[...new Set(items.map(x=>x.token))];
- const sourceIds=[...new Set(items.map(x=>x.source_id))];
+ // Fetch only primary-key bundle rows. Expand the bounded manifest in JS;
+ // SQLite json_each previously scanned every member for every delivery.
  const r=await env.DB.prepare(
-  "SELECT b.bundle_id,b.leased_at,j.value AS source_id "+
-  "FROM p1_source_poll_bundles b,json_each(b.source_ids_json) j "+
-  "WHERE b.bundle_id IN (SELECT value FROM json_each(?)) "+
-  "AND b.expires_at>? "+
-  "AND j.value IN (SELECT value FROM json_each(?))"
- ).bind(JSON.stringify(tokens),iso(now),JSON.stringify(sourceIds)).all();
- if(!Array.isArray(r?.results)||r.results.length>MAX_DUE)
+  "SELECT bundle_id,source_ids_json,leased_at,expires_at "+
+  "FROM p1_source_poll_bundles WHERE bundle_id IN ("+
+  tokens.map(()=>"?").join(",")+") AND expires_at>?"
+ ).bind(...tokens,iso(now)).all();
+ if(!Array.isArray(r?.results)||r.results.length>tokens.length)
   throw Error("P1_BUNDLE_CONSUMER_READBACK_INVALID");
- const allowed=new Map(items.map(x=>[x.token+"|"+x.source_id,
-  x.scheduled_at]));
- const verified=new Set();
+ const manifests=new Map();
  for(const row of r.results){
-  const k=row.bundle_id+"|"+row.source_id;
-  if(!allowed.has(k)||verified.has(k))
+  if(!tokens.includes(row.bundle_id)||manifests.has(row.bundle_id)||
+     !Number.isFinite(Date.parse(row.leased_at))||
+     !Number.isFinite(Date.parse(row.expires_at))||
+     row.expires_at<=iso(now)||
+     typeof row.source_ids_json!=="string"||row.source_ids_json.length>14000)
    throw Error("P1_BUNDLE_CONSUMER_LEASE_CONFLICT");
-  // A queue token cannot authorize a different schedule clock.
-  if(row.leased_at===allowed.get(k))verified.add(k);
+  let ids;
+  try{ids=JSON.parse(row.source_ids_json)}catch{
+   throw Error("P1_BUNDLE_CONSUMER_READBACK_INVALID");
+  }
+  if(!Array.isArray(ids)||ids.length<1||ids.length>108||
+     ids.some(id=>typeof id!=="string"||!SOURCE.test(id))||
+     new Set(ids).size!==ids.length)
+   throw Error("P1_BUNDLE_CONSUMER_READBACK_INVALID");
+  manifests.set(row.bundle_id,{clock:row.leased_at,ids:new Set(ids)});
+ }
+ const verified=new Set();
+ for(const item of items){
+  const manifest=manifests.get(item.token);
+  // Both exact schedule and membership are necessary; token alone is not authority.
+  if(manifest?.clock===item.scheduled_at&&manifest.ids.has(item.source_id))
+   verified.add(item.token+"|"+item.source_id);
  }
  return verified;
 }

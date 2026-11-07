@@ -309,3 +309,26 @@ test("P1 V2 protected deploy requires canonical D1 schema readback",()=>{
  assert.ok(workflow.indexOf("Apply committed D1 migrations remotely")<
            workflow.indexOf("Verify bundled P1 D1 dispatch schema before enabling fanout V2"));
 });
+
+test('bundled consumer reads one indexed manifest and validates membership without SQL JSON expansion',async()=>{
+ const {verifiedP1BundledLeasePairs}=await import('../../workers/control-plane/src/p1-source-bundled-dispatch.mjs');
+ const f=fixture(105),sent=[];
+ try{
+  const env={DB:f.DB,SOURCE_POLL_QUEUE:{async sendBatch(x){sent.push(...x)}}};
+  const {dispatchP1BundledDueSources}=await import('../../workers/control-plane/src/p1-source-bundled-dispatch.mjs');
+  await dispatchP1BundledDueSources(env,{now,shardOf:p1Shard});
+  const body=sent[0].body,queries=[];
+  const DB={prepare(sql){queries.push(sql);return f.DB.prepare(sql)}};
+  const items=body.source_ids.map(source_id=>({source_id,token:body.lease_token,scheduled_at:body.scheduled_at}));
+  const pairs=await verifiedP1BundledLeasePairs({DB},items,now);
+  assert.equal(pairs.size,15);assert.equal(queries.length,1);
+  assert.doesNotMatch(queries[0],/json_each/i);
+  const plan=f.db.prepare('EXPLAIN QUERY PLAN '+queries[0]).all(body.lease_token,last());
+  assert.ok(plan.some(x=>/SEARCH .* USING INDEX .*bundle_id=/.test(x.detail)));
+  const foreign=await verifiedP1BundledLeasePairs({DB},[{...items[0],source_id:'source_not_in_manifest'}],now);
+  assert.equal(foreign.size,0);
+  f.db.prepare('UPDATE p1_source_poll_bundles SET source_ids_json=? WHERE bundle_id=?')
+   .run(JSON.stringify([body.source_ids[0],body.source_ids[0]]),body.lease_token);
+  await assert.rejects(verifiedP1BundledLeasePairs({DB},items,now),/READBACK_INVALID/);
+ }finally{f.close()}
+});

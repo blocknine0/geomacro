@@ -683,3 +683,25 @@ test('source FK index excludes mutable state while preserving indexed parent mai
   assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue WHERE candidate_sha256=?').get(c).state,'PENDING');
  }finally{f.close()}
 });
+
+test('existing 100-item bundle redelivery sends once and preserves uncertain-send receipts',async()=>{
+ const f=fixture();
+ try{
+  const items=await Promise.all(Array.from({length:100},(_,i)=>candidate(20000+i)));
+  await processFetchedBatch(items,f.env,{manager:f.manager,now:NOW_DATE});
+  f.env.INGEST_QUEUE.sent.length=0;
+  let reads=0;
+  const prepare=f.env.DB.prepare;
+  f.env.DB.prepare=(sql)=>{if(sql.includes('SELECT bundle_sha256,item_count'))reads++;return prepare(sql)};
+  const replay=await processFetchedBatch(items,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(f.env.INGEST_QUEUE.sent.length,1);
+  assert.equal(reads,1);
+  assert.ok(replay.receipts.every(r=>r.status==='QUEUED'));
+  let attempts=0;
+  f.env.INGEST_QUEUE.send=async()=>{attempts++;throw Error('AMBIGUOUS_SEND')};
+  const failed=await processFetchedBatch(items,f.env,{manager:f.manager,now:NOW_DATE});
+  assert.equal(attempts,1);
+  assert.ok(failed.receipts.every(r=>r.status==='DURABLE_PENDING_REDISPATCH'));
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM normalized_articles').get().n,0);
+ }finally{f.close()}
+});
