@@ -1777,8 +1777,14 @@ export default {
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
     // Canonical root-admin authorization applies before either P0-B route.
     // Keep this first among protected handlers for cold-start smoke contract.
-    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET')
-      return getP0bIngestionStatus(env);
+    if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET'){
+      // Costly bundle/queue cross-joins are only an explicit root-admin deep
+      // parity audit. Default health must not consume repeated D1 scan rows.
+      if([...url.searchParams.keys()].some(k=>k!=='deep')||
+         (url.searchParams.has('deep')&&url.searchParams.get('deep')!=='1'))
+        return json({ok:false,error:'P0B_STATUS_QUERY_INVALID'},400);
+      return getP0bIngestionStatus(env,{deep:url.searchParams.get('deep')==='1'});
+    }
     if(url.pathname==='/v1/internal/p0b/verify-latest'&&request.method==='POST')
       return verifyLatestP0bCommitted(env);
     if(url.pathname==='/v1/internal/p1/source-health'&&request.method==='GET')
