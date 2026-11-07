@@ -7,6 +7,8 @@ on:
       - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/ops/attribute-d1-query-insights.mjs"
+      - "scripts/tests/attribute-d1-query-insights.test.mjs"
       - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
       - "config/geomacro-cloudflare-five-usd-budget.json"
@@ -31,6 +33,8 @@ on:
       - "scripts/tests/risk-gate-evidence-trigger-integration.test.mjs"
       - "scripts/tests/risk-gap-hot50-index-plans.test.mjs"
       - "scripts/ops/summarize-d1-reads-insights.mjs"
+      - "scripts/ops/attribute-d1-query-insights.mjs"
+      - "scripts/tests/attribute-d1-query-insights.test.mjs"
       - "scripts/tests/summarize-d1-reads-insights.test.mjs"
       - "workers/control-plane/migrations/0207_hot50_bounded_enrichment_reads.sql"
       - "scripts/lib/hot50-production-proof.mjs"
@@ -70,7 +74,7 @@ jobs:
         with:
           node-version: "24"
       - name: Verify no-funds, SQL-redacted insights contract
-        run: node --test scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/cloudflare-five-usd-spend-guard.test.mjs
+        run: node --test scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/attribute-d1-query-insights.test.mjs scripts/tests/cloudflare-five-usd-spend-guard.test.mjs
       - name: Read provider top reads and writes without querying or changing D1
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -90,9 +94,15 @@ jobs:
           fi
           node scripts/ops/summarize-d1-reads-insights.mjs "$RUNNER_TEMP/d1-insights-reads.json" reads > artifacts/d1-insights/reads-sha-only.json
           node scripts/ops/summarize-d1-reads-insights.mjs "$RUNNER_TEMP/d1-insights-writes.json" writes > artifacts/d1-insights/writes-sha-only.json
+          # Exact canonical SQL matching is performed within this protected runner.
+          # Both outputs are SHA-only / symbolic attribution; never publish source SQL.
+          node scripts/ops/attribute-d1-query-insights.mjs "$RUNNER_TEMP/d1-insights-reads.json" > artifacts/d1-insights/read-attribution-sha-only.json
+          node scripts/ops/attribute-d1-query-insights.mjs "$RUNNER_TEMP/d1-insights-writes.json" > artifacts/d1-insights/write-attribution-sha-only.json
           echo "READ_ONLY_D1_INSIGHTS_SHA_SUMMARIES"
           cat artifacts/d1-insights/reads-sha-only.json
           cat artifacts/d1-insights/writes-sha-only.json
+          cat artifacts/d1-insights/read-attribution-sha-only.json
+          cat artifacts/d1-insights/write-attribution-sha-only.json
       - name: Retain hashed-only insights (no SQL or source text)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
