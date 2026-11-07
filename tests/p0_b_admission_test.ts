@@ -19,6 +19,7 @@ function fixture(){
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0116_p0b_microbatch_spool.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0118_p0b_archive_outbox.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");
  db.prepare(
   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
@@ -664,4 +665,20 @@ test('nonempty redrive still enforces exact daily ceiling and refuses missing te
    assert.equal(f.env.INGEST_QUEUE.sent.length,0);
   }finally{f.close()}
  }
+});
+
+
+test('source FK index excludes mutable state while preserving indexed parent maintenance',()=>{
+ const f=fixture();
+ try{
+  const columns=f.db.prepare("PRAGMA index_info('idx_spool_source_id')").all().map(x=>x.name);
+  assert.deepEqual(columns,['source_id']);
+  const plan=f.db.prepare('EXPLAIN QUERY PLAN SELECT rowid FROM ingestion_spool_queue WHERE source_id=?').all('src_probe');
+  assert.ok(plan.some(x=>x.detail.includes('SEARCH')&&x.detail.includes('idx_spool_source_id')));
+  const c='e'.repeat(64);
+  f.db.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size) VALUES(?,?,?,?,?)")
+   .run(crypto.randomUUID(),c,'src_probe','b2://spool/test',100);
+  assert.throws(()=>f.db.prepare('DELETE FROM source_registry WHERE source_id=?').run('src_probe'),/FOREIGN KEY/);
+  assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue WHERE candidate_sha256=?').get(c).state,'PENDING');
+ }finally{f.close()}
 });

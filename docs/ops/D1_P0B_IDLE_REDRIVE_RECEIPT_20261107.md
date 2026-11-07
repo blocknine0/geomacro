@@ -27,7 +27,7 @@ This follow-up first selects due redrive work using existing queries. If no
 bundle or legacy item is due, it returns DRAIN_CLEAN without scanning all
 committed candidate rows. For nonempty work, the original exact daily
 committed count and 90,000 ceiling still execute before any Queue dispatch.
-Invalid/missing count telemetry refuses dispatch. No new counter/index,
+Invalid/missing count telemetry refuses dispatch. No new counter,
 background writes, source cadence reduction, queue deletion or ACK shortcut
 is introduced. Deploy path filters explicitly include the changed runtime.
 
@@ -49,3 +49,16 @@ Keep the canary hold until the actual protected rollout prerequisites pass.
 This receipt does not claim deployment, daily budget acceptance, B2 physical
 parity or issue #3648 completion. Index write relief from migration 0206 must
 also be remotely verified; source batching alone does not reduce billed rows.
+
+## Mutable-index write amplification
+
+Migration 0210 replaces the source foreign-key helper index
+`(source_id,state)` with `(source_id)`. The dedicated state/lease index and
+all primary/unique constraints remain unchanged. No runtime source-state
+lookup uses this helper index; parent-source FK maintenance retains indexed
+source_id lookup. This removes the redundant mutable-state index maintenance
+from normal queue state transitions, with a one-time index rebuild at rollout.
+Physical production rows_written savings require provider measurement; SQLite
+functional tests do not claim Cloudflare billing totals. The migration fixture
+runs the existing P0B admission/crash/ACK tests with the replacement index and
+explicitly tests indexed FK lookup and rejection of orphaning parent deletion.
