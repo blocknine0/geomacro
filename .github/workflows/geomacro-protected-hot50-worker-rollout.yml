@@ -208,13 +208,36 @@ jobs:
               await new Promise(resolve=>setTimeout(resolve,3000));
             }
             if(!healthy)throw Error('CANARY_VERSION_DIRECTED_MAIN_SHA_HEALTH_UNVERIFIED');
+            // Compare public delivery verification keys. This does not claim
+            // independent reviewer certificates or the 150 GRO cells exist.
+            const keyAt=async id=>{
+              const headers={'Cloudflare-Workers-Version-Overrides':
+                'geomacro-control-plane="'+id+'"'};
+              const r=await fetch(process.env.WORKER_ORIGIN+
+                '/v1/public/risk-gate-decision-key',{
+                headers,redirect:'error',cache:'no-store',
+                signal:AbortSignal.timeout(10000)});
+              const j=await r.json();
+              if(r.status!==200||j?.ok!==true)throw Error('CANARY_SIGNER_KEY_UNAVAILABLE');
+              return JSON.stringify(j);
+            };
+            const [oldKey,newKey]=await Promise.all([
+              keyAt(base),keyAt(candidate)]);
+            if(oldKey!==newKey)throw Error('CANARY_PUBLIC_SIGNER_PARITY_MISMATCH');
+            const unauth=await fetch(process.env.WORKER_ORIGIN+
+              '/v1/control/bootstrap_smoke',{
+              method:'PUT',headers:{...header,'Content-Type':'application/json'},
+              body:JSON.stringify({value:{probe:true},version:1}),
+              redirect:'error',signal:AbortSignal.timeout(10000)});
+            if(unauth.status!==401)throw Error('CANARY_UNAUTHENTICATED_WRITE_NOT_DENIED');
             // Record only symbolic proof, never private key or response bodies.
             mkdirSync('artifacts/protected-canary',{recursive:true});
             writeFileSync('artifacts/protected-canary/promotion-'+pct+'.json',
              JSON.stringify({schema:'geomacro.worker-promotion-stage.v1',
               main_sha:process.env.GITHUB_SHA,traffic_percent:pct,
               deployment_verified:true,version_directed_health_verified:true,
-              payment_off:true,payments_executed:0,no_funds:true}));
+              commercial_payment_lock_not_modified:true,payments_executed:0,no_funds:true,
+              signer_public_key_parity_checked:true,unauthenticated_write_denied:true}));
             console.log('CANARY_PROVIDER_STAGE_VERIFIED:'+pct);
             NODE
             if test "$percent" -ne 100; then sleep 60; fi
