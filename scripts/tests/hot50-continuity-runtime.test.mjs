@@ -27,7 +27,9 @@ test("genuine three-category source sweep is accepted even when some publishers 
  assert.equal(r.b2_physical_parity_proven,false);
  assert.equal(r.signed_risk_gate_150_cells_proven,false);
  assert.equal(r.payments_enabled,false);
- assert.ok(!JSON.stringify(r).includes("example.gov"));
+ assert.equal(r.source_content_logged,false);
+ assert.deepEqual(r.categories_with_runtime_checks,["geopolitics","macro","rare_earth"]);
+ assert.equal(Object.hasOwn(r,"sources"),false);
 });
 test("missing, stale, incomplete, forged source receipts cannot produce green collector",()=>{
  for(const change of [
