@@ -42,6 +42,56 @@ permissions:
   contents: read
 
 jobs:
+  d1-hotspot-insights-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify no-funds, SQL-redacted insights contract
+        run: node --test scripts/tests/summarize-d1-reads-insights.test.mjs scripts/tests/cloudflare-five-usd-spend-guard.test.mjs
+      - name: Read provider top reads and writes without querying or changing D1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" && test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          mkdir -p artifacts/d1-insights
+          if ! npx -y wrangler@4.158.0 d1 insights geomacro-control-plane --time-period=1d --sort-by=reads --sort-type=sum --limit=20 --json > "$RUNNER_TEMP/d1-insights-reads.json" 2>/dev/null; then
+            echo "::error::D1_READ_INSIGHTS_PROVIDER_UNAVAILABLE"
+            exit 1
+          fi
+          if ! npx -y wrangler@4.158.0 d1 insights geomacro-control-plane --time-period=1d --sort-by=writes --sort-type=sum --limit=20 --json > "$RUNNER_TEMP/d1-insights-writes.json" 2>/dev/null; then
+            echo "::error::D1_WRITE_INSIGHTS_PROVIDER_UNAVAILABLE"
+            exit 1
+          fi
+          node scripts/ops/summarize-d1-reads-insights.mjs "$RUNNER_TEMP/d1-insights-reads.json" reads > artifacts/d1-insights/reads-sha-only.json
+          node scripts/ops/summarize-d1-reads-insights.mjs "$RUNNER_TEMP/d1-insights-writes.json" writes > artifacts/d1-insights/writes-sha-only.json
+          echo "READ_ONLY_D1_INSIGHTS_SHA_SUMMARIES"
+          cat artifacts/d1-insights/reads-sha-only.json
+          cat artifacts/d1-insights/writes-sha-only.json
+      - name: Retain hashed-only insights (no SQL or source text)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: d1-hotspot-insights-no-funds
+          path: artifacts/d1-insights/*.json
+          if-no-files-found: ignore
+          retention-days: 7
+
   bounded-hot50-read-contract:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
