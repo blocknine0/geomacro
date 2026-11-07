@@ -1,31 +1,21 @@
 // Canonical customer D1 paid-ledger primitives; no payment/checkout activation.
 // All public commerce routes continue to use their existing locked flow until
 // individually reviewed and switched; never silently fall back across ledgers.
-export const CUSTOMER_CREDIT_CONTRACT='credits-v1.1.0';
-export const CUSTOMER_CREDIT_COSTS=Object.freeze({
-  intelligence_query:1,gri_read:1,structural_country_digest:3,
-  structural_corridor_digest:5,structural_country_profile:8,
-  structural_corridor_profile:12,signed_risk_object:10,risk_gate_bundle:15,
-});
+import {GEOMACRO_CREDIT_CONTRACT_VERSION,GEOMACRO_CREDIT_COSTS,GEOMACRO_NEW_SALE_TIER_CAPABILITIES,GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES} from '../../../src/lib/credit-metering-policy.mjs';
+export const CUSTOMER_CREDIT_CONTRACT=GEOMACRO_CREDIT_CONTRACT_VERSION;
+export const CUSTOMER_CREDIT_COSTS=GEOMACRO_CREDIT_COSTS;
 export const CUSTOMER_RISK_GATE_USAGE_USD_CENTS=Object.freeze({
   risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25,
 });
-const CUSTOMER_ENTITLEMENT_UNITS=Object.freeze({
- ...CUSTOMER_CREDIT_COSTS,risk_gate_basic_focused:1,risk_gate_standard:1,
- risk_gate_complex_full:1,
-});
+const CUSTOMER_ENTITLEMENT_UNITS=CUSTOMER_CREDIT_COSTS;
 // GRI retired for new sales; Risk Gate is not public launch eligible.
 // Grant policy and evidence readiness are independent: this code does not
 // authorize any priced response or bypass product availability checks.
-export const CUSTOMER_ENABLED_CAPABILITIES=Object.freeze([
-  'intelligence_query','structural_country_digest','structural_corridor_digest',
-  'structural_country_profile','structural_corridor_profile','signed_risk_object',
-  'risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full',
-]);
+export const CUSTOMER_ENABLED_CAPABILITIES=GEOMACRO_CUSTOMER_METERABLE_CAPABILITIES;
 const PERMITTED=Object.freeze({
-  starter_dev:['intelligence_query','structural_country_digest','structural_country_profile','risk_gate_basic_focused'],
-  pro_analyst:['intelligence_query','structural_country_digest','structural_corridor_digest','structural_country_profile','structural_corridor_profile','risk_gate_basic_focused','risk_gate_standard'],
-  business_pilot:CUSTOMER_ENABLED_CAPABILITIES,
+  starter_dev:GEOMACRO_NEW_SALE_TIER_CAPABILITIES.starter_dev,
+  pro_analyst:GEOMACRO_NEW_SALE_TIER_CAPABILITIES.pro_analyst,
+  business_pilot:GEOMACRO_NEW_SALE_TIER_CAPABILITIES.business_pilot,
   // One-time prepaid credit packs are spendable on any currently live
   // intelligence capability. They never unlock retired GRI or public Risk Gate.
   credits_100:CUSTOMER_ENABLED_CAPABILITIES,
@@ -69,10 +59,8 @@ function scopeFor(capability){
   if(capability.startsWith('risk_gate_')||capability==='risk_gate_bundle')return 'risk-gate:read';
   return 'gri:read';
 }
-function validCapability(c,{allowRiskGate=false}={}){
-  if((!Object.hasOwn(CUSTOMER_CREDIT_COSTS,c)&&
-      !(allowRiskGate&&Object.hasOwn(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,c)))||
-     !CUSTOMER_ENABLED_CAPABILITIES.includes(c))
+function validCapability(c){
+  if(!Object.hasOwn(CUSTOMER_CREDIT_COSTS,c)||!CUSTOMER_ENABLED_CAPABILITIES.includes(c))
     fail(403,'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
   return c;
 }
@@ -140,7 +128,7 @@ async function chooseGrant(db,key,capability,now){
 }
 /** Read-only verified grant/account proof; no credits are allocated here. */
 export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){
-  capability=validCapability(capability,{allowRiskGate:true});
+  capability=validCapability(capability);
   const key=await scopedKey(db,env,apiKey,now);
   const grant=await chooseGrant(db,key,capability,now);
   return {ok:true,principal_id:key.user_id,principal_type:'api_client',
