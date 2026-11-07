@@ -84,17 +84,30 @@ export async function api(path:string,init:RequestInit={}):Promise<any>{
  * For native Cloudflare Analytics API, built-in account/script scalars are
  * named "string" (lower-case), not standard GraphQL "String".
  */
+/**
+ * Classify only documented Cloudflare Analytics error *families*.
+ * A provider error body can echo account tags, GraphQL variables or other
+ * sensitive material; NEVER log its raw message or extensions.
+ *
+ * Do not turn a provider rejection into PASS or substitute sampled counts.
+ * Unknown errors stay HOLD with the deliberately generic provider code.
+ */
 export function classifyGraphQLFailure(body:unknown):string{
- const value=body as {errors?:Array<{message?:unknown}>}|null;
+ const value=body as {errors?:Array<{message?:unknown;extensions?:unknown}>}|null;
  const errors=value?.errors;
  if(!Array.isArray(errors)||errors.length===0)return 'RELEASE_GRAPHQL_RESPONSE_INVALID';
  const messages=errors.map(e=>typeof e?.message==='string'?e.message:'').join('\n');
- if(/unknown type|cannot query field|unknown argument|variable .* (?:type|used)|validation error|is not defined|expected type/iu.test(messages))
-  return 'RELEASE_GRAPHQL_SCHEMA_REJECTED';
- if(/unauthori[sz]ed|permission|forbidden|access denied|insufficient scope|not allowed/iu.test(messages))
+ // Permission errors may not literally contain the word "permission".
+ if(/unauthori[sz]ed|not authori[sz]ed for (?:that |this )?account|not entitled|does not have access|permission|forbidden|access denied|insufficient scope|not allowed|missing.*scope/iu.test(messages))
   return 'RELEASE_GRAPHQL_ACCESS_DENIED';
- if(/rate.?limit|too many requests|query cost|resource exhausted/iu.test(messages))
+ if(/unknown type|unknown field|cannot query field|unknown argument|variable .* (?:type|used)|validation error|is not defined|expected type|error parsing args|scalar fields must have no selections|object field must have selections|query contains error/iu.test(messages))
+  return 'RELEASE_GRAPHQL_SCHEMA_REJECTED';
+ if(/cannot request data older|query time range is too large|retention (?:limit|period)|date range (?:too large|exceeded)|outside.*retention/iu.test(messages))
+  return 'RELEASE_GRAPHQL_DATA_WINDOW_REJECTED';
+ if(/rate.?limit|rate limiter budget depleted|too many requests|too many nodes|too many zones|too many accounts|query cost|resource exhausted|query consumed excessive resources|number of fields can't be more than|limit must be positive|limit .* greater than/iu.test(messages))
   return 'RELEASE_GRAPHQL_RATE_OR_COST_LIMIT';
+ if(/unable to execute query|too many queries in progress|internal server error|temporarily unavailable|upstream database.*unavailable/iu.test(messages))
+  return 'RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE';
  return 'RELEASE_GRAPHQL_PROVIDER_ERRORS';
 }
 export async function graphql(query:string,variables:Record<string,unknown>){

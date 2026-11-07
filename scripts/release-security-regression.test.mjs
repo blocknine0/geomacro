@@ -103,6 +103,46 @@ test('real provider error categories remain fixed codes; no provider text leaks'
  assert.equal(classifyGraphQLFailure(null),'RELEASE_GRAPHQL_RESPONSE_INVALID');
 });
 
+test('Cloudflare documented Analytics error messages map to fixed non-sensitive HOLD categories',()=>{
+ const provider=message=>classifyGraphQLFailure({errors:[{message}]});
+ for(const message of [
+  'not authorized for that account','does not have access to the path /viewer/accounts',
+  'Unauthorized','Insufficient scope for account secret token abc',
+ ]){
+  assert.equal(provider(message),'RELEASE_GRAPHQL_ACCESS_DENIED');
+ }
+ for(const message of [
+  'error parsing args','scalar fields must have no selections',
+  'object field must have selections','unknown field rowsReads',
+  'query contains error, please review it and retry',
+ ]){
+  assert.equal(provider(message),'RELEASE_GRAPHQL_SCHEMA_REJECTED');
+ }
+ for(const message of [
+  'cannot request data older than 2678400s','query time range is too large',
+ ]){
+  assert.equal(provider(message),'RELEASE_GRAPHQL_DATA_WINDOW_REJECTED');
+ }
+ for(const message of [
+  'rate limiter budget depleted, try again after 5 minutes',
+  'in combination, your request queries too many nodes, zones and accounts',
+  'query consumed excessive resources, please try running smaller queries',
+ ]){
+  assert.equal(provider(message),'RELEASE_GRAPHQL_RATE_OR_COST_LIMIT');
+ }
+ for(const message of [
+  'unable to execute query, please try again later',
+  'too many queries in progress, please try again later',
+  'Internal server error',
+ ]){
+  assert.equal(provider(message),'RELEASE_GRAPHQL_PROVIDER_UNAVAILABLE');
+ }
+ const secret='Sensitive provider credential echo: example';
+ const result=provider(secret);
+ assert.equal(result,'RELEASE_GRAPHQL_PROVIDER_ERRORS');
+ assert.doesNotMatch(result,/Sensitive|example/u);
+});
+
 test('D1 non-indexed query remains HOLD with named table + actual physical planner diagnostic',()=>{
  const s=readFileSync('scripts/apply-d1-migrations.ts','utf8');
  assert.match(s,/d1-hot-query-plan-diagnostic\.json/u);
