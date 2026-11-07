@@ -81,12 +81,12 @@ test('Cloudflare Analytics query declares provider-specific lowercase string sca
   'scripts/verify-d1-quota-proof.ts','scripts/canary-promoter.ts',
   'src/middleware/quotaWorker.ts']){
   const source=readFileSync(path,'utf8');
-  assert.match(source,/\\$accountTag:string!/u,path);
-  assert.doesNotMatch(source,/\\$[A-Za-z_][A-Za-z_0-9]*:String!/u,path);
+  assert.match(source,/\$accountTag:string!/u,path);
+  assert.doesNotMatch(source,/\$[A-Za-z_][A-Za-z_0-9]*:String!/u,path);
  }
  const source=readFileSync('scripts/canary-promoter.ts','utf8');
- assert.match(source,/\\$script:string!/u);
- assert.match(source,/\\$version:string!/u);
+ assert.match(source,/\$script:string!/u);
+ assert.match(source,/\$version:string!/u);
 });
 
 test('real provider error categories remain fixed codes; no provider text leaks',()=>{
@@ -105,15 +105,15 @@ test('real provider error categories remain fixed codes; no provider text leaks'
 
 test('D1 non-indexed query remains HOLD with named table + actual physical planner diagnostic',()=>{
  const s=readFileSync('scripts/apply-d1-migrations.ts','utf8');
- assert.match(s,/d1-hot-query-plan-diagnostic\\.json/u);
+ assert.match(s,/d1-hot-query-plan-diagnostic\.json/u);
  assert.match(s,/status:'HOLD'/u);
  assert.match(s,/actual_provider_planner:planner/u);
  assert.match(s,/RELEASE_HOT_QUERY_NOT_INDEXED_/u);
- assert.doesNotMatch(s,/RELEASE_HOT_QUERY_NOT_INDEXED'\\)/u);
+ assert.doesNotMatch(s,/RELEASE_HOT_QUERY_NOT_INDEXED'\)/u);
 });
 
 test('Hot50 missing manifest gives an explicit HOLD rather than opaque exception',()=>{
  const s=readFileSync('src/risk/hot50Attestation.ts','utf8');
- assert.match(s,/need\\(existsSync\\(path\\),'HOT50_EVENT_MANIFEST_MISSING'\\)/u);
+ assert.match(s,/need\(existsSync\(path\),'HOT50_EVENT_MANIFEST_MISSING'\)/u);
  assert.match(s,/HOT50_150_CELL_INPUT_MISSING/u);
 });
