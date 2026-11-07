@@ -34,8 +34,12 @@ It never touches a provider, creates secrets, or enables payments.
 - `scripts/canary-promoter.ts` — the authenticated Cloudflare Workers
   Deployments REST API, `0 → 1 → 10 → 100%`, fifteen observed minutes at every
   stage, provider-sourced host HTTP 5xx ratio <0.001, Worker requestDuration
-  p99 <50 ms, and exact version binding parity. Rollback to baseline 100% on
-  any later-stage failure, preserving `config/d1-hotspot-v2-canary.hold`.
+  p99 <50 ms, and exact version binding parity. Invocation `wallTimeP99` is from Cloudflare
+  in microseconds and is converted to milliseconds, filtered by the exact
+  Worker version. The HTTP 5xx ratio remains an aggregate zone-host metric,
+  **not** candidate-version-isolated; a full candidate HTTP 5xx SLO
+  cannot be inferred solely from that number. Rollback to baseline 100%
+  on any later-stage failure, preserving `config/d1-hotspot-v2-canary.hold`.
   A 0%-stage validates the existing baseline, not an undeployed candidate
   (Cloudflare cannot version-override an inactive candidate).
 - `scripts/verify-d1-quota-proof.ts` — Cloudflare GraphQL Analytics of EVERY
@@ -56,19 +60,21 @@ It never touches a provider, creates secrets, or enables payments.
   D1 Workers with `script_name: geomacro-d1-quota-governor` and route governed
   queries through `withQuotaCircuitBreaker` with exact worst-case row bounds.
   **Existing GitHub Actions and REST D1 direct queries must also be governed**.
-- `scripts/certify-b2-parity.ts` — verifies the existing protected live D1
-  manifest, first and second D1 readback, full paginated B2 physical S3
-  `ListObjectsV2` within the exact protected spool prefix, full B2 GET +
-  AES-GCM/hash restoration on every indexed batch, and **actual R2** S3
-  listing + checksum readback against `p0b_private_r2_fallback`. It rejects
-  extra/unindexed objects and holds if either list cannot fit the explicit
-  provider request budget. It checks all four GeoMacro Queue backlog metrics
-  twice plus the complete D1 unhandled census. Backblaze Class C LIST budget
-  does NOT have an independent canonical D1 counter, so operator must approve
-  the strictly limited LIST attempt with `B2_LIST_ALLOWED=1`; the existing
-  total ledger conservatively reserves a GET ticket for each LIST attempt.
-  `b2-physical-parity-certificate.json` is integrity evidence, NOT a blanket
-  Backblaze provider Class-C spend guarantee.
+- `scripts/certify-b2-parity.ts` — performs independent full B2 S3 GET +
+  AES-GCM/SHA-256 restoration for **every bounded D1-indexed archived batch**,
+  verifies the stable start/end canonical manifest, checks both snapshots of
+  all four Cloudflare Queue backlogs, and performs private R2 object GET,
+  ciphertext SHA-256 and AEAD member readback for each D1 fallback pointer.
+  It **never** enumerates B2 or R2 buckets: GeoMacro's permanent CI-approved
+  zero-list policy protects the constrained Backblaze Class-C quota. Therefore
+  orphan objects outside the D1 manifest cannot be ruled out. The signed
+  `b2-physical-parity-certificate.json` explicitly records
+  `status:HOLD`, `physical_list_complete:false`, and
+  `bidirectional_parity_pass:false`. Valid indexed readback alone must
+  **never** authorize full physical-parity acceptance or remove the canary
+  safety hold. A separately independently validated B2 namespace inventory
+  would be required to make that stronger assertion, and must be approved
+  against the actual provider budget before execution.
 - `src/risk/hot50Attestation.ts` — reads genuine **150 event** records from
   `HOT50_EVENT_MANIFEST_PATH` (default
   `artifacts/hot50-risk-gate/verified-primary-events.json`). For each of the
@@ -105,8 +111,8 @@ The workflow uses the existing owner production secrets where known, plus
 `GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM`,
 `GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM`, and source-rights key hashes in
 protected repository/Cloudflare settings. No secret value is included here.
-`B2_LIST_ALLOWED` must be an explicit production environment variable `1` for
-an authorized bounded physical listing, otherwise the parity job holds.
+The permanent B2 zero-list guard is unchanged. There is no authorized
+release-time B2 bucket-listing override in this package.
 
 ## Non-negotiable acceptance boundaries
 
@@ -149,3 +155,20 @@ signers, all provider-dependent commands fail closed, as intended. Never
 suppress those errors with `continue-on-error`, dummy JSON fixtures, or
 synthetic evidence; use the existing protected GitHub environment with actual
 provider authorizations.
+## 2026-11-08 PR #3709 security review and closure notes
+
+- CodeQL review flagged the original nested XML entity decoding in a bucket
+  listing parser. The unsafe parser AND entire Backblaze bucket-list pathway
+  were removed rather than suppressing the finding.
+- Product CI's permanent `scripts/tests/b2-no-list-api.guard.test.mjs`
+  forbids all direct B2 bucket/version listing from runtime source. This
+  invariant must remain PASS. Readback certification cannot assert full
+  bidirectional bucket parity without inventory data it does not possess.
+- The Hot50 attestation now requires its two independently signed machine
+  facts/rights records to match each manifest event's exact country, fact
+  SHA-256, original publisher URLs, original byte digests, issuer identities
+  and verified rights evidence. A valid signature about a different event is
+  insufficient to sign the target Hot50 cell.
+- Canary analytics now use `scriptVersion` and `wallTimeP99`
+  (microseconds) for exact-version Worker observability; zone HTTP 5xx
+  is still host-wide. Unknown or unsupported metrics HOLD, never PASS.
