@@ -107,10 +107,17 @@ export async function acknowledgeB2FirstD1({
  if(!Array.isArray(receipt.rows)||!Number.isSafeInteger(receipt.record_count)||
     receipt.record_count!==receipt.rows.length||receipt.record_count>SOURCE_MAX)
   safeFailure("ACK_INVALID_BATCH");
+ // The canonical writer isolates genuine immutable ID collisions.
+ // Preserve verified clean IDs even when other originals were quarantined.
+ // Every success below is rechecked against D1's EXACT original raw SHA.
  if(postResult?.readback_verified!==true||
-    postResult?.verified_originals!==receipt.record_count||
-    postResult?.stored+postResult?.duplicate!==receipt.record_count||
-    postResult?.rejected_conflicts!==0){
+    !Number.isSafeInteger(postResult?.stored)||
+    !Number.isSafeInteger(postResult?.duplicate)||
+    !Number.isSafeInteger(postResult?.rejected_conflicts)||
+    postResult?.verified_originals!==postResult.stored+postResult.duplicate||
+    postResult.stored+postResult.duplicate+postResult.rejected_conflicts!==
+      receipt.record_count||
+    postResult.verified_originals<1){
   return {status:"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY",
     archived:0,deferred:receipt.record_count,storage_confirmed:true,
     all_selected_originals_archived:false};
