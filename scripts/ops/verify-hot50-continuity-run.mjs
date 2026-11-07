@@ -6,6 +6,7 @@
  * Source runtime evidence is not a B2/GRO/RiskGate coverage certificate.
  */
 import {readFileSync} from "node:fs";
+import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 
 const CATEGORIES=new Set(["geopolitics","macro","rare_earth"]);
