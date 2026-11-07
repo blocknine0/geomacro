@@ -176,14 +176,44 @@ test('transactional outbox parity forbids ARCHIVED without a corresponding real 
    "VALUES (?,?,1,'ARCHIVED',?,?,?,?)"
   ).run(id,id,'2026-11-04T03:00:00.000Z','b2://spool/missing',sha,
    '2026-11-04T03:00:01.000Z');
-  const response=await getP0bIngestionStatus(env);
+  // Routine health must not perform the cross-journal full scan or claim
+  // an absent verification passed. Deep proof remains available to admin.
+  const shallow=await (await getP0bIngestionStatus(env)).json();
+  assert.equal(shallow.transactional_outbox_parity.parity_deep_check_performed,false);
+  assert.equal(shallow.transactional_outbox_parity.integrity_zero_mismatch,false);
+  assert.equal(shallow.transactional_outbox_parity.archived_without_exact_bundle_journal,null);
+  assert.equal(shallow.live_bundle_parity.assertion_passed,false);
+  const response=await getP0bIngestionStatus(env,{deep:true});
   assert.equal(response.status,200);
   const body=await response.json();
+  assert.equal(body.transactional_outbox_parity.parity_deep_check_performed,true);
   assert.equal(body.transactional_outbox_parity.archived_verified_bundles,1);
   assert.equal(body.transactional_outbox_parity.archived_without_b2_pointer,0);
   assert.equal(body.transactional_outbox_parity.archived_without_exact_bundle_journal,1);
   assert.equal(body.transactional_outbox_parity.archived_item_count_mismatch,1);
   assert.equal(body.transactional_outbox_parity.integrity_zero_mismatch,false);
   assert.equal(body.live_bundle_parity.assertion_passed,false);
+ }finally{db.close()}
+});
+
+test("routine admin health never executes expensive outbox-to-journal correlations",async()=>{
+ const {db,DB}=dbFixture();
+ try{
+  const issued=[];
+  const spy={prepare(sql){issued.push(sql);return DB.prepare(sql)}};
+  const env={DB:spy,INGEST_QUEUE:{send:async()=>{}}};
+  const fast=await getP0bIngestionStatus(env);
+  assert.equal(fast.status,200);
+  const state=await fast.json();
+  assert.equal(state.transactional_outbox_parity.integrity_zero_mismatch,false);
+  assert.ok(issued.some(x=>x.includes("FROM p0b_archive_outbox")));
+  assert.ok(!issued.some(x=>x.includes("NOT EXISTS (")||
+    x.includes("SELECT COUNT(*) FROM ingestion_spool_queue AS q")));
+  issued.length=0;
+  const full=await getP0bIngestionStatus(env,{deep:true});
+  assert.equal(full.status,200);
+  assert.ok(issued.some(x=>x.includes("NOT EXISTS (")));
+  const workflow=text(".github/workflows/p0b-production-parity-hourly.yml");
+  assert.match(workflow,/v1\/internal\/p0b\/status\?deep=1/u);
  }finally{db.close()}
 });
