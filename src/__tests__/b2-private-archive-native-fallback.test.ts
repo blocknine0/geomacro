@@ -80,6 +80,10 @@ describe("private B2 server native fallback", () => {
   });
   it("never contacts B2 or falls back to D1 when the selected Control Plane rejects a reservation",async()=>{
     setReadCredentials("worker-denied");
+    // Even with an alternate primary credential, one denied shared quota
+    // ticket must be terminal; never rotate credentials or retry admission.
+    process.env.B2_KEY_ID="primary-alternate";
+    process.env.B2_APPLICATION_KEY="alternate-secret";
     process.env.GEOMACRO_CONTROL_PLANE_TOKEN="q".repeat(64);
     const seen:string[]=[];
     vi.stubGlobal("fetch",vi.fn(async (input)=>{
