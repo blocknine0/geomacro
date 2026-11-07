@@ -10,7 +10,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const D1_FREE_DAILY = Object.freeze({rows_read:5_000_000,rows_written:100_000});
-const QUERY=`query D1Today($accountTag:String!,$start:Date!,$end:Date!){
+const QUERY=`query D1Today($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
    sum{rowsRead rowsWritten}

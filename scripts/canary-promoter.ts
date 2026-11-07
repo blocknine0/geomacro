@@ -14,7 +14,7 @@ const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
 // Cloudflare Workers invocation quantiles expose wallTimeP99 in MICROSECONDS,
 // not requestDurationP99 in milliseconds. Query the exact routed Worker
 // version, not the aggregate script; a 1% canary can be hidden by 99% baseline.
-const GRAPH=`query CanaryObservability($accountTag:String!,$script:String!,$version:String!,$zoneTag:String!,$host:String!,$start:Time!,$end:Time!){
+const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$version:string!,$zoneTag:string!,$host:string!,$start:Time!,$end:Time!){
  viewer{
   accounts(filter:{accountTag:$accountTag}){
    workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
@@ -101,7 +101,7 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
 // Observe all account D1 databases during the rollout. Provider analytics
 // are delayed: this triggers a rollback as soon as an overage is OBSERVED,
 // not an impossible provider-side atomic per-row hard stop.
-const LIVE_D1=`query LiveAccountD1($accountTag:String!,$start:Date!,$end:Date!){
+const LIVE_D1=`query LiveAccountD1($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
    sum{rowsRead rowsWritten} dimensions{databaseId date}

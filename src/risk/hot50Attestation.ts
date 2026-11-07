@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Genuine-source Hot50/3-category attestation; never self-certify story truth. */
-import {readFileSync} from 'node:fs';
+import {readFileSync,existsSync} from 'node:fs';
 import {createHash,randomUUID} from 'node:crypto';
 import {isIP} from 'node:net';
 import {pathToFileURL} from 'node:url';
@@ -108,7 +108,8 @@ function validateEvent(e:Event,now:number){
 }
 async function main(){
  const path=process.env.HOT50_EVENT_MANIFEST_PATH??'artifacts/hot50-risk-gate/verified-primary-events.json';
- const bytes=readFileSync(path);need(bytes.length>0&&bytes.length<2000000,'HOT50_EVENT_MANIFEST_MISSING_OR_OVERSIZE');
+ need(existsSync(path),'HOT50_EVENT_MANIFEST_MISSING');
+ const bytes=readFileSync(path);need(bytes.length>0&&bytes.length<2000000,'HOT50_EVENT_MANIFEST_OVERSIZED_OR_EMPTY');
  const doc=JSON.parse(bytes.toString('utf8'));
  need(doc.schema==='geomacro.hot50.primary-original-evidence.v1'&&Array.isArray(doc.events)&&
   doc.events.length===MAX_ITEMS,'HOT50_150_CELL_INPUT_MISSING');
