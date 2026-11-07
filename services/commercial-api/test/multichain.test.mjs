@@ -46,7 +46,7 @@ test('real PostgreSQL: immutable, chain-locked no-funds proof table isolates Bas
    FROM geomacro.x402_chain_no_funds_proofs WHERE request_id=ANY($1::uuid[]) ORDER BY chain_id`,
    [[b.request_id,p.request_id]]);
   assert.equal(rows.length,2);
-  assert.deepEqual(rows.map(r=>r.chain_id),['137','8453'].map(Number).sort((a,b)=>a-b).map(String).map(Number));
+  assert.deepEqual(rows.map(r=>String(r.chain_id)),['137','8453']);
   assert.deepEqual(rows.map(r=>r.proof_state),['NO_FUNDS_ONLY','NO_FUNDS_ONLY']);
   assert.equal(rows[0].facilitator,'dexter');assert.equal(rows[1].facilitator,'xpay');
   await assert.rejects(insert(pool,proof(137)),e=>e.code==='23505'); // nonce replay on Polygon
