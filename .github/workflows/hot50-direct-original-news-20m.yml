@@ -42,10 +42,14 @@ on:
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
+      - "scripts/ops/verify-hot50-continuity-run.mjs"
+      - "scripts/tests/hot50-continuity-runtime.test.mjs"
       - "config/four-lane-free-source-rights.v1.json"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
       - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
+      - "scripts/ops/verify-hot50-continuity-run.mjs"
+      - "scripts/tests/hot50-continuity-runtime.test.mjs"
   push:
     branches: [main]
     paths:
@@ -117,6 +121,7 @@ jobs:
           node --check scripts/ops/probe-hot50-retired-backup-transports.mjs
           node --test scripts/tests/hot50-fresh-priority-d1.test.mjs
           node --test scripts/tests/hot50-continuity-independent-fallback.test.mjs scripts/tests/direct20m-source-health-proof.test.mjs
+          node --test scripts/tests/hot50-continuity-runtime.test.mjs
           node --input-type=module -e 'import {threeDomainGlobal20mPublisherRegistry} from "./scripts/lib/three-domain-global-direct-20m-sources.mjs"; console.log(JSON.stringify({schema:"geomacro.global-three-domain-20m-source-census.v1",...threeDomainGlobal20mPublisherRegistry(new Date()).summary}))'
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs
@@ -252,6 +257,12 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/phase2i-source-only-raw-tick.ts
+      - name: Require actual three-category native publisher runtime proof (D1-admitted)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" | \
+            node scripts/ops/verify-hot50-continuity-run.mjs --source-health ADMITTED
       - name: Retain source-wise runtime health and D1 readback counts (no publisher article bytes)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -321,6 +332,12 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
+      - name: Require actual three-category native publisher runtime proof (quota-held encrypted)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat "$RUNNER_TEMP/geomacro-direct20m-source-proof.json" | \
+            node scripts/ops/verify-hot50-continuity-run.mjs --source-health HELD
       - name: Mirror held ciphertext to dedicated private R2 when configured
         id: held_r2_mirror
         continue-on-error: true
@@ -355,3 +372,31 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
           compression-level: 0
+
+
+  # A green push/PR contract alone cannot be called a 20m live collection.
+  # This scheduled-only job fails if BOTH real collectors were skipped or
+  # failed; independent runtime proof executes before either job succeeds.
+  runtime-source-sweep-acceptance:
+    needs: [source-contract, quota-admission, collect-direct-20m, encrypted-held-three-domain-20m]
+    if: >-
+      always() &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    env:
+      GEOMACRO_HOT50_NEEDS_JSON: ${{ toJSON(needs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Refuse vacuous schedule success unless actual publisher collection job completed
+        run: node scripts/ops/verify-hot50-continuity-run.mjs --scheduled-run
