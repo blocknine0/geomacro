@@ -551,9 +551,9 @@ export function phase2fQuotaDiagnostic(plan){
   const paidSubscription=plan?.workers_paid_subscription_verified===true;
   const physical=valid&&!paidSubscription&&
     (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
-  const protectedReserve=valid&&
+  const protectedReserve=valid&&!paidSubscription&&
     (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
-  const pacing=valid&&
+  const pacing=valid&&!paidSubscription&&
     (plan.observed_rows_read>=plan.paced_ceiling_by_lane?.critical?.rows_read||
      plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
@@ -662,6 +662,11 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       owner_d1_utc_budget_held:ownerHold,
       observed_rows_read:quota.observed_rows_read,
       observed_rows_written:quota.observed_rows_written,
+      // Free-plan remaining counters are retained only for legacy offline
+      // diagnostics. They are never Paid-plan physical capacity.
+      remaining_rows_read:quota.remaining_rows_read,
+      remaining_rows_written:quota.remaining_rows_written,
+      free_plan_remaining_counters_not_workers_paid_limits:paidSubscriptionVerified,
       owner_d1_headroom_rows_read:Math.max(0,
         ownerBudget.rows_read-quota.observed_rows_read),
       owner_d1_headroom_rows_written:Math.max(0,
