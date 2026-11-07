@@ -93,6 +93,14 @@ jobs:
           node-version: '24'
       - working-directory: services/commercial-api
         run: npm ci --omit=dev --ignore-scripts
+      - name: Fail closed on xpay wallet, Base RPC or no-funds quarantine mismatch
+        env:
+          COINBASE_X402_PAY_TO: ${{ secrets.COINBASE_X402_PAY_TO }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          GEOMACRO_COMMERCIAL_X402_FACILITATOR_URL: ${{ vars.GEOMACRO_COMMERCIAL_X402_FACILITATOR_URL }}
+          GEOMACRO_COMMERCE_DISABLED_PROVIDERS: ${{ vars.GEOMACRO_COMMERCE_DISABLED_PROVIDERS }}
+          GEOMACRO_REAL_FUNDS_SECURITY_ACK: ${{ vars.GEOMACRO_REAL_FUNDS_SECURITY_ACK }}
+        run: node scripts/ops/check-commercial-xpay-no-funds.mjs
       - name: Deploy and read back exact revision, private ledger and issuer key without funds
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
