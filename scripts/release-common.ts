@@ -78,6 +78,25 @@ export async function api(path:string,init:RequestInit={}):Promise<any>{
  need(r.ok&&!r.redirected&&body?.success===true&&body.result!=null,`RELEASE_PROVIDER_HTTP_${r.status}`);
  return body.result;
 }
+/**
+ * Return a fixed diagnostic code for a Cloudflare GraphQL response. Never
+ * emit provider error text: it may echo caller variables or account details.
+ * For native Cloudflare Analytics API, built-in account/script scalars are
+ * named "string" (lower-case), not standard GraphQL "String".
+ */
+export function classifyGraphQLFailure(body:unknown):string{
+ const value=body as {errors?:Array<{message?:unknown}>}|null;
+ const errors=value?.errors;
+ if(!Array.isArray(errors)||errors.length===0)return 'RELEASE_GRAPHQL_RESPONSE_INVALID';
+ const messages=errors.map(e=>typeof e?.message==='string'?e.message:'').join('\n');
+ if(/unknown type|cannot query field|unknown argument|variable .* (?:type|used)|validation error|is not defined|expected type/iu.test(messages))
+  return 'RELEASE_GRAPHQL_SCHEMA_REJECTED';
+ if(/unauthori[sz]ed|permission|forbidden|access denied|insufficient scope|not allowed/iu.test(messages))
+  return 'RELEASE_GRAPHQL_ACCESS_DENIED';
+ if(/rate.?limit|too many requests|query cost|resource exhausted/iu.test(messages))
+  return 'RELEASE_GRAPHQL_RATE_OR_COST_LIMIT';
+ return 'RELEASE_GRAPHQL_PROVIDER_ERRORS';
+}
 export async function graphql(query:string,variables:Record<string,unknown>){
  const token=envString('CLOUDFLARE_BILLING_READ_TOKEN',20);
  const res=await fetch('https://api.cloudflare.com/client/v4/graphql',{
@@ -85,7 +104,9 @@ export async function graphql(query:string,variables:Record<string,unknown>){
   headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json',Accept:'application/json'},
   body:JSON.stringify({query,variables})
  });const body=await res.json().catch(()=>null);
- need(res.ok&&!res.redirected&&!body?.errors?.length&&body?.data,`RELEASE_GRAPHQL_UNVERIFIED_${res.status}`);return body.data;
+ if(Array.isArray(body?.errors)&&body.errors.length)throw Error(classifyGraphQLFailure(body));
+ need(res.ok&&!res.redirected&&body?.data,`RELEASE_GRAPHQL_UNVERIFIED_${res.status}`);
+ return body.data;
 }
 export async function queryD1(databaseId:string,sql:string):Promise<{rows:any[];meta:any}>{
  need(UUID_RE.test(databaseId),'RELEASE_D1_ID_INVALID');
