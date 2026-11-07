@@ -40,10 +40,13 @@ const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==120_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==180_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==120_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==140_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==140_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==140_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==180_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==140_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==40_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
    FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
@@ -238,8 +241,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
 
 
   // Verified Workers Paid has no Free-plan 5M read/100k write daily stop.
-  // GeoMacro STILL keeps the owner's 120k read / 180k write internal UTC
-  // account-wide target. Paid provider monthly inclusion is not a daily budget.
+  // GeoMacro keeps the owner's 140k normal UTC reads/writes, with the
+  // remaining 40k write rows (up to 180k total) reserved only for separately
+  // authorized emergency recovery. Paid monthly inclusion != daily permission.
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
   const paid=spendGuardProof?.schema===FIVE_USD_SPEND_GUARD_SCHEMA&&
@@ -263,9 +267,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
   if(paid){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
     const progress=Math.max(0,Math.min(1,elapsed));
-    // 5% of the day allowance at UTC reset, pacing the remainder across
-    // 24h. Bounded safety buffer prevents a read-only counter snapshot from
-    // granting work with effectively zero headroom.
+    // 5% of the normal 140k/day allowance at UTC reset, pacing the rest
+    // across 24h; the 40k emergency WRITE reserve is never spent here.
     const dailyReads=Math.floor(
       FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max*
       (0.05+0.95*progress));
@@ -291,7 +294,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,spendG
     // would incorrectly stop intake immediately after every UTC reset.
     const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
       D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
-    // The existing 3x15m + 20m read-worst-case envelope is often >120k/day.
+    // The existing 3x15m + 20m read-worst-case envelope is often >140k/day.
     // Keep source intake HELD until that workload is truly reduced and
     // provider readback leaves enough room; never pretend one D1 call = 1 row.
     const sourceIntake=admitted&&rowsPerSlot>=3&&
