@@ -19,22 +19,22 @@ const quota={
  },workers_paid_subscription_verified:true,state:"ADMITTED",
  observed_rows_read:100,observed_rows_written:100
 };
-const at=(candidatePercent)=>({
- deployments:[{versions:candidatePercent===0?
+const at=(candidatePercent,includeZero=false)=>({
+ deployments:[{versions:candidatePercent===0&&!includeZero?
   [{version_id:A,percentage:100}]:
   [{version_id:A,percentage:100-candidatePercent},
    {version_id:B,percentage:candidatePercent}]}]
 });
 const check=(stage,observed,overrides={})=>assessWorkerPromotion({
- deployment:at(observed),baselineVersion:version(A),
+ deployment:at(observed,stage!==0),baselineVersion:version(A),
  candidateVersion:version(B,"geomacro-main:"+SHA),
  baselineId:A,candidateId:B,targetPercent:stage,sourceSha:SHA,
  quota,now:new Date("2026-11-07T12:00:00Z"),spendPolicyEnforced:false,
  ...overrides
 });
 test("ordered stages admit only exact previous-version percentage",()=>{
- for(const [stage,previous] of [[1,0],[5,1],[25,5],[50,25],[100,50]]){
-  const ok=check(stage,previous);
+ for(const [stage,previous] of [[0,-1],[1,0],[5,1],[25,5],[50,25],[100,50]]){
+  const ok=check(stage,Math.max(0,previous));
   assert.equal(ok.eligible,true,JSON.stringify(ok));
   assert.equal(ok.target_percent,stage);
   assert.equal(ok.previous_percent,previous);
@@ -69,7 +69,7 @@ test("spend gate cannot be bypassed when enforcement is required",()=>{
  }}).eligible,true);
 });
 test("empty, split, unrelated or over-100 percent deployed states hold",()=>{
- assert.equal(check(1,1).reason,"BASELINE_NOT_100_PERCENT");
+ assert.equal(check(0,1).reason,"BASELINE_NOT_100_PERCENT");
  assert.equal(check(5,0).reason,"CURRENT_SPLIT_NOT_PREVIOUS_STAGE");
  assert.equal(check(5,1,{deployment:{deployments:[{versions:[
   {version_id:A,percentage:90},{version_id:B,percentage:20}
