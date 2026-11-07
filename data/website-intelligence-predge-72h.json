@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T13:54:43.981Z",
+  "checked_at": "2026-11-07T18:40:34.590Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 29,
+  "item_count": 24,
   "counts": {
     "geopolitics": 2,
-    "macro": 5,
-    "rare_earth": 22
+    "macro": 4,
+    "rare_earth": 18
   },
-  "source_native_ids_sha256": "94086906bd3459c4064f345172459d564e297c3d976c60c5154422ba1a70ff77",
+  "source_native_ids_sha256": "7ac421194426f5cfd7072dd05fdbd3ee7f8de1fb8dcee012c84424bd5c215107",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -472,101 +472,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T21:07:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-bddb8ba4",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5 billion Bagdad copper expansion - Mining.com",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5 billion Bagdad copper expansion - Mining.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T18:24:57.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-750bacc0",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5B Bagdad copper expansion - The Northern Miner",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Bagdad copper expansion - The Northern Miner. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T17:00:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3b64d137",
-      "category": "macro",
-      "title": "Geomacro finds Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin",
-      "what_changed": "A monitored source feed reports: Tether reported XAUT Gold Reserves Reach 25.7 Tons, Valued at $344 Million as of Q3 2026 - KuCoin. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T15:43:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-78cf1bde",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io",
-      "what_changed": "A monitored source feed reports: Freeport approved $4.5 Billion Bagdad Copper Mine Expansion - Securities.io. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T15:17:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-628705fd",
-      "category": "rare_earth",
-      "title": "Geomacro finds Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express",
-      "what_changed": "A monitored source feed reports: Centre approved key initiatives to support critical minerals, renewable energy, statistical efforts - The New Indian Express. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T15:00:37.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
