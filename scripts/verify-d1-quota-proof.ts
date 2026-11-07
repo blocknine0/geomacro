@@ -3,7 +3,7 @@
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {BUDGET,ACCOUNT_RE,envString,graphql,need,sha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
-const QUERY=`query GeoMacroD1Day($accountTag:String!,$start:Date!,$end:Date!){
+const QUERY=`query GeoMacroD1Day($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
    sum{rowsRead rowsWritten} dimensions{date databaseId}
