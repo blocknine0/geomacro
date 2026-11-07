@@ -41,9 +41,11 @@ on:
       - "scripts/ops/private-osint-stage-held.ts"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
+      - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
       - "config/four-lane-free-source-rights.v1.json"
       - "scripts/lib/four-lane-free-source-rights.mjs"
       - "scripts/lib/four-lane-free-source-rights.test.mjs"
+      - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
   push:
     branches: [main]
     paths:
@@ -113,7 +115,8 @@ jobs:
           node --check scripts/ops/probe-geopolitics-continuity-feeds.mjs
           node --test scripts/lib/hot-50-retired-backup-sources.test.mjs
           node --check scripts/ops/probe-hot50-retired-backup-transports.mjs
-          node --test scripts/tests/hot50-fresh-priority-d1.test.mjs scripts/tests/direct20m-source-health-proof.test.mjs
+          node --test scripts/tests/hot50-fresh-priority-d1.test.mjs
+          node --test scripts/tests/hot50-continuity-independent-fallback.test.mjs scripts/tests/direct20m-source-health-proof.test.mjs
           node --input-type=module -e 'import {threeDomainGlobal20mPublisherRegistry} from "./scripts/lib/three-domain-global-direct-20m-sources.mjs"; console.log(JSON.stringify({schema:"geomacro.global-three-domain-20m-source-census.v1",...threeDomainGlobal20mPublisherRegistry(new Date()).summary}))'
           node --test scripts/lib/four-lane-free-source-rights.test.mjs
           node --test scripts/tests/minimum-daily-bundled-source.test.mjs
@@ -275,17 +278,22 @@ jobs:
         run: rm -f -- "$GEOMACRO_PHASE2I_PRIOR_QUEUE" "$GEOMACRO_SOURCE_WEBSITE_HANDOFF"
 
   encrypted-held-three-domain-20m:
-    name: Poll three-domain direct news even when D1 quota is held, protect eligible news in AES-GCM replay
-    needs: [source-contract, quota-admission]
+    name: Preserve three-domain Hot50 native source collection when D1 admission or D1 write fails
+    # Recovery also runs if the admitted D1 writer fails AFTER quota PASS.
+    # It NEVER retries D1, signs GRO or marks an original as D1 archived.
+    needs: [source-contract, quota-admission, collect-direct-20m]
     if: >-
       always() &&
       needs.source-contract.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-      (needs.quota-admission.result == 'success' ||
-       needs.quota-admission.result == 'failure') &&
-      needs.quota-admission.outputs.source_intake != 'true'
+      (((needs.quota-admission.result == 'success' ||
+         needs.quota-admission.result == 'failure') &&
+        needs.quota-admission.outputs.source_intake != 'true') ||
+       (needs.quota-admission.result == 'success' &&
+        needs.quota-admission.outputs.source_intake == 'true' &&
+        needs.collect-direct-20m.result == 'failure'))
     concurrency:
       group: geomacro-hot50-held-publisher-fetch
       cancel-in-progress: false
@@ -314,6 +322,8 @@ jobs:
           set -euo pipefail
           bun scripts/ops/private-osint-stage-held.ts
       - name: Mirror held ciphertext to dedicated private R2 when configured
+        id: held_r2_mirror
+        continue-on-error: true
         if: vars.GEOMACRO_PRIVATE_OSINT_R2_BUCKET != '' && env.GEOMACRO_HELD_R2_CONFIGURED == 'true'
         env:
           GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"
@@ -324,6 +334,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: node scripts/ops/private-osint-mirror-held-to-r2.mjs
+      - name: Warn when optional R2 durability is unverified; retain encrypted GitHub artifact
+        if: steps.held_r2_mirror.outcome == 'failure'
+        run: echo "::warning::HOT50_R2_DURABLE_ESCROW_FAILED; retain GitHub ciphertext and mark remote durability unverified"
       - name: Retain source-wise transport states from quota-held publisher sweep (D1 acknowledgements unknown)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -334,10 +347,11 @@ jobs:
           retention-days: 1
           compression-level: 6
       - name: Keep only encrypted eligible native-dated source observations for automated existing replay
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-encrypted-private-osint-held
           path: /tmp/geomacro-encrypted-held-spool/sealed.json
           if-no-files-found: ignore
-          retention-days: 2
+          retention-days: 3
           compression-level: 0
