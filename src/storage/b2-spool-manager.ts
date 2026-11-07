@@ -21,9 +21,12 @@ export interface SpoolReceipt {
 }
 export interface B2SpoolEnv {
  DB: any;
- B2_S3_ENDPOINT: string;
- B2_KEY_ID: string;
- B2_APPLICATION_KEY: string;
+ B2_STORAGE_MODE?: string;
+ B2_GATEWAY_URL?: string;
+ INTERNAL_GATEWAY_TOKEN?: string;
+ B2_S3_ENDPOINT?: string;
+ B2_KEY_ID?: string;
+ B2_APPLICATION_KEY?: string;
  B2_SPOOL_BUCKET: string;
  B2_SPOOL_PREFIX?: string;
  B2_SPOOL_ENCRYPTION_KEY: string;
@@ -73,13 +76,18 @@ function safeKey(uri:string,sha:string,sourceId:string,prefix:string){
  return key;
 }
 function validateEnv(env:B2SpoolEnv){
- const endpoint=new URL(env?.B2_S3_ENDPOINT??'');
- if(endpoint.protocol!=='https:'||endpoint.pathname!=='/'||endpoint.search||endpoint.hash||
-   !/^s3\.[a-z0-9-]+\.backblazeb2\.com$/u.test(endpoint.hostname)||
-   !BUCKET.test(env.B2_SPOOL_BUCKET)||env.B2_KEY_ID?.length<5||
-   env.B2_APPLICATION_KEY?.length<20||env.B2_SPOOL_ENCRYPTION_KEY?.length<32)
+ const gatewayMode=env?.B2_STORAGE_MODE==='gateway';
+ const endpoint=new URL(gatewayMode?(env.B2_GATEWAY_URL??''):(env?.B2_S3_ENDPOINT??''));
+ if(endpoint.protocol!=='https:'||endpoint.username||endpoint.password||endpoint.search||endpoint.hash||
+   !BUCKET.test(env.B2_SPOOL_BUCKET)||env.B2_SPOOL_ENCRYPTION_KEY?.length<32)
   throw Error('P0B_B2_CONFIGURATION_UNAVAILABLE');
- const region=endpoint.hostname.slice(3,-'.backblazeb2.com'.length);
+ if(gatewayMode){
+  if(String(env.INTERNAL_GATEWAY_TOKEN??'').length<32)throw Error('P0B_GATEWAY_CONFIGURATION_UNAVAILABLE');
+ }else if(endpoint.pathname!=='/'||!/^s3\.[a-z0-9-]+\.backblazeb2\.com$/u.test(endpoint.hostname)||
+   String(env.B2_KEY_ID??'').length<5||String(env.B2_APPLICATION_KEY??'').length<20){
+  throw Error('P0B_B2_CONFIGURATION_UNAVAILABLE');
+ }
+ const region=gatewayMode?'gateway':endpoint.hostname.slice(3,-'.backblazeb2.com'.length);
  // Keep the original spool/ default while supporting B2 application keys
  // restricted to an already-owned, approved private archive prefix.
  const prefix=env.B2_SPOOL_PREFIX??'spool/';
@@ -121,9 +129,14 @@ export class B2SpoolManager {
  private endpoint:string;
  private region:string;
  private prefix:string;
+ private gatewayUrl:string|null;
+ private gatewayToken:string|null;
  constructor(env:B2SpoolEnv,opts:SpoolDependencies={}){
+  const gatewayMode=env.B2_STORAGE_MODE==='gateway';
   const {endpoint,region,prefix}=validateEnv(env);
   this.env=env;this.endpoint=endpoint;this.region=region;this.prefix=prefix;
+  this.gatewayUrl=gatewayMode?String(env.B2_GATEWAY_URL??'').replace(/\/$/u,''):null;
+  this.gatewayToken=gatewayMode?String(env.INTERNAL_GATEWAY_TOKEN??''):null;
   // Workerd's native fetch requires the global receiver. Calling it as a
   // class property otherwise throws before any B2 HTTP request is sent.
   this.fetchImpl=opts.fetchImpl??globalThis.fetch.bind(globalThis);
@@ -208,6 +221,20 @@ export class B2SpoolManager {
   }};
  }
  private async request(method:'PUT'|'GET',key:string,body=new Uint8Array(0)){
+  if(this.gatewayUrl&&this.gatewayToken){
+   const endpoint=new URL('/v1/internal/objects',this.gatewayUrl);
+   endpoint.searchParams.set('path',key);
+   let response:Response;
+   try{
+    response=await this.fetchImpl(endpoint,{method,headers:{
+     Authorization:'Bearer '+this.gatewayToken,
+     ...(method==='PUT'?{'Content-Type':key.endsWith('.gz')?'application/gzip':'application/json'}:{})
+    },body:method==='PUT'?toBytes(body):undefined,redirect:'error',cache:'no-store',
+    signal:AbortSignal.timeout(60000)});
+   }catch{throw Error('P0B_GATEWAY_'+method+'_TRANSPORT_UNAVAILABLE')}
+   if(!response.ok)throw Error('P0B_GATEWAY_'+method+'_FAILED_'+response.status);
+   return {data:new Uint8Array(await response.arrayBuffer()),etag:response.headers.get('etag')};
+  }
   // SigV4 request signatures are recalculated on every attempt. B2 S3
   // credentials are NOT expiring bearer tokens. Cloudflare fetch handles
   // underlying connection reuse; manual redirects remain prohibited.

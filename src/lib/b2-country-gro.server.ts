@@ -1,6 +1,7 @@
 import type { GeomacroRiskObject } from "./risk-object-contract";
 import { verifyRiskObjectSignature } from "./risk-object-signing.server";
 import { verifyCommercialRiskObjectArtifact } from "./commercial-risk-object-policy";
+import { readB2GatewayObject } from "./b2-gateway-read.server";
 
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
 const B2_BUCKET = "geomacro-private-archive";
@@ -85,6 +86,9 @@ function allowedKey(key: string) {
 }
 
 async function signedGet(key: string): Promise<Uint8Array | null> {
+  if (typeof process !== "undefined" && process.env.B2_STORAGE_MODE === "gateway") {
+    return readB2GatewayObject(key, MAX_COMPRESSED_BYTES, REQUEST_TIMEOUT_MS);
+  }
   const candidates = config();
   if (!candidates || !allowedKey(key)) return null;
   const cached = cache.get(key);

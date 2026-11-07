@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import path from "node:path";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client, b2StorageConfigured } from "./b2-s3-client.mjs";
 import { verifyTelegramLeadEnvelope } from "../verify-telegram-lead-envelope.mjs";
 
 const args = process.argv.slice(2);
@@ -22,7 +22,7 @@ const accessKey = String(process.env.B2_KEY_ID ?? process.env.B2_ARCHIVE_READ_KE
 const secretKey = String(process.env.B2_APPLICATION_KEY ?? process.env.B2_ARCHIVE_READ_APPLICATION_KEY ?? "").trim();
 
 if (!queueFile) throw new Error("TELEGRAM_QUEUE_FILE_REQUIRED");
-if (!accessKey || !secretKey) throw new Error("TELEGRAM_B2_READ_CREDENTIALS_REQUIRED");
+if (!b2StorageConfigured()) throw new Error("TELEGRAM_B2_READ_CREDENTIALS_REQUIRED");
 
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const KEY_RE = /^telegram\/leads\/\d{4}\/\d{2}\/\d{2}\/[a-z0-9_]{5,32}\/[1-9]\d*-[a-f0-9]{16}\.json\.gz$/;

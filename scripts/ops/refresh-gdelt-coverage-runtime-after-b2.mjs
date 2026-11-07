@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { execFileSync } from "node:child_process";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const B2_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
@@ -242,8 +242,7 @@ if (localRecoveryProofRaw) {
 } else {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID ||
-    !process.env.B2_APPLICATION_KEY
+    !b2StorageConfigured()
   ) {
     throw new Error("GDELT_COVERAGE_B2_CONFIG_REQUIRED");
   }

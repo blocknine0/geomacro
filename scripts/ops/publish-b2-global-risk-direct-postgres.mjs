@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts";
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { assertCurrentGlobalRiskSourceForHotPublish } from "../lib/global-risk-hot-source-preflight.mjs";
 import {
   publishB2VerifiedHotSnapshot,
@@ -165,8 +165,7 @@ function readRecentEvents(dbUrl, snapshotAsOf) {
 function assertB2Config() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID ||
-    !process.env.B2_APPLICATION_KEY
+    !b2StorageConfigured()
   ) throw new Error("B2_GLOBAL_RISK_CONFIG_REQUIRED");
 }
 

@@ -1,5 +1,6 @@
 import { createPerKeySingleFlight } from "./b2-single-flight";
 import { reservePrivateB2Read } from "./b2-live.server";
+import { readB2GatewayObject } from "./b2-gateway-read.server";
 import type {
   StructuralCoverage,
   StructuralObservation,
@@ -135,6 +136,9 @@ function noteFailure() {
 }
 
 async function signedGet(key: string): Promise<Uint8Array | null> {
+  if (typeof process !== "undefined" && process.env.B2_STORAGE_MODE === "gateway") {
+    return shareStructuralB2Read(key, () => readB2GatewayObject(key, MAX_COMPRESSED_BYTES, REQUEST_TIMEOUT_MS));
+  }
   return shareStructuralB2Read(key, () => signedGetOnce(key));
 }
 

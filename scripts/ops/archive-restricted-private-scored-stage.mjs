@@ -4,7 +4,7 @@ import {
   encodePrivateStageCompanionB2Bundle, verifyPrivateStageCompanionB2Bundle,
   PRIVATE_COMBINED_ARCHIVE_SCHEMA,
 } from "../lib/private-stage-companion-b2-bundle.mjs";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { createD1ControlPlaneStateClient } from "../lib/d1-control-plane-state.mjs";
 import { verifyPrivateScoringD1Checkpoint } from "../lib/private-scoring-d1-checkpoint-proof.mjs";
 import {
@@ -31,7 +31,7 @@ function ensureConfig() {
   }
   if (
     String(process.env.B2_S3_ENDPOINT ?? "").trim() !== ENDPOINT ||
-    !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY ||
+    !b2StorageConfigured() ||
     !process.env.CLOUDFLARE_API_TOKEN || !process.env.CLOUDFLARE_ACCOUNT_ID ||
     !process.env.D1_DATABASE_ID ||
     process.env.B2_ACCOUNT_QUOTA_REQUIRED !== "1" ||

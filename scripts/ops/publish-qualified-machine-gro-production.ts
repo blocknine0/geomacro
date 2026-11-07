@@ -14,7 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import {
   machineCommercialAuthorityConfigurationValid,
 } from "../../src/lib/geomacro-machine-commercial-qualification.server";
@@ -64,7 +64,7 @@ function requireProtectedProductionConfig() {
       !/^[a-f0-9]{32}$/iu.test(process.env.CLOUDFLARE_ACCOUNT_ID ?? "") ||
       !/^[0-9a-f-]{36}$/iu.test(process.env.D1_DATABASE_ID ?? "") ||
       (process.env.CLOUDFLARE_API_TOKEN ?? "").length < 20 ||
-      !process.env.B2_KEY_ID || !process.env.B2_APPLICATION_KEY ||
+      !b2StorageConfigured() ||
       !process.env.RISK_OBJECT_SIGNING_KEY_ID ||
       !process.env.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 ||
       !process.env.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 ||

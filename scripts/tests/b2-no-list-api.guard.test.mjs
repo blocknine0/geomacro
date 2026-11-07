@@ -11,7 +11,7 @@ async function sourceFiles(path){
  for(const entry of await readdir(path,{withFileTypes:true})){
   const child=join(path,entry.name);
   if(entry.isDirectory()) out.push(...await sourceFiles(child));
-  else if(/\.(?:mjs|cjs|js|ts|tsx)$/u.test(entry.name)&&!/\.test\.(?:mjs|cjs|js|ts|tsx)$/u.test(entry.name)) out.push(child);
+  else if(/\.(?:mjs|cjs|js|ts|tsx|py|sh)$/u.test(entry.name)&&!/\.test\.(?:mjs|cjs|js|ts|tsx|py)$/u.test(entry.name)) out.push(child);
  }
  return out;
 }

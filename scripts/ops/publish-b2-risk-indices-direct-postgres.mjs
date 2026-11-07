@@ -8,7 +8,7 @@ import { assemblePublicGlobalRisk } from "../../src/lib/global-risk-assemble.ts"
 import { validateGlobalRiskContinuity } from "../../src/lib/global-risk-continuity.ts";
 import { riskIndicesFromGlobalRisk } from "../../src/lib/risk-indices-from-global-risk.ts";
 import { PUBLIC_RISK_INDICES_CONTRACT_VERSION } from "../../src/lib/risk-indices.types.ts";
-import { createB2Client } from "./b2-s3-client.mjs";
+import { createB2Client , b2StorageConfigured} from "./b2-s3-client.mjs";
 import { assertCurrentGlobalRiskSourceForHotPublish } from "../lib/global-risk-hot-source-preflight.mjs";
 import { publishB2VerifiedHotSnapshot } from "./publish-b2-verified-hot-snapshot.mjs";
 
@@ -129,8 +129,7 @@ function readRecentEvents(dbUrl, snapshotAsOf) {
 function assertB2Config() {
   if (
     String(process.env.B2_S3_ENDPOINT ?? B2_ENDPOINT).trim() !== B2_ENDPOINT ||
-    !process.env.B2_KEY_ID ||
-    !process.env.B2_APPLICATION_KEY
+    !b2StorageConfigured()
   ) throw new Error("B2_RISK_INDICES_CONFIG_REQUIRED");
 }
 

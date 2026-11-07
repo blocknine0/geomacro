@@ -52,11 +52,10 @@ jobs:
           node - <<'NODE'
           const fs=require('node:fs');
           const code=fs.readFileSync('scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs','utf8');
-          if(!code.includes('shards=4')||!code.includes('length:8')||
-             !code.includes('verified.size!==part.length')||
-             !code.includes('source_supabase_deletes:0')||
-             !code.includes('old_supabase_deletion_authorized:false'))
-            throw Error('FOUR_SHARD_SHA256_NO_DELETION_CONTRACT_FAILED');
+          if(!code.includes('LEGACY_DISCOVERY_RETIRED_USE_GATEWAY_D1_INDEX')||
+             !code.includes('source_supabase_deletes: 0')||
+             !code.includes('old_supabase_deletion_authorized: false'))
+            throw Error('LEGACY_B2_DISCOVERY_RETIREMENT_GUARD_FAILED');
           NODE
           node scripts/ops/legacy-storage-b2-bundled-safe-exit.mjs || test "$?" -eq 3
           node - <<'NODE'

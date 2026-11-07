@@ -122,6 +122,22 @@ export async function verifyUnifiedB2Archive(env,body,{fetchImpl=globalThis.fetc
     typeof key!=="string"||!/^archive\/events\/20\d{6}T\d{2}-[a-f0-9]{64}\.ndjson\.gz$/u.test(key)||
     key.includes(".."))return json({ok:false,error:"UNIFIED_EVENT_ARCHIVE_VERIFY_INVALID"},400);
  try{
+  if(env.B2_STORAGE_MODE==="gateway"){
+   const gatewayUrl=new URL(String(env.B2_GATEWAY_URL??""));
+   const token=String(env.INTERNAL_GATEWAY_TOKEN??"");
+   if(gatewayUrl.protocol!=="https:"||gatewayUrl.username||gatewayUrl.password||
+      gatewayUrl.search||gatewayUrl.hash||token.length<32)
+    throw Error("B2_GATEWAY_CONFIGURATION_UNAVAILABLE");
+   const url=new URL("/v1/internal/objects",gatewayUrl.origin);
+   url.searchParams.set("path",key);
+   const response=await fetchImpl(url,{method:"GET",redirect:"error",cache:"no-store",
+    headers:{Authorization:`Bearer ${token}`}});
+   if(response.status!==200)throw Error("B2_GATEWAY_READBACK_UNAVAILABLE");
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(await digest(bytes)!==body.archive_sha256)throw Error("B2_OBJECT_SHA256_MISMATCH");
+   return json({ok:true,archive_object_key:key,archive_sha256:body.archive_sha256,
+    b2_exact_readback_verified:true,byte_length:bytes.length},200);
+  }
   const endpoint=new URL(String(env.B2_S3_ENDPOINT??""));
   const bucket=String(env.B2_SPOOL_BUCKET??"");
   const access=String(env.B2_KEY_ID??""),secret=String(env.B2_APPLICATION_KEY??"");
@@ -155,7 +171,7 @@ export async function verifyUnifiedB2Archive(env,body,{fetchImpl=globalThis.fetc
   return json({ok:true,archive_object_key:key,archive_sha256:body.archive_sha256,
    b2_exact_readback_verified:true,byte_length:bytes.length},200);
  }catch(error){
-  const code=/^(B2_CONFIGURATION_UNAVAILABLE|B2_QUOTA_HELD|B2_OBJECT_FETCH_FAILED|B2_OBJECT_TOO_LARGE|B2_OBJECT_SHA256_MISMATCH)$/u.test(error?.message)?error.message:"B2_READBACK_UNAVAILABLE";
+  const code=/^(B2_CONFIGURATION_UNAVAILABLE|B2_GATEWAY_CONFIGURATION_UNAVAILABLE|B2_GATEWAY_READBACK_UNAVAILABLE|B2_QUOTA_HELD|B2_OBJECT_FETCH_FAILED|B2_OBJECT_TOO_LARGE|B2_OBJECT_SHA256_MISMATCH)$/u.test(error?.message)?error.message:"B2_READBACK_UNAVAILABLE";
   return json({ok:false,error:code,held:true},503);
  }
 }
