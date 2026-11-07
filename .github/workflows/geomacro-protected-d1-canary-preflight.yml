@@ -33,11 +33,16 @@ on:
   # Automatic provider-only eligibility recheck after UTC reset and the
   # first hour of actual production load. It cannot upload a Worker version,
   # change traffic, migrate D1, touch B2 or activate funds.
+  # This is one-time schema repair monitoring, NOT Hot50 source ingestion.
+  # Running the protected provider/Time Travel/Worker preflight 72x/day
+  # consumes GitHub minutes and provider API calls without creating migration
+  # headroom when the legacy Worker already exceeded 140k read/write rows.
+  # Use the only meaningful UTC headroom window with one safe second attempt;
+  # full migration headroom and exact-main checks still gate every mutation.
+  # Leave continuous Hot50 source polling on its separate 20-minute schedule.
   schedule:
-    - cron: "15,35,55 * * * *"
-    # Early-UTC corrective schema window before old Worker burns daily headroom.
-    # Provider counters still independently gate every real migration.
     - cron: "4 0 * * *"
+    - cron: "9 0 * * *"
   workflow_dispatch: {}
   pull_request:
     paths:
