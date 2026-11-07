@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T06:01:31.143Z",
+  "checked_at": "2026-11-07T07:00:53.219Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 45,
+  "item_count": 42,
   "counts": {
-    "geopolitics": 6,
+    "geopolitics": 3,
     "macro": 8,
     "rare_earth": 31
   },
-  "source_native_ids_sha256": "0dd972892cb64b30cfc6c9ac92e65509f121b109af5b7a6e033b9d9b1d8e8f41",
+  "source_native_ids_sha256": "1e2fe58642e6fbe97de85d16c9e2a461274726b72b95f635553982c65358e4d2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -812,63 +812,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-04T07:31:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-01e0c6a7",
-      "category": "geopolitics",
-      "title": "Geomacro finds Trump said Iran war played role in US midterms defeat",
-      "what_changed": "A monitored source feed reports: Trump said Iran war played role in US midterms defeat. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T07:00:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.vanguardngr.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7e1d5b57",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran launched fresh drone attacks in Kurdistan Region - Rudaw",
-      "what_changed": "A monitored source feed reports: Iran launched fresh drone attacks in Kurdistan Region - Rudaw. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T06:14:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-71d6c2a8",
-      "category": "geopolitics",
-      "title": "Geomacro finds Iran said Americans voted ‘no to war’ after Republican midterm defeat - Al Arabiya English",
-      "what_changed": "A monitored source feed reports: Iran said Americans voted ‘no to war’ after Republican midterm defeat - Al Arabiya English. This report has not been independently verified.",
-      "why_it_matters": "A geopolitical topic in a monitored source feed can indicate changes worth checking in diplomatic, trade or security exposure. The feed item alone does not verify the event or its consequences.",
-      "topic": "geopolitical security",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T06:14:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
