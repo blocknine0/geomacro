@@ -74,6 +74,7 @@ async function paymentFor(i,amount=150000,override={}){
   accepted:polygonRequirements(amount,payee),payload:{signature,authorization:auth}};
 }
 before(async()=>{
+ await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
  for(const file of ['schema.sql','functions.sql','payments.sql','replay-ownership.sql','polygon-settlement-ready.sql']){
   await db.exec(await readFile(new URL('../sql/'+file,import.meta.url),'utf8'));
  }
