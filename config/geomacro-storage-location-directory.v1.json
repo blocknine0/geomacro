@@ -1,0 +1,96 @@
+{
+  "schema": "geomacro.storage-location-directory.v1",
+  "verification": "REPOSITORY_EXPECTED_NOT_PROVIDER_INVENTORY",
+  "revision": "2026-11-07",
+  "stores": [
+    {
+      "id": "canonical_control_metadata",
+      "provider": "cloudflare_d1",
+      "symbolic_locator": "DB",
+      "configured_name": "geomacro-control-plane",
+      "role": "METADATA_AND_INDEX_AUTHORITY",
+      "lookup": "PRIMARY_KEY_INDEXED",
+      "verified_live": false
+    },
+    {
+      "id": "durable_original_evidence",
+      "provider": "backblaze_b2",
+      "symbolic_locator": "B2_SPOOL_BUCKET",
+      "configured_name": "geomacro-private-archive",
+      "role": "IMMUTABLE_ENCRYPTED_ORIGINAL_ARCHIVE",
+      "lookup": "D1_POINTER_THEN_EXACT_OBJECT_GET",
+      "verified_live": false
+    },
+    {
+      "id": "private_archive_fallback",
+      "provider": "cloudflare_r2",
+      "symbolic_locator": "P0B_PRIVATE_FALLBACK_R2",
+      "configured_name": null,
+      "role": "ENCRYPTED_PENDING_B2_ONLY",
+      "lookup": "D1_POINTER_THEN_R2_OBJECT_GET",
+      "verified_live": false
+    },
+    {
+      "id": "public_news_snapshot",
+      "provider": "cloudflare_r2",
+      "symbolic_locator": "PUBLIC_NEWS_R2",
+      "configured_name": null,
+      "role": "DISPOSABLE_PUBLIC_DERIVED",
+      "lookup": "FIXED_KEY_THEN_EXACT_GET",
+      "verified_live": false
+    },
+    {
+      "id": "risk_gate_seven_day_buffer",
+      "provider": "supabase_postgres",
+      "symbolic_locator": "RISK_GATE_SUPABASE_URL",
+      "configured_name": "geomacro-risk-corridor-7d",
+      "role": "SUPPLEMENTARY_PRIVATE_ROLLUP",
+      "lookup": "EXACT_TARGET_KEY",
+      "verified_live": false,
+      "provider_region": "eu-west-1",
+      "provider_project_exists_verified": true,
+      "provider_project_status_observed": "ACTIVE_HEALTHY",
+      "actual_public_schema_table_names": [
+        "geomacro_risk_signal_7d",
+        "geomacro_corridor_candidate_7d",
+        "geomacro_risk_assessment_7d",
+        "geomacro_buffer_operational_state",
+        "geomacro_daily_tiered_risk_gates",
+        "geomacro_unified_risk_daily",
+        "country_risk_state",
+        "gm_research_stream20m_runs",
+        "phase2h_private_raw_news",
+        "gro_evidence_jobs",
+        "gro_evidence",
+        "gro_evidence_backfill_state"
+      ]
+    },
+    {
+      "id": "commerce_idempotency",
+      "provider": "cloudflare_durable_object",
+      "symbolic_locator": "LEDGER_BINDING_NOT_VERIFIED",
+      "configured_name": null,
+      "role": "FINANCIAL_LEDGER_SEPARATE_AUTHORITY",
+      "lookup": "AUTHENTICATED_EXACT_RECEIPT",
+      "verified_live": false
+    },
+    {
+      "id": "ingestion_spool_queue",
+      "provider": "cloudflare_queues",
+      "symbolic_locator": "INGEST_QUEUE",
+      "configured_name": "geomacro-ingestion-spool",
+      "role": "ASYNCHRONOUS_TRANSPORT_NOT_DATABASE",
+      "lookup": "QUEUE_RECEIPTS_ONLY",
+      "verified_live": false
+    },
+    {
+      "id": "source_poll_queue",
+      "provider": "cloudflare_queues",
+      "symbolic_locator": "SOURCE_POLL_QUEUE",
+      "configured_name": "geomacro-source-poll",
+      "role": "ASYNCHRONOUS_TRANSPORT_NOT_DATABASE",
+      "lookup": "QUEUE_RECEIPTS_ONLY",
+      "verified_live": false
+    }
+  ]
+}
