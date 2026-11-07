@@ -38,7 +38,7 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
       </h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
         Each category uses the same canonical intelligence engine. Direct USDC per-delivery
-        prices below are separate from prepaid credits. No self-service purchases are live yet.
+        prices below are separate from prepaid credits. Self-service per-delivery purchases are not offered yet.
         There is no category surcharge.
       </p>
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
