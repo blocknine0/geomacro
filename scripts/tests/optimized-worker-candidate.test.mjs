@@ -31,3 +31,14 @@ test('candidate cannot upload from unprotected branch before provider access',as
  await assert.rejects(prepareCandidate({env:{},fetchImpl:async()=>{calls++}}),/PROTECTED_MAIN_REQUIRED/);
  assert.equal(calls,0);
 });
+
+test('candidate preserves enabled production cache and cross-version isolation',()=>{
+ const live=structuredClone(baseline);
+ live.resources.script_runtime.cache_options={enabled:true,cross_version_cache:false};
+ const config=candidateConfig(live,sha);
+ assert.deepEqual(config.cache,{enabled:true,cross_version_cache:false});
+ const wrong=candidate();
+ assert.throws(()=>verifyCandidateBindings(live,wrong,sha),/SCRIPT_RUNTIME_CHANGED/);
+ const correct=candidate();correct.resources.script_runtime.cache_options=structuredClone(config.cache);
+ assert.equal(verifyCandidateBindings(live,correct,sha),true);
+});
