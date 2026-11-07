@@ -55,7 +55,8 @@ test("non-vacuous scheduled success requires exactly one actual admitted or encr
   [build("success","skipped"),"ADMITTED"],
   [build("skipped","success"),"HELD"],
   [build("failure","success"),"HELD"],
-  [build("skipped","success","failure"),"HELD"]
+  [build("skipped","success","failure"),"HELD"],
+  [build("skipped","success","skipped"),"HELD"]
  ]){
   const actual=inspectHot50ScheduledRun(p[0],{event:"schedule"});
   assert.equal(actual.accepted,true);
@@ -64,6 +65,7 @@ test("non-vacuous scheduled success requires exactly one actual admitted or encr
  for(const bad of [
   build("skipped","skipped"),build("success","success"),
   build("failure","failure"),build("success","skipped","failure"),
+  build("skipped","skipped","skipped"),
   build("skipped","skipped","skipped"),build("skipped","success","success","failure")
  ])assert.equal(inspectHot50ScheduledRun(bad,{event:"schedule"}).accepted,false);
  assert.equal(inspectHot50ScheduledRun(build("success","skipped"),{event:"push"}).accepted,false);
