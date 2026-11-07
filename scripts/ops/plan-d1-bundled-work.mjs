@@ -44,9 +44,9 @@ if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==140_000||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==140_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==180_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==140_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==40_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==0||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
@@ -262,7 +262,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
     const progress=Math.max(0,Math.min(1,elapsed));
     // 5% of the normal 140k/day allowance at UTC reset, pacing the rest
-    // across 24h; the 40k emergency WRITE reserve is never spent here.
+    // across 24h; there is NO additional emergency WRITE capacity.
     const dailyReads=Math.floor(
       FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max*
       (0.05+0.95*progress));
@@ -654,7 +654,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
         "GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
       planD1BundledWork(quota,{now,paidProof,spendGuardProof});
-    // 40k write rows are deliberately unavailable to the ordinary planner.
+    // All writes, including recovery, belong to the same 140k owner target.
     // Emergency restoration requires separate explicit authorization; this
     // read-only receipt does NOT grant any emergency query or write.
     const emergencyWriteRemaining=Math.max(0,
