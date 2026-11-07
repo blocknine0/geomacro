@@ -69,7 +69,14 @@ export async function readFiveUsdSpendGuard({
        signal:AbortSignal.timeout(12000),
      });
  }catch{throw Error("CLOUDFLARE_FIVE_USD_SPEND_POLICIES_UNAVAILABLE")}
- if(response?.status!==200)throw Error("CLOUDFLARE_FIVE_USD_SPEND_POLICIES_READ_REJECTED");
+ if(response?.status!==200){
+   // Provider response status is useful to diagnose a scoped 401/403/404;
+   // never expose the token, account ID, body, or sensitive headers.
+   const status=Number(response?.status);
+   throw Error(Number.isInteger(status)&&status>=400&&status<=599?
+     "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_"+status:
+     "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_READ_REJECTED");
+ }
  let body;
  try{body=await response.json()}catch{
    throw Error("CLOUDFLARE_FIVE_USD_SPEND_POLICIES_INVALID_JSON");
