@@ -3,6 +3,7 @@ import {
   GEOMACRO_CAPABILITY_PRICING_VERSION,
 } from "@/lib/capability-pricing-catalog";
 import { GEOMACRO_OFFICIAL_API_CATALOG } from "@/lib/geomacro-official-api-branding";
+import { GEOMACRO_CREDIT_COSTS } from "@/lib/commercial-access-contract";
 
 const CATEGORY_API_LABELS = [
   { id: "geopolitics", label: "Geopolitics" },
@@ -36,8 +37,9 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
         Three category APIs. One intelligence engine.
       </h2>
       <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-        Each category uses the same canonical intelligence engine. Self-service per-delivery
-        purchases are not offered yet. There is no category surcharge.
+        Each category uses the same canonical intelligence engine. Direct USDC per-delivery
+        prices below are separate from prepaid credits. Self-service per-delivery purchases are not offered yet.
+        There is no category surcharge.
       </p>
       <div className="mt-5 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[300px] text-left text-sm">
@@ -82,6 +84,12 @@ export function CategoryApiPricing({showPrices=false}:{showPrices?:boolean}={}) 
           </tbody>
         </table>
       </div>
+      {showPrices && (
+        <p className="mt-4 text-sm font-medium" data-prepaid-credit-cost={GEOMACRO_CREDIT_COSTS.intelligence_query}>
+          Prepaid plans/packs: {GEOMACRO_CREDIT_COSTS.intelligence_query} credit per qualified intelligence query,
+          whether Focused, Standard or Complex. USDC per-call rates do not define a credit conversion.
+        </p>
+      )}
       <div className="mt-4 space-y-2 text-xs leading-5 text-muted-foreground">
         <p>
           All three branded category APIs use the canonical

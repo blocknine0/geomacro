@@ -31,7 +31,7 @@ describe("Geomacro post-launch commercial website presentation", () => {
     expect(pricing).toContain("Geomacro Store");
     expect(pricing).not.toContain("<CapabilityPriceSchedule />");
     expect(read("src/routes/data-api.tsx")).toContain('redirect({ to: "/pricing", replace: true })');
-    expect(pricing).toContain("<CategoryApiPricing />");
+    expect(pricing).toContain("<CategoryApiPricing showPrices />");
     expect(api).toContain("CategoryApiPricing");
     expect(read("src/components/category-api-pricing.tsx")).toContain("There is no category surcharge.");
     expect(notice).toContain("API keys");
