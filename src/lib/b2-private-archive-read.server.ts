@@ -372,7 +372,8 @@ export async function readPrivateB2Object(
       // Reservation failures are terminal. Rotating credentials cannot create
       // account quota, and repeated attempts would burn needless D1 reads.
       if (message.startsWith("B2_ACCOUNT_GLOBAL_QUOTA_") ||
-          message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED") {
+          message === "B2_GLOBAL_DAILY_QUOTA_EXHAUSTED" ||
+          message === "B2_PRIVATE_ACCOUNT_QUOTA_HELD") {
         throw new Error("B2_PRIVATE_ACCOUNT_QUOTA_HELD");
       }
       if (message.endsWith("_403_download_cap_exceeded")) {
