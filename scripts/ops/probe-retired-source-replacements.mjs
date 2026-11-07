@@ -7,8 +7,10 @@ import {fetchPrivateFeedSafely} from "../lib/private-osint-15m-collector.mjs";
 
 const sources=retiredSourceReplacements();
 const now=new Date(),results=[];
-for(let start=0;start<sources.length;start+=4){
- const batch=await Promise.all(sources.slice(start,start+4).map(async source=>{
+// Serial admission checks respect shared publisher/CDN capacity. Production
+// also serializes Euronews language hosts; no denial/rate-limit retries.
+for(let start=0;start<sources.length;start++){
+ const batch=await Promise.all(sources.slice(start,start+1).map(async source=>{
   const articles=new Set();
   let transportStatus=null,redirectHost=null;
   const receipt=await collectRegisteredReusableNews({

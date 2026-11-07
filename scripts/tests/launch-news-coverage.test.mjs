@@ -11,6 +11,8 @@ import {rotatingPrivateCountryDiscoverySources,COUNTRY_MACRO_DISCOVERY_TERMS,COU
 import {LAUNCH_PRIORITY_WATCHES,CATEGORY1_GOOGLE_GEOPOLITICS_QUERY,CATEGORY2_GOOGLE_GEOPOLITICS_QUERY,CATEGORY3_GOOGLE_GEOPOLITICS_QUERY} from '../lib/launch-priority-watch-sources.mjs';
 import {collectPrivateOsint15m} from '../lib/private-osint-15m-collector.mjs';
 import {normalizeReusableNewsJson} from '../../src/lib/reusable-news-json.ts';
+import {privateLocalPublisherCandidates} from '../lib/private-osint-local-publisher-rotation.mjs';
+import {isRetiredPrivateOsintSource} from '../lib/private-osint-retired-sources.mjs';
 
 test('all reviewed hot-topic families have ingestion routing; news policy cannot authorize a sale',()=>{
  assert.equal(HOT_TOPIC_FAMILIES.length,36,'new families require a reviewed launch coverage change');
@@ -39,7 +41,10 @@ test('runtime catches wars, corridor, systemic and mineral shocks without routin
 test('global watches replace five existing slots and retain 195-country/512 endpoint budget',()=>{
  const base=privateOsintGlobalSources(),at=new Date('2026-10-28T07:00:00Z');
  const result=privateOsintRuntimeSources(at,base,undefined,{includeLocalGapLane:true});
- assert.ok(result.filter(x=>x.private_country_local_candidate).length>=80); // native publisher feeds now precede index hints
+ const eligible=privateLocalPublisherCandidates().filter(s=>!isRetiredPrivateOsintSource(s));
+ assert.equal(eligible.length,70); // owner removed 26 historical local candidates
+ assert.deepEqual(new Set(result.filter(x=>x.private_country_local_candidate).map(x=>x.id)),
+  new Set(eligible.map(x=>x.id))); // no remaining native publisher is displaced by index hints
  assert.ok(result.length<=512);
  const watch=result.filter(s=>s.launch_watch);
  assert.equal(watch.length,5);

@@ -19,6 +19,12 @@ export const PRIVATE_OSINT_TARGET_MINUTES=15;
 export const PRIVATE_OSINT_POLL_MINUTES=5;
 export const PRIVATE_OSINT_MAX_SOURCES=512;
 export const PRIVATE_OSINT_MAX_RESULTS_PER_TICK=768;
+// Language subdomains share one publisher/CDN. They must not independently
+// consume the two-per-host allowance and create a burst at the same issuer.
+const publisherFetchKey=url=>{
+ const host=new URL(url).hostname;
+ return host==="euronews.com"||host.endsWith(".euronews.com")?"euronews.com":host;
+};
 const DOMAINS=["geopolitics","macro","rare_earth"];
 /**
  * Under a true >768-item burst, an intensely covered country must not starve
@@ -115,7 +121,7 @@ export async function collectPrivateOsint15m({
   // Check every accepted endpoint, with eight global and two per-host slots.
   // A large news-index catalogue must not block unrelated original publishers.
   const responses=Array(registry.length),running=new Set(),hosts=new Map();
-  const pending=orderHot50PrivateFetchJobs(registry.map((source,index)=>({source,index,host:new URL(source.url).hostname})));
+  const pending=orderHot50PrivateFetchJobs(registry.map((source,index)=>({source,index,host:publisherFetchKey(source.url)})));
   // A finite spare-request pool permits ONE recovery for genuinely transient
   // original-feed failures without exceeding the existing 512-source GET
   // budget. Never retry 401/403/404/429, index scrapes or malformed bodies.
@@ -147,7 +153,7 @@ export async function collectPrivateOsint15m({
   try{
     while(pending.length||running.size){
       while(running.size<concurrency){
-        const next=pending.findIndex(p=>(hosts.get(p.host)??0)<2);
+        const next=pending.findIndex(p=>(hosts.get(p.host)??0)<(p.host==="euronews.com"?1:2));
         if(next<0)break;
         const {source,index,host}=pending.splice(next,1)[0];
         hosts.set(host,(hosts.get(host)??0)+1);
