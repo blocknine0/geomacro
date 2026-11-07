@@ -76,10 +76,11 @@ jobs:
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/schema.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/functions.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/payments.sql
+          psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/multichain-no-funds.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/replay-ownership.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/risk-api.sql
           psql "$GEOMACRO_CONCURRENCY_DATABASE_URL" -v ON_ERROR_STOP=1 -f sql/rpc-gateway.sql
-          node --test test/concurrency.test.mjs
+          node --test test/concurrency.test.mjs test/multichain.test.mjs
   deploy:
     needs: [test, postgres-concurrency]
     if: github.event_name == 'push' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
