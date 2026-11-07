@@ -82,3 +82,20 @@ jobs:
           assert not any('SCAN private_osint_news_25h' in x[3] or 'USE TEMP B-TREE' in x[3] for x in plan),plan
           print('PASS: 0204 migration and PK/composite SQLite query plans')
           PY
+      - name: Staged 0212 storage locator and operational CQRS PK schema contract
+        run: |
+          python3 - <<'PY'
+          import sqlite3
+          from pathlib import Path
+          conn=sqlite3.connect(':memory:')
+          sql=Path('docs/ops/staged-migrations/0212_storage_directory_read_model.sql').read_text()
+          conn.executescript(sql)
+          assert conn.execute('SELECT COUNT(*) FROM geomacro_storage_locator_v1').fetchone()[0]==8
+          assert conn.execute('SELECT COUNT(*) FROM geomacro_operational_read_model_v1').fetchone()[0]==0
+          plan=conn.execute("EXPLAIN QUERY PLAN SELECT provider,symbolic_locator FROM geomacro_storage_locator_v1 WHERE logical_id='canonical_control_metadata' LIMIT 1").fetchall()
+          assert any('SEARCH geomacro_storage_locator_v1' in r[3] for r in plan),plan
+          plan=conn.execute("EXPLAIN QUERY PLAN SELECT payload_json FROM geomacro_operational_read_model_v1 WHERE model_key='source_health_hot50' LIMIT 1").fetchall()
+          assert any('SEARCH geomacro_operational_read_model_v1' in r[3] for r in plan),plan
+          assert conn.execute("SELECT COUNT(*) FROM geomacro_storage_locator_v1 WHERE verification_state='PROVIDER_VERIFIED'").fetchone()[0]==0
+          print('PASS: 0212 staged schema, eight symbolic unverified locators, zero synthetic summaries, indexed point-read query plans')
+          PY
