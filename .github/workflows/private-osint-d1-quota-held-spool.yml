@@ -31,6 +31,7 @@ on:
       - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
       - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
+      - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/private-osint-d1-quota-held-spool.yml"
@@ -48,6 +49,7 @@ on:
       - "scripts/ops/private-osint-mirror-held-to-r2.mjs"
       - "scripts/ops/private-osint-reuse-fresh-stage.mjs"
       - "scripts/tests/private-osint-reuse-fresh-stage.test.mjs"
+      - "scripts/tests/hot50-continuity-independent-fallback.test.mjs"
       - "scripts/lib/private-osint-encrypted-spool.test.mjs"
       - "scripts/lib/private-osint-shared-read-contract.mjs"
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
@@ -88,6 +90,7 @@ jobs:
           node --test scripts/lib/private-osint-r2-encrypted-restore.test.mjs
           node --check scripts/ops/private-osint-reuse-fresh-stage.mjs
           node --test scripts/tests/private-osint-reuse-fresh-stage.test.mjs
+          node --test scripts/tests/hot50-continuity-independent-fallback.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
 
   quota-admission:
@@ -127,10 +130,16 @@ jobs:
       contents: read
       actions: read
     needs: [verify, quota-admission]
+    # A quota-observation runner failure is UNKNOWN, not permission to write D1.
+    # Preserve native source polling to AES-GCM even if that job fails outright.
     if: >-
-      needs.quota-admission.outputs.state == 'HELD' &&
-      needs.quota-admission.outputs.critical != 'true' &&
-      needs.quota-admission.outputs.source_intake != 'true' &&
+      always() &&
+      needs.verify.result == 'success' &&
+      (needs.quota-admission.result == 'failure' ||
+       (needs.quota-admission.result == 'success' &&
+        needs.quota-admission.outputs.state == 'HELD' &&
+        needs.quota-admission.outputs.critical != 'true' &&
+        needs.quota-admission.outputs.source_intake != 'true')) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
@@ -187,13 +196,13 @@ jobs:
           retention-days: 2
           if-no-files-found: warn
       - name: Save ONLY encrypted private-OSINT temporary artifact
-        if: steps.reuse.outputs.collect == 'true'
+        if: always() && steps.reuse.outputs.collect == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-encrypted-private-osint-held
           path: /tmp/geomacro-encrypted-held-spool/sealed.json
           if-no-files-found: ignore
-          retention-days: 2
+          retention-days: 3
           compression-level: 0
 
   restore-one-encrypted-private-r2-object-to-canonical-d1:
