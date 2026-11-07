@@ -95,6 +95,7 @@
     "current-original-private-signing-intake.yml",
     "customer-canonical-d1-schema-acceptance.yml",
     "customer-ssr-trusted-ingress-no-funds.yml",
+    "d1-analytics-credential-proof.yml",
     "d1-gro-index-backfill.yml",
     "d1-launch-72h-observatory.yml",
     "d1-read-hotspot-v2-contract.yml",
@@ -416,6 +417,7 @@
     "codeql-security.yml",
     "commercial-api-production-acceptance.yml",
     "current-original-private-signing-intake.yml",
+    "d1-analytics-credential-proof.yml",
     "database-schema-safety.yml",
     "deploy-commerce-ledger-worker.yml",
     "deploy-d1-control-plane.yml",
@@ -488,7 +490,8 @@
     "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)",
     "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)",
     "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)",
-    "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)"
+    "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)",
+    "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -564,6 +567,13 @@
       "test \"$EVENT_NAME\" = workflow_dispatch",
       "npm run release:quota",
       "test \"$RELEASE_CONFIRMATION\" = MIGRATE_D1_0204_0211_NO_FUNDS"
+    ],
+    "d1-analytics-credential-proof.yml": [
+      "  push:",
+      "    branches: [main]",
+      "    environment: production",
+      "config/d1-hotspot-v2-canary.hold",
+      "scripts/verify-d1-quota-proof.ts"
     ]
   },
   "predgeBlobSha1": {
