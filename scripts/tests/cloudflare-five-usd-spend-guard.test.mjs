@@ -60,7 +60,7 @@ test("real guard is read-only, fails closed without a restricted Billing Read to
  }),/PERMISSION_REQUIRED/);
  await assert.rejects(()=>readFiveUsdSpendGuard({
   env,fetchImpl:async()=>({status:403}),
- }),/READ_REJECTED/);
+ }),/CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_403/);
 });
 
 test("spend block provisioning requires explicit owner confirmation and never upgrades a plan",async()=>{

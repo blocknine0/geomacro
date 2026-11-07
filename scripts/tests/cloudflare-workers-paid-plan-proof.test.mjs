@@ -169,5 +169,5 @@ test("live planner with paid-provider proof is still no-D1-query and refuses for
    {status:403,json:async()=>({})},
  });
  assert.equal(denied.critical,false);
- assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_REJECTED");
+ assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_HTTP_403");
 });

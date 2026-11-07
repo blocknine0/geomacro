@@ -52,7 +52,13 @@ export async function readCloudflareWorkersPaidProof({
     signal:AbortSignal.timeout(12000),
    });
  }catch{throw Error("WORKERS_PAID_BILLING_READ_UNAVAILABLE")}
- if(response?.status!==200)throw Error("WORKERS_PAID_BILLING_READ_REJECTED");
+ if(response?.status!==200){
+  // Safe integer HTTP status only. Do not log headers, response body, account or credentials.
+  const status=Number(response?.status);
+  throw Error(Number.isInteger(status)&&status>=400&&status<=599?
+    "WORKERS_PAID_BILLING_READ_HTTP_"+status:
+    "WORKERS_PAID_BILLING_READ_REJECTED");
+ }
  let body;
  try{body=await response.json()}catch{throw Error("WORKERS_PAID_BILLING_READ_INVALID_JSON")}
  if(body?.result_info?.total_count>100)throw Error("WORKERS_PAID_SUBSCRIPTIONS_TRUNCATED");
