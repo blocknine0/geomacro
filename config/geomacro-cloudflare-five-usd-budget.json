@@ -50,7 +50,8 @@
     "Soft quotas can be bypassed by independent Workers, cron, GitHub Actions, third-party clients and delayed provider counters unless individually integrated.",
     "A strict never-exceed-$5 invoice cannot be guaranteed with a metered Workers Paid account.",
     "Owner daily: normal D1 <=140k rows read and <=140k rows written; existing 180k written total ceiling leaves exactly 40k rows of emergency write capacity. Read ceiling remains 140k total. Budget counters are non-atomic and cannot guarantee a hard stop.",
-    "Emergency headroom is not automatically available to ingestion, signing, risk gates or payments. A separately authorized, bounded recovery run is required."
+    "Emergency headroom is not automatically available to ingestion, signing, risk gates or payments. A separately authorized, bounded recovery run is required.",
+    "A KV get/put quota counter is not atomic; quota control uses provider-observed rows and UTC burn-rate pacing for admission-gated work, not a provider-enforced account-wide 140k hard stop."
   ],
   "owner_d1_utc_daily_targets": {
     "rows_read": 140000,
@@ -62,5 +63,18 @@
     "safety_buffer_rows_written": 2000,
     "emergency_auto_admission": false,
     "basis": "OWNER_140K_NORMAL_DAILY_CEILING_WITH_40K_WRITE_EMERGENCY_RESERVE_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
+  },
+  "d1_budget_policy": {
+    "max_daily_reads": 140000,
+    "max_daily_writes": 140000,
+    "enforce_circuit_breaker": true,
+    "burn_rate_alert_per_hour": 5833,
+    "opening_burst_rows_read": 4000,
+    "opening_burst_rows_written": 2000,
+    "enforcement_scope": "ALL_WORKFLOWS_CALLING_SHARED_PLAN_AND_PROTECTED_CANARY_PREFLIGHT",
+    "provider_telemetry_is_delayed": true,
+    "account_wide_atomic_hard_cap_guaranteed": false,
+    "emergency_writes_auto_eligible": false,
+    "remarks": "Fail closed for the governed workloads. Other D1 access paths and Cloudflare provider telemetry lag require separate centralized admission; never claim an account-wide atomic guarantee."
   }
 }
