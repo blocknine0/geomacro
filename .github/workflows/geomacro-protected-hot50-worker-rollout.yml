@@ -1,0 +1,261 @@
+name: GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)
+# Manual protected release only; never activated by push/schedule/PR.
+# Existing D1/B2 quotas, signing authority, source polling and payment OFF stay authoritative.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/geomacro-protected-hot50-worker-rollout.yml"
+      - "scripts/ops/verify-protected-worker-promotion.mjs"
+      - "scripts/tests/verify-protected-worker-promotion.test.mjs"
+  workflow_dispatch:
+    inputs:
+      baseline_version_id:
+        description: "Existing canonical 100% production Worker version UUID"
+        required: true
+        type: string
+      candidate_version_id:
+        description: "Exact-main candidate version UUID, uploaded WITHOUT deployment"
+        required: true
+        type: string
+      confirmation:
+        description: "Type PROMOTE_HOT50_NO_FUNDS (does not authorize payments)"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/verify-protected-worker-promotion.test.mjs
+
+  protected-zero-and-gradual-rollout:
+    needs: offline-contract
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
+      CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      WRANGLER_VERSION: "4.136.3"
+      WORKER_ORIGIN: https://geomacro-control-plane.daspallab202391.workers.dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require exact current main, mandatory hold and no-funds authority
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RELEASE_CONFIRMATION" = "PROMOTE_HOT50_NO_FUNDS"
+          test -f config/d1-hotspot-v2-canary.hold
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          node --test scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs
+      - name: Verify D1 Time Travel backup and remote 0204/0211/P1 physical schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {mkdirSync,writeFileSync} from 'node:fs';
+          const root='https://api.cloudflare.com/client/v4/accounts/'+process.env.CLOUDFLARE_ACCOUNT_ID;
+          const get=async path=>{
+            const r=await fetch(root+path,{headers:{
+              Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},
+              redirect:'error',signal:AbortSignal.timeout(15000)});
+            const j=await r.json();
+            if(!r.ok||j.success!==true||!j.result)throw Error('CANARY_D1_PROVIDER_UNAVAILABLE');
+            return j.result;
+          };
+          const databases=await get('/d1/database?per_page=100');
+          const match=databases.filter(x=>x.name==='geomacro-control-plane');
+          if(match.length!==1||!/^[0-9a-f-]{36}$/i.test(match[0].uuid))
+            throw Error('CANARY_D1_CANONICAL_DATABASE_UNKNOWN');
+          const db=match[0].uuid;
+          const backup=await get('/d1/database/'+db+'/time_travel/bookmark');
+          if(!/^[0-9a-f-]{20,100}$/i.test(backup.bookmark??''))
+            throw Error('CANARY_D1_BACKUP_BOOKMARK_UNVERIFIED');
+          const expected=[
+            'materialized_cache','idx_private_osint_country_category_clock_v2',
+            'idx_private_osint_check_category_status_v2',
+            'idx_website_derived_hot_order_v2','p0b_committed_day_totals',
+            'trg_p0b_day_committed_insert','trg_p0b_day_committed_delete',
+            'trg_p0b_day_committed_clock_change','p1_source_poll_bundles',
+            'idx_p1_source_poll_bundles_expiry','p1_source_poll_dispatch_mutex'
+          ];
+          const sql='SELECT name FROM sqlite_master WHERE name IN ('+
+            expected.map(x=>"'"+x+"'").join(',')+')';
+          const response=await fetch(root+'/d1/database/'+db+'/query',{
+            method:'POST',headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN,
+             'Content-Type':'application/json'},
+            body:JSON.stringify({sql,params:[]}),
+            redirect:'error',signal:AbortSignal.timeout(15000)});
+          const data=await response.json();
+          const batch=data?.result?.[0],got=new Set(batch?.results?.map(x=>x.name)??[]);
+          if(!response.ok||data.success!==true||
+             expected.some(x=>!got.has(x))||got.size!==expected.length||
+             !Number.isSafeInteger(batch?.meta?.rows_read)||
+             batch.meta.rows_read>200||batch.meta.rows_written!==0)
+            throw Error('CANARY_0204_0211_P1_SCHEMA_READBACK_NOT_VERIFIED');
+          mkdirSync('artifacts/protected-canary',{recursive:true});
+          writeFileSync('artifacts/protected-canary/worker-schema-preflight.json',
+            JSON.stringify({schema:'geomacro.hot50.worker-release-schema.v1',
+              database_uuid_confirmed:true,bookmark_verified:true,
+              object_count:got.size,rows_read:batch.meta.rows_read,
+              rows_written:batch.meta.rows_written,no_funds:true}));
+          console.log('CANARY_0204_0211_P1_REMOTE_SCHEMA_AND_BACKUP_VERIFIED');
+          NODE
+      - name: Upload NO Worker here; protect rollout by exact remote versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          # Version must already be present, annotated geomacro-main:SHA,
+          # and have EXACT matching production binding names and types.
+          # Never call "wrangler deploy", "wrangler secret put" or create a D1 here.
+          echo "CANARY_VERSION_UPLOAD_NOT_PERFORMED_BY_PROMOTION_WORKFLOW=true"
+      - name: Run provider-gated 0,1,5,25,50,100 percent promotion with rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ROLLBACK_NEEDED=0
+          rollback() {
+            status="$?"
+            if test "$ROLLBACK_NEEDED" = 1; then
+              echo "::error::CANARY_PROMOTION_FAILED_ROLLBACK_ATTEMPTING_PREVIOUS_100_PERCENT_VERSION"
+              if npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
+                "${BASELINE_VERSION_ID}@100%" --name geomacro-control-plane -y \
+                --message "geomacro no-funds canary rollback"; then
+                echo "CANARY_ROLLBACK_COMMAND_SUCCEEDED_REQUIRE_PROVIDER_CONFIRMATION"
+              else
+                echo "::error::CANARY_ROLLBACK_FAILED_MANUAL_CLOUDFLARE_INTERVENTION_REQUIRED"
+              fi
+            fi
+            exit "$status"
+          }
+          trap rollback ERR
+          for percent in 0 1 5 25 50 100; do
+            export TARGET_PERCENT="$percent"
+            # This is a fresh provider + owner-billing envelope check
+            # on each stage; if held, rollback rather than bypass.
+            node scripts/ops/verify-protected-worker-promotion.mjs
+            ROLLBACK_NEEDED=1
+            old=$((100-percent))
+            if test "$old" -eq 0; then
+              npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
+                "${CANDIDATE_VERSION_ID}@100%" --name geomacro-control-plane -y \
+                --message "geomacro Hot50 no-funds protected 100% rollout"
+            else
+              npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
+                "${BASELINE_VERSION_ID}@${old}%" "${CANDIDATE_VERSION_ID}@${percent}%" \
+                --name geomacro-control-plane -y \
+                --message "geomacro Hot50 no-funds protected ${percent}% rollout"
+            fi
+            # Confirm exact Cloudflare deployment split and version-directed
+            # protected HTTP /health before progressing. Never trust CLI exit alone.
+            node --input-type=module <<'NODE'
+            const {mkdirSync,writeFileSync}=await import('node:fs');
+            const pct=Number(process.env.TARGET_PERCENT);
+            const base=process.env.BASELINE_VERSION_ID;
+            const candidate=process.env.CANDIDATE_VERSION_ID;
+            const url='https://api.cloudflare.com/client/v4/accounts/'+
+              process.env.CLOUDFLARE_ACCOUNT_ID+
+              '/workers/scripts/geomacro-control-plane/deployments?per_page=1';
+            let ok=false;
+            for(let i=0;i<7;i++){
+              const r=await fetch(url,{headers:{Authorization:'Bearer '+
+                process.env.CLOUDFLARE_API_TOKEN},redirect:'error',
+                signal:AbortSignal.timeout(15000)});
+              const j=await r.json();
+              const vs=j?.result?.deployments?.[0]?.versions??[];
+              const a=vs.find(x=>x.version_id===base);
+              const b=vs.find(x=>x.version_id===candidate);
+              const expectedBase=100-pct;
+              if(r.ok&&j.success===true&&Number(b?.percentage)===pct&&
+                ((pct===100&&!a)||(Number(a?.percentage)===expectedBase))){
+                ok=true;break;
+              }
+              await new Promise(resolve=>setTimeout(resolve,3000));
+            }
+            if(!ok)throw Error('CANARY_REMOTE_DEPLOYMENT_PERCENT_UNVERIFIED');
+            const header={'Cloudflare-Workers-Version-Overrides':
+              'geomacro-control-plane="'+candidate+'"'};
+            let healthy=false;
+            for(let i=0;i<6;i++){
+              try{
+                const r=await fetch(process.env.WORKER_ORIGIN+'/health',{
+                  headers:header,redirect:'error',cache:'no-store',
+                  signal:AbortSignal.timeout(10000)});
+                const j=await r.json();
+                if(r.status===200&&j.ok===true&&
+                   j.deployed_source_sha===process.env.GITHUB_SHA){
+                  healthy=true;break;
+                }
+              }catch{}
+              await new Promise(resolve=>setTimeout(resolve,3000));
+            }
+            if(!healthy)throw Error('CANARY_VERSION_DIRECTED_MAIN_SHA_HEALTH_UNVERIFIED');
+            // Compare public delivery verification keys. This does not claim
+            // independent reviewer certificates or the 150 GRO cells exist.
+            const keyAt=async id=>{
+              const headers={'Cloudflare-Workers-Version-Overrides':
+                'geomacro-control-plane="'+id+'"'};
+              const r=await fetch(process.env.WORKER_ORIGIN+
+                '/v1/public/risk-gate-decision-key',{
+                headers,redirect:'error',cache:'no-store',
+                signal:AbortSignal.timeout(10000)});
+              const j=await r.json();
+              if(r.status!==200||j?.ok!==true)throw Error('CANARY_SIGNER_KEY_UNAVAILABLE');
+              return JSON.stringify(j);
+            };
+            const [oldKey,newKey]=await Promise.all([
+              keyAt(base),keyAt(candidate)]);
+            if(oldKey!==newKey)throw Error('CANARY_PUBLIC_SIGNER_PARITY_MISMATCH');
+            const unauth=await fetch(process.env.WORKER_ORIGIN+
+              '/v1/control/bootstrap_smoke',{
+              method:'PUT',headers:{...header,'Content-Type':'application/json'},
+              body:JSON.stringify({value:{probe:true},version:1}),
+              redirect:'error',signal:AbortSignal.timeout(10000)});
+            if(unauth.status!==401)throw Error('CANARY_UNAUTHENTICATED_WRITE_NOT_DENIED');
+            // Record only symbolic proof, never private key or response bodies.
+            mkdirSync('artifacts/protected-canary',{recursive:true});
+            writeFileSync('artifacts/protected-canary/promotion-'+pct+'.json',
+             JSON.stringify({schema:'geomacro.worker-promotion-stage.v1',
+              main_sha:process.env.GITHUB_SHA,traffic_percent:pct,
+              deployment_verified:true,version_directed_health_verified:true,
+              commercial_payment_lock_not_modified:true,payments_executed:0,no_funds:true,
+              signer_public_key_parity_checked:true,unauthenticated_write_denied:true}));
+            console.log('CANARY_PROVIDER_STAGE_VERIFIED:'+pct);
+            NODE
+            if test "$percent" -ne 100; then sleep 60; fi
+          done
+          ROLLBACK_NEEDED=0
+          trap - ERR
+          echo "CANARY_TRAFFIC_ROLLOUT_PROVIDER_DEPLOYMENTS_VERIFIED=true"
+          echo "CANARY_FULL_HOT50_SIGNED_GRO_AND_B2_PARITY_STILL_REQUIRE_SEPARATE_ACCEPTANCE"
+      - name: Persist non-secret, source-free provider receipts even on HOLD
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-protected-hot50-worker-rollout
+          path: artifacts/protected-canary/*.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -166,6 +166,7 @@
     "geomacro-owner-partner-four-gates.yml",
     "geomacro-predge-email-acceptance.yml",
     "geomacro-protected-d1-canary-preflight.yml",
+    "geomacro-protected-hot50-worker-rollout.yml",
     "geopolitical-production-diagnostics.yml",
     "global-195x3-human-machine-source-regression.yml",
     "global-country-raw-source-mesh.yml",
@@ -419,6 +420,7 @@
     "deploy-permanent-public-finds-archive.yml",
     "deploy-telegram-signal-supabase.yml",
     "five-minute-original-news-fastlane.yml",
+    "geomacro-protected-hot50-worker-rollout.yml",
     "global-country-raw-source-mesh.yml",
     "global-open-signal-monitor.yml",
     "global-risk-cadence.yml",
@@ -480,7 +482,8 @@
     "rss-private-d1-15m.yml": "RSS canonical private D1 originals every 15 minutes",
     "part2-source-d1-acceptance.yml": "Part 2 Source D1 and Rights Acceptance",
     "hot50-direct-original-news-20m.yml": "Hot-50 Direct Original News (20-Minute Cron)",
-    "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)"
+    "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)",
+    "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -536,6 +539,16 @@
       "LOCK_ONE_CENT_WORKERS_AND_DURABLE_OBJECTS_NO_PLAN_CHANGE",
       "environment: production",
       "node scripts/ops/provision-cloudflare-five-usd-spend-blocks.mjs --apply"
+    ],
+    "geomacro-protected-hot50-worker-rollout.yml": [
+      "workflow_dispatch:",
+      "environment: production",
+      "github.event_name == 'workflow_dispatch'",
+      "config/d1-hotspot-v2-canary.hold",
+      "node scripts/ops/verify-protected-worker-promotion.mjs",
+      "versions deploy",
+      "CANARY_0204_0211_P1_REMOTE_SCHEMA_AND_BACKUP_VERIFIED",
+      "CANARY_PROMOTION_FAILED_ROLLBACK_ATTEMPTING_PREVIOUS_100_PERCENT_VERSION"
     ]
   },
   "predgeBlobSha1": {
