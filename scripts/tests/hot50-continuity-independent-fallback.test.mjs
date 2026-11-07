@@ -7,8 +7,9 @@ const privateWf=readFileSync(new URL("private-osint-d1-quota-held-spool.yml",roo
 const section=(src,jobName)=>{
  const key="  "+jobName+":\n",i=src.indexOf(key);
  assert.ok(i>=0,"registered protected job "+jobName);
- const next=src.indexOf("\n  ",i+key.length);
- return next>=0?src.slice(i,next):src.slice(i);
+ const rest=src.slice(i+key.length);
+ const next=/\n  [a-z][a-z0-9-]*:\n/u.exec(rest);
+ return next?src.slice(i,i+key.length+next.index):src.slice(i);
 };
 test("Hot50 20-minute direct poll survives both quota HELD and failed D1 writer via no-D1 encrypted path",()=>{
  assert.match(hot,/cron: "6,26,46 \* \* \* \*"/);
