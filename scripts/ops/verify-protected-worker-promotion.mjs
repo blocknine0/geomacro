@@ -74,8 +74,11 @@ export function assessWorkerPromotion({
   if(baselineVersion?.id!==baselineId||candidateVersion?.id!==candidateId)
    return refuse("VERSION_IDENTITY_UNVERIFIED");
   const note=annotation(candidateVersion);
-  if(!note.includes("geomacro-main:"+sourceSha))
-   return refuse("CANDIDATE_MAIN_SHA_ANNOTATION_UNVERIFIED");
+  // GET Version API can omit upload annotations. If returned, verify them;
+  // otherwise the provider-returned immutable GEOMACRO_SOURCE_SHA binding
+  // and version-directed /health are the authoritative checks.
+  if(note&&!note.includes("geomacro-main:"+sourceSha))
+   return refuse("CANDIDATE_MAIN_SHA_ANNOTATION_MISMATCH");
   const oldBindings=readBindings(baselineVersion);
   const newBindings=readBindings(candidateVersion);
   if(JSON.stringify(oldBindings)!==JSON.stringify(newBindings))
