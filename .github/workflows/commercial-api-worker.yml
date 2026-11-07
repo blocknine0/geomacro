@@ -29,6 +29,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
+      - name: Test private merchant no-funds REST gateway fixtures
+        run: node --test scripts/tests/check-commercial-merchant-rails-no-funds.test.mjs
       - name: Test read-only commercial qualified-evidence diagnostic fixtures
         run: node --test scripts/tests/check-commercial-qualified-evidence-no-funds.test.mjs
       - name: Test Polygon Dexter no-funds chain and contract validator with fixtures
@@ -131,6 +133,10 @@ jobs:
           GEOMACRO_COMMERCE_EMERGENCY_FREEZE: ${{ vars.GEOMACRO_COMMERCE_EMERGENCY_FREEZE }}
           GEOMACRO_COMMERCE_DISABLED_PROVIDERS: ${{ vars.GEOMACRO_COMMERCE_DISABLED_PROVIDERS }}
         run: node scripts/ops/deploy-commercial-api.mjs
+      - name: Verify protected Base and Polygon merchant REST gateway stays empty (NO FUNDS)
+        env:
+          RISK_GATE_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/ops/check-commercial-merchant-rails-no-funds.mjs
 
   xpay-no-funds-check:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
