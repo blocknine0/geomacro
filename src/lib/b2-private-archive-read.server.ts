@@ -84,6 +84,9 @@ function readCredentials(): ReadCredential[] {
 export function b2PrivateArchiveReadConfigured() {
   try {
     readCredentials();
+    // A private archive path without the shared quota ledger is not
+    // configured for safe reads, even if B2 credentials are present.
+    privateArchiveQuota();
     return true;
   } catch {
     return false;
