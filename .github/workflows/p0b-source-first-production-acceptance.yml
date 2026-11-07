@@ -21,6 +21,8 @@ on:
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
+      - "scripts/ops/verify-actual-d1-deploy-receipt.mjs"
+      - "scripts/tests/verify-actual-d1-deploy-receipt.test.mjs"
   push:
     branches: [main]
     paths:
@@ -36,6 +38,8 @@ on:
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
       - "workers/control-plane/wrangler.example.jsonc"
       - ".github/workflows/p0b-source-first-production-acceptance.yml"
+      - "scripts/ops/verify-actual-d1-deploy-receipt.mjs"
+      - "scripts/tests/verify-actual-d1-deploy-receipt.test.mjs"
   schedule:
     - cron: "43 9 * * *"
   workflow_dispatch: {}
@@ -46,6 +50,30 @@ concurrency:
   group: geomacro-p0b-production-source-first
   cancel-in-progress: false
 jobs:
+  deploy_receipt:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      actual_deploy: ${{ steps.confirm.outputs.actual_deploy }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify source-first acceptance follows an actual Worker deploy
+        id: confirm
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: node scripts/ops/verify-actual-d1-deploy-receipt.mjs
+
   source-first-contract:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -65,18 +93,19 @@ jobs:
           node --check scripts/ops/p0b-source-first-production-acceptance.mjs
           node --check scripts/ops/p0b-publish-acceptance-receipt.mjs
           node --check workers/control-plane/src/phase2h-private-raw-news.mjs
-          node --test scripts/tests/p0b-reliefweb-ukraine.test.mjs scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0b-first-party-rss.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs
+          node --test scripts/tests/p0b-reliefweb-ukraine.test.mjs scripts/tests/p0b-live-global-search.test.mjs scripts/tests/p0b-first-party-rss.test.mjs scripts/tests/p0a-evidence-quality.test.mjs scripts/tests/phase2h-country-archived-question.test.mjs scripts/tests/verify-actual-d1-deploy-receipt.test.mjs
   independent-production:
-    needs: source-first-contract
+    needs: [source-first-contract, deploy_receipt]
     if: >-
+      always() &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
+      needs.source-first-contract.result == 'success' &&
       (github.event_name == 'schedule' ||
        github.event_name == 'workflow_dispatch' ||
        (github.event_name == 'workflow_run' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main' &&
-        github.event.workflow_run.head_repository.full_name == github.repository))
+        needs.deploy_receipt.result == 'success' &&
+        needs.deploy_receipt.outputs.actual_deploy == 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 7
     environment: production
