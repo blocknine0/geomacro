@@ -46,7 +46,7 @@ export async function readCloudflareWorkersPaidProof({
  let response;
  try{
   response=await fetchImpl(
-   "https://api.cloudflare.com/client/v4/accounts/"+account+"/subscriptions?per_page=100",{
+   "https://api.cloudflare.com/client/v4/accounts/"+account+"/subscriptions",{
     method:"GET",redirect:"error",cache:"no-store",
     headers:{Authorization:"Bearer "+token,Accept:"application/json"},
     signal:AbortSignal.timeout(12000),

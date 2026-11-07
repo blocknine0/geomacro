@@ -105,7 +105,7 @@ test("Billing Read uses account-scoped Cloudflare GET and never updates a subscr
  const proof=await readCloudflareWorkersPaidProof({env,now,fetchImpl:async(url,config)=>{
   seen++;
   assert.equal(url,"https://api.cloudflare.com/client/v4/accounts/"+
-   env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions?per_page=100");
+   env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions");
   assert.equal(config.method,"GET");
   assert.equal(config.redirect,"error");
   return {status:200,json:async()=>paid};

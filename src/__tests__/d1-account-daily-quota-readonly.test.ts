@@ -65,7 +65,7 @@ describe("#1827 actual D1 account-wide before-source-recovery quota audit",()=>{
   expect(fetchImpl.mock.calls.map(([url])=>url)).toEqual([
    "https://api.cloudflare.com/client/v4/graphql",
    "https://api.cloudflare.com/client/v4/graphql",
-   "https://api.cloudflare.com/client/v4/accounts/"+env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions?per_page=100",
+   "https://api.cloudflare.com/client/v4/accounts/"+env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions",
   ]);
   expect(fetchImpl.mock.calls[2][1].method).toBe("GET");
   expect(out.paid_capacity_probe_status).toBe("WORKERS_PAID_BILLING_READ_REJECTED");
