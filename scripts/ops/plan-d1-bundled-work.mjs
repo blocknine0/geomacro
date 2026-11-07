@@ -11,6 +11,7 @@ import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {readFiveUsdSpendGuard,SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -642,12 +643,16 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // valid Paid capacity; provider inclusion is monthly, not owner approval
     // for unlimited physical D1 rows. Buffer for non-atomic telemetry lag.
     const ownerBudget=FIVE_USD_BUDGET.owner_d1_utc_daily_targets;
-    const ownerNormalHold=quota.observed_rows_read+
-        ownerBudget.safety_buffer_rows_read>=ownerBudget.rows_read||
-      quota.observed_rows_written+
-        ownerBudget.safety_buffer_rows_written>=ownerBudget.normal_rows_written;
+    const ownerEnvelope=evaluateOwnerD1DailyEnvelope({
+      observedRowsRead:quota.observed_rows_read,
+      observedRowsWritten:quota.observed_rows_written,
+      now,policy:FIVE_USD_BUDGET.d1_budget_policy,
+    });
+    const ownerNormalHold=ownerEnvelope.held||quota.day_utc!==now.toISOString().slice(0,10);
     const result=ownerNormalHold?
-      held("GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
+      held(ownerEnvelope.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"?
+        "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
+        "GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
       planD1BundledWork(quota,{now,paidProof,spendGuardProof});
     // 40k write rows are deliberately unavailable to the ordinary planner.
     // Emergency restoration requires separate explicit authorization; this
@@ -662,6 +667,7 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       spend_policy_verified:spendGuardProof?.verified===true,
       workers_paid_subscription_verified:paidSubscriptionVerified,
       owner_d1_utc_daily_targets:ownerBudget,
+      owner_d1_normal_envelope:ownerEnvelope,
       owner_d1_utc_budget_held:ownerNormalHold,
       owner_d1_regular_lane_held:ownerNormalHold,
       emergency_d1_write_rows_remaining:emergencyWriteRemaining,
