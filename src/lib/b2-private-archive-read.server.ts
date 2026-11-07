@@ -8,15 +8,50 @@ const B2_NATIVE_AUTHORIZE_URL = "https://api.backblazeb2.com/b2api/v4/b2_authori
 const DEFAULT_TIMEOUT_MS = 20_000;
 const DEFAULT_MAX_BYTES = 20_000_000;
 const QUOTA_WORKFLOW = "private_archive_read";
+const QUOTA_RESERVATION_ENDPOINT =
+  "https://geomacro-control-plane.daspallab202391.workers.dev/v1/b2-quota/reserve";
 
 // The private Node archive restore is separate from the canonical B2 client.
-// All S3 GET, native authorize and native GET HTTP attempts must still consume
-// the same atomic D1 account-wide tickets. No per-process budget substitute.
+// Each S3 GET/native authorize/native GET requires the SAME D1 account-wide
+// atomic ticket. SSR may have the existing restricted Control Plane bearer,
+// rather than a high-privilege Cloudflare D1 API token; a failed chosen
+// authority is terminal, never silently retried against another authority.
 type B2QuotaKind = "GET" | "NATIVE_AUTH";
 type B2Quota = { reserve: (kind: B2QuotaKind) => Promise<unknown> };
 function privateArchiveQuota(): B2Quota {
+  const explicit=String(process.env.GEOMACRO_CONTROL_PLANE_TOKEN??"").trim() ||
+    String(process.env.CONTROL_PLANE_TOKEN??"").trim();
+  const root=String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
+  if(explicit && explicit.length<32)
+    throw Error("B2_PRIVATE_ACCOUNT_QUOTA_CONFIGURATION_REQUIRED");
+  const token=explicit || (root.length>=32
+    ? createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex")
+    : "");
+  if(token){
+    return {async reserve(kind:B2QuotaKind){
+      let res:Response;
+      try{
+        res=await fetch(QUOTA_RESERVATION_ENDPOINT,{
+          method:"POST",redirect:"error",cache:"no-store",
+          headers:{Authorization:"Bearer "+token,
+            "Content-Type":"application/json",Accept:"application/json"},
+          body:JSON.stringify({kind,workflow_id:QUOTA_WORKFLOW}),
+          signal:AbortSignal.timeout(10000),
+        });
+      }catch{throw Error("B2_PRIVATE_ACCOUNT_QUOTA_HELD")}
+      const proof=await res.json().catch(()=>null);
+      if(!res.ok||proof?.ok!==true||
+        proof.schema!=="geomacro.b2-account-request-reservation.v1"||
+        proof.reserved!==true||proof.kind!==kind||
+        proof.b2_operation_performed!==false||proof.chargeable!==false)
+        throw Error("B2_PRIVATE_ACCOUNT_QUOTA_HELD");
+      return proof;
+    }};
+  }
+  // Protected Node batch operators still use the canonical D1 API governor.
+  // Missing D1 identity, unavailable ledger or exhausted quota remains HOLD.
   return createB2D1AccountGovernor({
-    env: {...process.env, B2_ACCOUNT_QUOTA_WORKFLOW_ID: QUOTA_WORKFLOW},
+    env: {...process.env,B2_ACCOUNT_QUOTA_WORKFLOW_ID:QUOTA_WORKFLOW},
   });
 }
 
