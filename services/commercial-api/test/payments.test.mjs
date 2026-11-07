@@ -177,6 +177,20 @@ test('x402 success records accountless usage, Ed25519 receipt and verified trans
  const row=(await query('SELECT * FROM geomacro.usage_logs WHERE request_id=$1',[i.request_id]))[0];assert.equal(row.user_id,null);assert.equal(row.http_status,200);
  await assert.rejects(xengine.handle({...i,subject:'IND'},encode(p)),/IDEMPOTENCY_CONFLICT/);
 });
+test('Polygon signatures and native USDC can never enter the Base-only paid ledger',async()=>{
+ const attempts=[
+  p=>p.accepted.network='eip155:137',
+  p=>p.accepted.asset='0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
+  p=>{p.accepted.network='eip155:137';p.accepted.asset='0x3c499c542cef5e3811e1192ce70d8cc03d5c3359';},
+ ];
+ for(const mutate of attempts){
+  const i=input(),p=await paymentFor(i),count=submitted;
+  mutate(p);
+  await assert.rejects(xengine.handle(i,encode(p)),/PAYMENT_TERMS_MISMATCH/);
+  assert.equal(await rpc(pool,'x402_get',[i.request_id]),null);
+  assert.equal(submitted,count);
+ }
+});
 test('higher-priced authorization triggers cheaper 402 without settling',async()=>{
  const i=input(),p=await paymentFor(i,250000),count=submitted;
  const response=await xengine.handle(i,encode(p));assert.equal(response.status,402);assert.equal(submitted,count);
