@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {candidateConfig,verifyCandidateBindings,prepareCandidate} from '../ops/prepare-optimized-worker-candidate.mjs';
+const sha='a'.repeat(40);
+const baseline={resources:{script_runtime:{compatibility_date:'2026-10-03',compatibility_flags:[]},bindings:[
+ {name:'DB',type:'d1',id:'canonical-db'},
+ {name:'CONTROL_PLANE_TOKEN',type:'secret_text'},
+ {name:'PAYMENT_ENABLED',type:'plain_text',text:'0'},
+ {name:'GEOMACRO_SOURCE_SHA',type:'plain_text',text:'b'.repeat(40)}]}};
+const candidate=()=>{const v=structuredClone(baseline);v.resources.bindings.at(-1).text=sha;return v};
+test('candidate inherits all production secrets/resources/flags without copying values',()=>{
+ const config=candidateConfig(baseline,sha);
+ assert.deepEqual(config.vars,{GEOMACRO_SOURCE_SHA:sha});
+ assert.deepEqual(config.unsafe.bindings,[{name:'DB',type:'inherit'},
+  {name:'CONTROL_PLANE_TOKEN',type:'inherit'},{name:'PAYMENT_ENABLED',type:'inherit'}]);
+ assert.doesNotMatch(JSON.stringify(config),/canonical-db|secret_text/);
+ assert.equal(verifyCandidateBindings(baseline,candidate(),sha),true);
+});
+test('same binding names cannot conceal resource changes or payment activation',()=>{
+ for(const [name,field,value] of [['DB','id','other-db'],['PAYMENT_ENABLED','text','1']]){
+  const changed=candidate();changed.resources.bindings.find(x=>x.name===name)[field]=value;
+  assert.throws(()=>verifyCandidateBindings(baseline,changed,sha),/RESOURCE_OR_VALUE_CHANGED/);
+ }
+ const changed=candidate();changed.resources.script_runtime.compatibility_date='2026-11-07';
+ assert.throws(()=>verifyCandidateBindings(baseline,changed,sha),/SCRIPT_RUNTIME_CHANGED/);
+ const duplicate=candidate();duplicate.resources.bindings.push(duplicate.resources.bindings[0]);
+ assert.throws(()=>verifyCandidateBindings(baseline,duplicate,sha),/COUNT_CHANGED/);
+});
+test('candidate cannot upload from unprotected branch before provider access',async()=>{
+ let calls=0;
+ await assert.rejects(prepareCandidate({env:{},fetchImpl:async()=>{calls++}}),/PROTECTED_MAIN_REQUIRED/);
+ assert.equal(calls,0);
+});
