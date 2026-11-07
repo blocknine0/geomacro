@@ -52,6 +52,69 @@ export function inspectPendingMigrations(raw){
   throw Error("MIGRATION_PENDING_LIST_UNVERIFIED");
  return {pending:names,apply:names.length>0};
 }
+// Schema DDL is not free: CREATE INDEX writes one entry per pre-existing row
+// plus continuing index-maintenance costs. A provider 80k UTC headroom
+// snapshot is NOT sufficient unless the target row counts are bounded.
+// Run an *indexed-or-sequential* bounded existential probe of at most 3,001
+// rows per table, not SELECT COUNT(*) across an unbounded backlog.
+export const MAX_DDL_ORIGINAL_ROWS_PER_TABLE=3000;
+const SIZE_PROBE_TABLES=Object.freeze({
+ "0204_d1_read_hotspot_optimization.sql":Object.freeze({
+  private_osint_news_25h:"news_over",
+  private_osint_source_checks_24h:"checks_over",
+  website_derived_intelligence:"website_over",
+ }),
+ "0211_p0b_daily_committed_count.sql":Object.freeze({
+  ingestion_spool_queue:"spool_over",
+ }),
+});
+export function boundedMigrationSizeProbeSql(pendingRaw){
+ const p=inspectPendingMigrations(pendingRaw);
+ if(!p.apply)throw Error("MIGRATION_SIZE_PROBE_NOT_REQUIRED");
+ const columns=[];
+ for(const name of p.pending){
+  for(const [table,alias] of Object.entries(SIZE_PROBE_TABLES[name]??{})){
+   if(!/^[a-z_][a-z0-9_]*$/.test(table)||!/^[a-z_][a-z0-9_]*$/.test(alias))
+    throw Error("MIGRATION_SIZE_PROBE_SCOPE_INVALID");
+   columns.push("EXISTS(SELECT 1 FROM "+table+
+    " LIMIT 1 OFFSET "+MAX_DDL_ORIGINAL_ROWS_PER_TABLE+") AS "+alias);
+  }
+ }
+ if(columns.length<1||columns.length>4)throw Error("MIGRATION_SIZE_PROBE_SCOPE_INVALID");
+ return "SELECT "+columns.join(", ")+";";
+}
+export function checkBoundedMigrationSizeProbe(pendingRaw,jsonRaw){
+ const p=inspectPendingMigrations(pendingRaw);
+ if(!p.apply)throw Error("MIGRATION_SIZE_PROBE_NOT_REQUIRED");
+ // Derive expected aliases from reviewed migration files only; no untrusted SQL.
+ const aliases=new Set([...boundedMigrationSizeProbeSql(pendingRaw)
+  .matchAll(/\bAS ([a-z_]+)\b/gu)].map(m=>m[1]));
+ const parsed=JSON.parse(jsonRaw);
+ const batches=Array.isArray(parsed)?parsed:[parsed];
+ if(batches.length!==1||batches[0]?.success!==true||
+   !Array.isArray(batches[0]?.results)||batches[0].results.length!==1)
+  throw Error("MIGRATION_SIZE_PROBE_PROVIDER_UNVERIFIED");
+ const row=batches[0].results[0],meta=batches[0].meta;
+ if(!row||typeof row!=="object"||
+   Object.keys(row).length!==aliases.size||
+   [...aliases].some(alias=>row[alias]!==0&&row[alias]!==1)||
+   !Number.isSafeInteger(meta?.rows_read)||meta.rows_read<0||
+   meta.rows_read>15000||meta?.rows_written!==0)
+  throw Error("MIGRATION_SIZE_PROBE_PROVIDER_UNVERIFIED");
+ if(Object.values(row).some(value=>value===1))
+  throw Error("MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_140K");
+ return Object.freeze({schema:"geomacro.protected-d1-index-build-bound.v1",
+   status:"ORIGINAL_TABLES_BOUNDED",scope_names:p.pending,
+   proven_table_count:aliases.size,
+   maximum_original_rows_per_table:MAX_DDL_ORIGINAL_ROWS_PER_TABLE,
+   size_probe_provider_rows_read:meta.rows_read,
+   size_probe_provider_rows_written:0,
+   index_write_cost_still_needs_provider_receipt:true,
+   account_wide_atomic_140k_guaranteed:false,
+   verified_for_this_preflight_only:true,
+   no_funds:true});
+}
+
 const dbRows=json=>(Array.isArray(json)?json:[json])
  .flatMap(x=>x?.results??x?.result?.results??[]);
 export function checkMigrationSchema(pending,raw){
@@ -96,6 +159,14 @@ async function main(){
   if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,
    "apply="+String(p.apply)+"\n");
   return;
+ }
+ if(argv[0]==="--emit-size-probe"&&argv.length===2){
+  process.stdout.write(boundedMigrationSizeProbeSql(readFileSync(argv[1],"utf8"))+"\n");
+  return;
+ }
+ if(argv[0]==="--verify-size-probe"&&argv.length===3){
+  record("size",checkBoundedMigrationSizeProbe(readFileSync(argv[1],"utf8"),
+   readFileSync(argv[2],"utf8")));return;
  }
  if(argv[0]==="--schema"&&argv.length===3){
   record("schema",checkMigrationSchema(readFileSync(argv[1],"utf8"),
