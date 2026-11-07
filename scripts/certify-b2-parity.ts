@@ -11,8 +11,24 @@ const QUEUES=['geomacro-ingestion-spool','geomacro-ingestion-dead-letter','geoma
 const MAX=Number(process.env.PARITY_MAX_B2_READS||'250');
 const MAX_PAGES=Number(process.env.PARITY_MAX_B2_LIST_PAGES||'5');
 const hmac=(key:string|Buffer,data:string)=>createHmac('sha256',key).update(data).digest();
-const decodeXml=(s:string)=>s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'");
-function xmlText(xml:string,tag:string){const m=new RegExp(`<${tag}>([^<]{0,4096})</${tag}>`,'u').exec(xml);return m?decodeXml(m[1]):null}
+// S3 ListObjectsV2 requests encoding-type=url. Read provider XML tokens as-is:
+// never XML-unescape and then URI-unescape the same untrusted value (CodeQL
+// double-decoding finding). Entity-containing keys/tokens HOLD rather than
+// silently changing a physical object identity.
+function xmlText(xml:string,tag:string){
+ const m=new RegExp(`<${tag}>([^<]{0,4096})</${tag}>`,'u').exec(xml);
+ if(!m||m[1].includes('&'))return null;
+ return m[1];
+}
+function exactPhysicalKey(raw:string|null,prefix:string){
+ need(typeof raw==='string'&&/^(?:[A-Za-z0-9._~/-]|%[0-9a-fA-F]{2}){1,4096}$/u.test(raw),
+  'PARITY_S3_URL_ENCODED_KEY_INVALID');
+ let decoded:string;
+ try{decoded=decodeURIComponent(raw)}catch{throw Error('PARITY_S3_KEY_PERCENT_DECODING_FAILED')}
+ need(/^[A-Za-z0-9_./-]+$/u.test(decoded)&&!decoded.includes('..')&&
+  decoded.startsWith(prefix),'PARITY_S3_KEY_OUT_OF_SCOPE');
+ return decoded;
+}
 async function admin(path:string){
  const bearer=envString('CONTROL_PLANE_TOKEN',64);
  need(/^[a-f0-9]{64}$/i.test(bearer),'PARITY_OWNER_BEARER_INVALID');
@@ -66,12 +82,15 @@ async function listPhysicalB2(prefix:string):Promise<string[]>{
   need(res.ok&&xml.length<3000000&&!/<!DOCTYPE|<!ENTITY/i.test(xml)&&xml.includes('<ListBucketResult'),'PARITY_B2_LIST_FAILED');
   for(const m of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)){
    const encoded=xmlText(m[1],'Key');need(encoded!==null,'PARITY_B2_LIST_KEY_MISSING');
-   const objectKey=decodeURIComponent(encoded);need(objectKey.startsWith(prefix)&&!keys.includes(objectKey),'PARITY_B2_LIST_ORDER_OR_PREFIX_INVALID');
+   const objectKey=exactPhysicalKey(encoded,prefix);
+    need(!keys.includes(objectKey),'PARITY_B2_LIST_ORDER_OR_PREFIX_INVALID');
    keys.push(objectKey);need(keys.length<=MAX,'PARITY_B2_FULL_LIST_OVER_BUDGET');
   }
   if(xmlText(xml,'IsTruncated')==='false')return keys.sort();
   continuation=xmlText(xml,'NextContinuationToken')??'';
-  need(continuation.length>0&&continuation.length<4096,'PARITY_B2_PAGINATION_INCOMPLETE');
+  need(continuation.length>0&&continuation.length<4096&&
+   /^(?:[A-Za-z0-9._~+/-]|%[0-9a-fA-F]{2}|=)+$/u.test(continuation),
+   'PARITY_B2_PAGINATION_INCOMPLETE');
  }
  throw Error('PARITY_B2_PAGINATION_INCOMPLETE');
 }
@@ -148,11 +167,14 @@ async function verifyR2Physical(){
   need(xml.length<3000000&&!/<!DOCTYPE|<!ENTITY/i.test(xml)&&xml.includes('<ListBucketResult'),'PARITY_R2_LIST_INVALID');
   for(const c of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)){
    const encoded=xmlText(c[1],'Key');need(!!encoded,'PARITY_R2_LIST_KEY_MISSING');
-   const key=decodeURIComponent(encoded);need(key.startsWith(prefix),'PARITY_R2_PREFIX_INVALID');
+   const key=exactPhysicalKey(encoded,prefix);
    physical.push(key);need(physical.length<=250,'PARITY_R2_READ_BUDGET_PARTIAL');
   }
   if(xmlText(xml,'IsTruncated')==='false'){continuation=null;break}
-  continuation=xmlText(xml,'NextContinuationToken');need(!!continuation,'PARITY_R2_TRUNCATION_UNKNOWN');
+  continuation=xmlText(xml,'NextContinuationToken');
+   need(!!continuation&&continuation.length<4096&&
+    /^(?:[A-Za-z0-9._~+/-]|%[0-9a-fA-F]{2}|=)+$/u.test(continuation),
+    'PARITY_R2_TRUNCATION_UNKNOWN');
  }
  need(continuation===null,'PARITY_R2_PAGINATION_INCOMPLETE');
  const wanted=rows.map(r=>r.object_key).sort();
