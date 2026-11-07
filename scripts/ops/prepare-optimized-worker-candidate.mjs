@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
+import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
 export function candidateConfig(version,sha){
@@ -27,6 +28,7 @@ export function candidateConfig(version,sha){
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
   ...(runtime.limits?{limits:runtime.limits}:{}),
+  ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
   vars:{GEOMACRO_SOURCE_SHA:sha},
   unsafe:{bindings:bindings.filter(x=>x.name!=='GEOMACRO_SOURCE_SHA')
    .map(x=>({name:x.name,type:'inherit'}))}};
@@ -125,11 +127,16 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))
   throw Error('CANDIDATE_PRODUCTION_DEPLOYMENT_CHANGED');
- const knownFlags=['GEOMACRO_D1_READ_HOTSPOT_V2','GEOMACRO_P1_FANOUT_ENABLED',
+ const promotion=assessWorkerPromotion({deployment:final,baselineVersion:baseline,
+  candidateVersion:candidate,baselineId,candidateId:candidate.id,targetPercent:0,
+  sourceSha:env.GITHUB_SHA,quota,now:new Date()});
+ writeFileSync('artifacts/protected-canary/worker-promotion-preflight.json',JSON.stringify(promotion,null,2)+'\n');
+ const knownFlags=['GEOMACRO_D1_READ_HOTSPOT_V2' ,'GEOMACRO_P1_FANOUT_ENABLED',
   'GEOMACRO_P1_BUNDLED_LEASES_ENABLED','GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'];
  const result={schema:'geomacro.optimized-worker-candidate.v1',status:'CANDIDATE_UPLOADED_NOT_DEPLOYED',
   source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
   binding_resource_and_value_parity_verified:true,runtime_parity_verified:true,
+  promotion_eligible:promotion.eligible,promotion_reason:promotion.reason,
   runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>knownFlags.includes(x.name))
    .map(x=>[x.name,x.text??null])),
   production_split_unchanged:true,owner_quota:quotaSummary,d1_sql_queries:0,traffic_promoted:false,payments:0};

@@ -52,6 +52,8 @@ jobs:
         if: always()
         with:
           name: geomacro-optimized-worker-candidate
-          path: artifacts/protected-canary/optimized-worker-candidate.json
+          path: |
+            artifacts/protected-canary/optimized-worker-candidate.json
+            artifacts/protected-canary/worker-promotion-preflight.json
           if-no-files-found: warn
           retention-days: 14
