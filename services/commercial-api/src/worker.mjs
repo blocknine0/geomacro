@@ -30,7 +30,7 @@ export function buildWorkerRuntime(env){
   !['true','1','yes','on'].includes(String(env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE??'').trim().toLowerCase());
  const disabled=new Set(String(env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS??'').split(',').map(x=>x.trim().toLowerCase()));
  const fundsAccepted=env.GEOMACRO_REAL_FUNDS_SECURITY_ACK==='I_ACCEPT_REAL_FUNDS_SECURITY_GATES';
- const resolveRisk=createQualifiedRiskResolver({origin:env.RISK_EVIDENCE_ORIGIN??'https://api.geomacro.live',token:env.RISK_GATE_TIERED_TOKEN});
+ const resolveRisk=createQualifiedRiskResolver({origin:env.RISK_EVIDENCE_ORIGIN??'https://geomacro-control-plane.daspallab202391.workers.dev',token:env.RISK_GATE_TIERED_TOKEN});
  let paypal,x402;
  if(env.PAYPAL_ENABLED==='true'&&launched&&!disabled.has('paypal')&&pool&&(env.PAYPAL_MODE!=='live'||fundsAccepted&&env.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK==='VERIFIED_LIVE_CROSS_BORDER_MERCHANT')){try{
   paypal=new PayPalEngine({pool,client:new PayPalClient({mode:env.PAYPAL_MODE,clientId:env.PAYPAL_CLIENT_ID,
