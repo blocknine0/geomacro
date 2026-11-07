@@ -19,6 +19,7 @@ function fixture(){
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0115_p0_b_storage_circuit.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0116_p0b_microbatch_spool.sql',import.meta.url),'utf8'));
  db.exec(readFileSync(new URL('../workers/control-plane/migrations/0118_p0b_archive_outbox.sql',import.meta.url),'utf8'));
+ db.exec(readFileSync(new URL('../workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql',import.meta.url),'utf8'));
  db.exec("PRAGMA foreign_keys=ON");
  db.prepare(
   'INSERT INTO source_registry(source_id,canonical_endpoint,parser_type,intended_category,'+
@@ -632,4 +633,52 @@ test('default Workerd fetch keeps its global receiver for B2 PUT and independent
   assert.equal(calls,2);assert.equal(stored.items.length,1);
   assert.equal(f.requests[0].method,'PUT');assert.equal(f.requests[1].method,'GET');
  }finally{globalThis.fetch=original;f.close()}
+});
+
+
+test('idle redrive never recounts the committed journal',async()=>{
+ const f=fixture();
+ try{
+  const prepare=f.env.DB.prepare;
+  f.env.DB.prepare=(sql)=>{
+   assert.ok(!sql.includes('committed_today'),'idle cron must not scan committed rows');
+   return prepare(sql);
+  };
+  const receipt=await drainBacklog(f.env,{now:NOW});
+  assert.equal(receipt.status,'DRAIN_CLEAN');
+  assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+ }finally{f.close()}
+});
+test('nonempty redrive still enforces exact daily ceiling and refuses missing telemetry',async()=>{
+ for(const value of [90000,null,-1,1.5]){
+  const f=fixture();
+  try{
+   const c=await candidate(900);
+   f.db.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,spooled_at) VALUES(?,?,?,?,?,?)")
+    .run(crypto.randomUUID(),c.candidateSha256,c.sourceId,'b2://spool/test',100,new Date(NOW-600000).toISOString());
+   const prepare=f.env.DB.prepare;
+   f.env.DB.prepare=(sql)=>sql.includes('committed_today')?{
+    bind(){return this},async first(){return {committed_today:value}}
+   }:prepare(sql);
+   const r=await drainBacklog(f.env,{now:NOW});
+   assert.equal(r.status,value===90000?'QUOTA_HOLD':'D1_QUOTA_STATUS_UNAVAILABLE');
+   assert.equal(f.env.INGEST_QUEUE.sent.length,0);
+  }finally{f.close()}
+ }
+});
+
+
+test('source FK index excludes mutable state while preserving indexed parent maintenance',()=>{
+ const f=fixture();
+ try{
+  const columns=f.db.prepare("PRAGMA index_info('idx_spool_source_id')").all().map(x=>x.name);
+  assert.deepEqual(columns,['source_id']);
+  const plan=f.db.prepare('EXPLAIN QUERY PLAN SELECT rowid FROM ingestion_spool_queue WHERE source_id=?').all('src_probe');
+  assert.ok(plan.some(x=>x.detail.includes('SEARCH')&&x.detail.includes('idx_spool_source_id')));
+  const c='e'.repeat(64);
+  f.db.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size) VALUES(?,?,?,?,?)")
+   .run(crypto.randomUUID(),c,'src_probe','b2://spool/test',100);
+  assert.throws(()=>f.db.prepare('DELETE FROM source_registry WHERE source_id=?').run('src_probe'),/FOREIGN KEY/);
+  assert.equal(f.db.prepare('SELECT state FROM ingestion_spool_queue WHERE candidate_sha256=?').get(c).state,'PENDING');
+ }finally{f.close()}
 });

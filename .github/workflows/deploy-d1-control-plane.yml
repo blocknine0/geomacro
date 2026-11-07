@@ -43,6 +43,7 @@ on:
       # canonical Worker; otherwise green source tests leave old code live.
       - "src/storage/b2-spool-manager.ts"
       - "tests/p0_b_admission_test.ts"
+      - "src/workers/backlog-drain-cron.ts"
       - "workers/control-plane/migrations/0122_p0b_private_r2_fallback.sql"
       - "src/lib/b2-private-archive-read.server.ts"
       - "scripts/ops/b2-s3-client.mjs"
@@ -172,6 +173,7 @@ on:
       # canonical Worker; otherwise green source tests leave old code live.
       - "src/storage/b2-spool-manager.ts"
       - "tests/p0_b_admission_test.ts"
+      - "src/workers/backlog-drain-cron.ts"
       - "src/lib/global-macro-news-policy.ts"
       - "scripts/lib/critical-minerals-registry.mjs"
       # Source-native RSS and research-only admission are dependencies of
