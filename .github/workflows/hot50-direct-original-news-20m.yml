@@ -290,7 +290,8 @@ jobs:
 
   encrypted-held-three-domain-20m:
     name: Preserve three-domain Hot50 native source collection when D1 admission or D1 write fails
-    # Recovery also runs if the admitted D1 writer fails AFTER quota PASS.
+    # Recovery also runs if D1 admission was SKIPPED or its admitted writer
+    # failed or skipped AFTER quota PASS. Source-only; no D1/paid work.
     # It NEVER retries D1, signs GRO or marks an original as D1 archived.
     needs: [source-contract, quota-admission, collect-direct-20m]
     if: >-
@@ -299,12 +300,11 @@ jobs:
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') &&
-      (((needs.quota-admission.result == 'success' ||
-         needs.quota-admission.result == 'failure') &&
-        needs.quota-admission.outputs.source_intake != 'true') ||
+      (needs.quota-admission.result == 'failure' ||
+       needs.quota-admission.result == 'skipped' ||
        (needs.quota-admission.result == 'success' &&
-        needs.quota-admission.outputs.source_intake == 'true' &&
-        needs.collect-direct-20m.result == 'failure'))
+        (needs.quota-admission.outputs.source_intake != 'true' ||
+         needs.collect-direct-20m.result != 'success')))
     concurrency:
       group: geomacro-hot50-held-publisher-fetch
       cancel-in-progress: false
