@@ -79,7 +79,7 @@ test('canary version-specific wall-time p99 is converted from microseconds',()=>
 test('Cloudflare Analytics query declares provider-specific lowercase string scalar',()=>{
  for(const path of [
   'scripts/verify-d1-quota-proof.ts','scripts/canary-promoter.ts',
-  'src/middleware/quotaWorker.ts']){
+  'src/middleware/quotaWorker.ts','scripts/ops/audit-d1-account-daily-quota-readonly.mjs']){
   const source=readFileSync(path,'utf8');
   assert.match(source,/\$accountTag:string!/u,path);
   assert.doesNotMatch(source,/\$[A-Za-z_][A-Za-z_0-9]*:String!/u,path);
