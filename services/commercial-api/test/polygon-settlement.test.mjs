@@ -6,6 +6,7 @@ import {createRequire} from 'node:module';
 import {PGlite} from '@electric-sql/pglite';
 import {privateKeyToAccount} from 'viem/accounts';
 import {PolygonX402Engine,MultiChainX402Router} from '../src/payments/multichain.mjs';
+import {configurePayments} from '../src/payments/config.mjs';
 import {X402Engine} from '../src/payments/x402.mjs';
 import {PolygonVerifier,polygonTypedAuthorization,polygonRequirements,
  POLYGON_NETWORK,POLYGON_NATIVE_USDC,DexterPolygonFacilitator} from '../src/payments/polygon.mjs';
@@ -147,6 +148,15 @@ test('no charge with unavailable qualified evidence on either rail',async()=>{
  const beforeSettles=settlementCount;
  await assert.rejects(e.handle(input(),null),/INCONCLUSIVE_NO_CHARGE/);
  assert.equal(settlementCount,beforeSettles);
+});
+test('standalone Node payment server ignores malicious ENABLED flags and old funds ACK',()=>{
+ const env={SITE_ORIGIN:origin,PAYPAL_ENABLED:'true',X402_ENABLED:'true',
+  POLYGON_X402_ENABLED:'true',GEOMACRO_COMMERCIAL_LAUNCH_ACK:'I_AUTHORIZE_COORDINATED_GEOMACRO_LAUNCH',
+  GEOMACRO_REAL_FUNDS_SECURITY_ACK:'I_ACCEPT_REAL_FUNDS_SECURITY_GATES',
+  GEOMACRO_COMMERCE_DISABLED_PROVIDERS:''};
+ const state=configurePayments(pool,env,{resolveRisk:resolver});
+ assert.equal(state.paypal,undefined);
+ assert.equal(state.x402,undefined);
 });
 test('Dexter fail closed for unsupported settle and contradictory results with no tx accepted',async()=>{
  const i=input(),p=await paymentFor(i);
