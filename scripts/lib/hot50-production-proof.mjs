@@ -19,7 +19,9 @@ export function inspectHot50TierResponse({country,tier,price,httpStatus,body,now
   key,exactCategories?categories[key].status:"INVALID_OR_MISSING"
  ]));
  const live=body?.verified_live_scoring;
- const signedLive=body?.policy_evaluation_has_complete_verified_score===true&&
+ const signedLive=exactCategories&&HOT50_CATEGORY_KEYS.every(key=>
+  categories[key].status==="VERIFIED_SIGNED_GRO")&&
+  body?.policy_evaluation_has_complete_verified_score===true&&
   live?.trusted_signed_gro_verified===true&&
   validDate(live.gro_generated_at)&&validDate(live.gro_expires_at)&&
   Date.parse(live.gro_generated_at)<=now&&Date.parse(live.gro_expires_at)>now&&
