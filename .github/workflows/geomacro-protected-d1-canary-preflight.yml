@@ -1,0 +1,77 @@
+name: GeoMacro Protected D1 Canary Stage A — Read-only No Funds
+# Stage A runs on the exact reviewed main SHA and consumes no D1 query rows.
+# A green Stage A is only eligibility for a separately authorized 0%-version
+# upload, NOT deployment success or permission to shift production traffic.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
+      - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
+      - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
+      - "workers/control-plane/src/hot50-production-activation-census.mjs"
+      - "workers/control-plane/src/p0b-ingestion-status.mjs"
+      - "workers/control-plane/src/index.mjs"
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - ".github/workflows/geomacro-protected-d1-canary-preflight.yml"
+      - "scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"
+      - "scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs"
+      - "workers/control-plane/src/hot50-production-activation-census.mjs"
+      - "workers/control-plane/src/p0b-ingestion-status.mjs"
+      - "workers/control-plane/src/index.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-protected-d1-canary-stage-a
+  cancel-in-progress: false
+
+jobs:
+  no-funds-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
+        run: |
+          node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          test -f config/d1-hotspot-v2-canary.hold
+
+  provider-readonly-preflight:
+    needs: no-funds-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify current D1 Time Travel bookmark, deployed 100% baseline and 140k/day capacity
+        run: node scripts/ops/verify-protected-d1-zero-canary-preflight.mjs
+      - name: Save nonsecret PASS or HOLD receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-protected-d1-canary-preflight-no-funds
+          path: artifacts/protected-canary/preflight-no-funds.json
+          retention-days: 7
+          if-no-files-found: ignore
