@@ -9,6 +9,11 @@ const KEYS = [
   "B2_KEY_ID",
   "B2_APPLICATION_KEY",
   "B2_S3_ENDPOINT",
+  "CLOUDFLARE_ACCOUNT_ID",
+  "CLOUDFLARE_API_TOKEN",
+  "D1_DATABASE_ID",
+  "B2_ACCOUNT_QUOTA_REQUIRED",
+  "B2_ACCOUNT_QUOTA_WORKFLOW_ID",
 ] as const;
 const original = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
 
@@ -26,13 +31,52 @@ function setReadCredentials(suffix: string) {
   process.env.B2_ARCHIVE_READ_KEY_ID = `read-key-${suffix}`;
   process.env.B2_ARCHIVE_READ_APPLICATION_KEY = `read-secret-${suffix}`;
   process.env.B2_S3_ENDPOINT = "https://s3.us-east-005.backblazeb2.com";
+  process.env.CLOUDFLARE_ACCOUNT_ID = "1234567890abcdef1234567890abcdef";
+  process.env.CLOUDFLARE_API_TOKEN = "t".repeat(64);
+  process.env.D1_DATABASE_ID = "abcdef1234567890abcdef1234567890";
+  process.env.B2_ACCOUNT_QUOTA_REQUIRED = "1";
+}
+
+// Simulate the existing two-step atomic account-wide D1 reservation.
+// The private reader must never contact B2 until this receipt is valid.
+function quotaReceipt(url: string, init: any): Response | null {
+  if (!url.startsWith("https://api.cloudflare.com/client/v4/accounts/")) return null;
+  const sql = JSON.parse(init.body).sql as string;
+  return Response.json({ success:true, result:[{success:true,results:
+    sql.includes("b2_account_daily_request_quota") ?
+    [{total_requests:1,get_requests:1,put_requests:0,head_requests:0,native_auth_requests:0}] : []
+  }] });
 }
 
 describe("private B2 server native fallback", () => {
+  it("holds the private restore before B2 when the shared D1 quota is unavailable", async () => {
+    setReadCredentials("quota-denied");
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (input) => {
+      const url = String(input);
+      seen.push(url);
+      return new Response("unavailable", {status:503});
+    }));
+    await expect(readPrivateB2Object("geomacro-evidence/v1/critical.json"))
+      .rejects.toThrow("B2_PRIVATE_ACCOUNT_QUOTA_HELD");
+    expect(seen).toHaveLength(1);
+    expect(seen.every(url => url.startsWith("https://api.cloudflare.com/"))).toBe(true);
+  });
+  it("requires canonical D1 provider credentials even if B2 credentials exist", async () => {
+    setReadCredentials("missing-db");
+    delete process.env.D1_DATABASE_ID;
+    const fetchMock = vi.fn(async () => new Response("unexpected"));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(readPrivateB2Object("geomacro-evidence/v1/signed.json"))
+      .rejects.toThrow("B2_ACCOUNT_GLOBAL_QUOTA_CONFIGURATION_REQUIRED");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("falls back from exact S3 AccessDenied to scoped native authenticated download", async () => {
     setReadCredentials("success");
     vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
       const url = String(input);
+      const reserved = quotaReceipt(url, init);
+      if (reserved) return reserved;
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
         return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
       }
@@ -65,8 +109,10 @@ describe("private B2 server native fallback", () => {
 
   it("rejects native authorization without readFiles capability", async () => {
     setReadCredentials("missing-capability");
-    vi.stubGlobal("fetch", vi.fn(async (input) => {
+    vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
       const url = String(input);
+      const reserved = quotaReceipt(url, init);
+      if (reserved) return reserved;
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
         return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
       }
@@ -96,8 +142,10 @@ describe("private B2 server native fallback", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-04T00:00:00.000Z"));
     let authorizations = 0;
-    vi.stubGlobal("fetch", vi.fn(async (input) => {
+    vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
       const url = String(input);
+      const reserved = quotaReceipt(url, init);
+      if (reserved) return reserved;
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
         return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
       }
@@ -132,8 +180,10 @@ describe("private B2 server native fallback", () => {
     process.env.B2_KEY_ID = "primary-key";
     process.env.B2_APPLICATION_KEY = "primary-secret";
     const calls: string[] = [];
-    vi.stubGlobal("fetch", vi.fn(async (input) => {
+    vi.stubGlobal("fetch", vi.fn(async (input, init = {}) => {
       const url = String(input);
+      const reserved = quotaReceipt(url, init);
+      if (reserved) return reserved;
       calls.push(url);
       if (url.startsWith("https://s3.us-east-005.backblazeb2.com/")) {
         return new Response("<Error><Code>AccessDenied</Code></Error>", { status: 403 });
