@@ -7,7 +7,7 @@ try{
   assessBudget:assessOneTimeD1Repair});
  console.log(JSON.stringify(result));
 }catch(e){
- console.error(JSON.stringify({status:'HOLD',code:/^REPAIR_[A-Z0-9_]+$/.test(e?.message??'')?
+ console.error(JSON.stringify({status:'HOLD',code:/^(?:REPAIR|MIGRATION)_[A-Z0-9_]+$/.test(e?.message??'')?
   e.message:'REPAIR_EXECUTION_UNAVAILABLE',ordinary_daily_targets_unchanged:true,payments:0}));
  process.exitCode=2;
 }

@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/ops/read-protected-d1-info.mjs"
+      - "scripts/tests/read-protected-d1-info.test.mjs"
       - "scripts/ops/protected-d1-repair-plan.mjs"
       - "scripts/ops/run-protected-d1-repair.mjs"
       - "scripts/tests/protected-d1-repair-plan.test.mjs"
@@ -39,6 +41,8 @@ on:
   workflow_dispatch: {}
   pull_request:
     paths:
+      - "scripts/ops/read-protected-d1-info.mjs"
+      - "scripts/tests/read-protected-d1-info.test.mjs"
       - "scripts/ops/protected-d1-repair-plan.mjs"
       - "scripts/ops/run-protected-d1-repair.mjs"
       - "scripts/tests/protected-d1-repair-plan.test.mjs"
@@ -82,7 +86,7 @@ jobs:
           node-version: "24"
       - name: Verify exact Hot50 SQL plan, cheap health and canary hold decisions
         run: |
-          node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/tests/verify-protected-d1-index-build-bound.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
+          node --test scripts/tests/read-protected-d1-info.test.mjs scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-headroom.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs scripts/tests/verify-protected-d1-index-build-bound.test.mjs scripts/lib/d1-owner-daily-envelope.test.mjs scripts/tests/hot50-production-activation.test.mjs scripts/tests/p0b-production-readiness.test.mjs scripts/tests/verify-protected-d1-zero-canary-preflight.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
 
   provider-readonly-preflight:
@@ -217,8 +221,8 @@ jobs:
           set -euo pipefail
           umask 077
           cd workers/control-plane
-          npx -y "wrangler@$WRANGLER_VERSION" d1 info DB --json \
-            --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-info.json" 2>/dev/null
+          node ../../scripts/ops/read-protected-d1-info.mjs wrangler.canary-d1.jsonc \
+            > "$RUNNER_TEMP/d1-info.json"
           npx -y "wrangler@$WRANGLER_VERSION" d1 time-travel info DB --json \
             --config wrangler.canary-d1.jsonc > "$RUNNER_TEMP/d1-bookmark.json" 2>/dev/null
           cd ../..

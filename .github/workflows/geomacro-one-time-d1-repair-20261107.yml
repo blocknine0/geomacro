@@ -2,6 +2,8 @@ name: Owner-approved one-time D1 migration — 2026-11-07
 on:
   pull_request:
     paths:
+      - 'scripts/ops/read-protected-d1-info.mjs'
+      - 'scripts/tests/read-protected-d1-info.test.mjs'
       - '.github/workflows/geomacro-one-time-d1-repair-20261107.yml'
       - 'scripts/ops/one-time-d1-repair-20261107.mjs'
       - 'scripts/ops/run-one-time-d1-repair-20261107.mjs'
@@ -10,6 +12,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'scripts/ops/read-protected-d1-info.mjs'
+      - 'scripts/tests/read-protected-d1-info.test.mjs'
       - 'scripts/ops/run-protected-d1-repair.mjs'
       - '.github/workflows/geomacro-one-time-d1-repair-20261107.yml'
       - 'scripts/ops/one-time-d1-repair-20261107.mjs'
@@ -33,7 +37,7 @@ jobs:
       - name: Verify one-time expiry, fixed allowance, normal policy and migration guards
         run: |
           node --check scripts/ops/run-one-time-d1-repair-20261107.mjs
-          node --test scripts/tests/one-time-d1-repair-20261107.test.mjs scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs
+          node --test scripts/tests/read-protected-d1-info.test.mjs scripts/tests/one-time-d1-repair-20261107.test.mjs scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs scripts/tests/verify-protected-d1-migration-gate.test.mjs
   migration:
     needs: contract
     if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && github.event_name == 'push'
