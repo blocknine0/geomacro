@@ -19,6 +19,56 @@
 6. Configure GitHub vars `D1_DATABASE_ID`, `GEOMACRO_D1_SHADOW_DATABASE_ID`, `GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED=YES`, `GEOMACRO_STEP3_RECOVERY_V2_APPROVED=YES`, plus the R2 buckets/approval vars and shadow Worker URLs. These approvals must reflect verified real resources.
 7. Where GitHub CLI is authenticated, use `bash scripts/ops/setup-step3-github-bindings.sh` to set missing approved values without exposing or rotating existing Worker credentials. Export the script's documented `STEP3_*` environment inputs privately first. This script cannot discover Cloudflare Worker secrets or invent B2 copies.
 
+## Exact GitHub CLI bootstrap inputs
+
+Run `gh auth status` and `bash -n scripts/ops/setup-step3-github-bindings.sh` locally first.
+The script requires these **owner-verified**, already-provisioned values from
+the current Cloudflare/B2 deployment (never paste secret values into GitHub
+issues or chat):
+
+- `STEP3_VERIFIED_PRODUCTION_D1_UUID` and
+  `STEP3_VERIFIED_SHADOW_D1_UUID`: distinct actual D1 UUIDs.
+- `STEP3_VERIFIED_RECOVERY_R2_BUCKET` and
+  `STEP3_VERIFIED_SHADOW_R2_BUCKET`: two different private R2 buckets.
+- `STEP3_VERIFIED_SHADOW_WORKER_HOST` and
+  `STEP3_VERIFIED_LEGACY_SHADOW_WORKER_HOST`: two already deployed scripts,
+  both verified to bind the isolated shadow database.
+- `STEP3_REVIEWED_SHA`: current **merged** `main` SHA after all required
+  upstream PRs are merged.
+- `STEP3_PRIVATE_R2_PHYSICALLY_VERIFIED=YES` and
+  `STEP3_REAL_SHADOW_B2_ACKNOWLEDGED_RECORD_VERIFIED=YES`: set only after
+  authentic private R2/B2 physical evidence.
+- `STEP3_SHADOW_REHEARSAL_OWNER_APPROVED=YES` to enable physical Stage 1;
+  `STEP3_PRODUCTION_RECOVERY_OWNER_APPROVED=YES` only after the owner approves
+  the production recovery/migration window.
+- If not previously configured, `EXISTING_PHASE2H_HMAC_HEX` and
+  `EXISTING_CONTROL_PLANE_TOKEN` must be the deployed Worker-compatible
+  values, **not newly generated replacements**.
+- If not previously configured,
+  `STEP3_TRUSTED_SIGNER_PUBLIC_JWK` must match the existing private
+  `SIGNING_JWK`. Existing independent B2 read-only credentials must also
+  already be present in the scoped GitHub Actions secrets.
+
+Run `bash scripts/ops/setup-step3-github-bindings.sh`. The script creates
+the single long-lived AES-256 recovery key only when absent, updates explicit
+owner-reviewed variables and synchronizes any existing `production`
+environment override. It will never publish a token value or revoke a live
+secret. GitHub Actions cannot provision the missing real Cloudflare buckets,
+Workers, independent B2 reader or merchant acceptance on its own.
+
+**Physical checkpoint API:** the Cloudflare R2 REST object upload is a
+multipart form file field `body` with a provider-managed boundary, and an
+independent GET compares the exact ciphertext/manifest bytes. This is
+distinct from the signed mock Miniflare file.
+
+**Stage 2 independent check:** after native migration readback the
+protected runner also performs a bounded, governed B2 full GET of a
+production D1 B2-ACKNOWLEDGED original. A newly created, empty R2
+reference table verifies schema integrity but does not falsely attest to a
+production pointer HMAC. The real Stage 1 pointer proof is separately required.
+Signed physical shadow PASS receipts must be no older than one hour at
+production admission and have monotonic start/end timestamps.
+
 ## Manual protected run sequence
 
 1. In GitHub Actions, open **Step3 Protected Local Shadow and Stage2 Orchestrator** on canonical `main`.
