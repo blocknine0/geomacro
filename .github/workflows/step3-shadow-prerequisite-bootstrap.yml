@@ -1,5 +1,11 @@
 name: Step3 Shadow Prerequisite Schema Bootstrap — Protected No Production DDL
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/step3-shadow-prerequisite-bootstrap.yml"
+      - "scripts/ops/bootstrap-step3-shadow-baseline.mjs"
+      - "scripts/tests/bootstrap-step3-shadow-baseline.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -35,6 +41,47 @@ jobs:
         run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs
       - name: Review only checked-in schema and no provider read/write
         run: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan
+
+  shadow-readonly-preflight:
+    needs: offline-prerequisite-sql
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED: ${{ vars.GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Account Paid and pristine Shadow schema observation only; NO DDL
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          node scripts/ops/bootstrap-step3-shadow-baseline.mjs --preflight
+      - name: Preserve sanitized Shadow preflight HOLD or provider-readonly proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f3646cd9
+        with:
+          name: geomacro-step3-shadow-preflight-${{ github.run_id }}
+          path: artifacts/release/step3-shadow-schema-bootstrap.json
+          retention-days: 14
+          if-no-files-found: warn
+
   protected-shadow-bootstrap:
     needs: offline-prerequisite-sql
     if: >-
