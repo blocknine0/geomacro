@@ -14,6 +14,8 @@ on:
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
       - "scripts/tests/website-news-archive-admission.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/website-paid-derived-only-admission.test.mjs"
       - "src/lib/public-derived-news-client.ts"
       - "src/__tests__/public-derived-news-client.test.ts"
       - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
@@ -165,6 +167,8 @@ jobs:
           node --test scripts/ops/verify-hourly-public-archive-cohort.test.mjs
       - name: Test independent Paid Billing Read admission wiring offline
         run: node --test scripts/tests/website-billing-token-wiring.test.mjs
+      - name: Test bounded Paid-derived source admission and static-only failover
+        run: node --test scripts/tests/website-paid-derived-only-admission.test.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
