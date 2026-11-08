@@ -83,7 +83,7 @@ export async function runLocalWorkerdRehearsal(){
   assert.equal((await res.json()).written,true);
   // Miniflare D1.exec requires executable SQL per call; skip comment-only lines.
   const ddl=readFileSync("workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql","utf8")
-   .split("\\n").filter(line=>!line.trimStart().startsWith("--")).join("\\n");
+   .split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n");
   for(const statement of ddl.split(";").map(x=>x.trim()).filter(Boolean)){
    await db.exec(statement);
   }
