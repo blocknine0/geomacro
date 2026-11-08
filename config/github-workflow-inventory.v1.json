@@ -175,6 +175,7 @@
     "geomacro-predge-email-acceptance.yml",
     "geomacro-protected-d1-canary-preflight.yml",
     "geomacro-protected-hot50-worker-rollout.yml",
+    "geomacro-system-cost-hardcap-ci.yml",
     "geopolitical-production-diagnostics.yml",
     "global-195x3-human-machine-source-regression.yml",
     "global-country-raw-source-mesh.yml",

@@ -1,0 +1,37 @@
+name: GeoMacro Five-Dollar System Admission Contract (No Funds)
+on:
+  pull_request:
+    paths:
+      - "src/middleware/cloudflareMeterBudget.mjs"
+      - "src/middleware/quotaCircuitBreaker.ts"
+      - "scripts/tests/cloudflare-meter-zero-overage.test.mjs"
+      - "scripts/tests/cloudflare-quota-do-hardcap.test.mjs"
+      - ".github/workflows/geomacro-system-cost-hardcap-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/middleware/cloudflareMeterBudget.mjs"
+      - "src/middleware/quotaCircuitBreaker.ts"
+      - "scripts/tests/cloudflare-meter-zero-overage.test.mjs"
+      - "scripts/tests/cloudflare-quota-do-hardcap.test.mjs"
+      - ".github/workflows/geomacro-system-cost-hardcap-ci.yml"
+permissions:
+  contents: read
+jobs:
+  no-funds-system-hardcap-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Exercise monthly and daily atomic fail-closed admission (no provider calls)
+        run: |
+          node --experimental-strip-types --test scripts/tests/cloudflare-meter-zero-overage.test.mjs scripts/tests/cloudflare-quota-do-hardcap.test.mjs
+      - name: Preserve 120k normal plus 20k emergency owner total and no funds
+        run: |
+          node --test scripts/tests/owner-d1-total-140k-policy.test.mjs
+          test -f config/d1-hotspot-v2-canary.hold
