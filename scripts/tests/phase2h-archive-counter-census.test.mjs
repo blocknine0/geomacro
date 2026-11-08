@@ -10,6 +10,12 @@ const fixture=()=>{
  db.exec(readFileSync(new URL(
   "../../workers/control-plane/migrations/0035_phase2h_private_raw_news.sql",
   import.meta.url),"utf8"));
+ // 0212 also creates OSINT and Website indexes; the in-memory census
+ // fixture needs their minimal prerequisite schemas without mock records.
+ db.exec("CREATE TABLE private_osint_news_25h("+
+  "item_id TEXT PRIMARY KEY,country_iso3 TEXT,category TEXT,native_feed_published_at TEXT);"+
+  "CREATE TABLE website_derived_intelligence("+
+  "id TEXT PRIMARY KEY,category TEXT,published_at TEXT);");
  const add=(n,category,ageHours=2,archived=false)=>{
   const date=new Date(Date.now()-ageHours*3600000).toISOString();
   const id=n.toString(16).padStart(64,"0");
