@@ -1418,7 +1418,13 @@ export default {
         if(!r.ok)console.error("GRO_EVIDENCE_TICK_UNVERIFIED");
       }).catch(()=>console.error("GRO_EVIDENCE_TICK_UNAVAILABLE")));
     }
-    if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%2===1){
+    // Schema-free pre-reset de-escalation: only the historical cursor
+    // replay is reduced from 720 invocations/day to 24 (minute :59).
+    // New B2 ACKs still enqueue GRO jobs, and the even-minute evidence
+    // tick, source ingestion, archive, signatures and customer APIs remain.
+    // A protected Worker rollout is required; merging code alone is inert.
+    if(env?.DB?.prepare&&env?.DB?.batch&&utc.getUTCMinutes()%2===1&&
+       utc.getUTCMinutes()===59){
       ctx.waitUntil(groEvidenceBackfill(env,utc.getTime()).then(r=>{
         if(!r.ok)console.error("GRO_EVIDENCE_BACKFILL_UNVERIFIED");
       }).catch(()=>console.error("GRO_EVIDENCE_BACKFILL_UNAVAILABLE")));
