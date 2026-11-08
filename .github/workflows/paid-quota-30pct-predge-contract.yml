@@ -1,9 +1,14 @@
 name: GeoMacro Workers Paid 30 Percent Quota and Predge Continuity Contract
 
 on:
+  schedule:
+    # Read-only account analytics every 20 minutes on main; never release proof.
+    - cron: "8,28,48 * * * *"
   pull_request:
     paths:
       - "scripts/lib/cloudflare-quota-governor.mjs"
+      - "scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"
+      - "scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs"
       - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
       - "scripts/ops/check-d1-headroom.mjs"
@@ -25,6 +30,7 @@ permissions:
 
 jobs:
   offline-contract:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -37,12 +43,15 @@ jobs:
       - name: Syntax verification (no provider calls or funds)
         run: |
           node --check scripts/lib/cloudflare-quota-governor.mjs
+          node --check scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs
           node --check scripts/lib/d1-workers-paid-monthly-governor.mjs
           node --check scripts/lib/d1-owner-daily-envelope.mjs
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
           node --check scripts/canary-promoter.ts
       - name: Six-resource quota admission unit tests
         run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
+      - name: R2/KV account analytics classification (offline negative cases)
+        run: node --test scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs
       - name: Durable Object D1 monthly 30pct + daily/hourly serialized reserve
         run: node --test scripts/tests/d1-paid-monthly-do-reservation.test.mjs
       - name: One provider GraphQL scan D1 current-day and billing-month aggregation
@@ -69,6 +78,7 @@ jobs:
           NODE
 
   local-workerd-shadow:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -88,5 +98,48 @@ jobs:
         with:
           name: geomacro-30pct-step3-local-workerd-rehearsal-${{ github.run_id }}
           path: artifacts/release/step3-shadow-local-rehearsal-receipt.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  provider-analytics-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Read-only account-wide R2/KV GraphQL; cannot approve a release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release
+          node scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs             > artifacts/release/r2-kv-account-analytics-observation.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const d=JSON.parse(readFileSync('artifacts/release/r2-kv-account-analytics-observation.json','utf8'));
+          if(d.status!=='OBSERVATIONAL_ONLY_NOT_RELEASE_PROOF' ||
+             d.production_release_authorized!==false ||
+             d.full_six_resource_snapshot!==false ||
+             d.provider_verified!==false)throw Error('R2_KV_ANALYTICS_CANNOT_BE_RELEASE_PROOF');
+          console.log(JSON.stringify({schema:d.schema,status:d.status,
+            observed_at:d.observed_at,metrics:d.metrics,production_release_authorized:false}));
+          NODE
+      - name: Preserve sanitized read-only observation, not signing or payment authorization
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-cloudflare-r2-kv-observation-${{ github.run_id }}
+          path: artifacts/release/r2-kv-account-analytics-observation.json
           retention-days: 14
           if-no-files-found: warn
