@@ -25,6 +25,20 @@ export type PayPalServerConfiguration = Readonly<{
   webhookId: string;
 }>;
 
+/**
+ * Accept the existing GeoMacro-specific bindings and the merchant SDK
+ * PAYPAL_* names without ever allowing contradictory credentials.
+ * A mismatch blocks OAuth / webhook verification; it is not a fallback.
+ */
+export function paypalCredentialField(
+ field:"CLIENT_ID"|"CLIENT_SECRET"|"WEBHOOK_ID"
+):string|null{
+ const scoped=process.env["GEOMACRO_PAYPAL_"+field]?.trim()??"";
+ const canonical=process.env["PAYPAL_"+field]?.trim()??"";
+ if(scoped&&canonical&&scoped!==canonical)return null;
+ return scoped||canonical||"";
+}
+
 export function paypalEnvironment(): PayPalEnvironment {
   return process.env.GEOMACRO_PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 }
@@ -32,10 +46,10 @@ export function paypalEnvironment(): PayPalEnvironment {
 export function paypalPublicConnectionStatus() {
   const environment = paypalEnvironment();
   const credentials_present = Boolean(
-    process.env.GEOMACRO_PAYPAL_CLIENT_ID?.trim() &&
-    process.env.GEOMACRO_PAYPAL_CLIENT_SECRET?.trim(),
+    paypalCredentialField("CLIENT_ID") &&
+    paypalCredentialField("CLIENT_SECRET"),
   );
-  const webhook_id_present = Boolean(process.env.GEOMACRO_PAYPAL_WEBHOOK_ID?.trim());
+  const webhook_id_present = Boolean(paypalCredentialField("WEBHOOK_ID"));
   return {
     ...GEOMACRO_PAYPAL_READINESS,
     environment,
@@ -49,12 +63,14 @@ export function paypalPublicConnectionStatus() {
 
 export function configuredPayPal(): PayPalServerConfiguration | null {
   const environment = paypalEnvironment();
-  const clientId = process.env.GEOMACRO_PAYPAL_CLIENT_ID?.trim() || "";
-  const clientSecret = process.env.GEOMACRO_PAYPAL_CLIENT_SECRET?.trim() || "";
-  const webhookId = process.env.GEOMACRO_PAYPAL_WEBHOOK_ID?.trim() || "";
-  if (![clientId, clientSecret, webhookId].every(value => SAFE_VALUE.test(value)))
+  const clientId = paypalCredentialField("CLIENT_ID");
+  const clientSecret = paypalCredentialField("CLIENT_SECRET");
+  const webhookId = paypalCredentialField("WEBHOOK_ID");
+  if (![clientId, clientSecret, webhookId].every(value =>
+    typeof value==="string" && SAFE_VALUE.test(value)))
     return null;
-  return { environment, baseUrl: PAYPAL_API_BASE[environment], clientId, clientSecret, webhookId };
+  return { environment, baseUrl: PAYPAL_API_BASE[environment],
+    clientId:clientId!, clientSecret:clientSecret!, webhookId:webhookId! };
 }
 
 async function paypalJson(response: Response): Promise<Record<string, unknown>> {
