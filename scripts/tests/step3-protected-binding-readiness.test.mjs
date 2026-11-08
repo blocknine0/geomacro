@@ -26,6 +26,7 @@ const good=()=>({
  GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK:
   JSON.stringify(publicKey.export({format:"jwk"})),
  CONTROL_PLANE_TOKEN:token,
+ GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN:token+"-shadow",
  PHASE2H_R2_REFERENCE_HMAC_KEY:"f".repeat(64),
  PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY:"e".repeat(64),
  B2_ARCHIVE_READ_KEY_ID:"b2-read-key-placeholder",
@@ -41,6 +42,7 @@ test("complete matching configuration means only configuration readiness",()=>{
  const text=JSON.stringify(r);
  for(const secret of [
   e.CLOUDFLARE_API_TOKEN,e.CONTROL_PLANE_TOKEN,
+  e.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN,
   e.SIGNING_JWK,e.PHASE2H_R2_REFERENCE_HMAC_KEY,
   e.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY,
   e.GEOMACRO_D1_RECOVERY_AES256_KEY_B64])
@@ -50,14 +52,14 @@ test("missing Github secrets emit one consolidated name-only report",()=>{
  const e=good();
  for(const name of ["GEOMACRO_D1_RECOVERY_AES256_KEY_B64",
   "PHASE2H_R2_REFERENCE_HMAC_KEY","PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY",
-  "CONTROL_PLANE_TOKEN",
+  "CONTROL_PLANE_TOKEN","GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN",
   "GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST"])
   delete e[name];
  const r=assessStage3Bindings(e);
  assert.equal(r.status,"HOLD");
  for(const name of ["GEOMACRO_D1_RECOVERY_AES256_KEY_B64",
   "PHASE2H_R2_REFERENCE_HMAC_KEY","PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY",
-  "CONTROL_PLANE_TOKEN",
+  "CONTROL_PLANE_TOKEN","GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN",
   "GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST"])
   assert(r.missing.some(x=>x.name===name&&x.issue==="UNSET"));
  assert.equal(r.no_payment_calls,true);
@@ -109,4 +111,32 @@ test("Shadow Stage1 can be configuration-ready without an available production H
  assert.equal(r.status,"HOLD");
  assert(r.missing.some(x=>x.name==="PHASE2H_R2_REFERENCE_HMAC_KEY"));
  assert.equal(r.provider_physical_proof,false);
+});
+
+test("Stage1 uses independent shadow Worker bearer token without production token",()=>{
+ const e=good();
+ delete e.CONTROL_PLANE_TOKEN;
+ const r=assessStage3Bindings(e);
+ assert.equal(r.stage1_status,"REAL_SHADOW_BINDINGS_READY_FOR_PROVIDER_PREFLIGHT");
+ assert.equal(r.stage2_status,"HOLD");
+ assert.equal(r.status,"HOLD");
+ assert(r.missing.some(x=>x.name==="CONTROL_PLANE_TOKEN"));
+ assert.equal(r.provider_physical_proof,false);
+});
+test("identical shadow and production bearer tokens block Stage1",()=>{
+ const e=good();
+ e.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN=e.CONTROL_PLANE_TOKEN;
+ const r=assessStage3Bindings(e);
+ assert.equal(r.stage1_status,"HOLD");
+ assert(r.stage1_missing.some(x=>x.name==="SHADOW_CONTROL_TOKEN_ISOLATED_FROM_PRODUCTION"));
+ assert(!JSON.stringify(r).includes(e.CONTROL_PLANE_TOKEN));
+});
+test("protected orchestration uses distinct bearer tokens for shadow and production",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const y=readFileSync(new URL("../../.github/workflows/production-rollout-orchestrator.yml",import.meta.url),"utf8");
+ const [shadow,prod]=y.split("  stage2-production:");
+ assert(shadow.includes("CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}"));
+ assert(!shadow.includes("CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}"));
+ assert(prod.includes("CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}"));
+ assert(!prod.includes("CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}"));
 });
