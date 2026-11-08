@@ -68,6 +68,9 @@ test("0208 counter census equals full original category truth, with indexed only
   db.exec(readFileSync(new URL(
    "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
    import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL(
+   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   import.meta.url),"utf8"));
   const all=db.prepare(PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all();
   assert.equal(all.length,3);
   const raw=db.prepare("SELECT category,COUNT(*) AS staged,"+
@@ -81,6 +84,14 @@ test("0208 counter census equals full original category truth, with indexed only
   }
   assert.equal(all.find(x=>x.category==="geopolitics").pending_eligible_72h,1);
   assert.equal(all.find(x=>x.category==="geopolitics").pending_expired_72h,1);
+  // Hour bucket + an indexed boundary-hour probe equals the original exact
+  // 72h filter without scanning all eligible pending records each tick.
+  const cutoff=db.prepare("SELECT strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours') AS t").get().t;
+  const canonical=db.prepare("SELECT category,COUNT(*) AS n "+
+    "FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NULL "+
+    "AND first_ingested_at>? GROUP BY category").all(cutoff);
+  for(const row of canonical)
+   assert.equal(all.find(x=>x.category===row.category).pending_eligible_72h,row.n);
   const summary=db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get();
   assert.deepEqual({...summary},{categories:3,total:4,unarchived:3});
   const explain=db.prepare("EXPLAIN QUERY PLAN "+PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all();
@@ -91,8 +102,34 @@ test("0208 counter census equals full original category truth, with indexed only
   db.exec(readFileSync(new URL(
    "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
    import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL(
+   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   import.meta.url),"utf8"));
   assert.deepEqual(db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get(),summary);
   db.prepare("DELETE FROM phase2h_archive_totals WHERE category='rare_earth'").run();
   assert.equal(db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get().categories,2);
+ }finally{db.close()}
+});
+
+test("0212 exact pending hour counters track inserts, B2 ACK/reversal and deletions",()=>{
+ const {db,add}=fixture();
+ try{
+  db.exec(readFileSync(new URL(
+   "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
+   import.meta.url),"utf8"));
+  db.exec(readFileSync(new URL(
+   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   import.meta.url),"utf8"));
+  const id=add(211,"macro",0.4,false);
+  const hour=db.prepare("SELECT substr(first_ingested_at,1,13) AS h FROM phase2h_private_raw_news WHERE record_id=?").get(id).h;
+  const pending=()=>db.prepare("SELECT pending_count FROM phase2h_pending_hourly_v1 WHERE category='macro' AND hour_utc=?").get(hour).pending_count;
+  assert.equal(pending(),1);
+  db.prepare("UPDATE phase2h_private_raw_news SET b2_object_sha256=? WHERE record_id=?").run("c".repeat(64),id);
+  assert.equal(pending(),0);
+  db.prepare("UPDATE phase2h_private_raw_news SET b2_object_sha256=NULL WHERE record_id=?").run(id);
+  assert.equal(pending(),1);
+  assert.throws(()=>db.prepare("UPDATE phase2h_private_raw_news SET first_ingested_at=? WHERE record_id=?").run("2026-09-01T00:00:00.000Z",id),/PHASE2H_IMMUTABLE_FIRST_INGESTION/);
+  db.prepare("DELETE FROM phase2h_private_raw_news WHERE record_id=?").run(id);
+  assert.equal(pending(),0);
  }finally{db.close()}
 });
