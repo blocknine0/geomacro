@@ -109,9 +109,11 @@ export function assessStage3Bindings(env){
  }));
  // Shadow rehearsal can be independently ready while the production key
  // remains unavailable; this NEVER unlocks Stage2 or alters the full HOLD.
+ const productionHmacPresent=HEX64.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"");
  const stage1Missing=missing.filter(x=>
   x.name!=="PHASE2H_R2_REFERENCE_HMAC_KEY"&&
-  x.name!=="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION");
+  (x.name!=="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION"||
+   productionHmacPresent));
  return Object.freeze({
   schema:"geomacro.step3.protected-binding-readiness.v1",
   scope:"CONFIGURATION_ONLY_NO_PROVIDER_IO",
