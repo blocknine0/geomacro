@@ -69,9 +69,13 @@ PR #3732 reserves Step3 0212 (hourly counters) and 0213 (phase2h R2 ref-only). C
    content, trends, API auth, 402, credits and **no-double-debit** against
    the REAL production D1. An arbitrary value in `verifier_state`
    is NOT physical B2 proof.
-5. Validate account-wide provider `rows_read`, `rows_written` and B2
-   transaction headroom under the user's internal 140,000-per-day each
-   ceiling. D1 batching reduces round trips, **not** the counted rows.
+5. Adopt PR #3736 provider-backed monthly Cloudflare Workers Paid quota
+   admission using the verified 5th-to-5th UTC billing cycle (25 billion
+   included rows-read, 50 million included rows-written, with 10% reserve),
+   not an obsolete 140,000-rows-per-day assumption. A GitHub offline
+   green test is not real Cloudflare Billing Read or GraphQL telemetry.
+   Review B2 transaction headroom separately. D1 batching reduces round
+   trips, **not** the counted rows.
 6. Confirm route mapping from public API domain, JWT/session trust and
    cross-origin attack controls, and run an owner-approved first live sale
    followed by charge/reconciliation/readback. Emergency freeze remains
@@ -85,6 +89,70 @@ PR #3732 reserves Step3 0212 (hourly counters) and 0213 (phase2h R2 ref-only). C
   acceptance flags must be maintained; never bypass them.
 - Promote protected canary in stages while observing account quota,
   paywall auth, signing, P0B backlog and ingestion health.
+
+## Four-PR protected coordination (current order, all still DRAFT)
+
+1. PR #3736: monthly Paid provider GraphQL + Billing Read authentication and
+   account-wide included allowance headroom; its offline CI is not provider proof.
+   The protected old Stage A CI was still failing on old 140k/day regression
+   assumptions. Do not force or bypass its checks.
+2. PR #3732: existing AES-256-GCM R2 PUT/GET recovery checkpoint,
+   genuine production-vs-shadow D1 IDs, signed manifest, staged
+   0204 -> 0211 -> 0212 (hourly census) -> 0213 (Phase2H pointer).
+   Verify legacy/new Worker interoperability, archive parity and retention
+   BEFORE any production DDL. PR #3726 separately owns staged 0214.
+3. PR #3735: protected COMMERCIAL 0215 and 0216 (not Step3's 0212/13)
+   only after the above migrations actually pass. Execute remote schema
+   readback with `GEOMACRO_COMMERCIAL_READBACK_TARGET=shadow` then
+   `production`, `GEOMACRO_COMMERCIAL_READBACK_APPROVED=READ_ONLY_SCHEMA_PROOF`
+   and required approved Cloudflare credentials:
+   `node scripts/ops/readback-commercial-d1-schema.mjs`.
+   This is READ-ONLY and outputs NOT_YET_VERIFIED until real provider
+   results prove the exact schema/indexes. A PASS doesn't prove actual money.
+4. PR #3730: at 0% dark, then 1/5/25/50/100, only after exact Worker SHA,
+   HMAC/R2 and physical B2 parity, Paid quota telemetry and fail-closed
+   signing/credit/ingestion baselines. Keep `config/d1-hotspot-v2-canary.hold`
+   until release policy explicitly permits promotion and rollback works.
+
+## PayPal verified live settlement bridge
+
+- The original captured-order return handler remains session-authorized.
+  New `PAYMENT.CAPTURE.COMPLETED` webhook requires PayPal's **real**
+  verification API and independent Orders v2 GET for the exact bound
+  merchant/order/intent/amount/capture ID, then the existing HMAC-attested
+  `customer_payment_receipts` + immutable grant + funding ledger
+  transaction. It does **not** call PayPal's charge/capture endpoint.
+- The same webhook endpoint continues handling refunds/reversals even
+  while new checkout is frozen. Duplicate capture IDs cannot mint a
+  second receipt or credits.
+- Public Store remains gated until real PayPal webhook registration
+  GET proves the exact endpoint & subscription event set **and** the
+  protected D1 worker reads back one actual live PayPal-funded and
+  metered Ed25519-valid Hot50 pilot delivery. An owner can run the
+  initial authorized live pilot using existing session-protected payment
+  endpoint only after independent real-funds prerequisites. Local
+  HMAC fixtures never satisfy the public Store release.
+- The checkout success screen reveals the full plaintext `gm_live_`
+  key only in memory; automatic redirect cannot preserve that secret
+  across tabs/pages without exposing or storing it. The customer
+  may copy it, then open `/dashboard`. Never put it in a URL or
+  browser localStorage.
+
+## Live evidence semantics
+
+The existing `progressive_risk_gate_cell_state` and `gro_evidence`
+source tables are now inspected on a paid snapshot MISS. They are
+metadata/verified-GRO candidates and do not automatically prove
+commercial rights or physical B2 hashes. If any of the 150 required
+country/category cells lacks a qualified, fresh (72h) signed object,
+`GET /v1/risk/hot50` returns HTTP 503
+`INSUFFICIENT_EVIDENCE`, with **0 credits charged**. Category 3
+`trade_minerals_supplychain` requires valid independent
+`trade`, `critical_minerals` and `supply_chain` subdomain
+evidence, never a renamed `rare_earth` row.
+No production qualified snapshot publisher has been independently
+verified in this PR; real-evidence-to-signed-hot-view deployment
+remains a blocker.
 
 ## Test matrix
 
