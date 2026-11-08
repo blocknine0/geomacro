@@ -138,7 +138,7 @@ export class QuotaBudgetDO {
     else record.normal_reserved[meter]+=body.units;
     await txn.put(monthlyKey(cycle),record);
     return Response.json({ok:true,admitted:true,cycle,meter,lane:body.lane,
-      emergency_remaining:Math.max(0,COST_METERS[meter].emergency-
+      emergency_remaining:Math.max(0,COST_METERS[meter as keyof typeof COST_METERS].emergency-
         record.emergency_reserved[meter]),
       additional_paid_overage_authorized:false,
       account_wide_invoice_hard_cap:false});
