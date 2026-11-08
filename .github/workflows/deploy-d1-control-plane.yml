@@ -25,6 +25,11 @@ on:
       - "scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs"
       - "scripts/lib/phase2h-raw-original-records.mjs"
       - "workers/control-plane/src/phase2h-private-raw-news.mjs"
+      - "workers/control-plane/src/phase2h-raw-object-refs.mjs"
+      - "workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql"
+      - "scripts/tests/phase2h-r2-reference-cutover.test.mjs"
+      - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
+      - "scripts/tests/d1-publisher-shadow-billable.test.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
       - "workers/control-plane/migrations/0036_phase2h_72h_retention_index.sql"
       - "workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql"
@@ -289,7 +294,7 @@ jobs:
         with:
           node-version: "24"
       - name: Test complete Hot50 D1 census, fail-closed certification and parity cursors
-        run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/phase2h-archive-counter-census.test.mjs
+        run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/phase2h-archive-counter-census.test.mjs scripts/tests/phase2h-r2-reference-cutover.test.mjs scripts/tests/d1-publisher-shadow-billable.test.mjs
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |
