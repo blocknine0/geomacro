@@ -216,6 +216,33 @@ export async function fetchDirectDerivedNews(
 }
 
 /**
+ * Zero-D1 free Website Intelligence journal. The canonical 60-second D1
+ * endpoint is NOT polled by every browser/SSR instance during quota HOLD.
+ * Independently validated immutable static + R2 edge feeds are combined;
+ * one failing source cannot erase another category. Nothing is scored,
+ * re-dated, promoted to signed GRO or made commercially eligible.
+ */
+export async function fetchZeroD1PublicDerivedNews(
+ fetchImpl:typeof fetch=fetch,now=Date.now(),
+):Promise<StatelessIntelligenceSignal[]>{
+ const [archive,edge]=await Promise.allSettled([
+  fetchDirectDerivedNews(fetchImpl,now),
+  fetchEdgeLatestDerivedNews(fetchImpl,now),
+ ]);
+ if(archive.status!=="fulfilled"&&edge.status!=="fulfilled")
+  throw Error("DERIVED_NEWS_BOTH_ZERO_D1_PUBLIC_SOURCES_UNAVAILABLE");
+ const merged=new Map<string,StatelessIntelligenceSignal>();
+ // The verified permanent archive wins an identity collision; never
+ // replace its immutable event text with a lagging edge mirror.
+ if(edge.status==="fulfilled")
+  for(const x of edge.value)if(safeSignal(x,now))merged.set(x.id,x);
+ if(archive.status==="fulfilled")
+  for(const x of archive.value)if(safeSignal(x,now))merged.set(x.id,x);
+ return [...merged.values()].sort((a,b)=>
+  b.published_at.localeCompare(a.published_at)||a.id.localeCompare(b.id));
+}
+
+/**
  * Read the append-only public archive served by Cloudflare Static Assets.
  * These reads never query D1. Every month/category is an independent immutable
  * shard so one file can stay well below the static-asset size limit.
