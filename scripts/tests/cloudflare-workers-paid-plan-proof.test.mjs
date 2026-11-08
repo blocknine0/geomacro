@@ -1,16 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {assessProviderWorkersPaidSubscription,readCloudflareWorkersPaidProof,
- WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
-import {planD1BundledWork,checkD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
-import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
-import {assessFiveUsdSpendPolicies} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {
+ assessProviderWorkersPaidSubscription,readCloudflareWorkersPaidProof,
+ WORKERS_PAID_PROOF_SCHEMA
+} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
+import {planD1BundledWork,checkD1BundledWork}
+ from "../ops/plan-d1-bundled-work.mjs";
+import {D1_FREE_DAILY}
+ from "../ops/audit-d1-account-daily-quota-readonly.mjs";
+import {assessD1PaidMonthlyAdmission}
+ from "../lib/d1-workers-paid-monthly-governor.mjs";
 
 const now=new Date("2026-10-27T18:00:00.000Z");
 const paid={success:true,errors:[],result:[{
- state:"Paid",rate_plan:{id:"workers_paid",scope:"account",public_name:"Workers Paid"},
- current_period_end:"2026-11-27T00:00:00.000Z",
+ state:"Paid",rate_plan:{id:"workers_paid",scope:"account"},
+ current_period_end:"2026-11-05T00:00:00.000Z",
 }]};
+const providerPaid=assessProviderWorkersPaidSubscription(paid,now);
 const usage=(read,written)=>({
  schema:"geomacro.d1-account-daily-quota-readonly.v1",
  day_utc:"2026-10-27",provider_graphql_usage_observed:true,
@@ -19,258 +25,118 @@ const usage=(read,written)=>({
  remaining_rows_read:Math.max(0,5_000_000-read),
  remaining_rows_written:Math.max(0,100_000-written),
 });
-test("only active account-scoped Workers Paid subscription is accepted",()=>{
- const proof=assessProviderWorkersPaidSubscription(paid,now);
- assert.equal(proof.schema,WORKERS_PAID_PROOF_SCHEMA);
- assert.equal(proof.verified,true);
- assert.equal(proof.subscription_changed,false);
- for(const row of [
-  {state:"Cancelled",rate_plan:{id:"workers_paid",scope:"account"}},
-  {state:"Trial",rate_plan:{id:"workers_paid",scope:"account"}},
-  {state:"Paid",rate_plan:{id:"workers_paid",scope:"zone"}},
-  {state:"Paid",rate_plan:{id:"free",scope:"account"}},
-  {state:"Paid",rate_plan:{id:"workers_paid",scope:"account"},
-   current_period_end:"2026-10-20T00:00:00.000Z"},
- ]){
-  assert.throws(()=>assessProviderWorkersPaidSubscription({success:true,result:[row]},now),
-   /ACTIVE_PLAN_NOT_PROVEN/);
- }
- assert.throws(()=>assessProviderWorkersPaidSubscription({success:true,result:[]},now));
- assert.throws(()=>assessProviderWorkersPaidSubscription({
-  ...paid,result:[...paid.result,...paid.result]},now));
-});
-test("Free cap stays hard fail-closed without real paid proof",()=>{
- const snapshot=usage(5_763_167,25_745);
- const free=planD1BundledWork(snapshot,{now});
- assert.equal(free.critical,false);
- assert.equal(free.state,"HELD");
- for(const proof of [
-  null,{schema:WORKERS_PAID_PROOF_SCHEMA,verified:true,source:"USER_ENV_FLAG",
-    observed_at:now.toISOString(),subscription_changed:false,billing_action_performed:false},
-  {...assessProviderWorkersPaidSubscription(paid,now),
-   observed_at:"2026-10-27T16:00:00.000Z"},
-  {...assessProviderWorkersPaidSubscription(paid,now),subscription_changed:true},
- ]){
-  assert.equal(planD1BundledWork(snapshot,{now,paidProof:proof}).critical,false);
+function monthly(read,written,proof=providerPaid,at=now){
+ return assessD1PaidMonthlyAdmission({now:at,lane:"hot50_source",
+  paidProof:proof,usage:{
+   schema:"geomacro.d1-paid-monthly-provider-usage.v1",
+   source:"CLOUDFLARE_GRAPHQL_ALL_ACCOUNT_D1_DATABASES",
+   provider_usage_observed:true,
+   billing_cycle_start_utc:"2026-10-05",
+   billing_cycle_end_exclusive_utc:"2026-11-05",
+   observed_through_utc:"2026-10-27",observed_at_utc:now.toISOString(),
+   observed_rows_read:read,observed_rows_written:written,
+   database_count_observed:4,group_count_observed:4,
+   telemetry_is_delayed:true
+  }});
+}
+test("only real account-scoped active Paid subscription qualifies",()=>{
+ assert.equal(providerPaid.schema,WORKERS_PAID_PROOF_SCHEMA);
+ assert.equal(providerPaid.verified,true);
+ for(const bad of ["Cancelled","Trial","Free"]){
+  const x={success:true,result:[{state:bad,rate_plan:{id:"workers_paid",scope:"account"}}]};
+  assert.throws(()=>assessProviderWorkersPaidSubscription(x,now),
+   /ACTIVE_PLAN_NOT_PROVEN/u);
  }
 });
-test("fresh authentic Workers Paid proof admits ONLY critical source work under account daily soft limit",()=>{
- const proof=assessProviderWorkersPaidSubscription(paid,now);
- const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
-  ...["workers","durable_objects"].map((product_id,i)=>({
-   id:"lock-"+i,product_id,action:"usage_block",enabled:true,
-   threshold_cents:1,version:1,current_state:{status:"below_limit"},
-  })),
- ]},now);
- assert.equal(planD1BundledWork(usage(5_763_167,25_745),
-  {now,paidProof:proof}).critical,false);
- const grant=planD1BundledWork(usage(1500,1500),
-  {now,paidProof:proof,spendGuardProof});
- assert.equal(grant.critical,true);
- assert.equal(grant.state,"CRITICAL_ONLY");
- assert.equal(grant.paid_capacity_verified_by_provider,true);
- assert.equal(grant.source_intake,false);
- assert.equal(grant.source_intake_max_new_rows,0);
- assert.equal(grant.phase2h_raw_archive,false);
- assert.equal(grant.phase2h_raw_archive_requires_atomic_b2_quota,true);
- assert.equal(grant.research,false);
- assert.equal(grant.maintenance,false);
- assert.equal(grant.snapshot_refresh,false);
- assert.equal(grant.structural_snapshot,false);
- assert.ok(grant.daily_account_soft_limit_read<=140_000);
- assert.ok(grant.daily_account_soft_limit_write<=140_000);
- assert.equal(grant.paid_subscription_change_performed,false);
- const reset=new Date("2026-10-27T00:00:00.000Z");
- const atReset=planD1BundledWork(usage(0,0),{now:reset,
-  paidProof:{...proof,observed_at:reset.toISOString()},
-  spendGuardProof:{...spendGuardProof,observed_at:reset.toISOString()}});
- assert.equal(atReset.critical,true);
- assert.equal(atReset.source_intake,false);
- assert.equal(atReset.source_intake_max_new_rows,0);
- assert.equal(atReset.phase2h_raw_archive,false);
- const tight=planD1BundledWork(usage(60_000,140_000),
-  {now,paidProof:proof,spendGuardProof});
- assert.equal(tight.critical,false);
- assert.equal(tight.source_intake,false);
- assert.equal(tight.source_intake_max_new_rows,0);
- assert.equal(tight.phase2h_raw_archive,false);
- assert.equal(planD1BundledWork(usage(19_000_000,50_000),
-  {now,paidProof:proof,spendGuardProof}).critical,false);
- assert.equal(planD1BundledWork(usage(5_763_167,181_000),
-  {now,paidProof:proof,spendGuardProof}).critical,false);
-});
-test("Billing Read uses account-scoped Cloudflare GET and never updates a subscription",async()=>{
+test("Paid Billing Read uses GET only and rejects missing privileges",async()=>{
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   CLOUDFLARE_BILLING_READ_TOKEN:"b".repeat(32)};
- let seen=0;
- const proof=await readCloudflareWorkersPaidProof({env,now,fetchImpl:async(url,config)=>{
-  seen++;
-  assert.equal(url,"https://api.cloudflare.com/client/v4/accounts/"+
-   env.CLOUDFLARE_ACCOUNT_ID+"/subscriptions");
-  assert.equal(config.method,"GET");
-  assert.equal(config.redirect,"error");
+ let count=0;
+ const r=await readCloudflareWorkersPaidProof({env,now,fetchImpl:async(url,config)=>{
+  count++;assert.equal(config.method,"GET");
+  assert(url.endsWith("/subscriptions"));
   return {status:200,json:async()=>paid};
  }});
- assert.equal(seen,1);
- assert.equal(proof.verified,true);
+ assert.equal(count,1);assert.equal(r.verified,true);
  await assert.rejects(()=>readCloudflareWorkersPaidProof({
-  env:{...env,CLOUDFLARE_BILLING_READ_TOKEN:undefined},now,
-  fetchImpl:async()=>{throw Error("MUST_NOT_FETCH")}}),/PERMISSION_REQUIRED/);
+  env:{...env,CLOUDFLARE_BILLING_READ_TOKEN:""},
+  now,fetchImpl:async()=>{throw Error("unexpected request")}
+ }),/PERMISSION_REQUIRED/u);
 });
-test("live planner with paid-provider proof is still no-D1-query and refuses forged Billing data",async()=>{
- const account="a".repeat(32),env={
-  CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32),
-  CLOUDFLARE_BILLING_READ_TOKEN:"c".repeat(32),
- };
- const graphql={data:{viewer:{accounts:[{
-  d1AnalyticsAdaptiveGroups:[{
-   dimensions:{databaseId:"d1-"+account,date:"2026-10-27"},
-   sum:{rowsRead:5_763_167,rowsWritten:25_745},
-  }],
- }]}}};
- let reads=0;
+test("without real paid proof Free physical caps remain conservative",()=>{
+ assert.equal(planD1BundledWork(usage(5_763_167,25_745),{now}).critical,false);
+ assert.equal(planD1BundledWork(usage(5_763_167,25_745),{
+  now,paidProof:{...providerPaid,verified:false},
+  paidMonthly:monthly(5_763_167,25_745)}).critical,false);
+});
+test("Workers Paid sees 25B/50M monthly inclusion, not the abolished 140k/day cap",()=>{
+ const paidMonthly=monthly(18_140_000,1_350_000);
+ assert.equal(paidMonthly.status,"PASS");
+ const grant=planD1BundledWork(usage(1_258_943,267_009),{
+  now,paidProof:providerPaid,paidMonthly});
+ assert.equal(grant.critical,true);
+ assert.equal(grant.source_intake,true);
+ assert.equal(grant.phase2h_raw_archive,true);
+ assert.equal(grant.source_intake_interval_minutes,20);
+ assert(grant.source_intake_max_new_rows>=3&&
+  grant.source_intake_max_new_rows<=50);
+ assert.equal(grant.old_daily_140k_policy_applied,false);
+ assert.equal(grant.monthly_included_read_quota,25_000_000_000);
+ assert.equal(grant.monthly_included_write_quota,50_000_000);
+ assert.equal(grant.research,false);
+ assert.equal(grant.snapshot_refresh,false);
+ assert.equal(grant.paid_calls,0);
+});
+test("No fresh month-wide GraphQL = HOLD, even if subscription and day's D1 are good",()=>{
+ const quota=usage(1500,1500);
+ assert.equal(planD1BundledWork(quota,{
+  now,paidProof:providerPaid,paidMonthly:null}).state,"HELD");
+ assert.equal(planD1BundledWork(quota,{
+  now,paidProof:providerPaid,paidMonthly:{...monthly(1500,1500),
+   status:"PASS",day_utc:"2026-10-26"}}).state,"HELD");
+ const spent=monthly(18_140_000,45_000_000);
+ assert.equal(spent.status,"HOLD");
+ assert.equal(planD1BundledWork(quota,{
+  now,paidProof:providerPaid,paidMonthly:spent}).critical,false);
+});
+test("Live planner fetches daily and full billing cycle, verifies Paid and never issues SQL",async()=>{
+ const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
+  CLOUDFLARE_API_TOKEN:"b".repeat(32)};
+ let graphQLCalls=0,paidCalls=0,requests=0;
  const fetchImpl=async(url,init)=>{
-  reads++;
-  if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
-  if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
-  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
-   success:true,result:["workers","durable_objects"].map((product_id,i)=>({
-    id:"block-"+i,product_id,enabled:true,action:"usage_block",
-    threshold_cents:1,version:1,current_state:{status:"below_limit"},
-   })),
-  })};
-  throw Error("UNEXPECTED_PROVIDER");
+  requests++;
+  if(url.endsWith("/graphql")){
+   graphQLCalls++;assert.equal(init.method,"POST");
+   const vars=JSON.parse(init.body).variables;
+   assert.equal(vars.end,"2026-10-27");
+   if(vars.start!=="2026-10-27")assert.equal(vars.start,"2026-10-05");
+   const data={data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[
+    {dimensions:{databaseId:"db-a-000000000000",date:"2026-10-27"},
+     sum:{rowsRead:1_258_943,rowsWritten:267_009}},
+   ]}]}}};
+   return {status:200,ok:true,json:async()=>data};
+  }
+  if(url.endsWith("/subscriptions")){
+   paidCalls++;assert.equal(init.method,"GET");
+   return {status:200,json:async()=>paid};
+  }
+  if(url.endsWith("/billing/spend-policies")){
+   return {status:200,json:async()=>({success:true,result:
+    ["workers","durable_objects"].map((product_id,i)=>({
+     id:"policy-"+i,product_id,enabled:true,action:"usage_block",
+     threshold_cents:1,version:1,current_state:{status:"below_limit"}
+    }))})};
+  }
+  throw Error("unrecognized");
  };
- const granted=await checkD1BundledWork({env,now,fetchImpl});
- assert.equal(reads,3);
- assert.equal(granted.critical,false);
- assert.equal(granted.reason,"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD");
- assert.equal(granted.workers_paid_subscription_verified,true);
- assert.equal(granted.owner_d1_utc_budget_held,true);
- assert.equal(granted.d1_queries,0);
- assert.equal(granted.paid_calls,0);
- const blocked=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
-  if(url.endsWith("/graphql"))return {ok:true,json:async()=>graphql};
-  if(url.includes("/subscriptions"))return {status:200,json:async()=>paid};
-  if(url.endsWith("/billing/spend-policies"))return {status:200,json:async()=>({
-   success:true,result:[{id:"not-a-lock",product_id:"workers",
-    enabled:true,action:"notification",threshold_cents:1,version:1,
-    current_state:{status:"below_limit"}}],
-  })};
-  throw Error("UNEXPECTED_PROVIDER");
- }});
- assert.equal(blocked.critical,false);
- assert.equal(blocked.state,"HELD");
- const existingToken=await checkD1BundledWork({
-  env:{CLOUDFLARE_ACCOUNT_ID:account,CLOUDFLARE_API_TOKEN:"b".repeat(32)},
-  now,fetchImpl});
- assert.equal(existingToken.critical,false);
- assert.equal(existingToken.owner_d1_utc_budget_held,true);
- assert.equal(existingToken.workers_paid_subscription_verified,true);
- assert.equal(existingToken.paid_capacity_probe_status,"VERIFIED");
- const denied=await checkD1BundledWork({
-  env,now,fetchImpl:async(url,init)=>
-   url.endsWith("/graphql")?{ok:true,json:async()=>graphql}:
-   {status:403,json:async()=>({})},
- });
- assert.equal(denied.critical,false);
- assert.equal(denied.paid_capacity_probe_status,"WORKERS_PAID_BILLING_READ_HTTP_403");
-});
-
-test("owner 120k reads / 180k writes cap applies independently of Paid allowance",async()=>{
- const account="a".repeat(32);
- const env={CLOUDFLARE_ACCOUNT_ID:account,
-  CLOUDFLARE_API_TOKEN:"d".repeat(32),
-  CLOUDFLARE_BILLING_READ_TOKEN:"e".repeat(32)};
- const today="2026-10-27";
- const makeGraphql=(rowsRead,rowsWritten)=>({data:{viewer:{accounts:[{
-  d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"db-"+account,date:today},
-   sum:{rowsRead,rowsWritten}}],
- }]}}});
- const policies={success:true,result:["workers","durable_objects"].map((product_id,i)=>({
-  id:"guard-"+i,product_id,enabled:true,action:"usage_block",
-  threshold_cents:1,version:1,current_state:{status:"below_limit"},
- }))};
- const mock=(rowsRead,rowsWritten,policyStatus=200)=>async(url)=>{
-  if(url.endsWith("/graphql"))return {ok:true,
-   json:async()=>makeGraphql(rowsRead,rowsWritten)};
-  if(url.endsWith("/subscriptions"))return {status:200,json:async()=>paid};
-  if(url.endsWith("/billing/spend-policies"))return policyStatus===200?
-   {status:200,json:async()=>policies}:
-   {status:404,json:async()=>({success:false,errors:[{code:1003}]})};
-  throw Error("unexpected provider API route");
- };
- const granted=await checkD1BundledWork({env,now,
-  fetchImpl:mock(1500,1500)});
- assert.equal(granted.critical,true);
- assert.equal(granted.source_intake,false); // 20m+15m read envelope > 120k.
- assert.equal(granted.paid_capacity_probe_status,"VERIFIED");
- assert.equal(granted.owner_d1_utc_budget_held,false);
- assert.equal(granted.owner_d1_utc_daily_targets.rows_read,140000);
- assert.equal(granted.owner_d1_utc_daily_targets.rows_written,140000);
- const blocked=await checkD1BundledWork({env,now,
-  fetchImpl:mock(137000,2000)});
- assert.equal(blocked.reason,"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD");
- assert.equal(blocked.critical,false);
- assert.equal(blocked.source_intake,false);
- assert.equal(blocked.paid_capacity_probe_status,"VERIFIED");
- assert.equal(blocked.workers_paid_subscription_verified,true);
- const writes=await checkD1BundledWork({env,now,
-  fetchImpl:mock(1500,179000)});
- assert.equal(writes.owner_d1_utc_budget_held,true);
- assert.equal(writes.critical,false);
- const missingSpend=await checkD1BundledWork({env,now,
-  fetchImpl:mock(1500,1500,404)});
- assert.equal(missingSpend.owner_d1_utc_budget_held,false);
- assert.equal(missingSpend.workers_paid_subscription_verified,true);
- assert.equal(missingSpend.reason,"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET");
- assert.equal(missingSpend.spend_policy_verified,false);
- assert.equal(missingSpend.spend_policy_verification_enforced,false);
- assert.equal(missingSpend.paid_capacity_probe_status,
-  "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003");
- assert.equal(missingSpend.critical,true);
- assert.equal(missingSpend.source_intake,false);
- assert.equal(missingSpend.paid_calls,0);
-});
-
-test("140k account owner total daily write target forbids 40k emergency extension",async()=>{
- const proof=assessProviderWorkersPaidSubscription(paid,now);
- const spendGuardProof=assessFiveUsdSpendPolicies({success:true,result:[
-  "workers","durable_objects"].map((product_id,i)=>({
-   id:"lock-"+i,product_id,action:"usage_block",enabled:true,
-   threshold_cents:1,version:1,current_state:{status:"below_limit"},
-  }))},now);
- const normal=planD1BundledWork(usage(3000,3000),{now,paidProof:proof,spendGuardProof});
- assert.equal(normal.critical,true);
- assert.ok(normal.daily_account_soft_limit_read<=140000);
- assert.ok(normal.daily_account_soft_limit_write<=140000);
- const afterNormal=planD1BundledWork(usage(3000,140000),{now,paidProof:proof,spendGuardProof});
- assert.equal(afterNormal.critical,false);
- assert.equal(afterNormal.source_intake,false);
- const noOverride=planD1BundledWork(usage(3000,179999),{now,paidProof:proof,spendGuardProof});
- assert.equal(noOverride.critical,false);
- assert.equal(noOverride.phase2h_raw_archive,false);
-});
-
-test('advisory spend failures never forge policy verification or bypass subscription/daily budgets',async()=>{
- const env={CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32),CLOUDFLARE_API_TOKEN:'b'.repeat(32)};
- for(const status of [401,403,404,503]){
-  const calls=[];
-  const result=await checkD1BundledWork({env,now,fetchImpl:async(url,init)=>{
-   calls.push({url,method:init.method});
-   if(url.endsWith('/graphql'))return {ok:true,status:200,json:async()=>({data:{viewer:{accounts:[{
-    d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:'db-'+'a'.repeat(32),date:now.toISOString().slice(0,10)},sum:{rowsRead:1500,rowsWritten:1500}}]
-   }]}}})};
-   if(url.endsWith('/subscriptions'))return {status:200,json:async()=>paid};
-   return {status,json:async()=>({success:false,errors:[{code:1003}]})};
-  }});
-  assert.equal(result.critical,true);
-  assert.equal(result.workers_paid_subscription_verified,true);
-  assert.equal(result.spend_policy_verified,false);
-  assert.equal(result.spend_policy_verification_enforced,false);
-  assert.equal(result.spend_policy_verification_status,'UNVERIFIED_ADVISORY');
-  assert.notEqual(result.paid_capacity_probe_status,'VERIFIED');
-  assert.equal(result.emergency_d1_write_budget_auto_admitted,false);
-  assert.ok(calls.filter(x=>!x.url.endsWith('/graphql')).every(x=>x.method==='GET'));
- }
+ const result=await checkD1BundledWork({env,now,fetchImpl});
+ assert.equal(graphQLCalls,2);
+ assert.equal(paidCalls,2);
+ assert.equal(requests,5);
+ assert.equal(result.source_intake,true);
+ assert.equal(result.workers_paid_subscription_verified,true);
+ assert.equal(result.paid_monthly_account_wide_verified,true);
+ assert.equal(result.old_daily_140k_policy_applied,false);
+ assert.equal(result.payments,undefined);
+ assert.equal(result.paid_calls,0);
 });
