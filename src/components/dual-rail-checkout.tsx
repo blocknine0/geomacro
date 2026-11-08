@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GEOMACRO_USDC_NATIVE_RAILS } from "@/lib/usdc-native-rail-identities";
 import { CreditCard, ShieldCheck, Wallet } from "lucide-react";
 
@@ -14,10 +14,21 @@ export type CheckoutSelection = {
  * Inline checkout preview on the canonical /pricing page.
  * No PayPal order, payable crypto quote, QR or funds/credits can be issued.
  */
-export function LockedDualRailCheckout({ selection,paypalLive=false }: { selection: CheckoutSelection;paypalLive?:boolean }) {
+export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelection }) {
   const [rail, setRail] = useState<"paypal" | "usdc">("paypal");
   const [network, setNetwork] = useState<"base" | "polygon">("base");
   const chain = GEOMACRO_USDC_NATIVE_RAILS[network];
+  const [paypalLive,setPayPalLive]=useState(false);
+  useEffect(()=>{
+   let active=true;
+   void fetch("/api/v1/payments/paypal",{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(x=>{if(active)setPayPalLive(x?.active_checkout_enabled===true &&
+      x?.merchant_credentials_verified===true&&
+      x?.webhook_registration_verified===true&&x?.environment==="live");})
+    .catch(()=>{if(active)setPayPalLive(false);});
+   return()=>{active=false;};
+  },[]);
   const [starting,setStarting]=useState(false);
   const [paymentError,setPaymentError]=useState("");
   async function startLivePayPal(){
