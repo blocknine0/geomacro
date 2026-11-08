@@ -37,10 +37,10 @@ test("oversized existing table never permits CREATE INDEX or full-queue seed",()
  const good=checkBoundedMigrationSizeProbe(both,make(row));
  assert.equal(good.status,"ORIGINAL_TABLES_BOUNDED");
  assert.equal(good.proven_table_count,4);
- assert.equal(good.account_wide_atomic_140k_guaranteed,false);
+ assert.equal(good.account_wide_atomic_paid_cap_guaranteed,false);
  for(const alias of Object.keys(row))
   assert.throws(()=>checkBoundedMigrationSizeProbe(both,make({...row,[alias]:1})),
-   /MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_140K/);
+   /MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_STAGED_BUDGET/);
 });
 test("reject malicious or incomplete provider proof and wrong billed-row metadata",()=>{
  const row={news_over:0,checks_over:0,website_over:0,spool_over:0};
