@@ -22,6 +22,8 @@ import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
 import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
+import {admitSignedStep3ShadowReceipt}
+ from "../lib/d1-step3-receipt-admission.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
@@ -339,6 +341,10 @@ export async function applyStep3Migrations({env=process.env}={}){
  if(!existsSync(HOLD_FILE))fail("RELEASE_HOLD_FILE_MISSING");
  try{
   approved(env);
+  // Real signed Stage 1 receipt: fail closed before all provider operations.
+  state.stage1_admission=admitSignedStep3ShadowReceipt({
+   env,currentHead:getHash(),manifests
+  });
   save(state);
   await refreshedGate(state,"BEFORE_SHADOW_BILLABLE_WORK");
   const shadow=await runShadowBillableProbe({env});
@@ -425,6 +431,14 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   id:x.id,sql_sha256:x.sql_sha256
  }));
  report.schema="geomacro.step3.shadow-rehearsal.v1";
+ report.proof_scope="REAL_PROVIDER_SHADOW";
+ report.reviewed_source_sha=getHash();
+ report.migration_sha256=sha256MigrationSet(manifests);
+ report.github_repository=process.env.GITHUB_REPOSITORY??null;
+ report.github_ref=process.env.GITHUB_REF??null;
+ report.github_run_id=process.env.GITHUB_RUN_ID??null;
+ report.shadow_database_uuid_sha256=createHash("sha256").update(
+  String(env.GEOMACRO_D1_SHADOW_DATABASE_ID??"").toLowerCase()).digest("hex");
  report.status="NOT_YET_VERIFIED";
  report.code="STEP3_SHADOW_PROVIDER_REHEARSAL_NOT_STARTED";
  report.legacy_worker_rollback_verified=false;
