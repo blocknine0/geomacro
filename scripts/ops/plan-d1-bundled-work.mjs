@@ -306,6 +306,11 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
       source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
+      // Share only the existing paced 20-minute source slot, never the
+      // general research/signing/commerce lane. The actual writer separately
+      // requires a fresh real-provider 30% monthly reserve receipt.
+      paid_derived_news_source_lane:sourceIntake&&archive,
+      paid_derived_news_max_rows:sourceIntake&&archive?Math.min(30,rowsPerSlot):0,
       phase2h_raw_archive_max_rows_per_slot:300,
       phase2h_raw_archive_requires_atomic_b2_quota:true,
       historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
@@ -713,6 +718,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     }
     for(const key of ["source_intake_interval_minutes","source_intake_max_new_rows","registered_private_max_new_rows","historical_recovery_max_rows"])
       appendFileSync(process.env.GITHUB_OUTPUT,key+"="+String(result[key]??0)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_source_lane="+
+      String(result.paid_derived_news_source_lane===true)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_max_rows="+
+      String(result.paid_derived_news_max_rows??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
   }

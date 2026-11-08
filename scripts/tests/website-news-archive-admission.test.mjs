@@ -20,7 +20,7 @@ test("archive-only resumes after trusted deployed archive during D1 quota HELD",
     "github.event.workflow_run.head_branch == 'main'",
     "github.repository == 'blocknine0/geomacro'",
     "github.ref == 'refs/heads/main'",
-    'GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"',
+    "GEOMACRO_DERIVED_ARCHIVE_ONLY: ${{ steps.paid-monthly-derived.outputs.admitted == 'true' && '0' || '1' }}",
     "bun scripts/ops/publish-website-derived-news.ts",
     "node scripts/ops/publish-permanent-derived-news-archive.mjs",
   ])assert.ok(block.includes(required),`Missing restricted archive prerequisite: ${required}`);
@@ -30,10 +30,17 @@ test("quota-held archive may read at most one complete public journal bundle und
  assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
  assert.ok(block.includes("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
  assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
- const onlyCollector=block.split('      - name: Collect derived originals and archive candidate only (zero D1)')[1]?.split('      - name: Publish append-only permanent Finds archive')[0]??'';
- assert.ok(!onlyCollector.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
+ const onlyCollector=block.split('      - name: Collect once and publish only bounded Paid derived D1 rows when physically admitted')[1]?.split('      - name: Publish append-only permanent Finds archive')[0]??'';
+ assert.ok(onlyCollector.includes("GEOMACRO_COMMERCE_LEDGER_TOKEN"));
+ assert.ok(onlyCollector.includes("GEOMACRO_PAID_DERIVED_ONLY:"));
+ assert.ok(onlyCollector.includes("GEOMACRO_SOURCE_INTAKE_ADMISSION:"));
+ assert.ok(block.includes('echo "admitted=false" >> "$GITHUB_OUTPUT"'));
+ const src=readFileSync("scripts/ops/publish-website-derived-news.ts","utf8");
+ assert.ok(src.includes('const ARCHIVE_ONLY = process.env.GEOMACRO_DERIVED_ARCHIVE_ONLY === "1";'));
+ assert.ok(src.includes("if (ARCHIVE_ONLY) {"));
+ assert.ok(src.includes("d1_reads:0,d1_writes:0,b2_requests:0,payments:0"));
 });
-test("quota-held archive remains D1-write-free and cannot run on untrusted pushes",()=>{
+test("monthly-held archive remains D1-write-free and cannot run on untrusted pushes",()=>{
   // Enforce denial before any publisher attempts; never bypass D1 governor
   // and never begin a parallel publisher during ordinary main pushes.
   const condition=block.split("    if: >-")[1]?.split("\n    runs-on:")[0]??"";
@@ -47,6 +54,8 @@ test("quota-held archive remains D1-write-free and cannot run on untrusted pushe
   assert.ok(admitted.includes("github.event_name != 'push'"));
   assert.ok(condition.includes("needs.quota-admission.result == 'success'"));
   assert.ok(block.includes("GEOMACRO_DERIVED_ARCHIVE_ONLY"));
+  assert.ok(block.includes("node scripts/ops/check-d1-paid-monthly-headroom.mjs --check"));
+  assert.ok(block.includes("needs.quota-admission.outputs.paid_derived_news_source_lane == 'true'"));
   assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
 });
 test("admitted publisher still uses the identical canonical archive-to-D1 reconciliation path",()=>{

@@ -14,6 +14,8 @@ on:
       - "scripts/tests/website-news-canonical-reconciliation.test.mjs"
       - "scripts/tests/website-news-archive-admission.test.mjs"
       - "scripts/ops/publish-website-derived-news.ts"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/website-paid-derived-only-admission.test.mjs"
       - "src/lib/public-derived-news-client.ts"
       - "src/__tests__/public-derived-news-client.test.ts"
       - "scripts/tests/phase2g-canonical-origin-contract.test.mjs"
@@ -165,6 +167,8 @@ jobs:
           node --test scripts/ops/verify-hourly-public-archive-cohort.test.mjs
       - name: Test independent Paid Billing Read admission wiring offline
         run: node --test scripts/tests/website-billing-token-wiring.test.mjs
+      - name: Test bounded Paid-derived source admission and static-only failover
+        run: node --test scripts/tests/website-paid-derived-only-admission.test.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -234,6 +238,9 @@ jobs:
       research: ${{ steps.budget.outputs.research }}
       maintenance: ${{ steps.budget.outputs.maintenance }}
       snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}
+      source_intake: ${{ steps.budget.outputs.source_intake }}
+      paid_derived_news_source_lane: ${{ steps.budget.outputs.paid_derived_news_source_lane }}
+      paid_derived_news_max_rows: ${{ steps.budget.outputs.paid_derived_news_max_rows }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -257,6 +264,9 @@ jobs:
       group: geomacro-permanent-news-publication
       cancel-in-progress: false
     needs: quota-admission
+    # This same existing 20m collector is static-only when Paid monthly
+    # headroom or Worker policy is unavailable; it can publish at most 30
+    # noncommercial D1 derivatives only with independent Paid monthly PASS.
     # The existing 20m publisher; a successful production-archive deploy
     # can also wake archive-only collection while the protected D1 lane is HELD.
     # Never bypass the quota governor or run from an untrusted PR/branch.
@@ -291,9 +301,31 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Collect derived originals and archive candidate only (zero D1)
+      - name: Verify separate Paid 30% monthly quota before any optional derived D1 publication
+        id: paid-monthly-derived
+        if: needs.quota-admission.outputs.paid_derived_news_source_lane == 'true'
         env:
-          GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # A denied read-only proof is not a job failure: preserve the same
+          # source-only static archive and explicitly withhold D1 writes.
+          if node scripts/ops/check-d1-paid-monthly-headroom.mjs --check; then
+            echo "admitted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::PAID_DERIVED_D1_MONTHLY_HOLD_STATIC_ARCHIVE_ONLY"
+            echo "admitted=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Collect once and publish only bounded Paid derived D1 rows when physically admitted
+        env:
+          GEOMACRO_DERIVED_ARCHIVE_ONLY: ${{ steps.paid-monthly-derived.outputs.admitted == 'true' && '0' || '1' }}
+          GEOMACRO_PAID_DERIVED_ONLY: ${{ steps.paid-monthly-derived.outputs.admitted == 'true' && '1' || '0' }}
+          GEOMACRO_PAID_DERIVED_MAX_ROWS: ${{ needs.quota-admission.outputs.paid_derived_news_max_rows }}
+          GEOMACRO_SOURCE_INTAKE_ADMISSION: ${{ needs.quota-admission.outputs.source_intake }}
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: bun scripts/ops/publish-website-derived-news.ts
       - name: Publish append-only permanent Finds archive with optional governed journal catchup
         id: permanent-archive
