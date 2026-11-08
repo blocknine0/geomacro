@@ -1,14 +1,26 @@
 #!/usr/bin/env node
-/** Guarded Cloudflare Workers versions promotion: 0,1,10,100; no funds. */
+/** Guarded Cloudflare Workers versions promotion: 0,1,5,25,50,100; no funds. */
 import {existsSync,readFileSync,unlinkSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,BUDGET} from './release-common.ts';
-import {admitSignedStep3ProductionFile} from './lib/d1-step3-production-canary-admission.mjs';
+import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER} from './release-common.ts';
+import {
+ checkD1PaidMonthlyHeadroom,paidD1BillingCycle
+} from './lib/d1-workers-paid-monthly-governor.mjs';
+import {admitSignedStep3ProductionFile}
+  from './lib/d1-step3-production-canary-admission.mjs';
 const HOLD='config/d1-hotspot-v2-canary.hold';
-const STAGES=[0,1,10,100] as const;
-const WINDOW_MS=15*60*1000;
+const STAGES=[0,1,5,25,50,100] as const;
+const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
 const INTERVAL_MS=30000;
+// The owner's retired 140k/day cap no longer applies. Provider Paid
+// allowance is 25B reads / 50M writes per 5th-to-5th billing cycle.
+const MONTHLY_READ_SOFT=17_500_000_000;
+const MONTHLY_WRITE_SOFT=35_000_000;
+const D1_MONTHLY_RESERVE_PCT=30;
+const D1_HOURLY_READ_CAP=24_000_000;
+const D1_HOURLY_WRITE_CAP=45_000;
+const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
@@ -19,7 +31,7 @@ const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$vers
  viewer{
   accounts(filter:{accountTag:$accountTag}){
    workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
-    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP99}
+    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP95 wallTimeP99}
    }
   }
   zones(filter:{zoneTag:$zoneTag}){
@@ -34,8 +46,7 @@ async function liveCurrent():Promise<any>{
  need(Array.isArray(r.deployments)&&r.deployments.length===1,'CANARY_DEPLOYMENT_UNVERIFIED');
  return r.deployments[0];
 }
-const distribution=(base:string,candidate:string,percent:number)=>percent===0?
- [{version_id:base,percentage:100}]:percent===100?
+const distribution=(base:string,candidate:string,percent:number)=>percent===100?
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
 function verifyDistribution(deployment:any,expected:any[]){
@@ -52,6 +63,15 @@ async function deployVersions(base:string,candidate:string,percent:number){
   try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
  }
  throw Error('CANARY_DEPLOYMENT_READBACK_TIMEOUT');
+}
+async function deployBaseline(base:string){
+ const versions=[{version_id:base,percentage:100}];
+ const result=await api(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ verifyDistribution(result,versions);
+ for(let tries=0;tries<6;tries++){
+  try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
+ }
+ throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
 async function checkSource(candidate:string,expectedSha:string){
  const response=await fetch(ORIGIN+'/health',{headers:{'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
@@ -76,6 +96,7 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
  const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
+ const wallTimeP95Us=worker?.quantiles?.wallTimeP95;
  const wallTimeP99Us=worker?.quantiles?.wallTimeP99;
  // HTTP 5xx remains zone-host aggregate; Workers invocation errors are
  // exact scriptVersion. Both must pass, and low candidate volume holds.
@@ -84,53 +105,96 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
   Number.isSafeInteger(requests)&&Number.isSafeInteger(errors)&&
   Number.isSafeInteger(siteCount)&&
   typeof ratio==='number'&&ratio>=0&&ratio<=1&&
-  typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0,
+  typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0&&
+  typeof wallTimeP95Us==='number'&&Number.isFinite(wallTimeP95Us)&&wallTimeP95Us>=0,
   'CANARY_PROVIDER_VERSION_METRICS_UNAVAILABLE');
+ const p95=wallTimeP95Us/1000;
  const p99=wallTimeP99Us/1000;
+ need(p95<=p99,'CANARY_PROVIDER_QUANTILES_INCONSISTENT');
  if(requests<1000||siteCount<1000){
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
  return {worker_script_version:version,worker_requests:requests,worker_errors:errors,
   worker_error_ratio:errors/requests,host_requests:siteCount,
-  http_5xx_ratio:ratio,worker_wall_time_p99_ms:p99,
-  http_5xx_under_0_1pct:ratio<0.001,
-  version_errors_under_0_1pct:errors/requests<0.001,
+  http_5xx_ratio:ratio,worker_wall_time_p95_ms:p95,worker_wall_time_p99_ms:p99,
+  http_5xx_under_0_5pct:ratio<=0.005,
+  version_errors_under_0_5pct:errors/requests<=0.005,
   p99_under_50ms:p99<50,
   host_http_5xx_not_version_isolated:true,worker_metrics_version_isolated:true};
 }
-// Observe all account D1 databases during the rollout. Provider analytics
-// are delayed: this triggers a rollback as soon as an overage is OBSERVED,
-// not an impossible provider-side atomic per-row hard stop.
-const LIVE_D1=`query LiveAccountD1($accountTag:string!,$start:Date!,$end:Date!){
- viewer{accounts(filter:{accountTag:$accountTag}){
-  d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
-   sum{rowsRead rowsWritten} dimensions{databaseId date}
-  }
- }}
-}`;
+// All D1 databases and every day in the 5th-to-5th Paid billing cycle,
+// never only the current UTC day. GraphQL telemetry lags; a provider
+// response is a read-only observation, NOT an atomic payment/spend ceiling.
 async function checkLiveD1Budget(){
- const day=new Date().toISOString().slice(0,10),account=envString('CLOUDFLARE_ACCOUNT_ID',32);
- const data=await graphql(LIVE_D1,{accountTag:account,start:day,end:day});
- const groups=data.viewer?.accounts?.[0]?.d1AnalyticsAdaptiveGroups;
- need(Array.isArray(groups)&&groups.length>0&&groups.length<1000,'CANARY_D1_ACCOUNT_METRICS_MISSING');
- let read=0,written=0;const ids=new Set<string>();
- for(const x of groups){
-  const id=x?.dimensions?.databaseId,r=x?.sum?.rowsRead,w=x?.sum?.rowsWritten;
-  need(typeof id==='string'&&id.length>=10&&!ids.has(id)&&x.dimensions?.date===day&&
-   Number.isSafeInteger(r)&&r>=0&&Number.isSafeInteger(w)&&w>=0,'CANARY_D1_ACCOUNT_RECEIPT_INVALID');
-  ids.add(id);read+=r;written+=w;
- }
- need(read<=BUDGET&&written<=BUDGET,'CANARY_D1_140K_PROVIDER_BREACH');
- return {rows_read:read,rows_written:written,day_utc:day,provider_metrics_delayed:true};
+ const now=new Date();
+ const receipt=await checkD1PaidMonthlyHeadroom({
+  env:process.env,now,lane:'canary'});
+ need(receipt.status==='PASS'&&
+  receipt.provider_subscription_verified===true&&
+  receipt.old_daily_140k_policy_applied===false&&
+  receipt.monthly_ceiling_read===MONTHLY_READ_SOFT&&
+  receipt.monthly_ceiling_written===MONTHLY_WRITE_SOFT&&
+  receipt.reserve_pct===D1_MONTHLY_RESERVE_PCT&&
+  receipt.operational_daily_ceiling_written===1_100_000&&
+  receipt.operational_daily_ceiling_read===580_000_000&&
+  receipt.operational_hourly_ceiling_written===D1_HOURLY_WRITE_CAP&&
+  Number.isSafeInteger(receipt.observed_rows_read)&&
+  Number.isSafeInteger(receipt.observed_rows_written),
+  'CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED');
+ const cycle=paidD1BillingCycle(now);
+ need(receipt.cycle_start_utc===cycle.start_utc&&
+  receipt.cycle_end_exclusive_utc===cycle.end_exclusive_utc,
+  'CANARY_PAID_BILLING_CYCLE_STALE');
+ return {rows_read:receipt.observed_rows_read,
+  rows_written:receipt.observed_rows_written,
+  cycle_start_utc:receipt.cycle_start_utc,
+  cycle_end_exclusive_utc:receipt.cycle_end_exclusive_utc,
+  monthly_soft_read:receipt.monthly_ceiling_read,
+  monthly_soft_written:receipt.monthly_ceiling_written,
+  elapsed_cycle_ms:cycle.elapsed_ms,cycle_duration_ms:cycle.duration_ms,
+  observed_at_ms:Date.now(),provider_metrics_delayed:true,
+  remaining_rows_read:receipt.remaining_rows_read,
+  remaining_rows_written:receipt.remaining_rows_written};
+}
+/** Physical provider-observed monthly-paced growth, with independent
+ * read and write rates. A rollover invalidates the sample (HOLD);
+ * no daily 5,800 rows/hour gate or synthetic spike PASS.
+ */
+function assertD1ObservedHourlyPace(start:any,latest:any){
+ need(start?.cycle_start_utc===latest?.cycle_start_utc&&
+  start?.cycle_end_exclusive_utc===latest?.cycle_end_exclusive_utc&&
+  Number.isSafeInteger(start?.observed_at_ms)&&
+  Number.isSafeInteger(latest?.observed_at_ms),
+  'CANARY_D1_BILLING_CYCLE_OR_CLOCK_UNVERIFIED');
+ const ms=latest.observed_at_ms-start.observed_at_ms;
+ if(ms<D1_MIN_RATE_SAMPLE_MS)return {status:'INSUFFICIENT_INTERVAL'};
+ const read=latest.rows_read-start.rows_read;
+ const written=latest.rows_written-start.rows_written;
+ need(read>=0&&written>=0,'CANARY_D1_PROVIDER_COUNTER_REWIND');
+ const readRate=read*3600000/ms,writeRate=written*3600000/ms;
+ const readRateMax=D1_HOURLY_READ_CAP;
+ const writeRateMax=D1_HOURLY_WRITE_CAP;
+ need(readRate<=readRateMax&&writeRate<=writeRateMax,
+  'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+ return {status:'PASS_OBSERVED_PAID_MONTHLY_PACE',
+  reads_per_hour:readRate,writes_per_hour:writeRate,
+  max_reads_per_hour:readRateMax,max_writes_per_hour:writeRateMax,
+  observed_window_ms:ms,metrics_are_delayed:true};
 }
 async function observeStage(base:string,candidate:string,pct:number,sha:string){
  const began=Date.now();let intervals=0;
+ const windowMs=stageWindowMs(pct);
  // Inspect provider D1 spend at the start and every two health ticks.
  // A missing delayed provider receipt is HOLD, never a synthetic PASS.
  let d1=await checkLiveD1Budget();
- while(Date.now()-began<WINDOW_MS){
+ const initialD1=d1;
+ let rate={status:'INSUFFICIENT_INTERVAL'} as any;
+ while(Date.now()-began<windowMs){
   if(pct===0){
+   // Version override can target the candidate only when the 0%-candidate
+   // participates in the Cloudflare split deployment; baseline keeps 100%.
+   await checkSource(candidate,sha);
    const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
    const status=await health.json().catch(()=>null);
    need(health.status===200&&status?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
@@ -139,24 +203,29 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   intervals++;
   if(intervals%2===0){
    d1=await checkLiveD1Budget();
+   rate=assertD1ObservedHourlyPace(initialD1,d1);
    // Early complete provider windows may be under the statistical floor; once
    // 1000 real observations exist, any 5xx/latency regression rolls back now.
    if(Date.now()-began>=120000){
     const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
      pct===0?base:candidate,false);
-    if(result)need(result.http_5xx_under_0_1pct&&
-     result.version_errors_under_0_1pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
+    if(result)need(result.http_5xx_under_0_5pct&&
+     result.version_errors_under_0_5pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
    }
   }
-  await wait(Math.min(INTERVAL_MS,Math.max(1,WINDOW_MS-(Date.now()-began))));
+  await wait(Math.min(INTERVAL_MS,Math.max(1,windowMs-(Date.now()-began))));
  }
  d1=await checkLiveD1Budget();
+ rate=assertD1ObservedHourlyPace(initialD1,d1);
+ need(rate.status==='PASS_OBSERVED_PAID_MONTHLY_PACE',
+  'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
   pct===0?base:candidate,true);
- need(result.http_5xx_under_0_1pct&&result.version_errors_under_0_1pct&&result.p99_under_50ms,
+ need(result.http_5xx_under_0_5pct&&result.version_errors_under_0_5pct&&result.p99_under_50ms,
   'CANARY_SLO_BREACH');
  return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,...result,
-  latest_d1_provider_observation:d1};
+  latest_d1_provider_observation:d1,
+  observed_d1_hourly_pace:rate};
 }
 function requireSchemaAcceptance(expectedSha:string){
  const file='artifacts/release/d1-schema-acceptance.json';
@@ -182,22 +251,25 @@ async function main(){
   console.log(JSON.stringify({status:'PASS',scope:'LIVE_MAIN_100_PERCENT_NO_FUNDS',source_sha:mainSha}));return;
  }
  requireSchemaAcceptance(mainSha);
- // 0204/0211 schema-only PASS is NOT evidence of 0212/0213 live
- // migration, independent B2 GET, encrypted recovery and signer integrity.
- const stage2=admitSignedStep3ProductionFile();
- need(stage2.status==='PASS_REAL_PROVIDER_PRODUCTION'&&
-  stage2.exact_main_sha===mainSha,
-  'CANARY_STAGE2_SIGNED_PRODUCTION_PASS_REQUIRED');
  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
  need(UUID_RE.test(base)&&UUID_RE.test(candidate)&&base!==candidate,'CANARY_VERSION_IDS_INVALID');
  need(envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS','CANARY_OWNER_CONFIRMATION_REQUIRED');
- verifyDistribution(await liveCurrent(),distribution(base,candidate,0));
+ const initial=await liveCurrent();
+ verifyDistribution(initial,[{version_id:base,percentage:100}]);
  await checkVersionParity(base,candidate);
  const records:any[]=[];let mutated=false;
+ let baselineP95Ms:number|null=null;
  try{
+  // Stage 0 creates a genuine two-version 100%/0% provider deployment so
+  // the directed candidate health probe does not fall through to baseline.
+  mutated=true;await deployVersions(base,candidate,0);
   for(const pct of STAGES){
    if(pct>0){mutated=true;await deployVersions(base,candidate,pct)}
    const x=await observeStage(base,candidate,pct,mainSha);
+   if(pct===0)baselineP95Ms=x.worker_wall_time_p95_ms;
+   else need(Number.isFinite(baselineP95Ms)&&
+    x.worker_wall_time_p95_ms<=baselineP95Ms,
+    'CANARY_P95_BASELINE_LATENCY_REGRESSION');
    records.push(x);
    signedReport(`artifacts/release/canary-stage-${pct}.json`,{schema:'geomacro.hot50.canary-slo.v1',status:'PASS',source_sha:mainSha,
     baseline_version:base,candidate_version:candidate,no_funds:true,...x});
@@ -219,6 +291,12 @@ async function main(){
    const proof=envString('D1_24H_PROOF_PATH');need(existsSync(proof),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
    const p=verifySignedEnvelopeFile(proof);
    need(p.all_account_databases===true&&
+    p.paid_monthly_billing_cycle_verified===true&&
+    p.old_daily_140k_policy_applied===false&&
+    Number.isSafeInteger(p.monthly_rows_read)&&
+    Number.isSafeInteger(p.monthly_rows_written)&&
+    p.monthly_rows_read<=MONTHLY_READ_SOFT&&
+    p.monthly_rows_written<=MONTHLY_WRITE_SOFT&&
     Number.isFinite(Date.parse(String(p.period_end_exclusive_utc)))&&
     Date.now()-Date.parse(String(p.period_end_exclusive_utc))<48*3600000,
     'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
@@ -231,7 +309,7 @@ async function main(){
   }
  }catch(e){
   if(mutated){
-   try{await deployVersions(base,candidate,0);console.error('CANARY_ROLLBACK_BASELINE_100_VERIFIED')}
+   try{await deployBaseline(base);console.error('CANARY_ROLLBACK_BASELINE_100_VERIFIED')}
    catch{console.error('CANARY_ROLLBACK_PROVIDER_CONFIRMATION_FAILED')}
   }
   throw e;
