@@ -190,3 +190,43 @@ export async function captureDurableD1Checkpoint({
   });
  }finally{key.fill(0)}
 }
+
+/** Signed truthful status receipt. Signature proves authorship/integrity only;
+ * it never upgrades NOT_YET_VERIFIED into a real provider PASS.
+ */
+export function signStep3StatusReceipt(receipt,privateJwk){
+ const identity=signer(privateJwk);
+ if(!receipt||typeof receipt!=="object"||
+    !["NOT_YET_VERIFIED","PASS"].includes(receipt.status))
+  fail("STATUS_RECEIPT_INVALID");
+ const payload=Buffer.from(JSON.stringify(receipt),"utf8");
+ return {
+  schema:"geomacro.step3.signed-status-receipt.v1",receipt,
+  attestation:{
+   algorithm:identity.algorithm,
+   public_key_sha256:identity.public_key_sha256,
+   signature_b64:base64(sign(
+    identity.algorithm==="Ed25519"?null:"sha256",payload,identity.key))
+  }
+ };
+}
+export function verifyStep3StatusReceipt(signed,publicJwk){
+ if(signed?.schema!=="geomacro.step3.signed-status-receipt.v1"||
+    !signed?.receipt||!signed?.attestation||
+    typeof signed.attestation.signature_b64!=="string")
+  fail("STATUS_RECEIPT_FORMAT_INVALID");
+ let publicKey;
+ try{publicKey=createPublicKey({key:JSON.parse(publicJwk),format:"jwk"})}
+ catch{fail("STATUS_PUBLIC_KEY_INVALID")}
+ const spki=publicKey.export({type:"spki",format:"der"});
+ if(digest(spki)!==signed.attestation.public_key_sha256)
+  fail("STATUS_RECEIPT_SIGNER_MISMATCH");
+ const alg=publicKey.asymmetricKeyType==="ed25519"?"Ed25519":
+  publicKey.asymmetricKeyType==="ec"?"ES256":null;
+ if(alg!==signed.attestation.algorithm||
+    !verify(alg==="Ed25519"?null:"sha256",
+     Buffer.from(JSON.stringify(signed.receipt)),publicKey,
+     Buffer.from(signed.attestation.signature_b64,"base64")))
+  fail("STATUS_SIGNATURE_INVALID");
+ return signed.receipt;
+}
