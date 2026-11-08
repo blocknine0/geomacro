@@ -16,54 +16,62 @@ import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {verifyProtectedD1CanaryPreflight}
  from "./verify-protected-d1-zero-canary-preflight.mjs";
-const ALLOWED_REASONS=new Set([
- "CANARY_ACCOUNT_D1_BUDGET_HELD","ZERO_TRAFFIC_PREFLIGHT_READY"
-]);
 export function assessMigrationOnlyPreflight(receipt,{now=new Date()}={}){
  const hold=code=>Object.freeze({
-  schema:"geomacro.d1.migration-only-headroom.v1",
+  schema:"geomacro.d1.paid-monthly-migration-headroom.v2",
   status:"HOLD",code,stage:"MIGRATION_PREFLIGHT_READONLY",
   authorizes_normal_canary:false,authorizes_traffic_promotion:false,
-  authorizes_payment:false,authorizes_d1_emergency_spending:false,
-  provider_mutations:0,d1_sql_queries:0,b2_requests:0
+  authorizes_payment:false,authorizes_d1_overage:false,
+  provider_mutations:0,d1_sql_queries:0,b2_requests:0,
+  old_daily_140k_policy_applied:false,
  });
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
-  receipt?.schema!=="geomacro.d1.zero-traffic-canary-preflight.v1"||
-  receipt?.stage!=="A_READ_ONLY"||
-  !ALLOWED_REASONS.has(receipt?.reason)||
-  receipt?.paid_subscription_verified!==true||
-  receipt?.d1_bookmark_obtained!==true||
-  receipt?.worker_baseline_verified!==true||
-  receipt?.same_run_d1_bookmark_and_worker_version_retrieved!==true||
-  receipt?.worker_version_uploaded!==false||
-  receipt?.d1_sql_queries_issued!==0||
-  receipt?.provider_write_operations!==0||
-  receipt?.payments!==0||
-  receipt?.normal_read_target!==140000||
-  receipt?.normal_write_target!==140000||
-  !Number.isSafeInteger(receipt?.daily_read_rows)||
-  !Number.isSafeInteger(receipt?.daily_written_rows)||
-  receipt.daily_read_rows<0||receipt.daily_written_rows<0)
-   return hold("MIGRATION_ACCOUNT_PROVIDER_IDENTITY_UNVERIFIED");
+    receipt?.schema!=="geomacro.d1.zero-traffic-canary-preflight.v1"||
+    receipt?.stage!=="A_READ_ONLY"||
+    receipt?.reason!=="ZERO_TRAFFIC_PREFLIGHT_READY"||
+    receipt?.paid_subscription_verified!==true||
+    receipt?.d1_bookmark_obtained!==true||
+    receipt?.worker_baseline_verified!==true||
+    receipt?.same_run_d1_bookmark_and_worker_version_retrieved!==true||
+    receipt?.worker_version_uploaded!==false||
+    receipt?.d1_sql_queries_issued!==0||
+    receipt?.provider_write_operations!==0||
+    receipt?.payments!==0||
+    receipt?.paid_monthly_headroom_verified!==true||
+    receipt?.old_daily_140k_policy_applied!==false||
+    receipt?.safety_reserve_percent!==10||
+    receipt?.monthly_read_target!==22_500_000_000||
+    receipt?.monthly_write_target!==45_000_000||
+    receipt?.included_monthly_rows_read!==25_000_000_000||
+    receipt?.included_monthly_rows_written!==50_000_000||
+    !Number.isSafeInteger(receipt?.monthly_read_rows)||
+    !Number.isSafeInteger(receipt?.monthly_written_rows)||
+    receipt.monthly_read_rows<0||receipt.monthly_written_rows<0)
+  return hold("MIGRATION_MONTHLY_PROVIDER_IDENTITY_UNVERIFIED");
  const stamp=Date.parse(receipt.inspected_at??"");
  if(!Number.isFinite(stamp)||stamp>now.getTime()||
-    now.getTime()-stamp>120000||
-    receipt.inspected_at.slice(0,10)!==now.toISOString().slice(0,10))
-  return hold("MIGRATION_PROVIDER_USAGE_NOT_FRESH_UTC");
- if(receipt.daily_read_rows>=60000||receipt.daily_written_rows>=60000)
-  return hold("MIGRATION_ACCOUNT_80K_HEADROOM_UNAVAILABLE");
+    now.getTime()-stamp>120_000||
+    receipt.billing_cycle_start_utc>now.toISOString().slice(0,10)||
+    receipt.billing_cycle_end_exclusive_utc<=now.toISOString().slice(0,10))
+  return hold("MIGRATION_MONTHLY_PROVIDER_RECEIPT_NOT_FRESH");
+ if(receipt.monthly_read_target-receipt.monthly_read_rows<20_000_000||
+    receipt.monthly_write_target-receipt.monthly_written_rows<1_000_000)
+  return hold("MIGRATION_MONTHLY_RESERVE_UNAVAILABLE");
  return Object.freeze({
-  schema:"geomacro.d1.migration-only-headroom.v1",status:"ADMITTED",
-  code:"MIGRATION_ONLY_80K_RESERVED",stage:"MIGRATION_PREFLIGHT_READONLY",
-  day_utc:receipt.inspected_at.slice(0,10),
-  measured_rows_read:receipt.daily_read_rows,
-  measured_rows_written:receipt.daily_written_rows,
-  reserved_read_headroom_min:80000,reserved_write_headroom_min:80000,
-  normal_canary_still_needs_its_own_pacing_pass:true,
-  normal_canary_eligible:receipt.eligible_for_zero_traffic_stage===true,
+  schema:"geomacro.d1.paid-monthly-migration-headroom.v2",
+  status:"ADMITTED",code:"MIGRATION_PAID_CYCLE_RESERVED",
+  stage:"MIGRATION_PREFLIGHT_READONLY",
+  cycle_start_utc:receipt.billing_cycle_start_utc,
+  cycle_end_exclusive_utc:receipt.billing_cycle_end_exclusive_utc,
+  measured_rows_read:receipt.monthly_read_rows,
+  measured_rows_written:receipt.monthly_written_rows,
+  reserved_read_headroom_min:20_000_000,
+  reserved_write_headroom_min:1_000_000,
+  normal_canary_still_needs_independent_telemetry:true,
   authorizes_normal_canary:false,authorizes_traffic_promotion:false,
-  authorizes_payment:false,authorizes_d1_emergency_spending:false,
+  authorizes_payment:false,authorizes_d1_overage:false,
   account_wide_atomic_hard_cap_guaranteed:false,
+  old_daily_140k_policy_applied:false,
   provider_mutations:0,d1_sql_queries:0,b2_requests:0
  });
 }
