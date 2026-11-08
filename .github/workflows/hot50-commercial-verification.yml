@@ -1,0 +1,40 @@
+name: Hot50 Commercial No-Funds Verification
+on:
+  pull_request:
+    paths:
+      - 'workers/control-plane/src/hot50-commercial-*.mjs'
+      - 'workers/control-plane/src/customer-paid-ledger.mjs'
+      - 'workers/control-plane/migrations/0212_commercial_hot50_immutable_signed_delivery.sql'
+      - 'workers/control-plane/migrations/0213_hot50_plan_scope_d1.sql'
+      - 'scripts/tests/hot50-commercial-read.test.mjs'
+      - '.github/workflows/hot50-commercial-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hot50-commercial-no-funds-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  cryptographic-no-funds-fixture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check - Worker, pricing & customer runtime
+        run: |
+          node --check workers/control-plane/src/hot50-commercial-read.mjs
+          node --check workers/control-plane/src/hot50-commercial-scoring.mjs
+          node --check workers/control-plane/src/customer-paid-ledger.mjs
+          node --check workers/control-plane/src/customer-runtime.mjs
+      - name: Verify deterministic signed Hot50 fixture gates (not live certification)
+        run: node --test scripts/tests/hot50-commercial-read.test.mjs
+      - name: Explicit acceptance boundary
+        run: |
+          echo "FIXTURE_ONLY=true"
+          echo "PROVIDER_D1_READBACK_VERIFIED=false"
+          echo "PAYPAL_REAL_MERCHANT_SETTLEMENT_VERIFIED=false"
+          echo "B2_PHYSICAL_EVIDENCE_PARITY_VERIFIED=false"
+          echo "REAL_FUNDS_ACTIVATION_AUTHORIZED=false"
