@@ -24,6 +24,8 @@ import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
+import {seedShadowArchivedPointer}
+ from "../lib/d1-step3-shadow-pointer-seed.mjs";
 import {
  createStep3LedgerSQL,readStep3LedgerSQL,
  verifyStep3LedgerRows,step3LedgerStartSQL,
@@ -489,6 +491,15 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   }
   report.migrations_0204_0211_0212_0213_provider_verified=
    report.verified.length===4;
+  await refreshedGate(report,"SHADOW_BEFORE_REAL_ARCHIVED_POINTER_SEED");
+  report.real_archived_pointer_seed=await seedShadowArchivedPointer({
+   env,readD1:async sql=>q(config,sql,{maxRows:1}).rows,
+   writeD1:async sql=>writeD1Sql(config,sql)
+  });
+  if(report.real_archived_pointer_seed?.status!==
+     "PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY")
+   fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED");
+  write();
   // Dedicated shadow hostname only. Never use api.geomacro.live as a
   // surrogate proof for an isolated shadow-bound D1 Worker.
   const shadowHost=env.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST;
