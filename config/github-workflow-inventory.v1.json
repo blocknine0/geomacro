@@ -366,6 +366,7 @@
     "stateless-live-structured-no-funds.yml",
     "stateless-website-intelligence-live.yml",
     "step3-protected-binding-readiness.yml",
+    "step3-r2-private-exposure.yml",
     "step3-shadow-provider-readonly-inventory.yml",
     "store-12-variant-readiness-no-funds.yml",
     "strict-commercial-launch-closure.yml",
@@ -611,6 +612,14 @@
       "node scripts/ops/audit-step3-shadow-provider-readonly.mjs",
       "ref: ${{ github.sha }}",
       "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+    ],
+    "step3-r2-private-exposure.yml": [
+      "workflow_dispatch:",
+      "branches: [main]",
+      "environment: production",
+      "github.ref == 'refs/heads/main'",
+      "node scripts/ops/audit-step3-r2-private-exposure.mjs",
+      "ref: ${{ github.sha }}"
     ]
   },
   "predgeBlobSha1": {
