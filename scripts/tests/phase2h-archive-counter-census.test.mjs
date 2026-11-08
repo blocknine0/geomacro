@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL,PHASE2H_ARCHIVE_HOT50_TOTALS_SQL}
+import {PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL,PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL,PHASE2H_ARCHIVE_HOT50_TOTALS_SQL}
  from "../../workers/control-plane/src/phase2h-archive-counter-census.mjs";
 
 const fixture=()=>{
@@ -71,8 +71,10 @@ test("0208 counter census equals full original category truth, with indexed only
   db.exec(readFileSync(new URL(
    "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
    import.meta.url),"utf8"));
-  const all=db.prepare(PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all();
+  const all=db.prepare(PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL).all();
   assert.equal(all.length,3);
+  assert.deepEqual(db.prepare(PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all(),all,
+   "pre-migration fallback must exactly match the 0212 hourly census");
   const raw=db.prepare("SELECT category,COUNT(*) AS staged,"+
    "SUM(CASE WHEN b2_object_sha256 IS NOT NULL THEN 1 ELSE 0 END) archived "+
    "FROM phase2h_private_raw_news GROUP BY category").all();
@@ -94,7 +96,7 @@ test("0208 counter census equals full original category truth, with indexed only
    assert.equal(all.find(x=>x.category===row.category).pending_eligible_72h,row.n);
   const summary=db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get();
   assert.deepEqual({...summary},{categories:3,total:4,unarchived:3});
-  const explain=db.prepare("EXPLAIN QUERY PLAN "+PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL).all();
+  const explain=db.prepare("EXPLAIN QUERY PLAN "+PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL).all();
   assert.ok(explain.some(x=>
     /idx_phase2h_pending_recent_ingested_category/u.test(x.detail)),
    JSON.stringify(explain));
