@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-08T22:49:03.345Z",
+  "checked_at": "2026-11-08T23:16:16.587Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,291 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "macro-94dfbed2",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-08T15:51:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0981cc59",
+      "category": "macro",
+      "title": "Geomacro finds Gold's ETF Cushion held as Asia's Buyers Step Back and Washington Tightens the Screws - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's ETF Cushion held as Asia's Buyers Step Back and Washington Tightens the Screws - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T15:52:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-fd83ca59",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs cut Gold Price Forecasts as Hawkish Federal Reserve Weighs on Demand - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Goldman Sachs cut Gold Price Forecasts as Hawkish Federal Reserve Weighs on Demand - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T14:51:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d88b7924",
+      "category": "macro",
+      "title": "Geomacro finds China raised gold reserves for 24th straight month - Sada Elbalad English",
+      "what_changed": "A monitored source feed reports: China raised gold reserves for 24th straight month - Sada Elbalad English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T14:13:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2a6c8742",
+      "category": "macro",
+      "title": "Geomacro finds Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au",
+      "what_changed": "A monitored source feed reports: Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T11:00:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-38b33906",
+      "category": "macro",
+      "title": "Geomacro finds People's Bank of China increased Gold Reserves by 830,000 Ounces in October, Marking Record Monthly High Since Buying Resumed - BigGo Finance",
+      "what_changed": "A monitored source feed reports: People's Bank of China increased Gold Reserves by 830,000 Ounces in October, Marking Record Monthly High Since Buying Resumed - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T07:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-566d2b33",
+      "category": "macro",
+      "title": "Geomacro finds Jewellers reported brisk Dhanteras sales as gold price drop lures buyers; volumes seen flat - ET Retail",
+      "what_changed": "A monitored source feed reports: Jewellers reported brisk Dhanteras sales as gold price drop lures buyers; volumes seen flat - ET Retail. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:09:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b2ea6ef3",
+      "category": "macro",
+      "title": "Geomacro finds China raised gold reserves to 78.3 million ounces in October - BusinessLine",
+      "what_changed": "A monitored source feed reports: China raised gold reserves to 78.3 million ounces in October - BusinessLine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T03:48:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6da36b5c",
+      "category": "rare_earth",
+      "title": "Geomacro finds U.S. Treasury Secretary and Chinese Vice Premier held Phone Call, Demand Fulfillment of Rare Earth Supply Commitments - BigGo Finance",
+      "what_changed": "A monitored source feed reports: U.S. Treasury Secretary and Chinese Vice Premier held Phone Call, Demand Fulfillment of Rare Earth Supply Commitments - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T01:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3b08e108",
+      "category": "rare_earth",
+      "title": "Geomacro finds Brazil approved 27 critical minerals for investment incentives - DatamarNews",
+      "what_changed": "A monitored source feed reports: Brazil approved 27 critical minerals for investment incentives - DatamarNews. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T21:12:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f7579a21",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T18:51:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e99ca3d4",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance",
+      "what_changed": "A monitored source feed reports: China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T18:26:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-03548565",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
+      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T17:55:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3620d63d",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T14:22:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3726d379",
+      "category": "macro",
+      "title": "Geomacro finds Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News",
+      "what_changed": "A monitored source feed reports: Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T11:26:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-9446609f",
       "category": "rare_earth",
@@ -24,6 +309,101 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-c5175de3",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T09:05:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-db78f32f",
+      "category": "macro",
+      "title": "Geomacro finds Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:24:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fc6cd487",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:10:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4c080a05",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:05:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0bbf5147",
+      "category": "rare_earth",
+      "title": "Geomacro finds China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges",
+      "what_changed": "A monitored source feed reports: China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T05:37:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },

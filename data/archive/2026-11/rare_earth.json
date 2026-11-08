@@ -2,8 +2,103 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-06T14:57:36.622Z",
+  "updated_at": "2026-11-08T23:16:16.587Z",
   "signals": [
+    {
+      "id": "rare_earth-6da36b5c",
+      "category": "rare_earth",
+      "title": "Geomacro finds U.S. Treasury Secretary and Chinese Vice Premier held Phone Call, Demand Fulfillment of Rare Earth Supply Commitments - BigGo Finance",
+      "what_changed": "A monitored source feed reports: U.S. Treasury Secretary and Chinese Vice Premier held Phone Call, Demand Fulfillment of Rare Earth Supply Commitments - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T01:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3b08e108",
+      "category": "rare_earth",
+      "title": "Geomacro finds Brazil approved 27 critical minerals for investment incentives - DatamarNews",
+      "what_changed": "A monitored source feed reports: Brazil approved 27 critical minerals for investment incentives - DatamarNews. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T21:12:26.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-e99ca3d4",
+      "category": "rare_earth",
+      "title": "Geomacro finds China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance",
+      "what_changed": "A monitored source feed reports: China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T18:26:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-03548565",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
+      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T17:55:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-56225938",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
+      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T17:31:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-9446609f",
       "category": "rare_earth",
@@ -18,6 +113,82 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-c5175de3",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T09:05:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fc6cd487",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:10:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-4c080a05",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:05:59.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-0bbf5147",
+      "category": "rare_earth",
+      "title": "Geomacro finds China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges",
+      "what_changed": "A monitored source feed reports: China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T05:37:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },

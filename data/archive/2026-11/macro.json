@@ -2,8 +2,274 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-06T14:57:36.622Z",
+  "updated_at": "2026-11-08T23:16:16.587Z",
   "signals": [
+    {
+      "id": "macro-94dfbed2",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-08T15:51:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-0981cc59",
+      "category": "macro",
+      "title": "Geomacro finds Gold's ETF Cushion held as Asia's Buyers Step Back and Washington Tightens the Screws - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's ETF Cushion held as Asia's Buyers Step Back and Washington Tightens the Screws - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T15:52:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-fd83ca59",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs cut Gold Price Forecasts as Hawkish Federal Reserve Weighs on Demand - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Goldman Sachs cut Gold Price Forecasts as Hawkish Federal Reserve Weighs on Demand - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T14:51:46.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d88b7924",
+      "category": "macro",
+      "title": "Geomacro finds China raised gold reserves for 24th straight month - Sada Elbalad English",
+      "what_changed": "A monitored source feed reports: China raised gold reserves for 24th straight month - Sada Elbalad English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T14:13:49.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2a6c8742",
+      "category": "macro",
+      "title": "Geomacro finds Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au",
+      "what_changed": "A monitored source feed reports: Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T11:00:38.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-38b33906",
+      "category": "macro",
+      "title": "Geomacro finds People's Bank of China increased Gold Reserves by 830,000 Ounces in October, Marking Record Monthly High Since Buying Resumed - BigGo Finance",
+      "what_changed": "A monitored source feed reports: People's Bank of China increased Gold Reserves by 830,000 Ounces in October, Marking Record Monthly High Since Buying Resumed - BigGo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T07:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-566d2b33",
+      "category": "macro",
+      "title": "Geomacro finds Jewellers reported brisk Dhanteras sales as gold price drop lures buyers; volumes seen flat - ET Retail",
+      "what_changed": "A monitored source feed reports: Jewellers reported brisk Dhanteras sales as gold price drop lures buyers; volumes seen flat - ET Retail. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:09:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b2ea6ef3",
+      "category": "macro",
+      "title": "Geomacro finds China raised gold reserves to 78.3 million ounces in October - BusinessLine",
+      "what_changed": "A monitored source feed reports: China raised gold reserves to 78.3 million ounces in October - BusinessLine. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T03:48:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f7579a21",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T18:51:12.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-140f0ffd",
+      "category": "macro",
+      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
+      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T17:55:39.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3c0bcd12",
+      "category": "macro",
+      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
+      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T17:31:55.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3620d63d",
+      "category": "macro",
+      "title": "Geomacro finds Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T14:22:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-3726d379",
+      "category": "macro",
+      "title": "Geomacro finds Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News",
+      "what_changed": "A monitored source feed reports: Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T11:26:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-db78f32f",
+      "category": "macro",
+      "title": "Geomacro finds Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T08:24:10.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-3d36b7ed",
       "category": "macro",
