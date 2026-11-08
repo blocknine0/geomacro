@@ -15,7 +15,7 @@ function obj(value:unknown):Record<string,unknown>|null{
 /** Read PayPal webhook in bounded chunks. A caller-provided Content-Length
  * cannot be trusted; refuse oversized actual streams before allocating.
  */
-async function readPayPalWebhookBody(request:Request):Promise<string>{
+export async function readPayPalWebhookBody(request:Request):Promise<string>{
   const limit=64*1024;
   const declared=Number(request.headers.get("content-length")??0);
   if(!Number.isFinite(declared)||declared>limit)
