@@ -195,6 +195,8 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+      HOT50_TIER_FULL_CENSUS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -204,6 +206,15 @@ jobs:
         with:
           node-version: "24"
       - run: node scripts/ops/verify-hot50-production-activation.mjs
+      - name: Require all 150 live signed country-category cells across priced risk-gate tiers
+        run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-hot50-150-cell-proof
+          path: artifacts/hot50-risk-gate/latest.json
+          if-no-files-found: warn
+          retention-days: 14
 
 # Canary promotion and checkout require their independent deployment/merchant
 # receipts and cannot be inferred from signed schema migration success.
