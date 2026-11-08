@@ -18,8 +18,8 @@ test("runner never executes production D1 --apply; UUIDs must differ",()=>{
  assert.match(y,/--rehearse-shadow/u);
  assert.doesNotMatch(y,/run-step3-protected-d1-migrations\.mjs --apply/u);
  assert.match(y,/test "\$D1_DATABASE_ID" != "\$GEOMACRO_D1_SHADOW_DATABASE_ID"/u);
- assert.match(y,/node scripts\\/ops\\/check-d1-paid-monthly-headroom\\.mjs --check/u);
- assert.doesNotMatch(y,/d1-headroom\\.mjs --check/u);
+ assert.ok(y.includes('node scripts/ops/check-d1-paid-monthly-headroom.mjs --check'));
+ assert.ok(!y.includes('node scripts/ops/check-d1-headroom.mjs --check'));
  assert.match(y,/test -f config\/d1-hotspot-v2-canary\.hold/u);
 });
 test("shadow host is an independent binding, R2 key is secret, and receipt is retained on failure",()=>{
