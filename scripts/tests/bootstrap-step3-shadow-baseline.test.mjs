@@ -25,7 +25,7 @@ const asResult=rows=>Response.json({success:true,result:[{success:true,
 test("baseline includes eleven dependency-closed reviewed migrations without wildcard SQL",()=>{
  const m=buildShadowBootstrapManifest();
  assert.equal(SHADOW_BASE_MIGRATIONS.length,11);
- assert.equal(new Set(SHADOW_BASE_MIGRATIONS).size,9);
+ assert.equal(new Set(SHADOW_BASE_MIGRATIONS).size,11);
  assert.deepEqual(m.migrations.map(x=>x.name),SHADOW_BASE_MIGRATIONS);
  assert.match(m.migration_set_sha256,/^[a-f0-9]{64}$/u);
  assert.equal(m.stage1_physical_pass,false);
