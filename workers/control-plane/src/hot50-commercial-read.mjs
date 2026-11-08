@@ -10,12 +10,12 @@ import {
 } from './customer-paid-ledger.mjs';
 
 export const HOT50_SIGNED_SCHEMA='geomacro.hot50-commercial-view.v1';
-export const HOT50_CATEGORIES=Object.freeze(['geopolitics','macro_financial','trade_sanctions']);
+export const HOT50_CATEGORIES=Object.freeze(['geopolitics','macro_financial','trade_minerals_supplychain']);
 const HOT50_SET=new Set(RISK_GATE_HOT50);
 const KEY_RE=/^Bearer (gmk_live_[a-f0-9]{64}|gm_live_[a-f0-9]{32})$/;
 const REQUEST_RE=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
 const SHA_RE=/^[a-f0-9]{64}$/;
-const VIEW_RE=/^(hot50|country:[A-Z]{3}|category:(geopolitics|macro_financial|trade_sanctions))$/;
+const VIEW_RE=/^(hot50|country:[A-Z]{3}|category:(geopolitics|macro_financial|trade_minerals_supplychain))$/;
 const utf8=new TextEncoder();
 const reply=(value,status=200)=>Response.json(value,{status,headers:{
  'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff',
@@ -46,7 +46,7 @@ function viewOf(path){
   }[code];
   return iso2&&HOT50_SET.has(iso2)?'country:'+iso2:null;
  }
- const category=/^\/v1\/risk\/category\/(geopolitics|macro_financial|trade_sanctions)$/.exec(path);
+ const category=/^\/v1\/risk\/category\/(geopolitics|macro_financial|trade_minerals_supplychain)$/.exec(path);
  return category?'category:'+category[1]:null;
 }
 function validRating(r){
