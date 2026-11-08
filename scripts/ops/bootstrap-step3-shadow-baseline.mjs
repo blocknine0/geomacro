@@ -205,13 +205,70 @@ export async function bootstrapShadowBaseline({
  }
  return Object.freeze(report);
 }
+
+/** Strictly no-DDL main-only preflight; never infer source/B2 evidence. */
+export async function readOnlyShadowBootstrapPreflight({
+ env=process.env,fetchImpl=fetch,headroomCheck=checkD1PaidMonthlyHeadroom
+}={}){
+ const output={schema:"geomacro.step3.shadow-bootstrap-readonly-preflight.v1",
+  status:"HOLD",code:"SHADOW_BOOTSTRAP_PREFLIGHT_NOT_STARTED",
+  scope:"PROTECTED_MAIN_REAL_SHADOW_READONLY",
+  production_d1_queries:0,production_d1_writes:0,shadow_d1_writes:0,
+  r2_puts:0,b2_requests:0,worker_deployments:0,payments:0,
+  shadow_schema_pristine:false,paid_headroom_verified:false,
+  owner_bootstrap_approved:env.GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED==="YES",
+  r2_private_recovery_approved:env.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED==="YES",
+  r2_encrypted_recovery_readback_verified:false,
+  stage1_physical_pass:false,stage2_authorized:false};
+ try{
+  // Read-only preflight does not impersonate or grant the mutation approval.
+  // Still enforce canonical account and exact Shadow-vs-Prod identities.
+  if(env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+     env.GITHUB_REF!=="refs/heads/main"||
+     !SHA.test(env.GITHUB_SHA??"")||
+     env.CLOUDFLARE_ACCOUNT_ID!==ACCOUNT||
+     env.D1_DATABASE_ID!==PROD||
+     env.GEOMACRO_D1_SHADOW_DATABASE_ID!==SHADOW||
+     !existsSync("config/d1-hotspot-v2-canary.hold")||
+     typeof env.CLOUDFLARE_API_TOKEN!=="string"||
+     env.CLOUDFLARE_API_TOKEN.length<20)
+   fail("READONLY_EXACT_MAIN_ACCOUNT_OR_SHADOW_IDENTITY_UNVERIFIED");
+  const headroom=await headroomCheck({env,fetchImpl,lane:"shadow",
+   estimatedMigrationRowsRead:5000,estimatedMigrationRowsWritten:5000});
+  output.paid_headroom_verified=headroom?.status==="PASS"&&
+   headroom.reserve_pct===30&&headroom.provider_subscription_verified===true;
+  output.headroom_status=headroom?.status??"HOLD";
+  output.headroom_reason=headroom?.reason??"PROVIDER_UNVERIFIED";
+  const rows=await readOnlyShadowSchema({env,fetchImpl,
+   sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33"});
+  output.shadow_existing_table_count=rows.length;
+  output.shadow_schema_pristine=rows.length===0;
+  output.status=output.paid_headroom_verified&&output.shadow_schema_pristine?
+   "READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION":"HOLD";
+  output.code=output.status==="HOLD"?
+   (!output.paid_headroom_verified?"PAID_HEADROOM_INSUFFICIENT_OR_UNVERIFIED":
+    "SHADOW_SCHEMA_NONEMPTY_REQUIRES_INDEPENDENT_REVIEW"):
+   "SHADOW_PRISTINE_AND_PAID_HEADROOM_OBSERVED";
+ }catch(e){
+  output.code=/^STEP3_SHADOW_BOOTSTRAP_[A-Z0-9_]+$/u.test(e?.message??"")?
+   e.message:"SHADOW_READONLY_PROVIDER_UNVERIFIED";
+ }
+ return Object.freeze(output);
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const args=process.argv.slice(2);
- if(args.length!==1||!["--plan","--apply"].includes(args[0])){
-  console.error("Usage: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan|--apply");
+ if(args.length!==1||!["--plan","--preflight","--apply"].includes(args[0])){
+  console.error("Usage: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan|--preflight|--apply");
   process.exitCode=2;
  }else if(args[0]==="--plan")console.log(JSON.stringify(buildShadowBootstrapManifest()));
- else {
+ else if(args[0]==="--preflight"){
+  const report=await readOnlyShadowBootstrapPreflight();
+  mkdirSync(resolve(REPORT,".."),{recursive:true,mode:0o700});
+  writeFileSync(REPORT,JSON.stringify(report,null,2)+"\\n",{mode:0o600});
+  console.log(JSON.stringify(report));
+  if(report.status!=="READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION")process.exitCode=3;
+ }else {
   const report=await bootstrapShadowBaseline();
   mkdirSync(resolve(REPORT,".."),{recursive:true,mode:0o700});
   writeFileSync(REPORT,JSON.stringify(report,null,2)+"\n",{mode:0o600});
