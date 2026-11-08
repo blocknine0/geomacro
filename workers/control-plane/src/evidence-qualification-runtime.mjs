@@ -253,12 +253,12 @@ export async function deliverVerifiedEvidence(env,{apiKey,itemId,now=Date.now()}
   rec??=await lookup();
  }
  if(!rec||rec.item_id!==itemId||rec.envelope_sha256!==hot.envelope_sha256||
-    rec.response_sha256!==responseHash||rec.key_id!==customer.key_id||
+    rec.response_sha256!==responseHash||
     rec.capability!==capability||rec.credit_cost!==customer.credit_cost||
     !customer.grants.some(g=>g.grant_id===rec.grant_id))
   fail('EQE_IDEMPOTENT_REPLAY_MISMATCH',409);
  const debit=await env.DB.prepare('SELECT event_id FROM customer_usage_receipts WHERE user_id=? AND request_id=? AND key_id=? AND capability=?')
-  .bind(customer.principal_id,requestId,customer.key_id,capability).first();
+  .bind(customer.principal_id,requestId,rec.key_id,capability).first();
  if(!debit)fail('EQE_CANONICAL_DEBIT_READBACK_MISSING');
  return new Response(bytes,{headers:{...H,'Content-Type':'application/json',
   'X-GeoMacro-Ed25519-Key-Id':hot.signing_key_id,
