@@ -150,6 +150,8 @@ export async function analyzeDeficits(item,attestation,{
   reasons.add(DEFICITS.TIME);
  if(!independentCorroboration(p))reasons.add(DEFICITS.QUORUM);
  if(p.commercial_derived_use_rights_verified!==true||!isSha(p.rights_receipt_sha256)||
+    p.customer_full_text_distribution_rights_verified!==true||
+    !isSha(p.customer_distribution_rights_receipt_sha256)||
     !validString(p.rights_license_id,160)||p.rights_license_id==='unknown')
   reasons.add(DEFICITS.RIGHTS);
  if(nearDuplicates.some(x=>x&&typeof x==='object'&&x.id!==item.id&&
