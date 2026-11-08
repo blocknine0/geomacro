@@ -22,12 +22,16 @@
 
 ## What remains BLOCKED before any real funds
 
-1. Owner supplies **one public EVM receiving address** for Base and Polygon
-   or explicitly gives two. Do not send a private key, seed phrase, or
-   signing credential. Verify receiver ownership using an
-   expiring, domain-bound **off-chain signed challenge** verified
-   independently against the public address; do not rely on copying the
-   wallet address from a chat message alone.
+1. Reuse the **existing** owner-approved merchant EVM receiving address
+   pinned in `config/mainnet-usdc-recipient.json`, rather than asking
+   the owner to provide another wallet. A reproducible EIP-191 signed
+   challenge and address recovery are already tested by
+   `src/lib/merchant-receiver-ownership-proof.test.ts`. This is
+   **wallet-control proof only**, not merchant settlement, tax approval,
+   new funds acceptance or source-rights proof. The config now limits
+   new sales to Base and Polygon, leaving Arc legacy records untouched.
+   Do not request private keys, seed phrases or another owner signature
+   unless the pinned public address is explicitly changed.
 2. Check receiving wallet can accept native Circle USDC on both chains;
    validate chain ID, exact contract address, exact merchant address,
    payer/recipient, uint256 6-decimal amount, receipt status, canonical
@@ -60,7 +64,7 @@
   independent no-funds contract and branch parity checks.
 - Deploy frontend/Worker **only under existing protected canary** with
   all existing production payment and B2/D1 hold flags preserved.
-- Record independently signed wallet identity + provider network/fee
+- Verify existing pinned independently signed wallet identity + provider network/fee
   and canonical D1/B2/crypto proof receipts in a private operator log.
 - Accept exactly the owner-approved, bounded on-chain canary only after
   genuine buyer-value output and provider finality; handle unknown
