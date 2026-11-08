@@ -254,7 +254,7 @@ export async function readOnlyShadowBootstrapPreflight({
   // Schema identifier names only, never column content or application rows.
   // Bounded to the existing LIMIT 33 and allowlisted to printable identifiers.
   output.shadow_existing_table_names=rows.map(r=>
-   typeof r?.name==="string"&&/^[a-z_][a-z0-9_]{0,63}$/u.test(r.name)?
+   typeof r?.name==="string"&&/^[A-Za-z_][A-Za-z0-9_.$-]{0,80}$/u.test(r.name)?
     r.name:"INVALID_SCHEMA_IDENTIFIER").sort();
   output.shadow_schema_pristine=rows.length===0;
   output.status=output.paid_headroom_verified&&output.shadow_schema_pristine?
