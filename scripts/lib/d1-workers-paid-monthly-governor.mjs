@@ -216,7 +216,8 @@ export async function readCloudflareD1PaidCycleUsage({
 }
 export async function checkD1PaidMonthlyHeadroom({
  env=process.env,fetchImpl=fetch,now=new Date(),lane="migration",
- estimatedMigrationRowsRead=0,estimatedMigrationRowsWritten=0
+ estimatedMigrationRowsRead=0,estimatedMigrationRowsWritten=0,
+ clock=()=>new Date()
 }={}){
  let usage=null,paidProof=null;
  const start=Date.now();
@@ -228,9 +229,11 @@ export async function checkD1PaidMonthlyHeadroom({
    readCloudflareD1PaidCycleUsage({env,fetchImpl,now}),
    readCloudflareWorkersPaidProof({env:billing,fetchImpl,now})
   ]);
-  const finished=new Date();
-  if(Date.now()-start>120000||finished.toISOString().slice(0,10)!==
-     now.toISOString().slice(0,10))fail("PROVIDER_SAMPLE_STALE");
+  const finished=clock();
+  if(!(finished instanceof Date)||!Number.isFinite(finished.getTime())||
+     Date.now()-start>120000||
+     finished.toISOString().slice(0,10)!==
+      now.toISOString().slice(0,10))fail("PROVIDER_SAMPLE_STALE");
   return assessD1PaidMonthlyAdmission({
    usage,paidProof,now:finished,lane,estimatedMigrationRowsRead,
    estimatedMigrationRowsWritten});
