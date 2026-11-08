@@ -2,7 +2,7 @@
 /** Complete CLOSED UTC calendar day, across every D1 DB in the account. */
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {BUDGET,ACCOUNT_RE,envString,graphql,need,sha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
+import {D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING,ACCOUNT_RE,envString,graphql,need,sha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
 const QUERY=`query GeoMacroD1Day($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
@@ -21,7 +21,7 @@ export async function observedD1Day(day:string){
  }catch(error){
   // Only access-denial permits ONE read-only attempt with the existing
   // protected Cloudflare API token. Never invent an account, reuse a stale
-  // snapshot, weaken the <=140k gate, or accept a partial provider response.
+  // snapshot, weaken the within the owner's paid daily ceilings gate, or accept a partial provider response.
   if(!(error instanceof Error)||error.message!=='RELEASE_GRAPHQL_ACCESS_DENIED')
    throw error;
   const primary=process.env.CLOUDFLARE_BILLING_READ_TOKEN??'';
@@ -66,24 +66,26 @@ export async function main(args=process.argv.slice(2)){
  const end=Date.parse(day+'T00:00:00.000Z')+86400000;
  need(Date.now()>=end+60*60*1000,'D1_PROOF_FULL_DAY_NOT_SETTLED');
  const usage=await observedD1Day(day);
- const budgetPass=usage.rows_read<=BUDGET&&usage.rows_written<=BUDGET;
+ const budgetPass=usage.rows_read<=D1_DAILY_READ_CEILING&&
+  usage.rows_written<=D1_DAILY_WRITE_CEILING;
  // Real verified over-budget readings are still evidence; never lose the
  // receipt, but a HOLD receipt cannot be consumed as a PASS by promotion.
  const report={schema:'geomacro.d1-account-utc-24h-observation.v1',status:budgetPass?'PASS':'HOLD',
   period_start_utc:day+'T00:00:00.000Z',period_end_exclusive_utc:new Date(end).toISOString(),
   expected_last_second_utc:new Date(end-1000).toISOString(),
-  budget_rows_read:BUDGET,budget_rows_written:BUDGET,
+  budget_rows_read:D1_DAILY_READ_CEILING,
+  budget_rows_written:D1_DAILY_WRITE_CEILING,
   ...usage,all_account_databases:true,no_unreported_group_claimed:false,
   analytics_provider_observation_not_provider_signed_ledger:true,
   account_wide_atomic_hard_cap_guaranteed:false,no_funds:true};
  const output='artifacts/release/d1-quota-proof-'+day+'.json';
  signedReport(output,report);
- // Allow operators to see genuine usage even when >140k; the signed report
+ // Allow operators to see genuine usage even when over the owner's paid daily ceilings; the signed report
  // remains HOLD and the job fails safely. No account identifiers printed.
  console.log(JSON.stringify({status:budgetPass?'PASS':'HOLD',report:output,
   rows_read:usage.rows_read,rows_written:usage.rows_written,
   analytics_credential_source:usage.analytics_credential_source}));
- need(budgetPass,'D1_PROOF_140K_BREACH');
+ need(budgetPass,'D1_PROOF_PAID_OWNER_DAILY_CEILING_BREACH');
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  main().catch(e=>{console.error(JSON.stringify({status:'HOLD',code:holdError(e),no_partial_day_proof:true}));process.exitCode=2});
