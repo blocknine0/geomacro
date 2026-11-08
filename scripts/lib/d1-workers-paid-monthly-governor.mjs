@@ -51,10 +51,14 @@ export function assertPaidMonthlyPolicy(policy=D1_PAID_MONTHLY_POLICY){
     policy.provider_included_monthly?.rows_read!==25_000_000_000||
     policy.provider_included_monthly?.rows_written!==50_000_000||
     policy.provider_included_monthly?.d1_storage_bytes!==5*1024**3||
-    policy.owner_normal_monthly_ceiling?.rows_read!==22_500_000_000||
-    policy.owner_normal_monthly_ceiling?.rows_written!==45_000_000||
-    policy.owner_included_quota_reserve_pct!==10||
-    policy.monthly_opening_fraction!==0.08||
+    policy.owner_normal_monthly_ceiling?.rows_read!==17_500_000_000||
+    policy.owner_normal_monthly_ceiling?.rows_written!==35_000_000||
+    policy.owner_included_quota_reserve_pct!==30||
+    (policy.owner_daily_ceiling?.rows_read!==580_000_000||
+     policy.owner_daily_ceiling?.rows_written!==1_100_000||
+     policy.owner_hourly_ceiling?.rows_read!==24_000_000||
+     policy.owner_hourly_ceiling?.rows_written!==45_000||
+     policy.monthly_opening_fraction!==0.08)||
     !safe(policy.migration_reserve_rows_read)||
     !safe(policy.migration_reserve_rows_written)||
     !safe(policy.maximum_approved_migration_estimated_rows_read)||
@@ -176,6 +180,10 @@ export function assessD1PaidMonthlyAdmission({
   observed_rows_read:read,observed_rows_written:written,
   remaining_rows_read:marginRead,remaining_rows_written:marginWrite,
   monthly_ceiling_read:maxRead,monthly_ceiling_written:maxWrite,
+  operational_daily_ceiling_read:policy.owner_daily_ceiling.rows_read,
+  operational_daily_ceiling_written:policy.owner_daily_ceiling.rows_written,
+  operational_hourly_ceiling_read:policy.owner_hourly_ceiling.rows_read,
+  operational_hourly_ceiling_written:policy.owner_hourly_ceiling.rows_written,
   monthly_paced_ceiling_read:pacedRead,monthly_paced_ceiling_written:pacedWrite,
   reserved_migration_rows_read:safetyRead,reserved_migration_rows_written:safetyWrite,
   paid_included_rows_read:policy.provider_included_monthly.rows_read,
