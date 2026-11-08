@@ -54,7 +54,7 @@ export async function verifyRealPhase2hPointerRows({
  const absent=inspectPointerProofCount(rows);
  if(absent)return absent;
  const host=env.GEOMACRO_STEP3_VERIFIED_WORKER_HOST;
- if(typeof host!=="string"||!/^(?:api\.geomacro\.live|geomacro-control-plane\.[a-z0-9-]+\.workers\.dev)$/u.test(host)||
+ if(typeof host!=="string"||!/^(?:api\.geomacro\.live|geomacro-control-plane\.[a-z0-9-]+\.workers\.dev|geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev)$/u.test(host)||
     typeof env.CONTROL_PLANE_TOKEN!=="string"||
     env.CONTROL_PLANE_TOKEN.length<32||
     !HEX.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
