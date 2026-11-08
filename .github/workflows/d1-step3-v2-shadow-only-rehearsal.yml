@@ -39,13 +39,12 @@ jobs:
   eligibility-preflight:
     # A skipped job provides no diagnostic log. Inspect only boolean
     # eligibility, and NEVER echo approval/variable/secret values.
-    if: >-
-      github.repository == 'blocknine0/geomacro' &&
-      github.ref == 'refs/heads/main' &&
-      github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     env:
+      SHADOW_DISPATCH_REF: ${{ github.ref }}
+      SHADOW_DISPATCH_REPOSITORY: ${{ github.repository }}
       SHADOW_APPROVAL_INPUT: ${{ inputs.approval }}
       SHADOW_ARMED_REPOSITORY_VARIABLE: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
     steps:
@@ -53,6 +52,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ "$SHADOW_DISPATCH_REPOSITORY" != 'blocknine0/geomacro' ] || [ "$SHADOW_DISPATCH_REF" != 'refs/heads/main' ]; then
+            echo "::error title=Shadow dispatch branch or repository invalid::Select branch main in GeoMacro before the manual rehearsal. No provider operations occurred."
+            exit 2
+          fi
           if [ "$SHADOW_APPROVAL_INPUT" != 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' ]; then
             echo "::error title=Shadow approval mismatch::Set approval to the exact value REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL and manually re-dispatch."
             exit 3
