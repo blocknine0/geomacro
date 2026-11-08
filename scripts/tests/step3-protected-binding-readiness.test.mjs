@@ -140,3 +140,18 @@ test("protected orchestration uses distinct bearer tokens for shadow and product
  assert(prod.includes("CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}"));
  assert(!prod.includes("CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}"));
 });
+
+test("protected read-only binding inventory exposes no production secrets to feature-branch dispatch",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const y=readFileSync(new URL("../../.github/workflows/step3-protected-binding-readiness.yml",import.meta.url),"utf8");
+ const protectedJob=y.split("  protected-readiness:")[1];
+ assert(protectedJob);
+ assert.match(protectedJob,/github\.repository == 'blocknine0\/geomacro'/u);
+ assert.match(protectedJob,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(protectedJob,/github\.event_name == 'workflow_dispatch'/u);
+ assert.match(protectedJob,/environment: production/u);
+ assert.match(protectedJob,/GEOMACRO_STEP3_EXACT_SHA: \$\{\{ github\.sha \}\}/u);
+ assert.doesNotMatch(protectedJob,/GEOMACRO_STEP3_REVIEWED_SHA/u);
+ assert.match(protectedJob,/ref: \$\{\{ github\.sha \}\}/u);
+ assert.doesNotMatch(protectedJob,/continue-on-error:\s*true/u);
+});
