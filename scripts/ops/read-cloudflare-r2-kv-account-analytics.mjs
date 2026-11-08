@@ -51,8 +51,9 @@ export function classifyR2Action(action){
  fail("R2_ACTION_CLASS_UNRECOGNIZED");
 }
 function group(rows,{start,end,kind}){
- if(!Array.isArray(rows)||rows.length===0||rows.length>=MAX_GROUPS)
-  fail(kind+"_EMPTY_OR_TRUNCATED");
+ if(!Array.isArray(rows)||rows.length>=MAX_GROUPS)
+  fail(kind+"_DATASET_MISSING_OR_TRUNCATED");
+ if(rows.length===0)return {counts:{},sawToday:false,groups:0,missing:true};
  const seen=new Set(),counts={};
  let sawToday=false;
  for(const entry of rows){
@@ -74,7 +75,7 @@ function group(rows,{start,end,kind}){
   if(!safe(data.month)||!safe(data.day))fail(kind+"_COUNTER_OVERFLOW");
   counts[id]=data;
  }
- return {counts,sawToday,groups:rows.length};
+ return {counts,sawToday,groups:rows.length,missing:false};
 }
 export function assessR2KVAccountAnalytics(response,{now=new Date(),accountId}={}){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
@@ -85,28 +86,40 @@ export function assessR2KVAccountAnalytics(response,{now=new Date(),accountId}={
   fail("GRAPHQL_ACCOUNT_OR_ERRORS_UNVERIFIED");
  const r2=group(accounts[0].r2OperationsAdaptiveGroups,{start:from,end:to,kind:"R2"});
  const kv=group(accounts[0].kvOperationsAdaptiveGroups,{start:from,end:to,kind:"KV"});
- const get=(name,rows)=>rows.counts[name]??{month:0,day:0};
+ if(r2.missing&&kv.missing)fail("R2_AND_KV_DATASETS_BOTH_EMPTY");
+ const incompleteR2=r2.missing||!r2.sawToday;
+ const incompleteKV=kv.missing||!kv.sawToday;
+ const partial=incompleteR2||incompleteKV;
+ // NEVER interpret an empty/lagging source as actual zero operations.
+ const get=(name,rows,incomplete)=>incomplete?{month:null,day:null}:
+   rows.counts[name]??{month:0,day:0};
  const metrics=Object.fromEntries([
-  ["r2_class_a",get("r2_class_a",r2),"CLOUDFLARE_R2_ACCOUNT_ANALYTICS"],
-  ["r2_class_b",get("r2_class_b",r2),"CLOUDFLARE_R2_ACCOUNT_ANALYTICS"],
-  ["kv_writes",get("kv_writes",kv),"CLOUDFLARE_KV_ACCOUNT_ANALYTICS"],
-  ["kv_reads",get("kv_reads",kv),"CLOUDFLARE_KV_ACCOUNT_ANALYTICS"],
+  ["r2_class_a",get("r2_class_a",r2,incompleteR2),"CLOUDFLARE_R2_ACCOUNT_ANALYTICS"],
+  ["r2_class_b",get("r2_class_b",r2,incompleteR2),"CLOUDFLARE_R2_ACCOUNT_ANALYTICS"],
+  ["kv_writes",get("kv_writes",kv,incompleteKV),"CLOUDFLARE_KV_ACCOUNT_ANALYTICS"],
+  ["kv_reads",get("kv_reads",kv,incompleteKV),"CLOUDFLARE_KV_ACCOUNT_ANALYTICS"],
  ].map(([name,count,source])=>[name,{...count,hour:null,source}]));
  return Object.freeze({
   schema:"geomacro.cloudflare-r2-kv-account-observation.v1",
-  status:"OBSERVATIONAL_ONLY_NOT_RELEASE_PROOF",
+  status:partial?"PARTIAL_ACCOUNT_OBSERVATION_HOLD":
+    "OBSERVATIONAL_ONLY_NOT_RELEASE_PROOF",
   source:"CLOUDFLARE_GRAPHQL_ACCOUNT_OPERATION_ANALYTICS",
   account_id_sha256:createHash("sha256").update(accountId.toLowerCase()).digest("hex"),
   billing_cycle_start_utc:from,billing_cycle_end_exclusive_utc:cycle.end_exclusive_utc,
   observed_utc_day:to,observed_at:now.toISOString(),
   r2_group_count:r2.groups,kv_group_count:kv.groups,
+  incomplete_resources:[
+    ...(incompleteR2?["r2_class_a","r2_class_b"]:[]),
+    ...(incompleteKV?["kv_writes","kv_reads"]:[])
+  ],
+  partial_account_telemetry:partial,
   r2_has_current_day_operation_group:r2.sawToday,
   kv_has_current_day_operation_group:kv.sawToday,
   metrics,
   supplemental_not_in_six_resource_policy:{
-   r2_free_operations:get("r2_free_operations",r2),
-   kv_deletes:get("kv_deletes",kv),
-   kv_lists:get("kv_lists",kv),
+   r2_free_operations:get("r2_free_operations",r2,incompleteR2),
+   kv_deletes:get("kv_deletes",kv,incompleteKV),
+   kv_lists:get("kv_lists",kv,incompleteKV),
   },
   analytics_are_delayed:true,analytics_are_not_billing_proof:true,
   provider_verified:false,full_six_resource_snapshot:false,
@@ -143,7 +156,12 @@ export async function readR2KVAccountAnalytics({
  return assessR2KVAccountAnalytics(data,{now,accountId});
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{console.log(JSON.stringify(await readR2KVAccountAnalytics()))}
+ try{
+  const observation=await readR2KVAccountAnalytics();
+  console.log(JSON.stringify(observation));
+  if(observation.status!=="OBSERVATIONAL_ONLY_NOT_RELEASE_PROOF")
+   process.exitCode=3;
+ }
  catch(e){const code=String(e?.message??"");
   // Emit a sanitized machine-readable HOLD receipt to stdout even when
   // GraphQL fails: the protected workflow redirects stdout to its artifact.
