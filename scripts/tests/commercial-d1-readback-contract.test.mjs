@@ -13,7 +13,9 @@ function rows(){
    :name==='idx_phase2h_ref_country_category_clock_v1'
     ?'CREATE INDEX '+name+' ON phase2h_raw_object_refs_v1(risk_country_iso3,category,original_published_at)'
     :'CREATE INDEX '+name+' ON '+(name.includes('phase2h')?'phase2h_raw_object_refs_v1':'credit_ledger')+'(id)'
- ):type==='view'?'CREATE VIEW '+name+' AS SELECT 1 AS id':
+ ):type==='trigger'
+   ?"CREATE TRIGGER "+name+" BEFORE INSERT ON commercial_hot50_checkout_key_handoffs BEGIN SELECT CASE WHEN provider='paypal' THEN 1 END; END"
+   :type==='view'?'CREATE VIEW '+name+' AS SELECT 1 AS id':
   name==='customer_payment_receipts'
    ?'CREATE TABLE customer_payment_receipts(provider TEXT,environment TEXT,provider_event_id TEXT, UNIQUE(provider,environment,provider_event_id))'
    :name==='api_keys'?'CREATE TABLE api_keys(hmac_sha256 TEXT)'
@@ -21,6 +23,8 @@ function rows(){
    :name==='phase2h_raw_object_refs_v1'?'CREATE TABLE phase2h_raw_object_refs_v1(pointer_hmac_sha256 TEXT)'
    :name==='commercial_hot50_signed_snapshots'
      ?'CREATE TABLE commercial_hot50_signed_snapshots(signature_b64 TEXT)'
+     :name==='commercial_hot50_checkout_key_handoffs'
+       ?'CREATE TABLE commercial_hot50_checkout_key_handoffs(receipt_id TEXT PRIMARY KEY,key_id TEXT UNIQUE,user_id TEXT)'
      :name==='commercial_hot50_delivery_receipts'
        ?'CREATE TABLE commercial_hot50_delivery_receipts(id TEXT, FOREIGN KEY(id) REFERENCES users(id))'
        :'CREATE TABLE '+name+'(id TEXT)'
