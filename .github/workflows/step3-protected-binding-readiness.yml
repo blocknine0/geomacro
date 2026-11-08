@@ -34,7 +34,10 @@ jobs:
       - run: node --check scripts/ops/step3-protected-binding-readiness.mjs
 
   protected-readiness:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -48,7 +51,9 @@ jobs:
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
       GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
       GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST }}
-      GEOMACRO_STEP3_EXACT_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA }}
+      # Read-only inventory records the exact protected main event commit.
+      # This is NOT an owner-reviewed Stage1/Stage2 production authorization.
+      GEOMACRO_STEP3_EXACT_SHA: ${{ github.sha }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
       GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
       GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
