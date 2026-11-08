@@ -53,7 +53,10 @@ describe("unified Store & API: one authoritative low-barrier pricing catalog", (
     expect(store).not.toContain("Card to crypto");
     expect(store).not.toContain("Pay by card. Merchant receives USDC.");
     expect(inline).toContain('id="payment-checkout"');
-    expect(inline).toContain("PayPal / card checkout · Locked");
+    expect(inline).not.toContain("PayPal / card checkout · Locked");
+    expect(inline).toContain("PayPal, card and fiat checkout");
+    expect(inline).toContain("Native USDC");
+    expect(inline).toContain('data-dual-rail-checkout="usdc-only-prelaunch-locked"');
     expect(inline).toContain("Manual transfer / QR · Locked");
     expect(inline).not.toContain("createOrder(");
     expect(inline).not.toContain("sendTransaction(");
