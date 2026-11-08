@@ -4,12 +4,31 @@
  * Any new direct raw Phase2H consumer requires explicit reviewed classification.
  */
 import {readFileSync,readdirSync,mkdirSync,writeFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import {join,relative} from "node:path";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 const ROOT=process.cwd();
 const SCAN=["workers/control-plane/src","scripts/ops","scripts/lib","src/workers","src/pipelines"];
 const EXT=/\.(?:mjs|cjs|js|ts|tsx)$/u;
+// Only these byte-identical, separately reviewed Step3 files may access raw
+// Phase2H originals in their ISOLATED SHADOW/LOCAL rehearsal context.
+// A changed Git blob MUST trigger another manual source review and CI HOLD.
+// This is not a production reference-only cutover or a true B2/R2 receipt.
+export const SHADOW_ONLY_REVIEWED_BLOBS=Object.freeze({
+ "scripts/lib/d1-step3-real-shadow-proofs.mjs":Object.freeze({
+  blob:"9ddc619bbcdfdc221a1816e11321b4187fa66bed",
+  classification:"PROTECTED_REAL_SHADOW_ONLY_B2_ORIGINAL_BYTE_PARITY_REVIEWED"}),
+ "scripts/lib/d1-step3-shadow-pointer-seed.mjs":Object.freeze({
+  blob:"0e582c4e643319a418921e3eaab99a50b2737a7d",
+  classification:"PROTECTED_SHADOW_ONLY_R2_HMAC_POINTER_SEED_REVIEWED"}),
+ "scripts/ops/run-step3-local-workerd-rehearsal.mjs":Object.freeze({
+  blob:"58d8ebc16b7f48cd54884956ca118c10d8cd0d47",
+  classification:"OFFLINE_MINIFLARE_SIMULATION_ONLY_NO_PRODUCTION_PROOF"})
+});
+export const gitBlobSha1=text=>createHash("sha1")
+ .update("blob "+Buffer.byteLength(text,"utf8")+"\\0")
+ .update(text).digest("hex");
 const PROTECTED_BOUNDARIES=Object.freeze({
  "workers/control-plane/src/phase2h-raw-object-refs.mjs":
   "CENTRAL_VERIFIED_R2_AND_LEGACY_D1_FALLBACK",
@@ -48,8 +67,12 @@ function visit(path,out,depth=0){
   if(!source.includes("phase2h_private_raw_news")||!source.includes("raw_json"))
    continue;
   const file=relative(ROOT,full).replaceAll("\\","/");
-  out.push({file,classification:PROTECTED_BOUNDARIES[file]??
-   "UNREVIEWED_DIRECT_RAW_REFERENCE_HOLD",
+  const reviewed=SHADOW_ONLY_REVIEWED_BLOBS[file];
+  const pinned=reviewed?.blob===gitBlobSha1(source);
+  out.push({file,classification:reviewed?
+    (pinned?reviewed.classification:"UNREVIEWED_DIRECT_RAW_REFERENCE_HOLD"):
+    (PROTECTED_BOUNDARIES[file]??"UNREVIEWED_DIRECT_RAW_REFERENCE_HOLD"),
+   reviewed_shadow_blob_exact:pinned===true,
    has_sql_source_table:true,
    has_raw_json_token:true,
    source_select_raw_from_d1:
