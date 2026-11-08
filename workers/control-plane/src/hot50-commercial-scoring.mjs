@@ -52,7 +52,7 @@ export function scoreQualifiedHot50Cell({iso3,category,evidence,asOf}){
  const upper=Math.min(100,round(score+radius));
  return {
   score,confidence_low:lower,confidence_high:upper,
-  confidence:round(1-radius/100),
+  confidence:Math.max(0,round(1-Math.min(radius,100)/100)),
   uncertainty_method:'WEIGHTED_ABSOLUTE_DEVIATION_ENVELOPE_V1_NOT_CALIBRATED_CI',
   qualified_evidence_count:evidence.length,
   b2_evidence_pointer:evidence[0].b2_pointer,
