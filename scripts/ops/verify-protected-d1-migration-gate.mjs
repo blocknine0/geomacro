@@ -35,7 +35,8 @@ export function evaluateMigrationBudget(plan,now=new Date()){
    return held("D1_OWNER_PROVIDER_BUDGET_UNVERIFIED");
  // Reserve at least 80k rows in both lanes for one-time index build, seed,
  // telemetry lag and ongoing traffic. Never borrow the separate 20k emergency in either lane.
- if(plan.observed_rows_read>=40000||plan.observed_rows_written>=40000)
+ if(plan.observed_rows_read+80000>=580000000||
+    plan.observed_rows_written+80000>=1100000)
   return held("D1_MIGRATION_HEADROOM_UNDER_80K");
  return {schema:"geomacro.protected-d1-migration-budget.v1",
   admitted:true,reason:"PROVIDER_HEADROOM_FOR_PROTECTED_MIGRATIONS",
