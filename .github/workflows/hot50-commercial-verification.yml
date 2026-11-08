@@ -7,6 +7,9 @@ on:
       - 'workers/control-plane/migrations/0215_commercial_hot50_immutable_signed_delivery.sql'
       - 'workers/control-plane/migrations/0216_hot50_plan_scope_d1.sql'
       - 'scripts/tests/hot50-commercial-read.test.mjs'
+      - 'scripts/ops/check-paypal-live-webhook.mjs'
+      - 'scripts/tests/check-paypal-live-webhook.test.mjs'
+      - '.github/workflows/hot50-commercial-provider-readonly-preflight.yml'
       - 'scripts/ops/readback-commercial-d1-schema.mjs'
       - 'scripts/tests/commercial-d1-readback-contract.test.mjs'
       - 'scripts/tests/hot50-commercial-live-evidence.test.mjs'
@@ -32,6 +35,7 @@ jobs:
           node-version: '22'
       - name: Syntax check - Worker, pricing & customer runtime
         run: |
+          node --check scripts/ops/check-paypal-live-webhook.mjs
           node --check scripts/ops/readback-commercial-d1-schema.mjs
           node --check workers/control-plane/src/hot50-commercial-read.mjs
           node --check workers/control-plane/src/hot50-commercial-scoring.mjs
@@ -40,6 +44,7 @@ jobs:
           node --check workers/control-plane/src/customer-runtime.mjs
       - name: Verify deterministic signed Hot50 fixture gates (not live certification)
         run: |
+          node --test scripts/tests/check-paypal-live-webhook.test.mjs
           node --test scripts/tests/commercial-d1-readback-contract.test.mjs
           node --test scripts/tests/hot50-commercial-read.test.mjs
           node --test scripts/tests/hot50-commercial-live-evidence.test.mjs
