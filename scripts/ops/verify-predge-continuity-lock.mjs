@@ -9,7 +9,7 @@ import {predgeResearchDerivedNewsFeed,PREDGE_RESEARCH_PILOT_END_UTC}
 import {CENTRAL_SECURITY_POLICIES} from '../../workers/control-plane/src/central-security-policies.mjs';
 const expectedSchedules={
  'five-minute-original-news-fastlane.yml':['2-57/5 * * * *'],
- 'website-derived-news-continuity.yml':['7 * * * *'],
+ 'website-derived-news-continuity.yml':['7,27,47 * * * *'],
  'website-derived-news-cadence-backstop.yml':['22,52 * * * *'],
  'predge-research-continuity.yml':['17 * * * *'],
 };
