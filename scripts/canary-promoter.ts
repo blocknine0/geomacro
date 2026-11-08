@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-/** Guarded Cloudflare Workers versions promotion: 0,1,10,100; no funds. */
+/** Guarded Cloudflare Workers versions promotion: 0,1,5,25,50,100; no funds. */
 import {existsSync,readFileSync,unlinkSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,BUDGET} from './release-common.ts';
 const HOLD='config/d1-hotspot-v2-canary.hold';
-const STAGES=[0,1,10,100] as const;
-const WINDOW_MS=15*60*1000;
+const STAGES=[0,1,5,25,50,100] as const;
+const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
 const INTERVAL_MS=30000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
@@ -18,7 +18,7 @@ const GRAPH=`query CanaryObservability($accountTag:string!,$script:string!,$vers
  viewer{
   accounts(filter:{accountTag:$accountTag}){
    workersInvocationsAdaptive(limit:1,filter:{scriptName:$script,scriptVersion:$version,datetime_geq:$start,datetime_leq:$end}){
-    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP99}
+    dimensions{scriptVersion} sum{requests errors} quantiles{wallTimeP95 wallTimeP99}
    }
   }
   zones(filter:{zoneTag:$zoneTag}){
@@ -33,8 +33,7 @@ async function liveCurrent():Promise<any>{
  need(Array.isArray(r.deployments)&&r.deployments.length===1,'CANARY_DEPLOYMENT_UNVERIFIED');
  return r.deployments[0];
 }
-const distribution=(base:string,candidate:string,percent:number)=>percent===0?
- [{version_id:base,percentage:100}]:percent===100?
+const distribution=(base:string,candidate:string,percent:number)=>percent===100?
  [{version_id:candidate,percentage:100}]:[
  {version_id:base,percentage:100-percent},{version_id:candidate,percentage:percent}];
 function verifyDistribution(deployment:any,expected:any[]){
@@ -51,6 +50,15 @@ async function deployVersions(base:string,candidate:string,percent:number){
   try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
  }
  throw Error('CANARY_DEPLOYMENT_READBACK_TIMEOUT');
+}
+async function deployBaseline(base:string){
+ const versions=[{version_id:base,percentage:100}];
+ const result=await api(route,{method:'POST',body:JSON.stringify({strategy:'percentage',versions})});
+ verifyDistribution(result,versions);
+ for(let tries=0;tries<6;tries++){
+  try{verifyDistribution(await liveCurrent(),versions);return}catch{await wait(3000)}
+ }
+ throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
 async function checkSource(candidate:string,expectedSha:string){
  const response=await fetch(ORIGIN+'/health',{headers:{'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
@@ -75,6 +83,7 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
  const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
  const siteCount=http?.count,ratio=http?.ratio?.status5xx;
+ const wallTimeP95Us=worker?.quantiles?.wallTimeP95;
  const wallTimeP99Us=worker?.quantiles?.wallTimeP99;
  // HTTP 5xx remains zone-host aggregate; Workers invocation errors are
  // exact scriptVersion. Both must pass, and low candidate volume holds.
@@ -83,16 +92,19 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
   Number.isSafeInteger(requests)&&Number.isSafeInteger(errors)&&
   Number.isSafeInteger(siteCount)&&
   typeof ratio==='number'&&ratio>=0&&ratio<=1&&
-  typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0,
+  typeof wallTimeP99Us==='number'&&Number.isFinite(wallTimeP99Us)&&wallTimeP99Us>=0&&
+  typeof wallTimeP95Us==='number'&&Number.isFinite(wallTimeP95Us)&&wallTimeP95Us>=0,
   'CANARY_PROVIDER_VERSION_METRICS_UNAVAILABLE');
+ const p95=wallTimeP95Us/1000;
  const p99=wallTimeP99Us/1000;
+ need(p95<=p99,'CANARY_PROVIDER_QUANTILES_INCONSISTENT');
  if(requests<1000||siteCount<1000){
   need(!requireVolume,'CANARY_PROVIDER_SAMPLE_FLOOR_UNMET');
   return null;
  }
  return {worker_script_version:version,worker_requests:requests,worker_errors:errors,
   worker_error_ratio:errors/requests,host_requests:siteCount,
-  http_5xx_ratio:ratio,worker_wall_time_p99_ms:p99,
+  http_5xx_ratio:ratio,worker_wall_time_p95_ms:p95,worker_wall_time_p99_ms:p99,
   http_5xx_under_0_1pct:ratio<0.001,
   version_errors_under_0_1pct:errors/requests<0.001,
   p99_under_50ms:p99<50,
@@ -125,11 +137,15 @@ async function checkLiveD1Budget(){
 }
 async function observeStage(base:string,candidate:string,pct:number,sha:string){
  const began=Date.now();let intervals=0;
+ const windowMs=stageWindowMs(pct);
  // Inspect provider D1 spend at the start and every two health ticks.
  // A missing delayed provider receipt is HOLD, never a synthetic PASS.
  let d1=await checkLiveD1Budget();
- while(Date.now()-began<WINDOW_MS){
+ while(Date.now()-began<windowMs){
   if(pct===0){
+   // Version override can target the candidate only when the 0%-candidate
+   // participates in the Cloudflare split deployment; baseline keeps 100%.
+   await checkSource(candidate,sha);
    const health=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
    const status=await health.json().catch(()=>null);
    need(health.status===200&&status?.ok===true,'CANARY_BASELINE_HEALTH_UNAVAILABLE');
@@ -147,7 +163,7 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
      result.version_errors_under_0_1pct&&result.p99_under_50ms,'CANARY_LIVE_SLO_BREACH');
    }
   }
-  await wait(Math.min(INTERVAL_MS,Math.max(1,WINDOW_MS-(Date.now()-began))));
+  await wait(Math.min(INTERVAL_MS,Math.max(1,windowMs-(Date.now()-began))));
  }
  d1=await checkLiveD1Budget();
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
@@ -184,13 +200,22 @@ async function main(){
  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
  need(UUID_RE.test(base)&&UUID_RE.test(candidate)&&base!==candidate,'CANARY_VERSION_IDS_INVALID');
  need(envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS','CANARY_OWNER_CONFIRMATION_REQUIRED');
- verifyDistribution(await liveCurrent(),distribution(base,candidate,0));
+ const initial=await liveCurrent();
+ verifyDistribution(initial,[{version_id:base,percentage:100}]);
  await checkVersionParity(base,candidate);
  const records:any[]=[];let mutated=false;
+ let baselineP95Ms:number|null=null;
  try{
+  // Stage 0 creates a genuine two-version 100%/0% provider deployment so
+  // the directed candidate health probe does not fall through to baseline.
+  mutated=true;await deployVersions(base,candidate,0);
   for(const pct of STAGES){
    if(pct>0){mutated=true;await deployVersions(base,candidate,pct)}
    const x=await observeStage(base,candidate,pct,mainSha);
+   if(pct===0)baselineP95Ms=x.worker_wall_time_p95_ms;
+   else need(Number.isFinite(baselineP95Ms)&&
+    x.worker_wall_time_p95_ms<=baselineP95Ms,
+    'CANARY_P95_BASELINE_LATENCY_REGRESSION');
    records.push(x);
    signedReport(`artifacts/release/canary-stage-${pct}.json`,{schema:'geomacro.hot50.canary-slo.v1',status:'PASS',source_sha:mainSha,
     baseline_version:base,candidate_version:candidate,no_funds:true,...x});
@@ -224,7 +249,7 @@ async function main(){
   }
  }catch(e){
   if(mutated){
-   try{await deployVersions(base,candidate,0);console.error('CANARY_ROLLBACK_BASELINE_100_VERIFIED')}
+   try{await deployBaseline(base);console.error('CANARY_ROLLBACK_BASELINE_100_VERIFIED')}
    catch{console.error('CANARY_ROLLBACK_PROVIDER_CONFIRMATION_FAILED')}
   }
   throw e;
