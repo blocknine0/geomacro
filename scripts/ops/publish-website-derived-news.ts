@@ -87,7 +87,21 @@ if (!ARCHIVE_ONLY) try{
   });
   workerPolicyReady=true;
   console.log(JSON.stringify({...workerPolicy,d1_publisher_ready:true}));
-}catch{
+}catch(error){
+  // The publisher must preserve the static archive on deployment/quota HOLD.
+  // Log only our own enumerated diagnostic code, never a raw provider response,
+  // token, URL or the thrown error object. This distinguishes stale Worker SHA,
+  // schema version, unreachable health and a malformed policy receipt.
+  const known=new Set([
+    "DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID",
+    "DERIVED_NEWS_WORKER_POLICY_HEALTH_UNAVAILABLE",
+    "DERIVED_NEWS_WORKER_POLICY_RESPONSE_OVERSIZE",
+    "DERIVED_NEWS_WORKER_POLICY_RESPONSE_INVALID",
+    "DERIVED_NEWS_WORKER_TOPIC_POLICY_NOT_CURRENT"
+  ]);
+  const reason=error instanceof Error&&known.has(error.message)
+    ?error.message:"DERIVED_NEWS_WORKER_PREFLIGHT_UNVERIFIED";
+  console.warn("::warning::"+reason);
   console.warn("D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES");
 }
 for (const category of categories) {

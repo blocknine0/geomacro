@@ -100,6 +100,7 @@
     "d1-gro-index-backfill.yml",
     "d1-launch-72h-observatory.yml",
     "d1-nov9-utc-protected-migration-window.yml",
+    "d1-paid-cycle-account-readonly-observation.yml",
     "d1-paid-monthly-provider-proof-readonly.yml",
     "d1-read-hotspot-v2-contract.yml",
     "d1-shadow-backfill.yml",
@@ -365,6 +366,7 @@
     "stateless-live-structured-no-funds.yml",
     "stateless-website-intelligence-live.yml",
     "step3-protected-binding-readiness.yml",
+    "step3-r2-private-exposure.yml",
     "step3-shadow-prerequisite-bootstrap.yml",
     "step3-shadow-provider-readonly-inventory.yml",
     "store-12-variant-readiness-no-funds.yml",
@@ -611,6 +613,14 @@
       "node scripts/ops/audit-step3-shadow-provider-readonly.mjs",
       "ref: ${{ github.sha }}",
       "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+    ],
+    "step3-r2-private-exposure.yml": [
+      "workflow_dispatch:",
+      "branches: [main]",
+      "environment: production",
+      "github.ref == 'refs/heads/main'",
+      "node scripts/ops/audit-step3-r2-private-exposure.mjs",
+      "ref: ${{ github.sha }}"
     ]
   },
   "predgeBlobSha1": {
