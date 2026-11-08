@@ -59,16 +59,13 @@ describe("Nevermined x402 configuration", () => {
     );
   });
 
-  it("accepts live configuration only after the exact global launch acknowledgement", () => {
+  it("never enables live Nevermined new sales under owner crypto-only scope", () => {
     process.env.NEVERMINED_X402_ENVIRONMENT = "live";
     configureCommon();
     process.env.NEVERMINED_NVM_API_KEY = "live:test-key";
     process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
-    const config = getNeverminedX402Config();
-    expect(config?.environment).toBe("live");
-    expect(config?.apiUrl).toBe(NEVERMINED_ENVIRONMENTS.live.api_url);
-    expect(config?.network).toBe("eip155:8453");
-    expect(config?.commercialRevenue).toBe(true);
+    expect(() => getNeverminedX402Config())
+      .toThrow("NEVERMINED_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE");
   });
 
   it("fails closed for environment-key mismatch, unsupported schemes, or malformed plan/amount values", () => {
