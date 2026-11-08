@@ -6,6 +6,8 @@ on:
       - "scripts/lib/cloudflare-quota-governor.mjs"
       - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
       - "scripts/lib/d1-owner-daily-envelope.mjs"
+      - "scripts/ops/check-d1-headroom.mjs"
+      - "scripts/tests/d1-step3-headroom.test.mjs"
       - "scripts/tests/cloudflare-quota-governor.test.mjs"
       - "scripts/verify-d1-quota-proof.ts"
       - "src/middleware/quotaCircuitBreaker.ts"
@@ -38,6 +40,8 @@ jobs:
           node --check scripts/canary-promoter.ts
       - name: Six-resource quota admission unit tests
         run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
+      - name: Step3 migration real-month 30pct reserve contract
+        run: node --test scripts/tests/d1-step3-headroom.test.mjs
       - name: Existing Predge non-commercial 72h and 500-request continuity lock
         run: node scripts/ops/verify-predge-continuity-lock.mjs
       - name: Confirm production HOLD and non-commercial partner feed remain protected
