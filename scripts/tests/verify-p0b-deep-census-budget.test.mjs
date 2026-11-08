@@ -6,7 +6,7 @@ const now=new Date("2026-11-07T12:30:00Z");
 const good={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
   critical:true,observed_rows_read:50000,observed_rows_written:40000,
   owner_d1_normal_envelope:{held:false},
-  owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,
+  owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,
   emergency_auto_admission:false}};
 const checked=x=>assessP0bDeepCensusBudget(x,{now});
 test("admit only fresh official paid account rows and conservative headroom",()=>{
