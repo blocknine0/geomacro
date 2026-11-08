@@ -105,16 +105,18 @@ const isSha=s=>typeof s==='string'&&HEX.test(s);
 function independentCorroboration(proof){
  if(!Array.isArray(proof?.confirmations)||proof.confirmations.length<2||proof.confirmations.length>8)return false;
  const domains=new Set(),families=new Set(),hashes=new Set();
+ let includesOrigin=false;
  for(const c of proof.confirmations){
   if(!plain(c)||c.same_event_claim_sha256!==proof.same_event_claim_sha256||
      !validString(c.originating_org,96)||!isSha(c.original_content_sha256)||
      c.independently_authored!==true||c.syndicated_from!==null||
      !validIso(c.published_at)||!safeUrl(c.url))return false;
+  if(c.url===proof.original_url&&c.originating_org===proof.originating_org)includesOrigin=true;
   const u=new URL(c.url);domains.add(u.hostname);families.add(c.originating_org);
   hashes.add(c.original_content_sha256);
  }
  const times=proof.confirmations.map(c=>Date.parse(c.published_at));
- return domains.size>=2&&families.size>=2&&hashes.size>=2&&
+ return includesOrigin&&domains.size>=2&&families.size>=2&&hashes.size>=2&&
    Math.max(...times)-Math.min(...times)<=90*60*1000;
 }
 export async function analyzeDeficits(item,attestation,{
@@ -142,6 +144,7 @@ export async function analyzeDeficits(item,attestation,{
  if(!validIso(p.original_published_at)||!validIso(p.reviewed_at)||
     !validIso(p.proof_expires_at)||t>now+5*60000||t<now-6*3600000||
     signedAt<t||signedAt>now+5*60000||Date.parse(p.proof_expires_at)<=now||
+    Date.parse(p.proof_expires_at)>now+3*3600000+60000||
     (item.claimed_published_at!==null&&Math.abs(t-Date.parse(item.claimed_published_at))>5*60000)||
     p.native_publication_metadata_verified!==true)
   reasons.add(DEFICITS.TIME);
@@ -149,14 +152,16 @@ export async function analyzeDeficits(item,attestation,{
  if(p.commercial_derived_use_rights_verified!==true||!isSha(p.rights_receipt_sha256)||
     !validString(p.rights_license_id,160)||p.rights_license_id==='unknown')
   reasons.add(DEFICITS.RIGHTS);
- if(nearDuplicates.some(x=>x!==item.id&&
-     typeof x==='object'&&x.id!==item.id&&
+ if(nearDuplicates.some(x=>x&&typeof x==='object'&&x.id!==item.id&&
      simhashDistance(item.narrative_simhash,x.narrative_simhash)<=3))
   reasons.add(DEFICITS.DUPLICATE);
  return {state:reasons.size?'QUARANTINED':'QUALIFIED',
   deficits:[...reasons].sort(),qualified:reasons.size===0};
 }
-export async function signEvidence(item,attestation,{privatePkcs8B64,publicSpkiB64,keyId,now=Date.now()}={}){
+export async function signEvidence(item,attestation,{privatePkcs8B64,publicSpkiB64,keyId,now=Date.now(),
+ reviewerPublicSpkiB64,approvedOrigins}={}){
+ const gate=await analyzeDeficits(item,attestation,{reviewerPublicSpkiB64,approvedOrigins,now});
+ if(!gate.qualified)error('SIGNING_GATE_DENIED');
  if(!validString(keyId,128))error('SIGNER_KEY_ID_REQUIRED');
  const payload={schema:'geomacro.qualified-evidence.v1',item,review:attestation.proof,
   review_signature_base64:attestation.signature_base64};
