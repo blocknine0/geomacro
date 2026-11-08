@@ -9,14 +9,11 @@ import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {checkD1BundledWork} from "./plan-d1-bundled-work.mjs";
 import {SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
-import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
+
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{40}$/;
 const STAGES=[0,1,5,25,50,100];
-const OWNER_POLICY=JSON.parse(readFileSync(
- new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"
-)).d1_budget_policy;
 
 export function readBindings(version){
  const raw=version?.resources?.bindings;
@@ -106,25 +103,31 @@ export function assessWorkerPromotion({
    return refuse("CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
   if(quota?.day_utc!==now.toISOString().slice(0,10))
    return refuse("PROVIDER_UTC_DAY_RECEIPT_STALE_OR_MISSING");
-  const limits=quota?.owner_d1_utc_daily_targets;
-  if(limits?.rows_read!==140000||limits?.rows_written!==140000||
-     limits?.emergency_rows_written!==0)
-   return refuse("OWNER_140K_POLICY_UNVERIFIED");
   if(quota?.workers_paid_subscription_verified!==true)
    return refuse("WORKERS_PAID_UNVERIFIED");
-  if(spendPolicyEnforced&&!(
-   quota?.paid_capacity_probe_status==="VERIFIED"&&
-   quota?.paid_capacity_verified_by_provider===true))
+  if(spendPolicyEnforced&&!((quota?.paid_capacity_probe_status==="VERIFIED")&&
+    quota?.paid_capacity_verified_by_provider===true))
    return refuse("SPEND_POLICY_UNVERIFIED");
-  const env=evaluateOwnerD1DailyEnvelope({
-   observedRowsRead:quota?.observed_rows_read,
-   observedRowsWritten:quota?.observed_rows_written,
-   now,policy:OWNER_POLICY
-  });
-  if(env.held||quota?.state==="HELD"||quota?.owner_d1_utc_budget_held)
-   return refuse("OWNER_D1_BUDGET_HELD",{
-    observed_rows_read:quota?.observed_rows_read??null,
-    observed_rows_written:quota?.observed_rows_written??null
+  const monthly=quota?.monthly_owner_headroom;
+  if(monthly?.schema!=="geomacro.d1-paid-monthly-headroom.v1"||
+     monthly.status!=="PASS"||
+     monthly.provider_subscription_verified!==true||
+     quota?.paid_monthly_account_wide_verified!==true||
+     monthly.day_utc!==now.toISOString().slice(0,10)||
+     monthly.monthly_ceiling_read!==22_500_000_000||
+     monthly.monthly_ceiling_written!==45_000_000||
+     monthly.reserve_pct!==10||
+     monthly.old_daily_140k_policy_applied!==false||
+     !Number.isSafeInteger(monthly.observed_rows_read)||
+     !Number.isSafeInteger(monthly.observed_rows_written)||
+     monthly.remaining_rows_read<20_000_000||
+     monthly.remaining_rows_written<1_000_000||
+     quota?.state==="HELD")
+   return refuse("D1_PAID_MONTHLY_BUDGET_HELD",{
+    billing_cycle_start_utc:monthly?.cycle_start_utc??null,
+    billing_cycle_end_exclusive_utc:monthly?.cycle_end_exclusive_utc??null,
+    observed_rows_read:monthly?.observed_rows_read??null,
+    observed_rows_written:monthly?.observed_rows_written??null
    });
   return Object.freeze({
    schema:"geomacro.hot50.protected-worker-promotion.v1",
@@ -132,7 +135,11 @@ export function assessWorkerPromotion({
    reason:"ELIGIBLE_FOR_EXPLICIT_NO_FUNDS_STAGE",
    source_sha:sourceSha,previous_percent:preceding,target_percent:targetPercent,
    baseline_id:baselineId,candidate_id:candidateId,bindings_checked:newBindings.length,
-   observed_rows_read:quota.observed_rows_read,observed_rows_written:quota.observed_rows_written,
+   billing_cycle_start_utc:monthly.cycle_start_utc,
+   billing_cycle_end_exclusive_utc:monthly.cycle_end_exclusive_utc,
+   observed_rows_read:monthly.observed_rows_read,
+   observed_rows_written:monthly.observed_rows_written,
+   old_daily_140k_policy_applied:false,
    provider_mutations:0,payments:0
   });
  }catch{return refuse("PROVIDER_RECEIPT_UNREADABLE");}
