@@ -132,7 +132,7 @@ function PricingPage() {
             or native Base/Polygon USDC directly on this page. {paypalLive?"Verified live PayPal checkout is available.":"Production transactions remain locked until independently verified."}
           </p>
         </div>
-        <LowBarrierPricing paypalLive={paypalLive} />
+        <LowBarrierPricing />
       </section>
 
       <section id="api-endpoints" className="scroll-mt-40 pt-14 sm:pt-20">
