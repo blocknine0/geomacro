@@ -12,8 +12,8 @@ const receipt={
  same_run_d1_bookmark_and_worker_version_retrieved:true,
  worker_version_uploaded:false,d1_sql_queries_issued:0,
  provider_write_operations:0,payments:0,
- normal_read_target:120000,normal_write_target:120000,
- emergency_read_reserve:20000,emergency_write_reserve:20000,
+ normal_read_target:580000000,normal_write_target:1100000,
+ emergency_read_reserve:0,emergency_write_reserve:0,
  daily_read_rows:30000,daily_written_rows:25000,
  eligible_for_zero_traffic_stage:false};
 test("narrow one-time repair admission needs full provider readback, not a pacing bypass for public work",()=>{
@@ -33,7 +33,7 @@ test("provider identity, day or 80k repair reserve missing always HOLD",()=>{
  {d1_sql_queries_issued:1},{reason:"CANARY_PROVIDER_DENIED"},
  {inspected_at:"2026-11-06T23:55:00Z"},
  {inspected_at:"2026-11-07T00:00:00Z"},
- {daily_read_rows:40000},{daily_written_rows:40000},
+ {daily_read_rows:579950000},{daily_written_rows:1050000},
  {daily_read_rows:NaN},{payments:1},{worker_version_uploaded:true},
  {normal_read_target:180000}
  ];
