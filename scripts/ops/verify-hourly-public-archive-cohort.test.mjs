@@ -89,5 +89,5 @@ test("existing source-only and hourly writers share single archive mutex and per
   assert.match(lane,/group: geomacro-permanent-news-publication/);
   assert.match(lane,/node scripts\/ops\/verify-hourly-public-archive-cohort\.mjs/);
  }
- assert.match(workflow,/cron: "7 \* \* \* \*"/);
+ assert.match(workflow,/cron: "7,27,47 \* \* \* \*"/);
 });

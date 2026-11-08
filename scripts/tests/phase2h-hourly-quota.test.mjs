@@ -57,5 +57,5 @@ test("bounded admission is wired to existing protected publisher not a new cron"
  assert.match(pub,/maxAttempts:admission.max_collision_attempts/);
  assert.match(pub,/deferred_for_next_hour:admission.deferred_for_next_hour/);
  assert.match(workflow,/node --test scripts\/tests\/phase2h-hourly-quota.test.mjs/);
- assert.match(workflow,/cron: "7 \* \* \* \*"/);
+ assert.match(workflow,/cron: "7,27,47 \* \* \* \*"/);
 });

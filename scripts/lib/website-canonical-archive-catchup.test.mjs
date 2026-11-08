@@ -44,7 +44,7 @@ test("D1 ID collisions and unbounded candidate artifacts fail closed",()=>{
   ...opts,canonicalRows:Array.from({length:601},(_,i)=>row("macro",String(i).padStart(8,"0")))
  }),/WEBSITE_CANONICAL_STATIC_CATCHUP_ARGUMENTS_INVALID/);
 });
-test("hourly workflow performs canonical recovery before candidate export, reusing one readback",()=>{
+test("20-minute workflow performs canonical recovery before candidate export, reusing one readback",()=>{
  const script=readFileSync("scripts/ops/publish-website-derived-news.ts","utf8");
  const reconciliation=script.indexOf("const staged=reconcileCanonicalWebsiteArchiveCandidates(");
  const exportArtifact=script.indexOf("writeFileSync(\"artifacts/derived-news/permanent-archive-candidates.json\"");
@@ -57,5 +57,5 @@ test("hourly workflow performs canonical recovery before candidate export, reusi
  const workflow=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
  assert.match(workflow,/bun scripts\/ops\/publish-website-derived-news.ts/);
  assert.match(workflow,/scripts\/ops\/publish-permanent-derived-news-archive.mjs/);
- assert.match(workflow,/cron: "7 \* \* \* \*"/);
+ assert.match(workflow,/cron: "7,27,47 \* \* \* \*"/);
 });

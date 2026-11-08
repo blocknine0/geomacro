@@ -38,7 +38,14 @@ test("quota-held archive remains D1-write-free and cannot run on untrusted pushe
   // and never begin a parallel publisher during ordinary main pushes.
   const condition=block.split("    if: >-")[1]?.split("\n    runs-on:")[0]??"";
   assert.ok(condition.includes("needs.quota-admission.outputs.research == 'false'"));
-  assert.ok(!condition.includes("github.event_name == 'push'"));
+  // A push must be a protected canonical main change, and only while the
+  // existing provider governor explicitly holds research D1 admission.
+  assert.ok(condition.includes("github.event_name == 'push'"));
+  assert.ok(condition.includes("github.repository == 'blocknine0/geomacro'"));
+  assert.ok(condition.includes("github.ref == 'refs/heads/main'"));
+  const admitted=workflow.split("  refresh-derived-news:")[1]??"";
+  assert.ok(admitted.includes("github.event_name != 'push'"));
+  assert.ok(condition.includes("needs.quota-admission.result == 'success'"));
   assert.ok(block.includes("GEOMACRO_DERIVED_ARCHIVE_ONLY"));
   assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
 });
