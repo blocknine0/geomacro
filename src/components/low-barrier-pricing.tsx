@@ -2,7 +2,7 @@ import { useState } from "react";
 import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 import { LockedDualRailCheckout, type CheckoutSelection } from "@/components/dual-rail-checkout";
 
-/** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
+/** Read-only catalog plus selectable native-USDC-only checkout preview; no money is accepted. */
 export function LowBarrierPricing() {
   const initialPlan = GEOMACRO_SUBSCRIPTIONS[0];
   const [selection, setSelection] = useState<CheckoutSelection>({
@@ -23,7 +23,7 @@ export function LowBarrierPricing() {
         <p className="gm-eyebrow">Monthly access</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight">Start small. Scale when you need to.</h2>
         <p className="mt-3 text-sm text-muted-foreground">
-          Each purchase grants up to 30 days of prepaid access; manual renewal, not automatic PayPal billing.
+          Each purchase grants up to 30 days of prepaid access; manual renewal, never automatic wallet debits.
           Credits support qualified intelligence access once checkout and API entitlements are enabled.
           No self-service charges or credit allocation are activated during the prelaunch preview.
         </p>
@@ -46,7 +46,7 @@ export function LowBarrierPricing() {
                   credits:plan.credits_per_30_days,kind:"monthly_plan",
                 })}
                 className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
-                {selection.id === plan.id ? "Selected · View payment methods" : "Select plan & payment method"}
+                {selection.id === plan.id ? "Selected · View USDC" : "Select plan & USDC"}
               </button>
               <p className="mt-2 text-xs text-muted-foreground">Live checkout locked · no charge</p>
             </article>
@@ -71,7 +71,7 @@ export function LowBarrierPricing() {
                   credits:pack.credits,kind:"one_time_pack",
                 })}
                 className="mt-4 min-h-11 rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
-                {selection.id === pack.id ? "Selected · View payment methods" : "Select pack & payment method"}
+                {selection.id === pack.id ? "Selected · View payment methods" : "Select pack & USDC"}
               </button>
             </article>
           ))}
