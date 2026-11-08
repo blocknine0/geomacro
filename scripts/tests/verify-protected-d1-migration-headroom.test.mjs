@@ -45,13 +45,13 @@ test("migration runner may admit only a verified hourly-pace HOLD with actual he
  const plan={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
  observed_rows_read:30000,observed_rows_written:25000,
  critical:false,reason:"GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD",
- owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_HOURLY_BURN_RATE_HELD"},
- owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,
+ owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_PAID_HOURLY_PACING_HELD"},
+ owner_d1_utc_daily_targets:{rows_read:580000000,normal_rows_read:580000000,normal_rows_written:1100000,emergency_rows_read:0,emergency_rows_written:0,
  emergency_auto_admission:false}};
  assert.equal(evaluateMigrationBudget(plan,now).admitted,true);
  for(const change of [{reason:"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD"},
  {owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_120K_NORMAL_CEILING_HELD"}},
- {observed_rows_read:40000},{observed_rows_written:40000}])
+ {observed_rows_read:579950000},{observed_rows_written:1050000}])
  assert.equal(evaluateMigrationBudget({...plan,...change},now).admitted,false);
 });
 test("separate UTC migration headroom never changes ordinary Stage A exit semantics",()=>{
