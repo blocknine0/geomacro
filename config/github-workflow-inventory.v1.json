@@ -362,6 +362,7 @@
     "standing-delegated-derived-attestation.yml",
     "stateless-live-structured-no-funds.yml",
     "stateless-website-intelligence-live.yml",
+    "step3-protected-binding-readiness.yml",
     "store-12-variant-readiness-no-funds.yml",
     "strict-commercial-launch-closure.yml",
     "structured-commerce-db-concurrency.yml",
@@ -464,6 +465,7 @@
     "rss-private-d1-15m.yml",
     "source-network-governance.yml",
     "source-rights-intake-observer.yml",
+    "step3-protected-binding-readiness.yml",
     "telegram-b2-d1-consumer.yml",
     "three-domain-30m-original-publisher-pulse.yml",
     "three-domain-private-source-intake.yml",
@@ -501,7 +503,8 @@
     "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)",
     "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)",
     "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)",
-    "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator"
+    "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator",
+    "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -590,6 +593,11 @@
       "environment: production",
       "config/d1-hotspot-v2-canary.hold",
       "node scripts/ops/run-step3-protected-d1-migrations.mjs --apply"
+    ],
+    "step3-protected-binding-readiness.yml": [
+      "workflow_dispatch:",
+      "environment: production",
+      "node scripts/ops/step3-protected-binding-readiness.mjs"
     ]
   },
   "predgeBlobSha1": {
