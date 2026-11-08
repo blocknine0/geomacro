@@ -55,6 +55,8 @@ In GitHub `production` environment, configure *only the owner*:
 | `GEOMACRO_STEP3_VERIFIED_WORKER_HOST` | `api.geomacro.live` | canonical protected reader |
 | `GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST` | restricted `geomacro-step3-shadow.<account>.workers.dev` | MUST bind isolated shadow D1 |
 | `GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED` | `YES` only after representative shadow dataset and bound Worker confirmed | shadow writes only |
+| `GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED` | `YES` only for the isolated shadow | real previously B2-ACKnowledged shadow original to private R2 pointer |
+| `GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET` | dedicated PRIVATE shadow R2 bucket | must match shadow Worker's `PHASE2H_PRIVATE_R2` binding |
 | `GEOMACRO_STEP3_RECOVERY_V2_APPROVED` | keep `NO` until **full** provider shadow rehearsal | protected production admission |
 | `GEOMACRO_STEP3_NOV9_ARMED` | keep `NO` until **full** provider shadow rehearsal | one-time scheduled production run |
 
@@ -103,6 +105,8 @@ real Cloudflare Time Travel bookmark → AES-256-GCM encrypt IN MEMORY →
 private R2 PUT/GET exact byte and SHA compare → signed manifest R2
 PUT/GET verification → _geomacro_migration_ledger creation →
 0204 → 0211 → 0212 → 0213 sequential native migrations, with
+real archived-record validator, shadow private R2 bundle PUT/GET, D1
+HMAC-bound pointer insert and exact SHA readback, then
 actual D1 history, schema/index/counter integrity and immutable source
 baseline check after each.
 
