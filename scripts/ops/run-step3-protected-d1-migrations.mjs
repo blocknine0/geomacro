@@ -585,6 +585,7 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   report.post_migration_readback_explicit_PASS=
    report.status==="PASS"&&
    report.post_migration_readback_explicit_PASS===true;
+  report.completed_at=new Date().toISOString();
   write();
  }
  return report;
