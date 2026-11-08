@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: "24"}
       - run: node --test scripts/tests/d1-paid-main-observer-workflow.test.mjs
-      - run: node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
+      - run: node --test scripts/tests/d1-step3-headroom.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
   provider-readonly:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
@@ -56,7 +56,7 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
-          node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
+          node --test scripts/tests/d1-step3-headroom.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
       - name: Read-only account Paid subscription and billing-cycle rows
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Preserve sanitized PASS or HOLD
