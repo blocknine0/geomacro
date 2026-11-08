@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GEOMACRO_USDC_NATIVE_RAILS } from "@/lib/usdc-native-rail-identities";
 import { CreditCard, ShieldCheck, Wallet } from "lucide-react";
 
@@ -18,10 +18,42 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
   const [rail, setRail] = useState<"paypal" | "usdc">("paypal");
   const [network, setNetwork] = useState<"base" | "polygon">("base");
   const chain = GEOMACRO_USDC_NATIVE_RAILS[network];
+  const [paypalLive,setPayPalLive]=useState(false);
+  useEffect(()=>{
+   let active=true;
+   void fetch("/api/v1/payments/paypal",{cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(x=>{if(active)setPayPalLive(x?.active_checkout_enabled===true &&
+      x?.merchant_credentials_verified===true&&
+      x?.webhook_registration_verified===true&&x?.environment==="live");})
+    .catch(()=>{if(active)setPayPalLive(false);});
+   return()=>{active=false;};
+  },[]);
+  const [starting,setStarting]=useState(false);
+  const [paymentError,setPaymentError]=useState("");
+  async function startLivePayPal(){
+    if(!paypalLive||starting)return;
+    setStarting(true);setPaymentError("");
+    try {
+      const response=await fetch("/api/v1/payments/paypal/create-order",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({sku:selection.id}),
+      });
+      const result=await response.json() as {ok?:boolean;approval_url?:string;code?:string};
+      if(!response.ok||!result.ok||!result.approval_url)
+        throw Error(result.code??"MERCHANT_CHECKOUT_NOT_AVAILABLE");
+      const target=new URL(result.approval_url);
+      if(target.protocol!=="https:"||!["paypal.com","www.paypal.com"].includes(target.hostname)||
+         target.pathname!=="/checkoutnow")
+        throw Error("PAYPAL_APPROVAL_URL_REJECTED");
+      window.location.assign(target.href);
+    }catch(error){setPaymentError(error instanceof Error?error.message:"CHECKOUT_UNAVAILABLE");setStarting(false);}
+  }
 
   return (
     <section id="payment-checkout" aria-labelledby="gm-checkout-heading"
-      data-dual-rail-checkout="prelaunch-locked"
+      data-dual-rail-checkout={paypalLive?"live-provider-verified":"prelaunch-locked"}
       className="scroll-mt-40 rounded-2xl border border-primary/30 bg-primary/5 p-5 sm:p-7">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -31,11 +63,11 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             Select any plan or credit pack above, then choose PayPal / card or native USDC.
-            This embedded checkout is a non-payable preview while integration testing is locked.
+            The checkout opens only after the payment service independently reports verified production readiness.
           </p>
         </div>
         <span className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
-          Payments locked · no charge
+          {paypalLive ? "PayPal verified · live checkout" : "Payments locked · no charge"}
         </span>
       </div>
 
@@ -91,11 +123,13 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
               Domestic India-to-India PayPal collection is not supported. Card availability
               depends on PayPal and merchant KYC. Plans do not auto-renew.
             </p>
-            <button type="button" disabled
-              className="w-full cursor-not-allowed rounded-lg bg-muted px-4 py-3 text-sm font-semibold text-muted-foreground"
-              aria-label="PayPal checkout disabled until live activation">
-              PayPal / card checkout · Locked
+            <button type="button" disabled={!paypalLive||starting}
+              onClick={()=>void startLivePayPal()}
+              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+              aria-label={paypalLive?"Start verified PayPal checkout":"PayPal checkout disabled until independently verified activation"}>
+              {starting?"Preparing verified checkout…":paypalLive?"Continue with PayPal":"PayPal / card checkout · Locked"}
             </button>
+            {paymentError&&<p className="text-sm text-destructive" role="alert">{paymentError}</p>}
           </section>
 
           <section id="gm-usdc-panel" role="tabpanel" aria-labelledby="gm-usdc-tab"
@@ -137,7 +171,7 @@ export function LockedDualRailCheckout({ selection }: { selection: CheckoutSelec
 
       <p role="status" className="mt-5 flex items-start gap-2 rounded-lg border border-border bg-background/80 p-3 text-xs leading-5 text-muted-foreground">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        Prelaunch preview only. No PayPal capture, card charge, USDC transfer,
+        Until verified activation, no PayPal capture, card charge, USDC transfer,
         credit top-up or API entitlement is active.
       </p>
       <p className="mt-3 text-xs text-muted-foreground">

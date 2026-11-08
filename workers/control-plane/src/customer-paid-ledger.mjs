@@ -22,7 +22,7 @@ const PERMITTED=Object.freeze({
   credits_500:CUSTOMER_ENABLED_CAPABILITIES,
   credits_1500:CUSTOMER_ENABLED_CAPABILITIES,
 });
-const tokenPattern=/^gmk_live_[0-9a-f]{64}$/;
+const tokenPattern=/^(?:gmk_live_[0-9a-f]{64}|gm_live_[0-9a-f]{32})$/;
 const requestPattern=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
 const encoder=new TextEncoder();
 const hex=bytes=>Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('');
@@ -48,7 +48,9 @@ export async function customerPaidKeyDigest(env,key){
 function randHex(n){
   const bytes=new Uint8Array(n);crypto.getRandomValues(bytes);return hex(bytes);
 }
-export function customerPaidCapabilityPolicy(tier,capability){
+export function customerPaidCapabilityPolicy(tier,capability,env={}){
+  if(capability==='risk_gate_bundle'&&
+     env?.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')return false;
   return CUSTOMER_ENABLED_CAPABILITIES.includes(capability)&&
     Object.hasOwn(PERMITTED,tier)&&PERMITTED[tier].includes(capability);
 }
@@ -65,7 +67,7 @@ function validCapability(c){
   return c;
 }
 function queryGrants(db,userId,now){
-  return db.prepare(`SELECT g.grant_id,g.tier,g.contract_version,g.starts_at,g.expires_at,
+  return db.prepare(`SELECT g.grant_id,g.receipt_id,g.tier,g.contract_version,g.starts_at,g.expires_at,
       (SELECT COALESCE(SUM(delta_credits),0) FROM credit_ledger
        WHERE receipt_id=g.receipt_id AND event_type IN ('funding','reversal')) AS allocated,
       (SELECT COALESCE(SUM(credit_cost),0) FROM customer_usage_receipts
@@ -116,11 +118,11 @@ async function scopedKey(db,env,raw,now){
     fail(503,'CUSTOMER_PAID_KEY_SCOPE_INVALID');
   return {...key,scopes};
 }
-async function chooseGrant(db,key,capability,now){
+async function chooseGrant(db,key,capability,now,env){
   if(!key.scopes.includes(scopeFor(capability)))
     fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
   const rows=(await queryGrants(db,key.user_id,now)).results??[];
-  const eligible=rows.filter(g=>customerPaidCapabilityPolicy(g.tier,capability));
+  const eligible=rows.filter(g=>customerPaidCapabilityPolicy(g.tier,capability,env));
   if(!eligible.length)fail(403,'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
   const grant=eligible.find(g=>Number.isInteger(g.remaining)&&g.remaining>=CUSTOMER_ENTITLEMENT_UNITS[capability]);
   if(!grant)fail(402,'CUSTOMER_PAID_INSUFFICIENT_CREDITS');
@@ -129,8 +131,10 @@ async function chooseGrant(db,key,capability,now){
 /** Read-only verified grant/account proof; no credits are allocated here. */
 export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){
   capability=validCapability(capability);
+  if(capability==='risk_gate_bundle'&&env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+    fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
   const key=await scopedKey(db,env,apiKey,now);
-  const grant=await chooseGrant(db,key,capability,now);
+  const grant=await chooseGrant(db,key,capability,now,env);
   return {ok:true,principal_id:key.user_id,principal_type:'api_client',
     principal_external_id:'d1:'+key.user_id,key_id:key.key_id,
     scopes:key.scopes,grant_id:grant.grant_id,tier:grant.tier,
@@ -143,6 +147,8 @@ export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,no
  */
 export async function consumeCanonicalCustomerPaid(db,env,{apiKey,capability,requestId},now=nowIso()){
   capability=validCapability(capability);
+  if(capability==='risk_gate_bundle'&&env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+    fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
   if(typeof requestId!=='string'||!requestPattern.test(requestId))
     fail(400,'CUSTOMER_PAID_REQUEST_ID_INVALID');
   const key=await scopedKey(db,env,apiKey,now);
@@ -159,11 +165,11 @@ export async function consumeCanonicalCustomerPaid(db,env,{apiKey,capability,req
       fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
     const grants=(await queryGrants(db,key.user_id,now)).results??[];
     if(!grants.some(g=>g.grant_id===prior.grant_id&&
-      customerPaidCapabilityPolicy(g.tier,capability)))
+      customerPaidCapabilityPolicy(g.tier,capability,env)))
       fail(403,'CUSTOMER_PAID_GRANT_REVOKED_OR_EXPIRED');
     return {ok:true,idempotent_replay:true,credit_cost:cost,request_id:requestId};
   }
-  const grant=await chooseGrant(db,key,capability,now);
+  const grant=await chooseGrant(db,key,capability,now,env);
   const eventId=crypto.randomUUID();
   try{
     const inserted=await db.prepare(`INSERT INTO customer_usage_receipts
@@ -215,4 +221,69 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
       VALUES(?,?,?,?,?,?)`).bind(keyId,userId,hash,JSON.stringify(scopes),grant.expires_at,now).run();
   }catch{fail(403,'CUSTOMER_PAID_KEY_CREATION_DENIED');}
   return {key_id:keyId,api_key:key,reveal_once:true,expires_at:grant.expires_at};
+}
+
+/**
+ * One-time new-format risk credential minted ONLY for a verified, funded
+ * customer after full Hot50 signed/evidence acceptance. Old gmk_live_ keys
+ * remain valid, preserving expand/contract compatibility with prior Workers.
+ */
+export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso(),checkoutReceiptId=null){
+ if(env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+   fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
+ requirePepper(env);
+ const user=await db.prepare(
+   "SELECT id FROM users WHERE id=? AND status='active' AND email_verified_at IS NOT NULL"
+ ).bind(userId).first();
+ if(!user)fail(403,'CUSTOMER_PAID_VERIFIED_USER_REQUIRED');
+ if(checkoutReceiptId!==null&&
+    (typeof checkoutReceiptId!=='string'||!/^r_paypal_[A-Z0-9]{8,32}$/u.test(checkoutReceiptId)))
+   fail(400,'CUSTOMER_PAYPAL_HANDOFF_RECEIPT_INVALID');
+ if(checkoutReceiptId!==null){
+  const existing=await db.prepare(
+   'SELECT key_id FROM commercial_hot50_checkout_key_handoffs '+
+   'WHERE receipt_id=? AND user_id=?'
+  ).bind(checkoutReceiptId,userId).first();
+  if(existing)return {api_key:null,key_id:existing.key_id,reveal_once:false,
+   idempotent_replay:true,key_issuance_status:'ALREADY_ISSUED'};
+ }
+ const grants=(await queryGrants(db,userId,now)).results??[];
+ const grant=grants.find(g=>(checkoutReceiptId===null||
+   g.receipt_id===checkoutReceiptId)&&
+   customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle',env)&&
+   Number.isSafeInteger(g.remaining)&&g.remaining>=CUSTOMER_CREDIT_COSTS.risk_gate_bundle);
+ if(!grant)fail(402,'CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED');
+ const secret='gm_live_'+randHex(16);
+ const digest=await customerPaidKeyDigest(env,secret);
+ const sha=hex(await crypto.subtle.digest('SHA-256',encoder.encode(secret)));
+ const keyId='gm_hot50_'+randHex(16);
+ try{
+   await db.batch([
+     db.prepare('INSERT INTO api_keys (key_id,user_id,hmac_sha256,scopes_json,expires_at,created_at) '+
+       'VALUES(?,?,?,?,?,?)')
+       .bind(keyId,userId,digest,JSON.stringify(['risk-gate:read']),grant.expires_at,now),
+     db.prepare('INSERT INTO tenant_api_keys_v1 (key_sha256,key_id,user_id,created_at) '+
+       'VALUES(?,?,?,?)').bind(sha,keyId,userId,now),
+     ...(checkoutReceiptId===null?[]:[db.prepare(
+       'INSERT INTO commercial_hot50_checkout_key_handoffs '+
+       '(receipt_id,user_id,key_id,issued_at) VALUES(?,?,?,?)'
+      ).bind(checkoutReceiptId,userId,keyId,now)])
+   ]);
+ }catch{
+  // On a duplicate callback/concurrent mint the UNIQUE(receipt_id)
+  // constraint rolls back the entire losing batch, including its new
+  // API key. Return only the first key ID; plaintext is irrecoverable.
+  if(checkoutReceiptId!==null){
+   const prior=await db.prepare(
+    'SELECT key_id FROM commercial_hot50_checkout_key_handoffs '+
+    'WHERE receipt_id=? AND user_id=?'
+   ).bind(checkoutReceiptId,userId).first();
+   if(prior)return {api_key:null,key_id:prior.key_id,reveal_once:false,
+    idempotent_replay:true,key_issuance_status:'ALREADY_ISSUED'};
+  }
+  fail(503,'CUSTOMER_HOT50_KEY_ATOMIC_MINT_UNCONFIRMED');
+ }
+ const check=await db.prepare('SELECT key_id FROM tenant_api_keys_v1 WHERE key_sha256=?').bind(sha).first();
+ if(check?.key_id!==keyId)fail(503,'CUSTOMER_HOT50_KEY_READBACK_UNCONFIRMED');
+ return {api_key:secret,key_id:keyId,sha256_prefix:sha.slice(0,12),expires_at:grant.expires_at,reveal_once:true,idempotent_replay:false,key_issuance_status:'READY_REVEAL_ONCE'};
 }

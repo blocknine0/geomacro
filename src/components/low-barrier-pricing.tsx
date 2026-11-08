@@ -25,7 +25,7 @@ export function LowBarrierPricing() {
         <p className="mt-3 text-sm text-muted-foreground">
           Each purchase grants up to 30 days of prepaid access; manual renewal, not automatic PayPal billing.
           Credits support qualified intelligence access once checkout and API entitlements are enabled.
-          No self-service charges or credit allocation are activated during the prelaunch preview.
+          The checkout remains locked until independent merchant, signed delivery, and pilot verification.
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {GEOMACRO_SUBSCRIPTIONS.map(plan => (

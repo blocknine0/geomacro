@@ -123,8 +123,32 @@ export async function captureCustomerPayPalOrder(request:Request):Promise<Respon
   const funding=await worker(request,"paypal-fund",{proof:verified,attestation});
   if(funding.ok!==true||typeof funding.receiptId!=="string")
     reject(503,"CUSTOMER_PAYPAL_FUNDING_UNCONFIRMED");
+  // Capture settlement is already final. A missing key MUST NOT turn a
+  // successful payment into a false failure or another capture attempt.
+  // Full key is returned only on the first confirmed funding response.
+  let handoff:Record<string,unknown>={api_key:null,key_issuance_status:"PENDING_VERIFIED_HOT50_ACCEPTANCE"};
+  try {
+    // PayPal webhook may settle before the browser returns. In both orders,
+    // the session-bound original receipt may issue exactly ONE key.
+    // The immutable per-receipt D1 UNIQUE constraint prevents duplicate
+    // handoffs across tabs, callbacks and concurrent provider events.
+    const minted=await worker(request,"hot50-checkout-key-handoff",{
+      receipt_id:funding.receiptId,
+    });
+    if(typeof minted.api_key==="string"&&/^gm_live_[a-f0-9]{32}$/.test(minted.api_key)){
+      handoff={api_key:minted.api_key,key_issuance_status:"READY_REVEAL_ONCE",
+        key_id:minted.key_id,expires_at:minted.expires_at};
+    }else if(minted.key_issuance_status==="ALREADY_ISSUED"){
+      handoff={api_key:null,key_issuance_status:"ALREADY_ISSUED",
+       key_id:minted.key_id};
+    }
+  }catch{
+    // Funds stay recorded even if signed 150-cell evidence or the
+    // one-time key handoff is unavailable. Dashboard supports new
+    // issuance/rotation when the protected release is accepted.
+  }
   return respond({ok:true,receipt_id:funding.receiptId,
     credits_funded:funding.credits,idempotent_replay:funding.idempotent_replay===true,
-    settlement_verified:true});
+    settlement_verified:true,...handoff});
  }catch(error){return customerFailure(error);}
 }

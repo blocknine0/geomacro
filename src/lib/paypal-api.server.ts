@@ -1,6 +1,8 @@
 import process from "node:process";
 import { createHash, createHmac } from "node:crypto";
 import { GEOMACRO_PAYPAL_READINESS } from "./paypal-checkout-readiness";
+import {getCommercialLaunchState} from "./commercial-launch-gate.server";
+import {callCustomerWorker} from "./customer-auth.server";
 
 export type PayPalEnvironment = "sandbox" | "live";
 const PAYPAL_API_BASE = {
@@ -23,6 +25,20 @@ export type PayPalServerConfiguration = Readonly<{
   webhookId: string;
 }>;
 
+/**
+ * Accept the existing GeoMacro-specific bindings and the merchant SDK
+ * PAYPAL_* names without ever allowing contradictory credentials.
+ * A mismatch blocks OAuth / webhook verification; it is not a fallback.
+ */
+export function paypalCredentialField(
+ field:"CLIENT_ID"|"CLIENT_SECRET"|"WEBHOOK_ID"
+):string|null{
+ const scoped=process.env["GEOMACRO_PAYPAL_"+field]?.trim()??"";
+ const canonical=process.env["PAYPAL_"+field]?.trim()??"";
+ if(scoped&&canonical&&scoped!==canonical)return null;
+ return scoped||canonical||"";
+}
+
 export function paypalEnvironment(): PayPalEnvironment {
   return process.env.GEOMACRO_PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 }
@@ -30,10 +46,10 @@ export function paypalEnvironment(): PayPalEnvironment {
 export function paypalPublicConnectionStatus() {
   const environment = paypalEnvironment();
   const credentials_present = Boolean(
-    process.env.GEOMACRO_PAYPAL_CLIENT_ID?.trim() &&
-    process.env.GEOMACRO_PAYPAL_CLIENT_SECRET?.trim(),
+    paypalCredentialField("CLIENT_ID") &&
+    paypalCredentialField("CLIENT_SECRET"),
   );
-  const webhook_id_present = Boolean(process.env.GEOMACRO_PAYPAL_WEBHOOK_ID?.trim());
+  const webhook_id_present = Boolean(paypalCredentialField("WEBHOOK_ID"));
   return {
     ...GEOMACRO_PAYPAL_READINESS,
     environment,
@@ -47,12 +63,14 @@ export function paypalPublicConnectionStatus() {
 
 export function configuredPayPal(): PayPalServerConfiguration | null {
   const environment = paypalEnvironment();
-  const clientId = process.env.GEOMACRO_PAYPAL_CLIENT_ID?.trim() || "";
-  const clientSecret = process.env.GEOMACRO_PAYPAL_CLIENT_SECRET?.trim() || "";
-  const webhookId = process.env.GEOMACRO_PAYPAL_WEBHOOK_ID?.trim() || "";
-  if (![clientId, clientSecret, webhookId].every(value => SAFE_VALUE.test(value)))
+  const clientId = paypalCredentialField("CLIENT_ID");
+  const clientSecret = paypalCredentialField("CLIENT_SECRET");
+  const webhookId = paypalCredentialField("WEBHOOK_ID");
+  if (![clientId, clientSecret, webhookId].every(value =>
+    typeof value==="string" && SAFE_VALUE.test(value)))
     return null;
-  return { environment, baseUrl: PAYPAL_API_BASE[environment], clientId, clientSecret, webhookId };
+  return { environment, baseUrl: PAYPAL_API_BASE[environment],
+    clientId:clientId!, clientSecret:clientSecret!, webhookId:webhookId! };
 }
 
 async function paypalJson(response: Response): Promise<Record<string, unknown>> {
@@ -359,14 +377,18 @@ export async function createPayPalCheckoutOrder(
       "PayPal-Request-Id":intent.intentId,
       Prefer:"return=representation",
     },
-    body:JSON.stringify({intent:"CAPTURE",purchase_units:[{
+    body:JSON.stringify({intent:"CAPTURE",payment_source:{paypal:{experience_context:{
+      user_action:"PAY_NOW",shipping_preference:"NO_SHIPPING",
+      return_url:"https://geomacro.live/checkout/success",
+      cancel_url:"https://geomacro.live/pricing",
+    }}},purchase_units:[{
       reference_id:intent.intentId,invoice_id:intent.intentId,
       custom_id:intent.intentId,payee:{merchant_id:merchantId},
       amount:{currency_code:"USD",value:dollars},
     }]}),
   }));
   if(typeof order.id!=="string"||!PAYPAL_ORDER_ID.test(order.id)||
-     order.status!=="CREATED"||!Array.isArray(order.links))
+     !["CREATED","PAYER_ACTION_REQUIRED"].includes(String(order.status))||!Array.isArray(order.links))
     throw Error("PAYPAL_CREATE_ORDER_UNCONFIRMED");
   const approval=order.links.find((item:unknown)=>{
     if(!item||typeof item!=="object"||Array.isArray(item))return false;
@@ -438,3 +460,61 @@ export function attestVerifiedPayPalCapture(
  * tested durable idempotent funding ledger, and charge/refund handling exist.
  */
 export const GEOMACRO_PAYPAL_FUNDS_CAPTURE_ENABLED = false as const;
+
+/**
+ * Dynamic public checkout gating. A live OAuth token and a provider GET for
+ * the exact webhook configuration are required, but are NOT sufficient.
+ * Public checkout remains locked until the Worker independently reads back
+ * a genuine already settled PayPal receipt + canonical credit grant + a
+ * metered, Ed25519-verified Hot50 delivery on the same production D1.
+ *
+ * The first owner-authorized live pilot uses the existing session-protected
+ * checkout API; it does NOT open general Store sales.
+ */
+export async function paypalVerifiedStoreReadiness(request:Request,{
+ fetchImpl=fetch,workerCall=callCustomerWorker
+}:{
+ fetchImpl?:typeof fetch;workerCall?:typeof callCustomerWorker
+}={}):Promise<Record<string,unknown>> {
+ const base=paypalPublicConnectionStatus();
+ const fail=()=>({...base,merchant_credentials_verified:false,
+   webhook_registration_verified:false,live_settlement_delivery_pilot_verified:false,
+   active_checkout_enabled:false,receipt_probe_only:true});
+ const state=getCommercialLaunchState(),env=process.env;
+ const cfg=configuredPayPal();
+ if(!state.authorized||state.disabledProviders.includes("paypal")||
+    cfg?.environment!=="live"||
+    env.GEOMACRO_CENTRAL_SECURITY_MODE!=="enforce"||
+    env.GEOMACRO_REAL_FUNDS_SECURITY_ACK!=="I_ACCEPT_REAL_FUNDS_SECURITY_GATES"||
+    env.GEOMACRO_CUSTOMER_PAID_SSR_ACCEPTANCE!=="ACCEPTED_D1_PAID_API_SSR"||
+    env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE!=="ACCEPTED_CANONICAL_D1_PAID_RUNTIME"||
+    env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=="ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS"||
+    env.GEOMACRO_PAYPAL_KYC_RECEIVE_ACK!=="VERIFIED_LIVE_CROSS_BORDER_MERCHANT"||
+    !/^[A-Z0-9]{8,32}$/.test(String(env.GEOMACRO_PAYPAL_MERCHANT_ID??"")))
+  return fail();
+ try{
+  const token=await paypalAccessToken(cfg,fetchImpl);
+  const r=await fetchImpl(cfg.baseUrl+"/v1/notifications/webhooks/"+
+   encodeURIComponent(cfg.webhookId),{
+    method:"GET",redirect:"manual",
+    signal:AbortSignal.timeout(TIMEOUT_MS),
+    headers:{Authorization:"Bearer "+token,Accept:"application/json"}
+   });
+  const registered=await paypalJson(r);
+  const types=registered.event_types;
+  const events=Array.isArray(types)?types.map(x=>typeof x?.name==="string"?x.name:""):[];
+  const expectedUrl="https://geomacro.live/api/v1/payments/paypal";
+  const subscribed=events.includes("*")||
+   ["PAYMENT.CAPTURE.COMPLETED","PAYMENT.CAPTURE.REFUNDED",
+    "PAYMENT.CAPTURE.REVERSED"].every(x=>events.includes(x));
+  if(registered.id!==cfg.webhookId||registered.url!==expectedUrl||!subscribed)
+   return fail();
+  const proof=await workerCall(request,"paypal-store-readiness",{});
+  const ready=proof?.ok===true&&proof.live_settlement_delivery_pilot_verified===true;
+  return {...base,merchant_credentials_verified:true,
+   webhook_registration_verified:true,live_settlement_delivery_pilot_verified:ready,
+   active_checkout_enabled:ready,
+   merchant_cross_border_receive_ack_recorded:true,
+   receipt_probe_only:true,no_funds_moved_by_readiness_probe:true};
+ }catch{return fail();}
+}

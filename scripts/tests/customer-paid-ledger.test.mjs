@@ -68,7 +68,7 @@ test('tier/cost shares central pricing and prohibits unavailable risk authorizat
  }
  assert.equal(CUSTOMER_CREDIT_COSTS.structural_corridor_profile,12);
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('gri_read'));
- assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle'));
+ assert.ok(CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle')); // gated by runtime evidence acceptance
  for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
   assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
  assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
@@ -78,8 +78,9 @@ test('tier/cost shares central pricing and prohibits unavailable risk authorizat
 test('D1 customer authorize rejects risk tiers that cannot be debited',async()=>{
  const f=fixture();f.user(alice,'alice@example.com');f.fund(alice,{tier:'business_pilot',credits:100});
  const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
- for(const capability of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full','risk_gate_bundle','gri_read'])
+ for(const capability of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full','gri_read'])
   await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,capability),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
+ await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'risk_gate_bundle'),'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
  assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM customer_usage_receipts").get().n,0);
 });
 
@@ -174,7 +175,7 @@ test('immutable grant-scoped receipts and no wrong-tier capability/mis-scoped ke
  const f=fixture();f.user(alice,'alice@example.com');f.fund(alice,{tier:'starter_dev',credits:100});
  const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
  await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'structural_corridor_digest'),'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
- await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'risk_gate_bundle'),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
+ await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'risk_gate_bundle'),'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
  await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,'gri_read'),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
  await consumeCanonicalCustomerPaid(f.db,f.env,{apiKey:key.api_key,capability:'intelligence_query',requestId:'immutable-test-0001'});
  assert.throws(()=>f.sql.prepare('DELETE FROM customer_usage_receipts').run(),/CUSTOMER_USAGE_IMMUTABLE/);
@@ -199,7 +200,7 @@ test('verified prepaid credit packs are spendable only against their funded D1 g
  assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits.remaining,90);
  await errCode(consumeCanonicalCustomerPaid(f.db,f.env,{
    apiKey:key.api_key,capability:'risk_gate_bundle',requestId:'prepaid-credit-risk-0001',
- }),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
+ }),'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
  f.sql.prepare('INSERT INTO credit_ledger(event_id,user_id,event_type,delta_credits,receipt_id) VALUES(?,?,?,?,?)')
   .run('prepaid-reversal-01',alice,'reversal',-100,'receipt-01');
  assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits,null);

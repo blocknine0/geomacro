@@ -9,6 +9,10 @@
       "classification": "PRODUCTION",
       "status": "LIVE"
     },
+    "/account": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/api/agent/risk": {
       "classification": "REMOVE",
       "status": "REMOVED"
@@ -57,6 +61,10 @@
       "classification": "PRODUCTION",
       "status": "LIVE"
     },
+    "/api/research-risk-gate": {
+      "classification": "INTERNAL",
+      "status": "RESEARCH_ONLY_FAIL_CLOSED"
+    },
     "/api/risk-gate": {
       "classification": "PRODUCTION",
       "status": "PRIVATE_PILOT"
@@ -94,6 +102,10 @@
       "status": "CONTROLLED_PRELAUNCH"
     },
     "/api/v1/customer/auth": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
+    "/api/v1/customer/hot50-key": {
       "classification": "PRODUCTION",
       "status": "CONTROLLED_PRELAUNCH"
     },
@@ -213,6 +225,10 @@
       "classification": "REMOVE",
       "status": "REMOVED"
     },
+    "/checkout/success": {
+      "classification": "PRODUCTION",
+      "status": "CONTROLLED_PRELAUNCH"
+    },
     "/contact": {
       "classification": "PRODUCTION",
       "status": "LIVE"
@@ -312,10 +328,6 @@
     "/testnet-console": {
       "classification": "REMOVE",
       "status": "REMOVED"
-    },
-    "/api/research-risk-gate": {
-      "classification": "INTERNAL",
-      "status": "RESEARCH_ONLY_FAIL_CLOSED"
     }
   }
 }

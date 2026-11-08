@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as ArenaRouteImport } from './routes/arena'
 import { Route as AskGeomacroRouteImport } from './routes/ask-geomacro'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -46,6 +47,7 @@ import { Route as ApiResearchRiskGateRouteImport } from './routes/api.research-r
 import { Route as ApiRiskGateRouteImport } from './routes/api.risk-gate'
 import { Route as ApiRiskGateReadinessRouteImport } from './routes/api.risk-gate-readiness'
 import { Route as ApiRiskObjectKeysRouteImport } from './routes/api.risk-object-keys'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as DocsSlugRouteImport } from './routes/docs_.$slug'
 import { Route as DocsGriArchitectureRouteImport } from './routes/docs_.gri-architecture'
 import { Route as EventEventIdRouteImport } from './routes/event.$eventId'
@@ -68,6 +70,7 @@ import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.o
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
 import { Route as ApiV1CustomerAccountRouteImport } from './routes/api.v1.customer.account'
 import { Route as ApiV1CustomerAuthRouteImport } from './routes/api.v1.customer.auth'
+import { Route as ApiV1CustomerHot50KeyRouteImport } from './routes/api.v1.customer.hot50-key'
 import { Route as ApiV1CustomerKeysRouteImport } from './routes/api.v1.customer.keys'
 import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
@@ -97,6 +100,11 @@ const IndexRoute = IndexRouteImport.update({
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArenaRoute = ArenaRouteImport.update({
@@ -274,6 +282,11 @@ const ApiRiskObjectKeysRoute = ApiRiskObjectKeysRouteImport.update({
   path: '/api/risk-object-keys',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
+  id: '/checkout/success',
+  path: '/checkout/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocsSlugRoute = DocsSlugRouteImport.update({
   id: '/docs_/$slug',
   path: '/docs/$slug',
@@ -383,6 +396,11 @@ const ApiV1CustomerAccountRoute = ApiV1CustomerAccountRouteImport.update({
 const ApiV1CustomerAuthRoute = ApiV1CustomerAuthRouteImport.update({
   id: '/api/v1/customer/auth',
   path: '/api/v1/customer/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CustomerHot50KeyRoute = ApiV1CustomerHot50KeyRouteImport.update({
+  id: '/api/v1/customer/hot50-key',
+  path: '/api/v1/customer/hot50-key',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV1CustomerKeysRoute = ApiV1CustomerKeysRouteImport.update({
@@ -503,6 +521,7 @@ const ApiV1PaymentsPaypalCreateOrderRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/account': typeof AccountRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
   '/auth': typeof AuthRoute
@@ -538,6 +557,7 @@ export interface FileRoutesByFullPath {
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
@@ -560,6 +580,7 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
@@ -584,6 +605,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/account': typeof AccountRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
   '/auth': typeof AuthRoute
@@ -619,6 +641,7 @@ export interface FileRoutesByTo {
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/docs/$slug': typeof DocsSlugRoute
   '/docs/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
@@ -641,6 +664,7 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
@@ -666,6 +690,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/account': typeof AccountRoute
   '/arena': typeof ArenaRoute
   '/ask-geomacro': typeof AskGeomacroRoute
   '/auth': typeof AuthRoute
@@ -701,6 +726,7 @@ export interface FileRoutesById {
   '/api/risk-gate': typeof ApiRiskGateRoute
   '/api/risk-gate-readiness': typeof ApiRiskGateReadinessRoute
   '/api/risk-object-keys': typeof ApiRiskObjectKeysRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/docs_/$slug': typeof DocsSlugRoute
   '/docs_/gri-architecture': typeof DocsGriArchitectureRoute
   '/event/$eventId': typeof EventEventIdRoute
@@ -723,6 +749,7 @@ export interface FileRoutesById {
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
   '/api/v1/intelligence/availability': typeof ApiV1IntelligenceAvailabilityRoute
   '/api/v1/intelligence/critical-minerals': typeof ApiV1IntelligenceCriticalMineralsRoute
@@ -749,6 +776,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/account'
     | '/arena'
     | '/ask-geomacro'
     | '/auth'
@@ -784,6 +812,7 @@ export interface FileRouteTypes {
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
+    | '/checkout/success'
     | '/docs/$slug'
     | '/docs/gri-architecture'
     | '/event/$eventId'
@@ -806,6 +835,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/status'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
@@ -830,6 +860,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/account'
     | '/arena'
     | '/ask-geomacro'
     | '/auth'
@@ -865,6 +896,7 @@ export interface FileRouteTypes {
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
+    | '/checkout/success'
     | '/docs/$slug'
     | '/docs/gri-architecture'
     | '/event/$eventId'
@@ -887,6 +919,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/status'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
@@ -911,6 +944,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/account'
     | '/arena'
     | '/ask-geomacro'
     | '/auth'
@@ -946,6 +980,7 @@ export interface FileRouteTypes {
     | '/api/risk-gate'
     | '/api/risk-gate-readiness'
     | '/api/risk-object-keys'
+    | '/checkout/success'
     | '/docs_/$slug'
     | '/docs_/gri-architecture'
     | '/event/$eventId'
@@ -968,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/status'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/keys'
     | '/api/v1/intelligence/availability'
     | '/api/v1/intelligence/critical-minerals'
@@ -993,6 +1029,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AccountRoute: typeof AccountRoute
   ArenaRoute: typeof ArenaRoute
   AskGeomacroRoute: typeof AskGeomacroRoute
   AuthRoute: typeof AuthRoute
@@ -1028,6 +1065,7 @@ export interface RootRouteChildren {
   ApiRiskGateRoute: typeof ApiRiskGateRoute
   ApiRiskGateReadinessRoute: typeof ApiRiskGateReadinessRoute
   ApiRiskObjectKeysRoute: typeof ApiRiskObjectKeysRoute
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   DocsSlugRoute: typeof DocsSlugRoute
   DocsGriArchitectureRoute: typeof DocsGriArchitectureRoute
   EventEventIdRoute: typeof EventEventIdRoute
@@ -1050,6 +1088,7 @@ export interface RootRouteChildren {
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
   ApiV1CustomerAccountRoute: typeof ApiV1CustomerAccountRoute
   ApiV1CustomerAuthRoute: typeof ApiV1CustomerAuthRoute
+  ApiV1CustomerHot50KeyRoute: typeof ApiV1CustomerHot50KeyRoute
   ApiV1CustomerKeysRoute: typeof ApiV1CustomerKeysRoute
   ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
@@ -1086,6 +1125,13 @@ declare module '@tanstack/react-router' {
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/arena': {
@@ -1333,6 +1379,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRiskObjectKeysRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/docs_/$slug': {
       id: '/docs_/$slug'
       path: '/docs/$slug'
@@ -1487,6 +1540,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1CustomerAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/customer/hot50-key': {
+      id: '/api/v1/customer/hot50-key'
+      path: '/api/v1/customer/hot50-key'
+      fullPath: '/api/v1/customer/hot50-key'
+      preLoaderRoute: typeof ApiV1CustomerHot50KeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/customer/keys': {
       id: '/api/v1/customer/keys'
       path: '/api/v1/customer/keys'
@@ -1633,6 +1693,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AccountRoute: AccountRoute,
   ArenaRoute: ArenaRoute,
   AskGeomacroRoute: AskGeomacroRoute,
   AuthRoute: AuthRoute,
@@ -1668,6 +1729,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRiskGateRoute: ApiRiskGateRoute,
   ApiRiskGateReadinessRoute: ApiRiskGateReadinessRoute,
   ApiRiskObjectKeysRoute: ApiRiskObjectKeysRoute,
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
   DocsSlugRoute: DocsSlugRoute,
   DocsGriArchitectureRoute: DocsGriArchitectureRoute,
   EventEventIdRoute: EventEventIdRoute,
@@ -1690,6 +1752,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
   ApiV1CustomerAccountRoute: ApiV1CustomerAccountRoute,
   ApiV1CustomerAuthRoute: ApiV1CustomerAuthRoute,
+  ApiV1CustomerHot50KeyRoute: ApiV1CustomerHot50KeyRoute,
   ApiV1CustomerKeysRoute: ApiV1CustomerKeysRoute,
   ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:

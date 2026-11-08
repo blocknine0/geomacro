@@ -1,4 +1,5 @@
 import { LowBarrierPricing } from "@/components/low-barrier-pricing";
+import {useEffect,useState} from "react";
 import { StructuredProductSetup } from "../components/structured-product-setup";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowUpRight, Braces, CheckCircle2, Code2, Database, Globe2, ShieldCheck } from "lucide-react";
@@ -34,6 +35,17 @@ export const Route = createFileRoute("/pricing")({
 });
 
 function PricingPage() {
+  const [paypalLive,setPaypalLive]=useState(false);
+  useEffect(()=>{
+    let active=true;
+    void fetch("/api/v1/payments/paypal",{cache:"no-store"})
+      .then(r=>r.ok?r.json():null)
+      .then(x=>{if(active)setPaypalLive(x?.active_checkout_enabled===true &&
+        x?.merchant_credentials_verified===true &&
+        x?.webhook_registration_verified===true && x?.environment==="live");})
+      .catch(()=>{if(active)setPaypalLive(false);});
+    return()=>{active=false;};
+  },[]);
   return (
     <main className="gm-container pb-16 pt-8 sm:pt-12" data-store-api-unified={GEOMACRO_LOW_BARRIER_VERSION}>
       <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background px-6 py-9 sm:px-10 sm:py-12 lg:px-12 lg:py-14">
@@ -89,7 +101,7 @@ function PricingPage() {
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
               Two payment methods are available to preview: PayPal/card (international fiat)
-              and native USDC (Base / Polygon). External payments remain locked.
+              and native USDC (Base / Polygon). {paypalLive?"Verified PayPal checkout is available; USDC stays independently gated.":"External payments remain locked until settlement and delivery proof."}
             </p>
           </div>
         </div>
@@ -117,7 +129,7 @@ function PricingPage() {
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
             Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
-            or native Base/Polygon USDC directly on this page. Production transactions remain locked.
+            or native Base/Polygon USDC directly on this page. {paypalLive?"Verified live PayPal checkout is available.":"Production transactions remain locked until independently verified."}
           </p>
         </div>
         <LowBarrierPricing />
@@ -129,7 +141,7 @@ function PricingPage() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">One engine. Three categories.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
             Geopolitics, Macro / FX and Critical Minerals share one intelligence engine.
-            Production paid API delivery is not yet active. This section lists endpoints, not purchasable per-delivery products.
+            {paypalLive?"Eligible paid delivery is available to verified funded customers.":"Production paid API delivery is not yet active."} This section documents the available endpoint contracts.
           </p>
         </div>
         <CategoryApiPricing showPrices />
