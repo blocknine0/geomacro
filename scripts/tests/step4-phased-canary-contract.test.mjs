@@ -38,3 +38,13 @@ test('any runtime failure returns traffic fully to baseline, does not unhold rem
  assert.match(workflow,/cancel-in-progress: false/u);
  assert.doesNotMatch(workflow,/continue-on-error: true/u);
 });
+
+test('owner Cloudflare $5 account-wide 5800/hour read and write trajectory is enforced',()=>{
+ assert.match(source,/const D1_MAX_OBSERVED_HOURLY_ROWS=5800/u);
+ assert.match(source,/read\*3600000\/ms/u);
+ assert.match(source,/written\*3600000\/ms/u);
+ assert.match(source,/CANARY_D1_HOURLY_5800_BURN_SPIKE/u);
+ assert.match(source,/CANARY_D1_HOURLY_PACE_UNVERIFIED/u);
+ assert.match(source,/provider_metrics_delayed:true/u);
+ assert.match(source,/await deployBaseline\(base\)/u);
+});
