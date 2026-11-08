@@ -8,7 +8,7 @@ test('checked-in policy pins real schedules and authenticated three-category run
 test('removing a schedule, changing retention, attribution or quota cannot silently unlock delivery',()=>{
  for(const mutate of [x=>x.policy.projection='source_neutral',x=>x.policy.retention_hours=24,
   x=>x.policy.daily_utc_request_hard_cap=5000,x=>x.policy.source_attribution_required=false,
-  x=>x.workflows['website-derived-news-continuity.yml']=x.workflows['website-derived-news-continuity.yml'].replace('7 * * * *','7 0 * * *'),
+  x=>x.workflows['website-derived-news-continuity.yml']=x.workflows['website-derived-news-continuity.yml'].replace('7,27,47 * * * *','7 0 * * *'),
   x=>x.workflows['five-minute-original-news-fastlane.yml']=x.workflows['five-minute-original-news-fastlane.yml'].replace('2-57/5 * * * *','2 0 * * *'),
   x=>x.workflows['predge-research-continuity.yml']=x.workflows['predge-research-continuity.yml'].replace('cancel-in-progress: false','cancel-in-progress: true'),
   x=>x.workflows['predge-research-continuity.yml']=x.workflows['predge-research-continuity.yml'].replace('recover-missed-publication:','recovery-disabled:'),
