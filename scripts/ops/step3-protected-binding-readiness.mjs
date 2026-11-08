@@ -25,7 +25,8 @@ const APPS=[
  "GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED",
  "GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED",
  "SIGNING_JWK","GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK",
- "CONTROL_PLANE_TOKEN","PHASE2H_R2_REFERENCE_HMAC_KEY",
+ "CONTROL_PLANE_TOKEN","GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN",
+ "PHASE2H_R2_REFERENCE_HMAC_KEY",
  "PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY",
  "B2_ARCHIVE_READ_KEY_ID","B2_ARCHIVE_READ_APPLICATION_KEY"
 ];
@@ -48,7 +49,8 @@ const valid=(name,v,env)=>{
   case "GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED":
   case "GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED":
   case "GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED":return v==="YES";
-  case "CONTROL_PLANE_TOKEN":return v.length>=32;
+  case "CONTROL_PLANE_TOKEN":
+  case "GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN":return v.length>=32;
   case "PHASE2H_R2_REFERENCE_HMAC_KEY":
   case "PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY":return HEX64.test(v);
   case "B2_ARCHIVE_READ_KEY_ID":return v.length>=12;
@@ -78,6 +80,10 @@ export function assessStage3Bindings(env){
    BUCKET.test(env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET??"")&&
    env.GEOMACRO_D1_RECOVERY_R2_BUCKET!==env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET],
   // A newly created shadow key must never silently become a production key.
+  ["SHADOW_CONTROL_TOKEN_ISOLATED_FROM_PRODUCTION",
+   (env.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN??"").length>=32&&
+   (env.CONTROL_PLANE_TOKEN??"").length>=32&&
+   env.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN!==env.CONTROL_PLANE_TOKEN],
   ["SHADOW_HMAC_ISOLATED_FROM_PRODUCTION",
    HEX64.test(env.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY??"")&&
    HEX64.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"")&&
@@ -110,10 +116,14 @@ export function assessStage3Bindings(env){
  // Shadow rehearsal can be independently ready while the production key
  // remains unavailable; this NEVER unlocks Stage2 or alters the full HOLD.
  const productionHmacPresent=HEX64.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"");
+ const productionTokenPresent=(env.CONTROL_PLANE_TOKEN??"").length>=32;
  const stage1Missing=missing.filter(x=>
   x.name!=="PHASE2H_R2_REFERENCE_HMAC_KEY"&&
+  x.name!=="CONTROL_PLANE_TOKEN"&&
   (x.name!=="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION"||
-   productionHmacPresent));
+   productionHmacPresent)&&
+  (x.name!=="SHADOW_CONTROL_TOKEN_ISOLATED_FROM_PRODUCTION"||
+   productionTokenPresent));
  return Object.freeze({
   schema:"geomacro.step3.protected-binding-readiness.v1",
   scope:"CONFIGURATION_ONLY_NO_PROVIDER_IO",
