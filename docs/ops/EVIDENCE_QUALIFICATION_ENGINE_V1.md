@@ -28,7 +28,7 @@ The response API independently re-reads and verifies the R2 envelope, the curren
 
 ## Customer idempotency and price
 
-POST /v1/evidence/deliver requires a verified existing canonical customer API key and two separate acceptance flags. An idempotency digest binds canonical customer ID, evidence item ID and exact owner-approved delivery window. The additive D1 delivery receipt trigger inserts into existing customer_usage_receipts; its existing trigger creates the immutable credit_ledger debit inside the same SQLite transaction. Same-window replay verifies the same key, content hash, original grant and account authorization, returns identical signed bytes and incurs no new debit.
+POST /v1/evidence/deliver requires a verified existing canonical customer API key and two separate acceptance flags. An idempotency digest binds canonical customer ID, evidence item ID and exact owner-approved delivery window. The additive D1 delivery receipt trigger inserts into existing customer_usage_receipts; its existing trigger creates the immutable credit_ledger debit inside the same SQLite transaction. Same-window replay verifies the same authenticated tenant, frozen content hash, original grant and current account authorization (including when the customer's active API key has been rotated), returns identical signed bytes and incurs no new debit.
 
 This is an at-most-one-debit-per-accepted-contract-window guarantee, not an impossible guarantee that the remote HTTP response physically reached a customer. A lost HTTP response is retryable against the frozen receipt.
 
