@@ -173,6 +173,10 @@ test('RSS unqualified -> bounded recovery -> signed review -> R2 byte readback -
  assert.equal(initial.headers.get('X-GeoMacro-Credits-Charged'),'1');
  const replay=await deliverVerifiedEvidence(env,{apiKey:key.api_key,itemId:item.id});
  assert.equal(replay.headers.get('X-GeoMacro-Credits-Charged'),'0');
+ // Isolated D1 fixture advances the historical key creation clock past
+ // the *real* one-minute issuance cooldown, then revokes the previous key.
+ sql.prepare('UPDATE api_keys SET created_at=?,revoked_at=? WHERE key_id=?')
+  .run(clock(now()-61000),clock(now()),key.key_id);
  const keyRotated=await mintCanonicalCustomerPaidKey(db,env,id);
  const rotated=await deliverVerifiedEvidence(env,{apiKey:keyRotated.api_key,itemId:item.id});
  assert.equal(rotated.headers.get('X-GeoMacro-Credits-Charged'),'0');
