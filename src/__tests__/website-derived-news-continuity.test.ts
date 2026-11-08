@@ -431,7 +431,9 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const ui=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     expect(route).toContain('"/v1/public/website-derived-news-immediate"');
     expect(route).toContain('url.pathname === "/v1/website-derived-news"');
-    expect(cron).toContain('cron: "7 * * * *"');
+    expect(cron).toContain('cron: "7,27,47 * * * *"');
+     expect(cron).toContain('GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"');
+     expect(cron).toContain("needs.quota-admission.outputs.research == 'false'");
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
     expect(ui).toContain("fetchPermanentDerivedNews()");
     expect(ui).toContain("fetchZeroD1PublicDerivedNews()");
