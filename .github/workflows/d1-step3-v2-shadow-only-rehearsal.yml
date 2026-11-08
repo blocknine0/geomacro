@@ -36,8 +36,37 @@ jobs:
           node-version: '24'
       - run: node --test scripts/tests/d1-step3-v2-shadow-dispatch-safety.test.mjs
 
-  shadow-rehearsal:
+  eligibility-preflight:
+    # A skipped job provides no diagnostic log. Inspect only boolean
+    # eligibility, and NEVER echo approval/variable/secret values.
     if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      SHADOW_APPROVAL_INPUT: ${{ inputs.approval }}
+      SHADOW_ARMED_REPOSITORY_VARIABLE: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
+    steps:
+      - name: Diagnose skipped shadow job without exposing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SHADOW_APPROVAL_INPUT" != 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' ]; then
+            echo "::error title=Shadow approval mismatch::Set approval to the exact value REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL and manually re-dispatch."
+            exit 3
+          fi
+          if [ "$SHADOW_ARMED_REPOSITORY_VARIABLE" != 'YES' ]; then
+            echo "::error title=Shadow repository approval missing::In Settings > Secrets and variables > Actions > Variables, set GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED to YES. This is distinct from GEOMACRO_STEP3_NOV9_ARMED."
+            exit 4
+          fi
+          echo "Shadow dispatch eligibility gates PASS. No database, storage, Worker, or funds operation performed."
+
+  shadow-rehearsal:
+    needs: eligibility-preflight
+    if: >-
+      needs.eligibility-preflight.result == 'success' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       github.event_name == 'workflow_dispatch' &&
