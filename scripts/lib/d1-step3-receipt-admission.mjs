@@ -19,7 +19,8 @@ const sameList=(a,b)=>Array.isArray(a)&&a.length===b.length&&
 
 export function admitSignedStep3ShadowReceipt({
  env=process.env,currentHead,manifests,
- read=readFileSync,receiptPath=STEP3_SHADOW_RECEIPT_PATH
+ read=readFileSync,receiptPath=STEP3_SHADOW_RECEIPT_PATH,
+ now=Date.now()
 }={}){
  if(!SHA40.test(currentHead??"")||
     currentHead!==env.GEOMACRO_STEP3_EXACT_SHA)
@@ -45,6 +46,15 @@ export function admitSignedStep3ShadowReceipt({
   receipt=verifyStep3StatusReceipt(
    signed,env.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK);
  }catch{fail("SIGNATURE_OR_SIGNER_NOT_TRUSTED")}
+ // Receipt is from this exact approved run and must be recent enough to
+ // establish a live prerequisite. Signer authenticity alone is insufficient.
+ const startedAt=Date.parse(receipt.started_at??"");
+ const completedAt=Date.parse(receipt.completed_at??"");
+ if(!Number.isFinite(startedAt)||!Number.isFinite(completedAt)||
+    startedAt>completedAt||completedAt>now+120_000||
+    now-completedAt>3_600_000||
+    completedAt-startedAt>3_600_000)
+  fail("STALE_OR_INCONSISTENT_REAL_SHADOW_RECEIPT");
  const expectedSetSha=sha256MigrationSet(manifests);
  const reported=receipt.source_migrations;
  const expectedFiles=manifests.map(x=>x.sql_sha256);
