@@ -23,6 +23,8 @@ const env={
 const good=()=>({
  schema:"geomacro.step3.shadow-rehearsal.v1",
  status:"PASS",proof_scope:"REAL_PROVIDER_SHADOW",operation_kind:"shadow",
+ started_at:new Date(Date.now()-60_000).toISOString(),
+ completed_at:new Date().toISOString(),
  reviewed_source_sha:head,migration_sha256:sha256MigrationSet(manifests),
  github_repository:"blocknine0/geomacro",github_ref:"refs/heads/main",
  github_run_id:env.GITHUB_RUN_ID,ordered_ids:manifests.map(x=>x.id),
@@ -68,6 +70,17 @@ test("signature tamper, unrelated signer and wrong migration set are held",()=>{
  const other=generateKeyPairSync("ed25519").publicKey.export({format:"jwk"});
  assert.throws(()=>verify(good(),{envOverride:{
   GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK:JSON.stringify(other)}}),/STEP3_ADMISSION_SIGNATURE_OR_SIGNER_NOT_TRUSTED/u);
+});
+test("stale, future or incoherent signed real shadow receipts are rejected",()=>{
+ const yesterday=new Date(Date.now()-2*3600_000).toISOString();
+ assert.throws(()=>verify({...good(),started_at:yesterday,
+  completed_at:yesterday}),/STEP3_ADMISSION_STALE_OR_INCONSISTENT_REAL_SHADOW_RECEIPT/u);
+ assert.throws(()=>verify({...good(),completed_at:
+  new Date(Date.now()+300_000).toISOString()}),
+  /STEP3_ADMISSION_STALE_OR_INCONSISTENT_REAL_SHADOW_RECEIPT/u);
+ assert.throws(()=>verify({...good(),started_at:
+  new Date(Date.now()+10_000).toISOString()}),
+  /STEP3_ADMISSION_STALE_OR_INCONSISTENT_REAL_SHADOW_RECEIPT/u);
 });
 test("unbound approved run, changed HEAD, no receipt, wrong isolation are held",()=>{
  assert.throws(()=>verify(good(),{envOverride:{GITHUB_RUN_ID:"42489480677"}}),/STEP3_ADMISSION_/u);
