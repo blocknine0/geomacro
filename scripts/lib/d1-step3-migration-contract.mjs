@@ -132,3 +132,36 @@ export function compareImmutableBaseline(before,after){
     before!==after)fail("LEGACY_IMMUTABLE_SAMPLE_CHANGED");
  return {status:"PASS",before_sha256:before,unchanged:true};
 }
+
+/**
+ * Phase2H 0213 is an EXPAND-only schema operation. A table/index existence
+ * proof is not a signed original, authenticated R2 byte proof, or B2 archive.
+ */
+export function classifyStep3ReferenceOnlyAcceptance({
+ schemaVerified=false,pointerProof=null,b2Proof=null,legacyWorkerProof=null,
+ newWorkerProof=null,checkpoint=null
+}={}){
+ const valid=schemaVerified===true&&
+  pointerProof?.cryptographic_readback_verified===true&&
+  Number.isSafeInteger(pointerProof?.verified_count)&&pointerProof.verified_count>0&&
+  pointerProof.status==="PASS_REAL_WORKER_HMAC_R2_POINTER_BYTES_ONLY"&&
+  b2Proof?.status==="PASS_REAL_B2_BYTE_READBACK"&&
+  b2Proof?.provider_verified===true&&
+  legacyWorkerProof?.status==="PASS_REAL_SHADOW_WORKER_COMPATIBILITY"&&
+  newWorkerProof?.status==="PASS_REAL_SHADOW_WORKER_COMPATIBILITY"&&
+  checkpoint?.status==="PASS_REAL_PROVIDER_R2_BYTE_READBACK"&&
+  checkpoint?.private_r2_encrypted_readback_verified===true&&
+  checkpoint?.signed_manifest_readback_verified===true;
+ return Object.freeze({
+  status:valid?"PASS":"NOT_YET_VERIFIED",
+  pointer_rows_cryptographically_verified:pointerProof?.verified_count??0,
+  b2_physical_archive_verified:b2Proof?.provider_verified===true,
+  legacy_worker_real_compatibility_verified:
+   legacyWorkerProof?.status==="PASS_REAL_SHADOW_WORKER_COMPATIBILITY",
+  new_worker_real_compatibility_verified:
+   newWorkerProof?.status==="PASS_REAL_SHADOW_WORKER_COMPATIBILITY",
+  durable_recovery_verified:checkpoint?.private_r2_encrypted_readback_verified===true,
+  schema_presence_alone_is_insufficient:true,
+  grant_production_traffic:valid,
+ });
+}
