@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {generateKeyPairSync,randomBytes} from "node:crypto";
 import {
  captureDurableD1Checkpoint,buildRecoveryObjectKey,
- verifyRecoveryManifest
+ verifyRecoveryManifest,withVerifiedD1RecoveryBookmark,
+ signStep3StatusReceipt,verifyStep3StatusReceipt
 } from "../lib/d1-step3-recovery-checkpoint.mjs";
 import {
  assertRealPointerMac,pointerEnvelope,inspectPointerProofCount,
@@ -126,3 +127,40 @@ test("offline: ledger SQL is append/reconcile only and rejects ambiguous partial
  assert.equal(decideResume({entry:null,manifest:m,nativePending:true,
   objectsVerified:false}),"APPLY_REVIEWED_SQL");
 });
+
+test("offline: cold restore reads signed ciphertext without writing or logging plaintext bookmark",async()=>{
+ const p=provider();
+ const checkpoint=await captureDurableD1Checkpoint({
+  env,dbId:uuid,migrationSha:sha,now:at,fetchImpl:p.fetchImpl});
+ let callbackCount=0;
+ const receipt=await withVerifiedD1RecoveryBookmark({
+  env,expectedDbId:uuid,expectedMigrationSha:sha,
+  objectKey:checkpoint.object_key,fetchImpl:p.fetchImpl,
+  onBookmark:async bookmark=>{
+   callbackCount++;
+   assert.equal(bookmark,"opaque-proven-bookmark-value");
+   return "REVIEWED_RESTORE_ONLY_NOT_EXECUTED";
+  }
+ });
+ assert.equal(callbackCount,1);
+ assert.equal(receipt.status,"PASS_SIGNED_ENCRYPTED_RECOVERY_READBACK");
+ assert.equal(receipt.result,"REVIEWED_RESTORE_ONLY_NOT_EXECUTED");
+ assert(!JSON.stringify(receipt).includes("opaque-proven-bookmark-value"));
+});
+test("offline: signed truthful shadow status rejects tamper, never invents provider PASS",()=>{
+ const secret=JSON.stringify(signKey);
+ const pub=generateFromTestSignKey(signKey);
+ const receipt={status:"NOT_YET_VERIFIED",
+  cloudflare_shadow_worker_rollback_verified:false};
+ const signed=signStep3StatusReceipt(receipt,secret);
+ assert.deepEqual(verifyStep3StatusReceipt(signed,pub),receipt);
+ signed.receipt.cloudflare_shadow_worker_rollback_verified=true;
+ assert.throws(()=>verifyStep3StatusReceipt(signed,pub),
+  /STEP3_RECOVERY_STATUS_SIGNATURE_INVALID/u);
+});
+import {createPrivateKey as testPrivateKey,createPublicKey as testPublicKey}
+ from "node:crypto";
+function generateFromTestSignKey(jwk){
+ return JSON.stringify(testPublicKey(testPrivateKey({key:jwk,format:"jwk"}))
+  .export({format:"jwk"}));
+}
