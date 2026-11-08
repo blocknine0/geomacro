@@ -28,10 +28,16 @@ test("production source contains no B2 object or version listing API",async()=>{
   // extra invocation, import, or listing string elsewhere still fails.
   if(path==="scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"){
    const actionCatalog='"PutBucket","ListObjects","ListObjectsV1"';
-   if(!text.includes(actionCatalog)||text.split(actionCatalog).length!==2)
+   const anotherAction='"ListObjectsV2","PutObject"';
+   if(!text.includes(actionCatalog)||text.split(actionCatalog).length!==2||
+      !text.includes(anotherAction)||text.split(anotherAction).length!==2)
     violations.push(path);
-   else text=text.replace(actionCatalog,
-    '"PutBucket","R2_CLASS_A_ACTION_NAME","ListObjectsV1"');
+   else {
+    text=text.replace(actionCatalog,
+     '"PutBucket","R2_CLASS_A_ACTION_NAME","ListObjectsV1"');
+    text=text.replace(anotherAction,
+     '"R2_CLASS_A_ACTION_NAME_V2","PutObject"');
+   }
   }
   if(forbidden.test(text)) violations.push(path);
  }
