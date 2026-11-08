@@ -43,6 +43,10 @@ export function validateMonthlyMeters(meters){
   throw Error("COST_PROVIDER_METER_COMPLETENESS_UNVERIFIED");
  return Object.freeze({...meters});
 }
+/**
+ * @param {{meter?:string,observed?:number,normalReserved?:number,
+ * emergencyReserved?:number,units?:number,lane?:string}} [ticket]
+ */
 export function assessMeterTicket({meter,observed,normalReserved=0,
  emergencyReserved=0,units,lane="normal"}={}){
  if(!Object.hasOwn(COST_METERS,meter??"")||!safe(observed)||
