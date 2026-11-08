@@ -60,7 +60,7 @@ PR #3732 reserves Step3 0212 (hourly counters) and 0213 (phase2h R2 ref-only). C
    activated. Owner previously selected PayPal + native USDC.
 3. Produce physically B2-GET-retrieved, SHA-matched, Ed25519-signed
    source-rights certified data for **50 x 3 = 150** exact cells.
-   Third domain is explicitly `trade_sanctions`; the older
+   Third domain is explicitly `trade_minerals_supplychain`; the older
    `rare_earth` lane MUST NOT be silently relabeled or mapped to Trade.
    Country deep dives must have >=2 genuine signed history points.
    All snapshot rows must have the publisher's independent verifier receipt.
