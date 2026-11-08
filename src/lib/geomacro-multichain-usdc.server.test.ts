@@ -1,16 +1,17 @@
 import {describe,expect,it} from "vitest";
 import {readFileSync} from "node:fs";
 import {
-  GEOMACRO_USDC_NETWORKS,
+  GEOMACRO_USDC_NETWORKS, GEOMACRO_NEW_SALE_USDC_NETWORKS,
   quoteGeomacroUsdcCapabilityPreflight,
   publicGeomacroUsdcRailDiscovery,
 } from "./geomacro-multichain-usdc.server";
 import {GEOMACRO_CAPABILITY_PRICES,resolveGeomacroCapabilityPrice}
   from "./capability-pricing-catalog";
 
-describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
-  it("includes exact Circle mainnet CAIP-2 and native USDC contract addresses only",()=>{
+describe("founder native-USDC Base/Polygon-only commercial discovery",()=>{
+  it("retains historical Circle registry but permits only Base/Polygon native USDC new sales",()=>{
     expect(Object.keys(GEOMACRO_USDC_NETWORKS)).toEqual(["base","arc","polygon"]);
+    expect(GEOMACRO_NEW_SALE_USDC_NETWORKS).toEqual(["base","polygon"]);
     const b=GEOMACRO_USDC_NETWORKS.base;
     const a=GEOMACRO_USDC_NETWORKS.arc;
     const p=GEOMACRO_USDC_NETWORKS.polygon;
@@ -41,7 +42,7 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
       }
       for(const variant of Object.keys(variants)){
         const standard=resolveGeomacroCapabilityPrice(capability,variant);
-        for(const network of ["base","arc","polygon"]){
+        for(const network of ["base","polygon"]){
           const v=quoteGeomacroUsdcCapabilityPreflight({capability,variant,network});
           expect(v.amount_usdc).toBe(standard.amount_usdc);
           expect(v.amount_atomic).toBe(standard.amount_atomic);
@@ -59,23 +60,24 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
         }
       }
     }
-    expect(count).toBeGreaterThan(30);
+    expect(count).toBeGreaterThan(20);
   });
   it("ties exact amount and asset to network with no mixed-chain replay ambiguity",()=>{
     const make=(network:string)=>quoteGeomacroUsdcCapabilityPreflight({
       network,capability:"intelligence_query",variant:"focused",
     });
-    const a=make("base"),b=make("arc"),c=make("polygon");
+    const a=make("base"),c=make("polygon");
     expect(a.amount_atomic).toBe("20000");
-    expect(new Set([a.quote_binding_sha256,b.quote_binding_sha256,
-      c.quote_binding_sha256]).size).toBe(3);
-    expect(new Set([a.asset,b.asset,c.asset]).size).toBe(3);
+    expect(new Set([a.quote_binding_sha256,c.quote_binding_sha256]).size).toBe(2);
+    expect(new Set([a.asset,c.asset]).size).toBe(2);
+    expect(()=>make("arc")).toThrow("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
   });
   it("refuses caller-forged prices, aliases and unknown networks",()=>{
     for(const body of [
       {network:"ethereum",capability:"intelligence_query",variant:"focused"},
       {network:"polygon",capability:"intelligence_query",variant:"focused",amount_atomic:"1"},
       {network:"polygon",capability:"intelligence_query",variant:"new_discount"},
+      {network:"arc",capability:"intelligence_query",variant:"focused"},
       {network:"arc",capability:"custom_free",variant:"focused"},
       {network:"eip155:5042002",capability:"intelligence_query",variant:"focused"},
       {network:"polygon",capability:"intelligence_query"},
@@ -84,8 +86,11 @@ describe("founder locked three-chain native USDC x402 v2 discovery",()=>{
   });
   it("does not misrepresent supported chain software as merchant enabled or x402 funds authorized",()=>{
     const info=publicGeomacroUsdcRailDiscovery();
-    expect(info.network_count).toBe(3);
+    expect(info.network_count).toBe(2);
+    expect(info.new_sale_rail_scope).toBe("CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC");
+    expect(info.networks.map(x=>x.id)).toEqual(["base","polygon"]);
     expect(info.all_three_merchant_settlements_verified).toBe(false);
+    expect(info.base_polygon_merchant_settlements_verified).toBe(false);
     expect(info.settlement_authorized).toBe(false);
     expect(info.real_money_acknowledged).toBe(false);
     expect(info.raw_data_delivery).toBe(false);
