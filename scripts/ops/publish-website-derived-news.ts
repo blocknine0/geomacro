@@ -32,6 +32,21 @@ import {isPermanentArchiveSignal} from "./publish-permanent-derived-news-archive
 import {isConcretePublicIntelligence} from "../../src/lib/intelligence-concrete-publication.ts";
 
 const ARCHIVE_ONLY = process.env.GEOMACRO_DERIVED_ARCHIVE_ONLY === "1";
+const PAID_SOURCE_ONLY = process.env.GEOMACRO_PAID_DERIVED_ONLY === "1";
+const PAID_SOURCE_MAX_ROWS = PAID_SOURCE_ONLY?
+  Number(process.env.GEOMACRO_PAID_DERIVED_MAX_ROWS):0;
+// A narrowly admitted non-commercial writer, never a general research unlock.
+// The protected workflow proves the current Paid monthly reserve before
+// setting these values; refuse off-main or self-declared source capacity.
+if(PAID_SOURCE_ONLY&&(
+  ARCHIVE_ONLY||process.env.GITHUB_ACTIONS!=="true"||
+  process.env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+  process.env.GITHUB_REF!=="refs/heads/main"||
+  process.env.GEOMACRO_SOURCE_INTAKE_ADMISSION!=="true"||
+  !Number.isSafeInteger(PAID_SOURCE_MAX_ROWS)||
+  PAID_SOURCE_MAX_ROWS<3||PAID_SOURCE_MAX_ROWS>30))
+  throw Error("DERIVED_NEWS_PAID_SOURCE_ADMISSION_INVALID");
+let paidSourceRowsRemaining=PAID_SOURCE_MAX_ROWS;
 const ROOT = String(process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN ?? "").trim();
 if (!ARCHIVE_ONLY && ROOT.length < 32) throw Error("DERIVED_NEWS_PUBLISH_TOKEN_MISSING");
 const TOKEN = ARCHIVE_ONLY ? "" : createHmac("sha256",ROOT).update("geomacro-control-plane-v1").digest("hex");
@@ -149,7 +164,17 @@ for (const category of categories) {
           {fresh:true,canonicalOriginToken:TOKEN});
       const partition=partitionCanonicalDerivedCandidates(
         beforePublicationRows??[],signals);
-      signals=partition.admit;
+      if(PAID_SOURCE_ONLY){
+        // Fair three-category quota; never send an unbounded 600-row
+        // journal to D1 under the narrow Paid source-only allocation.
+        const perCategory=Math.ceil(PAID_SOURCE_MAX_ROWS/3);
+        const bounded=Math.min(perCategory,paidSourceRowsRemaining);
+        signals=partition.admit.slice(0,bounded);
+        paidSourceRowsRemaining-=signals.length;
+        // Source-neutral cards denied a D1 slot still remain eligible for
+        // independent static-archive validation; not falsely D1-acknowledged.
+        archiveCandidateSignals.push(...partition.admit.slice(signals.length));
+      }else signals=partition.admit;
       chunks=prepareDerivedNewsBatches(signals).chunks;
       immutableConflictsDeferred=partition.immutable_conflicts_deferred;
       canonicalUnchanged=partition.canonical_unchanged;
@@ -253,6 +278,14 @@ for (const category of categories) {
     console.error("::error::WEBSITE_DERIVED_NEWS_INGEST_"+category.toUpperCase()+"_UNAVAILABLE_"+code);
   }
 }
+if(PAID_SOURCE_ONLY)
+  console.log(JSON.stringify({
+    schema:"geomacro.website-paid-derived-source-lane.v1",
+    max_d1_derived_rows:PAID_SOURCE_MAX_ROWS,
+    unused_rows:paidSourceRowsRemaining,
+    normal_research_authorized:false,commercial_authorized:false,
+    predge_modified:false,payments:0,
+  }));
 // The hourly publisher previously exported its archive candidates BEFORE
 // reading the existing canonical D1 journal. This silently omitted qualifying
 // cards written by the 15-minute source-only publisher whenever its own static
