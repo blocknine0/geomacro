@@ -12,7 +12,7 @@ const FIELDS=['CLIENT_ID','CLIENT_SECRET','WEBHOOK_ID'];
 const ENDPOINT='https://geomacro.live/api/v1/payments/paypal';
 const API='https://api-m.paypal.com';
 const REQUIRED=['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.REFUNDED','PAYMENT.CAPTURE.REVERSED'];
-const code=(v)=>String(v??'').slice(0,80).replace(/[^A-Z0-9_]/g,'');
+const code=v=>/^PAYPAL_[A-Z0-9_]{4,75}$/u.test(String(v??''))?String(v):'PAYPAL_LIVE_PROVIDER_UNAVAILABLE';
 const field=(env,name)=>{
  const a=String(env['PAYPAL_'+name]??'').trim();
  const b=String(env['GEOMACRO_PAYPAL_'+name]??'').trim();
