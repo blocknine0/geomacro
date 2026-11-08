@@ -5,7 +5,7 @@ import {DatabaseSync} from "node:sqlite";
 import {
  SHADOW_BASE_MIGRATIONS,buildShadowBootstrapManifest,
  assertShadowBootstrapIdentity,assertPristineShadowSchema,
- bootstrapShadowBaseline
+ bootstrapShadowBaseline,readOnlyShadowBootstrapPreflight
 } from "../ops/bootstrap-step3-shadow-baseline.mjs";
 
 const account="fddd57d28199bad07a768445e7237693";
@@ -148,4 +148,43 @@ test("mock provider ordered execution never invents signed Stage1 or B2 original
  assert.equal(out.real_b2_source_attested,false);
  assert.equal(out.production_d1_writes,0);
  assert.equal(out.merchant_funds_authorized,false);
+});
+
+test("real Shadow-only read-only preflight is usable before owner DDL approval",async()=>{
+ let reads=0;
+ const holdEnv={...env(),GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED:"",
+  GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED:""};
+ const report=await readOnlyShadowBootstrapPreflight({
+  env:holdEnv,headroomCheck:async()=>usage(),
+  fetchImpl:async(_url,init)=>{
+   assert.equal(init.method,"POST");
+   const sql=JSON.parse(init.body).sql;
+   assert.match(sql,/sqlite_schema/u);
+   reads++;return asResult([]);
+  }
+ });
+ assert.equal(reads,1);
+ assert.equal(report.status,"READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION");
+ assert.equal(report.owner_bootstrap_approved,false);
+ assert.equal(report.r2_private_recovery_approved,false);
+ assert.equal(report.stage1_physical_pass,false);
+ assert.equal(report.production_d1_writes,0);
+ assert.equal(report.shadow_d1_writes,0);
+ assert.equal(report.r2_puts,0);
+});
+test("real Shadow-only preflight NEVER upgrades nonempty schema or absent Paid permission",async()=>{
+ const cases=[
+  {headroom:{status:"HOLD",reserve_pct:30,provider_subscription_verified:false},rows:[]},
+  {headroom:usage(),rows:[{name:"unknown_existing_business_table"}]},
+ ];
+ for(const c of cases){
+  const report=await readOnlyShadowBootstrapPreflight({
+   env:env(),headroomCheck:async()=>c.headroom,
+   fetchImpl:async()=>asResult(c.rows)
+  });
+  assert.equal(report.status,"HOLD");
+  assert.equal(report.stage2_authorized,false);
+  assert.equal(report.production_d1_writes,0);
+  assert.equal(report.shadow_d1_writes,0);
+ }
 });
