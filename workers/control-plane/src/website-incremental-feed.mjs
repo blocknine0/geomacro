@@ -40,9 +40,10 @@ export async function readIncrementalWebsiteCategoryFeed(env,category,now=Date.n
       (row.published_at!==undefined&&story.published_at!==row.published_at)||
       (row.date_precision!==undefined&&story.date_precision!==row.date_precision)||
       !verifyDerivedStory(story,now))throw Error();
-   if(Date.parse(story.published_at)<now-72*3600_000||
-      Date.parse(row.first_seen_at)<now-72*3600_000||
-      Date.parse(row.first_seen_at)>now)continue;
+   const ingestedAt=Date.parse(row.first_seen_at);
+   if(!Number.isFinite(ingestedAt)||ingestedAt<now-72*3600_000||
+      ingestedAt>now||Date.parse(story.published_at)<now-72*3600_000)
+     continue;
    signals.push(story);
   }
   return Response.json({
