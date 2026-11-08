@@ -341,7 +341,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     const desk=readFileSync("src/components/intelligence/stateless-live-desk.tsx","utf8");
     const fetcher=readFileSync("src/lib/public-derived-news-client.ts","utf8");
     expect(fetcher).toContain("Promise<StatelessIntelligenceSignal[]>");
-    expect(route).toContain('fetchDirectDerivedNews()');
+    expect(route).toContain('fetchZeroD1PublicDerivedNews()');
     expect(route).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
     expect(route).toContain('? history.value : []');
     expect(route).not.toContain("history.value.signals");
@@ -434,7 +434,7 @@ describe("website-only Supabase-free derived news continuity",()=>{
     expect(cron).toContain('cron: "7 * * * *"');
     expect(cron).toContain("bun scripts/ops/publish-website-derived-news.ts");
     expect(ui).toContain("fetchPermanentDerivedNews()");
-    expect(ui).toContain("fetchDirectDerivedNews()");
+    expect(ui).toContain("fetchZeroD1PublicDerivedNews()");
     expect(ui).not.toContain("getWebsiteDerivedNews");
     expect(ui).not.toContain("fetchAllDerivedNews()");
     expect(ui).toContain("const merged = new Map(previous.map(signal => [signal.id, signal]));");

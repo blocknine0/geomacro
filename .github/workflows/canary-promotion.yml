@@ -20,6 +20,10 @@ on:
         description: 'Must equal PROMOTE_HOT50_NO_FUNDS for a traffic change'
         required: false
         type: string
+      stage2_run_id:
+        description: 'Successful exact-main Step3 protected physical Stage2 run ID, required for promote/release-hold'
+        required: false
+        type: string
   schedule:
     - cron: '15 1 * * *' # closed previous UTC day; guarded provider reads only
   pull_request:
@@ -41,6 +45,7 @@ on:
       - 'scripts/tests/prepare-five-gate-control-token.test.mjs'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: geomacro-d1-control-plane-production
   cancel-in-progress: false
@@ -62,6 +67,7 @@ jobs:
           test -f config/d1-hotspot-v2-canary.hold
           node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
           node --test scripts/tests/prepare-five-gate-control-token.test.mjs
+          node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs
   protected-release:
     needs: static-contract
@@ -77,7 +83,9 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
+      GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID: ${{ inputs.stage2_run_id }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
       BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
@@ -124,6 +132,51 @@ jobs:
           # Worker's read-only admin status BEFORE GITHUB_ENV export.
           # NEVER write or rotate the Worker secret in this release workflow.
           node scripts/ops/prepare-five-gate-control-token.mjs
+      - name: Admit exact-main completed protected physical Stage2 workflow
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'promote' || inputs.operation == 'release-hold')
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROOF_RUN_ID: ${{ inputs.stage2_run_id }}
+          EXPECTED_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const id = String(process.env.PROOF_RUN_ID || '');
+            if (!/^[1-9][0-9]{5,20}$/.test(id)) {
+              core.setFailed('CANARY_STAGE2_REAL_RUN_ID_REQUIRED'); return;
+            }
+            const {owner,repo}=context.repo;
+            const {data:run}=await github.rest.actions.getWorkflowRun({owner,repo,run_id:Number(id)});
+            if(run.path!=='.github/workflows/production-rollout-orchestrator.yml' ||
+               run.event!=='workflow_dispatch' || run.head_branch!=='main' ||
+               run.head_sha!==process.env.EXPECTED_SHA ||
+               run.status!=='completed' || run.conclusion!=='success'){
+              core.setFailed('CANARY_STAGE2_WORKFLOW_IDENTITY_OR_CONCLUSION_UNVERIFIED');return;
+            }
+            const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
+              owner,repo,run_id:Number(id),per_page:100});
+            const stage2=jobs.jobs.filter(j=>j.name==='stage2-production');
+            const shadow=jobs.jobs.filter(j=>j.name==='shadow-physical');
+            if(stage2.length!==1||shadow.length!==1||
+               stage2[0].conclusion!=='success'||shadow[0].conclusion!=='success')
+              core.setFailed('CANARY_REAL_SHADOW_AND_STAGE2_JOBS_NOT_BOTH_SUCCESS');
+      - name: Download independently signed Stage2 provider receipt
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'promote' || inputs.operation == 'release-hold')
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-step3-production
+          path: artifacts/release
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.stage2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify signed 0204→0213 production evidence before any canary mutation
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'promote' || inputs.operation == 'release-hold')
+        run: |
+          node --input-type=module <<'NODE'
+          import {admitSignedStep3ProductionFile}
+           from './scripts/lib/d1-step3-production-canary-admission.mjs';
+          const proof=admitSignedStep3ProductionFile();
+          console.log(JSON.stringify(proof));
+          NODE
       - name: Execute ONLY selected gated operation
         shell: bash
         env:

@@ -100,7 +100,7 @@ describe("Predge shared D1 feed remains separate from Geomacro static public arc
    expect(index).toContain('publicSharedDerivedNewsFeed(env,url.searchParams,Date.now(),');
    expect(index).toContain('eligiblePublicFreeD1CacheRequest(request)');
    expect(website).toContain("fetchPermanentDerivedNews()");
-   expect(website).toContain("fetchDirectDerivedNews()");
+   expect(website).toContain("fetchZeroD1PublicDerivedNews()");
    expect(website).not.toContain("fetchAllDerivedNews()");
    expect(website).not.toContain("getWebsiteDerivedNews");
    expect(website).toContain("isConcretePublicIntelligence");

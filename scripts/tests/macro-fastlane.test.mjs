@@ -30,7 +30,28 @@ class DB{
       published_at:item.published_at,date_precision:item.date_precision,
       story_json:JSON.stringify(item)}))};
  },async first(){db.operations.push('read_state');return Object.keys(db.state).length?{value_json:JSON.stringify(db.state)}:null;},async run(){if(sql.startsWith('INSERT INTO control_state')){db.state=JSON.parse(args[1]);db.operations.push('write_state');}else if(sql.startsWith('INSERT INTO website_derived_intelligence')){db.news.set(args[0],JSON.parse(args[4]));db.operations.push('write_news');}return {success:true};},sql,args};}};}
- async batch(statements){for(const s of statements){this.news.set(s.args[0],JSON.parse(s.args[4]));this.operations.push('write_news');}return statements.map(()=>({success:true}));}
+ async batch(statements){
+  for(const statement of statements){
+   if(!statement.sql?.startsWith('INSERT INTO website_derived_intelligence')||
+      !statement.sql.includes('FROM json_each(?)'))
+    throw Error('UNEXPECTED_D1_BULK_UPSERT_SQL');
+   const packed=JSON.parse(statement.args[0]);
+   if(!Array.isArray(packed)||packed.length<1||packed.length>50)
+    throw Error('UNEXPECTED_D1_BULK_PAYLOAD');
+   for(const row of packed){
+    if(!Array.isArray(row)||row.length!==6)
+     throw Error('UNEXPECTED_D1_BULK_ROW');
+    const [id,category,published_at,date_precision,story_json]=row;
+    const item=JSON.parse(story_json);
+    if(item.id!==id||item.category!==category||
+       item.published_at!==published_at||item.date_precision!==date_precision)
+     throw Error('UNEXPECTED_D1_BULK_ROW_IDENTITY');
+    this.news.set(id,item);
+    this.operations.push('write_news');
+   }
+  }
+  return statements.map(()=>({success:true}));
+ }
 }
 test('Macro lanes cover all pinned issuers and never double-fetch shared Fed/ECB',()=>{
  assert.ok(MACRO_NEWS_SOURCES.every(s=>s.category==='macro'));
@@ -151,7 +172,7 @@ test('Release minute publishes into the same journal with fixed quota lease and 
  const state=freshState();state.checked_at=new Date(now-120000).toISOString();state.events=[{kind:'cpi',source:'bls',at:new Date(now).toISOString()}];
  const db=new DB(state),lease=state.quota_lease_until;
  const result=await runMacroReleaseTick({DB:db},{now,fetchImpl:async url=>new URL(url).hostname==='www.bls.gov'?new Response(atom('Consumer Price Index release','https://www.bls.gov/news.release/cpi.nr0.htm')):new Response(JSON.stringify({symbol:url.endsWith('XAU')?'XAU':'XAG',price:100,currency:'USD',updatedAt:at}))});
- assert.equal(result.state,'RELEASE_POLLED');assert.equal(db.news.size,1);assert.equal(db.state.quota_lease_until,lease);assert.equal(db.state.quotes.length,2);
+ assert.equal(result.state,'RELEASE_POLLED');assert.equal(db.news.size,1);assert.equal(db.operations.filter(x=>x==='write_news').length,1);assert.equal(db.state.quota_lease_until,lease);assert.equal(db.state.quotes.length,2);
  const signal=[...db.news.values()][0];assert.equal(signal.category,'macro');assert.equal(macroPriceEvidence(signal,db.state).price_reaction,null);
  assert.equal((await runMacroReleaseTick({DB:db},{now,fetchImpl:async()=>{throw Error('duplicate');}})).state,'ALREADY_POLLED');
 });

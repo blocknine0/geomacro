@@ -4,6 +4,7 @@ import {existsSync,readFileSync,unlinkSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,BUDGET} from './release-common.ts';
+import {admitSignedStep3ProductionFile} from './lib/d1-step3-production-canary-admission.mjs';
 const HOLD='config/d1-hotspot-v2-canary.hold';
 const STAGES=[0,1,10,100] as const;
 const WINDOW_MS=15*60*1000;
@@ -181,6 +182,12 @@ async function main(){
   console.log(JSON.stringify({status:'PASS',scope:'LIVE_MAIN_100_PERCENT_NO_FUNDS',source_sha:mainSha}));return;
  }
  requireSchemaAcceptance(mainSha);
+ // 0204/0211 schema-only PASS is NOT evidence of 0212/0213 live
+ // migration, independent B2 GET, encrypted recovery and signer integrity.
+ const stage2=admitSignedStep3ProductionFile();
+ need(stage2.status==='PASS_REAL_PROVIDER_PRODUCTION'&&
+  stage2.exact_main_sha===mainSha,
+  'CANARY_STAGE2_SIGNED_PRODUCTION_PASS_REQUIRED');
  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
  need(UUID_RE.test(base)&&UUID_RE.test(candidate)&&base!==candidate,'CANARY_VERSION_IDS_INVALID');
  need(envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS','CANARY_OWNER_CONFIRMATION_REQUIRED');
