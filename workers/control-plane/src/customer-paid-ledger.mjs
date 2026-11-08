@@ -48,7 +48,9 @@ export async function customerPaidKeyDigest(env,key){
 function randHex(n){
   const bytes=new Uint8Array(n);crypto.getRandomValues(bytes);return hex(bytes);
 }
-export function customerPaidCapabilityPolicy(tier,capability){
+export function customerPaidCapabilityPolicy(tier,capability,env={}){
+  if(capability==='risk_gate_bundle'&&
+     env?.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')return false;
   return CUSTOMER_ENABLED_CAPABILITIES.includes(capability)&&
     Object.hasOwn(PERMITTED,tier)&&PERMITTED[tier].includes(capability);
 }
@@ -116,11 +118,11 @@ async function scopedKey(db,env,raw,now){
     fail(503,'CUSTOMER_PAID_KEY_SCOPE_INVALID');
   return {...key,scopes};
 }
-async function chooseGrant(db,key,capability,now){
+async function chooseGrant(db,key,capability,now,env){
   if(!key.scopes.includes(scopeFor(capability)))
     fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
   const rows=(await queryGrants(db,key.user_id,now)).results??[];
-  const eligible=rows.filter(g=>customerPaidCapabilityPolicy(g.tier,capability));
+  const eligible=rows.filter(g=>customerPaidCapabilityPolicy(g.tier,capability,env));
   if(!eligible.length)fail(403,'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
   const grant=eligible.find(g=>Number.isInteger(g.remaining)&&g.remaining>=CUSTOMER_ENTITLEMENT_UNITS[capability]);
   if(!grant)fail(402,'CUSTOMER_PAID_INSUFFICIENT_CREDITS');
@@ -132,7 +134,7 @@ export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,no
   if(capability==='risk_gate_bundle'&&env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
     fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
   const key=await scopedKey(db,env,apiKey,now);
-  const grant=await chooseGrant(db,key,capability,now);
+  const grant=await chooseGrant(db,key,capability,now,env);
   return {ok:true,principal_id:key.user_id,principal_type:'api_client',
     principal_external_id:'d1:'+key.user_id,key_id:key.key_id,
     scopes:key.scopes,grant_id:grant.grant_id,tier:grant.tier,
@@ -163,11 +165,11 @@ export async function consumeCanonicalCustomerPaid(db,env,{apiKey,capability,req
       fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
     const grants=(await queryGrants(db,key.user_id,now)).results??[];
     if(!grants.some(g=>g.grant_id===prior.grant_id&&
-      customerPaidCapabilityPolicy(g.tier,capability)))
+      customerPaidCapabilityPolicy(g.tier,capability,env)))
       fail(403,'CUSTOMER_PAID_GRANT_REVOKED_OR_EXPIRED');
     return {ok:true,idempotent_replay:true,credit_cost:cost,request_id:requestId};
   }
-  const grant=await chooseGrant(db,key,capability,now);
+  const grant=await chooseGrant(db,key,capability,now,env);
   const eventId=crypto.randomUUID();
   try{
     const inserted=await db.prepare(`INSERT INTO customer_usage_receipts
@@ -235,7 +237,7 @@ export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso()){
  ).bind(userId).first();
  if(!user)fail(403,'CUSTOMER_PAID_VERIFIED_USER_REQUIRED');
  const grants=(await queryGrants(db,userId,now)).results??[];
- const grant=grants.find(g=>customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle')&&
+ const grant=grants.find(g=>customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle',env)&&
    Number.isSafeInteger(g.remaining)&&g.remaining>=CUSTOMER_CREDIT_COSTS.risk_gate_bundle);
  if(!grant)fail(402,'CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED');
  const secret='gm_live_'+randHex(16);
