@@ -82,7 +82,8 @@ test("0214 opt-in historical GRO backfill completes once, retains B2 enqueue ind
       return {results:db.prepare(sql).all(...statement.args)};
      },
      async run(){writes++;const res=db.prepare(sql).run(...statement.args);
-      return {success:true,changes:res.changes}};
+      return {success:true,changes:res.changes};
+     }
     };return statement;
    },
    async batch(stmts){
