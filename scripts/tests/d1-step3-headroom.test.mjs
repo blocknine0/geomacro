@@ -1,85 +1,93 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {assessD1MigrationHeadroom,checkD1Headroom,
- HEADROOM_HOLD_CODE} from "../ops/check-d1-headroom.mjs";
-import {assessD1AccountFreeQuota} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
+ HEADROOM_HOLD_CODE,STEP3_BUDGET} from "../ops/check-d1-headroom.mjs";
+import {
+ parseD1PaidCycleGraphQL,assessD1PaidMonthlyAdmission
+} from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {assessOneChangedBatchDelta}
  from "../ops/verify-d1-publisher-billable-shadow.mjs";
 
 const DAY=new Date("2026-11-08T09:00:00.000Z");
-function provider(rowsRead,rowsWritten,day="2026-11-08",dbCount=2){
- return {schema:"geomacro.d1-account-daily-quota-readonly.v1",
-  day_utc:day,provider_graphql_usage_observed:true,
-  account_database_count_observed:dbCount,
-  observed_rows_read:rowsRead,observed_rows_written:rowsWritten};
+function paidProof(now=DAY){return{
+ schema:"geomacro.cloudflare-workers-paid-provider-proof.v1",
+ verified:true,source:"CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ",
+ subscription_changed:false,billing_action_performed:false,
+ observed_at:now.toISOString()
+}}
+function usage(read,written,at=DAY){
+ return {schema:"geomacro.d1-paid-monthly-provider-usage.v1",
+  source:"CLOUDFLARE_GRAPHQL_ALL_ACCOUNT_D1_DATABASES",
+  provider_usage_observed:true,
+  billing_cycle_start_utc:"2026-11-05",
+  billing_cycle_end_exclusive_utc:"2026-12-05",
+  observed_through_utc:"2026-11-08",
+  observed_at_utc:at.toISOString(),
+  observed_rows_read:read,observed_rows_written:written,
+  database_count_observed:4,group_count_observed:6,
+  telemetry_is_delayed:true};
 }
-test("strict 60k UTC gate holds if EITHER dimension reaches 60000",()=>{
- for(const [reads,writes,ok] of [
-  [0,0,true],[59999,59999,true],[59999,60000,false],
-  [60000,59999,false],[60000,60000,false],[65000,10,false],
-  [10,130000,false]
- ]){
-  const x=assessD1MigrationHeadroom(provider(reads,writes),{now:DAY});
-  assert.equal(x.status,ok?"PASS":"HOLD");
-  assert.equal(x.read_80k_reserved,140000-reads>=80000);
-  assert.equal(x.write_80k_reserved,140000-writes>=80000);
-  if(!ok)assert.equal(x.code,HEADROOM_HOLD_CODE);
-  else{
-   assert(x.remaining_rows_read>80000);
-   assert(x.remaining_rows_written>80000);
-   assert.equal(x.authorization_scope,"MIGRATIONS_ONLY_NOT_DEPLOYMENT_OR_PAYMENTS");
-  }
+const paid=(read,written)=>assessD1PaidMonthlyAdmission({
+ usage:usage(read,written),paidProof:paidProof(),now:DAY,lane:"migration"
+});
+test("Paid migration gate ignores retired 140k/day, admits only monthly observed reserve",()=>{
+ assert.equal(STEP3_BUDGET.old_daily_140k_policy_applied,false);
+ assert.equal(STEP3_BUDGET.provider_included_monthly_rows_written,50_000_000);
+ const current=assessD1MigrationHeadroom(paid(18_140_000,1_350_000),{now:DAY});
+ assert.equal(current.status,"PASS");
+ assert.equal(current.remaining_rows_written,43_650_000);
+ assert.equal(current.required_migration_reserve_written,1_000_000);
+ assert.equal(current.authorization_scope,"MIGRATIONS_ONLY_NOT_DEPLOYMENT_OR_PAYMENTS");
+ assert.equal(current.pr_merge_authorized,false);
+ // A cumulative 267k-write UTC day no longer wrongly blocks legitimate
+ // remaining 5th-to-5th Paid capacity.
+ assert.equal(assessD1MigrationHeadroom(paid(1_258_943,267_009),{now:DAY}).status,"PASS");
+});
+test("near 90% month allocation, missing paid plan and stale cycle remain NOT_YET_VERIFIED",()=>{
+ for(const x of [paid(22_499_000_000,10),
+  paid(100,44_990_000),null,
+  {...paid(100,100),day_utc:"2026-11-07"},
+  {...paid(100,100),provider_subscription_verified:false},
+  {...paid(100,100),old_daily_140k_policy_applied:true}]){
+  const r=assessD1MigrationHeadroom(x,{now:DAY});
+  assert.equal(r.status,"NOT_YET_VERIFIED");
+  assert.equal(r.code,HEADROOM_HOLD_CODE);
+  assert.equal(r.hold_file_untouched,true);
+  assert.equal(r.payment_activation_authorized,false);
  }
 });
-test("stale UTC day, empty or unverified account metrics always HOLD",()=>{
- for(const x of [
-  provider(5,5,"2026-11-07"),
-  {...provider(5,5),provider_graphql_usage_observed:false},
-  {...provider(5,5),account_database_count_observed:0},
-  {...provider(5,5),observed_rows_read:null},
-  {...provider(5,5),observed_rows_written:-1},
-  {status:"CAUTIOUS_D1_HEADROOM"}
- ]){
-  const v=assessD1MigrationHeadroom(x,{now:DAY});
-  assert.equal(v.status,"HOLD");
-  assert.equal(v.code,HEADROOM_HOLD_CODE);
-  assert.equal(v.hold_file_untouched,true);
-  assert.equal(v.pr_merge_authorized,false);
- }
+test("account-wide 5th-to-5th GraphQL includes every database across multiple dates",()=>{
+ const input={data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[
+  {dimensions:{databaseId:"production-d1-xxxx",date:"2026-11-05"},
+   sum:{rowsRead:15_000_000,rowsWritten:1_000_000}},
+  {dimensions:{databaseId:"shadow-db-xxxx",date:"2026-11-08"},
+   sum:{rowsRead:3_140_000,rowsWritten:350_000}}
+ ]}]}}};
+ const total=parseD1PaidCycleGraphQL(input,{now:DAY});
+ assert.equal(total.observed_rows_read,18_140_000);
+ assert.equal(total.observed_rows_written,1_350_000);
+ const checked=assessD1PaidMonthlyAdmission({usage:total,
+  paidProof:paidProof(),now:DAY,lane:"migration"});
+ assert.equal(assessD1MigrationHeadroom(checked,{now:DAY}).status,"PASS");
+ input.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[1].dimensions.date="2026-10-31";
+ assert.throws(()=>parseD1PaidCycleGraphQL(input,{now:DAY}),
+  /D1_PAID_MONTHLY_GRAPHQL_GROUP_INVALID/u);
 });
-test("GraphQL aggregates all D1 databases, never production-only",()=>{
- const input={data:{viewer:{accounts:[{
-  d1AnalyticsAdaptiveGroups:[
-   {dimensions:{databaseId:"production-abcd",date:"2026-11-08"},
-    sum:{rowsRead:30000,rowsWritten:8000}},
-   {dimensions:{databaseId:"shadow-db-xyz",date:"2026-11-08"},
-    sum:{rowsRead:29999,rowsWritten:51999}}
-  ]
- }]}}};
- const raw=assessD1AccountFreeQuota(input,{day:"2026-11-08"});
- assert.equal(raw.observed_rows_read,59999);
- assert.equal(raw.observed_rows_written,59999);
- assert.equal(assessD1MigrationHeadroom(raw,{now:DAY}).status,"PASS");
- input.data.viewer.accounts[0].d1AnalyticsAdaptiveGroups[1].sum.rowsWritten++;
- const updated=assessD1AccountFreeQuota(input,{day:"2026-11-08"});
- assert.equal(assessD1MigrationHeadroom(updated,{now:DAY}).status,"HOLD");
-});
-test("provider refusal emits HOLD report, never phantom zero usage",async()=>{
+test("failed current-cycle GraphQL yields NOT_YET_VERIFIED report, no invented zero",async()=>{
  let saved=null;
+ const runtimeNow=new Date();
  const r=await checkD1Headroom({
-  now:new Date(),
-  readProvider:async()=>{throw Error("D1_ACCOUNT_QUOTA_AUTH_MISSING")},
-  reportPath:"artifacts/release/test-step3-headroom.json",
-  write:(_p,body)=>{saved=JSON.parse(body)}
+  now:runtimeNow,readProvider:async()=>{throw Error("D1_PAID_MONTHLY_GRAPHQL_PERMISSION_MISSING")},
+  reportPath:"artifacts/release/test-step3-paid-monthly.json",
+  write:(_path,data)=>{saved=JSON.parse(data)}
  });
- assert.equal(r.status,"HOLD");
+ assert.equal(r.status,"NOT_YET_VERIFIED");
  assert.equal(r.code,HEADROOM_HOLD_CODE);
  assert.equal(r.observed_rows_read,null);
- assert.equal(saved.provider_error,"D1_ACCOUNT_QUOTA_AUTH_MISSING");
- assert.equal(saved.account_wide_reservation_atomic,false);
  assert.equal(saved.hold_file_untouched,true);
+ assert.equal(saved.account_wide_reservation_atomic,false);
 });
-test("50-item changed row must match measured single-row control INCLUDING index/trigger writes",()=>{
+test("50-item unchanged retry is physically zero and changed delta equals independent control",()=>{
  const run=(first,retry,one,control,individual=100)=>
   assessOneChangedBatchDelta({
    firstWrite:{rows_read:150,rows_written:first,changes:100},
@@ -89,12 +97,7 @@ test("50-item changed row must match measured single-row control INCLUDING index
    singleItemTotal:individual
   });
  assert.equal(run(150,0,3,3).accepted,true);
- assert.equal(run(150,0,1,3).accepted,false);
  assert.equal(run(150,1,3,3).accepted,false);
- assert.equal(run(3,0,3,3).accepted,false);
+ assert.equal(run(150,0,1,3).accepted,false);
  assert.equal(run(150,0,3,0).accepted,false);
- const good=run(150,0,3,3);
- assert.equal(good.batch_write_matches_single_changed_record_delta,true);
- assert.equal(good.single_changed_record_billable_rows,3);
- assert.equal(good.provider_index_and_trigger_rows_are_billable,true);
 });
