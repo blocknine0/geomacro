@@ -140,7 +140,7 @@ export async function verifyRealShadowDualWorkers({
  if(legacyDeploy.script===newDeploy.script)
   fail("WORKER_VERSIONS_NOT_DISTINCT");
  const legacy=await checkedGet("https://"+old+
-  "/v1/internal/phase2h-raw-news?question=probe&p0a_probe=1&record_id="+
+  "/v1/internal/phase2h-raw-news?question=probe&record_id="+
   source.record_id,{token:env.CONTROL_PLANE_TOKEN,fetchImpl});
  if(legacy?.ok!==true||
     legacy.schema!=="geomacro.phase2h.private-question-fivepart.v1"||
