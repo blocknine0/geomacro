@@ -18,9 +18,15 @@ function fixture(){
   updated_at TEXT NOT NULL);
   CREATE INDEX idx_p1_domain_next ON p1_source_domain_backoff(next_allowed_at);`);
  const statements=[];
- const DB={prepare(sql){statements.push(sql);return {bind(...args){
-   return {async run(){const out=db.prepare(sql).run(...args);
-     return {meta:{changes:out.changes}};}};}}};
+ const DB={prepare(sql){
+  statements.push(sql);
+  return {bind(...args){
+   return {async run(){
+    const out=db.prepare(sql).run(...args);
+    return {meta:{changes:out.changes}};
+   }};
+  }};
+ }};
  const row=(host="gov.example.org")=>db.prepare(
    "SELECT consecutive_failures,next_allowed_at,last_failure_state,updated_at "+
    "FROM p1_source_domain_backoff WHERE hostname=?").get(host);
