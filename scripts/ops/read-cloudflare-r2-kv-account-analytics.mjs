@@ -145,7 +145,10 @@ export async function readR2KVAccountAnalytics({
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{console.log(JSON.stringify(await readR2KVAccountAnalytics()))}
  catch(e){const code=String(e?.message??"");
-  console.error(JSON.stringify({status:"NOT_YET_VERIFIED",
+  // Emit a sanitized machine-readable HOLD receipt to stdout even when
+  // GraphQL fails: the protected workflow redirects stdout to its artifact.
+  // Nonzero exit status is preserved. Never include the token/provider body.
+  console.log(JSON.stringify({schema:"geomacro.cloudflare-r2-kv-account-observation.v1",status:"NOT_YET_VERIFIED",
    reason:code.startsWith("CLOUDFLARE_R2_KV_PROOF_")?code:
     "CLOUDFLARE_R2_KV_PROOF_UNEXPECTED_PROVIDER_ERROR",
    no_provider_mutations:true,production_release_authorized:false}));
