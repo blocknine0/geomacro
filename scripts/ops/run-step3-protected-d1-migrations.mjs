@@ -312,6 +312,15 @@ function migrateOne(privateDir,config,manifest,report,dbId,ledger){
     verified.sql_sha256!==manifest.sql_sha256)
   fail("LEDGER_FINAL_D1_READBACK_UNVERIFIED");
  ledger.set(manifest.id,verified);
+ // Pair exactly one provider schema/index/integrity receipt with a real
+ // D1 ledger row that has just been read back as VERIFIED.
+ const matched=report.verified.filter(x=>x.migration===manifest.id);
+ if(matched.length!==1)
+  fail("SCHEMA_LEDGER_PROOF_PAIR_MISSING_OR_DUPLICATE");
+ Object.assign(matched[0],{
+  id:manifest.id,migration_history_and_schema_valid:true,
+  ledger_status:"VERIFIED",ledger_sql_sha256:verified.sql_sha256
+ });
  report.ledger_stages??=[];
  report.ledger_stages.push({migration_id:manifest.id,
   status:verified.status,checksum:verified.sql_sha256,
