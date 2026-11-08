@@ -14,33 +14,45 @@ const OBJECTS=Object.freeze(["materialized_cache",
  "trg_p0b_day_committed_insert","trg_p0b_day_committed_delete",
  "trg_p0b_day_committed_clock_change"]);
 export function evaluateMigrationBudget(plan,now=new Date()){
- const held=reason=>({schema:"geomacro.protected-d1-migration-budget.v1",
-  admitted:false,reason,no_funds:true,account_wide_hard_cap_guaranteed:false});
+ const held=reason=>({
+  schema:"geomacro.protected-d1-migration-monthly-budget.v2",
+  admitted:false,reason,no_funds:true,
+  account_wide_hard_cap_guaranteed:false,
+  old_daily_140k_policy_applied:false
+ });
+ const month=plan?.monthly_owner_headroom;
  if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
-  plan?.day_utc!==now.toISOString().slice(0,10)||
-  plan?.workers_paid_subscription_verified!==true||
-  !(
-   (plan?.owner_d1_normal_envelope?.held===false&&plan?.critical===true)||
-   (plan?.owner_d1_normal_envelope?.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"&&
-    plan?.reason==="GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD")
-  )||
-  plan?.owner_d1_utc_daily_targets?.rows_read!==140000||
-  plan?.owner_d1_utc_daily_targets?.normal_rows_written!==140000||
-  plan?.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
-  !Number.isSafeInteger(plan?.observed_rows_read)||plan.observed_rows_read<0||
-  !Number.isSafeInteger(plan?.observed_rows_written)||plan.observed_rows_written<0)
-   return held("D1_OWNER_PROVIDER_BUDGET_UNVERIFIED");
- // Reserve at least 80k rows in both lanes for one-time index build, seed,
- // telemetry lag and ongoing traffic. Never borrow the 40k write emergency.
- if(plan.observed_rows_read>=60000||plan.observed_rows_written>=60000)
-  return held("D1_MIGRATION_HEADROOM_UNDER_80K");
- return {schema:"geomacro.protected-d1-migration-budget.v1",
-  admitted:true,reason:"PROVIDER_HEADROOM_FOR_PROTECTED_MIGRATIONS",
-  observed_rows_read:plan.observed_rows_read,
-  observed_rows_written:plan.observed_rows_written,
-  headroom_read:140000-plan.observed_rows_read,
-  headroom_write:140000-plan.observed_rows_written,
-  account_wide_hard_cap_guaranteed:false,no_funds:true};
+    plan?.workers_paid_subscription_verified!==true||
+    month?.schema!=="geomacro.d1-paid-monthly-headroom.v1"||
+    month?.status!=="PASS"||
+    month?.provider_subscription_verified!==true||
+    month?.old_daily_140k_policy_applied!==false||
+    month?.day_utc!==now.toISOString().slice(0,10)||
+    month?.monthly_ceiling_read!==22_500_000_000||
+    month?.monthly_ceiling_written!==45_000_000||
+    month?.reserve_pct!==10||
+    !Number.isSafeInteger(month?.observed_rows_read)||
+    !Number.isSafeInteger(month?.observed_rows_written)||
+    !Number.isSafeInteger(month?.remaining_rows_read)||
+    !Number.isSafeInteger(month?.remaining_rows_written))
+   return held("D1_PAID_MONTHLY_MIGRATION_PROVIDER_UNVERIFIED");
+ // Unlike the old UTC daily envelope, the 5th-to-5th billing cycle
+ // does not reset at 00:00 UTC. Exclude even one partially observed DB.
+ if(month.remaining_rows_read<20_000_000||
+    month.remaining_rows_written<1_000_000)
+  return held("D1_PAID_MONTHLY_MIGRATION_RESERVE_UNAVAILABLE");
+ return {
+  schema:"geomacro.protected-d1-migration-monthly-budget.v2",
+  admitted:true,reason:"PROVIDER_PAID_MONTHLY_HEADROOM_FOR_PROTECTED_MIGRATIONS",
+  cycle_start_utc:month.cycle_start_utc,
+  cycle_end_exclusive_utc:month.cycle_end_exclusive_utc,
+  observed_rows_read:month.observed_rows_read,
+  observed_rows_written:month.observed_rows_written,
+  headroom_read:month.remaining_rows_read,
+  headroom_write:month.remaining_rows_written,
+  account_wide_hard_cap_guaranteed:false,
+  old_daily_140k_policy_applied:false,no_funds:true
+ };
 }
 export function inspectPendingMigrations(raw){
  if(typeof raw!=="string"||!raw.trim()||raw.length>65536)
@@ -102,7 +114,7 @@ export function checkBoundedMigrationSizeProbe(pendingRaw,jsonRaw){
    meta.rows_read>15000||meta?.rows_written!==0)
   throw Error("MIGRATION_SIZE_PROBE_PROVIDER_UNVERIFIED");
  if(Object.values(row).some(value=>value===1))
-  throw Error("MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_140K");
+  throw Error("MIGRATION_ORIGINAL_TABLE_EXCEEDS_REVIEWED_SHADOW_INDEX_COST");
  return Object.freeze({schema:"geomacro.protected-d1-index-build-bound.v1",
    status:"ORIGINAL_TABLES_BOUNDED",scope_names:p.pending,
    proven_table_count:aliases.size,
@@ -110,7 +122,7 @@ export function checkBoundedMigrationSizeProbe(pendingRaw,jsonRaw){
    size_probe_provider_rows_read:meta.rows_read,
    size_probe_provider_rows_written:0,
    index_write_cost_still_needs_provider_receipt:true,
-   account_wide_atomic_140k_guaranteed:false,
+   account_wide_atomic_hard_cap_guaranteed:false,
    verified_for_this_preflight_only:true,
    no_funds:true});
 }
