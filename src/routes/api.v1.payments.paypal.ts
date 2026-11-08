@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { paypalPublicConnectionStatus } from "../lib/paypal-api.server";
+import { paypalVerifiedStoreReadiness } from "../lib/paypal-api.server";
 import { handleVerifiedPayPalCommercialWebhook } from "../lib/paypal-completed-webhook.server";
 
 const SAFE_HEADERS = {
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/api/v1/payments/paypal")({
           return Response.json({ ok: false, code: "PAYPAL_DISCOVERY_QUERY_UNSUPPORTED" }, {
             status: 400, headers: SAFE_HEADERS,
           });
-        return Response.json(paypalPublicConnectionStatus(), { headers: SAFE_HEADERS });
+        return Response.json(await paypalVerifiedStoreReadiness(request), { headers: SAFE_HEADERS });
       },
       // Capture.completed is verified and reconciled against the original D1
       // order/merchant before funding; refunds stay active under freeze.
