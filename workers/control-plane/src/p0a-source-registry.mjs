@@ -5,6 +5,7 @@ import {admitP0bSourceStorage} from './p0b-source-storage-admission.mjs';
  * Neither private staged headlines nor source configuration are publicly served.
  */
 import {normalizeP0aPayload,P0A_MAX_COMPRESSED_BYTES} from './p0a-source-format.mjs';
+import {recordP1DomainFailure} from './p1-source-domain-backoff.mjs';
 import {p0aBuildBundledItemStatements} from './p0a-source-item-bundled-write.mjs';
 import {processFetchedBatch} from '../../../src/workers/ingest-producer.ts';
 import {canonicalJson} from '../../../src/lib/canonical-json.ts';
@@ -247,26 +248,7 @@ async function p1DomainAdmit(env,hostname,now){
 }
 async function p1DomainRecord(env,hostname,state,now,delay){
  if(env.GEOMACRO_P1_FANOUT_ENABLED!=='1')return;
- if(['OBSERVED','EMPTY','UNCHANGED'].includes(state))return;
- if(!['UNAVAILABLE','DENIED','RATE_LIMITED','MALFORMED'].includes(state))return;
- const row=await env.DB.prepare(
-  "SELECT consecutive_failures FROM p1_source_domain_backoff "+
-  "WHERE hostname=?").bind(hostname).first();
- const failures=Math.min(100,(row?.consecutive_failures??0)+1);
- const duration=state==='DENIED'?3600000:
-  state==='RATE_LIMITED'?Math.max(300000,delay??300000):
-  [300000,900000,3600000][Math.min(2,failures-1)];
- const until=iso(now+duration);
- await env.DB.prepare(
-  "INSERT INTO p1_source_domain_backoff"+
-  "(hostname,consecutive_failures,next_allowed_at,last_failure_state,updated_at) "+
-  "VALUES (?,?,?,?,?) ON CONFLICT(hostname) DO UPDATE SET "+
-  "consecutive_failures=excluded.consecutive_failures,"+
-  "next_allowed_at=CASE WHEN p1_source_domain_backoff.next_allowed_at>"+
-  "excluded.next_allowed_at THEN p1_source_domain_backoff.next_allowed_at "+
-  "ELSE excluded.next_allowed_at END,"+
-  "last_failure_state=excluded.last_failure_state,updated_at=excluded.updated_at"
- ).bind(hostname,failures,until,state,iso(now)).run();
+ return recordP1DomainFailure(env.DB,{hostname,state,now,delay});
 }
 /** Fingerprint title+canonical URL, not mutable feed GUID or fetch clock. */
 export function p1SourceContentFingerprintFields(row){
