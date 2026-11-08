@@ -63,3 +63,7 @@ CREATE TABLE IF NOT EXISTS tenant_api_keys_v1 (
   created_at TEXT NOT NULL,
   CHECK(key_sha256 NOT LIKE 'gm_live_%')
 );
+
+-- Bounded account usage history uses this covering index rather than a scan.
+CREATE INDEX IF NOT EXISTS idx_customer_usage_user_recent
+  ON customer_usage_receipts(user_id,occurred_at DESC);
