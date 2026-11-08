@@ -123,8 +123,24 @@ export async function captureCustomerPayPalOrder(request:Request):Promise<Respon
   const funding=await worker(request,"paypal-fund",{proof:verified,attestation});
   if(funding.ok!==true||typeof funding.receiptId!=="string")
     reject(503,"CUSTOMER_PAYPAL_FUNDING_UNCONFIRMED");
+  // Capture settlement is already final. A missing key MUST NOT turn a
+  // successful payment into a false failure or another capture attempt.
+  // Full key is returned only on the first confirmed funding response.
+  let handoff:Record<string,unknown>={api_key:null,key_issuance_status:"PENDING_VERIFIED_HOT50_ACCEPTANCE"};
+  if(funding.idempotent_replay!==true){
+    try {
+      const minted=await worker(request,"hot50-key-create",{});
+      if(typeof minted.api_key==="string"&&/^gm_live_[a-f0-9]{32}$/.test(minted.api_key)){
+        handoff={api_key:minted.api_key,key_issuance_status:"READY_REVEAL_ONCE",
+          key_id:minted.key_id,expires_at:minted.expires_at};
+      }
+    }catch{
+      // Customer may separately mint through the verified dashboard once
+      // evidence approval and key runtime have been activated.
+    }
+  }
   return respond({ok:true,receipt_id:funding.receiptId,
     credits_funded:funding.credits,idempotent_replay:funding.idempotent_replay===true,
-    settlement_verified:true});
+    settlement_verified:true,...handoff});
  }catch(error){return customerFailure(error);}
 }
