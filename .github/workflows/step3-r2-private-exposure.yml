@@ -1,0 +1,64 @@
+name: Step3 R2 Recovery Bucket Private Exposure — Provider Read Only
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/step3-r2-private-exposure.yml
+      - scripts/ops/audit-step3-r2-private-exposure.mjs
+  pull_request:
+    paths:
+      - .github/workflows/step3-r2-private-exposure.yml
+      - scripts/ops/audit-step3-r2-private-exposure.mjs
+      - scripts/tests/audit-step3-r2-private-exposure.test.mjs
+      - config/github-workflow-inventory.v1.json
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-step3-r2-exposure-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - run: node --test scripts/tests/audit-step3-r2-private-exposure.test.mjs
+      - run: node --check scripts/ops/audit-step3-r2-private-exposure.mjs
+  provider-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 5
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Cloudflare managed and custom domain exposure — six GETs maximum
+        run: node scripts/ops/audit-step3-r2-private-exposure.mjs
+      - name: Preserve sanitized provider proof or HOLD
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-r2-private-exposure-${{ github.run_id }}
+          path: artifacts/release/step3-r2-private-exposure-readonly.json
+          retention-days: 14
+          if-no-files-found: warn
