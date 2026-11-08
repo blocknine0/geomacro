@@ -363,6 +363,7 @@
     "stateless-live-structured-no-funds.yml",
     "stateless-website-intelligence-live.yml",
     "step3-protected-binding-readiness.yml",
+    "step3-shadow-provider-readonly-inventory.yml",
     "store-12-variant-readiness-no-funds.yml",
     "strict-commercial-launch-closure.yml",
     "structured-commerce-db-concurrency.yml",
@@ -598,6 +599,13 @@
       "workflow_dispatch:",
       "environment: production",
       "node scripts/ops/step3-protected-binding-readiness.mjs"
+    ],
+    "step3-shadow-provider-readonly-inventory.yml": [
+      "workflow_dispatch:",
+      "branches: [main]",
+      "environment: production",
+      "if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'",
+      "node scripts/ops/audit-step3-shadow-provider-readonly.mjs"
     ]
   },
   "predgeBlobSha1": {
