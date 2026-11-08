@@ -175,6 +175,8 @@ test("real Shadow-only read-only preflight is usable before owner DDL approval",
  assert.equal(report.stage1_physical_pass,false);
  assert.equal(report.production_d1_writes,0);
  assert.equal(report.shadow_d1_writes,0);
+ assert.equal(report.shadow_existing_table_count,0);
+ assert.deepEqual(report.shadow_existing_table_names,[]);
  assert.equal(report.r2_puts,0);
 });
 test("real Shadow-only preflight NEVER upgrades nonempty schema or absent Paid permission",async()=>{
@@ -191,5 +193,9 @@ test("real Shadow-only preflight NEVER upgrades nonempty schema or absent Paid p
   assert.equal(report.stage2_authorized,false);
   assert.equal(report.production_d1_writes,0);
   assert.equal(report.shadow_d1_writes,0);
+  if(c.rows.length){
+   assert.equal(report.shadow_existing_table_count,1);
+   assert.deepEqual(report.shadow_existing_table_names,["unknown_existing_business_table"]);
+  }
  }
 });
