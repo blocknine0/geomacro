@@ -489,7 +489,15 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   }
   report.migrations_0204_0211_0212_0213_provider_verified=
    report.verified.length===4;
-  report.post_migration_hmac=await verifyHmacNewPointers(config,env);
+  // Dedicated shadow hostname only. Never use api.geomacro.live as a
+  // surrogate proof for an isolated shadow-bound D1 Worker.
+  const shadowHost=env.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST;
+  if(typeof shadowHost!=="string"||
+     !/^geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev$/u.test(shadowHost))
+   fail("SHADOW_WORKER_BOUND_ORIGIN_UNVERIFIED");
+  report.post_migration_hmac=await verifyHmacNewPointers(config,{
+   ...env,GEOMACRO_STEP3_VERIFIED_WORKER_HOST:shadowHost
+  });
   // An HTTP response from the production Worker cannot prove that the
   // shadow Worker bound to this D1 can survive rolling back. Do not forge.
   report.code="STEP3_SHADOW_DUAL_WORKER_ROLLBACK_AND_B2_NOT_YET_VERIFIED";
