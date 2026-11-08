@@ -267,8 +267,9 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
    // migration has not passed verification, existing ordered indexes remain
    // the safe, slower fallback (never an OFFSET scan).
    const enhanced=env.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
+   const hourlyIndexReady=env.GEOMACRO_D1_KEYSET_INDEX_0212==="1";
    const index=cat&&country&&enhanced?"idx_private_osint_country_category_clock_v2":
-     !cat&&country&&enhanced?"idx_private_osint_country_clock_v3":
+     !cat&&country&&hourlyIndexReady?"idx_private_osint_country_clock_v3":
      cat?"idx_private_osint_category_clock":"idx_private_osint_news_clock";
    const receipt=await env.DB.prepare(
      "SELECT item_id,native_feed_published_at,projection_json,first_seen_at,last_seen_at "+
