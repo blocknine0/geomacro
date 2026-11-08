@@ -81,13 +81,14 @@ function signedPaymentProof(intentId,now){
 function signedRiskSnapshot(now){
  const published=new Date(Date.parse(now)-60000).toISOString();
  const expires=new Date(Date.parse(now)+1800000).toISOString();
- const cat=()=>({score:65,confidence_low:50,confidence_high:80,
+ const cat=(category)=>({score:65,confidence_low:50,confidence_high:80,
   confidence:0.85,qualified_evidence_count:3,
+  ...(category==='trade_minerals_supplychain'?{verified_subdomains:['trade','critical_minerals','supply_chain']}:{}),
   b2_evidence_pointer:'b2://fixture-evidence/verified/not-real.json',
   b2_evidence_sha256:'a'.repeat(64)});
  const countries=RISK_GATE_HOT50.map(iso3=>({
   iso3,composite_score:65,
-  ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,cat()]))
+  ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,cat(x)]))
  }));
  const payload={schema:HOT50_SIGNED_SCHEMA,view_key:'hot50',
   public_key_id:'fixture-signing-key',execution_authorized:false,
