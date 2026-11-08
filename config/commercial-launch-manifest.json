@@ -7,7 +7,7 @@
   "policy": "NEW SALES ONLY: Starter / Dev $9/1000 credits, Pro Analyst $29/5000 credits, Business Pilot $99/25000 credits per 30 days; one-time packs $5/100, $15/500, $30/1500 credits; Base USDC x402 0.02-0.05 per eligible verified delivery. Retire all older public pricing. No automatic activation or unverified charge.",
   "providers": {
     "coinbase_x402": {
-      "status": "prelaunch_acceptance",
+      "status": "crypto_only_pending_exact_head_provider_and_ledger_acceptance",
       "launch_cohort": true,
       "production_enabled": false,
       "test_network": "Base Sepolia",
@@ -16,8 +16,8 @@
       "provider_gate_env": "COINBASE_X402_MAINNET_ACK"
     },
     "circle_gateway_x402": {
-      "status": "prelaunch_acceptance",
-      "launch_cohort": true,
+      "status": "disabled_from_new_sales_by_owner_crypto_scope",
+      "launch_cohort": false,
       "production_enabled": false,
       "test_network": "Arc Testnet technical proof remains separate",
       "production_network": "Base",
@@ -37,8 +37,8 @@
       "deferred_reason": "GOAT mainnet merchant access requires manual provider application/approval. Testnet3 remains technical proof only and GOAT mainnet cannot block the initial commercial launch cohort."
     },
     "nevermined": {
-      "status": "prelaunch_acceptance",
-      "launch_cohort": true,
+      "status": "disabled_from_new_sales_by_owner_crypto_scope",
+      "launch_cohort": false,
       "production_enabled": false,
       "test_network": "sandbox",
       "production_network": "production",
@@ -46,7 +46,7 @@
       "provider_gate_env": "GEOMACRO_COMMERCIAL_LAUNCH_ACK"
     },
     "paypal": {
-      "status": "merchant_approval_required",
+      "status": "disabled_for_new_sales_preserve_historical_refunds",
       "launch_cohort": false,
       "production_enabled": false,
       "merchant_country": "IN",
@@ -58,6 +58,27 @@
       "subscription_renewal_enabled": false,
       "credit_funding_ledger_verified": false,
       "requires": "Verified Business account, webhook verification, idempotent payment/refund ledger and authorized credit delivery"
+    },
+    "xpay_x402": {
+      "status": "crypto_only_pending_exact_head_provider_and_ledger_acceptance",
+      "launch_cohort": true,
+      "production_enabled": false,
+      "production_network": "Base",
+      "caip2": "eip155:8453",
+      "asset": "native Circle USDC",
+      "provider_gate_env": "GEOMACRO_NO_CARD_MAINNET_ACK"
+    },
+    "dexter_x402": {
+      "status": "crypto_only_pending_exact_head_provider_and_ledger_acceptance",
+      "launch_cohort": true,
+      "production_enabled": false,
+      "production_network": "Base/Polygon",
+      "caip2": [
+        "eip155:8453",
+        "eip155:137"
+      ],
+      "asset": "native Circle USDC",
+      "provider_gate_env": "GEOMACRO_NO_CARD_MAINNET_ACK"
     }
   },
   "distribution": {
@@ -89,8 +110,8 @@
     "support_and_incident_ownership"
   ],
   "launch_rule": {
-    "allow_partial_provider_launch": false,
-    "partial_launch_scope": "approved_launch_cohort_only",
+    "allow_partial_provider_launch": true,
+    "partial_launch_scope": "ONLY_BASE_POLYGON_NATIVE_USDC_AFTER_ALL_MERCHANT_B2_SIGNED_EVIDENCE_AND_DURABLE_LEDGER_GATES",
     "allow_testnet_as_revenue": false,
     "allow_unreconciled_settlement_as_revenue": false,
     "allow_automatic_public_marketing_before_launch": false,
@@ -132,6 +153,18 @@
     "subscription_checkout_enabled": false,
     "credit_pack_checkout_enabled": false,
     "paypal_checkout_enabled": false,
-    "stripe_checkout_enabled": false
-  }
+    "stripe_checkout_enabled": false,
+    "crypto_only_checkout_enabled": false,
+    "owner_wallet_ownership_verified": false,
+    "native_usdc_base_polygon_provider_finality_verified": false,
+    "usdc_receipt_to_canonical_d1_customer_funding_verified": false
+  },
+  "new_sale_rail_scope": "CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC",
+  "fiat_and_card_new_sales_disabled": true,
+  "paypal_new_sales_disabled": true,
+  "temporary_provider_release_scope": [
+    "coinbase_x402",
+    "xpay_x402",
+    "dexter_x402"
+  ]
 }
