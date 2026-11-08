@@ -2,7 +2,7 @@
 
 As of 2026-11-08 10:26 UTC, the exact Step 3 Nov 9, 00:00 UTC
 accounting window is in the **future**. No Step 3 migration success, provider
-bookmark, source-preserving HMAC/R2 readback, or 140,000/day improvement
+bookmark, source-preserving HMAC/R2 readback, or any Paid billing-month reduction
 may be inferred from a user statement or this code-only PR.
 
 ## Current status
@@ -17,7 +17,7 @@ may be inferred from a user statement or this code-only PR.
   Draft PRs #3725 and #3726 MUST NOT be merged solely because a Step 3
   job says `success`. PR #3726 contains migration 0214, **not included**
   in the Step 3 0204/0211/0212/0213 allowlist; verify it separately.
-- Every stage requires a new Cloudflare account-wide same UTC-day D1
+- Every stage requires a new Cloudflare account-wide **5th-to-5th Paid billing-cycle** D1
   rows-read/written receipt, billable-row rate vs measured baseline,
   full quota pacing, B2 archive write/readback parity, authenticated R2
   real-object SHA/HMAC readback and first-party source freshness.
@@ -52,8 +52,8 @@ single-version, 100%-baseline rollback on errors.
   the owner's >0.5% error rate ceiling). Host HTTP 5xx >=0.1% is
   similarly held; note HTTP zone aggregate is not candidate-only.
 - Missing metrics, low sample volume (<1,000 candidate requests), UTC
-  receipt stale, D1 >140,000 account-wide observed rows or provider
-  response shape mismatch -> HOLD and rollback. D1 daily counts from
+  receipt stale, month-wide 25B reads/50M writes inclusion with 10% reserve exhausted or provider
+  response shape mismatch -> HOLD and rollback. D1 billing-cycle counters from
   GraphQL are *not* instantaneous; a separate rate-of-burn admission
   and independent alerting are still necessary for detection of
   spikes before the daily envelope is exhausted.
@@ -84,3 +84,18 @@ single-version, 100%-baseline rollback on errors.
 
 All omissions are **hard blockers**. Do not mark this PR production
 ready, remove HOLD, or promote an unproven candidate.
+
+## Cloudflare Workers Paid quota transition
+
+The retired 140k/day or 5,800/hour owner limits must NOT be used by
+this canary. The current provider-paid D1 inclusion is 25B reads and
+50M writes per billing cycle (5th UTC to 5th UTC). The canary circuit
+breaker reads all D1 database/day GraphQL groups plus Billing Read
+subscription proof and enforces an owner 10% reserve (22.5B read,
+45M write) and provider-observed hourly growth paced across the billing
+cycle. Missing or stale provider metrics => HOLD and baseline Worker
+rollback; this is not a Cloudflare atomic cost cap or $5 invoice promise.
+
+The separate Step3 runner PR #3732 and Hot50 source governor PR #3736
+must be independently reviewed and replay-tested before production
+traffic is admitted. The GitHub HOLD is never removed automatically.
