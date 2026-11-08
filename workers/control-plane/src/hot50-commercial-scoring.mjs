@@ -11,6 +11,7 @@ const HEX=/^[a-f0-9]{64}$/;
 const PTR=/^b2:\/\/[a-z0-9_-]+\/[A-Za-z0-9_./-]{1,400}$/;
 const SOURCES=new Set(RISK_GATE_HOT50);
 const CATEGORIES=new Set(HOT50_CATEGORIES);
+const TRADE_SUBDOMAINS=Object.freeze(['trade','critical_minerals','supply_chain']);
 const round=n=>Math.round(n*100)/100;
 function requireQualified(e,iso3,category,asOf){
  if(!e||e.country_iso3!==iso3||e.category!==category||
@@ -33,16 +34,23 @@ export function scoreQualifiedHot50Cell({iso3,category,evidence,asOf}){
  if(!SOURCES.has(iso3)||!CATEGORIES.has(category)||
     !Array.isArray(evidence)||evidence.length<1||evidence.length>50||
     !Number.isFinite(asOf))throw Error('HOT50_CELL_SCOPE_INVALID');
- const fingerprints=new Set();
+ const fingerprints=new Set(),subdomains=new Set();
  let sum=0,weights=0,weightedEvents=[];
  for(const e of evidence){
   const w=requireQualified(e,iso3,category,asOf);
+  if(category==='trade_minerals_supplychain'){
+   if(!TRADE_SUBDOMAINS.includes(e.source_subdomain))
+    throw Error('HOT50_TRADE_SOURCE_CLASSIFICATION_REQUIRED');
+   subdomains.add(e.source_subdomain);
+  }
   if(fingerprints.has(e.event_fingerprint))
    throw Error('HOT50_EVENT_FINGERPRINT_DUPLICATE');
   fingerprints.add(e.event_fingerprint);
   sum+=e.impact_score*w;weights+=w;
   weightedEvents.push({e,w});
  }
+ if(category==='trade_minerals_supplychain'&&TRADE_SUBDOMAINS.some(x=>!subdomains.has(x)))
+  throw Error('HOT50_TRADE_MINERALS_SUPPLYCHAIN_MISSING_SUBDOMAIN');
  const score=round(sum/weights);
  const deviation=weightedEvents.reduce((n,x)=>n+x.w*Math.abs(x.e.impact_score-score),0)/weights;
  // A deterministic, non-probabilistic uncertainty envelope; NOT a
@@ -55,6 +63,7 @@ export function scoreQualifiedHot50Cell({iso3,category,evidence,asOf}){
   confidence:Math.max(0,round(1-Math.min(radius,100)/100)),
   uncertainty_method:'WEIGHTED_ABSOLUTE_DEVIATION_ENVELOPE_V1_NOT_CALIBRATED_CI',
   qualified_evidence_count:evidence.length,
+  ...(category==='trade_minerals_supplychain'?{verified_subdomains:[...TRADE_SUBDOMAINS]}:{}),
   b2_evidence_pointer:evidence[0].b2_pointer,
   b2_evidence_sha256:evidence[0].b2_sha256,
   evidence_proof_sha256:evidence[0].proof_sha256,
