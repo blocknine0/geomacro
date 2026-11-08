@@ -88,7 +88,8 @@ jobs:
       GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
-      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      # Stage1 shadow-only credential; never reuse or rotate the live bearer token.
+      CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}
       # Shadow-only HMAC, never the production pointer signing key.
       PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY }}
       GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
