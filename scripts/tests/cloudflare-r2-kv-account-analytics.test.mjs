@@ -56,7 +56,7 @@ test("unknown or duplicate operation categories, accounts, truncation and absent
   {change:o=>o.data.viewer.accounts[0].r2OperationsAdaptiveGroups[0].dimensions.actionType="UnrecognizedCharge"},
   {change:o=>o.data.viewer.accounts[0].kvOperationsAdaptiveGroups[0].dimensions.actionType="bulk"},
   {change:o=>o.data.viewer.accounts[0].r2OperationsAdaptiveGroups.push(row("2026-11-05","PutObject",10))},
-  {change:o=>o.data.viewer.accounts[0].kvOperationsAdaptiveGroups=[]},
+  {change:o=>{delete o.data.viewer.accounts[0].kvOperationsAdaptiveGroups}},
   {change:o=>o.data.viewer.accounts=[]},
   {change:o=>o.data.viewer.accounts[0].kvOperationsAdaptiveGroups[0].sum.requests=-1},
   {change:o=>o.data.viewer.accounts[0].r2OperationsAdaptiveGroups[0].dimensions.date="2026-10-01"},
@@ -70,6 +70,50 @@ test("unknown or duplicate operation categories, accounts, truncation and absent
  }
  assert.throws(()=>assessR2KVAccountAnalytics({...valid(),errors:[{message:"bad"}]},
   {now:NOW,accountId:ACCOUNT}),/GRAPHQL_ACCOUNT_OR_ERRORS_UNVERIFIED/);
+});
+test("partial R2 dataset is retained; missing KV operation groups are UNKNOWN, never zero",()=>{
+ const fixture=valid();
+ fixture.data.viewer.accounts[0].kvOperationsAdaptiveGroups=[];
+ const r=assessR2KVAccountAnalytics(fixture,{now:NOW,accountId:ACCOUNT});
+ assert.equal(r.status,"PARTIAL_ACCOUNT_OBSERVATION_HOLD");
+ assert.equal(r.partial_account_telemetry,true);
+ assert.deepEqual(r.incomplete_resources,["kv_writes","kv_reads"]);
+ assert.equal(r.metrics.r2_class_a.month,100);
+ assert.equal(r.metrics.r2_class_b.day,35);
+ assert.equal(r.metrics.kv_writes.month,null);
+ assert.equal(r.metrics.kv_reads.day,null);
+ assert.equal(r.supplemental_not_in_six_resource_policy.kv_deletes.month,null);
+ assert.equal(r.full_six_resource_snapshot,false);
+ assert.equal(r.provider_verified,false);
+ assert.equal(r.production_release_authorized,false);
+ assert.equal(r.merchant_funds_authorized,false);
+});
+test("missing R2 dataset cannot be interpreted as zero while KV remains visible",()=>{
+ const fixture=valid();
+ fixture.data.viewer.accounts[0].r2OperationsAdaptiveGroups=[];
+ const r=assessR2KVAccountAnalytics(fixture,{now:NOW,accountId:ACCOUNT});
+ assert.equal(r.status,"PARTIAL_ACCOUNT_OBSERVATION_HOLD");
+ assert.deepEqual(r.incomplete_resources,["r2_class_a","r2_class_b"]);
+ assert.equal(r.metrics.r2_class_a.month,null);
+ assert.equal(r.metrics.r2_class_b.day,null);
+ assert.equal(r.metrics.kv_reads.month,120);
+ assert.equal(r.provider_verified,false);
+});
+test("missing current UTC day even with historic R2 groups stays unknown",()=>{
+ const fixture=valid();
+ fixture.data.viewer.accounts[0].r2OperationsAdaptiveGroups=
+  fixture.data.viewer.accounts[0].r2OperationsAdaptiveGroups.filter(x=>x.dimensions.date!=="2026-11-09");
+ const r=assessR2KVAccountAnalytics(fixture,{now:NOW,accountId:ACCOUNT});
+ assert.equal(r.status,"PARTIAL_ACCOUNT_OBSERVATION_HOLD");
+ assert.equal(r.metrics.r2_class_a.month,null);
+ assert.equal(r.metrics.kv_reads.month,120);
+});
+test("no R2 and no KV datasets provides no fabricated partial telemetry",()=>{
+ const fixture=valid();
+ fixture.data.viewer.accounts[0].r2OperationsAdaptiveGroups=[];
+ fixture.data.viewer.accounts[0].kvOperationsAdaptiveGroups=[];
+ assert.throws(()=>assessR2KVAccountAnalytics(fixture,{now:NOW,accountId:ACCOUNT}),
+  /CLOUDFLARE_R2_KV_PROOF_R2_AND_KV_DATASETS_BOTH_EMPTY/);
 });
 test("provider read-only invocation sends one query, account ID stays out of receipt",async()=>{
  let calls=0;
