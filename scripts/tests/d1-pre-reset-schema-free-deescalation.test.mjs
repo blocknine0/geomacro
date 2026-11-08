@@ -48,7 +48,7 @@ test("GRO historical cursor only runs hourly at :59; 2m B2 trigger tick unchange
  assert.equal(Array.from({length:1440},(_,m)=>m)
   .filter(m=>m%2===1&&m%60===59).length,24);
  assert.doesNotMatch(source,/GEOMACRO_GRO_BACKFILL_ONCE_V1/u);
- assert.match(source,/ctx\.waitUntil\(pollP0aSources/u);
+ assert.match(source,/await pollP0aSources\(env/u);
  const gro=readFileSync("workers/control-plane/src/gro-evidence-enrichment.mjs","utf8");
  assert.match(gro,/INSERT OR IGNORE INTO gro_evidence_jobs/u);
 });
