@@ -8,7 +8,9 @@ import {
 } from "../lib/d1-step3-real-shadow-proofs.mjs";
 const sha=b=>createHash("sha256").update(b).digest("hex");
 const a="a".repeat(64),d1="11111111-2222-4333-8444-555555555555";
-const original={record_id:a,raw_sha256:"b".repeat(64),category:"macro"};
+const original={record_id:a,raw_sha256:"b".repeat(64),category:"macro",
+ ingested_at:new Date().toISOString(),
+ original:{original_published_at:new Date().toISOString()}};
 const compressed=gzipSync(Buffer.from(JSON.stringify({
  schema:"geomacro.phase2h.private-raw-b2-object.v1",
  record_count:1,rows:[original]
@@ -47,12 +49,17 @@ test("live B2 parity verifier enforces complete byte GET, gzip identity and gove
 });
 function fakeProvider({wrongShadow=false,newR2Missing=false}={}){
  const calls=[];
- const fetchImpl=async url=>{
+ const fetchImpl=async (url,req={})=>{
   calls.push(url);
   const isNew=url.includes("/workers/scripts/geomacro-step3-shadow/");
   const version="33333333-4444-4555-8666-777777777777";
   let data;
-  if(url.endsWith("/settings")){
+  if(req.method==="PUT"&&url.endsWith("/v1/internal/phase2h-raw-news")){
+   data={ok:true,schema:"geomacro.phase2h.private-d1-receipt.v1",
+    accepted:0,unchanged:1,d1_exact_readback_verified:true,
+    per_original_readback_verified:true,per_original_verified_count:1,
+    all_submitted_five_parts_exact:true,payments:0};
+  }else if(url.endsWith("/settings")){
    data={success:true,result:{bindings:[
     {name:"DB",type:"d1",database_id:wrongShadow?"bad-uuid":d1},
     ...isNew&&!newR2Missing?[{
@@ -81,6 +88,8 @@ test("two deployed shadow identities must each bind to the exact shadow DB",asyn
  const r=await verifyRealShadowDualWorkers({env,source,fetchImpl:p.fetchImpl});
  assert.equal(r.status,"PASS_REAL_DISTINCT_SHADOW_WORKER_ROLLBACK_READBACK");
  assert.equal(r.legacy_worker_rollback_verified,true);
+ assert.equal(r.legacy_worker_idempotent_write_verified,true);
+ assert(p.calls.some(x=>x.endsWith("/v1/internal/phase2h-raw-news")));
  assert.equal(r.new_worker_hydration_verified,true);
  assert(p.calls.some(x=>x.endsWith("/settings")));
  await assert.rejects(verifyRealShadowDualWorkers({env,source,
