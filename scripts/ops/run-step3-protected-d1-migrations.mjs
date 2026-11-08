@@ -24,6 +24,8 @@ import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
 import {admitSignedStep3ShadowReceipt}
  from "../lib/d1-step3-receipt-admission.mjs";
+import {assessStep3ProductionFinal}
+ from "../lib/d1-step3-production-final-acceptance.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
@@ -409,32 +411,15 @@ export async function applyStep3Migrations({env=process.env}={}){
   if(state.production_b2_archive_proof.status!=="PASS_REAL_B2_BYTE_READBACK")
    fail("PRODUCTION_INDEPENDENT_B2_GET_FAILED");
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
-  const emptyPointerTable=
-   state.post_migration_hmac.real_provider_pointer_count===0&&
-   state.post_migration_hmac.reason==="NO_REAL_R2_POINTER_ROWS";
-  // A newly created opt-in table has no real pointers. This is a
-  // schema/empty-table verification, NOT a production HMAC PASS.
-  // Stage 1 already attested to genuine shadow pointer HMAC/R2.
-  state.production_reference_table={
-   mode:emptyPointerTable?"EMPTY_OPT_IN_TABLE_SCHEMA_VERIFIED":
-    "EXISTING_PRODUCTION_POINTERS_CRYPTOGRAPHICALLY_VERIFIED",
-   real_production_pointer_hmac_verified:
-    state.post_migration_hmac.cryptographic_readback_verified===true,
-   zero_pointer_table_vacuous_proof:emptyPointerTable,
-   stage1_shadow_hmac_attestation_required:true
-  };
+  const final=assessStep3ProductionFinal({
+   state,pointerProof:state.post_migration_hmac,
+   b2Proof:state.production_b2_archive_proof
+  });
+  state.production_reference_table=final.production_reference_table;
   state.post_migration_readback_explicit_PASS=
-   state.verified.length===4&&state.recovery_checkpoint_verified===true&&
-   state.migration_ledger_verified===true&&
-   state.stage1_admission?.status===
-     "PASS_AUTHENTICATED_REAL_PROVIDER_SHADOW_ADMISSION"&&
-   (emptyPointerTable||
-    state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true)&&
-   state.production_b2_archive_proof.independent_b2_full_get_verified===true;
-  state.status=state.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
-  state.code=state.post_migration_readback_explicit_PASS?
-   "STEP3_FOUR_MIGRATIONS_SCHEMA_AND_HMAC_READBACK_PASS":
-   "STEP3_POINTER_HMAC_R2_AND_B2_PARITY_NOT_YET_VERIFIED";
+   final.post_migration_readback_explicit_PASS;
+  state.status=final.status;
+  state.code=final.code;
   // Never remove HOLD or mark a PR as mergeable, even after PASS.
   save(state);
   if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD");
