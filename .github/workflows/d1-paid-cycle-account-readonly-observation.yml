@@ -54,7 +54,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
       - name: Read-only account Paid subscription and billing-cycle rows
