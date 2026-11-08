@@ -55,7 +55,7 @@ jobs:
       GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: 'YES'
       GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
-      GEOMACRO_STEP3_EXACT_SHA: '19a3bd5308747d826a92d463f5651192c3cad11e'
+      GEOMACRO_STEP3_EXACT_SHA: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
       GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
       GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
@@ -66,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: '19a3bd5308747d826a92d463f5651192c3cad11e'
+          ref: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -89,15 +89,16 @@ jobs:
           test -n "${GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET:-}"
           test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/ops/check-d1-paid-monthly-headroom.mjs
       - name: Offline negative tests before any provider calls
         shell: bash
         run: |
           set -euo pipefail
           node --test scripts/tests/d1-step3-durable-recovery.test.mjs
           node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
-      - name: Real account-wide same UTC-day D1 migration reserve
+      - name: Cloudflare Workers Paid month-wide 25B/50M inclusion and 10pct reserve
         shell: bash
-        run: node scripts/ops/check-d1-headroom.mjs --check
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Shadow UUID only — real encrypted recovery, migrations and signed status receipt
         shell: bash
         run: node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow
