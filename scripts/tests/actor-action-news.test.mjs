@@ -64,7 +64,11 @@ for q in p['queries']: d.execute(q['sql'],q['args'])
 r=d.execute('SELECT story_json,published_at,first_seen_at FROM website_derived_intelligence').fetchone()
 assert json.loads(r[0])['title']==p['revised']['title']; assert r[1]==b['published_at']; assert r[2]==first
 # The same ID cannot change the native source clock through editorial refresh.
-q=p['queries'][0]; args=q['args'][:]; args[2]='2026-10-22T11:00:00.000Z'; d.execute(q['sql'],args)
+q=p['queries'][0]; args=q['args'][:]
+# A batch now submits packed JSON rows through json_each(?), not six per-row binds.
+packed=json.loads(args[0]); assert len(packed)==1 and len(packed[0])==6
+packed[0][2]='2026-10-22T11:00:00.000Z'; args[0]=json.dumps(packed)
+d.execute(q['sql'],args)
 assert d.execute('SELECT published_at,first_seen_at FROM website_derived_intelligence').fetchone()==(b['published_at'],first)
 print('SQLITE_REVISION_CLOCKS_PRESERVED')`;
  const r=spawnSync('python',['-c',python],{input:JSON.stringify({base,revised,queries:captured}),encoding:'utf8'});
