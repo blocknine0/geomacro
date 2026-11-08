@@ -59,6 +59,14 @@ const EXACT=Object.freeze([
    statement:"SELECT country_code, lower(domain) AS domain, readiness_status, certified_source_count, review_source_count, unavailable_source_count, last_verified_at FROM country_domain_state ORDER BY country_code,domain LIMIT 801"}
 ].map(({statement,...entry})=>Object.freeze({...entry,canonical:normalize(statement)})));
 const FAMILIES=Object.freeze([
+  {needle:"ingestion_spool_queue",id:"P0B_SPOOL_QUEUE"},
+  {needle:"normalized_articles",id:"P0B_NORMALIZED_METADATA"},
+  {needle:"p0b_archive_outbox",id:"P0B_ARCHIVAL_OUTBOX"},
+  {needle:"p1_source_poll_bundles",id:"SOURCE_POLL_BATCHES"},
+  {needle:"source_registry",id:"SOURCE_REGISTRY"},
+  {needle:"phase2h_private_raw_news",id:"PHASE2H_ORIGINAL_ARCHIVE"},
+  {needle:"materialized_cache",id:"PUBLIC_MATERIALIZED_CACHE"},
+  {needle:"central_security_budget",id:"PARTNER_SECURITY_BUDGET"},
   {needle:"website_derived_intelligence",id:"WEBSITE_DERIVED_JOURNAL"},
   {needle:"private_osint_news_25h",id:"PRIVATE_OSINT_EVENT_JOURNAL"},
   {needle:"private_osint_source_checks_24h",id:"PRIVATE_OSINT_SOURCE_CHECKS"},
