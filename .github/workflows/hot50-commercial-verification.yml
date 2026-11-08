@@ -7,6 +7,8 @@ on:
       - 'workers/control-plane/migrations/0212_commercial_hot50_immutable_signed_delivery.sql'
       - 'workers/control-plane/migrations/0213_hot50_plan_scope_d1.sql'
       - 'scripts/tests/hot50-commercial-read.test.mjs'
+      - 'scripts/tests/hot50-payment-to-delivery-isolated.test.mjs'
+      - 'scripts/tests/customer-paid-ledger.test.mjs'
       - '.github/workflows/hot50-commercial-verification.yml'
   workflow_dispatch:
 permissions:
@@ -30,7 +32,10 @@ jobs:
           node --check workers/control-plane/src/customer-paid-ledger.mjs
           node --check workers/control-plane/src/customer-runtime.mjs
       - name: Verify deterministic signed Hot50 fixture gates (not live certification)
-        run: node --test scripts/tests/hot50-commercial-read.test.mjs
+        run: |
+          node --test scripts/tests/hot50-commercial-read.test.mjs
+          node --test scripts/tests/hot50-payment-to-delivery-isolated.test.mjs
+          node --test scripts/tests/customer-paid-ledger.test.mjs
       - name: Explicit acceptance boundary
         run: |
           echo "FIXTURE_ONLY=true"
