@@ -223,8 +223,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name != 'pull_request' &&
-      github.event_name != 'push'
+      github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     environment: production
@@ -257,6 +256,8 @@ jobs:
     # The existing 20m publisher; a successful production-archive deploy
     # can also wake archive-only collection while the protected D1 lane is HELD.
     # Never bypass the quota governor or run from an untrusted PR/branch.
+    # A trusted main push to this existing workflow can recover immediately
+    # when D1 is held; it NEVER activates the separate D1 refresh job.
     # No paid/provider/PREDGE mutations; no additional workflow or D1 writer.
     if: >-
       needs.quota-admission.result == 'success' &&
@@ -264,6 +265,7 @@ jobs:
       github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' &&
       (github.event_name == 'schedule' ||
        github.event_name == 'workflow_dispatch' ||
+       github.event_name == 'push' ||
        (github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.path == '.github/workflows/deploy-permanent-public-finds-archive.yml' &&
