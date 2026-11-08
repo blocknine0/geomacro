@@ -589,7 +589,8 @@ export function phase2fQuotaDiagnostic(plan){
   });
 }
 
-export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=new Date()}={}){
+export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=new Date(),
+ monthlyProviderClock=()=>new Date()}={}){
   try{
     // A transient Cloudflare GraphQL transport/429 outage is not D1 quota
     // exhaustion. Retry a bounded READ-ONLY provider usage observation;
@@ -636,7 +637,8 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // Paid admission uses only the actual 5th-to-5th billing-cycle
     // account-wide usage; the old 140k/day owner gate is RETIRED here.
     const monthly=paidSubscriptionVerified?
-      await checkD1PaidMonthlyHeadroom({env:billingEnv,fetchImpl,now,lane:"hot50_source"}):null;
+      await checkD1PaidMonthlyHeadroom({env:billingEnv,fetchImpl,now,lane:"hot50_source",
+        clock:monthlyProviderClock}):null;
     const paidAdmitted=monthly?.status==="PASS";
     const result=paidSubscriptionVerified?
       planD1BundledWork(quota,{now,paidProof,paidMonthly:monthly}):
