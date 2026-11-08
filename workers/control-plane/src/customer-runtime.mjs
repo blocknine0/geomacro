@@ -209,16 +209,17 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
   ]);
   const paidAccepted=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
   const riskGateAccepted=env.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE==='ACCEPTED_RISK_GATE_PRICING_LEDGER';
+  const hot50Accepted=env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE==='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS';
   const credentialReady=String(env.GEOMACRO_API_CREDENTIAL_PEPPER??'').length>=32;
-  const canIssue=(paidAccepted||riskGateAccepted)&&credentialReady&&funded.key_issuance_eligible;
+  const canIssue=(paidAccepted||riskGateAccepted||hot50Accepted)&&credentialReady&&funded.key_issuance_eligible;
   // A verified grant can be displayed while activation is pending, but it
   // cannot silently enable a dashboard key that the Worker would refuse.
   const credits=funded.credits?{...funded.credits,
-   status:(paidAccepted||riskGateAccepted)&&credentialReady?funded.credits.status:'pending_activation'}:null;
+   status:(paidAccepted||riskGateAccepted||hot50Accepted)&&credentialReady?funded.credits.status:'pending_activation'}:null;
   return reply({ok:true,user:{email:user.email},principal_ready:true,credits,
    verified_balance:credits?.remaining??0,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
    checkout_enabled:false,key_issuance_enabled:canIssue,
-   key_issuance_code:canIssue?null:!(paidAccepted||riskGateAccepted)?CUSTOMER_KEY_GATE:
+   key_issuance_code:canIssue?null:!(paidAccepted||riskGateAccepted||hot50Accepted)?CUSTOMER_KEY_GATE:
     !credentialReady?'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED':'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED'});
  }catch(error){return reply({ok:false,code:error instanceof Failure?error.code:'CUSTOMER_D1_UNAVAILABLE'},error instanceof Failure?error.status:503);}
 }
