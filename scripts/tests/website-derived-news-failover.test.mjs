@@ -97,6 +97,8 @@ test("hourly Cloudflare collection and +15m recovery retain single-writer and th
   const legacy=readFileSync(new URL(".github/workflows/auto-ingest-news.yml",root),"utf8");
   assert.ok(primary.includes('cron: "7,27,47 * * * *"'));
    assert.ok(primary.includes('GEOMACRO_DERIVED_ARCHIVE_ONLY: "1"'));
+   assert.ok(primary.includes("github.event_name == 'push' ||"));
+   assert.ok(primary.includes("github.event_name != 'push' &&"));
    assert.ok(primary.includes("needs.quota-admission.outputs.research == 'false'"));
   assert.ok(backstop.includes('cron: "22,52 * * * *"'));
   assert.ok(backstop.includes('"Three-Domain 30-Minute Original Publisher Pulse"'));
