@@ -3,13 +3,19 @@
 import {existsSync,readFileSync,unlinkSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,BUDGET} from './release-common.ts';
+import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER} from './release-common.ts';
+import {
+ checkD1PaidMonthlyHeadroom,paidD1BillingCycle
+} from './lib/d1-workers-paid-monthly-governor.mjs';
 const HOLD='config/d1-hotspot-v2-canary.hold';
 const STAGES=[0,1,5,25,50,100] as const;
 const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
 const INTERVAL_MS=30000;
-// Internal 140k/day policy (24*5,800=139,200), both dimensions separately.
-const D1_MAX_OBSERVED_HOURLY_ROWS=5800;
+// The owner's retired 140k/day cap no longer applies. Provider Paid
+// allowance is 25B reads / 50M writes per 5th-to-5th billing cycle.
+const MONTHLY_READ_SOFT=22_500_000_000;
+const MONTHLY_WRITE_SOFT=45_000_000;
+const D1_MONTHLY_RESERVE_PCT=10;
 const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
@@ -113,53 +119,60 @@ async function verifiedLiveObservability(start:string,end:string,version:string,
   p99_under_50ms:p99<50,
   host_http_5xx_not_version_isolated:true,worker_metrics_version_isolated:true};
 }
-// Observe all account D1 databases during the rollout. Provider analytics
-// are delayed: this triggers a rollback as soon as an overage is OBSERVED,
-// not an impossible provider-side atomic per-row hard stop.
-const LIVE_D1=`query LiveAccountD1($accountTag:string!,$start:Date!,$end:Date!){
- viewer{accounts(filter:{accountTag:$accountTag}){
-  d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
-   sum{rowsRead rowsWritten} dimensions{databaseId date}
-  }
- }}
-}`;
+// All D1 databases and every day in the 5th-to-5th Paid billing cycle,
+// never only the current UTC day. GraphQL telemetry lags; a provider
+// response is a read-only observation, NOT an atomic payment/spend ceiling.
 async function checkLiveD1Budget(){
- const day=new Date().toISOString().slice(0,10),account=envString('CLOUDFLARE_ACCOUNT_ID',32);
- const data=await graphql(LIVE_D1,{accountTag:account,start:day,end:day});
- const groups=data.viewer?.accounts?.[0]?.d1AnalyticsAdaptiveGroups;
- need(Array.isArray(groups)&&groups.length>0&&groups.length<1000,'CANARY_D1_ACCOUNT_METRICS_MISSING');
- let read=0,written=0;const ids=new Set<string>();
- for(const x of groups){
-  const id=x?.dimensions?.databaseId,r=x?.sum?.rowsRead,w=x?.sum?.rowsWritten;
-  need(typeof id==='string'&&id.length>=10&&!ids.has(id)&&x.dimensions?.date===day&&
-   Number.isSafeInteger(r)&&r>=0&&Number.isSafeInteger(w)&&w>=0,'CANARY_D1_ACCOUNT_RECEIPT_INVALID');
-  ids.add(id);read+=r;written+=w;
- }
- need(read<=BUDGET&&written<=BUDGET,'CANARY_D1_140K_PROVIDER_BREACH');
- return {rows_read:read,rows_written:written,day_utc:day,
-  observed_at_ms:Date.now(),provider_metrics_delayed:true};
+ const now=new Date();
+ const receipt=await checkD1PaidMonthlyHeadroom({
+  env:process.env,now,lane:'canary'});
+ need(receipt.status==='PASS'&&
+  receipt.provider_subscription_verified===true&&
+  receipt.old_daily_140k_policy_applied===false&&
+  receipt.monthly_ceiling_read===MONTHLY_READ_SOFT&&
+  receipt.monthly_ceiling_written===MONTHLY_WRITE_SOFT&&
+  receipt.reserve_pct===D1_MONTHLY_RESERVE_PCT&&
+  Number.isSafeInteger(receipt.observed_rows_read)&&
+  Number.isSafeInteger(receipt.observed_rows_written),
+  'CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED');
+ const cycle=paidD1BillingCycle(now);
+ need(receipt.cycle_start_utc===cycle.start_utc&&
+  receipt.cycle_end_exclusive_utc===cycle.end_exclusive_utc,
+  'CANARY_PAID_BILLING_CYCLE_STALE');
+ return {rows_read:receipt.observed_rows_read,
+  rows_written:receipt.observed_rows_written,
+  cycle_start_utc:receipt.cycle_start_utc,
+  cycle_end_exclusive_utc:receipt.cycle_end_exclusive_utc,
+  monthly_soft_read:receipt.monthly_ceiling_read,
+  monthly_soft_written:receipt.monthly_ceiling_written,
+  elapsed_cycle_ms:cycle.elapsed_ms,cycle_duration_ms:cycle.duration_ms,
+  observed_at_ms:Date.now(),provider_metrics_delayed:true,
+  remaining_rows_read:receipt.remaining_rows_read,
+  remaining_rows_written:receipt.remaining_rows_written};
 }
-/**
- * Cloudflare GraphQL rows are delayed, so this rate gate is conservative:
- * detect the first PROVIDER-OBSERVED spike and request atomic rollback.
- * It cannot guarantee zero spend before observation; unknown => HOLD.
+/** Physical provider-observed monthly-paced growth, with independent
+ * read and write rates. A rollover invalidates the sample (HOLD);
+ * no daily 5,800 rows/hour gate or synthetic spike PASS.
  */
 function assertD1ObservedHourlyPace(start:any,latest:any){
- need(start?.day_utc===latest?.day_utc &&
+ need(start?.cycle_start_utc===latest?.cycle_start_utc&&
+  start?.cycle_end_exclusive_utc===latest?.cycle_end_exclusive_utc&&
   Number.isSafeInteger(start?.observed_at_ms)&&
   Number.isSafeInteger(latest?.observed_at_ms),
-  'CANARY_D1_HOURLY_DAY_OR_CLOCK_UNVERIFIED');
+  'CANARY_D1_BILLING_CYCLE_OR_CLOCK_UNVERIFIED');
  const ms=latest.observed_at_ms-start.observed_at_ms;
  if(ms<D1_MIN_RATE_SAMPLE_MS)return {status:'INSUFFICIENT_INTERVAL'};
  const read=latest.rows_read-start.rows_read;
  const written=latest.rows_written-start.rows_written;
- need(read>=0&&written>=0,'CANARY_D1_METRIC_REGRESSION_UNVERIFIED');
+ need(read>=0&&written>=0,'CANARY_D1_PROVIDER_COUNTER_REWIND');
  const readRate=read*3600000/ms,writeRate=written*3600000/ms;
- need(readRate<=D1_MAX_OBSERVED_HOURLY_ROWS&&
-  writeRate<=D1_MAX_OBSERVED_HOURLY_ROWS,
-  'CANARY_D1_HOURLY_5800_BURN_SPIKE');
- return {status:'PASS_OBSERVED_ACCOUNT_HOURLY_PACE',
+ const readRateMax=MONTHLY_READ_SOFT*3600000/start.cycle_duration_ms;
+ const writeRateMax=MONTHLY_WRITE_SOFT*3600000/start.cycle_duration_ms;
+ need(readRate<=readRateMax&&writeRate<=writeRateMax,
+  'CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE');
+ return {status:'PASS_OBSERVED_PAID_MONTHLY_PACE',
   reads_per_hour:readRate,writes_per_hour:writeRate,
+  max_reads_per_hour:readRateMax,max_writes_per_hour:writeRateMax,
   observed_window_ms:ms,metrics_are_delayed:true};
 }
 async function observeStage(base:string,candidate:string,pct:number,sha:string){
@@ -197,8 +210,8 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
  }
  d1=await checkLiveD1Budget();
  rate=assertD1ObservedHourlyPace(initialD1,d1);
- need(rate.status==='PASS_OBSERVED_ACCOUNT_HOURLY_PACE',
-  'CANARY_D1_HOURLY_PACE_UNVERIFIED');
+ need(rate.status==='PASS_OBSERVED_PAID_MONTHLY_PACE',
+  'CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED');
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
   pct===0?base:candidate,true);
  need(result.http_5xx_under_0_1pct&&result.version_errors_under_0_1pct&&result.p99_under_50ms,
@@ -271,6 +284,12 @@ async function main(){
    const proof=envString('D1_24H_PROOF_PATH');need(existsSync(proof),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
    const p=verifySignedEnvelopeFile(proof);
    need(p.all_account_databases===true&&
+    p.paid_monthly_billing_cycle_verified===true&&
+    p.old_daily_140k_policy_applied===false&&
+    Number.isSafeInteger(p.monthly_rows_read)&&
+    Number.isSafeInteger(p.monthly_rows_written)&&
+    p.monthly_rows_read<=MONTHLY_READ_SOFT&&
+    p.monthly_rows_written<=MONTHLY_WRITE_SOFT&&
     Number.isFinite(Date.parse(String(p.period_end_exclusive_utc)))&&
     Date.now()-Date.parse(String(p.period_end_exclusive_utc))<48*3600000,
     'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
