@@ -1,0 +1,146 @@
+name: Step3 V2 Protected Shadow-Only Rehearsal — No Production DDL
+
+# Manual only. Never schedule real source/consumer traffic or real funds.
+# Executed script is pinned to a reviewed PR commit, NOT a dispatch-input SHA.
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL"
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - ".github/workflows/d1-step3-v2-shadow-only-rehearsal.yml"
+      - "scripts/tests/d1-step3-v2-shadow-dispatch-safety.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - run: node --test scripts/tests/d1-step3-v2-shadow-dispatch-safety.test.mjs
+
+  eligibility-preflight:
+    # A skipped job provides no diagnostic log. Inspect only boolean
+    # eligibility, and NEVER echo approval/variable/secret values.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      SHADOW_DISPATCH_REF: ${{ github.ref }}
+      SHADOW_DISPATCH_REPOSITORY: ${{ github.repository }}
+      SHADOW_APPROVAL_INPUT: ${{ inputs.approval }}
+      SHADOW_ARMED_REPOSITORY_VARIABLE: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
+    steps:
+      - name: Diagnose skipped shadow job without exposing values
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$SHADOW_DISPATCH_REPOSITORY" != 'blocknine0/geomacro' ] || [ "$SHADOW_DISPATCH_REF" != 'refs/heads/main' ]; then
+            echo "::error title=Shadow dispatch branch or repository invalid::Select branch main in GeoMacro before the manual rehearsal. No provider operations occurred."
+            exit 2
+          fi
+          if [ "$SHADOW_APPROVAL_INPUT" != 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' ]; then
+            echo "::error title=Shadow approval mismatch::Set approval to the exact value REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL and manually re-dispatch."
+            exit 3
+          fi
+          if [ "$SHADOW_ARMED_REPOSITORY_VARIABLE" != 'YES' ]; then
+            echo "::error title=Shadow repository approval missing::In Settings > Secrets and variables > Actions > Variables, set GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED to YES. This is distinct from GEOMACRO_STEP3_NOV9_ARMED."
+            exit 4
+          fi
+          echo "Shadow dispatch eligibility gates PASS. No database, storage, Worker, or funds operation performed."
+
+  shadow-rehearsal:
+    needs: eligibility-preflight
+    if: >-
+      needs.eligibility-preflight.result == 'success' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.approval == 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' &&
+      vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED == 'YES'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_TARGET_APPROVED: 'YES'
+      GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: 'YES'
+      GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
+      GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
+      GEOMACRO_STEP3_EXACT_SHA: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
+      GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Guard immutable reviewed source and isolate shadow UUID
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GEOMACRO_STEP3_EXACT_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          test -f scripts/lib/d1-step3-recovery-checkpoint.mjs
+          test -f scripts/lib/d1-step3-crypto-proof.mjs
+          test -f scripts/lib/d1-step3-migration-ledger.mjs
+          test -n "${GEOMACRO_D1_RECOVERY_AES256_KEY_B64:-}"
+          test -n "${GEOMACRO_D1_RECOVERY_R2_BUCKET:-}"
+          test -n "${SIGNING_JWK:-}"
+          test -n "${CONTROL_PLANE_TOKEN:-}"
+          test -n "${PHASE2H_R2_REFERENCE_HMAC_KEY:-}"
+          test "$GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED" = YES
+          test -n "${GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET:-}"
+          test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/ops/check-d1-paid-monthly-headroom.mjs
+      - name: Offline negative tests before any provider calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/tests/d1-step3-durable-recovery.test.mjs
+          node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
+      - name: Cloudflare Workers Paid month-wide 25B/50M inclusion and 10pct reserve
+        shell: bash
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - name: Shadow UUID only — real encrypted recovery, migrations and signed status receipt
+        shell: bash
+        run: node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow
+      - name: Preserve SANITIZED signed shadow receipt even when NOT_YET_VERIFIED
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-shadow-v2-rehearsal-${{ github.run_id }}
+          path: |
+            artifacts/release/step3-shadow-rehearsal-receipt.json
+            artifacts/release/d1-migration-headroom-current-utc.json
+          retention-days: 14
+          if-no-files-found: warn
