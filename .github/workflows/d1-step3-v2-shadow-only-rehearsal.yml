@@ -92,8 +92,8 @@ jobs:
       GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
-      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
-      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}
+      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY }}
       GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -129,7 +129,7 @@ jobs:
           set -euo pipefail
           node --test scripts/tests/d1-step3-durable-recovery.test.mjs
           node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
-      - name: Cloudflare Workers Paid month-wide 25B/50M inclusion and 10pct reserve
+      - name: Cloudflare Workers Paid account-wide billing cycle and 30pct reserve
         shell: bash
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Shadow UUID only — real encrypted recovery, migrations and signed status receipt
