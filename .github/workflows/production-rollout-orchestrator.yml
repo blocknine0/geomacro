@@ -7,6 +7,8 @@ on:
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
       - "scripts/ops/run-step3-local-workerd-rehearsal.mjs"
       - "scripts/tests/d1-step3-receipt-admission.test.mjs"
+      - "scripts/lib/d1-step3-real-shadow-proofs.mjs"
+      - "scripts/tests/d1-step3-real-shadow-proofs.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -40,7 +42,7 @@ jobs:
         with:
           node-version: "24"
       - run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
-      - run: node --test scripts/tests/d1-step3-receipt-admission.test.mjs scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
+      - run: node --test scripts/tests/d1-step3-receipt-admission.test.mjs scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs scripts/tests/d1-step3-real-shadow-proofs.test.mjs
       - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
       - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -78,6 +80,12 @@ jobs:
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
       GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
+      GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_shadow_rehearsal"
+      B2_REQUEST_BUDGET: "12"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -101,6 +109,9 @@ jobs:
           test "$GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED" = YES
           test -n "$GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET"
           test -n "$GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST"
+          test -n "$GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST"
+          test -n "$B2_ARCHIVE_READ_KEY_ID"
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY"
           test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
       - run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - run: node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow
