@@ -1,0 +1,38 @@
+name: Hot50 Provider Read-only Contract (No Funds)
+on:
+  pull_request:
+    paths:
+      - 'scripts/ops/check-paypal-live-webhook.mjs'
+      - 'scripts/ops/readback-commercial-d1-schema.mjs'
+      - 'scripts/tests/check-paypal-live-webhook.test.mjs'
+      - 'scripts/tests/commercial-d1-readback-contract.test.mjs'
+      - '.github/workflows/hot50-commercial-provider-readonly-preflight.yml'
+      - '.github/workflows/hot50-provider-readonly-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  no-funds-provider-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Strict node source syntax
+        run: |
+          node --check scripts/ops/check-paypal-live-webhook.mjs
+          node --check scripts/ops/readback-commercial-d1-schema.mjs
+      - name: Prove provider outage, forgery and schema mismatch remain HOLD
+        run: |
+          node --test scripts/tests/check-paypal-live-webhook.test.mjs
+          node --test scripts/tests/commercial-d1-readback-contract.test.mjs
+      - name: NO FUNDS or production writes
+        run: |
+          echo "PROVIDER_CALLS_IN_CI=0"
+          echo "D1_PRODUCTION_WRITES=0"
+          echo "PAYPAL_CAPTURE_ATTEMPTS=0"
+          echo "REAL_MERCHANT_VERIFICATION=NOT_YET_VERIFIED"
