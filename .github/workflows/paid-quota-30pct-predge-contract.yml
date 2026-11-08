@@ -13,6 +13,7 @@ on:
       - "src/middleware/quotaCircuitBreaker.ts"
       - "src/middleware/quotaWorker.ts"
       - "scripts/tests/d1-paid-monthly-do-reservation.test.mjs"
+      - "scripts/tests/d1-paid-cycle-worker-sync.test.mjs"
       - "scripts/canary-promoter.ts"
       - "config/d1-workers-paid-monthly-policy.v1.json"
       - "config/geomacro-cloudflare-five-usd-budget.json"
@@ -44,6 +45,8 @@ jobs:
         run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
       - name: Durable Object D1 monthly 30pct + daily/hourly serialized reserve
         run: node --test scripts/tests/d1-paid-monthly-do-reservation.test.mjs
+      - name: One provider GraphQL scan D1 current-day and billing-month aggregation
+        run: node --test scripts/tests/d1-paid-cycle-worker-sync.test.mjs
       - name: Step3 migration real-month 30pct reserve contract
         run: node --test scripts/tests/d1-step3-headroom.test.mjs
       - name: Existing Predge non-commercial 72h and 500-request continuity lock
