@@ -59,6 +59,7 @@
     "circle-x402-prelaunch-readiness.yml",
     "cloud-historical-gri-b2-restore.yml",
     "cloudflare-five-usd-spend-blocks.yml",
+    "cloudflare-r2-kv-account-readonly-observation.yml",
     "codeql-alert-location-readback.yml",
     "codeql-security.yml",
     "coinbase-x402-base-sepolia.yml",
