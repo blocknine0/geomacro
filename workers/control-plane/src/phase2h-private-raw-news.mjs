@@ -1,3 +1,5 @@
+import {publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
+ from "./phase2h-raw-object-refs.mjs";
 import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 import {p0bProjectEvidenceBounded} from "../../../scripts/lib/p0b-event-grounded-projection.mjs";
 import {p0bGlobalNewsFallback} from "../../../scripts/lib/p0b-live-global-search.mjs";
@@ -137,6 +139,27 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    items.push([row.record_id,row.category,row.original.original_published_at,
     row.ingested_at,row.raw_sha256,json,
     riskCountryFromOriginalTitle(row.original.original_title)]);
+  }
+  // Explicitly gated private R2-first reference writer. Never insert a
+  // second copy of private originals into D1. The existing legacy writer is
+  // unchanged until physical R2 binding, 0213, downstream-read parity and
+  // quota controls have passed protected production verification.
+  if(env.GEOMACRO_PHASE2H_REF_ONLY_V1==="1"){
+   const result=await publishPhase2hReferenceBatch(env,
+    body.items.map((record,i)=>({
+     record,raw:items[i][5],country_iso3:items[i][6]})),now);
+   return safeReply({
+    ok:true,schema:"geomacro.phase2h.private-r2-reference-receipt.v1",
+    accepted:result.new_records,unchanged:result.previous_records,
+    private_r2_readback_verified:result.authenticated_reference_readback===true||
+      result.new_records===0,
+    d1_reference_only:true,d1_raw_json_persisted:false,
+    d1_rows_written:result.d1_rows_written??null,
+    d1_rows_read:result.d1_rows_read??null,
+    r2_puts:result.r2_puts,r2_gets:result.r2_gets,
+    b2_archive_verified:false,rights_verified:false,payments:0,
+    signed_gro_generated:false,paid_eligible:false
+   });
   }
   const placeholders=items.map(()=>"?").join(",");
   const before=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
@@ -666,4 +689,33 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
    d1_atomic_one_statement_returning_verified:true,
    rights_verified:false,payments:0});
  }catch{return safeReply({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},503)}
+}
+/** Dedicated exact-ID authenticated read of the private reference-only
+ * staging lane. It does not imply B2 archival/rights, sign GRO or permit
+ * customer delivery. Legacy D1 JSON is accepted only if there is NO pointer.
+ * index.mjs owns the root-admin authorization boundary.
+ */
+export async function phase2hPrivateRawObjectReferenceGet(
+ env,params=new URLSearchParams(),now=Date.now()
+){
+ const id=params.get("record_id");
+ if(!env?.DB?.prepare||params.size!==1||
+    params.getAll("record_id").length!==1||!HEX.test(id))
+  return safeReply({ok:false,error:"PHASE2H_REF_READ_INVALID"},400);
+ try{
+  const resolved=await readPhase2hReferenceOrLegacy(env,id,validPrivateRawNews,now);
+  if(!resolved)return safeReply({ok:false,error:"PHASE2H_REF_RECORD_NOT_FOUND"},404);
+  const in72h=phase2hRawWithinRetention(resolved.record,now);
+  if(!in72h)return safeReply({ok:false,error:"PHASE2H_REF_RETENTION_EXPIRED"},410);
+  return safeReply({ok:true,
+   schema:"geomacro.phase2h.private-r2-reference-readback.v1",
+   record:resolved.record,source:resolved.storage,
+   legacy_fallback:resolved.legacy_fallback,
+   pointer_and_object_verified:!resolved.legacy_fallback,
+   original_still_unverified:true,paid_eligible:false,
+   b2_archive_verified:false,rights_verified:false,payments:0});
+ }catch{
+  return safeReply({ok:false,error:"PHASE2H_REF_READBACK_UNVERIFIED",
+   paid_eligible:false,rights_verified:false,payments:0},503);
+ }
 }
