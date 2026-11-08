@@ -275,6 +275,7 @@
     "p0b-production-parity-hourly.yml",
     "p0b-source-first-production-acceptance.yml",
     "p2-production-readiness-15m.yml",
+    "paid-quota-30pct-predge-contract.yml",
     "pallab-suman-independent-gri-authorities.yml",
     "part2-source-d1-acceptance.yml",
     "partner-commercial-readiness.yml",
