@@ -249,6 +249,7 @@ test("root-only exact batch endpoint hydrates R2 pointer and legacy rows with no
    "VALUES(?,?,?,?,?,?)").run(two.record_id,two.category,
     two.original.original_published_at,two.ingested_at,
     two.raw_sha256,JSON.stringify(two));
+  f.env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1="1";
   const r=await phase2hPrivateRawObjectReferencesBatchGet(f.env,{
    schema:"geomacro.phase2h.private-reference-batch-read.v1",
    record_ids:[one.record_id,two.record_id]
