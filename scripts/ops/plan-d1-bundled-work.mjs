@@ -320,7 +320,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       observed_rows_written:snapshot.observed_rows_written,
       // Provider-verified paid capacity is not subjected to the Free physical
       // daily 5M cap; the existing conservative paid soft budget still applies.
-      predge_account_headroom_guard_enabled:false,
+      // The paid source planner still subtracts the same protected Predge
+      // read/write reserve from all remaining-day source slots.
+      predge_account_headroom_guard_enabled:true,
       predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
       predge_account_headroom_is_hard_partition:false,
       predge_request_governor_is_separate_and_unchanged:true,
