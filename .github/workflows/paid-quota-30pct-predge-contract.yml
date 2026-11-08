@@ -1,0 +1,98 @@
+name: GeoMacro Workers Paid 30 Percent Quota and Predge Continuity Contract
+
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/cloudflare-quota-governor.mjs"
+      - "scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"
+      - "scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs"
+      - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.mjs"
+      - "scripts/ops/check-d1-headroom.mjs"
+      - "scripts/tests/d1-step3-headroom.test.mjs"
+      - "scripts/tests/cloudflare-quota-governor.test.mjs"
+      - "scripts/verify-d1-quota-proof.ts"
+      - "src/middleware/quotaCircuitBreaker.ts"
+      - "src/middleware/quotaWorker.ts"
+      - "scripts/tests/d1-paid-monthly-do-reservation.test.mjs"
+      - "scripts/tests/d1-paid-cycle-worker-sync.test.mjs"
+      - "scripts/canary-promoter.ts"
+      - "config/d1-workers-paid-monthly-policy.v1.json"
+      - "config/geomacro-cloudflare-five-usd-budget.json"
+      - ".github/workflows/paid-quota-30pct-predge-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Syntax verification (no provider calls or funds)
+        run: |
+          node --check scripts/lib/cloudflare-quota-governor.mjs
+          node --check scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs
+          node --check scripts/lib/d1-workers-paid-monthly-governor.mjs
+          node --check scripts/lib/d1-owner-daily-envelope.mjs
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/canary-promoter.ts
+      - name: Six-resource quota admission unit tests
+        run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
+      - name: R2/KV account analytics classification (offline negative cases)
+        run: node --test scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs
+      - name: Durable Object D1 monthly 30pct + daily/hourly serialized reserve
+        run: node --test scripts/tests/d1-paid-monthly-do-reservation.test.mjs
+      - name: One provider GraphQL scan D1 current-day and billing-month aggregation
+        run: node --test scripts/tests/d1-paid-cycle-worker-sync.test.mjs
+      - name: Step3 migration real-month 30pct reserve contract
+        run: node --test scripts/tests/d1-step3-headroom.test.mjs
+      - name: Existing Predge non-commercial 72h and 500-request continuity lock
+        run: node scripts/ops/verify-predge-continuity-lock.mjs
+      - name: Confirm production HOLD and non-commercial partner feed remain protected
+        run: |
+          test -f config/d1-hotspot-v2-canary.hold
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync('workers/control-plane/src/predge-research-derived-news.mjs','utf8');
+          const policy=JSON.parse(readFileSync('config/predge-research-continuity-lock.v1.json','utf8'));
+          if (!source.includes('2027-01-17T00:00:00.000Z') ||
+              !source.includes('const PREDGE_DAY_CAP=500') ||
+              policy.commercial_resale_authorized!==false ||
+              policy.retention_hours!==72 ||
+              policy.daily_utc_request_hard_cap!==500 ||
+              policy.source_attribution_required!==true) {
+            throw Error('PREDGE_EXISTING_RESEARCH_CONTRACT_REGRESSION');
+          }
+          NODE
+
+  local-workerd-shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Install local workerd/Miniflare test engine only
+        run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
+      - name: Self-contained shadow D1 expand, dual simulated Workers, R2 bytes and signed local attestation
+        run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
+      - name: Preserve local-only signed receipt, NEVER authorize production Stage2 with this proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-30pct-step3-local-workerd-rehearsal-${{ github.run_id }}
+          path: artifacts/release/step3-shadow-local-rehearsal-receipt.json
+          retention-days: 14
+          if-no-files-found: warn
+

@@ -8,10 +8,10 @@
     "d1_storage_bytes": 5368709120
   },
   "owner_normal_monthly_ceiling": {
-    "rows_read": 22500000000,
-    "rows_written": 45000000
+    "rows_read": 17500000000,
+    "rows_written": 35000000
   },
-  "owner_included_quota_reserve_pct": 10,
+  "owner_included_quota_reserve_pct": 30,
   "monthly_opening_fraction": 0.08,
   "migration_reserve_rows_read": 20000000,
   "migration_reserve_rows_written": 1000000,
@@ -25,10 +25,18 @@
   "billing_cycle_identity": "BILLING_DASHBOARD_ANCHOR_5_NOV_2026_TO_5_DEC_2026_MUST_RECONFIRM_IF_CHANGED",
   "notes": [
     "Workers Paid D1 first 25B reads and 50M writes included per month, not daily quotas.",
-    "10% of included allowance is never admitted for elective workloads; telemetry lag can still cause overage.",
+    "30% of included allowance is never admitted for elective workloads; telemetry lag can still cause overage.",
     "All 4 reported D1 databases and any future databases share one account-wide GraphQL sum.",
     "Not a $5 invoice guarantee. Workers, R2, B2, queues, KV, tax and subscription charges are separately metered.",
     "Monthly pacing is for discretionary workloads; Hot50 ingestion and customer API endpoints are never disabled by a migration fail."
   ],
-  "payment_auto_activation": false
+  "payment_auto_activation": false,
+  "owner_daily_ceiling": {
+    "rows_read": 580000000,
+    "rows_written": 1100000
+  },
+  "owner_hourly_ceiling": {
+    "rows_read": 24000000,
+    "rows_written": 45000
+  }
 }

@@ -23,7 +23,7 @@ const version=(id,message="")=>({
 const quota={
  day_utc:"2026-11-07",
  owner_d1_utc_daily_targets:{
-  rows_read:140000,rows_written:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,emergency_auto_admission:false
+  rows_read:580000000,rows_written:1100000,normal_rows_read:580000000,normal_rows_written:1100000,emergency_rows_read:0,emergency_rows_written:0,emergency_auto_admission:false
  },workers_paid_subscription_verified:true,state:"ADMITTED",
  observed_rows_read:100,observed_rows_written:100
 };
@@ -64,11 +64,11 @@ test("unknown, changed or missing bindings hold rollout",()=>{
  assert.throws(()=>readBindings({resources:{bindings:[]}}),/UNREADABLE/);
 });
 test("account-wide physical rows and no emergency extension are required",()=>{
- assert.equal(check(1,0,{quota:{...quota,observed_rows_read:150000}}).eligible,false);
- assert.equal(check(1,0,{quota:{...quota,observed_rows_written:150000}}).eligible,false);
+ assert.equal(check(1,0,{quota:{...quota,observed_rows_read:580000000}}).eligible,false);
+ assert.equal(check(1,0,{quota:{...quota,observed_rows_written:1100000}}).eligible,false);
  assert.equal(check(1,0,{quota:{...quota,owner_d1_utc_daily_targets:{
-  rows_read:140000,rows_written:180000,emergency_rows_written:40000
- }}}).reason,"OWNER_140K_POLICY_UNVERIFIED");
+  rows_read:580000000,rows_written:1800000,emergency_rows_written:500000
+ }}}).reason,"OWNER_PAID_POLICY_UNVERIFIED");
  assert.equal(check(1,0,{quota:{...quota,workers_paid_subscription_verified:false}}).eligible,false);
 });
 test("spend gate cannot be bypassed when enforcement is required",()=>{
