@@ -35,6 +35,8 @@ async function fixtureItem(){
   original_content_verified:true,same_event_claim_sha256:claim,
   reviewed_at:clock(at),proof_expires_at:clock(at+2*3600000),
   commercial_derived_use_rights_verified:true,rights_receipt_sha256:hex('legal-grant-receipt'),
+  customer_full_text_distribution_rights_verified:true,
+  customer_distribution_rights_receipt_sha256:hex('test-customer-content-redistribution-rights'),
   rights_license_id:'test-rights-receipt-only',
   confirmations:[
    {url:item.article_url,originating_org:'un_news',
