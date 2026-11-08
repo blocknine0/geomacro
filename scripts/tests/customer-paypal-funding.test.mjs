@@ -101,7 +101,9 @@ test('every approved six-SKU PayPal price funds exactly its immutable plan/pack 
    assert.equal(b.credits,item.credits);
    assert.equal(b.idempotent_replay,true);
    const payment=f.sql.prepare('SELECT sku,amount_minor_units,currency FROM customer_payment_receipts').get();
-   assert.deepEqual(payment,{sku,amount_minor_units:item.price,currency:'USD'});
+   assert.equal(payment.sku,sku);
+   assert.equal(payment.amount_minor_units,item.price);
+   assert.equal(payment.currency,'USD');
    const grant=f.sql.prepare('SELECT tier FROM customer_entitlement_grants').get();
    assert.equal(grant.tier,item.tier);
    assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM customer_payment_receipts').get().n,1);
