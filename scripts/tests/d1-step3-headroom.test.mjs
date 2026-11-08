@@ -35,7 +35,7 @@ test("Paid migration gate ignores retired 140k/day, admits only monthly observed
  assert.equal(STEP3_BUDGET.provider_included_monthly_rows_written,50_000_000);
  const current=assessD1MigrationHeadroom(paid(18_140_000,1_350_000),{now:DAY});
  assert.equal(current.status,"PASS");
- assert.equal(current.remaining_rows_written,43_650_000);
+ assert.equal(current.remaining_rows_written,33_650_000);
  assert.equal(current.required_migration_reserve_written,1_000_000);
  assert.equal(current.authorization_scope,"MIGRATIONS_ONLY_NOT_DEPLOYMENT_OR_PAYMENTS");
  assert.equal(current.pr_merge_authorized,false);
@@ -43,7 +43,7 @@ test("Paid migration gate ignores retired 140k/day, admits only monthly observed
  // remaining 5th-to-5th Paid capacity.
  assert.equal(assessD1MigrationHeadroom(paid(1_258_943,267_009),{now:DAY}).status,"PASS");
 });
-test("near 90% month allocation, missing paid plan and stale cycle remain NOT_YET_VERIFIED",()=>{
+test("30pct reserve, missing plan and stale cycle remain NOT_YET_VERIFIED",()=>{
  for(const x of [paid(22_499_000_000,10),
   paid(100,44_990_000),null,
   {...paid(100,100),day_utc:"2026-11-07"},
@@ -54,6 +54,29 @@ test("near 90% month allocation, missing paid plan and stale cycle remain NOT_YE
   assert.equal(r.code,HEADROOM_HOLD_CODE);
   assert.equal(r.hold_file_untouched,true);
   assert.equal(r.payment_activation_authorized,false);
+ }
+});
+
+test("Step3 exact 30pct monthly reserve cannot be bypassed by stale 10pct receipts",()=>{
+ const admission=paid(18_140_000,1_350_000);
+ assert.equal(admission.status,"PASS");
+ assert.equal(admission.reserve_pct,30);
+ assert.equal(STEP3_BUDGET.owner_normal_monthly_rows_read,17_500_000_000);
+ assert.equal(STEP3_BUDGET.owner_normal_monthly_rows_written,35_000_000);
+ assert.equal(assessD1MigrationHeadroom(admission,{now:DAY}).status,"PASS");
+ for(const altered of [
+  {reserve_pct:10},
+  {monthly_ceiling_read:22_500_000_000},
+  {monthly_ceiling_written:45_000_000},
+  {operational_daily_ceiling_read:140_000},
+  {operational_daily_ceiling_written:140_000},
+  {operational_hourly_ceiling_read:undefined},
+  {operational_hourly_ceiling_written:50_000},
+  {reserved_migration_rows_written:0},
+  {reserved_migration_rows_read:0},
+ ]){
+  const blocked=assessD1MigrationHeadroom({...admission,...altered},{now:DAY});
+  assert.equal(blocked.status,"NOT_YET_VERIFIED",JSON.stringify(altered));
  }
 });
 test("account-wide 5th-to-5th GraphQL includes every database across multiple dates",()=>{
