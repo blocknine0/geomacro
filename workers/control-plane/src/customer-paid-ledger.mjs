@@ -129,6 +129,8 @@ async function chooseGrant(db,key,capability,now){
 /** Read-only verified grant/account proof; no credits are allocated here. */
 export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,now=nowIso()){
   capability=validCapability(capability);
+  if(capability==='risk_gate_bundle'&&env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+    fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
   const key=await scopedKey(db,env,apiKey,now);
   const grant=await chooseGrant(db,key,capability,now);
   return {ok:true,principal_id:key.user_id,principal_type:'api_client',
@@ -143,6 +145,8 @@ export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,no
  */
 export async function consumeCanonicalCustomerPaid(db,env,{apiKey,capability,requestId},now=nowIso()){
   capability=validCapability(capability);
+  if(capability==='risk_gate_bundle'&&env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+    fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
   if(typeof requestId!=='string'||!requestPattern.test(requestId))
     fail(400,'CUSTOMER_PAID_REQUEST_ID_INVALID');
   const key=await scopedKey(db,env,apiKey,now);
