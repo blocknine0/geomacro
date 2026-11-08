@@ -11,6 +11,8 @@ on:
       - "scripts/tests/cloudflare-quota-governor.test.mjs"
       - "scripts/verify-d1-quota-proof.ts"
       - "src/middleware/quotaCircuitBreaker.ts"
+      - "src/middleware/quotaWorker.ts"
+      - "scripts/tests/d1-paid-monthly-do-reservation.test.mjs"
       - "scripts/canary-promoter.ts"
       - "config/d1-workers-paid-monthly-policy.v1.json"
       - "config/geomacro-cloudflare-five-usd-budget.json"
@@ -40,6 +42,8 @@ jobs:
           node --check scripts/canary-promoter.ts
       - name: Six-resource quota admission unit tests
         run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
+      - name: Durable Object D1 monthly 30pct + daily/hourly serialized reserve
+        run: node --test scripts/tests/d1-paid-monthly-do-reservation.test.mjs
       - name: Step3 migration real-month 30pct reserve contract
         run: node --test scripts/tests/d1-step3-headroom.test.mjs
       - name: Existing Predge non-commercial 72h and 500-request continuity lock
