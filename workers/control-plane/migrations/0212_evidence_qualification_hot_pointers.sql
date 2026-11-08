@@ -35,6 +35,8 @@ CREATE INDEX IF NOT EXISTS idx_eqe_qualified_claim
  ON eqe_qualified(claim_sha256,expires_at);
 CREATE INDEX IF NOT EXISTS idx_eqe_qualified_simhash
  ON eqe_qualified(simhash,expires_at);
+CREATE INDEX IF NOT EXISTS idx_eqe_qualified_recent
+ ON eqe_qualified(qualified_at DESC);
 
 -- The D1 customer ledger remains the ONLY authority for credit debits.
 -- This immutable prepare/deliver record freezes one exact verified response,
