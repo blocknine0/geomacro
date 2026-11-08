@@ -87,6 +87,16 @@ export async function verifyProtectedD1CanaryPreflight({
    monthly.status==="PASS"&&monthly.provider_subscription_verified===true&&
    monthly.day_utc===now.toISOString().slice(0,10)&&
    monthly.old_daily_140k_policy_applied===false&&
+   monthly.monthly_ceiling_read===22_500_000_000&&
+   monthly.monthly_ceiling_written===45_000_000&&
+   monthly.paid_included_rows_read===25_000_000_000&&
+   monthly.paid_included_rows_written===50_000_000&&
+   monthly.reserve_pct===10&&
+   Number.isSafeInteger(monthly.observed_rows_read)&&
+   Number.isSafeInteger(monthly.observed_rows_written)&&
+   Number.isSafeInteger(monthly.remaining_rows_read)&&
+   Number.isSafeInteger(monthly.remaining_rows_written)&&
+   monthly.observed_rows_read>=0&&monthly.observed_rows_written>=0&&
    monthly.cycle_start_utc<=monthly.day_utc&&
    monthly.cycle_end_exclusive_utc>monthly.day_utc&&
    monthly.remaining_rows_read>0&&monthly.remaining_rows_written>0&&
