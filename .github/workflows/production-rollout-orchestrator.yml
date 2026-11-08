@@ -39,7 +39,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: npm install --no-save --ignore-scripts --package-lock=false miniflare@3
+      - run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
       - run: node --test scripts/tests/d1-step3-receipt-admission.test.mjs scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
       - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
       - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
