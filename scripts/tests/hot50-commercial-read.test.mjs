@@ -65,7 +65,7 @@ test('49 countries or one missing category is not qualified',async()=>{
   verifyHot50CommercialSnapshot(make('hot50',p=>p.countries.pop()),'hot50',env,ts),
   /HOT50_SIGNED_CONTENT_UNQUALIFIED/);
  await assert.rejects(
-  verifyHot50CommercialSnapshot(make('hot50',p=>delete p.countries[0].ratings.trade_sanctions),'hot50',env,ts),
+  verifyHot50CommercialSnapshot(make('hot50',p=>delete p.countries[0].ratings.trade_minerals_supplychain),'hot50',env,ts),
   /HOT50_SIGNED_CONTENT_UNQUALIFIED/);
 });
 test('tampering any signed byte is rejected even with unchanged DB hash',async()=>{
