@@ -251,6 +251,11 @@ export async function readOnlyShadowBootstrapPreflight({
   const rows=await readOnlyShadowSchema({env,fetchImpl,
    sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33"});
   output.shadow_existing_table_count=rows.length;
+  // Schema identifier names only, never column content or application rows.
+  // Bounded to the existing LIMIT 33 and allowlisted to printable identifiers.
+  output.shadow_existing_table_names=rows.map(r=>
+   typeof r?.name==="string"&&/^[a-z_][a-z0-9_]{0,63}$/u.test(r.name)?
+    r.name:"INVALID_SCHEMA_IDENTIFIER").sort();
   output.shadow_schema_pristine=rows.length===0;
   output.status=output.paid_headroom_verified&&output.shadow_schema_pristine?
    "READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION":"HOLD";
