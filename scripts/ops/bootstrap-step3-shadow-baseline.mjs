@@ -208,7 +208,10 @@ export async function bootstrapShadowBaseline({
   report.code="SHADOW_BASE_SCHEMA_ONLY_REQUIRES_B2_ACK_POINTER_AND_DUAL_WORKER_PROOF";
  }catch(e){
   report.status="HOLD";
-  report.code=/^STEP3_SHADOW_BOOTSTRAP_[A-Z0-9_]+$/u.test(e?.message??"")?
+  // Recovery library throws only fixed, non-secret STEP3_RECOVERY_* codes.
+  // Surface these exact safe categories instead of swallowing the true gate.
+  // Never expose provider response body, URL, object bytes, bookmark or JWK.
+  report.code=/^STEP3_(?:SHADOW_BOOTSTRAP|RECOVERY)_[A-Z0-9_]+$/u.test(e?.message??"")?
     e.message:"STEP3_SHADOW_BOOTSTRAP_PROVIDER_OR_SOURCE_UNVERIFIED";
  }finally{
   report.completed_at=new Date().toISOString();
