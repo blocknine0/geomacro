@@ -359,14 +359,18 @@ export async function createPayPalCheckoutOrder(
       "PayPal-Request-Id":intent.intentId,
       Prefer:"return=representation",
     },
-    body:JSON.stringify({intent:"CAPTURE",purchase_units:[{
+    body:JSON.stringify({intent:"CAPTURE",payment_source:{paypal:{experience_context:{
+      user_action:"PAY_NOW",shipping_preference:"NO_SHIPPING",
+      return_url:"https://geomacro.live/checkout/success",
+      cancel_url:"https://geomacro.live/pricing",
+    }}},purchase_units:[{
       reference_id:intent.intentId,invoice_id:intent.intentId,
       custom_id:intent.intentId,payee:{merchant_id:merchantId},
       amount:{currency_code:"USD",value:dollars},
     }]}),
   }));
   if(typeof order.id!=="string"||!PAYPAL_ORDER_ID.test(order.id)||
-     order.status!=="CREATED"||!Array.isArray(order.links))
+     !["CREATED","PAYER_ACTION_REQUIRED"].includes(String(order.status))||!Array.isArray(order.links))
     throw Error("PAYPAL_CREATE_ORDER_UNCONFIRMED");
   const approval=order.links.find((item:unknown)=>{
     if(!item||typeof item!=="object"||Array.isArray(item))return false;
