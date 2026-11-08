@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-08T00:40:13.271Z",
+  "checked_at": "2026-11-08T10:09:51.254Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -301,63 +301,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-05T10:25:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-8640ee3c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Freeport announced plans to boost US copper and molybdenum production - Global Mining Review",
-      "what_changed": "A monitored source feed reports: Freeport announced plans to boost US copper and molybdenum production - Global Mining Review. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T09:09:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-32bfcb16",
-      "category": "macro",
-      "title": "Geomacro finds Gold's Official-Sector Anchor held Fast While Retail Demand Slips Away - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: Gold's Official-Sector Anchor held Fast While Retail Demand Slips Away - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T07:10:50.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-caff1e6a",
-      "category": "rare_earth",
-      "title": "Geomacro finds Adani Enterprises Kutch Copper set Capacity Utilization And Raw Material Supply Targets - Sahi",
-      "what_changed": "A monitored source feed reports: Adani Enterprises Kutch Copper set Capacity Utilization And Raw Material Supply Targets - Sahi. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T03:56:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
