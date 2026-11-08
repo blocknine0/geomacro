@@ -17,8 +17,8 @@ const MIGRATIONS=[
  '0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql',
  '0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql',
  '0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql',
- '0212_commercial_hot50_immutable_signed_delivery.sql',
- '0213_hot50_plan_scope_d1.sql'
+ '0215_commercial_hot50_immutable_signed_delivery.sql',
+ '0216_hot50_plan_scope_d1.sql'
 ];
 const SHA=x=>createHash('sha256').update(x).digest('hex');
 const merchant='MERCHANT123456',order='7AB1234567891234C',capture='9CF1234567891234D';
