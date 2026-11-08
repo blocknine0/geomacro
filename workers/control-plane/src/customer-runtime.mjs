@@ -50,7 +50,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','paypal-webhook-intent','paypal-webhook-fund','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -120,6 +120,47 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    const created=await db.prepare(`SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.token_hmac_sha256=?`).bind(sid,sessionHash).first();
    if(!created)fail(401,'CUSTOMER_OTP_NOT_VERIFIED');
    return reply({ok:true,user:created,session_token:opaque,max_age:3600});
+  }
+  if(action==='paypal-webhook-intent'||action==='paypal-webhook-fund'){
+   // Server-to-server only: the caller is already constrained to the dedicated
+   // SSR token and pinned HTTPS Origin. No email, session token or arbitrary
+   // user ID is supplied by PayPal or accepted here.
+   assertCustomerPayPalCheckoutReady(env);
+   try{
+    if(action==='paypal-webhook-intent'){
+     if(Object.keys(body).length!==1||
+        typeof body.order_id!=='string'||!/^[A-Z0-9]{8,32}$/.test(body.order_id))
+       fail(400,'CUSTOMER_PAYPAL_WEBHOOK_ORDER_INVALID');
+     const intent=await db.prepare(
+       "SELECT intent_id,provider_order_id,amount_minor_units,sku,state "+
+       "FROM customer_paypal_checkout_intents WHERE provider_order_id=? "+
+       "AND state IN ('bound','capture_requested','funded') LIMIT 1"
+     ).bind(body.order_id).first();
+     if(!intent)fail(404,'CUSTOMER_PAYPAL_WEBHOOK_INTENT_NOT_FOUND');
+     return reply({ok:true,intentId:intent.intent_id,
+       orderId:intent.provider_order_id,amountMinorUnits:intent.amount_minor_units});
+    }
+    if(Object.keys(body).length!==2||
+       !body.proof||typeof body.proof!=='object'||Array.isArray(body.proof)||
+       typeof body.attestation!=='string')
+      fail(400,'CUSTOMER_PAYPAL_WEBHOOK_PROOF_INVALID');
+    const proof=body.proof;
+    // This lookup only supplies the internally bound customer identity.
+    // The funding primitive independently checks exact intent, order,
+    // currency, merchant, provider attestation, settled time and SKU.
+    const row=await db.prepare(
+      "SELECT user_id FROM customer_paypal_checkout_intents "+
+      "WHERE provider_order_id=? AND intent_id=? "+
+      "AND state IN ('bound','capture_requested','funded') LIMIT 1"
+    ).bind(proof.orderId,proof.intentId).first();
+    if(!row)fail(403,'CUSTOMER_PAYPAL_WEBHOOK_INTENT_MISMATCH');
+    return reply(await fundCanonicalCustomerFromVerifiedPayPal(db,env,{
+      userId:row.user_id,proof,attestation:body.attestation,
+    },at));
+   }catch(error){
+    if(error instanceof CustomerFundingError)fail(error.status,error.code);
+    throw error;
+   }
   }
   const user=await session(db,pepper,body.session_token,at);
   // PayPal is a dedicated authenticated server-to-server flow. No browser
