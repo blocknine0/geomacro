@@ -11,7 +11,7 @@
  * separately reviewed restore decision. No automatic destructive restore.
  */
 import {execFileSync} from "node:child_process";
-import {createHash,createHmac} from "node:crypto";
+import {createHash} from "node:crypto";
 import {existsSync,mkdirSync,mkdtempSync,readFileSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -20,6 +20,15 @@ import {checkD1Headroom,HEADROOM_HOLD_CODE}
  from "./check-d1-headroom.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
+import {captureDurableD1Checkpoint}
+ from "../lib/d1-step3-recovery-checkpoint.mjs";
+import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
+ from "../lib/d1-step3-crypto-proof.mjs";
+import {
+ createStep3LedgerSQL,readStep3LedgerSQL,
+ verifyStep3LedgerRows,step3LedgerStartSQL,
+ step3LedgerStatusSQL,sha256MigrationSet,decideResume
+} from "../lib/d1-step3-migration-ledger.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Integrity,verifyStep3Explain,
@@ -37,9 +46,12 @@ const getHash=()=>execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).tri
 const receipt=()=>{
  mkdirSync(ROOT,{recursive:true,mode:0o700});
  return {schema:"geomacro.step3.migrations-execution.v1",
-  status:"HOLD",started_at:new Date().toISOString(),
+  status:"NOT_YET_VERIFIED",started_at:new Date().toISOString(),
   ordered_ids:STEP3_MIGRATIONS.map(x=>x.id),
   applied:[],verified:[],backup_bookmark_sha256:null,
+  recovery_checkpoint_verified:false,migration_ledger_verified:false,
+  pointer_crypto_proof:"NOT_YET_VERIFIED",
+  no_real_provider_rehearsal_claimed:true,
   production_sql_mutated:false,production_release_authorized:false,
   hold_file_untouched:true,pr_3725_merged:false,pr_3726_merged:false,
   commercial_signer_disabled:false,ingestion_disabled:false,
@@ -56,6 +68,7 @@ const run=(cmd,args,timeout=150000)=>{
 };
 function approved(env){
  if(env.GEOMACRO_STEP3_APPLY!=="APPROVE_ONLY_0204_0211_0212_0213"||
+    env.GEOMACRO_STEP3_RECOVERY_V2_APPROVED!=="YES"||
     !UUID.test(env.D1_DATABASE_ID??"")||
     !UUID.test(env.GEOMACRO_D1_SHADOW_DATABASE_ID??"")||
     env.D1_DATABASE_ID.toLowerCase()===
@@ -101,6 +114,36 @@ export function parseStep3WranglerQuery(raw,{maxRows=60}={}){
 function q(config,sql,{maxRows=60}={}){
  return parseStep3WranglerQuery(wrangler(config,[
   "d1","execute","DB","--remote","--json","--command",sql]),{maxRows});
+}
+function writeD1Sql(config,sql){
+ let data;
+ try{data=JSON.parse(wrangler(config,[
+  "d1","execute","DB","--remote","--json","--command",sql]));}
+ catch{fail("LEDGER_PROVIDER_MUTATION_UNVERIFIED")}
+ if(!Array.isArray(data)||data.length!==1||data[0]?.success!==true||
+    !Number.isSafeInteger(data[0]?.meta?.rows_read)||
+    !Number.isSafeInteger(data[0]?.meta?.rows_written)||
+    data[0].meta.rows_read<0||data[0].meta.rows_written<0)
+  fail("LEDGER_NATIVE_BILLABLE_META_UNVERIFIED");
+ return {rows_read:data[0].meta.rows_read,
+  rows_written:data[0].meta.rows_written};
+}
+function ensureLedger(config,manifests,report){
+ const meta=writeD1Sql(config,createStep3LedgerSQL());
+ const physical=q(config,
+  "SELECT type,name,sql FROM sqlite_schema WHERE name='_geomacro_migration_ledger'",
+  {maxRows:1}).rows;
+ if(physical.length!==1||physical[0]?.type!=="table"||
+    typeof physical[0]?.sql!=="string"||
+    !physical[0].sql.includes("sql_sha256")||
+    !physical[0].sql.includes("duration_ms"))
+  fail("LEDGER_SCHEMA_READBACK_FAILED");
+ const rows=q(config,readStep3LedgerSQL(),{maxRows:4}).rows;
+ const map=verifyStep3LedgerRows(rows,manifests);
+ report.migration_ledger_verified=true;
+ report.migration_ledger_provider_ddl_rows=meta;
+ save(report);
+ return map;
 }
 async function refreshedGate(report,stage){
  const x=await checkD1Headroom();
@@ -198,70 +241,96 @@ function parsePending(singleText,filename){
   fail("UNREVIEWED_OR_AMBIGUOUS_PENDING_MIGRATION");
  return true;
 }
-function migrateOne(privateDir,config,manifest,report){
+function migrateOne(privateDir,config,manifest,report,dbId,ledger){
  const temp=mkdtempSync(join(privateDir,"single-"+manifest.id+"-"));
  const source=readFileSync(manifest.file,"utf8");
  if(digest(source)!==manifest.sql_sha256)
   fail("MIGRATION_FILE_CHANGED_SINCE_REVIEW");
  const filePath=join(temp,manifest.filename);
  writeFileSync(filePath,source,{mode:0o600});
- const singleConfig=runnerConfig(temp,process.env.D1_DATABASE_ID,temp);
+ const singleConfig=runnerConfig(temp,dbId,temp);
  const args=["d1","migrations","list","DB","--remote"];
- const toApply=parsePending(wrangler(singleConfig,args),manifest.filename);
- const at=new Date().toISOString();
- if(toApply){
+ const pending=parsePending(wrangler(singleConfig,args),manifest.filename);
+ const previous=ledger.get(manifest.id);
+ let schemaVerified=false;
+ if(!pending){
+  // Native migration history alone is insufficient: verify exact objects,
+  // indexes, foreign-key/index integrity and source counter parity.
+  checkIndexAndSchema(config,manifest,report);
+  counterParity(config,manifest.id);
+  schemaVerified=true;
+ }
+ const action=decideResume({
+  entry:previous,manifest,nativePending:pending,objectsVerified:schemaVerified});
+ if(action.startsWith("HOLD_"))fail("LEDGER_"+action);
+ const began=Date.now(),at=new Date().toISOString();
+ if(!previous){
+  writeD1Sql(config,step3LedgerStartSQL(manifest,at));
+  // Verify D1 actual table write; a successful CLI exit is not an ACK.
+  const created=q(config,readStep3LedgerSQL(),{maxRows:4}).rows;
+  const map=verifyStep3LedgerRows(created,report.source_migrations);
+  if(map.get(manifest.id)?.status!=="STARTED")
+   fail("LEDGER_START_READBACK_FAILED");
+ }
+ if(action==="APPLY_REVIEWED_SQL"){
   wrangler(singleConfig,["d1","migrations","apply","DB","--remote"],240000);
-  report.production_sql_mutated=true;
+  report.production_sql_mutated=report.operation_kind==="production";
+  report.shadow_sql_mutated=report.operation_kind==="shadow";
   report.applied.push({id:manifest.id,filename:manifest.filename,
    sha256:manifest.sql_sha256,at});
   save(report);
+  if(parsePending(wrangler(singleConfig,args),manifest.filename))
+   fail("MIGRATION_HISTORY_PENDING_AFTER_APPLY");
+  writeD1Sql(config,step3LedgerStatusSQL(manifest,"APPLIED",
+   new Date().toISOString(),Date.now()-began));
+  checkIndexAndSchema(config,manifest,report);
+  counterParity(config,manifest.id);
+ }else if(action==="SKIP_VERIFIED"){
+  // Already schema verified above; no duplicate DDL.
+ }else if(!["REVALIDATE_ONLY","RECONCILE_COMPLETED",
+    "RECONCILE_HISTORY_WITHOUT_LEDGER"].includes(action))
+  fail("LEDGER_RESUME_ACTION_UNRECOGNIZED");
+ if(action!=="SKIP_VERIFIED"){
+  writeD1Sql(config,step3LedgerStatusSQL(manifest,"VERIFIED",
+   new Date().toISOString(),Date.now()-began));
  }
- if(parsePending(wrangler(singleConfig,args),manifest.filename))
-  fail("MIGRATION_HISTORY_PENDING_AFTER_APPLY");
- checkIndexAndSchema(config,manifest,report);
- counterParity(config,manifest.id);
- return {id:manifest.id,applied_now:toApply,
-  migration_history_and_schema_valid:true};
+ const after=q(config,readStep3LedgerSQL(),{maxRows:4}).rows;
+ const verified=verifyStep3LedgerRows(after,report.source_migrations)
+  .get(manifest.id);
+ if(verified?.status!=="VERIFIED"||
+    verified.sql_sha256!==manifest.sql_sha256)
+  fail("LEDGER_FINAL_D1_READBACK_UNVERIFIED");
+ ledger.set(manifest.id,verified);
+ report.ledger_stages??=[];
+ report.ledger_stages.push({migration_id:manifest.id,
+  status:verified.status,checksum:verified.sql_sha256,
+  duration_ms:verified.duration_ms,resume_action:action});
+ save(report);
+ return {id:manifest.id,applied_now:action==="APPLY_REVIEWED_SQL",
+  migration_history_and_schema_valid:true,ledger_status:"VERIFIED"};
 }
 async function verifyHmacNewPointers(config,env){
- const total=q(config,
-  "SELECT COUNT(*) AS n FROM phase2h_raw_object_refs_v1",{maxRows:1}).rows[0]?.n;
- if(!Number.isSafeInteger(total)||total<0)fail("POINTER_COUNT_UNVERIFIED");
- if(total===0)return {
-  state:"NOT_APPLICABLE_NO_POPULATED_PRODUCTION_R2_POINTERS",
-  verified_count:0,all_hmac_and_r2_bytes_verified:false};
- if(total>50)fail("POINTER_HMAC_BATCH_NOT_BOUNDED");
- const rows=q(config,"SELECT record_id,raw_sha256 FROM phase2h_raw_object_refs_v1 "+
-  "ORDER BY record_id LIMIT 51",{maxRows:51}).rows;
- if(rows.length!==total)fail("POINTER_HMAC_ID_SET_INCOMPLETE");
- const root=env.GEOMACRO_COMMERCE_LEDGER_TOKEN;
- if(typeof root!=="string"||root.length<32)
-  fail("OWNER_PRIVATE_R2_VERIFIER_AUTH_UNAVAILABLE");
- const bearer=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
- let verified=0;
- for(const row of rows){
-  const url="https://geomacro-control-plane.daspallab202391.workers.dev"+
-   "/v1/internal/phase2h-raw-object-ref?record_id="+row.record_id;
-  const res=await fetch(url,{redirect:"error",method:"GET",
-   headers:{Authorization:"Bearer "+bearer,"Cache-Control":"no-store"},
-   signal:AbortSignal.timeout(12000)});
-  if(res.status!==200||res.redirected)fail("PROTECTED_POINTER_HMAC_R2_HTTP_FAILED");
-  const data=await res.json().catch(()=>null);
-  if(data?.ok!==true||
-     data.schema!=="geomacro.phase2h.private-r2-reference-readback.v1"||
-     data.pointer_and_object_verified!==true||
-     data.legacy_fallback!==false||
-     data?.record?.record_id!==row.record_id||
-     data?.record?.raw_sha256!==row.raw_sha256||
-     data.paid_eligible!==false||data.b2_archive_verified!==false)
-    fail("PROTECTED_POINTER_HMAC_SHA_R2_MISMATCH");
-  verified++;
- }
- return {state:"PASS_PROVIDER_WORKER_HMAC_SHA_R2_READBACK",
-  verified_count:verified,all_hmac_and_r2_bytes_verified:verified===total};
+ // 10 real R2 pointers max. Never COUNT the full growing pointer table.
+ const sql="SELECT record_id,category,original_published_at,"+
+  "first_ingested_at,raw_sha256,object_sha256,object_key,"+
+  "bundle_bytes,record_sha256,record_bytes,bundle_index,signed_at,"+
+  "pointer_hmac_sha256,risk_country_iso3,storage_backend "+
+  "FROM phase2h_raw_object_refs_v1 ORDER BY record_id ASC LIMIT 11";
+ const result=q(config,sql,{maxRows:11});
+ if(result.rows.length>10)
+  return {status:"NOT_YET_VERIFIED",
+   code:"POINTER_PROOF_PAGE_EXCEEDS_BOUNDED_BUDGET",
+   all_hmac_and_r2_bytes_verified:false};
+ const empty=inspectPointerProofCount(result.rows);
+ if(empty)return {...empty,all_hmac_and_r2_bytes_verified:false};
+ const proof=await verifyRealPhase2hPointerRows({rows:result.rows,env});
+ return {...proof,
+  all_hmac_and_r2_bytes_verified:
+   proof.cryptographic_readback_verified===true};
 }
 export async function applyStep3Migrations({env=process.env}={}){
  const state=receipt(),manifests=step3SqlManifests();
+ state.operation_kind="production";
  state.source_migrations=manifests.map(x=>({id:x.id,sql_sha256:x.sql_sha256}));
  if(!existsSync(HOLD_FILE))fail("RELEASE_HOLD_FILE_MISSING");
  try{
@@ -288,44 +357,50 @@ export async function applyStep3Migrations({env=process.env}={}){
   if(info?.version!=="production")fail("D1_TIME_TRAVEL_BACKEND_NOT_PRODUCTION");
   for(const manifest of manifests)boundedInputs(config,manifest,state);
   state.original_immutable_sample_sha256=baseline(config);
-  const time=JSON.parse(wrangler(config,
-   ["d1","time-travel","info","DB","--json"]));
-  const bookmark=time.bookmark??time.result?.bookmark;
-  if(typeof bookmark!=="string"||!/^[0-9a-f-]{20,100}$/iu.test(bookmark))
-   fail("D1_TIME_TRAVEL_BOOKMARK_UNVERIFIED");
-  // Private rollback capability; NEVER committed, uploaded to artifacts or
-  // sent to a log. Cloudflare Time Travel bookmarks are auto-generated.
-  const bookmarkPath=join(base,"pre-step3-bookmark.private.json");
-  writeFileSync(bookmarkPath,JSON.stringify({
-   captured_at_utc:new Date().toISOString(),
-   database_uuid:env.D1_DATABASE_ID,bookmark
-  })+"\n",{mode:0o600});
-  state.backup_bookmark_sha256=digest(bookmark);
-  state.private_backup_bookmark_path=bookmarkPath;
+  const migrationSha=sha256MigrationSet(manifests);
+  const checkpoint=await captureDurableD1Checkpoint({
+   env,dbId:env.D1_DATABASE_ID,migrationSha});
+  if(checkpoint.status!=="PASS_REAL_PROVIDER_R2_BYTE_READBACK"||
+     checkpoint.private_r2_encrypted_readback_verified!==true||
+     checkpoint.signed_manifest_readback_verified!==true)
+   fail("RECOVERY_CHECKPOINT_NOT_DURABLE");
+  state.recovery_checkpoint_verified=true;
+  state.recovery_checkpoint={
+   encrypted_bytes:checkpoint.encrypted_byte_length,
+   encrypted_object_key:checkpoint.object_key,
+   signed_manifest_object_key:checkpoint.manifest_object_key,
+   encrypted_sha256:checkpoint.manifest_sha256,
+   recovery_public_key_sha256:checkpoint.key_id_sha256,
+   migration_sha256:checkpoint.migration_sha256
+  };
+  state.backup_bookmark_sha256=checkpoint.bookmark_sha256;
   save(state);
-  await refreshedGate(state,"AFTER_BACKUP_BEFORE_FIRST_MIGRATION");
+  await refreshedGate(state,"AFTER_DURABLE_R2_BACKUP_BEFORE_FIRST_DDL");
+  const ledger=ensureLedger(config,manifests,state);
+  await refreshedGate(state,"AFTER_LEDGER_BEFORE_MIGRATIONS");
   for(const step of manifests){
    await refreshedGate(state,"BEFORE_"+step.id);
-   // Exact order 0204 -> 0211 -> 0212 -> 0213. No wildcard apply.
-   migrateOne(base,config,step,state);
+   migrateOne(base,config,step,state,env.D1_DATABASE_ID,ledger);
    compareImmutableBaseline(state.original_immutable_sample_sha256,
     baseline(config));
    await refreshedGate(state,"AFTER_"+step.id);
   }
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
   state.post_migration_readback_explicit_PASS=
-   state.verified.length===4&&
-   state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true;
-  state.status=state.post_migration_readback_explicit_PASS?"PASS":"HOLD";
+   state.verified.length===4&&state.recovery_checkpoint_verified===true&&
+   state.migration_ledger_verified===true&&
+   state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true&&
+   state.post_migration_hmac.b2_physical_parity==="PASS_REAL_B2_BYTE_READBACK";
+  state.status=state.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
   state.code=state.post_migration_readback_explicit_PASS?
    "STEP3_FOUR_MIGRATIONS_SCHEMA_AND_HMAC_READBACK_PASS":
-   "STEP3_POINTER_HMAC_R2_PROOF_NOT_AVAILABLE";
+   "STEP3_POINTER_HMAC_R2_AND_B2_PARITY_NOT_YET_VERIFIED";
   // Never remove HOLD or mark a PR as mergeable, even after PASS.
   save(state);
   if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD");
   return state;
  }catch(e){
-  state.status="HOLD";state.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
+  state.status="NOT_YET_VERIFIED";state.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
    e.message:"STEP3_PROVIDER_EXECUTION_UNVERIFIED";
   state.hold_file_untouched=existsSync(HOLD_FILE);
   state.post_migration_readback_explicit_PASS=false;
