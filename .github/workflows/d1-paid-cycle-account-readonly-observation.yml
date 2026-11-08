@@ -1,0 +1,69 @@
+name: Cloudflare Paid D1 Account Billing Cycle — Read Only No Funds
+on:
+  schedule:
+    - cron: "17 0,6,12,18 * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/d1-paid-cycle-account-readonly-observation.yml"
+      - "scripts/ops/check-d1-paid-monthly-headroom.mjs"
+      - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/d1-paid-cycle-account-readonly-observation.yml"
+      - "scripts/tests/d1-paid-main-observer-workflow.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-paid-monthly-observer-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - run: node --test scripts/tests/d1-paid-main-observer-workflow.test.mjs
+      - run: node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
+  provider-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Validate exact protected main and no-funds production HOLD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test -f config/d1-hotspot-v2-canary.hold
+          node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
+      - name: Read-only account Paid subscription and billing-cycle rows
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - name: Preserve sanitized PASS or HOLD
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-d1-paid-cycle-provider-${{ github.run_id }}
+          path: artifacts/release/d1-paid-monthly-headroom.json
+          retention-days: 14
+          if-no-files-found: warn
