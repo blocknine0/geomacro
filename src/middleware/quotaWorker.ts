@@ -54,7 +54,7 @@ async function updateUsage(env:QuotaWorkerEnv){
   }
  }
  if(!seenToday||![read,written,monthRead,monthWritten].every(Number.isSafeInteger))
-  throw Error('D1_QUOTA_COUNTER_OVERFLOW_OR_CURRENT_DAY_UNOBSERVED');
+  throw Error('D1_QUOTA_GRAPHQL_COUNTER_OVERFLOW_OR_CURRENT_DAY_UNOBSERVED');
  await syncProviderRows(env,read,written,monthRead,monthWritten,billingCycleStart);
 }
 export default {
