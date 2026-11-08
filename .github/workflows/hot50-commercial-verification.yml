@@ -7,6 +7,8 @@ on:
       - 'workers/control-plane/migrations/0215_commercial_hot50_immutable_signed_delivery.sql'
       - 'workers/control-plane/migrations/0216_hot50_plan_scope_d1.sql'
       - 'scripts/tests/hot50-commercial-read.test.mjs'
+      - 'scripts/ops/readback-commercial-d1-schema.mjs'
+      - 'scripts/tests/commercial-d1-readback-contract.test.mjs'
       - 'scripts/tests/hot50-commercial-live-evidence.test.mjs'
       - 'scripts/tests/hot50-payment-to-delivery-isolated.test.mjs'
       - 'scripts/tests/customer-paid-ledger.test.mjs'
@@ -30,6 +32,7 @@ jobs:
           node-version: '22'
       - name: Syntax check - Worker, pricing & customer runtime
         run: |
+          node --check scripts/ops/readback-commercial-d1-schema.mjs
           node --check workers/control-plane/src/hot50-commercial-read.mjs
           node --check workers/control-plane/src/hot50-commercial-scoring.mjs
           node --check workers/control-plane/src/hot50-commercial-live-evidence.mjs
@@ -37,6 +40,7 @@ jobs:
           node --check workers/control-plane/src/customer-runtime.mjs
       - name: Verify deterministic signed Hot50 fixture gates (not live certification)
         run: |
+          node --test scripts/tests/commercial-d1-readback-contract.test.mjs
           node --test scripts/tests/hot50-commercial-read.test.mjs
           node --test scripts/tests/hot50-commercial-live-evidence.test.mjs
           node --test scripts/tests/hot50-payment-to-delivery-isolated.test.mjs
