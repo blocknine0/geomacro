@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {buildPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
+import {readIndexedRiskCountryOriginals}
+ from "../../workers/control-plane/src/phase2h-risk-country-index.mjs";
 import {phase2hPrivateRawPut,phase2hPrivateRawObjectReferenceGet}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 
@@ -29,6 +31,9 @@ function fixture(){
  const sqlite=new DatabaseSync(":memory:");
  sqlite.exec(readFileSync(new URL(
   "../../workers/control-plane/migrations/0035_phase2h_private_raw_news.sql",
+  import.meta.url),"utf8"));
+ sqlite.exec(readFileSync(new URL(
+  "../../workers/control-plane/migrations/0111_phase2h_risk_country_materialization.sql",
   import.meta.url),"utf8"));
  sqlite.exec(readFileSync(new URL(
   "../../workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql",
@@ -172,5 +177,35 @@ test("opt-in and private R2 binding are mandatory; legacy path remains disabled 
   const r=await phase2hPrivateRawPut(f.env,body([record]),DATE.getTime());
   assert.equal(r.status,503);
   assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM phase2h_raw_object_refs_v1").get().n,0);
+ }finally{f.sqlite.close()}
+});
+
+test("gated country-index reader hydrates R2 refs in memory, without D1 raw writes",async()=>{
+ const f=fixture();
+ try{
+  const record=buildPhase2hPrivateRawRecords([{
+   category:"macro",sourceId:"rbi",title:"India announces monetary policy update",
+   publishedAt:"2026-11-08T06:00:00.000Z",
+   articleUrl:"https://www.rbi.org.in/news/monetary-policy-2026",credit:null
+  }],{now:DATE,derive:xs=>xs.map(x=>({
+   category:x.category,published_at:x.publishedAt,
+   topic:"monetary policy",
+   what_changed:"India's central bank issued a dated monetary policy statement.",
+   why_it_matters:"Currency and rate assumptions may change; market effects unverified."
+  }))}).records[0];
+  const inserted=await phase2hPrivateRawPut(f.env,body([record]),DATE.getTime());
+  assert.equal(inserted.status,200);
+  const pointer=f.sqlite.prepare(
+   "SELECT risk_country_iso3 FROM phase2h_raw_object_refs_v1 WHERE record_id=?").get(record.record_id);
+  assert.equal(pointer.risk_country_iso3,"IND");
+  f.env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1="1";
+  const read=await readIndexedRiskCountryOriginals(f.env,{
+   countryId:"IND",category:"macro",
+   since:"2026-11-08T05:00:00.000Z",until:"2026-11-08T08:00:00.000Z"
+  });
+  assert.equal(read.length,1);
+  assert.equal(read[0].record_id,record.record_id);
+  assert.deepEqual(JSON.parse(read[0].raw_json),record);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM phase2h_private_raw_news").get().n,0);
  }finally{f.sqlite.close()}
 });
