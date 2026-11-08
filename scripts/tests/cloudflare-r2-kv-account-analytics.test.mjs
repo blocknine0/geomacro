@@ -101,3 +101,18 @@ test("missing secrets, forbidden provider responses or empty reports fail closed
    r2OperationsAdaptiveGroups:[],kvOperationsAdaptiveGroups:[]}]}}})
  }),/R2_EMPTY_OR_TRUNCATED/);
 });
+
+test("CLI always emits sanitized machine-readable HOLD artifact with nonzero exit",async()=>{
+ const {spawnSync}=await import("node:child_process");
+ const processResult=spawnSync(process.execPath,
+  ["scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"],
+  {env:{},encoding:"utf8",timeout:12000});
+ assert.equal(processResult.status,3);
+ assert.equal(processResult.stderr,"");
+ const receipt=JSON.parse(processResult.stdout);
+ assert.equal(receipt.schema,"geomacro.cloudflare-r2-kv-account-observation.v1");
+ assert.equal(receipt.status,"NOT_YET_VERIFIED");
+ assert.equal(receipt.reason,"CLOUDFLARE_R2_KV_PROOF_ACCOUNT_ANALYTICS_READ_PERMISSION_UNVERIFIED");
+ assert.equal(receipt.production_release_authorized,false);
+ assert.equal(receipt.no_provider_mutations,true);
+});
