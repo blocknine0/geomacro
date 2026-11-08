@@ -125,6 +125,36 @@ export async function verifyHot50CommercialSnapshot(row,viewKey,env,now=Date.now
  * distinct paid delivery still needs a canonical D1 auth/usage transaction.
  * D1 batch reduces round trips, not total provider rows-read/written.
  */
+async function cachedSignedSnapshot(db,viewKey,at,env){
+ // Only an immutable SHARED signed view is cached; no bearer, tenant,
+ // balance, request ID or billable response ever enters the edge cache.
+ const edge=typeof caches!=='undefined'?caches.default:null;
+ const keyId=String(env.GEOMACRO_HOT50_PUBLIC_KEY_ID??'');
+ const cacheKey=new Request('https://geomacro-internal-cache.invalid/v1/hot50/'+
+   encodeURIComponent(keyId)+'/'+encodeURIComponent(viewKey));
+ if(edge){
+  try{
+   const hit=await edge.match(cacheKey);
+   if(hit){
+    const row=await hit.json();
+    if(row?.view_key===viewKey&&Date.parse(row.expires_at)>Date.parse(at)&&
+       row.verifier_state==='CRYPTO_AND_B2_READBACK_VERIFIED')return row;
+   }
+  }catch{/* Serve from canonical D1 on cache failure. */}
+ }
+ const row=await db.prepare(
+  "SELECT * FROM commercial_hot50_signed_snapshots WHERE view_key=? AND expires_at>? "+
+  "AND verifier_state='CRYPTO_AND_B2_READBACK_VERIFIED' ORDER BY published_at DESC LIMIT 1"
+ ).bind(viewKey,at).first();
+ if(edge&&row){
+  // Respect issuer proof expiry; never cache beyond 5 minutes.
+  const ttl=Math.min(300,Math.floor((Date.parse(row.expires_at)-Date.parse(at))/1000));
+  if(ttl>0)try{await edge.put(cacheKey,new Response(JSON.stringify(row),{
+   headers:{'Cache-Control':'public, max-age='+ttl}
+  }));}catch{/* Cache is optional. */}
+ }
+ return row;
+}
 export async function handleHot50CommercialRead(request,env,{now=()=>Date.now()}={}){
  const url=new URL(request.url),viewKey=viewOf(url.pathname);
  if(!viewKey)return null;
@@ -159,10 +189,7 @@ export async function handleHot50CommercialRead(request,env,{now=()=>Date.now()}
    return reply({ok:false,error:'REQUEST_REPLAY_MISMATCH'},409);
   const row=prior
    ?await db.prepare('SELECT * FROM commercial_hot50_signed_snapshots WHERE snapshot_sha256=?').bind(prior.snapshot_sha256).first()
-   :await db.prepare(
-    "SELECT * FROM commercial_hot50_signed_snapshots WHERE view_key=? AND expires_at>? "+
-    "AND verifier_state='CRYPTO_AND_B2_READBACK_VERIFIED' ORDER BY published_at DESC LIMIT 1"
-   ).bind(viewKey,at).first();
+   :await cachedSignedSnapshot(db,viewKey,at,env);
   if(!row)return reply({ok:false,error:'QUALIFIED_HOT50_SNAPSHOT_UNAVAILABLE'},503);
   const data=await verifyHot50CommercialSnapshot(row,viewKey,env,now());
   if(!prior){
