@@ -30,3 +30,23 @@ test("shadow host is an independent binding, R2 key is secret, and receipt is re
  assert.match(y,/if: always\(\)/u);
  assert.match(y,/step3-shadow-rehearsal-receipt\.json/u);
 });
+
+test("manual eligibility check always logs a specific failure instead of an unexplained skipped job",()=>{
+ assert.match(y,/eligibility-preflight:\s*\n/u);
+ assert.match(y,/needs: eligibility-preflight/u);
+ assert.match(y,/needs\.eligibility-preflight\.result == 'success'/u);
+ assert.match(y,/SHADOW_APPROVAL_INPUT: \$\{\{ inputs\.approval \}\}/u);
+ assert.match(y,/SHADOW_ARMED_REPOSITORY_VARIABLE: \$\{\{ vars\.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED \}\}/u);
+ assert.match(y,/Shadow approval mismatch/u);
+ assert.match(y,/Shadow repository approval missing/u);
+ assert.match(y,/GEOMACRO_STEP3_NOV9_ARMED/u);
+});
+test("eligibility preflight cannot touch Cloudflare or leak tokens",()=>{
+ const block=y.split("  eligibility-preflight:")[1]?.split("  shadow-rehearsal:")[0];
+ assert.ok(block);
+ assert.doesNotMatch(block,/CLOUDFLARE_API_TOKEN|SIGNING_JWK|CONTROL_PLANE_TOKEN|PHASE2H_R2_REFERENCE_HMAC_KEY/u);
+ assert.doesNotMatch(block,/wrangler|curl|migration|time-travel|\/api\//u);
+ assert.doesNotMatch(block,/echo ["']?\$SHADOW_ARMED_REPOSITORY_VARIABLE|echo ["']?\$SHADOW_APPROVAL_INPUT/u);
+ assert.match(block,/exit 3/u);
+ assert.match(block,/exit 4/u);
+});
