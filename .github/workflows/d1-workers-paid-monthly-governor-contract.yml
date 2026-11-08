@@ -1,0 +1,41 @@
+name: D1 Workers Paid Monthly Quota Governor — Offline
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-workers-paid-monthly-governor-contract.yml"
+      - "config/d1-workers-paid-monthly-policy.v1.json"
+      - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
+      - "scripts/ops/check-d1-paid-monthly-headroom.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/d1-workers-paid-monthly-governor.test.mjs"
+      - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+jobs:
+  offline-plan:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify no unsafe production mutation is present
+        run: |
+          node --check scripts/lib/d1-workers-paid-monthly-governor.mjs
+          node --check scripts/ops/check-d1-paid-monthly-headroom.mjs
+          node --check scripts/ops/plan-d1-bundled-work.mjs
+      - name: Paid 25B/50M month, actual cycle, GraphQL strictness and Hot50 source budget tests
+        run: |
+          node --test scripts/tests/d1-workers-paid-monthly-governor.test.mjs
+          node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
+          node --test scripts/tests/plan-d1-bundled-work.test.mjs
+      - name: Assert old owner daily limit does not re-enter new Paid path
+        run: |
+          grep -q "old_daily_140k_policy_applied:false" scripts/ops/plan-d1-bundled-work.mjs
+          grep -q "monthly_included_write_quota" scripts/ops/plan-d1-bundled-work.mjs
+          test -f config/d1-hotspot-v2-canary.hold
