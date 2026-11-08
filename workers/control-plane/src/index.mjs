@@ -1572,7 +1572,7 @@ export default {
     const url = new URL(request.url);
     if(url.pathname==="/api/webhooks/telegram-flash")
       return relayTelegramFlashWebhook(request,env);
-    if(url.pathname==='/v1/evidence/deliver'||url.pathname.startsWith('/v1/internal/evidence/'))
+    if(url.pathname==='/v1/evidence/deliver'||url.pathname==='/v1/evidence/keys'||url.pathname.startsWith('/v1/internal/evidence/'))
       return handleEvidenceRuntime(request,env);
     // Independent customer authentication boundary; no inherited operator auth.
     if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
