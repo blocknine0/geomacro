@@ -53,14 +53,14 @@ function endpoint({account,bucket,key}){
 }
 async function cfRequest(url,{token,fetchImpl,method="GET",body=null}={}){
  try{
-  // Cloudflare R2 REST Upload Object expects multipart file field "body".
-  // The boundary is generated automatically; do not set Content-Type.
-  const form=body===null?null:new FormData();
-  if(form)form.set("body",new Blob([body],{
-   type:"application/octet-stream"}),"checkpoint.bin");
+  // R2 Objects API accepts the exact binary body, not multipart/form-data.
+  // https://developers.cloudflare.com/api/resources/r2/subresources/buckets/subresources/objects/methods/upload/
+  if(body!==null&&(!Buffer.isBuffer(body)||body.length<1||body.length>1048576))
+   fail("PROVIDER_OBJECT_BODY_INVALID");
   const response=await fetchImpl(url,{method,redirect:"error",cache:"no-store",
-   headers:{Authorization:"Bearer "+token,"Cache-Control":"no-store"},
-   ...(form?{body:form}:{}),signal:AbortSignal.timeout(20000)});
+   headers:{Authorization:"Bearer "+token,"Cache-Control":"no-store",
+    ...(body!==null?{"Content-Type":"application/octet-stream"}:{})},
+   ...(body!==null?{body}:{}),signal:AbortSignal.timeout(20000)});
   if(!response||response.redirected||response.status<200||response.status>=300)
    fail("PROVIDER_REQUEST_FAILED");
   return response;
@@ -128,6 +128,8 @@ export async function captureDurableD1Checkpoint({
  const token=env.CLOUDFLARE_API_TOKEN;
  const bucket=env.GEOMACRO_D1_RECOVERY_R2_BUCKET;
  const objectKey=buildRecoveryObjectKey({dbId,migrationSha,now});
+ // Stage labels are fixed and safe to emit; no object content is logged.
+ let stage="BOOKMARK_GET";
  try{
   const response=await cfRequest(
    "https://api.cloudflare.com/client/v4/accounts/"+account+
@@ -159,14 +161,18 @@ export async function captureDurableD1Checkpoint({
   const signed=Buffer.from(JSON.stringify(signManifest(manifest,signerIdentity)));
   const encryptedUrl=endpoint({account,bucket,key:objectKey});
   const manifestUrl=endpoint({account,bucket,key:objectKey+".manifest.json"});
+  stage="ENCRYPTED_OBJECT_PUT";
   await cfRequest(encryptedUrl,{token,fetchImpl,method:"PUT",body:encrypted});
+  stage="ENCRYPTED_OBJECT_GET";
   const remote=Buffer.from(await (await cfRequest(encryptedUrl,{token,fetchImpl})).arrayBuffer());
   if(!eq(encrypted,remote)||digest(remote)!==manifest.manifest_sha256||
      remote.length!==manifest.encrypted_byte_length)
    fail("ENCRYPTED_R2_READBACK_MISMATCH");
   const opened=decryptPayload(key,JSON.parse(remote.toString("utf8")));
   if(!eq(opened,plaintext))fail("ENCRYPTED_R2_DECRYPTED_PAYLOAD_MISMATCH");
+  stage="SIGNED_MANIFEST_PUT";
   await cfRequest(manifestUrl,{token,fetchImpl,method:"PUT",body:signed});
+  stage="SIGNED_MANIFEST_GET";
   const remoteManifest=Buffer.from(await (
    await cfRequest(manifestUrl,{token,fetchImpl})).arrayBuffer());
   if(!eq(remoteManifest,signed))fail("SIGNED_MANIFEST_R2_READBACK_MISMATCH");
@@ -191,6 +197,10 @@ export async function captureDurableD1Checkpoint({
    encrypted_payload_leaked_to_artifact:false,
    plaintext_bookmark_leaked_to_artifact:false
   });
+ }catch(e){
+  if(/^STEP3_RECOVERY_PROVIDER_REQUEST_(?:FAILED|UNAVAILABLE)$/u.test(e?.message??""))
+   fail("CLOUDFLARE_"+stage+"_HTTP_OR_NETWORK_UNVERIFIED");
+  throw e;
  }finally{key.fill(0)}
 }
 
