@@ -2,8 +2,10 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 const y=readFileSync(".github/workflows/d1-step3-v2-shadow-only-rehearsal.yml","utf8");
-test("exact immutable audited Step3 V2 SHA only, never run a user-controlled commit",()=>{
- assert.match(y,/a9cb982b346e86ed99401e0ae99a1f006c02bae6/u);
+test("manual main dispatch exact GitHub SHA, no user-controlled ref",()=>{
+ assert.match(y,/GEOMACRO_STEP3_EXACT_SHA: \$\{\{ github\.sha \}\}/u);
+ assert.match(y,/ref: \$\{\{ github\.sha \}\}/u);
+ assert.match(y,/git ls-remote https:\/\/github\.com\/blocknine0\/geomacro\.git refs\/heads\/main/u);
  assert.doesNotMatch(y,/ref:\s*\$\{\{ inputs\./u);
  assert.match(y,/test "\$\(git rev-parse HEAD\)" = "\$GEOMACRO_STEP3_EXACT_SHA"/u);
 });
