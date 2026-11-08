@@ -3,8 +3,7 @@
   "receiver": "0x95ba71d21C41bDa8bBA9533f96D25f793E4137b5",
   "networks": [
     "eip155:8453",
-    "eip155:137",
-    "eip155:5042"
+    "eip155:137"
   ],
   "same_address_on_all_networks": true,
   "owner_instruction_date": "2026-10-30",
@@ -20,5 +19,7 @@
     "verified_on": "2026-10-30",
     "authorization_scope": "WALLET_OWNERSHIP_PROOF_ONLY",
     "payment_or_transfer_authorized": false
-  }
+  },
+  "current_new_sale_scope": "CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC",
+  "scope_approved_on": "2026-11-08"
 }
