@@ -270,6 +270,16 @@ export async function deliverVerifiedEvidence(env,{apiKey,itemId,now=Date.now()}
 export async function handleEvidenceRuntime(request,env){
  try{
   const path=new URL(request.url);if(path.search)fail('EQE_QUERY_FORBIDDEN',400);
+  if(path.pathname==='/v1/evidence/keys'){
+   if(request.method!=='GET')fail('EQE_KEYS_GET_REQUIRED',405);
+   if(!/^[A-Za-z0-9_.:-]{3,128}$/u.test(env.GEOMACRO_EVIDENCE_ED25519_KEY_ID??'')||
+      typeof env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64!=='string')
+    fail('EQE_ACTIVE_PUBLIC_KEY_UNAVAILABLE');
+   return json({schema:'geomacro.evidence-verification-keys.v1',
+    canonicalization:'RFC8785-JCS',algorithm:'Ed25519',
+    keys:[{key_id:env.GEOMACRO_EVIDENCE_ED25519_KEY_ID,
+      public_key_spki_b64:env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64,status:'active'}]});
+  }
   if(path.pathname==='/v1/evidence/deliver'){
    const data=await bodyOf(request,2048);
    if(Object.keys(data).join(',')!=='item_id')fail('EQE_DELIVERY_BODY_INVALID',400);
