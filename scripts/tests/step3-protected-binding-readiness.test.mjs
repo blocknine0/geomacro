@@ -80,6 +80,8 @@ test("shadow HMAC cannot be missing or reused from production",()=>{
  e.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY=e.PHASE2H_R2_REFERENCE_HMAC_KEY;
  let r=assessStage3Bindings(e);
  assert.equal(r.status,"HOLD");
+ assert.equal(r.stage1_status,"HOLD");
+ assert(r.stage1_missing.some(x=>x.name==="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION"));
  assert(r.missing.some(x=>x.name==="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION"));
  assert(!JSON.stringify(r).includes(e.PHASE2H_R2_REFERENCE_HMAC_KEY));
  e.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY="e".repeat(63)+"\\n";
