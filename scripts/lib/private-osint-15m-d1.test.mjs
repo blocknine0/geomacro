@@ -49,8 +49,8 @@ function fakeD1(){
       if(sql.includes("country_iso3=?"))rows=rows.filter(x=>x.country_iso3===params[k++]);
       const snapshot=params[k++];
       rows=rows.filter(x=>x.first_seen_at<=snapshot);
-      if(sql.includes("native_feed_published_at<?")){
-       const native=params[k],id=params[k+2];
+      if(sql.includes("(native_feed_published_at,item_id)<(?,?)")){
+       const native=params[k],id=params[k+1];
        rows=rows.filter(x=>x.native_feed_published_at<native||
          x.native_feed_published_at===native&&x.item_id<id);
       }
