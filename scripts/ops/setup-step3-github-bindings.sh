@@ -11,8 +11,9 @@ gh auth status >/dev/null
 secret_names="$(gh secret list -R "$repo" -e "$environment" --json name --jq '.[].name')"
 repo_secret_names="$(gh secret list -R "$repo" --json name --jq '.[].name')"
 variable_names="$(gh variable list -R "$repo" --json name --jq '.[].name')"
+environment_variable_names="$(gh variable list -R "$repo" -e "$environment" --json name --jq '.[].name')"
 has_secret(){ grep -Fxq "$1" <<< "$secret_names" || grep -Fxq "$1" <<< "$repo_secret_names"; }
-has_variable(){ grep -Fxq "$1" <<< "$variable_names"; }
+has_variable(){ grep -Fxq "$1" <<< "$variable_names" || grep -Fxq "$1" <<< "$environment_variable_names"; }
 set_variable_if_missing(){
  local name="$1" value="$2"
  # A reviewed corrected value REPLACES an obsolete/stale repo variable.
@@ -24,6 +25,11 @@ set_variable_if_missing(){
   echo "$name: verified value required" >&2; return 1
  fi
  gh variable set "$name" -R "$repo" --body "$value"
+ # An existing production-environment variable has precedence at runtime.
+ # Synchronize it rather than leaving a stale override that silently wins.
+ if grep -Fxq "$name" <<< "$environment_variable_names"; then
+  gh variable set "$name" -R "$repo" -e "$environment" --body "$value"
+ fi
  echo "$name: owner-supplied verified value pinned"
 }
 if ! has_secret GEOMACRO_D1_RECOVERY_AES256_KEY_B64; then
@@ -88,7 +94,7 @@ if [[ ! "${STEP3_REVIEWED_SHA:-}" =~ ^[a-f0-9]{40}$ ]]; then
  echo "Owner action: provide STEP3_REVIEWED_SHA, reviewed exact main commit." >&2
  exit 10
 fi
-gh variable set GEOMACRO_STEP3_REVIEWED_SHA -R "$repo" --body "$STEP3_REVIEWED_SHA"
+set_variable_if_missing GEOMACRO_STEP3_REVIEWED_SHA "$STEP3_REVIEWED_SHA"
 echo "GEOMACRO_STEP3_REVIEWED_SHA: pinned to current owner-reviewed source (not inferred)"
 if ! has_secret GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK; then
  if [[ -z "${STEP3_TRUSTED_SIGNER_PUBLIC_JWK:-}" ]]; then
