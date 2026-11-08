@@ -23,6 +23,8 @@ function configured(env){
  if(!env.GEOMACRO_EVIDENCE_REVIEW_PUBLIC_SPKI_B64||
     !env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64)
   fail('EQE_TRUST_REGISTRY_MISSING');
+ if(env.GEOMACRO_EVIDENCE_REVIEW_PUBLIC_SPKI_B64===env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64)
+  fail('EQE_REVIEW_SIGNER_KEY_SEPARATION_REQUIRED');
  return registry(env);
 }
 async function readbackPut(store,key,text){
@@ -174,6 +176,8 @@ export async function qualifyAndPublishEvidence(env,{item_id,attestation}){
   privatePkcs8B64:env.GEOMACRO_EVIDENCE_ED25519_PRIVATE_PKCS8_B64,
   publicSpkiB64:env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64,
   keyId:env.GEOMACRO_EVIDENCE_ED25519_KEY_ID,
+  reviewerPublicSpkiB64:env.GEOMACRO_EVIDENCE_REVIEW_PUBLIC_SPKI_B64,
+  approvedOrigins:approved,
  });
  const serialized=canonicalJcs(envelope),envelopeHash=await sha256(serialized);
  const key='evidence/v1/'+envelope.integrity.signed_at.slice(0,4)+'/'+
@@ -210,6 +214,11 @@ async function verifiedHot(env,itemId){
     !(await verifyEvidence(envelope,{
       [hot.signing_key_id]:env.GEOMACRO_EVIDENCE_ED25519_PUBLIC_SPKI_B64
     })))fail('EQE_SIGNATURE_OR_HASH_READBACK_FAILED');
+ const gate=await analyzeDeficits(envelope.payload.item,{
+  proof:envelope.payload.review,signature_base64:envelope.payload.review_signature_base64
+ },{reviewerPublicSpkiB64:env.GEOMACRO_EVIDENCE_REVIEW_PUBLIC_SPKI_B64,
+    approvedOrigins:registry(env)});
+ if(!gate.qualified)fail('EQE_DELIVERY_REVIEW_NO_LONGER_QUALIFIED');
  return {hot,envelope};
 }
 export async function deliverVerifiedEvidence(env,{apiKey,itemId,now=Date.now()}){
