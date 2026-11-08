@@ -671,7 +671,10 @@ export async function phase2hPrivateRawArchiveExportV2(
       !Number.isFinite(Date.parse(clock))||!HEX.test(id))))
   return bad("PHASE2H_ARCHIVE_EXPORT_CURSOR_INVALID");
 
- const select="SELECT record_id,first_ingested_at,raw_sha256,raw_json "+
+ const verifiedReferenceMode=env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1==="1";
+ const select=(verifiedReferenceMode?
+  "SELECT record_id,first_ingested_at,raw_sha256 ":
+  "SELECT record_id,first_ingested_at,raw_sha256,raw_json ")+
   "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_unarchived "+
   "WHERE b2_object_sha256 IS NULL "+
   (clock===null?"":"AND (first_ingested_at>? OR "+
@@ -688,9 +691,27 @@ export async function phase2hPrivateRawArchiveExportV2(
     found.results.length>limit)
   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_PROVIDER_INVALID",
    paid_eligible:false,raw_public_delivery:false},503);
+ let exportEntries=found.results;
+ if(verifiedReferenceMode&&exportEntries.length){
+  let verified;
+  try{
+   verified=await hydrateVerifiedPhase2hIds(
+    env,exportEntries.map(x=>x.record_id),validPrivateRawNews,now);
+  }catch{
+   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_AUTHENTICITY_UNVERIFIED",
+    paid_eligible:false,raw_public_delivery:false},503);
+  }
+  const byId=new Map(verified.map(r=>[r.record_id,r]));
+  if(byId.size!==exportEntries.length)
+   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_EXACT_IDS_MISSING",
+    paid_eligible:false},503);
+  exportEntries=exportEntries.map(r=>({
+   ...r,raw_json:byId.get(r.record_id).raw_json
+  }));
+ }
  let lastClock=clock,lastId=id;
  const rows=[];let rejected=0,previousClock=clock,previousId=id;
- for(const entry of found.results){
+ for(const entry of exportEntries){
   if(typeof entry.record_id!=="string"||!HEX.test(entry.record_id)||
      typeof entry.first_ingested_at!=="string"||
      !Number.isFinite(Date.parse(entry.first_ingested_at))||
