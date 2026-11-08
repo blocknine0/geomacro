@@ -71,7 +71,7 @@ export function sha256MigrationSet(manifests){
 export function decideResume({entry,manifest,nativePending,objectsVerified}={}){
  if(typeof nativePending!=="boolean"||!ID.test(manifest?.id)||
     !SHA.test(manifest?.sql_sha256))fail("NATIVE_HISTORY_OR_MANIFEST_INVALID");
- if(!entry)return nativePending?"APPLY_REVIEWED_SQL":"HOLD_NATIVE_HISTORY_WITHOUT_LEDGER";
+ if(!entry)return nativePending?"APPLY_REVIEWED_SQL":objectsVerified?"RECONCILE_HISTORY_WITHOUT_LEDGER":"HOLD_NATIVE_HISTORY_WITHOUT_LEDGER";
  if(entry.sql_sha256!==manifest.sql_sha256)
   return "HOLD_CHANGED_MIGRATION_CHECKSUM";
  if(entry.status==="VERIFIED")
