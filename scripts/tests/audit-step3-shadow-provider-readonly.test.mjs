@@ -129,3 +129,27 @@ test("workflow is read-only and does not run on pull requests with provider cred
  assert(!y.includes("GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: 'YES'"));
  assert(!y.includes("continue-on-error: true"));
 });
+
+test("all protected GitHub expressions are valid, not literal unresolved env strings",()=>{
+ const y=readFileSync(new URL("../../.github/workflows/step3-shadow-provider-readonly-inventory.yml",import.meta.url),"utf8");
+ const expressions=[...y.matchAll(/\$\{\{[^\n]*?\}\}/gu)].map(m=>m[0]);
+ assert.equal(expressions.length,11,"Expected exactly eleven protected GitHub expressions");
+ assert.doesNotMatch(y,/\$\{(?!\{)/u,"Malformed single-brace GitHub expression");
+ for(const name of [
+  "CLOUDFLARE_ACCOUNT_ID","CLOUDFLARE_API_TOKEN",
+  "D1_DATABASE_ID","GEOMACRO_D1_SHADOW_DATABASE_ID",
+  "GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST",
+  "GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST",
+  "GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET",
+  "GEOMACRO_D1_RECOVERY_R2_BUCKET"
+ ]){
+  const line=y.split("\n").find(x=>x.trimStart().startsWith(name+":"));
+  assert.ok(line,"Missing required secret/variable: "+name);
+  assert.match(line,/:\s+\$\{\{\s+(?:secrets|vars)\./u,name);
+  assert.match(line,/\}\}\s*$/u,name);
+ }
+ assert.match(y,/ref:\s+\$\{\{ github\.sha \}\}/u);
+ assert.match(y,/geomacro-step3-shadow-provider-inventory-\$\{\{ github\.run_id \}\}/u);
+ assert.match(y,/geomacro-step3-shadow-provider-inventory-\$\{\{ github\.ref \}\}/u);
+ assert.doesNotMatch(y,/continue-on-error:\s*true/u);
+});
