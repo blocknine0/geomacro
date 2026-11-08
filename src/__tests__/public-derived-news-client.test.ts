@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  checkedDerivedNews, fetchDirectDerivedNews, fetchAllDerivedNews, fetchPermanentDerivedNews,
-  GEOMACRO_DERIVED_JOURNAL_URL, GEOMACRO_DERIVED_BUNDLE_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL,
+  checkedDerivedNews, fetchDirectDerivedNews, fetchZeroD1PublicDerivedNews, fetchAllDerivedNews, fetchPermanentDerivedNews,
+  GEOMACRO_DERIVED_JOURNAL_URL, GEOMACRO_DERIVED_BUNDLE_URL, GEOMACRO_PERMANENT_LATEST_URL, GEOMACRO_PERMANENT_ARCHIVE_BASE_URL, GEOMACRO_EDGE_LATEST_URL,
 } from "@/lib/public-derived-news-client";
 
 const NOW=Date.parse("2026-10-12T20:00:00.000Z");
@@ -30,6 +30,41 @@ describe("browser public journal fallback",()=>{
     }
   });
 
+  it("keeps original-dated Geopolitics visible when live D1 is quota-held, with ZERO D1 requests",async()=>{
+    const geopolitics={...signal,id:"geopolitics-1234abcd",category:"geopolitics",
+      published_at:new Date(NOW-30_000).toISOString()};
+    const staticPayload=doc([geopolitics]);
+    const edgePayload={...doc([signal]),checked_at:new Date(NOW).toISOString()};
+    const urls:string[]=[];
+    const f=vi.fn(async (url:RequestInfo|URL)=>{
+      urls.push(String(url));
+      if(String(url)===GEOMACRO_PERMANENT_LATEST_URL)
+        return new Response(JSON.stringify(staticPayload),{status:200});
+      if(String(url)===GEOMACRO_EDGE_LATEST_URL)
+        return new Response(JSON.stringify(edgePayload),{
+          status:200,headers:{"X-GeoMacro-Public-Offload":"r2"}});
+      throw Error("CANONICAL_D1_MUST_NOT_BE_ACCESSED");
+    });
+    const rows=await fetchZeroD1PublicDerivedNews(f as typeof fetch,NOW);
+    expect(rows.map(x=>x.category)).toEqual(["geopolitics","macro"]);
+    expect(rows[0]).toEqual(geopolitics);
+    expect(urls).toEqual(expect.arrayContaining([
+      GEOMACRO_PERMANENT_LATEST_URL,GEOMACRO_EDGE_LATEST_URL]));
+    expect(urls.some(url=>url.includes("/v1/public/website-derived-news"))).toBe(false);
+  });
+  it("retains verified static Geopolitics if the R2 edge is unavailable or stale",async()=>{
+    const geopolitics={...signal,id:"geopolitics-1234abcd",category:"geopolitics"};
+    const f=vi.fn(async (url:RequestInfo|URL)=>
+      String(url)===GEOMACRO_PERMANENT_LATEST_URL
+      ? new Response(JSON.stringify(doc([geopolitics])),{status:200})
+      : new Response("unavailable",{status:503}));
+    expect(await fetchZeroD1PublicDerivedNews(f as typeof fetch,NOW)).toEqual([geopolitics]);
+  });
+  it("returns unavailable, never an invented geopolitical event, when both public feeds fail",async()=>{
+    const f=vi.fn(async()=>new Response("unavailable",{status:503}));
+    await expect(fetchZeroD1PublicDerivedNews(f as typeof fetch,NOW))
+      .rejects.toThrow("DERIVED_NEWS_BOTH_ZERO_D1_PUBLIC_SOURCES_UNAVAILABLE");
+  });
   it("serves original-dated derived cards from cacheable static assets without browser server-RPC dependency",async()=>{
     const f=vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       expect(init?.cache).toBeUndefined();

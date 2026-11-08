@@ -43,6 +43,7 @@ import {STEP3_MIGRATIONS,step3SqlManifests,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
+const SIGNED_PRODUCTION_PATH=ROOT+"/step3-production-physical-pass.json";
 const HOLD_FILE="config/d1-hotspot-v2-canary.hold";
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 const SHA=/^[a-f0-9]{40}$/u;
@@ -311,6 +312,15 @@ function migrateOne(privateDir,config,manifest,report,dbId,ledger){
     verified.sql_sha256!==manifest.sql_sha256)
   fail("LEDGER_FINAL_D1_READBACK_UNVERIFIED");
  ledger.set(manifest.id,verified);
+ // Pair exactly one provider schema/index/integrity receipt with a real
+ // D1 ledger row that has just been read back as VERIFIED.
+ const matched=report.verified.filter(x=>x.migration===manifest.id);
+ if(matched.length!==1)
+  fail("SCHEMA_LEDGER_PROOF_PAIR_MISSING_OR_DUPLICATE");
+ Object.assign(matched[0],{
+  id:manifest.id,migration_history_and_schema_valid:true,
+  ledger_status:"VERIFIED",ledger_sql_sha256:verified.sql_sha256
+ });
  report.ledger_stages??=[];
  report.ledger_stages.push({migration_id:manifest.id,
   status:verified.status,checksum:verified.sql_sha256,
@@ -342,6 +352,14 @@ export async function applyStep3Migrations({env=process.env}={}){
  const state=receipt(),manifests=step3SqlManifests();
  state.operation_kind="production";
  state.source_migrations=manifests.map(x=>({id:x.id,sql_sha256:x.sql_sha256}));
+ state.proof_scope="REAL_PROVIDER_PRODUCTION";
+ state.reviewed_source_sha=getHash();
+ state.migration_sha256=sha256MigrationSet(manifests);
+ state.github_repository=env.GITHUB_REPOSITORY??null;
+ state.github_ref=env.GITHUB_REF??null;
+ state.github_run_id=env.GITHUB_RUN_ID??null;
+ state.production_database_uuid_sha256=createHash("sha256").update(
+  String(env.D1_DATABASE_ID??"").toLowerCase()).digest("hex");
  if(!existsSync(HOLD_FILE))fail("RELEASE_HOLD_FILE_MISSING");
  try{
   approved(env);
@@ -420,15 +438,24 @@ export async function applyStep3Migrations({env=process.env}={}){
    final.post_migration_readback_explicit_PASS;
   state.status=final.status;
   state.code=final.code;
-  // Never remove HOLD or mark a PR as mergeable, even after PASS.
-  save(state);
+  // A JSON PASS alone cannot authorize a traffic shift.
+  // Sign the entire real-provider exact-main Stage2 provider proof.
   if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD");
+  if(!existsSync(HOLD_FILE))fail("HOLD_REMOVED_DURING_STAGE2");
+  state.hold_file_untouched=true;
+  state.completed_at=new Date().toISOString();
+  const signed=signStep3StatusReceipt(state,env.SIGNING_JWK);
+  writeFileSync(SIGNED_PRODUCTION_PATH,
+   JSON.stringify(signed,null,2)+"\n",{mode:0o600});
+  state.signed_production_pass_emitted=true;
+  save(state);
   return state;
  }catch(e){
   state.status="NOT_YET_VERIFIED";state.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
    e.message:"STEP3_PROVIDER_EXECUTION_UNVERIFIED";
   state.hold_file_untouched=existsSync(HOLD_FILE);
   state.post_migration_readback_explicit_PASS=false;
+  state.signed_production_pass_emitted=false;
   save(state);
   return state;
  }

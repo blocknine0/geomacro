@@ -193,7 +193,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-step3-production
-          path: artifacts/release/d1-step3-migration-execution.json
+          path: |
+            artifacts/release/d1-step3-migration-execution.json
+            artifacts/release/step3-production-physical-pass.json
           retention-days: 14
           if-no-files-found: warn
 

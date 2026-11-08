@@ -161,6 +161,8 @@ const approvedPricing = [
   config.approved_permanent_home_finds_removal_20261102,
   // Founder-scoped, exact blobs: R2-only Intelligence data read, no UI unlock.
   config.approved_r2_latest_json_intelligence_20261104,
+  // Exact immutable founder-authorized Geopolitics no-D1 72h publication recovery.
+  config.approved_geopolitics_zero_d1_publication_recovery_20261108,
   // Founder-directed PR #3555 canonical D1 feed, pinned to exact approved blobs.
   config.approved_p2_canonical_d1_intelligence_feed_20261104,
   // Founder-authorized SEO correction, one exact sitemap blob only.
@@ -173,8 +175,7 @@ const approvedPricing = [
   config.approved_verified_historical_indices_20261106,
   // Founder-approved Store/API price-credit parity; exact two source blobs only.
   config.approved_store_api_credit_parity_20261108,
-  // Founder-directed 8 Nov crypto-only Store: exact approved source blobs,
-  // zero funds, no general website baseline reset or global-risk unlock.
+  // Owner-approved crypto-only Store: exact immutable pinned blobs only.
   config.approved_crypto_only_store_20261108,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
