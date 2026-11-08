@@ -85,10 +85,10 @@ export async function verifyProtectedD1CanaryPreflight({
   quota?.paid_capacity_verified_by_provider===true;
  const read=quota?.observed_rows_read,write=quota?.observed_rows_written;
  const limits=quota?.owner_d1_utc_daily_targets;
- const trustedLimits=limits?.rows_read===140000&&
-  limits?.normal_rows_read===120000&&limits?.normal_rows_written===120000&&
-  limits?.rows_written===140000&&limits?.emergency_rows_read===20000&&
-  limits?.emergency_rows_written===20000&&
+ const trustedLimits=limits?.rows_read===580000000&&
+  limits?.normal_rows_read===580000000&&limits?.normal_rows_written===1100000&&
+  limits?.rows_written===1100000&&limits?.emergency_rows_read===0&&
+  limits?.emergency_rows_written===0&&
   limits?.emergency_auto_admission===false;
  const envelope=evaluateOwnerD1DailyEnvelope({
   observedRowsRead:read,observedRowsWritten:write,now,policy:OWNER_POLICY,
