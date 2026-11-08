@@ -128,4 +128,11 @@ test("workflow is read-only and does not run on pull requests with provider cred
  assert(!y.includes("wrangler deploy"));
  assert(!y.includes("GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: 'YES'"));
  assert(!y.includes("continue-on-error: true"));
+ // These expressions are GitHub-evaluated, not raw literal strings.
+ for(const key of ["github.ref","github.sha","github.run_id",
+  "secrets.CLOUDFLARE_ACCOUNT_ID","secrets.CLOUDFLARE_API_TOKEN",
+  "vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST"]){
+  assert(y.includes("$"+"{{ "+key+" }}"),"missing exact GitHub expression: "+key);
+ }
+ assert(!y.includes("$"+"{ "),"malformed GitHub expression must be rejected");
 });

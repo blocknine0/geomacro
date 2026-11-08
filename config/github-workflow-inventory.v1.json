@@ -605,7 +605,9 @@
       "branches: [main]",
       "environment: production",
       "if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'",
-      "node scripts/ops/audit-step3-shadow-provider-readonly.mjs"
+      "node scripts/ops/audit-step3-shadow-provider-readonly.mjs",
+      "ref: ${{ github.sha }}",
+      "CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}"
     ]
   },
   "predgeBlobSha1": {
