@@ -8,7 +8,8 @@ import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore}
  from "../ops/phase2h-archive-private-raw-news.mjs";
 import {readIndexedRiskCountryOriginals}
  from "../../workers/control-plane/src/phase2h-risk-country-index.mjs";
-import {phase2hPrivateRawPut,phase2hPrivateRawObjectReferenceGet}
+import {phase2hPrivateRawPut,phase2hPrivateRawObjectReferenceGet,
+ phase2hPrivateRawObjectReferencesBatchGet}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 
 const DATE=new Date("2026-11-08T07:00:00.000Z");
@@ -236,4 +237,35 @@ test("legacy Phase2H B2 compressed archive hash proof remains independent of R2 
  assert.equal(archived.record_count,1);
  // This B2 archive proof does not automatically grant commercial rights.
  assert.equal(archived.rows[0].commercial_rights_verified,false);
+});
+
+test("root-only exact batch endpoint hydrates R2 pointer and legacy rows with no paid/archive promotion",async()=>{
+ const f=fixture();
+ const one=plan()[0],two=plan()[1];
+ try{
+  assert.equal((await phase2hPrivateRawPut(f.env,body([one]),DATE.getTime())).status,200);
+  f.sqlite.prepare("INSERT INTO phase2h_private_raw_news "+
+   "(record_id,category,original_published_at,first_ingested_at,raw_sha256,raw_json) "+
+   "VALUES(?,?,?,?,?,?)").run(two.record_id,two.category,
+    two.original.original_published_at,two.ingested_at,
+    two.raw_sha256,JSON.stringify(two));
+  const r=await phase2hPrivateRawObjectReferencesBatchGet(f.env,{
+   schema:"geomacro.phase2h.private-reference-batch-read.v1",
+   record_ids:[one.record_id,two.record_id]
+  },DATE.getTime());
+  assert.equal(r.status,200);
+  const data=await r.json();
+  assert.equal(data.record_count,2);
+  assert.equal(data.paid_eligible,false);
+  assert.equal(data.commercial_rights_verified,false);
+  assert.deepEqual(data.rows.map(x=>x.record),[one,two]);
+  assert.deepEqual(data.rows.map(x=>x.storage_proof),
+   ["PRIVATE_R2_SHA256_HMAC_VERIFIED","LEGACY_D1_VALIDATED"]);
+  assert.ok(data.rows.every(x=>x.independently_archived_to_b2===false));
+  const missing=await phase2hPrivateRawObjectReferencesBatchGet(f.env,{
+   schema:"geomacro.phase2h.private-reference-batch-read.v1",
+   record_ids:[one.record_id,"f".repeat(64)]
+  },DATE.getTime());
+  assert.equal(missing.status,503);
+ }finally{f.sqlite.close()}
 });
