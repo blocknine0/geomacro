@@ -4,8 +4,8 @@ on:
     paths:
       - 'workers/control-plane/src/hot50-commercial-*.mjs'
       - 'workers/control-plane/src/customer-paid-ledger.mjs'
-      - 'workers/control-plane/migrations/0212_commercial_hot50_immutable_signed_delivery.sql'
-      - 'workers/control-plane/migrations/0213_hot50_plan_scope_d1.sql'
+      - 'workers/control-plane/migrations/0215_commercial_hot50_immutable_signed_delivery.sql'
+      - 'workers/control-plane/migrations/0216_hot50_plan_scope_d1.sql'
       - 'scripts/tests/hot50-commercial-read.test.mjs'
       - 'scripts/tests/hot50-payment-to-delivery-isolated.test.mjs'
       - 'scripts/tests/customer-paid-ledger.test.mjs'
