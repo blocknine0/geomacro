@@ -66,9 +66,15 @@ function approved(env){
     env.CLOUDFLARE_API_TOKEN.length<20||
     !SHA.test(env.GEOMACRO_STEP3_EXACT_SHA??"")||
     env.GEOMACRO_STEP3_EXACT_SHA!==getHash()||
-    !existsSync(HOLD_FILE)||
-    run("git",["status","--porcelain"]).length>0)
+    !existsSync(HOLD_FILE))
   fail("OWNER_APPROVAL_SHA_OR_HOLD_IDENTITY_UNVERIFIED");
+ // The runner writes its own offline/attempt report in artifacts/release.
+ // Ignore ONLY those receipts; any other tracked/untracked source mutation
+ // invalidates the exact-SHA migration approval.
+ const dirty=run("git",["status","--porcelain","--untracked-files=all"])
+  .split("\n").filter(Boolean).filter(s=>
+   !/^artifacts\/release\//u.test(s.slice(3)));
+ if(dirty.length)fail("SOURCE_TREE_DIRTY_EXACT_SHA_UNVERIFIED");
 }
 function runnerConfig(privateDir,dbId,migrationsDir){
  const config=join(privateDir,"wrangler-step3.jsonc");
@@ -257,10 +263,10 @@ async function verifyHmacNewPointers(config,env){
 export async function applyStep3Migrations({env=process.env}={}){
  const state=receipt(),manifests=step3SqlManifests();
  state.source_migrations=manifests.map(x=>({id:x.id,sql_sha256:x.sql_sha256}));
- save(state);
  if(!existsSync(HOLD_FILE))fail("RELEASE_HOLD_FILE_MISSING");
  try{
   approved(env);
+  save(state);
   await refreshedGate(state,"BEFORE_SHADOW_BILLABLE_WORK");
   const shadow=await runShadowBillableProbe({env});
   if(shadow.status!=="PASS_NATIVE_PROVIDER_ROWS"||
