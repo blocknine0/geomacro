@@ -96,3 +96,15 @@ test("protected workflows use shadow HMAC for Stage1 and retain production HMAC 
  assert(production.includes("PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}"));
  assert(!production.includes("PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY }}"));
 });
+
+test("Shadow Stage1 can be configuration-ready without an available production HMAC",()=>{
+ const e=good();
+ delete e.PHASE2H_R2_REFERENCE_HMAC_KEY;
+ const r=assessStage3Bindings(e);
+ assert.equal(r.stage1_status,"REAL_SHADOW_BINDINGS_READY_FOR_PROVIDER_PREFLIGHT");
+ assert.deepEqual(r.stage1_missing,[]);
+ assert.equal(r.stage2_status,"HOLD");
+ assert.equal(r.status,"HOLD");
+ assert(r.missing.some(x=>x.name==="PHASE2H_R2_REFERENCE_HMAC_KEY"));
+ assert.equal(r.provider_physical_proof,false);
+});
