@@ -39,5 +39,11 @@ describe("dual rail locked checkout contract", () => {
     expect(DUAL_RAIL_CHECKOUT_POLICY.external_checkout_enabled).toBe(false);
     expect(DUAL_RAIL_CHECKOUT_POLICY.credit_grants_enabled).toBe(false);
     expect(DUAL_RAIL_CHECKOUT_POLICY.paypal_capture_enabled).toBe(false);
+    expect(DUAL_RAIL_CHECKOUT_POLICY.paypal_new_sales_disabled).toBe(true);
+    expect(DUAL_RAIL_CHECKOUT_POLICY.fiat_and_card_new_sales_disabled).toBe(true);
+    expect(DUAL_RAIL_CHECKOUT_POLICY.new_sale_rail_scope)
+      .toBe("CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC");
+    expect(DUAL_RAIL_CHECKOUT_POLICY.new_sale_provider_scope)
+      .toEqual(["coinbase_x402","xpay_x402","dexter_x402"]);
   });
 });
