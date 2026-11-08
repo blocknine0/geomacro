@@ -58,6 +58,29 @@ if [[ ! "${STEP3_VERIFIED_SHADOW_WORKER_HOST:-}" =~ ^geomacro-step3-shadow\.[a-z
  exit 5
 fi
 set_variable_if_missing GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST "$STEP3_VERIFIED_SHADOW_WORKER_HOST"
+if [[ ! "${STEP3_VERIFIED_LEGACY_SHADOW_WORKER_HOST:-}" =~ ^geomacro-step3-shadow-legacy\.[a-z0-9-]+\.workers\.dev$ ]]; then
+ echo "Required owner input: STEP3_VERIFIED_LEGACY_SHADOW_WORKER_HOST (real, shadow D1-bound)." >&2
+ exit 8
+fi
+set_variable_if_missing GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST "$STEP3_VERIFIED_LEGACY_SHADOW_WORKER_HOST"
+if ! has_secret B2_ARCHIVE_READ_KEY_ID || ! has_secret B2_ARCHIVE_READ_APPLICATION_KEY; then
+ echo "Owner action: configure existing independent B2 archive read credentials in Actions secrets." >&2
+ exit 9
+fi
+if [[ ! "${STEP3_REVIEWED_SHA:-}" =~ ^[a-f0-9]{40}$ ]]; then
+ echo "Owner action: provide STEP3_REVIEWED_SHA, reviewed exact main commit." >&2
+ exit 10
+fi
+set_variable_if_missing GEOMACRO_STEP3_REVIEWED_SHA "$STEP3_REVIEWED_SHA"
+if ! has_secret GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK; then
+ if [[ -z "${STEP3_TRUSTED_SIGNER_PUBLIC_JWK:-}" ]]; then
+  echo "Owner action: provide Ed25519/EC public JWK corresponding to existing SIGNING_JWK." >&2
+  exit 11
+ fi
+ printf %s "$STEP3_TRUSTED_SIGNER_PUBLIC_JWK" |
+  gh secret set GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK -R "$repo" -e "$environment"
+ echo "Trusted public signer configured."
+fi
 # YES is an assertion: only set after validating private bucket existence and ACLs.
 if [[ "${STEP3_PRIVATE_R2_PHYSICALLY_VERIFIED:-NO}" != YES ]]; then
  echo "Private recovery R2 bucket PUT/GET authorization must be physically verified." >&2
