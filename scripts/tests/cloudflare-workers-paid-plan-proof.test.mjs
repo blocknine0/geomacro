@@ -129,7 +129,7 @@ test("Live planner fetches daily and full billing cycle, verifies Paid and never
   }
   throw Error("unrecognized");
  };
- const result=await checkD1BundledWork({env,now,fetchImpl});
+ const result=await checkD1BundledWork({env,now,fetchImpl,monthlyProviderClock:()=>now});
  assert.equal(graphQLCalls,2);
  assert.equal(paidCalls,2);
  assert.equal(requests,5);
