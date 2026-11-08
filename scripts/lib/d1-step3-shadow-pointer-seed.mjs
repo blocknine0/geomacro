@@ -59,7 +59,8 @@ export async function seedShadowArchivedPointer({
   "raw_sha256,raw_json,b2_object_sha256,b2_archived_at,risk_country_iso3 "+
   "FROM phase2h_private_raw_news "+
   "WHERE b2_object_sha256 IS NOT NULL AND b2_archived_at IS NOT NULL "+
-  "ORDER BY record_id ASC LIMIT 1");
+  "AND first_ingested_at >= '"+new Date(now-70*3600_000).toISOString()+"' "+
+  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 1");
  if(!Array.isArray(source)||source.length>1)fail("REAL_SOURCE_READ_INVALID");
  if(!source.length)return {status:"NOT_YET_VERIFIED",
   code:"NO_REAL_B2_ACKNOWLEDGED_SHADOW_RECORD",r2_puts:0};
