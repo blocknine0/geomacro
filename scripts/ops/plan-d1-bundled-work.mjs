@@ -12,6 +12,7 @@ import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-dai
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {readFiveUsdSpendGuard,SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
+import {checkD1PaidMonthlyHeadroom} from "../lib/d1-workers-paid-monthly-governor.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -227,7 +228,7 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
-export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,paidMonthly=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -241,14 +242,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     return held("D1_ACCOUNT_USAGE_UNVERIFIED",now);
 
 
-  // Verified Workers Paid has no Free-plan 5M read/100k write daily stop.
-  // GeoMacro keeps the owner's 140k normal UTC reads/writes, with the
-  // remaining 40k write rows (up to 180k total) reserved only for separately
-  // authorized emergency recovery. Paid monthly inclusion != daily permission.
-  // No paid subscription is created. Research, signing, unrelated public
-  // backfills and B2 upgrades are NOT granted by this special intake lane.
-  // Spend-policy verification is advisory; verified subscription and all
-  // existing owner daily budgets remain mandatory for Paid admission.
+  // Workers Paid never borrows Free's 5M/100k daily counters, nor
+  // the retired owner 140k/day target. All D1 databases share the same
+  // native provider billing-cycle counters (25B reads / 50M writes).
+  // This is NOT an atomic global reservation or permission for paid funds.
   const paid=paidProof?.schema===WORKERS_PAID_PROOF_SCHEMA&&
     paidProof.verified===true&&
     paidProof.source==="CLOUDFLARE_ACCOUNT_SUBSCRIPTIONS_BILLING_READ"&&
@@ -259,79 +256,76 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
   if(paid){
-    const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
-    const progress=Math.max(0,Math.min(1,elapsed));
-    // 5% of the normal 140k/day allowance at UTC reset, pacing the rest
-    // across 24h; there is NO additional emergency WRITE capacity.
-    const dailyReads=Math.floor(
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max*
-      (0.05+0.95*progress));
-    const dailyWrites=Math.floor(
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max*
-      (0.05+0.95*progress));
-    const admitted=snapshot.observed_rows_read+4_000<dailyReads&&
-      snapshot.observed_rows_written+2_000<dailyWrites;
-    const readRoom=Math.max(0,dailyReads-snapshot.observed_rows_read);
-    const writeRoom=Math.max(0,dailyWrites-snapshot.observed_rows_written);
-    const minutesLeft=Math.max(1,1440-(now.getUTCHours()*60+now.getUTCMinutes()));
-    // Reserve ALL existing source producers through UTC reset, not merely
-    // this caller. Paid entitlement previously granted critical=true while
-    // source_intake=false, permanently starving the actual news collector.
-    const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
-    const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
-    const futureWriteRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
-    const futureReadRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
-    // Future slots use the full-day ceiling; this slot still uses its paced
-    // allowance. Reserving tomorrow's work from today's early-hour allowance
-    // would incorrectly stop intake immediately after every UTC reset.
-    const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
-      D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
-    // The existing 3x15m + 20m read-worst-case envelope is often >140k/day.
-    // Keep source intake HELD until that workload is truly reduced and
-    // provider readback leaves enough room; never pretend one D1 call = 1 row.
-    const sourceIntake=admitted&&rowsPerSlot>=3&&
-      writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
-      readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
-      futureReadRoom>D1_BUNDLE_LANES.critical.read_reserve+slots*3200+30000;
-    const archive=sourceIntake&&writeRoom>
-      D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40+900&&
-      futureWriteRoom>D1_BUNDLE_LANES.critical.write_reserve+slots*(rowsPerSlot*16+40)+archiveReserve;
+    const monthly=paidMonthly;
+    const proof=monthly?.schema==="geomacro.d1-paid-monthly-headroom.v1"&&
+      monthly.status==="PASS"&&
+      monthly.provider_subscription_verified===true&&
+      monthly.day_utc===now.toISOString().slice(0,10)&&
+      monthly.cycle_start_utc<=monthly.day_utc&&
+      monthly.cycle_end_exclusive_utc>monthly.day_utc&&
+      monthly.old_daily_140k_policy_applied===false&&
+      monthly.observed_rows_read>=0&&monthly.observed_rows_written>=0;
+    // If Cloudflare GraphQL is delayed or the Billing Read permission is
+    // missing, the discretionary D1 work is HOLD, not 140k/free fallback.
+    if(!proof)return held("D1_PAID_MONTHLY_ACCOUNT_WIDE_METRICS_UNVERIFIED",now);
+    const r=Math.min(monthly.remaining_rows_read,
+       monthly.monthly_paced_ceiling_read-monthly.observed_rows_read);
+    const w=Math.min(monthly.remaining_rows_written,
+       monthly.monthly_paced_ceiling_written-monthly.observed_rows_written);
+    const slots=3*Math.ceil((1440-(now.getUTCHours()*60+now.getUTCMinutes()))/15)+
+      Math.ceil((1440-(now.getUTCHours()*60+now.getUTCMinutes()))/20);
+    const rowBound=Math.min(50,Math.max(0,Math.floor(
+       (w-1_000_000-slots*40-2000)/(Math.max(1,slots)*16))));
+    const admitted=r>20_000_000+slots*3200&&
+       w>1_000_000+slots*(rowBound*16+40)+2000;
+    const sourceIntake=admitted&&rowBound>=3;
+    const archive=sourceIntake&&w>1_000_000+
+       slots*(rowBound*16+40)+10_000;
     return Object.freeze({
-      schema:"geomacro.d1-free-bundled-work-admission.v1",
-      day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
-      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
-        "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
+      schema:"geomacro.d1-paid-monthly-bundled-work-admission.v1",
+      day_utc:monthly.day_utc,billing_cycle_start_utc:monthly.cycle_start_utc,
+      billing_cycle_end_exclusive_utc:monthly.cycle_end_exclusive_utc,
+      state:admitted?"CRITICAL_ONLY":"HELD",
+      reason:admitted?"PAID_MONTHLY_PROVIDER_GOVERNED_SOURCE":
+        "PAID_MONTHLY_SOURCE_RESERVE_UNAVAILABLE",
       critical:admitted,research:false,maintenance:false,
-      phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
-      source_intake:sourceIntake,governed_measurement:false,historical_recovery:false,
+      phase2h_raw_archive:archive,
       phase2h_raw_archive_max_rows_per_slot:300,
       phase2h_raw_archive_requires_atomic_b2_quota:true,
-      historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
+      source_intake:sourceIntake,
+      source_intake_interval_minutes:sourceIntake?20:null,
+      source_intake_max_new_rows:sourceIntake?rowBound:0,
       registered_private_max_new_rows:0,
-      source_intake_max_new_rows:sourceIntake?rowsPerSlot:0,snapshot_refresh:false,
+      retention_cleanup:false,retention_cleanup_max_rows:0,
+      historical_recovery:false,historical_recovery_max_rows:0,
+      governed_measurement:false,snapshot_refresh:false,
       structural_snapshot:false,
-      structural_snapshot_max_b2_network_attempts:0,
       structural_snapshot_requires_atomic_b2_account_reservation:true,
       snapshot_refresh_does_not_admit_ingestion:true,
       source_intake_does_not_admit_signing_or_audits:true,
-      observed_rows_read:snapshot.observed_rows_read,
-      observed_rows_written:snapshot.observed_rows_written,
-      // Provider-verified paid capacity is not subjected to the Free physical
-      // daily 5M cap; the existing conservative paid soft budget still applies.
+      observed_rows_read:monthly.observed_rows_read,
+      observed_rows_written:monthly.observed_rows_written,
+      provider_verified_workers_paid_monthly:true,
+      workers_paid_subscription_verified:true,
+      paid_capacity_verified_by_provider:true,
+      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
+      old_daily_140k_policy_applied:false,
+      monthly_paced_ceiling_rows_read:monthly.monthly_paced_ceiling_read,
+      monthly_paced_ceiling_rows_written:monthly.monthly_paced_ceiling_written,
+      monthly_included_read_quota:monthly.paid_included_rows_read,
+      monthly_included_write_quota:monthly.paid_included_rows_written,
+      monthly_safety_reserve_pct:monthly.reserve_pct,
+      remaining_monthly_rows_read:monthly.remaining_rows_read,
+      remaining_monthly_rows_written:monthly.remaining_rows_written,
       predge_account_headroom_guard_enabled:false,
       predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
       predge_account_headroom_is_hard_partition:false,
       predge_request_governor_is_separate_and_unchanged:true,
-      paid_capacity_verified_by_provider:true,
-      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
-      daily_account_soft_limit_read:dailyReads,
-      daily_account_soft_limit_write:dailyWrites,
       paid_subscription_change_performed:false,
       paid_billing_is_operator_controlled:true,
       d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
       budget_is_nonatomic_provider_snapshot:true,
+      cached_public_delivery_not_disabled_by_planner:true,
     });
   }
   const paced=Object.fromEntries(Object.keys(D1_BUNDLE_LANES).map(lane=>[
@@ -639,51 +633,36 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
         paidProbe=/^[A-Z0-9_]{1,100}$/.test(code)?code:"PROVIDER_PROOF_UNAVAILABLE";
       }
     }
-    // Independent owner UTC daily cap applies even when Cloudflare reports
-    // valid Paid capacity; provider inclusion is monthly, not owner approval
-    // for unlimited physical D1 rows. Buffer for non-atomic telemetry lag.
-    const ownerBudget=FIVE_USD_BUDGET.owner_d1_utc_daily_targets;
-    const ownerEnvelope=evaluateOwnerD1DailyEnvelope({
-      observedRowsRead:quota.observed_rows_read,
-      observedRowsWritten:quota.observed_rows_written,
-      now,policy:FIVE_USD_BUDGET.d1_budget_policy,
-    });
-    const ownerNormalHold=ownerEnvelope.held||quota.day_utc!==now.toISOString().slice(0,10);
-    const result=ownerNormalHold?
-      held(ownerEnvelope.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"?
-        "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
-        "GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
-      planD1BundledWork(quota,{now,paidProof,spendGuardProof});
-    // All writes, including recovery, belong to the same 140k owner target.
-    // Emergency restoration requires separate explicit authorization; this
-    // read-only receipt does NOT grant any emergency query or write.
-    const emergencyWriteRemaining=Math.max(0,
-      ownerBudget.rows_written-Math.max(
-        ownerBudget.normal_rows_written,quota.observed_rows_written));
+    // Paid admission uses only the actual 5th-to-5th billing-cycle
+    // account-wide usage; the old 140k/day owner gate is RETIRED here.
+    const monthly=paidSubscriptionVerified?
+      await checkD1PaidMonthlyHeadroom({env:billingEnv,fetchImpl,now,lane:"hot50_source"}):null;
+    const paidAdmitted=monthly?.status==="PASS";
+    const result=paidSubscriptionVerified?
+      planD1BundledWork(quota,{now,paidProof,paidMonthly:monthly}):
+      planD1BundledWork(quota,{now});
     return {...result,
       paid_capacity_probe_status:paidProbe,
       spend_policy_verification_enforced:SPEND_POLICY_VERIFICATION_ENFORCED,
-      spend_policy_verification_status:spendGuardProof?.verified===true?"VERIFIED":"UNVERIFIED_ADVISORY",
+      spend_policy_verification_status:
+       spendGuardProof?.verified===true?"VERIFIED":"UNVERIFIED_ADVISORY",
       spend_policy_verified:spendGuardProof?.verified===true,
       workers_paid_subscription_verified:paidSubscriptionVerified,
-      owner_d1_utc_daily_targets:ownerBudget,
-      owner_d1_normal_envelope:ownerEnvelope,
-      owner_d1_utc_budget_held:ownerNormalHold,
-      owner_d1_regular_lane_held:ownerNormalHold,
-      emergency_d1_write_rows_remaining:emergencyWriteRemaining,
+      paid_monthly_account_wide_verified:paidAdmitted,
+      monthly_owner_headroom:monthly,
+      owner_d1_utc_budget_held:false,
+      owner_d1_regular_lane_held:false,
+      owner_d1_utc_daily_targets:null,
+      owner_d1_normal_envelope:null,
       emergency_d1_write_budget_auto_admitted:false,
       cached_public_delivery_not_disabled_by_planner:true,
-      observed_rows_read:quota.observed_rows_read,
-      observed_rows_written:quota.observed_rows_written,
-      // Free-plan remaining counters are retained only for legacy offline
-      // diagnostics. They are never Paid-plan physical capacity.
-      remaining_rows_read:quota.remaining_rows_read,
-      remaining_rows_written:quota.remaining_rows_written,
+      observed_rows_read:paidAdmitted?monthly.observed_rows_read:quota.observed_rows_read,
+      observed_rows_written:paidAdmitted?monthly.observed_rows_written:quota.observed_rows_written,
+      remaining_rows_read:paidAdmitted?monthly.remaining_rows_read:quota.remaining_rows_read,
+      remaining_rows_written:paidAdmitted?monthly.remaining_rows_written:quota.remaining_rows_written,
       free_plan_remaining_counters_not_workers_paid_limits:paidSubscriptionVerified,
-      owner_d1_headroom_rows_read:Math.max(0,
-        ownerBudget.rows_read-quota.observed_rows_read),
-      owner_d1_headroom_rows_written:Math.max(0,
-        ownerBudget.rows_written-quota.observed_rows_written)};
+      old_daily_140k_policy_applied:false};
+
   }catch{
     return held("D1_ACCOUNT_QUOTA_PROBE_FAILED",now);
   }
