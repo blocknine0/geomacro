@@ -169,17 +169,31 @@ export async function publishPhase2hReferenceBatch(env,validated,now=Date.now())
   fail("D1_BEFORE_READ_INVALID");
  const legacyById=new Map(legacy.results.map(x=>[x.record_id,x]));
  const existingById=new Map(old.results.map(x=>[x.record_id,x]));
+ // A duplicate success MUST also prove that its prior R2 object still
+ // exists and matches the exact immutable submitted bytes. A signed D1
+ // pointer alone cannot certify external storage availability.
+ const verifiedBundles=new Map();
  for(const [id,entry] of byId){
   const l=legacyById.get(id),o=existingById.get(id);
   if(l&&o||l&&l.raw_sha256!==entry.record.raw_sha256||
      o&&o.raw_sha256!==entry.record.raw_sha256)fail("CANONICAL_ID_CONFLICT");
-  if(o)await assertPointer(env,o);
+  if(o){
+   let stored=verifiedBundles.get(o.object_key);
+   if(!stored){
+    stored=await readVerifiedBundle(env,o);
+    verifiedBundles.set(o.object_key,stored);
+   }else await assertPointer(env,o);
+   if(stored[o.bundle_index]!==entry.raw||
+      await phase2hSha256(entry.raw)!==o.record_sha256)
+    fail("DUPLICATE_R2_ORIGINAL_DIVERGED");
+  }
  }
  const news=[...byId.values()].filter(x=>!legacyById.has(x.record.record_id)&&
    !existingById.has(x.record.record_id))
   .sort((a,b)=>a.record.record_id.localeCompare(b.record.record_id));
  if(!news.length)return {new_records:0,previous_records:ids.length,
-  r2_puts:0,r2_gets:0,record_ids:ids};
+  r2_puts:0,r2_gets:verifiedBundles.size,record_ids:ids,
+  authenticated_reference_readback:true};
  const bundle=JSON.stringify({schema:SCHEMA,records:news.map(x=>x.raw)});
  const bytes=TEXT.encode(bundle),objectSHA=await phase2hSha256(bytes);
  if(bytes.byteLength>MAX_BUNDLE_BYTES)fail("BUNDLE_TOO_LARGE");
@@ -234,7 +248,7 @@ export async function publishPhase2hReferenceBatch(env,validated,now=Date.now())
   await assertPointer(env,row);
  }
  return {new_records:news.length,previous_records:ids.length-news.length,
-  r2_puts:1,r2_gets:1,record_ids:ids,
+  r2_puts:1,r2_gets:1+verifiedBundles.size,record_ids:ids,
   d1_rows_written: Number.isSafeInteger(write?.meta?.rows_written)?
    write.meta.rows_written:null,
   d1_rows_read:Number.isSafeInteger(write?.meta?.rows_read)?
