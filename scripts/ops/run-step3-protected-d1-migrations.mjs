@@ -28,6 +28,8 @@ import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
  from "../lib/d1-step3-shadow-pointer-seed.mjs";
+import {shadowArchivedSourceQuery,verifyRealShadowB2Parity,
+ verifyRealShadowDualWorkers} from "../lib/d1-step3-real-shadow-proofs.mjs";
 import {
  createStep3LedgerSQL,readStep3LedgerSQL,
  verifyStep3LedgerRows,step3LedgerStartSQL,
@@ -514,19 +516,52 @@ export async function rehearseStep3Shadow({env=process.env}={}){
      "PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY")
    fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED");
   write();
-  // Dedicated shadow hostname only. Never use api.geomacro.live as a
-  // surrogate proof for an isolated shadow-bound D1 Worker.
+  // Independent B2 GET: actual compressed original, not the R2 staging copy.
+  const originals=q(config,shadowArchivedSourceQuery(),{maxRows:1}).rows;
+  if(originals.length!==1||
+     createHash("sha256").update(originals[0].record_id).digest("hex")!==
+       report.real_archived_pointer_seed.original_record_id_sha256)
+   fail("SHADOW_B2_ACKNOWLEDGED_ORIGINAL_MISMATCH");
+  await refreshedGate(report,"SHADOW_BEFORE_INDEPENDENT_B2_READBACK");
+  report.b2_archive_proof=await verifyRealShadowB2Parity({
+   env,source:originals[0]
+  });
+  report.b2_physical_parity_verified=
+   report.b2_archive_proof.status==="PASS_REAL_B2_BYTE_READBACK";
+  if(!report.b2_physical_parity_verified)
+   fail("SHADOW_B2_PHYSICAL_READBACK_FAILED");
+  // Two distinct ACTUALLY DEPLOYED scripts, both proven by Cloudflare
+  // settings API to bind the same shadow UUID; check the old Worker after
+  // expand-only DDL, then the current reference-hydration Worker.
+  await refreshedGate(report,"SHADOW_BEFORE_DUAL_WORKER_PROVIDER_CHECK");
+  report.dual_worker_proof=await verifyRealShadowDualWorkers({
+   env,source:originals[0]
+  });
+  report.legacy_worker_rollback_verified=
+   report.dual_worker_proof.legacy_worker_rollback_verified===true;
+  report.new_worker_hydration_verified=
+   report.dual_worker_proof.new_worker_hydration_verified===true;
   const shadowHost=env.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST;
-  if(typeof shadowHost!=="string"||
-     !/^geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev$/u.test(shadowHost))
-   fail("SHADOW_WORKER_BOUND_ORIGIN_UNVERIFIED");
-  report.post_migration_hmac=await verifyHmacNewPointers(config,{
+  const pointerProof=await verifyHmacNewPointers(config,{
    ...env,GEOMACRO_STEP3_VERIFIED_WORKER_HOST:shadowHost
   });
-  // An HTTP response from the production Worker cannot prove that the
-  // shadow Worker bound to this D1 can survive rolling back. Do not forge.
-  report.code="STEP3_SHADOW_DUAL_WORKER_ROLLBACK_AND_B2_NOT_YET_VERIFIED";
-  report.status="NOT_YET_VERIFIED";
+  report.post_migration_hmac={...pointerProof,
+   b2_physical_parity:report.b2_archive_proof.status};
+  report.post_migration_readback_explicit_PASS=
+   report.verified.length===4&&
+   report.migrations_0204_0211_0212_0213_provider_verified===true&&
+   report.recovery_checkpoint_verified===true&&
+   report.migration_ledger_verified===true&&
+   report.legacy_worker_rollback_verified===true&&
+   report.new_worker_hydration_verified===true&&
+   report.b2_physical_parity_verified===true&&
+   report.post_migration_hmac.cryptographic_readback_verified===true&&
+   report.post_migration_hmac.all_hmac_and_r2_bytes_verified===true;
+  report.status=report.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
+  report.code=report.status==="PASS"?
+   "STEP3_REAL_SHADOW_FOUR_MIGRATIONS_DUAL_WORKER_B2_PASS":
+   "STEP3_SHADOW_PHYSICAL_ACCEPTANCE_INCOMPLETE";
+  report.no_real_provider_rehearsal_claimed=report.status!=="PASS";
  }catch(e){
   report.status="NOT_YET_VERIFIED";
   report.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
@@ -534,7 +569,9 @@ export async function rehearseStep3Shadow({env=process.env}={}){
  }finally{
   report.hold_file_untouched=existsSync(HOLD_FILE);
   report.production_sql_mutated=false;
-  report.post_migration_readback_explicit_PASS=false;
+  report.post_migration_readback_explicit_PASS=
+   report.status==="PASS"&&
+   report.post_migration_readback_explicit_PASS===true;
   write();
  }
  return report;
