@@ -100,6 +100,42 @@ function signedRiskSnapshot(now){
  return {payload,bytes,signature:sign(null,Buffer.from(bytes),signKey.privateKey).toString('base64'),
    hash:SHA(bytes)};
 }
+test('LOCAL_SIMULATION_ONLY: webhook-first PayPal funding has one immutable plaintext-only-once key handoff',async()=>{
+ const {sql,db}=createTestDb();
+ try{
+  const at=new Date().toISOString();
+  sql.prepare('INSERT INTO users(id,email,email_verified_at) VALUES(?,?,?)')
+   .run(userId,'webhook-first@example.invalid',at);
+  const intent=await prepareCustomerPayPalCheckoutIntent(db,userId,'pro_analyst');
+  await bindCustomerPayPalProviderOrder(db,userId,intent.intentId,order);
+  const syntheticProof=signedPaymentProof(intent.intentId,at);
+  const funded=await fundCanonicalCustomerFromVerifiedPayPal(db,settlementEnv,
+   {userId,...syntheticProof});
+  assert.equal(funded.idempotent_replay,false);
+  // Provider webhook wins race; buyer return observes canonical replay.
+  const replay=await fundCanonicalCustomerFromVerifiedPayPal(db,settlementEnv,
+   {userId,...syntheticProof});
+  assert.equal(replay.idempotent_replay,true);
+  const first=await mintCanonicalHot50ApiKey(db,riskEnv,userId,at,funded.receiptId);
+  assert.match(first.api_key,/^gm_live_[a-f0-9]{32}$/);
+  assert.equal(first.idempotent_replay,false);
+  const again=await mintCanonicalHot50ApiKey(db,riskEnv,userId,at,funded.receiptId);
+  assert.equal(again.api_key,null);
+  assert.equal(again.idempotent_replay,true);
+  assert.equal(again.key_id,first.key_id);
+  assert.equal(again.key_issuance_status,'ALREADY_ISSUED');
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM commercial_hot50_checkout_key_handoffs').get().n,1);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM api_keys').get().n,1);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM tenant_api_keys_v1').get().n,1);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM customer_payment_receipts').get().n,1);
+  assert.equal(sql.prepare('SELECT COUNT(*) n FROM credit_ledger').get().n,1);
+  assert.throws(()=>sql.prepare('UPDATE commercial_hot50_checkout_key_handoffs SET key_id=?')
+   .run('attacker-key'),/IMMUTABLE_HOT50_CHECKOUT_HANDOFF/);
+  await assert.rejects(mintCanonicalHot50ApiKey(db,riskEnv,userId,at,'r_paypal_OTHERCAPTURE123'),
+   /CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED/);
+ }finally{sql.close();}
+});
+
 test('LOCAL_SIMULATION_ONLY: $29 plan -> 5000 credits -> gm_live key -> signed 150-cell 200 -> idempotent 15-credit debit -> exhausted 402',async()=>{
  const {sql,db}=createTestDb();
  try {
