@@ -1,0 +1,78 @@
+name: Hot50 Commercial Provider Read-only Preflight
+on:
+  workflow_dispatch:
+    inputs:
+      db_target:
+        description: "Cloudflare D1 target; READ-ONLY, never apply migration"
+        required: true
+        type: choice
+        options: [shadow, production]
+        default: shadow
+      schema_phase:
+        description: "base = canonical + Step3 0213; full = after commercial 0215/0216"
+        required: true
+        type: choice
+        options: [base, full]
+        default: base
+permissions:
+  contents: read
+concurrency:
+  group: hot50-commercial-provider-readonly
+  cancel-in-progress: false
+jobs:
+  paypal-live-config-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify live PayPal merchant API and webhook registration (NO FUNDS)
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          PAYPAL_WEBHOOK_ID: ${{ secrets.PAYPAL_WEBHOOK_ID }}
+          GEOMACRO_PAYPAL_CLIENT_ID: ${{ secrets.GEOMACRO_PAYPAL_CLIENT_ID }}
+          GEOMACRO_PAYPAL_CLIENT_SECRET: ${{ secrets.GEOMACRO_PAYPAL_CLIENT_SECRET }}
+          GEOMACRO_PAYPAL_WEBHOOK_ID: ${{ secrets.GEOMACRO_PAYPAL_WEBHOOK_ID }}
+          GEOMACRO_PAYPAL_ENVIRONMENT: live
+        run: node scripts/ops/check-paypal-live-webhook.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paypal-live-readonly-configuration
+          path: artifacts/release/paypal-live-webhook-readonly-receipt.json
+          if-no-files-found: warn
+          retention-days: 7
+  cloudflare-d1-schema-only:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Read exact provider D1 canonical/Step3 and commercial schema
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+          GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+          GEOMACRO_COMMERCIAL_READBACK_TARGET: ${{ inputs.db_target }}
+          GEOMACRO_COMMERCIAL_READBACK_PHASE: ${{ inputs.schema_phase }}
+          GEOMACRO_COMMERCIAL_READBACK_APPROVED: READ_ONLY_SCHEMA_PROOF
+        run: node scripts/ops/readback-commercial-d1-schema.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d1-${{ inputs.db_target }}-${{ inputs.schema_phase }}-readonly-schema
+          path: artifacts/release/commercial-d1-*-readback.json
+          if-no-files-found: warn
+          retention-days: 7
