@@ -58,7 +58,7 @@ export function buildShadowBootstrapManifest({read=readFileSync}={}){
       name!=="0208_phase2h_atomic_archive_census.sql")||
      (/\bALTER\s+TABLE\b/iu.test(sql)&&
       !["0111_phase2h_risk_country_materialization.sql",
-        "0116_p0b_microbatch_spool.sql"].includes(name))
+        "0116_p0b_microbatch_spool.sql"].includes(name)))
    fail("MIGRATION_SOURCE_UNREVIEWED_OR_DESTRUCTIVE");
   return Object.freeze({name,sequence:i+1,sql_sha256:hash(sql),
    size_bytes:Buffer.byteLength(sql)});
