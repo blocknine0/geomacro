@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-08T10:26:26.815Z",
+  "checked_at": "2026-11-08T17:00:28.998Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 15,
+  "item_count": 6,
   "counts": {
-    "geopolitics": 2,
-    "macro": 3,
-    "rare_earth": 10
+    "geopolitics": 1,
+    "macro": 1,
+    "rare_earth": 4
   },
-  "source_native_ids_sha256": "f1a16ab5a6fb921ae028804cce6920438c37ab02e79c7c843a0ab547a2ac9666",
+  "source_native_ids_sha256": "753e84f32655d0d73fa9b54a544e5a6619ad3647555c3ac2d0ed543981a8c0bf",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -138,175 +138,6 @@
         "United Nations"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-c2bfefb4",
-      "category": "macro",
-      "title": "Geomacro finds Bawumia urged government to prioritise gold reserves over trading - MyJoyOnline",
-      "what_changed": "A monitored source feed reports: Bawumia urged government to prioritise gold reserves over trading - MyJoyOnline. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T16:37:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-dcd8ebf3",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Continued violations of Abyei’s demilitarised status are unacceptable · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Continued violations of Abyei’s demilitarised status are unacceptable. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-05T16:11:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-df100b2c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Benchmark launched consultation on increasing publishing frequency of synthetic and natural graphite price grades to every two weeks - Benchmark Mineral Intelligence",
-      "what_changed": "A monitored source feed reports: Benchmark launched consultation on increasing publishing frequency of synthetic and natural graphite price grades to every two weeks - Benchmark Mineral Intelligence. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T15:32:48.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-d2cadc5b",
-      "category": "rare_earth",
-      "title": "Geomacro finds Lundin cut copper outlook again as wild Chile weather bites - Mining.com",
-      "what_changed": "A monitored source feed reports: Lundin cut copper outlook again as wild Chile weather bites - Mining.com. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T15:30:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-d14948c0",
-      "category": "rare_earth",
-      "title": "Geomacro finds Copper held Near $14,000 as US Import Pullback Meets Supply Tightness - kalkine.ca",
-      "what_changed": "A monitored source feed reports: Copper held Near $14,000 as US Import Pullback Meets Supply Tightness - kalkine.ca. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T14:31:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-070b065d",
-      "category": "macro",
-      "title": "Geomacro finds Caledonia signed $150m financing for Bilboes Gold Project",
-      "what_changed": "A monitored source feed reports: Caledonia signed $150m financing for Bilboes Gold Project. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T13:09:19.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-ea57e49f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Viridis signed binding rare earths supply contract with Solvay",
-      "what_changed": "A monitored source feed reports: Viridis signed binding rare earths supply contract with Solvay. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T13:09:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-7be2e943",
-      "category": "rare_earth",
-      "title": "Geomacro finds Ministry of Mines: launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform · India",
-      "why_it_matters": "Government actions on critical minerals may alter supply-chain diversification and strategic access; this is not a verified disruption or price forecast.",
-      "what_changed": "Ministry of Mines launched the Ninth Tranche of Critical Mineral Block Auction and the Third Tranche of Exploration Licence Auction; Unveils Landmark Reform. Country or region mentioned: India.",
-      "geography": "India",
-      "development_type": "approval",
-      "topic": "critical-minerals policy",
-      "published_at": "2026-11-05T11:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-956ca29b",
-      "category": "rare_earth",
-      "title": "Geomacro finds Cabinet approved scheme to promote processing of critical minerals - Manorama Yearbook",
-      "what_changed": "A monitored source feed reports: Cabinet approved scheme to promote processing of critical minerals - Manorama Yearbook. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T11:04:01.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
