@@ -155,6 +155,11 @@ jobs:
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
       GEOMACRO_STEP3_VERIFIED_WORKER_HOST: "api.geomacro.live"
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_production_verify"
+      B2_REQUEST_BUDGET: "12"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
