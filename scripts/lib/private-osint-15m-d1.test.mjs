@@ -42,12 +42,21 @@ function fakeD1(){
     },
     async all(){
      if(sql.includes("WHERE item_id IN ("))return {results:params.map(id=>items.get(id)).filter(Boolean)};
-     if(sql.includes("SELECT projection_json,first_seen_at,last_seen_at")){
+     if(sql.includes("FROM private_osint_news_25h INDEXED BY")){
       let rows=[...items.values()].filter(x=>x.native_feed_published_at>=params[0]);
-      if(sql.includes("category=?")) rows=rows.filter(x=>x.category===params[1]);
-      if(sql.includes("country_iso3=?"))rows=rows.filter(x=>x.country_iso3===params[sql.includes("category=?")?2:1]);
-      rows.sort((a,b)=>b.native_feed_published_at.localeCompare(a.native_feed_published_at));
-      return {results:rows.slice(Number(params.at(-1)),Number(params.at(-1))+101)};
+      let k=1;
+      if(sql.includes("category=?"))rows=rows.filter(x=>x.category===params[k++]);
+      if(sql.includes("country_iso3=?"))rows=rows.filter(x=>x.country_iso3===params[k++]);
+      const snapshot=params[k++];
+      rows=rows.filter(x=>x.first_seen_at<=snapshot);
+      if(sql.includes("native_feed_published_at<?")){
+       const native=params[k],id=params[k+2];
+       rows=rows.filter(x=>x.native_feed_published_at<native||
+         x.native_feed_published_at===native&&x.item_id<id);
+      }
+      rows.sort((a,b)=>b.native_feed_published_at.localeCompare(a.native_feed_published_at)||
+        b.item_id.localeCompare(a.item_id));
+      return {results:rows.slice(0,101)};
      }return {results:[]};
     }};
    return stmt;
@@ -353,4 +362,39 @@ test("real SQLite bundled mixed new/existing items preserve first-seen and exact
   ).get(i.id.slice(5)));
   assert.ok(newer.every(x=>x.first_seen_at===t2));
  }finally{db.close()}
+});
+
+test("private OSINT reader uses stable keyset pages without OFFSET and rejects cursor scope reuse",async()=>{
+ const {env,items}=fakeD1();
+ const seen=new Set();
+ for(let i=0;i<105;i++){
+  const source=item({id:"news-"+hash("keyset-"+i)});
+  const id=source.id.slice(5);
+  items.set(id,{item_id:id,category:"macro",country_iso3:"IND",
+   native_feed_published_at:at,projection_json:JSON.stringify(source),
+   first_seen_at:new Date(now).toISOString(),last_seen_at:new Date(now).toISOString()});
+ }
+ const query=new URLSearchParams("category=macro&country=IND");
+ const first=await privateOsint15mRead(env,query,now);
+ assert.equal(first.status,200);
+ const a=await first.json();
+ assert.equal(a.pagination,"keyset");
+ assert.equal(a.items.length,100);
+ assert.equal(a.has_more,true);
+ assert.ok(a.next_cursor);
+ a.items.forEach(x=>seen.add(x.id));
+ const second=await privateOsint15mRead(env,new URLSearchParams({
+  category:"macro",country:"IND",cursor:a.next_cursor,
+ }),now);
+ const b=await second.json();
+ assert.equal(second.status,200);
+ assert.equal(b.items.length,5);
+ b.items.forEach(x=>seen.add(x.id));
+ assert.equal(seen.size,105);
+ assert.equal(b.has_more,false);
+ assert.equal(b.next_cursor,null);
+ assert.equal((await privateOsint15mRead(env,
+  new URLSearchParams({category:"geopolitics",country:"IND",cursor:a.next_cursor}),now)).status,400);
+ assert.equal((await privateOsint15mRead(env,
+  new URLSearchParams("category=macro&offset=100"),now)).status,400);
 });
