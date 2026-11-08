@@ -1,5 +1,5 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
-import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,CustomerPaidError} from './customer-paid-ledger.mjs';
+import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,mintCanonicalHot50ApiKey,CustomerPaidError} from './customer-paid-ledger.mjs';
 import {assertCustomerPayPalCheckoutReady,prepareCustomerPayPalCheckoutIntent,bindCustomerPayPalProviderOrder,readCustomerPayPalCheckoutIntent,claimCustomerPayPalCapture,fundCanonicalCustomerFromVerifiedPayPal,CustomerFundingError} from './customer-paypal-funding.mjs';
 
 export const CUSTOMER_KEY_GATE='CUSTOMER_PAID_RUNTIME_NOT_ACCEPTED';
@@ -50,7 +50,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -185,6 +185,17 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    }catch(error){
     if(error instanceof CustomerPaidError)fail(error.status,error.code);
     throw error;
+   }
+  }
+  if(action==='hot50-key-create'){
+   if(Object.keys(body).some(k=>k!=='session_token'))
+     fail(400,'CUSTOMER_HOT50_KEY_CREATE_FIELDS_INVALID');
+   try {
+     const minted=await mintCanonicalHot50ApiKey(db,env,user.id,at);
+     return reply({ok:true,...minted});
+   }catch(error){
+     if(error instanceof CustomerPaidError)fail(error.status,error.code);
+     throw error;
    }
   }
   if(action==='key-revoke'){
