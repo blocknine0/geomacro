@@ -258,9 +258,10 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
    if(country){where.push("country_iso3=?");args.push(country)}
    where.push("first_seen_at<=?");args.push(snapshot);
    if(cursor){
-    where.push("(native_feed_published_at<? OR "+
-      "(native_feed_published_at=? AND item_id<?))");
-    args.push(cursor.native,cursor.native,cursor.item_id);
+    // Tuple comparison lets SQLite seek directly into the ordered
+    // (native_feed_published_at DESC,item_id DESC) composite index.
+    where.push("(native_feed_published_at,item_id)<(?,?)");
+    args.push(cursor.native,cursor.item_id);
    }
    // Country+category is the 0204 composite ordered index. Country-only
    // enumeration is covered by 0212's country/time index. Where the v2
