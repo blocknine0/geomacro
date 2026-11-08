@@ -50,7 +50,7 @@ function viewOf(path){
  const category=/^\/v1\/risk\/category\/(geopolitics|macro_financial|trade_minerals_supplychain)$/.exec(path);
  return category?'category:'+category[1]:null;
 }
-function validRating(r){
+function validRating(r,category){
  return r&&typeof r==='object'&&!Array.isArray(r)&&
   Number.isFinite(r.score)&&r.score>=0&&r.score<=100&&
   Number.isFinite(r.confidence_low)&&Number.isFinite(r.confidence_high)&&
@@ -58,11 +58,13 @@ function validRating(r){
   Number.isFinite(r.confidence)&&r.confidence>=0&&r.confidence<=1&&
   Number.isSafeInteger(r.qualified_evidence_count)&&r.qualified_evidence_count>=1&&
   typeof r.b2_evidence_pointer==='string'&&/^b2:\/\/[a-z0-9_-]+\/[A-Za-z0-9_./-]{1,400}$/.test(r.b2_evidence_pointer)&&
-  SHA_RE.test(r.b2_evidence_sha256);
+  SHA_RE.test(r.b2_evidence_sha256)&&
+  (category!=='trade_minerals_supplychain'||
+    JSON.stringify(r.verified_subdomains)===JSON.stringify(['trade','critical_minerals','supply_chain']));
 }
 function validCountry(item){
  return item&&HOT50_SET.has(item.iso3)&&item.ratings&&
-  HOT50_CATEGORIES.every(c=>validRating(item.ratings[c]))&&
+  HOT50_CATEGORIES.every(c=>validRating(item.ratings[c],c))&&
   Object.keys(item.ratings).length===3&&
   Number.isFinite(item.composite_score)&&
   Math.abs(item.composite_score-Math.round(
@@ -82,7 +84,7 @@ function validDocuments(payload,key){
      x.scores[c]>=0&&x.scores[c]<=100));
  }
  const category=key.slice(9);
- return countries.length===50&&countries.every(x=>validRating(x.ratings?.[category]))&&
+ return countries.length===50&&countries.every(x=>validRating(x.ratings?.[category],category))&&
   countries.every((x,i)=>Object.keys(x.ratings).length===1&&x.rank===i+1&&
     (i===0||countries[i-1].ratings[category].score>x.ratings[category].score||
       (countries[i-1].ratings[category].score===x.ratings[category].score&&
