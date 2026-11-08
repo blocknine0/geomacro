@@ -173,7 +173,13 @@ test('RSS unqualified -> bounded recovery -> signed review -> R2 byte readback -
  assert.equal(initial.headers.get('X-GeoMacro-Credits-Charged'),'1');
  const replay=await deliverVerifiedEvidence(env,{apiKey:key.api_key,itemId:item.id});
  assert.equal(replay.headers.get('X-GeoMacro-Credits-Charged'),'0');
- assert.equal(await initial.text(),await replay.text());
+ const keyRotated=await mintCanonicalCustomerPaidKey(db,env,id);
+ const rotated=await deliverVerifiedEvidence(env,{apiKey:keyRotated.api_key,itemId:item.id});
+ assert.equal(rotated.headers.get('X-GeoMacro-Credits-Charged'),'0');
+ assert.equal(rotated.headers.get('X-GeoMacro-Idempotent-Replay'),'true');
+ const bodyInitial=await initial.text();
+ assert.equal(bodyInitial,await replay.text());
+ assert.equal(bodyInitial,await rotated.text());
  assert.equal(sql.prepare("SELECT COUNT(*) n FROM credit_ledger WHERE event_type='debit'").get().n,1);
  assert.equal(sql.prepare('SELECT COUNT(*) n FROM eqe_delivery_receipts').get().n,1);
  assert.equal(sql.prepare('SELECT SUM(delta_credits) n FROM credit_ledger').get().n,2);
