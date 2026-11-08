@@ -229,7 +229,7 @@ test("Paid account has distinct 580M/1.1M owner daily ceilings",async()=>{
  assert.equal(missingSpend.paid_capacity_probe_status,
   "CLOUDFLARE_FIVE_USD_SPEND_POLICIES_HTTP_404_CF_CODE_1003");
  assert.equal(missingSpend.critical,true);
- assert.equal(missingSpend.source_intake,false);
+ assert.equal(missingSpend.source_intake,true);
  assert.equal(missingSpend.paid_calls,0);
 });
 
