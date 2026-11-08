@@ -1,0 +1,58 @@
+name: GeoMacro Workers Paid 30 Percent Quota and Predge Continuity Contract
+
+on:
+  pull_request:
+    paths:
+      - "scripts/lib/cloudflare-quota-governor.mjs"
+      - "scripts/lib/d1-workers-paid-monthly-governor.mjs"
+      - "scripts/lib/d1-owner-daily-envelope.mjs"
+      - "scripts/tests/cloudflare-quota-governor.test.mjs"
+      - "scripts/verify-d1-quota-proof.ts"
+      - "src/middleware/quotaCircuitBreaker.ts"
+      - "scripts/canary-promoter.ts"
+      - "config/d1-workers-paid-monthly-policy.v1.json"
+      - "config/geomacro-cloudflare-five-usd-budget.json"
+      - ".github/workflows/paid-quota-30pct-predge-contract.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Syntax verification (no provider calls or funds)
+        run: |
+          node --check scripts/lib/cloudflare-quota-governor.mjs
+          node --check scripts/lib/d1-workers-paid-monthly-governor.mjs
+          node --check scripts/lib/d1-owner-daily-envelope.mjs
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/canary-promoter.ts
+      - name: Six-resource quota admission unit tests
+        run: node --test scripts/tests/cloudflare-quota-governor.test.mjs
+      - name: Existing Predge non-commercial 72h and 500-request continuity lock
+        run: node scripts/ops/verify-predge-continuity-lock.mjs
+      - name: Confirm production HOLD and non-commercial partner feed remain protected
+        run: |
+          test -f config/d1-hotspot-v2-canary.hold
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const source=readFileSync('workers/control-plane/src/predge-research-derived-news.mjs','utf8');
+          const policy=JSON.parse(readFileSync('config/predge-research-continuity-lock.v1.json','utf8'));
+          if (!source.includes('2027-01-17T00:00:00.000Z') ||
+              !source.includes('const PREDGE_DAY_CAP=500') ||
+              policy.commercial_resale_authorized!==false ||
+              policy.retention_hours!==72 ||
+              policy.daily_utc_request_hard_cap!==500 ||
+              policy.source_attribution_required!==true) {
+            throw Error('PREDGE_EXISTING_RESEARCH_CONTRACT_REGRESSION');
+          }
+          NODE
