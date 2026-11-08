@@ -44,7 +44,7 @@ import {getAutomatedInputs,putAutomatedInputs} from './automated-intelligence-in
 import {getInternalNewsScores,putInternalNewsScores} from './internal-signed-news-scores.ts';
 import {handleLowSourceReviews} from './low-source-reviews.ts';
 import {handlePrivateSourceHandoffs} from './private-source-handoffs.ts';
-import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2} from "./phase2h-private-raw-news.mjs";
+import {phase2hPrivateRawPut,phase2hPrivateRawGet,phase2hPrivateRawMarkArchived,phase2hPrivateRawArchiveExportV2,phase2hPrivateRawObjectReferenceGet} from "./phase2h-private-raw-news.mjs";
 import {backfillRiskCountryIndex} from "./phase2h-risk-country-index.mjs";
 import {groEvidenceTick,groEvidenceBackfill,groEvidenceStatus,pruneExpiredGroEvidence} from "./gro-evidence-enrichment.mjs";
 import {riskGapEnrichmentTick} from "./risk-gap-enrichment.mjs";
@@ -2037,6 +2037,11 @@ export default {
       if(request.method==="GET"&&
          url.pathname==="/v1/internal/phase2h-raw-archive-export-v2")
         return phase2hPrivateRawArchiveExportV2(env,url.searchParams);
+      // Admin-authenticated exact-ID proof of one private R2 pointer or a
+      // not-yet-migrated legacy D1 row. Never publicly addressable.
+      if(request.method==="GET"&&
+         url.pathname==="/v1/internal/phase2h-raw-object-ref")
+        return phase2hPrivateRawObjectReferenceGet(env,url.searchParams);
       if(url.pathname==="/v1/internal/phase2h-raw-news"){
         if(request.method==="GET")return phase2hPrivateRawGet(env,url.searchParams);
         if(request.method==="PUT"&&!url.search){
