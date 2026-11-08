@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {decideStep2WebsiteReconcile} from "../ops/step2-website-reconcile-dedup.mjs";
+import {evaluateStep2Headroom} from "../ops/step2-d1-headroom-telemetry.mjs";
 import {groEvidenceBackfill} from "../../workers/control-plane/src/gro-evidence-enrichment.mjs";
 const NOW=Date.parse("2026-11-08T12:00:00.000Z");
 const env={GITHUB_EVENT_NAME:"schedule",GITHUB_REPOSITORY:"blocknine0/geomacro",
@@ -108,4 +109,20 @@ test("0214 opt-in historical GRO backfill completes once, retains B2 enqueue ind
   assert.equal(sourceReads,1,"completed backfill cannot re-enumerate a growing raw table");
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM gro_evidence_jobs").get().n,1);
  }finally{db.close()}
+});
+
+test("60k owner headroom uses only provider GraphQL receipt and never certifies intraday acceptance",()=>{
+ const make=(rr,rw)=>({observed_at_utc:"2026-11-08T12:00:00.000Z",
+  provider:{verified:true,day_utc:"2026-11-08",
+   rows_read:rr,rows_written:rw}});
+ const s=evaluateStep2Headroom(make(59000,59999),{now:new Date(NOW)});
+ assert.equal(s.state,"INTRADAY_SAMPLE_ONLY_FULL_DAY_NOT_PROVEN");
+ assert.equal(s.remaining_to_target_rows_read,1000);
+ assert.equal(s.remaining_to_target_rows_written,1);
+ assert.equal(s.provider_queries_by_this_telemetry,0);
+ assert.equal(s.daily_60k_acceptance_verified,false);
+ assert.equal(evaluateStep2Headroom(make(60000,100),{now:new Date(NOW)}).state,
+  "TARGET_CROSSED_HOLD_NONESSENTIAL_WORK");
+ assert.throws(()=>evaluateStep2Headroom({provider:{verified:false}}),
+  /STEP2_PROVIDER_COUNTERS_UNVERIFIED/u);
 });
