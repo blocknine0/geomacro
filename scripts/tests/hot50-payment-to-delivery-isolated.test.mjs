@@ -116,10 +116,11 @@ test('LOCAL_SIMULATION_ONLY: webhook-first PayPal funding has one immutable plai
   const replay=await fundCanonicalCustomerFromVerifiedPayPal(db,settlementEnv,
    {userId,...syntheticProof});
   assert.equal(replay.idempotent_replay,true);
-  const first=await mintCanonicalHot50ApiKey(db,riskEnv,userId,at,funded.receiptId);
+  const handoffAt=new Date().toISOString();
+  const first=await mintCanonicalHot50ApiKey(db,riskEnv,userId,handoffAt,funded.receiptId);
   assert.match(first.api_key,/^gm_live_[a-f0-9]{32}$/);
   assert.equal(first.idempotent_replay,false);
-  const again=await mintCanonicalHot50ApiKey(db,riskEnv,userId,at,funded.receiptId);
+  const again=await mintCanonicalHot50ApiKey(db,riskEnv,userId,new Date().toISOString(),funded.receiptId);
   assert.equal(again.api_key,null);
   assert.equal(again.idempotent_replay,true);
   assert.equal(again.key_id,first.key_id);
@@ -131,7 +132,7 @@ test('LOCAL_SIMULATION_ONLY: webhook-first PayPal funding has one immutable plai
   assert.equal(sql.prepare('SELECT COUNT(*) n FROM credit_ledger').get().n,1);
   assert.throws(()=>sql.prepare('UPDATE commercial_hot50_checkout_key_handoffs SET key_id=?')
    .run('attacker-key'),/IMMUTABLE_HOT50_CHECKOUT_HANDOFF/);
-  await assert.rejects(mintCanonicalHot50ApiKey(db,riskEnv,userId,at,'r_paypal_OTHERCAPTURE123'),
+  await assert.rejects(mintCanonicalHot50ApiKey(db,riskEnv,userId,new Date().toISOString(),'r_paypal_OTHERCAPTURE123'),
    /CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED/);
  }finally{sql.close();}
 });
