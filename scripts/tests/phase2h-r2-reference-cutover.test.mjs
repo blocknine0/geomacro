@@ -102,6 +102,18 @@ test("one verified private R2 bundle / up to 50 records and D1 reference-only ro
   assert.equal(duplicate.status,200);
   assert.equal((await duplicate.json()).accepted,0);
   assert.equal(f.counters().puts,1,"identical retries never rewrite R2 object");
+  assert.equal((await duplicate.json()).private_r2_readback_verified,true);
+ }finally{f.sqlite.close()}
+});
+
+test("duplicate pointer ACK cannot hide missing R2 object",async()=>{
+ const f=fixture(),rec=plan()[0];
+ try{
+  assert.equal((await phase2hPrivateRawPut(f.env,body([rec]),DATE.getTime())).status,200);
+  f.blobs.clear();
+  const repeated=await phase2hPrivateRawPut(f.env,body([rec]),DATE.getTime());
+  assert.equal(repeated.status,503);
+  assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM phase2h_raw_object_refs_v1").get().n,1);
  }finally{f.sqlite.close()}
 });
 
