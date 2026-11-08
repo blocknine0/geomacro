@@ -88,3 +88,22 @@ test("both protected-main writers use the same bounded-retry independent public 
  assert.match(verifier,/source_content_logged:false/u);
  assert.match(verifier,/payments_performed:0/u);
 });
+
+test("publisher emits only fixed policy health error codes; does not leak provider error text or bypass D1 preflight",()=>{
+ const source=read("scripts/ops/publish-website-derived-news.ts");
+ const codes=[
+  "DERIVED_NEWS_WORKER_POLICY_CONFIGURATION_INVALID",
+  "DERIVED_NEWS_WORKER_POLICY_HEALTH_UNAVAILABLE",
+  "DERIVED_NEWS_WORKER_POLICY_RESPONSE_OVERSIZE",
+  "DERIVED_NEWS_WORKER_POLICY_RESPONSE_INVALID",
+  "DERIVED_NEWS_WORKER_TOPIC_POLICY_NOT_CURRENT"
+ ];
+ for(const code of codes)assert(source.includes('"'+code+'"'),code);
+ assert.match(source,/error instanceof Error&&known\.has\(error\.message\)/u);
+ assert.match(source,/console\.warn\("::warning::"\+reason\)/u);
+ assert.match(source,/D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES/u);
+ assert.doesNotMatch(source,/console\.(?:warn|log|error)\(error\)/u);
+ assert.doesNotMatch(source,/workerPolicyReady=true;[\s\S]{0,100}?catch\(/u);
+ const fallback=source.indexOf('reason:"D1_PUBLISHER_POLICY_PREFLIGHT_UNAVAILABLE"');
+ assert.ok(fallback>source.indexOf("if(!workerPolicyReady)"));
+});
