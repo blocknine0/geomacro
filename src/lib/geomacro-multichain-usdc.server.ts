@@ -44,9 +44,13 @@ export function quoteGeomacroUsdcCapabilityPreflight(input:unknown){
      typeof body.capability!=="string"||
      typeof body.variant!=="string"||
      typeof body.network!=="string"||
-     !GEOMACRO_NEW_SALE_USDC_NETWORKS.some(network=>network===body.network))
+     !Object.hasOwn(GEOMACRO_USDC_NETWORKS,body.network))
     throw Error("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
+  // Historical retired-capability error remains stable on every known
+  // chain, while Arc is unavailable for any NEW paid/nonpaid offer.
   if(!isPublicStoreCapability(body.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
+  if(!GEOMACRO_NEW_SALE_USDC_NETWORKS.some(network=>network===body.network))
+    throw Error("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
   const rail=GEOMACRO_USDC_NETWORKS[body.network as GeomacroUsdcNetwork];
   if(!address.test(rail.asset))throw Error("USDC_NATIVE_ASSET_INVALID");
   const price=resolveGeomacroCapabilityPrice(body.capability,body.variant);
