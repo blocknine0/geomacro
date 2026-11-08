@@ -115,7 +115,7 @@ test("real provider fetch connector uses only account read and never D1 SQL",asy
  // production rehearsal or authorize the actual GitHub release.
  const env={CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
   CLOUDFLARE_API_TOKEN:"not-real-token-for-unit-tests-only"};
- const r=await checkD1PaidMonthlyHeadroom({env,now,fetchImpl});
+ const r=await checkD1PaidMonthlyHeadroom({env,now,fetchImpl,clock:()=>now});
  assert.equal(r.status,"PASS");
  assert.deepEqual(calls.map(x=>x.method),["POST","GET"]);
  assert.equal(r.account_wide_hard_cap_guaranteed,false);
