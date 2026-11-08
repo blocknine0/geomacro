@@ -8,8 +8,6 @@
  * in bounded 40-row cron batches; unattributed headlines use ZZZ, never a
  * fabricated country.
  */
-import {resolvePhase2hObjectPointer}
- from "./phase2h-raw-object-refs.mjs";
 import {phase2hHeadlineCountryCandidate,phase2hCountry}
  from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 
@@ -34,59 +32,15 @@ export async function readIndexedRiskCountryOriginals(env,{
   typeof until!=="string"||!Number.isFinite(Date.parse(until)))
   throw Error("RISK_COUNTRY_INDEX_INVALID_TARGET");
  if(!env?.DB?.prepare)throw Error("RISK_COUNTRY_INDEX_D1_UNAVAILABLE");
- const data=await env.DB.prepare(
-  "SELECT record_id,raw_sha256,raw_json,original_published_at "+
-  "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_risk_country_category_clock "+
-  "WHERE risk_country_iso3=? AND category=? "+
-  "AND original_published_at>=? AND original_published_at<=? "+
-  "ORDER BY original_published_at DESC,record_id DESC LIMIT 40"
- ).bind(countryId,category,since,until).all();
- if(!Array.isArray(data?.results)||data.results.length>40)
-  throw Error("RISK_COUNTRY_INDEX_INVALID_READBACK");
- if(env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1!=="1")
-  return data.results;
- // Staged, individually gated parity reader for R2-only protected original
- // pointers. No D1 JSON column or commercial entitlement read. Legacy rows
- // remain readable; R2 bytes are hydrated ONLY into bounded request memory.
- const refs=await env.DB.prepare(
-  "SELECT record_id,category,original_published_at,first_ingested_at,"+
-  "raw_sha256,object_sha256,object_key,bundle_bytes,record_sha256,"+
-  "record_bytes,bundle_index,signed_at,pointer_hmac_sha256,"+
-  "risk_country_iso3,storage_backend "+
-  "FROM phase2h_raw_object_refs_v1 "+
-  "INDEXED BY idx_phase2h_ref_country_category_clock_v1 "+
-  "WHERE risk_country_iso3=? AND category=? "+
-  "AND original_published_at>=? AND original_published_at<=? "+
-  "ORDER BY original_published_at DESC,record_id DESC LIMIT 40"
- ).bind(countryId,category,since,until).all();
- if(!Array.isArray(refs?.results)||refs.results.length>40)
-  throw Error("RISK_COUNTRY_REF_READBACK_INVALID");
- const fromLegacy=data.results.map(x=>({...x,legacy:true}));
- const merged=[...fromLegacy,...refs.results.map(x=>({...x,legacy:false}))]
-  .sort((a,b)=>String(b.original_published_at).localeCompare(String(a.original_published_at))||
-    String(b.record_id).localeCompare(String(a.record_id)));
- const unique=[],seen=new Set();
- for(const row of merged){
-  if(seen.has(row.record_id))continue;
-  seen.add(row.record_id);unique.push(row);
-  if(unique.length>=40)break;
- }
  const {validPrivateRawNews}=await import("./phase2h-private-raw-news.mjs");
- const cache=new Map(),output=[];
- for(const row of unique){
-  if(row.legacy){output.push({
-    record_id:row.record_id,raw_sha256:row.raw_sha256,
-    raw_json:row.raw_json,original_published_at:row.original_published_at
-   });continue;}
-  const record=await resolvePhase2hObjectPointer(
-   env,row,validPrivateRawNews,Date.now(),cache);
-  if(phase2hHeadlineCountryCandidate(record.original.original_title)!==countryId)
-   throw Error("RISK_COUNTRY_REF_TITLE_DIVERGED");
-  output.push({record_id:record.record_id,raw_sha256:record.raw_sha256,
-   raw_json:JSON.stringify(record),
-   original_published_at:record.original.original_published_at});
- }
- return output;
+ const {readVerifiedPhase2hScope}=await import("./phase2h-raw-object-refs.mjs");
+ // Both legacy and private-reference rows are hydrated exclusively through
+ // the same exact-byte verification layer. No direct unverified raw_json SELECT
+ // in the downstream country-index service.
+ return readVerifiedPhase2hScope(env,{
+  countryIso3:countryId,category,since,until,limit:40,
+  now:Date.now(),archivedOnly:false
+ },validPrivateRawNews);
 }
 /** Backfill at most 40 existing validated private originals per tick.
  * 1 partial-index read + 1 set-based update + 1 exact readback.
