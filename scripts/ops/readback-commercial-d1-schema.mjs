@@ -16,7 +16,7 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 const ID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ACCT=/^[a-f0-9]{32}$/i;
-const REQUIRE=Object.freeze({
+export const REQUIRE=Object.freeze({
  users:'table',api_keys:'table',credit_ledger:'table',
  customer_payment_receipts:'table',customer_entitlement_grants:'table',
  customer_usage_receipts:'table',customer_paypal_checkout_intents:'table',
