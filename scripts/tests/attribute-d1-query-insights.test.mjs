@@ -84,6 +84,27 @@ test("paged Website journal can be traced structurally while retained as nonexac
  assert.equal(v.historical_source_pattern.attribution,"STRUCTURAL_MATCH_NONEXACT");
 });
 
+test("production write hotspots are grouped by sanitized table family without SQL exposure",()=>{
+ const fixtures=[
+  ["INSERT INTO ingestion_spool_queue(id,state) VALUES(?,?)","P0B_SPOOL_QUEUE"],
+  ["UPDATE normalized_articles SET status=? WHERE id=?","P0B_NORMALIZED_METADATA"],
+  ["UPDATE p0b_archive_outbox SET state=? WHERE batch_id=?","P0B_ARCHIVAL_OUTBOX"],
+  ["UPDATE source_registry SET next_poll_at=? WHERE source_id=?","SOURCE_REGISTRY"],
+  ["UPDATE phase2h_private_raw_news SET b2_object_sha256=? WHERE item_id=?","PHASE2H_ORIGINAL_ARCHIVE"],
+ ];
+ for(const [sql,expected] of fixtures){
+  const v=attributeD1ReadInsights([{query:sql,totalRowsRead:2,totalRowsWritten:4,numberOfTimesRun:1}]).top_rows_read[0];
+  assert.equal(v.status,"TABLE_FAMILY_ONLY");
+  assert.equal(v.query_id,expected);
+  assert.equal(v.total_rows_written,4);
+  assert.ok(!JSON.stringify(v).includes(sql));
+  assert.equal(v.callsite,null);
+ }
+ // Joins crossing two distinct families cannot be attributed to one workstream.
+ const multi=attributeD1ReadInsights([row("SELECT * FROM ingestion_spool_queue JOIN normalized_articles ON 1=1")]).top_rows_read[0];
+ assert.equal(multi.status,"UNATTRIBUTED");
+});
+
 test('provider P0B hotspot fingerprints match actual protected source statements',async()=>{
  const {getP0bIngestionStatus}=await import('../../workers/control-plane/src/p0b-ingestion-status.mjs');
  const statements=[];
