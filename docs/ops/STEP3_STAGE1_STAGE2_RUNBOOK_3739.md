@@ -11,7 +11,7 @@
 
 ## One-time owner setup (secrets never printed)
 
-1. Review/merge prerequisite PR #3732, then review/merge PR #3741 and pin the **resulting main commit SHA**. Do not use an arbitrary draft-head SHA as a production migration approval.
+1. Review and merge the **four stacked draft PRs in order**: #3725 (revision/keyset/census) → #3727 (headroom/shadow native D1) → #3732 (encrypted recovery/signing/ledger) → #3741 (real physical proof, signed admission and orchestrator). Pin the **final merged main commit SHA**. A draft-head SHA is not a production migration approval. These are code releases only: preserve the D1 migration/canary HOLD and payment OFF until separate physical signed acceptance.
 2. Provision/verify Cloudflare private recovery R2 and isolated shadow R2 buckets; confirm the Cloudflare API token has D1 and R2 object read/write plus Worker settings/deployments read access. Billing Read must support monthly provider headroom verification.
 3. Provide separate genuinely deployed `geomacro-step3-shadow.<subdomain>.workers.dev` and `geomacro-step3-shadow-legacy.<subdomain>.workers.dev` that both bind `DB` to the **shadow** D1 UUID. The modern script must bind `PHASE2H_PRIVATE_R2` to the approved private shadow bucket. The shadow D1 must have a current B2-ACKNOWLEDGED authentic source.
 4. Keep deployed HMAC and bearer token stable. Do **not** generate a new HMAC for already stored pointer proofs, and do **not** generate a new `CONTROL_PLANE_TOKEN` unless rotating its actual Worker secret at the same time.
