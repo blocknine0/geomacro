@@ -120,8 +120,12 @@ export async function readOnlyShadowSchema({env,fetchImpl=fetch,sql}={}){
  try{data=await response.json()}catch{fail("SHADOW_READONLY_RESPONSE_INVALID")}
  return parseSqlRows(data);
 }
+// Cloudflare's single native _cf_KV table is present in a fresh real D1.
+// The provider audit #42533513295 established this exact isolated Shadow name.
+// Preserve it: NEVER drop/replace it or whitelist any other user table.
 export function assertPristineShadowSchema(rows){
- if(!Array.isArray(rows)||rows.length!==0)
+ if(!Array.isArray(rows)||rows.length>1||
+    rows.some(row=>row?.name!=="_cf_KV"))
   fail("SHADOW_NOT_PRISTINE_OR_PARTIAL_BOOTSTRAP_REQUIRES_RECOVERY_REVIEW");
  return true;
 }
@@ -256,7 +260,11 @@ export async function readOnlyShadowBootstrapPreflight({
   output.shadow_existing_table_names=rows.map(r=>
    typeof r?.name==="string"&&/^[A-Za-z_][A-Za-z0-9_.$-]{0,80}$/u.test(r.name)?
     r.name:"INVALID_SCHEMA_IDENTIFIER").sort();
-  output.shadow_schema_pristine=rows.length===0;
+  // Accept zero user-created tables; the exact Cloudflare-native table
+  // _cf_KV is not an application schema and must never be modified.
+  output.shadow_schema_pristine=rows.length===0||
+   (rows.length===1&&rows[0]?.name==="_cf_KV");
+  output.provider_internal_cf_kv_preserved=rows.length===1&&rows[0]?.name==="_cf_KV";
   output.status=output.paid_headroom_verified&&output.shadow_schema_pristine?
    "READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION":"HOLD";
   output.code=output.status==="HOLD"?
