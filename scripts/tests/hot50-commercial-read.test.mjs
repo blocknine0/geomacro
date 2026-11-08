@@ -13,18 +13,19 @@ const env={GEOMACRO_HOT50_PUBLIC_KEY_ID:'test-hot50-issuer',
  GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE:'ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS'};
 const sha=s=>createHash('sha256').update(s).digest('hex');
 const ts=Date.now(),published=new Date(ts-60000).toISOString(),expires=new Date(ts+600000).toISOString();
-const rating=()=>({score:72,confidence_low:66,confidence_high:78,
+const rating=(category)=>({score:72,confidence_low:66,confidence_high:78,
  confidence:0.8,qualified_evidence_count:3,
+ ...(category==='trade_minerals_supplychain'?{verified_subdomains:['trade','critical_minerals','supply_chain']}:{}),
  b2_evidence_pointer:'b2://geomacro-evidence/signed/verified.json',
  b2_evidence_sha256:'a'.repeat(64)});
-function country(iso3){return {iso3,composite_score:72,ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,rating()]))};}
+function country(iso3){return {iso3,composite_score:72,ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,rating(x)]))};}
 function make(viewKey='hot50',modifier=()=>{}){
  let countries=RISK_GATE_HOT50.map(country);
  if(viewKey.startsWith('country:'))countries=[country(viewKey.slice(8))];
  if(viewKey.startsWith('category:')){
    const category=viewKey.slice(9);
    countries=countries.sort((a,b)=>a.iso3.localeCompare(b.iso3))
-     .map((x,i)=>({iso3:x.iso3,rank:i+1,ratings:{[category]:rating()}}));
+     .map((x,i)=>({iso3:x.iso3,rank:i+1,ratings:{[category]:rating(category)}}));
  }
  const payload={schema:HOT50_SIGNED_SCHEMA,view_key:viewKey,
   public_key_id:'test-hot50-issuer',execution_authorized:false,
