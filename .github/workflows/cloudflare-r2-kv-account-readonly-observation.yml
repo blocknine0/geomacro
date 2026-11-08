@@ -1,0 +1,94 @@
+name: Cloudflare R2 KV Account Telemetry — Read Only No Funds
+on:
+  schedule:
+    # No provider writes. Account summary only; one query per run.
+    - cron: "8,28,48 * * * *"
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cloudflare-r2-kv-account-readonly-observation.yml"
+      - "scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"
+      - "scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs"
+      - "scripts/tests/cloudflare-r2-kv-provider-workflow.test.mjs"
+      - "scripts/tests/b2-no-list-api.guard.test.mjs"
+  pull_request:
+    paths:
+      - ".github/workflows/cloudflare-r2-kv-account-readonly-observation.yml"
+      - "scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs"
+      - "scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs"
+      - "scripts/tests/cloudflare-r2-kv-provider-workflow.test.mjs"
+      - "scripts/tests/b2-no-list-api.guard.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-cloudflare-r2-kv-readonly-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: R2 and KV classifications plus provider-denial negative tests
+        run: node --test scripts/tests/cloudflare-r2-kv-account-analytics.test.mjs
+      - name: Main-only provider read-only job and immutable HOLD proof
+        run: node --test scripts/tests/cloudflare-r2-kv-provider-workflow.test.mjs
+      - name: Backblaze B2 no-object-listing safety remains mandatory
+        run: node --test scripts/tests/b2-no-list-api.guard.test.mjs
+  account-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: No-funds HOLD and safe read-only account telemetry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          mkdir -p artifacts/release
+          node scripts/ops/read-cloudflare-r2-kv-account-analytics.mjs \
+            > artifacts/release/cloudflare-r2-kv-account-readonly.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const x=JSON.parse(readFileSync('artifacts/release/cloudflare-r2-kv-account-readonly.json','utf8'));
+          if(x.status!=='OBSERVATIONAL_ONLY_NOT_RELEASE_PROOF' ||
+             x.production_release_authorized!==false ||
+             x.provider_verified!==false ||
+             x.full_six_resource_snapshot!==false ||
+             x.atomic_shared_reservation!==false ||
+             x.merchant_funds_authorized!==false)
+            throw Error('CLOUDFLARE_OBSERVATION_CANNOT_AUTHORIZE_RELEASE');
+          console.log(JSON.stringify({schema:x.schema,status:x.status,
+            observed_utc_day:x.observed_utc_day,
+            observed_at:x.observed_at,metrics:x.metrics,
+            production_release_authorized:false}));
+          NODE
+      - name: Save sanitized observational receipt or remain HOLD on errors
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-cloudflare-r2-kv-account-${{ github.run_id }}
+          path: artifacts/release/cloudflare-r2-kv-account-readonly.json
+          retention-days: 14
+          if-no-files-found: warn
