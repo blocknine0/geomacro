@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchCurrentCanonicalWebsiteNews, fetchDirectDerivedNews, fetchEdgeLatestDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchZeroD1PublicDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -270,6 +270,18 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       if (pending) return;
       pending = true;
       try {
+        // Fresh 72h static/R2 evidence first. A broken historical shard
+        // must never hide currently published Geopolitics findings.
+        let latestRead=false;
+        try {
+          const recent = await fetchZeroD1PublicDerivedNews();
+          if (!alive) return;
+          setJournal(previous => mergeUnseen(previous, recent));
+          latestRead=true;
+          setJournalUnavailable(false);
+        } catch {
+          // The optional archive below independently protects history.
+        }
         if (!archiveLoaded) {
           try {
             const historical = await fetchPermanentDerivedNews();
@@ -278,17 +290,11 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             archiveLoaded = true;
             setJournalUnavailable(false);
           } catch {
-            if (alive) setJournalUnavailable(true);
+            if (alive && !latestRead) setJournalUnavailable(true);
           }
         }
-        try {
-          const recent = await fetchCurrentCanonicalWebsiteNews().catch(()=>fetchEdgeLatestDerivedNews().catch(()=>fetchDirectDerivedNews()));
-          if (!alive) return;
-          setJournal(previous => mergeUnseen(previous, recent));
-          if (archiveLoaded) setJournalUnavailable(false);
-        } catch {
-          if (alive) setJournalUnavailable(true);
-        }
+        if (!latestRead && !archiveLoaded && alive)
+          setJournalUnavailable(true);
       } finally {
         pending = false;
       }
