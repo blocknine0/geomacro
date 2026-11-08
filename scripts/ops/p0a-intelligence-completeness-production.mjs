@@ -7,6 +7,7 @@
 import {mkdirSync,writeFileSync} from "node:fs";
 import {createHmac} from "node:crypto";
 import {p0aAuditBatch,p0aAuditOriginal} from "../lib/p0a-evidence-quality.mjs";
+import {readVerifiedPhase2hWorkerBatch} from "../lib/phase2h-verified-worker-batch-reader.mjs";
 import {phase2hOneOriginalResearchFivePart} from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PATH="artifacts/derived-news/p0a-production-intelligence-completeness.json";
@@ -61,17 +62,23 @@ export async function runP0AProductionAcceptance({
  const perCategory={},samples=[];
  for(const cat of CATEGORIES){
   const rows=await query(
-   "SELECT record_id,category,raw_json,b2_object_sha256 FROM phase2h_private_raw_news "+
-   "WHERE category=? AND first_ingested_at>=? "+
+   "SELECT record_id,category,raw_sha256,b2_object_sha256 "+
+   "FROM phase2h_private_raw_news WHERE category=? AND first_ingested_at>=? "+
    "ORDER BY original_published_at DESC,record_id LIMIT 40",[cat,cutoff]);
+  const resolved=rows.length?await readVerifiedPhase2hWorkerBatch(
+   rows.map(r=>r.record_id),{env,fetchImpl,now:now.getTime()}):[];
   const records=[];
-  for(const dbRow of rows){
+  for(let i=0;i<rows.length;i++){
+   const dbRow=rows[i],checked=resolved[i],parsed=checked?.record;
    if(!HEX.test(dbRow.record_id)||dbRow.category!==cat||
-      typeof dbRow.raw_json!=="string")fail("CANONICAL_ROW_INVALID");
-   let parsed;
-   try{parsed=JSON.parse(dbRow.raw_json)}catch{fail("CANONICAL_JSON_INVALID")}
-   if(parsed.record_id!==dbRow.record_id||parsed.category!==dbRow.category||
-      !HEX.test(parsed.raw_sha256))fail("CANONICAL_IDENTITY_DIVERGED");
+      checked.record_id!==dbRow.record_id||
+      checked.category!==dbRow.category||
+      checked.raw_sha256!==dbRow.raw_sha256||
+      checked.b2_object_sha256!==dbRow.b2_object_sha256||
+      parsed?.record_id!==dbRow.record_id||
+      parsed?.category!==dbRow.category||
+      parsed?.raw_sha256!==dbRow.raw_sha256)
+    fail("CANONICAL_VERIFIED_POINTER_IDENTITY_DIVERGED");
    const projected=phase2hOneOriginalResearchFivePart(parsed,true);
    if(!projected)fail("LIVE_QUALITY_PROJECTION_UNAVAILABLE");
    // Immutable D1/B2 originals are never rewritten. Audit the exact

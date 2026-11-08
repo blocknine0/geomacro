@@ -105,7 +105,8 @@ export function dedupeObservedPublications(observations){
   wire_syndication_not_independent_proof:true,
   authoritative_first_party_publications:chosen.filter(x=>x.official_source_observed).length};
 }
-async function observationsForSubject(db,subject,now){
+async function observationsForSubject(env,subject,now){
+ const db=env.DB;
  const since=new Date(now-MAX_AGE).toISOString(),until=new Date(now).toISOString();
  if(subject.type==="corridor"&&Object.hasOwn(ROUTES,subject.id)){
   const rows=(await db.prepare("SELECT candidate_id,source_id,native_published_at,article_url,source_title_sha256,candidate_corridor_ids_json FROM corridor_native_news_candidates WHERE native_published_at>=? AND native_published_at<=? AND instr(candidate_corridor_ids_json,?)>0 ORDER BY native_published_at DESC LIMIT 40")
@@ -115,11 +116,13 @@ async function observationsForSubject(db,subject,now){
      url:r.article_url,title_hash:r.source_title_sha256,published_at:r.native_published_at}));
  }
  if(subject.type!=="country")return [];
+ const {readVerifiedPhase2hScope}=await import("./phase2h-raw-object-refs.mjs");
+ const {validPrivateRawNews}=await import("./phase2h-private-raw-news.mjs");
  const rows=[];
  for(const cat of ["geopolitics","macro","rare_earth"]){
-  const chunk=(await db.prepare("SELECT record_id,raw_sha256,raw_json,original_published_at FROM phase2h_private_raw_news WHERE category=? AND original_published_at>=? AND original_published_at<=? ORDER BY original_published_at DESC LIMIT 40")
-   .bind(cat,since,until).all())?.results??[];
-  rows.push(...chunk);
+  rows.push(...await readVerifiedPhase2hScope(env,{
+   category:cat,since,until,limit:40,now
+  },validPrivateRawNews));
  }
  const selected=[];
  for(const row of rows){
@@ -259,7 +262,7 @@ export async function controlledRiskGateEvaluate(request,env,now=Date.now()){
    }
   }
   if(!observations)observations=dedupeObservedPublications(
-   await observationsForSubject(env.DB,parsed.subject,now));
+   await observationsForSubject(env,parsed.subject,now));
   const gro=await freshGRO(env.DB,env,parsed.subject,now);
   const verified_decision=await canonicalDecision(gro,parsed,now);
   const flash=gro?await readIntradayFlashOverride(env.DB,gro,parsed.subject,now):{available:true,active:false};

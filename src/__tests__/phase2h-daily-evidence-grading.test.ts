@@ -6,16 +6,17 @@ const now=new Date("2026-11-01T00:00:00.000Z");
 const sha=(x:string)=>createHash("sha256").update(x).digest("hex");
 function makeRow({
  category="macro",title="United States central bank reports inflation of 2.5 percent",
- publication="2026-10-31T20:00:00.000Z",archived=true,
+ publication="2026-10-31T20:00:00.000Z",archived=true,idSuffix="",
  number=true,articlePage=false,independent=false,
 }:{
  category?:string;title?:string;publication?:string;archived?:boolean;
- number?:boolean;articlePage?:boolean;independent?:boolean;
+ number?:boolean;articlePage?:boolean;independent?:boolean;idSuffix?:string;
 }={}){
- const record_id=sha(category+"\nhttps://www.federalreserve.gov/newsevents/pressreleases/sample.htm\n"+publication);
+ const url="https://www.federalreserve.gov/newsevents/pressreleases/sample"+idSuffix+".htm";
+ const record_id=sha(category+"\n"+url+"\n"+publication);
  const original={
   original_source_id:"fed_board",
-  original_url:"https://www.federalreserve.gov/newsevents/pressreleases/sample.htm",
+  original_url:url,
   original_published_at:publication,
   date_precision:"exact",
   original_title:number?title:"United States central bank policy update",
@@ -125,9 +126,7 @@ describe("Phase2H daily archived original grading",()=>{
 describe("Canonical D1 archived raw extraction",()=>{
  it("uses eight-row keyset pages, exact B2 acknowledgement cutoff and no oversized raw response",async()=>{
   const records=Array.from({length:18},(_,i)=>{
-   const row=makeRow();
-   return {...row,record_id:sha("page-row-"+String(i)),
-    original_published_at:"2026-10-31T20:00:00.000Z"};
+   return makeRow({idSuffix:"-"+String(i)});
   }).sort((a,b)=>a.record_id.localeCompare(b.record_id));
   let reads=0;
   const result=await readDailyArchiveFromCanonicalD1({
@@ -135,9 +134,29 @@ describe("Canonical D1 archived raw extraction",()=>{
     CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),
     D1_DATABASE_ID:"12345678-1234-1234-1234-123456789abc",
     CLOUDFLARE_API_TOKEN:"secret-example-but-never-real",
+    GEOMACRO_COMMERCE_LEDGER_TOKEN:"fake-root-token-never-for-production-".repeat(2),
    },
    fetchImpl:(async (_url:unknown,init:unknown)=>{
-    const payload=JSON.parse(String((init as {body:string}).body));
+    const url=String(_url),payload=JSON.parse(String((init as {body:string}).body));
+    if(url.includes("/v1/internal/phase2h-raw-object-ref/batch")){
+     expect(payload.schema).toBe("geomacro.phase2h.private-reference-batch-read.v1");
+     const rows=payload.record_ids.map((id:string)=>{
+      const x=records.find(r=>r.record_id===id);
+      expect(x).toBeDefined();
+      return {record_id:x!.record_id,category:x!.category,
+       raw_sha256:x!.raw_sha256,first_ingested_at:x!.first_ingested_at,
+       original_published_at:x!.original_published_at,
+       b2_object_sha256:x!.b2_object_sha256,b2_archived_at:x!.b2_archived_at,
+       record:JSON.parse(x!.raw_json),storage_proof:"LEGACY_D1_VALIDATED",
+       independently_archived_to_b2:true};
+     });
+     return Response.json({ok:true,
+      schema:"geomacro.phase2h.private-verified-batch-originals.v1",
+      record_count:rows.length,rows,paid_eligible:false,
+      raw_public_delivery:false,commercial_rights_verified:false});
+    }
+    expect(url).toContain("api.cloudflare.com");
+    expect(payload.sql).not.toContain("raw_json");
     expect(payload.sql).toContain("b2_object_sha256 IS NOT NULL");
     expect(payload.sql).toContain("b2_archived_at <= ?");
     expect(payload.sql).toContain("ORDER BY original_published_at DESC,record_id");
@@ -146,7 +165,7 @@ describe("Canonical D1 archived raw extraction",()=>{
     const start=lastId===null?0:records.findIndex(x=>x.record_id===lastId)+1;
     reads++;
     return Response.json({success:true,result:[{
-     success:true,results:records.slice(start,start+8),
+     success:true,results:records.slice(start,start+8).map(({raw_json,...metadata})=>metadata),
     }]});
    }) as typeof fetch,
   });

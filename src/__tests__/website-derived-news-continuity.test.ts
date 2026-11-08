@@ -46,16 +46,20 @@ function db() {
       return {
         async run() {
           if(sql.startsWith("INSERT INTO website_derived_intelligence")) {
-            const [id,category,published_at,date_precision,story_json,first_seen_at]=args;
-            const previous=data.get(id);
-            if(!previous)data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
-            else if(previous.category===category && previous.published_at===published_at &&
-              previous.date_precision===date_precision &&
-              (!sql.includes("website_derived_intelligence.story_json <> excluded.story_json") ||
-                previous.story_json!==story_json)) {
-              counters.upsertUpdateAttempts++;
-              if(previous.story_json!==story_json)counters.storyJsonUpdates++;
-              previous.story_json=story_json;
+            // Production sends one JSON-table statement for 1..50 rows.
+            expect(sql).toContain("FROM json_each(?) AS j WHERE 1");
+            const rows=JSON.parse(args[0]) as string[][];
+            expect(rows.length).toBeGreaterThan(0);
+            expect(rows.length).toBeLessThanOrEqual(50);
+            for(const [id,category,published_at,date_precision,story_json,first_seen_at] of rows){
+              const previous=data.get(id);
+              if(!previous)data.set(id,{id,category,published_at,date_precision,story_json,first_seen_at});
+              else if(previous.category===category && previous.published_at===published_at &&
+                previous.date_precision===date_precision && previous.story_json!==story_json){
+                counters.upsertUpdateAttempts++;
+                counters.storyJsonUpdates++;
+                previous.story_json=story_json;
+              }
             }
           } else if(sql.startsWith("DELETE FROM website_derived_intelligence WHERE published_at")) {
             counters.retentionSweepQueries++;
@@ -81,7 +85,7 @@ function db() {
       };
     },
   });
-  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
+  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run();return items.map(()=>({success:true}))}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
   it("keeps real first-party UK trade source classification in sync with D1 publication allowlist",()=>{

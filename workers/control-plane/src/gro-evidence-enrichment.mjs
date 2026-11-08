@@ -6,6 +6,7 @@
  * Bounded 20-row batches and resumable retro-backfill avoid new B2 requests.
  */
 import {validPrivateRawNews} from "./phase2h-private-raw-news.mjs";
+import {hydrateVerifiedPhase2hIds} from "./phase2h-raw-object-refs.mjs";
 
 export const GRO_ENRICHMENT_SCHEMA="geomacro.gro-evidence-enrichment.v1";
 const HEX=/^[a-f0-9]{64}$/u,CATS=new Set(["geopolitics","macro","rare_earth"]);
@@ -112,7 +113,7 @@ export async function groEvidenceTick(env,now=Date.now()){
   fail("TICK_DB_UNAVAILABLE");
  const out=await env.DB.prepare(
   "SELECT j.record_id,j.raw_sha256,j.b2_object_sha256,j.archived_at,"+
-  "r.category,r.original_published_at,r.risk_country_iso3,r.raw_json,"+
+  "r.category,r.original_published_at,r.risk_country_iso3,"+
   "r.b2_object_sha256 AS current_archive_sha,r.b2_archived_at "+
   "FROM gro_evidence_jobs j JOIN phase2h_private_raw_news r "+
   "ON r.record_id=j.record_id "+
@@ -121,13 +122,25 @@ export async function groEvidenceTick(env,now=Date.now()){
  ).bind(iso(now-STALE_MS)).all();
  if(!Array.isArray(out?.results)||out.results.length>SIZE+1)
   fail("PENDING_PAGE_INVALID");
+ // GRO evidence jobs exist only after an independently verified B2 ACK.
+ // Resolve originals through one central authenticated exact-record batch;
+ // private R2 staged pointers are never substitutes for B2 archive proof.
+ const hydrated=await hydrateVerifiedPhase2hIds(
+  env,out.results.slice(0,SIZE).map(r=>r.record_id),
+  validPrivateRawNews,now,{archivedOnly:true}
+ );
+ const verified=new Map(hydrated.map(r=>[r.record_id,r]));
  const good=[],bad=[];
  for(const row of out.results.slice(0,SIZE)){
   try{
    if(row.b2_object_sha256!==row.current_archive_sha||
       row.archived_at!==row.b2_archived_at)fail("ARCHIVE_PROOF_CHANGED");
-   const parsed=JSON.parse(row.raw_json);
-   if(await validPrivateRawNews(parsed,now,false)!==row.raw_json)
+   const authentic=verified.get(row.record_id);
+   if(!authentic||authentic.b2_object_sha256!==row.b2_object_sha256||
+      authentic.b2_archived_at!==row.archived_at)
+    fail("B2_ACK_AUTHENTIC_RECORD_MISSING");
+   const parsed=JSON.parse(authentic.raw_json);
+   if(await validPrivateRawNews(parsed,now,false)!==authentic.raw_json)
     fail("EXACT_RAW_HASH_MISMATCH");
    const {five_part,filled}=inspectSource(row,parsed,now);
    const data=JSON.stringify(five_part);

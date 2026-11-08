@@ -223,27 +223,63 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
      public_published:false,paid_product_authorized:false},503);
  }
 }
+// An immutable, scope-bound keyset cursor replaces deep OFFSET scans.
+const osintCursorEncode=o=>btoa(JSON.stringify(o)).replaceAll("+","-").replaceAll("/","_").replace(/=+$/u,"");
+function osintCursorDecode(raw,category,country,now){
+ if(typeof raw!=="string"||raw.length>1000||!/^[A-Za-z0-9_-]+$/u.test(raw))
+  throw Error("OSINT_CURSOR_INVALID");
+ const c=JSON.parse(atob(raw.replace(/-/gu,"+").replace(/_/gu,"/")));
+ if(!c||Object.keys(c).sort().join(",")!=="category,country,item_id,native,snapshot_at,v"||
+    c.v!==1||c.category!==category||c.country!==country||
+    !iso.test(c.native)||!sha.test(c.item_id)||!iso.test(c.snapshot_at)||
+    Date.parse(c.snapshot_at)>now||now-Date.parse(c.snapshot_at)>maxAgeMs||
+    Date.parse(c.native)>Date.parse(c.snapshot_at))
+   throw Error("OSINT_CURSOR_INVALID");
+ return c;
+}
 export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Date.now()){
  const names=[...query.keys()],cat=query.get("category"),country=query.get("country"),
-   offsetRaw=query.get("offset")??"0",offset=Number(offsetRaw);
- if(names.some(x=>!["category","country","offset"].includes(x))||
-    ["category","country","offset"].some(x=>query.getAll(x).length>1)||
+   offsetRaw=query.get("offset"),rawCursor=query.get("cursor");
+ if(names.some(x=>!["category","country","cursor","offset"].includes(x))||
+    ["category","country","cursor","offset"].some(x=>query.getAll(x).length>1)||
     (cat!==null&&!categories.has(cat))||
     (country!==null&&!/^[A-Z]{3}$/u.test(country))||
-    !/^\d+$/u.test(offsetRaw)||!Number.isSafeInteger(offset)||offset%100!==0||
-    offset<0||offset>=maxRows)
-   return respond({ok:false,error:"PRIVATE_OSINT_QUERY_INVALID"},400);
+    (offsetRaw!==null&&offsetRaw!=="0")||
+    (rawCursor!==null&&offsetRaw!==null))
+   return respond({ok:false,error:"PRIVATE_OSINT_QUERY_INVALID",pagination:"KEYSET_CURSOR_ONLY"},400);
+ let cursor;
  try{
-   const where=["native_feed_published_at >= ?"],args=[new Date(now-maxAgeMs).toISOString()];
+  cursor=rawCursor===null?null:osintCursorDecode(rawCursor,cat,country,now);
+ }catch{return respond({ok:false,error:"PRIVATE_OSINT_CURSOR_INVALID"},400)}
+ try{
+   const snapshot=cursor?.snapshot_at??new Date(now).toISOString();
+   const where=["native_feed_published_at>=?"],args=[new Date(now-maxAgeMs).toISOString()];
    if(cat){where.push("category=?");args.push(cat)}
    if(country){where.push("country_iso3=?");args.push(country)}
-   const results=await env.DB.prepare(
-     "SELECT projection_json,first_seen_at,last_seen_at FROM private_osint_news_25h WHERE "+
-     where.join(" AND ")+" ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 101 OFFSET ?")
-      .bind(...args,offset).all();
-   const rows=results?.results;
-   if(!Array.isArray(rows))throw Error("D1_ROWSET_INVALID");
-   const items=rows.slice(0,100).map(r=>{
+   where.push("first_seen_at<=?");args.push(snapshot);
+   if(cursor){
+    // Tuple comparison lets SQLite seek directly into the ordered
+    // (native_feed_published_at DESC,item_id DESC) composite index.
+    where.push("(native_feed_published_at,item_id)<(?,?)");
+    args.push(cursor.native,cursor.item_id);
+   }
+   // Country+category is the 0204 composite ordered index. Country-only
+   // enumeration is covered by 0212's country/time index. Where the v2
+   // migration has not passed verification, existing ordered indexes remain
+   // the safe, slower fallback (never an OFFSET scan).
+   const enhanced=env.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
+   const hourlyIndexReady=env.GEOMACRO_D1_KEYSET_INDEX_0212==="1";
+   const index=cat&&country&&enhanced?"idx_private_osint_country_category_clock_v2":
+     !cat&&country&&hourlyIndexReady?"idx_private_osint_country_clock_v3":
+     cat?"idx_private_osint_category_clock":"idx_private_osint_news_clock";
+   const receipt=await env.DB.prepare(
+     "SELECT item_id,native_feed_published_at,projection_json,first_seen_at,last_seen_at "+
+     "FROM private_osint_news_25h INDEXED BY "+index+" WHERE "+
+     where.join(" AND ")+" ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 101"
+   ).bind(...args).all();
+   const rows=receipt?.results;
+   if(!Array.isArray(rows)||rows.length>101)throw Error("D1_ROWSET_INVALID");
+   const visible=rows.slice(0,100),items=visible.map(r=>{
      const item=JSON.parse(r.projection_json);
      validateReusableSourceNewsItem(item,now);
      return {...item,private_first_seen_at:r.first_seen_at,
@@ -252,6 +288,16 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
        original_page_independently_verified:false,
        commercially_eligible:false};
    });
+   const more=rows.length>100,last=visible.at(-1);
+   const nextCursor=more&&last?osintCursorEncode({
+      v:1,category:cat,country,snapshot_at:snapshot,
+      native:last.native_feed_published_at,item_id:last.item_id
+   }):null;
+   if(env.GEOMACRO_D1_READ_METRICS_SAMPLE==="1")
+    console.log(JSON.stringify({schema:"geomacro.d1-osint-keyset-read.v1",
+      fingerprint:"OSINT_NATIVE_CLOCK_KEYSET",index,
+      rows_read:Number.isSafeInteger(receipt?.meta?.rows_read)?receipt.meta.rows_read:null,
+      rows_written:Number.isSafeInteger(receipt?.meta?.rows_written)?receipt.meta.rows_written:null}));
    return respond({ok:true,schema:PRIVATE_OSINT_D1_SCHEMA,
      scope:"PROTECTED_INTERNAL_OSINT_RESEARCH_ONLY",
      first_seen_is_database_server_clock:true,
@@ -259,8 +305,8 @@ export async function privateOsint15mRead(env,query=new URLSearchParams(),now=Da
      independent_verification_required_for_ingestion:false,
      original_page_verified:false,commercial_use_authorized:false,
      country_195_router_not_verified_full_coverage:true,
-     retention_hours:25,offset,has_more:rows.length>100,
-     next_offset:rows.length>100&&offset+100<maxRows?offset+100:null,items});
+     retention_hours:25,offset:0,pagination:"keyset",snapshot_at:snapshot,
+     has_more:more,next_offset:null,next_cursor:nextCursor,items});
  }catch{
    return respond({ok:false,error:"PRIVATE_OSINT_D1_READER_UNAVAILABLE"},503);
  }

@@ -88,16 +88,15 @@ export async function readPrivateRiskGateJit(env,query,now=Date.now()){
   const cutoff=new Date(now-AGE).toISOString();
   const cats=["geopolitics","macro","rare_earth"];
   try{
+   const {readVerifiedPhase2hScope}=await import("./phase2h-raw-object-refs.mjs");
+   const {validPrivateRawNews}=await import("./phase2h-private-raw-news.mjs");
    const rows=[];
    for(const category of cats){
-    const data=(await env.DB.prepare("SELECT record_id,category,original_published_at,"+
-      "raw_sha256,raw_json FROM phase2h_private_raw_news "+
-      "WHERE category=? AND original_published_at>=? AND original_published_at<=? "+
-      "ORDER BY original_published_at DESC LIMIT 64")
-      .bind(category,cutoff,new Date(now).toISOString()).all())?.results??[];
-    if(!Array.isArray(data)||data.length>64)
-      throw Error("RG_JIT_CATEGORY_BOUND_INVALID");
-    rows.push(...data);
+    // Two bounded index-backed ID lists, then one batch of authenticated
+    // private reference/legacy hydrations. Never SELECT raw_json here.
+    rows.push(...await readVerifiedPhase2hScope(env,{
+     category,since:cutoff,until:new Date(now).toISOString(),limit:64,now
+    },validPrivateRawNews));
    }
    rows.sort((a,b)=>String(b.original_published_at).localeCompare(String(a.original_published_at)));
    const seen=new Set();

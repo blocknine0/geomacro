@@ -9,6 +9,7 @@ import {readFileSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
 import {validPrivateRawNews} from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
+import {readVerifiedPhase2hWorkerBatch} from "../lib/phase2h-verified-worker-batch-reader.mjs";
 const ORIGIN="https://geomacro-control-plane.daspallab202391.workers.dev";
 const RECEIPT="artifacts/derived-news/phase2h-private-raw-b2-verified.json";
 const HEX=/^[a-f0-9]{64}$/u;
@@ -55,7 +56,6 @@ export async function verifyPhase2hProductionQuestionChain({
  // in the private process; omit the repeated large raw_json response.
  const hasVerifiedRows=expectedArchivedRows!==null;
  const rows=await query("SELECT record_id,category,raw_sha256,"+
-  (hasVerifiedRows?"":"raw_json,")+
   "b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news "+
   "WHERE b2_object_sha256=? ORDER BY record_id LIMIT 301",
   [receipt.object_sha256]);
@@ -77,9 +77,28 @@ export async function verifyPhase2hProductionQuestionChain({
   if(rows.some(x=>{
    const original=restored.get(x.record_id);
    return !original||original.category!==x.category||
-      original.raw_sha256!==x.raw_sha256||
-      (typeof x.raw_json==="string"&&JSON.stringify(original)!==x.raw_json);
+      original.raw_sha256!==x.raw_sha256;
   }))fail("B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH");
+ }
+ // Unavailable in the already independently restored B2 object? Resolve
+ // via the authenticated Worker batch reader, not by selecting raw_json in
+ // the REST D1 verification process. A failed pointer proof blocks success.
+ const workerVerified=new Map();
+ if(!hasVerifiedRows){
+  for(let off=0;off<rows.length;off+=50){
+   const page=rows.slice(off,off+50);
+   const originals=await readVerifiedPhase2hWorkerBatch(
+    page.map(r=>r.record_id),{env,fetchImpl,now,requireB2Archive:true});
+   for(let i=0;i<page.length;i++){
+    const d=page[i],v=originals[i];
+    if(v.record_id!==d.record_id||v.category!==d.category||
+       v.raw_sha256!==d.raw_sha256||
+       v.b2_object_sha256!==d.b2_object_sha256||
+       v.b2_archived_at!==d.b2_archived_at)
+     fail("WORKER_PRIVATE_B2_ARCHIVE_META_MISMATCH");
+    workerVerified.set(v.record_id,v.record);
+   }
+  }
  }
  const categories=["geopolitics","macro","rare_earth"];
  const counts=Object.fromEntries(categories.map(c=>[c,0]));
@@ -92,7 +111,8 @@ export async function verifyPhase2hProductionQuestionChain({
    fail("B2_OBJECT_D1_ID_NOT_ACKNOWLEDGED");
   seen.add(record.record_id);
   const row=hasVerifiedRows?restored.get(record.record_id):
-   JSON.parse(record.raw_json);
+   workerVerified.get(record.record_id);
+  if(!row)fail("WORKER_PRIVATE_EXACT_ORIGINAL_UNAVAILABLE");
   if(row.record_id!==record.record_id||row.raw_sha256!==record.raw_sha256||
     !categories.includes(row.category)||row.category!==record.category)
    fail("CANONICAL_D1_IMMUTABLE_ID_MISMATCH");

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
+import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import {riskCountryFromOriginalTitle,readIndexedRiskCountryOriginals,
  backfillRiskCountryIndex,RISK_COUNTRY_BACKFILL_LIMIT,RISK_UNATTRIBUTED_ISO3}
  from "../../workers/control-plane/src/phase2h-risk-country-index.mjs";
@@ -43,7 +44,20 @@ test("same 195-country resolver indexes original headline, never source host",()
 
 test("real D1 SQLite composite index finds China even after 70 newer unrelated global headlines",async()=>{
  const {sqlite,env}=fixture();
- const older=insert(sqlite,1,{title:"China announces domestic production report",country:"CHN",at:iso(NOW-5*60_000)});
+ // The strict central reader now checks the immutable full original.
+ // Use a valid first-party-shaped fixture rather than an intentionally
+ // incomplete ID/hash placeholder in this successful indexed read test.
+ const complete=buildPhase2hPrivateRawRecords([{
+  category:"macro",sourceId:"cn_official",title:"China announces domestic production report",
+  publishedAt:iso(NOW-5*60_000),
+  articleUrl:"https://example.org/news/china-production-report",credit:null
+ }],{now:new Date(NOW),derive:()=>[]}).records[0];
+ const older=complete.record_id;
+ sqlite.prepare("INSERT INTO phase2h_private_raw_news "+
+  "(record_id,category,original_published_at,first_ingested_at,"+
+  "raw_sha256,raw_json,risk_country_iso3) VALUES(?,?,?,?,?,?,?)")
+  .run(older,complete.category,complete.original.original_published_at,
+   complete.ingested_at,complete.raw_sha256,JSON.stringify(complete),"CHN");
  for(let i=2;i<=71;i++)insert(sqlite,i,{at:iso(NOW-i*1000),country:"FRA"});
  const plan=sqlite.prepare("EXPLAIN QUERY PLAN SELECT record_id FROM phase2h_private_raw_news INDEXED BY idx_phase2h_risk_country_category_clock WHERE risk_country_iso3=? AND category=? AND original_published_at>=? AND original_published_at<=? ORDER BY original_published_at DESC,record_id DESC LIMIT 40")
   .all("CHN","macro",iso(NOW-60*60_000),iso(NOW));

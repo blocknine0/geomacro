@@ -12,7 +12,7 @@ import {createB2Client} from "./b2-s3-client.mjs";
 import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
 import {runPhase2hGovernedRawB2} from "./phase2h-archive-private-raw-news.mjs";
 import {verifyPhase2hProductionQuestionChain} from "./phase2h-verify-private-question-delivery.mjs";
-import {PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL}
+import {phase2hCensusSqlForEnvironment}
  from "../../workers/control-plane/src/phase2h-archive-counter-census.mjs";
 const PREFIX="geomacro-evidence/v1/private/phase2h-raw-news/";
 const SHA=/^[a-f0-9]{64}$/u;
@@ -45,7 +45,7 @@ export async function readPhase2hCanonicalCensus({env=process.env,fetchImpl=fetc
   env.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+env.D1_DATABASE_ID+"/query";
  // Migration 0208's D1-transactional counters avoid a recurring all-raw
  // table GROUP BY scan. Only indexed eligible pending rows are counted now.
- const sql=PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL;
+ const sql=phase2hCensusSqlForEnvironment(env);
  const response=await fetchImpl(endpoint,{method:"POST",redirect:"error",
   headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
    "Content-Type":"application/json"},

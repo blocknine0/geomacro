@@ -32,16 +32,15 @@ export async function readIndexedRiskCountryOriginals(env,{
   typeof until!=="string"||!Number.isFinite(Date.parse(until)))
   throw Error("RISK_COUNTRY_INDEX_INVALID_TARGET");
  if(!env?.DB?.prepare)throw Error("RISK_COUNTRY_INDEX_D1_UNAVAILABLE");
- const data=await env.DB.prepare(
-  "SELECT record_id,raw_sha256,raw_json,original_published_at "+
-  "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_risk_country_category_clock "+
-  "WHERE risk_country_iso3=? AND category=? "+
-  "AND original_published_at>=? AND original_published_at<=? "+
-  "ORDER BY original_published_at DESC,record_id DESC LIMIT 40"
- ).bind(countryId,category,since,until).all();
- if(!Array.isArray(data?.results)||data.results.length>40)
-  throw Error("RISK_COUNTRY_INDEX_INVALID_READBACK");
- return data.results;
+ const {validPrivateRawNews}=await import("./phase2h-private-raw-news.mjs");
+ const {readVerifiedPhase2hScope}=await import("./phase2h-raw-object-refs.mjs");
+ // Both legacy and private-reference rows are hydrated exclusively through
+ // the same exact-byte verification layer. No direct unverified raw_json SELECT
+ // in the downstream country-index service.
+ return readVerifiedPhase2hScope(env,{
+  countryIso3:countryId,category,since,until,limit:40,
+  now:Date.now(),archivedOnly:false
+ },validPrivateRawNews);
 }
 /** Backfill at most 40 existing validated private originals per tick.
  * 1 partial-index read + 1 set-based update + 1 exact readback.

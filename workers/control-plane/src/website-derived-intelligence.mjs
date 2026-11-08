@@ -121,19 +121,32 @@ export async function publishDerivedStories(env, body, now=Date.now()) {
     // Refresh derived editorial text for the same original identity. Native
     // publication/category/precision and first ingestion stay immutable. A
     // content revision receives a new canonical input hash and signature.
-    const statements=body.signals.map(s=>env.DB.prepare(
-      `INSERT INTO website_derived_intelligence (id,category,published_at,date_precision,story_json,first_seen_at)
-       VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET story_json=excluded.story_json
-       WHERE website_derived_intelligence.category=excluded.category
-        AND website_derived_intelligence.published_at=excluded.published_at
-        AND website_derived_intelligence.date_precision=excluded.date_precision
-        AND website_derived_intelligence.story_json <> excluded.story_json`
-    ).bind(s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),new Date(now).toISOString()));
-    // D1 migration 0033 automatically bumps data_revision on any canonical
-    // INSERT/UPDATE/DELETE (transactionally in the original 50-write batch).
-    // Trigger fencing avoids a dangerous 51st statement in a full batch.
-    if(statements.length){
-      await env.DB.batch(statements);
+    // One JSON-table bulk UPSERT for at most 50 validated derived cards.
+    // Per-item INSERTs inflated SQL execution/parse work and index probes.
+    // SQLite's unique PK + conditional update preserves source-native clocks,
+    // first ingestion, idempotency, and the 0033 revision-bump triggers.
+    // Raw upstream publisher articles are never stored in this journal.
+    if(body.signals.length){
+      const packed=body.signals.map(s=>[
+        s.id,s.category,s.published_at,s.date_precision,JSON.stringify(s),
+        new Date(now).toISOString()
+      ]);
+      const bulk=env.DB.prepare(
+        "INSERT INTO website_derived_intelligence "+
+        "(id,category,published_at,date_precision,story_json,first_seen_at) "+
+        "SELECT json_extract(j.value,'$[0]'),json_extract(j.value,'$[1]'),"+
+        "json_extract(j.value,'$[2]'),json_extract(j.value,'$[3]'),"+
+        "json_extract(j.value,'$[4]'),json_extract(j.value,'$[5]') "+
+        "FROM json_each(?) AS j WHERE 1 "+
+        "ON CONFLICT(id) DO UPDATE SET story_json=excluded.story_json "+
+        "WHERE website_derived_intelligence.category=excluded.category "+
+        "AND website_derived_intelligence.published_at=excluded.published_at "+
+        "AND website_derived_intelligence.date_precision=excluded.date_precision "+
+        "AND website_derived_intelligence.story_json <> excluded.story_json"
+      ).bind(JSON.stringify(packed));
+      const writes=await env.DB.batch([bulk]);
+      if(!Array.isArray(writes)||writes.length!==1||
+         writes[0]?.success===false)throw Error("DERIVED_NEWS_BULK_UPSERT_FAILED");
       // One bounded indexed read of the exact 1..50 IDs, not a full journal
       // scan. SQLite's ON CONFLICT(id) ... WHERE is a silent no-op for a
       // different source-native date, precision or category. A bare batch

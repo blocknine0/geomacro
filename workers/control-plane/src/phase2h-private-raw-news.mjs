@@ -1,3 +1,5 @@
+import {hydrateVerifiedPhase2hIds,readVerifiedPhase2hScope,publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
+ from "./phase2h-raw-object-refs.mjs";
 import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 import {p0bProjectEvidenceBounded} from "../../../scripts/lib/p0b-event-grounded-projection.mjs";
 import {p0bGlobalNewsFallback} from "../../../scripts/lib/p0b-live-global-search.mjs";
@@ -137,6 +139,27 @@ export async function phase2hPrivateRawPut(env,body,now=Date.now()){
    items.push([row.record_id,row.category,row.original.original_published_at,
     row.ingested_at,row.raw_sha256,json,
     riskCountryFromOriginalTitle(row.original.original_title)]);
+  }
+  // Explicitly gated private R2-first reference writer. Never insert a
+  // second copy of private originals into D1. The existing legacy writer is
+  // unchanged until physical R2 binding, 0213, downstream-read parity and
+  // quota controls have passed protected production verification.
+  if(env.GEOMACRO_PHASE2H_REF_ONLY_V1==="1"){
+   const result=await publishPhase2hReferenceBatch(env,
+    body.items.map((record,i)=>({
+     record,raw:items[i][5],country_iso3:items[i][6]})),now);
+   return safeReply({
+    ok:true,schema:"geomacro.phase2h.private-r2-reference-receipt.v1",
+    accepted:result.new_records,unchanged:result.previous_records,
+    private_r2_readback_verified:result.authenticated_reference_readback===true||
+      result.new_records===0,
+    d1_reference_only:true,d1_raw_json_persisted:false,
+    d1_rows_written:result.d1_rows_written??null,
+    d1_rows_read:result.d1_rows_read??null,
+    r2_puts:result.r2_puts,r2_gets:result.r2_gets,
+    b2_archive_verified:false,rights_verified:false,payments:0,
+    signed_gro_generated:false,paid_eligible:false
+   });
   }
   const placeholders=items.map(()=>"?").join(",");
   const before=await env.DB.prepare("SELECT record_id,raw_sha256,first_ingested_at,raw_json FROM phase2h_private_raw_news WHERE record_id IN ("+placeholders+")").bind(...ids).all();
@@ -371,7 +394,68 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   // the newest 100 unrelated releases. No 585-query fanout per request.
   let countryQuery=null;
   const cutoff=phase2hNewsCutoff(now);
-  if(countryScoped){
+  let hydratedScope=null;
+  if(env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1==="1"){
+   // New verified-R2/legacy candidate lane is a separately reviewed
+   // opt-in. Return only previously authenticated exact records in-memory.
+   // Existing canonical archival selectors are untouched when flag is off.
+   dbReadStarted=true;
+   if(countryScoped){
+    hydratedScope=await readVerifiedPhase2hScope(env,{
+     category,countryIso3,now,
+     since:new Date(now-73*3600_000).toISOString(),
+     until:new Date(now).toISOString(),limit:100
+    },validPrivateRawNews);
+   }else{
+    let ids=[];
+    if(requestedId!==null){
+     if(qualityProbe){
+      const legacy=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_private_raw_news WHERE record_id=? "+
+       "AND first_ingested_at>? LIMIT 1"
+      ).bind(requestedId,cutoff).all();
+      ids=(legacy?.results??[]).map(x=>x.record_id);
+      // A current reference-only record must also be able to respond.
+      const reference=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_raw_object_refs_v1 WHERE record_id=? "+
+       "AND first_ingested_at>? LIMIT 1"
+      ).bind(requestedId,cutoff).all();
+      ids=[...new Set([...ids,...(reference?.results??[]).map(x=>x.record_id)])];
+     }else{
+      // Exact historic lookup requires a real B2 archive ACK, never R2
+      // staging. Reference-only rows are not archival certification.
+      const archived=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_private_raw_news "+
+       "WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1"
+      ).bind(requestedId).all();
+      ids=(archived?.results??[]).map(x=>x.record_id);
+     }
+    }else if(question===null){
+     const sql="SELECT record_id FROM phase2h_private_raw_news "+
+      "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+      (archiveKeyset?
+       "AND (first_ingested_at>? OR (first_ingested_at=? AND record_id>?)) ":"")+
+      "ORDER BY first_ingested_at,record_id LIMIT ?";
+     const args=archiveKeyset?
+      [cutoff,archiveClock,archiveClock,archiveId,limit]:[cutoff,limit];
+     const pending=await env.DB.prepare(sql).bind(...args).all();
+     ids=(pending?.results??[]).map(x=>x.record_id);
+    }else{
+     const archived=await env.DB.prepare(
+      "SELECT record_id FROM phase2h_private_raw_news "+
+      "WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? "+
+      "ORDER BY original_published_at DESC,record_id LIMIT 100"
+     ).bind(cutoff).all();
+     ids=(archived?.results??[]).map(x=>x.record_id);
+    }
+    if(!Array.isArray(ids)||ids.length>100)fail("VERIFIED_SCOPE_INVALID");
+    hydratedScope=await hydrateVerifiedPhase2hIds(
+     env,ids,validPrivateRawNews,now,
+     {archivedOnly:question!==null&&requestedId===null||
+       requestedId!==null&&!qualityProbe});
+   }
+  }
+  if(countryScoped&&hydratedScope===null){
    const hints=phase2hCountrySqlHints(countryIso3);
    if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
    // Keep the entire SQL static: only bounded, reviewed country hints are
@@ -400,7 +484,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    ).bind(category,cutoff,JSON.stringify(hints),topicJson,topicJson,topicJson);
   }
   dbReadStarted=true;
-  const results=countryQuery?
+  const results=hydratedScope!==null?{results:hydratedScope}:countryQuery?
     await countryQuery.all():
     question===null?
     (archiveKeyset?
@@ -587,7 +671,10 @@ export async function phase2hPrivateRawArchiveExportV2(
       !Number.isFinite(Date.parse(clock))||!HEX.test(id))))
   return bad("PHASE2H_ARCHIVE_EXPORT_CURSOR_INVALID");
 
- const select="SELECT record_id,first_ingested_at,raw_sha256,raw_json "+
+ const verifiedReferenceMode=env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1==="1";
+ const select=(verifiedReferenceMode?
+  "SELECT record_id,first_ingested_at,raw_sha256 ":
+  "SELECT record_id,first_ingested_at,raw_sha256,raw_json ")+
   "FROM phase2h_private_raw_news INDEXED BY idx_phase2h_unarchived "+
   "WHERE b2_object_sha256 IS NULL "+
   (clock===null?"":"AND (first_ingested_at>? OR "+
@@ -604,9 +691,27 @@ export async function phase2hPrivateRawArchiveExportV2(
     found.results.length>limit)
   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_PROVIDER_INVALID",
    paid_eligible:false,raw_public_delivery:false},503);
+ let exportEntries=found.results;
+ if(verifiedReferenceMode&&exportEntries.length){
+  let verified;
+  try{
+   verified=await hydrateVerifiedPhase2hIds(
+    env,exportEntries.map(x=>x.record_id),validPrivateRawNews,now);
+  }catch{
+   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_AUTHENTICITY_UNVERIFIED",
+    paid_eligible:false,raw_public_delivery:false},503);
+  }
+  const byId=new Map(verified.map(r=>[r.record_id,r]));
+  if(byId.size!==exportEntries.length)
+   return safeReply({ok:false,error:"PHASE2H_ARCHIVE_EXPORT_EXACT_IDS_MISSING",
+    paid_eligible:false},503);
+  exportEntries=exportEntries.map(r=>({
+   ...r,raw_json:byId.get(r.record_id).raw_json
+  }));
+ }
  let lastClock=clock,lastId=id;
  const rows=[];let rejected=0,previousClock=clock,previousId=id;
- for(const entry of found.results){
+ for(const entry of exportEntries){
   if(typeof entry.record_id!=="string"||!HEX.test(entry.record_id)||
      typeof entry.first_ingested_at!=="string"||
      !Number.isFinite(Date.parse(entry.first_ingested_at))||
@@ -666,4 +771,74 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
    d1_atomic_one_statement_returning_verified:true,
    rights_verified:false,payments:0});
  }catch{return safeReply({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},503)}
+}
+/** Dedicated exact-ID authenticated read of the private reference-only
+ * staging lane. It does not imply B2 archival/rights, sign GRO or permit
+ * customer delivery. Legacy D1 JSON is accepted only if there is NO pointer.
+ * index.mjs owns the root-admin authorization boundary.
+ */
+export async function phase2hPrivateRawObjectReferenceGet(
+ env,params=new URLSearchParams(),now=Date.now()
+){
+ const id=params.get("record_id");
+ if(!env?.DB?.prepare||params.size!==1||
+    params.getAll("record_id").length!==1||!HEX.test(id))
+  return safeReply({ok:false,error:"PHASE2H_REF_READ_INVALID"},400);
+ try{
+  const resolved=await readPhase2hReferenceOrLegacy(env,id,validPrivateRawNews,now);
+  if(!resolved)return safeReply({ok:false,error:"PHASE2H_REF_RECORD_NOT_FOUND"},404);
+  const in72h=phase2hRawWithinRetention(resolved.record,now);
+  if(!in72h)return safeReply({ok:false,error:"PHASE2H_REF_RETENTION_EXPIRED"},410);
+  return safeReply({ok:true,
+   schema:"geomacro.phase2h.private-r2-reference-readback.v1",
+   record:resolved.record,source:resolved.storage,
+   legacy_fallback:resolved.legacy_fallback,
+   pointer_and_object_verified:!resolved.legacy_fallback,
+   original_still_unverified:true,paid_eligible:false,
+   b2_archive_verified:false,rights_verified:false,payments:0});
+ }catch{
+  return safeReply({ok:false,error:"PHASE2H_REF_READBACK_UNVERIFIED",
+   paid_eligible:false,rights_verified:false,payments:0},503);
+ }
+}
+
+/** Authenticated internal-only bounded batch exact-record resolver.
+ * This is the sole approved bridge for Node/CI consumers to hydrate D1
+ * metadata IDs from HMAC+SHA-verified private R2, or verified legacy D1.
+ * No archival/rights promotion; index.mjs authorizes root before reading.
+ */
+export async function phase2hPrivateRawObjectReferencesBatchGet(
+ env,body,now=Date.now()
+){
+ if(!env?.DB?.prepare||!exact(body)||
+    Object.keys(body).sort().join(",")!=="record_ids,schema"||
+    body.schema!=="geomacro.phase2h.private-reference-batch-read.v1"||
+    !Array.isArray(body.record_ids)||body.record_ids.length<1||
+    body.record_ids.length>50||
+    body.record_ids.some(x=>!HEX.test(x))||
+    new Set(body.record_ids).size!==body.record_ids.length)
+  return safeReply({ok:false,error:"PHASE2H_REF_BATCH_QUERY_INVALID"},400);
+ try{
+  const rows=await hydrateVerifiedPhase2hIds(
+   env,body.record_ids,validPrivateRawNews,now);
+  if(rows.length!==body.record_ids.length||
+     rows.some((r,i)=>r.record_id!==body.record_ids[i]))
+    return safeReply({ok:false,error:"PHASE2H_REF_BATCH_ORIGINAL_MISSING",
+     paid_eligible:false},503);
+  return safeReply({
+   ok:true,schema:"geomacro.phase2h.private-verified-batch-originals.v1",
+   record_count:rows.length,
+   rows:rows.map(r=>({record_id:r.record_id,category:r.category,
+    original_published_at:r.original_published_at,
+    first_ingested_at:r.first_ingested_at,
+    raw_sha256:r.raw_sha256,
+    b2_object_sha256:r.b2_object_sha256,
+    b2_archived_at:r.b2_archived_at,
+    record:JSON.parse(r.raw_json),storage_proof:r.storage_proof,
+    independently_archived_to_b2:r.independently_archived_to_b2})),
+   raw_public_delivery:false,commercial_rights_verified:false,
+   chargeable:false,paid_eligible:false,payments:0
+  });
+ }catch{return safeReply({ok:false,error:"PHASE2H_REF_BATCH_AUTHENTICITY_UNVERIFIED",
+   paid_eligible:false,payments:0},503)}
 }

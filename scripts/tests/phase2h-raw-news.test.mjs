@@ -515,7 +515,7 @@ test("production acceptance links verified B2 hash, canonical ID and HTTP five-p
  await assert.rejects(verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt,fetchImpl,
   expectedArchivedRows:[{...row,original:{...row.original,original_title:"Tampered source title"}}]}),
-  /PHASE2H_QUESTION_CHAIN_B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH/u);
+  /(?:PHASE2H_QUESTION_CHAIN_B2_RESTORED_CANONICAL_D1_CONTENT_MISMATCH|PHASE2H_PRIVATE_RAW_RAW_SHA256_MISMATCH)/u);
  await assert.rejects(verifyPhase2hProductionQuestionChain({
   now:now.getTime(),env,receipt:{...receipt,b2_first_get_verified:false},
   fetchImpl}),/PHASE2H_QUESTION_CHAIN_B2_POSITIVE_EXACT_READBACK_RECEIPT_REQUIRED/u);
