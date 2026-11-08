@@ -9,6 +9,34 @@ import { GEOMACRO_PAYPAL_PRODUCT_CATALOG, paypalCanCaptureFunds } from "./paypal
 const original = { ...process.env };
 afterEach(() => { process.env = { ...original }; vi.restoreAllMocks(); });
 
+describe("Live PayPal merchant bindings stay fail-closed (NO FUNDS)",()=>{
+ it("uses standard PAYPAL_* bindings when GeoMacro aliases are absent",()=>{
+  for(const k of ["CLIENT_ID","CLIENT_SECRET","WEBHOOK_ID"])
+    delete process.env["GEOMACRO_PAYPAL_"+k];
+  process.env.PAYPAL_CLIENT_ID="provider-client-123";
+  process.env.PAYPAL_CLIENT_SECRET="provider-secret-123";
+  process.env.PAYPAL_WEBHOOK_ID="WH-PROVIDER-123";
+  process.env.GEOMACRO_PAYPAL_ENVIRONMENT="live";
+  const cfg=configuredPayPal();
+  expect(cfg).toMatchObject({environment:"live",clientId:"provider-client-123",
+   webhookId:"WH-PROVIDER-123"});
+  expect(paypalPublicConnectionStatus()).toMatchObject({
+   credentials_present:true,webhook_id_present:true,active_checkout_enabled:false});
+ });
+ it("rejects any mismatched or blank required PayPal secret instead of choosing a fallback",()=>{
+  process.env.PAYPAL_CLIENT_ID="provider-client-A";
+  process.env.GEOMACRO_PAYPAL_CLIENT_ID="provider-client-B";
+  process.env.PAYPAL_CLIENT_SECRET="provider-secret";
+  process.env.PAYPAL_WEBHOOK_ID="WH-PROVIDER";
+  expect(configuredPayPal()).toBeNull();
+  expect(paypalPublicConnectionStatus().credentials_present).toBe(false);
+  process.env.GEOMACRO_PAYPAL_CLIENT_ID="provider-client-A";
+  process.env.GEOMACRO_PAYPAL_WEBHOOK_ID="WH-CONFLICT";
+  expect(configuredPayPal()).toBeNull();
+  expect(paypalPublicConnectionStatus().webhook_id_present).toBe(false);
+ });
+});
+
 describe("GeoMacro PayPal India cross-border readiness (NO FUNDS)", () => {
   it("does not expose live checkout or imply USDC payout when credentials exist", () => {
     process.env.GEOMACRO_PAYPAL_ENVIRONMENT = "live";
