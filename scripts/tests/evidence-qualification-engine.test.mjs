@@ -104,7 +104,7 @@ function inMemorySql(){
  const db={prepare:q=>({bind(...args){const stmt=sql.prepare(q);
   return {first:async()=>stmt.get(...args)??null,
    all:async()=>({results:stmt.all(...args)}),
-   run:async()=>({meta:{changes:Number(stmt.run(...args).changes)}})};}})};
+   run:async()=>{try{return {meta:{changes:Number(stmt.run(...args).changes)}};}catch(e){if(q.includes('eqe_delivery_receipts'))console.error('EQE_SQL_TEST_ONLY',e.message);throw e;}}};}})};
  return {sql,db};
 }
 function r2(){
