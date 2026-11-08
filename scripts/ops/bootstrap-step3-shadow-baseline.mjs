@@ -265,7 +265,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  else if(args[0]==="--preflight"){
   const report=await readOnlyShadowBootstrapPreflight();
   mkdirSync(resolve(REPORT,".."),{recursive:true,mode:0o700});
-  writeFileSync(REPORT,JSON.stringify(report,null,2)+"\\n",{mode:0o600});
+  writeFileSync(REPORT,JSON.stringify(report,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(report));
   if(report.status!=="READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION")process.exitCode=3;
  }else {
