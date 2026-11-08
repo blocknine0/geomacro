@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-08T17:42:38.506Z",
+  "checked_at": "2026-11-08T22:09:02.972Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 4,
+  "item_count": 3,
   "counts": {
     "geopolitics": 0,
     "macro": 1,
-    "rare_earth": 3
+    "rare_earth": 2
   },
-  "source_native_ids_sha256": "4b3e27e13f495a9d9da2926458516e65f416077ac63ddeab1254fed3deb047ab",
+  "source_native_ids_sha256": "70dad8f75968baba2af98ec4c7594aae5e032e92a744ce2be30f832a5285e4b2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -79,25 +79,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-b77caa47",
-      "category": "rare_earth",
-      "title": "Geomacro finds LibertyStream announced Lithium Carbonate Sales Contract with International Battery Material Maker Covering 2027, 2031 Supply - Batteries News",
-      "what_changed": "A monitored source feed reports: LibertyStream announced Lithium Carbonate Sales Contract with International Battery Material Maker Covering 2027, 2031 Supply - Batteries News. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T21:48:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
