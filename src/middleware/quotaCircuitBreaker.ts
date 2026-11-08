@@ -23,6 +23,7 @@ export interface QuotaReservation {
  max_rows_read:number;
  max_rows_written:number;
  operation_id:string;
+ lane?:"background"|"migration"|"shadow"|"hot50"|"customer_api";
 }
 interface Daily {
  day:string;
@@ -32,13 +33,18 @@ interface Daily {
  provider_rows_written:number;
  provider_observed_at:number;
 }
-const LIMIT=140000,MAX_RESERVATION=5000,MAX_PROVIDER_AGE_MS=240000;
+const READ_LIMIT=580_000_000,WRITE_LIMIT=1_100_000;
+const HOURLY_READ_LIMIT=24_000_000,HOURLY_WRITE_LIMIT=45_000;
+const MAX_RESERVATION=5000,MAX_PROVIDER_AGE_MS=240000;
 const fail=(code:string,status=503)=>Response.json({ok:false,code,admitted:false,
  account_wide_provider_hard_cap:false},{status,headers:{'Cache-Control':'no-store'}});
 const allowed=(n:unknown)=>Number.isSafeInteger(n)&&typeof n==='number'&&n>=0&&n<=MAX_RESERVATION;
 const utcDay=()=>new Date().toISOString().slice(0,10);
 const requireSecret=(secret:unknown)=>typeof secret==='string'&&secret.length>=32;
 const key=(day:string)=>'day:'+day;
+const utcHour=()=>new Date().toISOString().slice(0,13);
+const hourKey=(hour:string)=>'hour:'+hour;
+interface HourBudget {read_reserved:number;write_reserved:number}
 const fresh=(record:Daily)=>record.provider_observed_at>0&&
  Date.now()-record.provider_observed_at>=0&&Date.now()-record.provider_observed_at<=MAX_PROVIDER_AGE_MS;
 
@@ -80,16 +86,33 @@ export class QuotaBudgetDO {
    if(!fresh(record))return fail('D1_PROVIDER_USAGE_STALE');
    // Double counting provider-observed rows and all local reservations is
    // intentionally conservative; it cannot falsely grant account-wide safety.
-   if(record.provider_rows_read+record.read_reserved+body.max_rows_read>LIMIT||
-      record.provider_rows_written+record.write_reserved+body.max_rows_written>LIMIT)
-    return fail('D1_140K_DAILY_CIRCUIT_OPEN',429);
+   const hour=utcHour();
+   const hourly=(await txn.get<HourBudget>(hourKey(hour)))??{read_reserved:0,write_reserved:0};
+   if(record.provider_rows_read+record.read_reserved+body.max_rows_read>READ_LIMIT||
+      record.provider_rows_written+record.write_reserved+body.max_rows_written>WRITE_LIMIT)
+    return fail('D1_PAID_OWNER_DAILY_CEILING_OPEN',429);
+   if(hourly.read_reserved+body.max_rows_read>HOURLY_READ_LIMIT||
+      hourly.write_reserved+body.max_rows_written>HOURLY_WRITE_LIMIT)
+    return fail('D1_PAID_OWNER_HOURLY_CEILING_OPEN',429);
+   const lane=body.lane??'background';
+   if(!['background','migration','shadow','hot50','customer_api'].includes(lane))
+    return fail('D1_QUOTA_LANE_INVALID',400);
+   if(lane==='background'&&
+      (record.provider_rows_read/READ_LIMIT>=0.85||
+       record.provider_rows_written/WRITE_LIMIT>=0.85))
+    return fail('D1_PAID_BACKGROUND_85PCT_THROTTLED',429);
    record.read_reserved+=body.max_rows_read;record.write_reserved+=body.max_rows_written;
+   hourly.read_reserved+=body.max_rows_read;
+   hourly.write_reserved+=body.max_rows_written;
    await txn.put(key(day),record);
+   await txn.put(hourKey(hour),hourly);
    // Ambiguous retries conservatively consume another ticket; no refund or
    // idempotency shortcut that could let a repeated operation exceed the cap.
    return Response.json({ok:true,admitted:true,day,
-    read_remaining_bound:LIMIT-record.provider_rows_read-record.read_reserved,
-    write_remaining_bound:LIMIT-record.provider_rows_written-record.write_reserved,
+    read_remaining_bound:READ_LIMIT-record.provider_rows_read-record.read_reserved,
+    write_remaining_bound:WRITE_LIMIT-record.provider_rows_written-record.write_reserved,
+    hourly_read_remaining_bound:HOURLY_READ_LIMIT-hourly.read_reserved,
+    hourly_write_remaining_bound:HOURLY_WRITE_LIMIT-hourly.write_reserved,
     account_wide_provider_hard_cap:false});
   });
  }
