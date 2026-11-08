@@ -27,7 +27,8 @@ test("shadow host is an independent binding, R2 key is secret, and receipt is re
  assert.match(y,/secrets\.GEOMACRO_D1_RECOVERY_AES256_KEY_B64/u);
  assert.match(y,/secrets\.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY/u);
  assert.doesNotMatch(y,/secrets\.PHASE2H_R2_REFERENCE_HMAC_KEY/u);
- assert.match(y,/secrets\.CONTROL_PLANE_TOKEN/u);
+ assert.match(y,/secrets\.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN/u);
+ assert.doesNotMatch(y,/secrets\.CONTROL_PLANE_TOKEN/u);
  assert.match(y,/if: always\(\)/u);
  assert.match(y,/step3-shadow-rehearsal-receipt\.json/u);
 });
