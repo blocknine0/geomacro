@@ -107,10 +107,18 @@ export function assessStage3Bindings(env){
  const missing=all.filter(x=>x.status!=="PASS").map(x=>({
   name:x.name,issue:x.issue
  }));
+ // Shadow rehearsal can be independently ready while the production key
+ // remains unavailable; this NEVER unlocks Stage2 or alters the full HOLD.
+ const stage1Missing=missing.filter(x=>
+  x.name!=="PHASE2H_R2_REFERENCE_HMAC_KEY"&&
+  x.name!=="SHADOW_HMAC_ISOLATED_FROM_PRODUCTION");
  return Object.freeze({
   schema:"geomacro.step3.protected-binding-readiness.v1",
   scope:"CONFIGURATION_ONLY_NO_PROVIDER_IO",
   status:missing.length?"HOLD":STAGE1,
+  stage1_status:stage1Missing.length?"HOLD":STAGE1,
+  stage1_missing:stage1Missing,
+  stage2_status:missing.length?"HOLD":"CONFIGURATION_READY_FOR_PRODUCTION_PREFLIGHT",
   checked:all.length,valid:all.length-missing.length,
   missing,checks:all,
   no_d1_calls:true,no_r2_calls:true,no_b2_calls:true,no_payment_calls:true,
@@ -123,7 +131,8 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  writeFileSync("artifacts/release/step3-bindings-readiness.json",
   JSON.stringify(result,null,2)+"\n",{mode:0o600});
  console.log(JSON.stringify({
-  status:result.status,checked:result.checked,valid:result.valid,
+  status:result.status,stage1_status:result.stage1_status,
+  stage2_status:result.stage2_status,checked:result.checked,valid:result.valid,
   missing:result.missing,
   next:"VERIFY_REAL_CLOUDFLARE_AND_B2_PHYSICAL_PROOFS"
  }));
