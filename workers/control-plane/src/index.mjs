@@ -1,6 +1,7 @@
 import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
 import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {handleHot50CommercialRead} from './hot50-commercial-read.mjs';
 import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
 import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
@@ -1568,6 +1569,8 @@ export default {
     // Independent customer authentication boundary; no inherited operator auth.
     if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
     if(url.pathname==='/v1/internal/paypal-reversal')return handleCustomerPayPalRefundRuntime(request,env);
+    // Opt-in additive route; existing Workers and legacy APIs are untouched.
+    if(url.pathname.startsWith('/v1/risk/'))return await handleHot50CommercialRead(request,env)??json({ok:false,error:'HOT50_ROUTE_NOT_FOUND'},404);
     const publicReadCache=(run,cacheRequest=request)=>readPublicFreeD1Cached(cacheRequest,run,{
       cache:typeof caches!=="undefined"?caches.default:null,
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
