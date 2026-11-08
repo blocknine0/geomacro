@@ -1,4 +1,5 @@
 import {sendOtpWithProviderFailover} from './customer-email-provider-failover.mjs';
+import {verifyHot50CommercialSnapshot} from './hot50-commercial-read.mjs';
 import {authorizeCanonicalCustomerPaid,consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount,mintCanonicalHot50ApiKey,CustomerPaidError} from './customer-paid-ledger.mjs';
 import {assertCustomerPayPalCheckoutReady,prepareCustomerPayPalCheckoutIntent,bindCustomerPayPalProviderOrder,readCustomerPayPalCheckoutIntent,claimCustomerPayPalCapture,fundCanonicalCustomerFromVerifiedPayPal,CustomerFundingError} from './customer-paypal-funding.mjs';
 
@@ -50,7 +51,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','paypal-webhook-intent','paypal-webhook-fund','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','paypal-webhook-intent','paypal-webhook-fund','paypal-store-readiness','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -120,6 +121,41 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    const created=await db.prepare(`SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.token_hmac_sha256=?`).bind(sid,sessionHash).first();
    if(!created)fail(401,'CUSTOMER_OTP_NOT_VERIFIED');
    return reply({ok:true,user:created,session_token:opaque,max_age:3600});
+  }
+  if(action==='paypal-store-readiness'){
+   if(Object.keys(body).length!==0)fail(400,'CUSTOMER_STORE_READINESS_FIELDS_INVALID');
+   assertCustomerPayPalCheckoutReady(env);
+   if(env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+     return reply({ok:true,live_settlement_delivery_pilot_verified:false});
+   // One real provider-verified checkout, its source grant, one immutable
+   // API delivery and same-request debit must all be read back from D1.
+   const pilot=await db.prepare(
+    "SELECT d.snapshot_sha256,d.view_key,u.event_id "+
+    "FROM commercial_hot50_delivery_receipts d "+
+    "JOIN customer_usage_receipts u ON u.user_id=d.user_id "+
+    " AND u.request_id=d.request_id AND u.event_id=d.event_id "+
+    "JOIN customer_entitlement_grants g ON g.grant_id=d.grant_id "+
+    "JOIN customer_payment_receipts p ON p.receipt_id=g.receipt_id "+
+    "JOIN credit_ledger l ON l.receipt_id=p.receipt_id "+
+    " AND l.event_type='funding' "+
+    "WHERE p.provider='paypal' AND p.environment='live' "+
+    "AND d.view_key='hot50' AND u.capability='risk_gate_bundle' "+
+    "AND u.credit_cost=15 AND g.status='active' AND g.expires_at>? "+
+    "AND NOT EXISTS (SELECT 1 FROM credit_ledger z "+
+    " WHERE z.receipt_id=p.receipt_id AND z.event_type='reversal') "+
+    "ORDER BY d.created_at DESC LIMIT 1"
+   ).bind(at).first();
+   if(!pilot)return reply({ok:true,live_settlement_delivery_pilot_verified:false});
+   const snapshot=await db.prepare(
+    "SELECT * FROM commercial_hot50_signed_snapshots "+
+    "WHERE snapshot_sha256=? AND expires_at>? LIMIT 1"
+   ).bind(pilot.snapshot_sha256,at).first();
+   if(!snapshot)return reply({ok:true,live_settlement_delivery_pilot_verified:false});
+   try{await verifyHot50CommercialSnapshot(snapshot,'hot50',env,now());}
+   catch{return reply({ok:true,live_settlement_delivery_pilot_verified:false});}
+   return reply({ok:true,live_settlement_delivery_pilot_verified:true,
+     latest_qualifying_snapshot_sha256:pilot.snapshot_sha256,
+     no_funds_moved_by_readiness_probe:true});
   }
   if(action==='paypal-webhook-intent'||action==='paypal-webhook-fund'){
    // Server-to-server only: the caller is already constrained to the dedicated
