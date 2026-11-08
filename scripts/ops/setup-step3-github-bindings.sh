@@ -71,7 +71,8 @@ if [[ ! "${STEP3_REVIEWED_SHA:-}" =~ ^[a-f0-9]{40}$ ]]; then
  echo "Owner action: provide STEP3_REVIEWED_SHA, reviewed exact main commit." >&2
  exit 10
 fi
-set_variable_if_missing GEOMACRO_STEP3_REVIEWED_SHA "$STEP3_REVIEWED_SHA"
+gh variable set GEOMACRO_STEP3_REVIEWED_SHA -R "$repo" --body "$STEP3_REVIEWED_SHA"
+echo "GEOMACRO_STEP3_REVIEWED_SHA: pinned to current owner-reviewed source (not inferred)"
 if ! has_secret GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK; then
  if [[ -z "${STEP3_TRUSTED_SIGNER_PUBLIC_JWK:-}" ]]; then
   echo "Owner action: provide Ed25519/EC public JWK corresponding to existing SIGNING_JWK." >&2
