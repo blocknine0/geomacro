@@ -23,6 +23,7 @@ export interface QuotaReservation {
  max_rows_read:number;
  max_rows_written:number;
  operation_id:string;
+ lane?:"background"|"migration"|"shadow"|"hot50"|"customer_api";
 }
 interface Daily {
  day:string;
@@ -32,14 +33,30 @@ interface Daily {
  provider_rows_written:number;
  provider_observed_at:number;
 }
-const LIMIT=140000,MAX_RESERVATION=5000,MAX_PROVIDER_AGE_MS=240000;
+const READ_LIMIT=580_000_000,WRITE_LIMIT=1_100_000;
+const MONTH_READ_LIMIT=17_500_000_000,MONTH_WRITE_LIMIT=35_000_000;
+const HOURLY_READ_LIMIT=24_000_000,HOURLY_WRITE_LIMIT=45_000;
+const MAX_RESERVATION=5000,MAX_PROVIDER_AGE_MS=240000;
 const fail=(code:string,status=503)=>Response.json({ok:false,code,admitted:false,
  account_wide_provider_hard_cap:false},{status,headers:{'Cache-Control':'no-store'}});
 const allowed=(n:unknown)=>Number.isSafeInteger(n)&&typeof n==='number'&&n>=0&&n<=MAX_RESERVATION;
 const utcDay=()=>new Date().toISOString().slice(0,10);
 const requireSecret=(secret:unknown)=>typeof secret==='string'&&secret.length>=32;
 const key=(day:string)=>'day:'+day;
-const fresh=(record:Daily)=>record.provider_observed_at>0&&
+const paidCycle=(now=new Date())=>{
+ const y=now.getUTCFullYear(),m=now.getUTCMonth(),anchor=Date.UTC(y,m,5);
+ const start=new Date(now.getTime()>=anchor?anchor:Date.UTC(y,m-1,5));
+ return start.toISOString().slice(0,10);
+};
+const monthKey=(cycle:string)=>'cycle:'+cycle;
+interface PaidMonthly {
+ cycle:string;read_reserved:number;write_reserved:number;
+ provider_rows_read:number;provider_rows_written:number;provider_observed_at:number;
+}
+const utcHour=()=>new Date().toISOString().slice(0,13);
+const hourKey=(hour:string)=>'hour:'+hour;
+interface HourBudget {read_reserved:number;write_reserved:number}
+const fresh=(record:Daily|PaidMonthly)=>record.provider_observed_at>0&&
  Date.now()-record.provider_observed_at>=0&&Date.now()-record.provider_observed_at<=MAX_PROVIDER_AGE_MS;
 
 export class QuotaBudgetDO {
@@ -52,23 +69,38 @@ export class QuotaBudgetDO {
    return fail('D1_BUDGET_UNAUTHORIZED',403);
   const url=new URL(request.url);
   const body:any=await request.json().catch(()=>null);
-  const day=utcDay();
+  const day=utcDay(),cycle=paidCycle();
   if(url.pathname==='/sync'){
-   if(body?.day!==day||!Number.isSafeInteger(body.rows_read)||!Number.isSafeInteger(body.rows_written)||
-    body.rows_read<0||body.rows_written<0||body.rows_read>Number.MAX_SAFE_INTEGER||body.rows_written>Number.MAX_SAFE_INTEGER)
+   if(body?.day!==day||body?.billing_cycle_start_utc!==cycle||
+    !Number.isSafeInteger(body.month_rows_read)||!Number.isSafeInteger(body.month_rows_written)||
+    body.month_rows_read<body.rows_read||body.month_rows_written<body.rows_written||
+    !Number.isSafeInteger(body.rows_read)||!Number.isSafeInteger(body.rows_written)||
+    body.rows_read<0||body.rows_written<0||
+    body.month_rows_read<0||body.month_rows_written<0||
+    body.rows_read>Number.MAX_SAFE_INTEGER||body.rows_written>Number.MAX_SAFE_INTEGER||
+    body.month_rows_read>Number.MAX_SAFE_INTEGER||body.month_rows_written>Number.MAX_SAFE_INTEGER)
     return fail('D1_PROVIDER_USAGE_INVALID');
    // Trusted caller MUST use actual live GraphQL sum for every account D1 DB.
    // Monotonic floor prevents counter rewind and early UTC acceptance.
    return this.ctx.storage.transaction(async txn=>{
     const previous=await txn.get<Daily>(key(day));
+    const priorMonth=await txn.get<PaidMonthly>(monthKey(cycle));
+    const monthly:PaidMonthly=priorMonth??{cycle,read_reserved:0,write_reserved:0,
+     provider_rows_read:0,provider_rows_written:0,provider_observed_at:0};
     const record:Daily=previous??{day,read_reserved:0,write_reserved:0,
      provider_rows_read:0,provider_rows_written:0,provider_observed_at:0};
-    if(body.rows_read<record.provider_rows_read||body.rows_written<record.provider_rows_written)
+    if(body.rows_read<record.provider_rows_read||body.rows_written<record.provider_rows_written||
+       body.month_rows_read<monthly.provider_rows_read||
+       body.month_rows_written<monthly.provider_rows_written)
      return fail('D1_PROVIDER_COUNTER_REWIND');
     record.provider_rows_read=body.rows_read;record.provider_rows_written=body.rows_written;
     record.provider_observed_at=Date.now();
+    monthly.provider_rows_read=body.month_rows_read;
+    monthly.provider_rows_written=body.month_rows_written;
+    monthly.provider_observed_at=record.provider_observed_at;
     await txn.put(key(day),record);
-    return Response.json({ok:true,day,provider_observed:true});
+    await txn.put(monthKey(cycle),monthly);
+    return Response.json({ok:true,day,billing_cycle_start_utc:cycle,provider_observed:true});
    });
   }
   if(url.pathname!=='/reserve'||body?.day!==day||!allowed(body.max_rows_read)||
@@ -77,19 +109,46 @@ export class QuotaBudgetDO {
   return this.ctx.storage.transaction(async txn=>{
    const record:Daily=(await txn.get<Daily>(key(day)))??{day,read_reserved:0,write_reserved:0,
     provider_rows_read:0,provider_rows_written:0,provider_observed_at:0};
-   if(!fresh(record))return fail('D1_PROVIDER_USAGE_STALE');
+   const monthly=await txn.get<PaidMonthly>(monthKey(cycle));
+   if(!fresh(record)||!monthly||monthly.cycle!==cycle||!fresh(monthly))
+    return fail('D1_PAID_MONTHLY_PROVIDER_USAGE_STALE');
    // Double counting provider-observed rows and all local reservations is
    // intentionally conservative; it cannot falsely grant account-wide safety.
-   if(record.provider_rows_read+record.read_reserved+body.max_rows_read>LIMIT||
-      record.provider_rows_written+record.write_reserved+body.max_rows_written>LIMIT)
-    return fail('D1_140K_DAILY_CIRCUIT_OPEN',429);
+   const hour=utcHour();
+   const hourly=(await txn.get<HourBudget>(hourKey(hour)))??{read_reserved:0,write_reserved:0};
+   if(record.provider_rows_read+record.read_reserved+body.max_rows_read>READ_LIMIT||
+      record.provider_rows_written+record.write_reserved+body.max_rows_written>WRITE_LIMIT)
+    return fail('D1_PAID_OWNER_DAILY_CEILING_OPEN',429);
+   if(monthly.provider_rows_read+monthly.read_reserved+body.max_rows_read>MONTH_READ_LIMIT||
+      monthly.provider_rows_written+monthly.write_reserved+body.max_rows_written>MONTH_WRITE_LIMIT)
+    return fail('D1_PAID_MONTHLY_30PCT_RESERVE_PROTECTED',429);
+   if(hourly.read_reserved+body.max_rows_read>HOURLY_READ_LIMIT||
+      hourly.write_reserved+body.max_rows_written>HOURLY_WRITE_LIMIT)
+    return fail('D1_PAID_OWNER_HOURLY_CEILING_OPEN',429);
+   const lane=body.lane??'background';
+   if(!['background','migration','shadow','hot50','customer_api'].includes(lane))
+    return fail('D1_QUOTA_LANE_INVALID',400);
+   if(lane==='background'&&
+      (record.provider_rows_read/READ_LIMIT>=0.85||
+       record.provider_rows_written/WRITE_LIMIT>=0.85))
+    return fail('D1_PAID_BACKGROUND_85PCT_THROTTLED',429);
    record.read_reserved+=body.max_rows_read;record.write_reserved+=body.max_rows_written;
+   monthly.read_reserved+=body.max_rows_read;monthly.write_reserved+=body.max_rows_written;
+   hourly.read_reserved+=body.max_rows_read;
+   hourly.write_reserved+=body.max_rows_written;
    await txn.put(key(day),record);
+   await txn.put(monthKey(cycle),monthly);
+   await txn.put(hourKey(hour),hourly);
    // Ambiguous retries conservatively consume another ticket; no refund or
    // idempotency shortcut that could let a repeated operation exceed the cap.
    return Response.json({ok:true,admitted:true,day,
-    read_remaining_bound:LIMIT-record.provider_rows_read-record.read_reserved,
-    write_remaining_bound:LIMIT-record.provider_rows_written-record.write_reserved,
+    read_remaining_bound:READ_LIMIT-record.provider_rows_read-record.read_reserved,
+    write_remaining_bound:WRITE_LIMIT-record.provider_rows_written-record.write_reserved,
+    hourly_read_remaining_bound:HOURLY_READ_LIMIT-hourly.read_reserved,
+    hourly_write_remaining_bound:HOURLY_WRITE_LIMIT-hourly.write_reserved,
+    monthly_read_remaining_bound:MONTH_READ_LIMIT-monthly.provider_rows_read-monthly.read_reserved,
+    monthly_write_remaining_bound:MONTH_WRITE_LIMIT-monthly.provider_rows_written-monthly.write_reserved,
+    monthly_emergency_reserve_percent:30,
     account_wide_provider_hard_cap:false});
   });
  }
@@ -111,8 +170,10 @@ export async function reserveD1Budget(env:QuotaEnv,reservation:QuotaReservation)
  return post(env,'/reserve',{...reservation,day:utcDay()});
 }
 /** Callable ONLY by a trusted operator after independent account-wide GraphQL. */
-export async function syncProviderRows(env:QuotaEnv,rows_read:number,rows_written:number){
- return post(env,'/sync',{day:utcDay(),rows_read,rows_written});
+export async function syncProviderRows(env:QuotaEnv,rows_read:number,rows_written:number,
+ month_rows_read:number,month_rows_written:number,billing_cycle_start_utc:string){
+ return post(env,'/sync',{day:utcDay(),rows_read,rows_written,
+  month_rows_read,month_rows_written,billing_cycle_start_utc});
 }
 /** Caller must provide a strict query-cost upper bound; missing cap = HOLD. */
 export async function withQuotaCircuitBreaker<T>(env:QuotaEnv,r:QuotaReservation,
