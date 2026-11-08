@@ -8,10 +8,13 @@ geopolitics/macro/minerals ingestion, B2 archive, customer APIs or signing.
 
 ## Safety prerequisites
 
-- **Hard owner envelope:** current UTC day, account-wide Cloudflare
-  GraphQL rows_read and rows_written individually **< 60,000** before
-  each migration step; reserve >=80,000 against each separate 140,000
-  owner soft target. Metrics are DELAYED, not atomic reservations.
+- **Current owner billing envelope:** Workers Paid includes 25B
+  reads and 50M writes per **5th-to-5th** billing month (Nov 5–Dec 5),
+  verified by account-wide GraphQL plus official account subscription
+  evidence. Old 140k/UTC-day cap is RETIRED for new migration.
+  Keep 10% of included capacity unused (22.5B read, 45M write
+  discretionary ceiling) and an additional 20M read/1M write migration
+  buffer. Metrics are DELAYED, never atomic reservations.
 - Production scheduler PR #3729 originally checks out legacy Step3
   `3c8fe6a51c8b34aa75d43ab0c77e5395d3fe16f2`.
   Safety PR #3731 adds mandatory V2 module/key checks, so this old pin
@@ -89,14 +92,14 @@ Before allowing any D1 write, independently confirm:
   into shadow without explicit rights/security review.
 - a separate shadow Worker version pair has actually been uploaded
   and bound to the SHADOW D1 UUID and shadow R2 binding/secret;
-- current-day *account-wide* D1 headroom is within 60k in both dimensions.
+- month-wide *account-wide* D1 verified Paid headroom fits the 10% reserve and independently budgeted migration estimates.
 
 The shadow-only runner command, with protected environment injected:
 ```bash
 export GEOMACRO_STEP3_EXACT_SHA="$(git rev-parse HEAD)"
 export GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED=YES
 export GEOMACRO_D1_SHADOW_TARGET_APPROVED=YES
-node scripts/ops/check-d1-headroom.mjs --check
+node scripts/ops/check-d1-headroom.mjs --check # PAID billing-cycle provider proof; NOT 140k/UTC-day
 node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow
 ```
 
@@ -151,7 +154,7 @@ SHA and production environment authorization:
 export GEOMACRO_STEP3_EXACT_SHA="$(git rev-parse HEAD)"
 export GEOMACRO_STEP3_APPLY=APPROVE_ONLY_0204_0211_0212_0213
 export GEOMACRO_STEP3_RECOVERY_V2_APPROVED=YES
-node scripts/ops/check-d1-headroom.mjs --check
+node scripts/ops/check-d1-headroom.mjs --check # PAID billing-cycle provider proof; NOT 140k/UTC-day
 node scripts/ops/run-step3-protected-d1-migrations.mjs --apply
 ```
 
@@ -175,7 +178,7 @@ Draft PR #3730 aligns the existing protected canary promoter to
 provider-confirmed exact baseline/candidate UUID split, queue/binding
 parity, authenticated HMAC/R2+B2 byte parity, verified ingestion
 freshness and signed data, same-UTC account-wide read/write envelope,
-and no >5,800/hour provider-observed read/write spikes. The Cloudflare
+and no provider-observed >paid-monthly-trajectory read/write spikes. The Cloudflare
 GraphQL metrics are delayed; detection/rollback can only occur after
 a spike is OBSERVED, not instantaneously at the first physical D1 row.
 
@@ -195,7 +198,7 @@ previous-baseline** deployment and provider GET readback. Leave
 `config/d1-hotspot-v2-canary.hold` in GitHub main throughout
 the complete canary. Release it in a separately reviewed PR only
 after 100% live stability, independent full 24h D1
-<140,000 read and <140,000 write physical counter proof, and B2
+within the <22.5B read and <45M write monthly owner envelope, and B2
 archive + Hot50 certified signed source evidence.
 
 ## Acceptance classification
