@@ -6,7 +6,7 @@ import {readFileSync} from 'node:fs';
 import {canonicalJcs,sha256,simhash,simhashDistance,normalizeUnqualifiedEvidence,
  analyzeDeficits,signEvidence,verifyEvidence,DEFICITS}
  from '../../workers/control-plane/src/evidence-qualification-core.mjs';
-import {ingestEvidence,recoverDueEvidence,qualifyAndPublishEvidence,deliverVerifiedEvidence}
+import {handleEvidenceRuntime,ingestEvidence,recoverDueEvidence,qualifyAndPublishEvidence,deliverVerifiedEvidence}
  from '../../workers/control-plane/src/evidence-qualification-runtime.mjs';
 import {mintCanonicalCustomerPaidKey}
  from '../../workers/control-plane/src/customer-paid-ledger.mjs';
@@ -193,6 +193,16 @@ test('RSS unqualified -> bounded recovery -> signed review -> R2 byte readback -
   /EQE_ARCHIVE_READBACK_HASH_MISMATCH/);
  assert.equal(sql.prepare("SELECT COUNT(*) n FROM credit_ledger WHERE event_type='debit'").get().n,1);
  sql.close();
+});
+test('public evidence key registry publishes only verifiable public key metadata',async()=>{
+ const f=inMemorySql(),store=r2(),env=envWith(f.db,store);
+ const response=await handleEvidenceRuntime(new Request('https://control.example/v1/evidence/keys'),env);
+ assert.equal(response.status,200);
+ const obj=await response.json();
+ assert.equal(obj.schema,'geomacro.evidence-verification-keys.v1');
+ assert.deepEqual(obj.keys,[{key_id:'test-evidence-1',public_key_spki_b64:signer.publicSpkiB64,status:'active'}]);
+ assert.ok(!JSON.stringify(obj).includes(signer.privatePkcs8B64));
+ f.sql.close();
 });
 test('D1 unique claim prevents two distinct item IDs being published as one event',()=>{
  const {sql}=inMemorySql();
