@@ -365,36 +365,59 @@ test("real SQLite bundled mixed new/existing items preserve first-seen and exact
 });
 
 test("private OSINT reader uses stable keyset pages without OFFSET and rejects cursor scope reuse",async()=>{
- const {env,items}=fakeD1();
- const seen=new Set();
- for(let i=0;i<105;i++){
-  const source=item({id:"news-"+hash("keyset-"+i)});
-  const id=source.id.slice(5);
-  items.set(id,{item_id:id,category:"macro",country_iso3:"IND",
-   native_feed_published_at:at,projection_json:JSON.stringify(source),
-   first_seen_at:new Date(now).toISOString(),last_seen_at:new Date(now).toISOString()});
- }
- const query=new URLSearchParams("category=macro&country=IND");
- const first=await privateOsint15mRead(env,query,now);
- assert.equal(first.status,200);
- const a=await first.json();
- assert.equal(a.pagination,"keyset");
- assert.equal(a.items.length,100);
- assert.equal(a.has_more,true);
- assert.ok(a.next_cursor);
- a.items.forEach(x=>seen.add(x.id));
- const second=await privateOsint15mRead(env,new URLSearchParams({
-  category:"macro",country:"IND",cursor:a.next_cursor,
- }),now);
- const b=await second.json();
- assert.equal(second.status,200);
- assert.equal(b.items.length,5);
- b.items.forEach(x=>seen.add(x.id));
- assert.equal(seen.size,105);
- assert.equal(b.has_more,false);
- assert.equal(b.next_cursor,null);
- assert.equal((await privateOsint15mRead(env,
-  new URLSearchParams({category:"geopolitics",country:"IND",cursor:a.next_cursor}),now)).status,400);
- assert.equal((await privateOsint15mRead(env,
-  new URLSearchParams("category=macro&offset=100"),now)).status,400);
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync(new URL(
+  "../../workers/control-plane/migrations/0028_private_osint_15m_durable.sql",
+  import.meta.url),"utf8"));
+ db.exec(readFileSync(new URL(
+  "../../workers/control-plane/migrations/0029_private_osint_bundle_index.sql",
+  import.meta.url),"utf8"));
+ const insert=db.prepare(
+  "INSERT INTO private_osint_news_25h "+
+  "(item_id,category,country_iso3,native_feed_published_at,"+
+  "projection_json,first_seen_at,last_seen_at) VALUES(?,?,?,?,?,?,?)");
+ const env={DB:{prepare(sql){
+  const statement={args:[],
+   bind(...params){statement.args=params;return statement},
+   async all(){return {results:db.prepare(sql).all(...statement.args),
+    meta:{rows_read:101,rows_written:0}}}
+  };
+  return statement;
+ }}};
+ try{
+  for(let i=0;i<105;i++){
+   const source=item({id:"news-"+hash("keyset-"+i)});
+   insert.run(source.id.slice(5),"macro","IND",at,JSON.stringify(source),
+    new Date(now).toISOString(),new Date(now).toISOString());
+  }
+  const query=new URLSearchParams("category=macro&country=IND");
+  const first=await privateOsint15mRead(env,query,now);
+  assert.equal(first.status,200);
+  const a=await first.json();
+  assert.equal(a.pagination,"keyset");
+  assert.equal(a.items.length,100);
+  assert.equal(a.has_more,true);
+  assert.ok(a.next_cursor);
+  const seen=new Set(a.items.map(x=>x.id));
+  const second=await privateOsint15mRead(env,new URLSearchParams({
+   category:"macro",country:"IND",cursor:a.next_cursor,
+  }),now);
+  const b=await second.json();
+  assert.equal(second.status,200);
+  assert.equal(b.items.length,5);
+  b.items.forEach(x=>seen.add(x.id));
+  assert.equal(seen.size,105);
+  assert.equal(b.has_more,false);
+  assert.equal(b.next_cursor,null);
+  assert.equal((await privateOsint15mRead(env,
+   new URLSearchParams({category:"geopolitics",country:"IND",cursor:a.next_cursor}),now)).status,400);
+  assert.equal((await privateOsint15mRead(env,
+   new URLSearchParams("category=macro&offset=100"),now)).status,400);
+  const plan=db.prepare("EXPLAIN QUERY PLAN SELECT item_id FROM private_osint_news_25h "+
+   "INDEXED BY idx_private_osint_category_clock WHERE category=? AND "+
+   "(native_feed_published_at,item_id)<(?,?) "+
+   "ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 101")
+   .all("macro",at,hash("keyset-50"));
+  assert.ok(plan.some(x=>String(x.detail).includes("idx_private_osint_category_clock")));
+ }finally{db.close()}
 });
