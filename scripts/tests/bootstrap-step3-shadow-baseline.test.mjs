@@ -211,3 +211,28 @@ test("uppercase Cloudflare internal Shadow table is identified but still HOLD",a
  assert.equal(report.production_d1_writes,0);
  assert.equal(report.shadow_d1_writes,0);
 });
+
+test("real Cloudflare _cf_KV only is acceptable baseline, never evidence of a completed bootstrap",async()=>{
+ assert.equal(assertPristineShadowSchema([{name:"_cf_KV"}]),true);
+ for(const rows of [
+  [{name:"d1_migrations"}],
+  [{name:"phase2h_private_raw_news"}],
+  [{name:"_cf_KV"},{name:"phase2h_private_raw_news"}],
+  [{name:"_cf_KV"},{name:"_cf_KV"}],
+  [{name:"_CF_KV"}],
+  [{name:"_cf_KV"},{name:"d1_migrations"}]
+ ]) assert.throws(()=>assertPristineShadowSchema(rows),
+   /SHADOW_NOT_PRISTINE_OR_PARTIAL_BOOTSTRAP_REQUIRES_RECOVERY_REVIEW/u);
+ const result=await readOnlyShadowBootstrapPreflight({
+  env:env(),headroomCheck:async()=>usage(),
+  fetchImpl:async()=>asResult([{name:"_cf_KV"}])
+ });
+ assert.equal(result.status,"READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION");
+ assert.equal(result.shadow_schema_pristine,true);
+ assert.equal(result.provider_internal_cf_kv_preserved,true);
+ assert.deepEqual(result.shadow_existing_table_names,["_cf_KV"]);
+ assert.equal(result.r2_encrypted_recovery_readback_verified,false);
+ assert.equal(result.stage1_physical_pass,false);
+ assert.equal(result.production_d1_writes,0);
+ assert.equal(result.shadow_d1_writes,0);
+});
