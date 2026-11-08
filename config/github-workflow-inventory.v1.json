@@ -512,7 +512,7 @@
       "\"Deploy D1 Control Plane\""
     ],
     "website-derived-news-continuity.yml": [
-      "cron: \"7 * * * *\"",
+      "cron: \"7,27,47 * * * *\"",
       "\"Deploy Permanent Public Finds Archive\""
     ],
     "five-minute-original-news-fastlane.yml": [
