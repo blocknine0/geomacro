@@ -8,7 +8,7 @@ import { GEOMACRO_LOW_BARRIER_VERSION } from "@/lib/low-barrier-pricing";
 
 const TITLE = "Store & API | Geomacro";
 const DESCRIPTION =
-  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, locked PayPal/card and Base/Polygon USDC checkout previews, and evidence-gated x402.";
+  "GeoMacro Store: $9/$29/$99 prepaid 30-day plans, $5/$15/$30 credit packs, Base and Polygon native-USDC-only checkout preview (PayPal/card unavailable), and evidence-gated x402.";
 const URL = "https://geomacro.live/pricing";
 const highlights = [
   { label: "Geopolitics", icon: Globe2 },
@@ -88,8 +88,8 @@ function PricingPage() {
               ))}
             </div>
             <p className="mt-6 rounded-lg bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">
-              Two payment methods are available to preview: PayPal/card (international fiat)
-              and native USDC (Base / Polygon). External payments remain locked.
+              The only proposed new-sale rails are native USDC on Base and Polygon.
+              PayPal and cards are disabled; USDC checkout remains locked pending verified settlement.
             </p>
           </div>
         </div>
@@ -116,8 +116,8 @@ function PricingPage() {
             Start small. Grow on your terms.
           </h2>
           <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            Compare prepaid 30-day plans and one-time credit packs, then select PayPal/card
-            or native Base/Polygon USDC directly on this page. Production transactions remain locked.
+            Compare prepaid 30-day plans and one-time credit packs, then select native USDC
+            on Base or Polygon. Production transactions remain locked until verified.
           </p>
         </div>
         <LowBarrierPricing />
