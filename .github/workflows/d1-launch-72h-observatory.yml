@@ -71,6 +71,7 @@ jobs:
         run: |
           node --check scripts/ops/d1-launch-hourly-observer.mjs
           node --check scripts/ops/evaluate-d1-launch-72h.mjs
+          node --test scripts/tests/step2-selective-isolation.test.mjs
           node --test scripts/tests/d1-launch-window.test.mjs scripts/tests/d1-launch-hourly-observer.test.mjs scripts/tests/capture-d1-launch-insights.test.mjs scripts/tests/d1-launch-github-verification.test.mjs scripts/tests/verify-deployed-runtime-equivalence.test.mjs scripts/tests/production-three-domain-source-continuity.test.mjs
 
   observe:
@@ -100,6 +101,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ops/d1-launch-hourly-observer.mjs
+      - name: Derive Step 2 owner 60k headroom from the SAME provider receipt (zero new D1 calls)
+        if: success()
+        run: node scripts/ops/step2-d1-headroom-telemetry.mjs
       - name: Independently measure actual three-domain source freshness from canonical D1
         if: always()
         continue-on-error: true
@@ -111,6 +115,7 @@ jobs:
           name: geomacro-d1-launch-hourly
           path: |
             artifacts/d1-launch-hourly/receipt.json
+            artifacts/d1-launch-hourly/step2-headroom.json
             artifacts/d1-launch-hourly/source-continuity.json
           retention-days: 7
           if-no-files-found: error
