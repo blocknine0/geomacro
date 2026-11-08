@@ -53,11 +53,14 @@ function endpoint({account,bucket,key}){
 }
 async function cfRequest(url,{token,fetchImpl,method="GET",body=null}={}){
  try{
+  // Cloudflare R2 REST Upload Object expects multipart file field "body".
+  // The boundary is generated automatically; do not set Content-Type.
+  const form=body===null?null:new FormData();
+  if(form)form.set("body",new Blob([body],{
+   type:"application/octet-stream"}),"checkpoint.bin");
   const response=await fetchImpl(url,{method,redirect:"error",cache:"no-store",
-   headers:{Authorization:"Bearer "+token,
-    "Cache-Control":"no-store",
-    ...(body?{"Content-Type":"application/octet-stream"}:{})},
-   ...(body?{body}:{}),signal:AbortSignal.timeout(20000)});
+   headers:{Authorization:"Bearer "+token,"Cache-Control":"no-store"},
+   ...(form?{body:form}:{}),signal:AbortSignal.timeout(20000)});
   if(!response||response.redirected||response.status<200||response.status>=300)
    fail("PROVIDER_REQUEST_FAILED");
   return response;

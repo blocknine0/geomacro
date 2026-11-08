@@ -313,6 +313,7 @@
     "production-intelligence-readiness.yml",
     "production-private-news-boundary-slo.yml",
     "production-provider-canary.yml",
+    "production-rollout-orchestrator.yml",
     "production-website-health.yml",
     "propose-v2-upgrade.yml",
     "public-demo-risk-refresh.yml",
@@ -453,6 +454,7 @@
     "predge-token-only-sealed-handoff.yml",
     "private-global-osint-15m.yml",
     "product-ci.yml",
+    "production-rollout-orchestrator.yml",
     "production-website-health.yml",
     "reconcile-telegram-free-d1.yml",
     "recover-d1-quota-deployment-after-reset.yml",
@@ -498,7 +500,8 @@
     "cloudflare-five-usd-spend-blocks.yml": "Cloudflare $5 Workers Paid Spend Blocks (No Plan Purchase)",
     "geomacro-protected-hot50-worker-rollout.yml": "GeoMacro Protected Hot50 0-to-100 Worker Rollout (NO FUNDS)",
     "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)",
-    "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)"
+    "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)",
+    "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -581,6 +584,12 @@
       "    environment: production",
       "config/d1-hotspot-v2-canary.hold",
       "scripts/verify-d1-quota-proof.ts"
+    ],
+    "production-rollout-orchestrator.yml": [
+      "workflow_dispatch:",
+      "environment: production",
+      "config/d1-hotspot-v2-canary.hold",
+      "node scripts/ops/run-step3-protected-d1-migrations.mjs --apply"
     ]
   },
   "predgeBlobSha1": {

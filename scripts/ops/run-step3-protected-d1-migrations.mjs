@@ -16,16 +16,22 @@ import {existsSync,mkdirSync,mkdtempSync,readFileSync,writeFileSync} from "node:
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {checkD1Headroom,HEADROOM_HOLD_CODE}
- from "./check-d1-headroom.mjs";
+import {checkD1PaidMonthlyHeadroom,D1_PAID_HEADROOM_HOLD}
+ from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
 import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
+import {admitSignedStep3ShadowReceipt}
+ from "../lib/d1-step3-receipt-admission.mjs";
+import {assessStep3ProductionFinal}
+ from "../lib/d1-step3-production-final-acceptance.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
  from "../lib/d1-step3-shadow-pointer-seed.mjs";
+import {shadowArchivedSourceQuery,verifyRealShadowB2Parity,
+ verifyRealShadowDualWorkers} from "../lib/d1-step3-real-shadow-proofs.mjs";
 import {
  createStep3LedgerSQL,readStep3LedgerSQL,
  verifyStep3LedgerRows,step3LedgerStartSQL,
@@ -150,14 +156,14 @@ function ensureLedger(config,manifests,report){
  return map;
 }
 async function refreshedGate(report,stage){
- const x=await checkD1Headroom();
+ const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind==="shadow"?"shadow":"migration"});
  report.latest_headroom={stage,status:x.status,code:x.code,
   day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
   read_remaining:x.remaining_rows_read,
   write_remaining:x.remaining_rows_written};
  save(report);
- if(x.status!=="PASS")throw Error(HEADROOM_HOLD_CODE);
+ if(x.status!=="PASS")throw Error(D1_PAID_HEADROOM_HOLD);
  return x;
 }
 function boundedInputs(config,step,report){
@@ -339,6 +345,10 @@ export async function applyStep3Migrations({env=process.env}={}){
  if(!existsSync(HOLD_FILE))fail("RELEASE_HOLD_FILE_MISSING");
  try{
   approved(env);
+  // Real signed Stage 1 receipt: fail closed before all provider operations.
+  state.stage1_admission=admitSignedStep3ShadowReceipt({
+   env,currentHead:getHash(),manifests
+  });
   save(state);
   await refreshedGate(state,"BEFORE_SHADOW_BILLABLE_WORK");
   const shadow=await runShadowBillableProbe({env});
@@ -389,16 +399,27 @@ export async function applyStep3Migrations({env=process.env}={}){
     baseline(config));
    await refreshedGate(state,"AFTER_"+step.id);
   }
+  // Production B2 physical GET must be independent of the signed
+  // Stage 1 shadow B2 proof. Use one bounded canonical B2-ACK source.
+  await refreshedGate(state,"PRODUCTION_BEFORE_INDEPENDENT_B2_READBACK");
+  const productionSource=q(config,shadowArchivedSourceQuery(),{maxRows:1}).rows;
+  if(productionSource.length!==1)
+   fail("PRODUCTION_B2_ACKNOWLEDGED_ORIGINAL_UNAVAILABLE");
+  state.production_b2_archive_proof=await verifyRealShadowB2Parity({
+   env,source:productionSource[0]
+  });
+  if(state.production_b2_archive_proof.status!=="PASS_REAL_B2_BYTE_READBACK")
+   fail("PRODUCTION_INDEPENDENT_B2_GET_FAILED");
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
+  const final=assessStep3ProductionFinal({
+   state,pointerProof:state.post_migration_hmac,
+   b2Proof:state.production_b2_archive_proof
+  });
+  state.production_reference_table=final.production_reference_table;
   state.post_migration_readback_explicit_PASS=
-   state.verified.length===4&&state.recovery_checkpoint_verified===true&&
-   state.migration_ledger_verified===true&&
-   state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true&&
-   state.post_migration_hmac.b2_physical_parity==="PASS_REAL_B2_BYTE_READBACK";
-  state.status=state.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
-  state.code=state.post_migration_readback_explicit_PASS?
-   "STEP3_FOUR_MIGRATIONS_SCHEMA_AND_HMAC_READBACK_PASS":
-   "STEP3_POINTER_HMAC_R2_AND_B2_PARITY_NOT_YET_VERIFIED";
+   final.post_migration_readback_explicit_PASS;
+  state.status=final.status;
+  state.code=final.code;
   // Never remove HOLD or mark a PR as mergeable, even after PASS.
   save(state);
   if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD");
@@ -425,6 +446,14 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   id:x.id,sql_sha256:x.sql_sha256
  }));
  report.schema="geomacro.step3.shadow-rehearsal.v1";
+ report.proof_scope="REAL_PROVIDER_SHADOW";
+ report.reviewed_source_sha=getHash();
+ report.migration_sha256=sha256MigrationSet(manifests);
+ report.github_repository=process.env.GITHUB_REPOSITORY??null;
+ report.github_ref=process.env.GITHUB_REF??null;
+ report.github_run_id=process.env.GITHUB_RUN_ID??null;
+ report.shadow_database_uuid_sha256=createHash("sha256").update(
+  String(env.GEOMACRO_D1_SHADOW_DATABASE_ID??"").toLowerCase()).digest("hex");
  report.status="NOT_YET_VERIFIED";
  report.code="STEP3_SHADOW_PROVIDER_REHEARSAL_NOT_STARTED";
  report.legacy_worker_rollback_verified=false;
@@ -500,19 +529,52 @@ export async function rehearseStep3Shadow({env=process.env}={}){
      "PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY")
    fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED");
   write();
-  // Dedicated shadow hostname only. Never use api.geomacro.live as a
-  // surrogate proof for an isolated shadow-bound D1 Worker.
+  // Independent B2 GET: actual compressed original, not the R2 staging copy.
+  const originals=q(config,shadowArchivedSourceQuery(),{maxRows:1}).rows;
+  if(originals.length!==1||
+     createHash("sha256").update(originals[0].record_id).digest("hex")!==
+       report.real_archived_pointer_seed.original_record_id_sha256)
+   fail("SHADOW_B2_ACKNOWLEDGED_ORIGINAL_MISMATCH");
+  await refreshedGate(report,"SHADOW_BEFORE_INDEPENDENT_B2_READBACK");
+  report.b2_archive_proof=await verifyRealShadowB2Parity({
+   env,source:originals[0]
+  });
+  report.b2_physical_parity_verified=
+   report.b2_archive_proof.status==="PASS_REAL_B2_BYTE_READBACK";
+  if(!report.b2_physical_parity_verified)
+   fail("SHADOW_B2_PHYSICAL_READBACK_FAILED");
+  // Two distinct ACTUALLY DEPLOYED scripts, both proven by Cloudflare
+  // settings API to bind the same shadow UUID; check the old Worker after
+  // expand-only DDL, then the current reference-hydration Worker.
+  await refreshedGate(report,"SHADOW_BEFORE_DUAL_WORKER_PROVIDER_CHECK");
+  report.dual_worker_proof=await verifyRealShadowDualWorkers({
+   env,source:originals[0]
+  });
+  report.legacy_worker_rollback_verified=
+   report.dual_worker_proof.legacy_worker_rollback_verified===true;
+  report.new_worker_hydration_verified=
+   report.dual_worker_proof.new_worker_hydration_verified===true;
   const shadowHost=env.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST;
-  if(typeof shadowHost!=="string"||
-     !/^geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev$/u.test(shadowHost))
-   fail("SHADOW_WORKER_BOUND_ORIGIN_UNVERIFIED");
-  report.post_migration_hmac=await verifyHmacNewPointers(config,{
+  const pointerProof=await verifyHmacNewPointers(config,{
    ...env,GEOMACRO_STEP3_VERIFIED_WORKER_HOST:shadowHost
   });
-  // An HTTP response from the production Worker cannot prove that the
-  // shadow Worker bound to this D1 can survive rolling back. Do not forge.
-  report.code="STEP3_SHADOW_DUAL_WORKER_ROLLBACK_AND_B2_NOT_YET_VERIFIED";
-  report.status="NOT_YET_VERIFIED";
+  report.post_migration_hmac={...pointerProof,
+   b2_physical_parity:report.b2_archive_proof.status};
+  report.post_migration_readback_explicit_PASS=
+   report.verified.length===4&&
+   report.migrations_0204_0211_0212_0213_provider_verified===true&&
+   report.recovery_checkpoint_verified===true&&
+   report.migration_ledger_verified===true&&
+   report.legacy_worker_rollback_verified===true&&
+   report.new_worker_hydration_verified===true&&
+   report.b2_physical_parity_verified===true&&
+   report.post_migration_hmac.cryptographic_readback_verified===true&&
+   report.post_migration_hmac.all_hmac_and_r2_bytes_verified===true;
+  report.status=report.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
+  report.code=report.status==="PASS"?
+   "STEP3_REAL_SHADOW_FOUR_MIGRATIONS_DUAL_WORKER_B2_PASS":
+   "STEP3_SHADOW_PHYSICAL_ACCEPTANCE_INCOMPLETE";
+  report.no_real_provider_rehearsal_claimed=report.status!=="PASS";
  }catch(e){
   report.status="NOT_YET_VERIFIED";
   report.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
@@ -520,7 +582,10 @@ export async function rehearseStep3Shadow({env=process.env}={}){
  }finally{
   report.hold_file_untouched=existsSync(HOLD_FILE);
   report.production_sql_mutated=false;
-  report.post_migration_readback_explicit_PASS=false;
+  report.post_migration_readback_explicit_PASS=
+   report.status==="PASS"&&
+   report.post_migration_readback_explicit_PASS===true;
+  report.completed_at=new Date().toISOString();
   write();
  }
  return report;

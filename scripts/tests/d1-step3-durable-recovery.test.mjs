@@ -34,7 +34,14 @@ function provider({corrupt=false,bookmark="opaque-proven-bookmark-value"}={}){
   if(url.includes("/time_travel/bookmark"))
    return new Response(JSON.stringify({success:true,result:{bookmark}}),{status:200});
   if(req.method==="PUT"){
-   objects.set(url,Buffer.from(req.body));
+   assert(req.body instanceof FormData,
+    "R2 REST Upload Object requires multipart file body");
+   assert.equal(req.headers["Content-Type"],undefined,
+    "multipart boundary must be set by fetch itself");
+   const file=req.body.get("body");
+   assert(file&&typeof file.arrayBuffer==="function",
+    "R2 REST requires a form file field named body");
+   objects.set(url,Buffer.from(await file.arrayBuffer()));
    return new Response(null,{status:200});
   }
   if(req.method==="GET"&&objects.has(url)){

@@ -1,0 +1,235 @@
+name: Step3 Protected Local Shadow and Stage2 Orchestrator
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/production-rollout-orchestrator.yml"
+      - "scripts/lib/d1-step3-receipt-admission.mjs"
+      - "scripts/ops/run-step3-protected-d1-migrations.mjs"
+      - "scripts/ops/run-step3-local-workerd-rehearsal.mjs"
+      - "scripts/tests/d1-step3-receipt-admission.test.mjs"
+      - "scripts/lib/d1-step3-real-shadow-proofs.mjs"
+      - "scripts/lib/d1-step3-production-final-acceptance.mjs"
+      - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
+      - "scripts/tests/d1-step3-real-shadow-proofs.test.mjs"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL"
+        required: true
+        type: string
+      execute_stage2:
+        description: "Stage2 only if signed real-provider shadow PASS"
+        required: true
+        type: boolean
+        default: false
+      verify_hot50:
+        description: "Run live Hot50 audit after migration"
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+jobs:
+  local-workerd:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
+      - run: >-
+          node --test
+          scripts/tests/d1-step3-receipt-admission.test.mjs
+          scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
+          scripts/tests/d1-step3-real-shadow-proofs.test.mjs
+          scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
+          scripts/tests/d1-step3-durable-recovery.test.mjs
+          scripts/tests/d1-step3-production-final-acceptance.test.mjs
+      - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+      - run: bash -n scripts/ops/setup-step3-github-bindings.sh
+      - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-local-only
+          path: artifacts/release/step3-shadow-local-rehearsal-receipt.json
+          retention-days: 14
+          if-no-files-found: error
+
+  shadow-physical:
+    needs: local-workerd
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.approval == 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' &&
+      vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED == 'YES'
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 55
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
+      GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: "YES"
+      GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
+      GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
+      GEOMACRO_STEP3_EXACT_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
+      GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
+      GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_shadow_rehearsal"
+      B2_REQUEST_BUDGET: "12"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require reviewed main SHA and genuine private bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GEOMACRO_STEP3_EXACT_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          test -n "$GEOMACRO_D1_RECOVERY_AES256_KEY_B64"
+          test -n "$GEOMACRO_D1_RECOVERY_R2_BUCKET"
+          test -n "$SIGNING_JWK"
+          test -n "$CONTROL_PLANE_TOKEN"
+          test -n "$PHASE2H_R2_REFERENCE_HMAC_KEY"
+          test "$GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED" = YES
+          test "$GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED" = YES
+          test -n "$GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET"
+          test -n "$GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST"
+          test -n "$GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST"
+          test -n "$B2_ARCHIVE_READ_KEY_ID"
+          test -n "$B2_ARCHIVE_READ_APPLICATION_KEY"
+          test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
+      - run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - run: node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-real-shadow
+          path: artifacts/release/step3-shadow-rehearsal-receipt.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  stage2-production:
+    needs: shadow-physical
+    if: >-
+      needs.shadow-physical.result == 'success' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.execute_stage2 == true
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 55
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
+      GEOMACRO_STEP3_EXACT_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA }}
+      GEOMACRO_STEP3_APPLY: "APPROVE_ONLY_0204_0211_0212_0213"
+      GEOMACRO_STEP3_RECOVERY_V2_APPROVED: ${{ vars.GEOMACRO_STEP3_RECOVERY_V2_APPROVED }}
+      GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
+      GEOMACRO_STEP3_VERIFIED_WORKER_HOST: "api.geomacro.live"
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_production_verify"
+      B2_REQUEST_BUDGET: "12"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-step3-real-shadow
+          path: artifacts/release
+      - name: Check signed receipt before any D1 provider call
+        run: |
+          node --input-type=module <<'NODE'
+          import {execFileSync} from "node:child_process";
+          import {step3SqlManifests} from "./scripts/lib/d1-step3-migration-contract.mjs";
+          import {admitSignedStep3ShadowReceipt} from "./scripts/lib/d1-step3-receipt-admission.mjs";
+          const result=admitSignedStep3ShadowReceipt({
+            currentHead:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),
+            manifests:step3SqlManifests()
+          });
+          console.log(JSON.stringify({status:result.status,sha:result.reviewed_source_sha}));
+          NODE
+      - run: node scripts/ops/run-step3-protected-d1-migrations.mjs --apply
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-production
+          path: artifacts/release/d1-step3-migration-execution.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  hot50-readback:
+    needs: stage2-production
+    if: >-
+      needs.stage2-production.result == 'success' &&
+      inputs.verify_hot50 == true
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+      HOT50_TIER_FULL_CENSUS: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node scripts/ops/verify-hot50-production-activation.mjs
+      - name: Require all 150 live signed country-category cells across priced risk-gate tiers
+        run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-hot50-150-cell-proof
+          path: artifacts/hot50-risk-gate/latest.json
+          if-no-files-found: warn
+          retention-days: 14
+
+# Canary promotion and checkout require their independent deployment/merchant
+# receipts and cannot be inferred from signed schema migration success.
