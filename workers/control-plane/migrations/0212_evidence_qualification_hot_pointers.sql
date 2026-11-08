@@ -35,6 +35,10 @@ CREATE INDEX IF NOT EXISTS idx_eqe_qualified_claim
  ON eqe_qualified(claim_sha256,expires_at);
 CREATE INDEX IF NOT EXISTS idx_eqe_qualified_simhash
  ON eqe_qualified(simhash,expires_at);
+-- In addition to semantic near-match review, SQLite must atomically block
+-- simultaneous different item IDs for one exact independently reviewed event.
+CREATE UNIQUE INDEX IF NOT EXISTS ux_eqe_qualified_claim_once
+ ON eqe_qualified(claim_sha256);
 CREATE INDEX IF NOT EXISTS idx_eqe_qualified_recent
  ON eqe_qualified(qualified_at DESC);
 
