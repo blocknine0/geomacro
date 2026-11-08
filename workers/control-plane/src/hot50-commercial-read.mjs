@@ -5,6 +5,7 @@
  * qualified signed snapshot must be published by the protected pipeline first.
  */
 import {RISK_GATE_HOT50} from './risk-gate-hot50-scope.mjs';
+import {readHot50LiveEvidenceDeficit} from './hot50-commercial-live-evidence.mjs';
 import {
  authorizeCanonicalCustomerPaid,customerPaidKeyDigest,CustomerPaidError
 } from './customer-paid-ledger.mjs';
@@ -211,7 +212,12 @@ export async function handleHot50CommercialRead(request,env,{now=()=>Date.now()}
   const row=prior
    ?await db.prepare('SELECT * FROM commercial_hot50_signed_snapshots WHERE snapshot_sha256=?').bind(prior.snapshot_sha256).first()
    :await cachedSignedSnapshot(db,viewKey,at,env);
-  if(!row)return reply({ok:false,error:'INSUFFICIENT_EVIDENCE',qualified_snapshot_available:false,credits_charged:0},503);
+  if(!row){
+   const liveEvidence=await readHot50LiveEvidenceDeficit(env,now());
+   return reply({ok:false,error:'INSUFFICIENT_EVIDENCE',
+    qualified_snapshot_available:false,credits_charged:0,
+    live_ingestion_evidence_state:liveEvidence},503);
+  }
   const data=await verifyHot50CommercialSnapshot(row,viewKey,env,now());
   if(!prior){
    // Current canonical tariff is 15 credits for risk_gate_bundle. The
