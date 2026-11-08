@@ -3,7 +3,7 @@ import { GEOMACRO_SUBSCRIPTIONS, GEOMACRO_ONE_TIME_PACKS, GEOMACRO_LOW_BARRIER_V
 import { LockedDualRailCheckout, type CheckoutSelection } from "@/components/dual-rail-checkout";
 
 /** Read-only catalog plus selectable dual-rail checkout preview; no money is accepted. */
-export function LowBarrierPricing() {
+export function LowBarrierPricing({paypalLive=false}:{paypalLive?:boolean}) {
   const initialPlan = GEOMACRO_SUBSCRIPTIONS[0];
   const [selection, setSelection] = useState<CheckoutSelection>({
     id: initialPlan.id,
@@ -25,7 +25,7 @@ export function LowBarrierPricing() {
         <p className="mt-3 text-sm text-muted-foreground">
           Each purchase grants up to 30 days of prepaid access; manual renewal, not automatic PayPal billing.
           Credits support qualified intelligence access once checkout and API entitlements are enabled.
-          No self-service charges or credit allocation are activated during the prelaunch preview.
+          {paypalLive?"Verified PayPal checkout funds only confirmed D1 entitlements.":"No self-service charges or credit allocation are activated during the prelaunch preview."}
         </p>
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {GEOMACRO_SUBSCRIPTIONS.map(plan => (
@@ -48,7 +48,7 @@ export function LowBarrierPricing() {
                 className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5">
                 {selection.id === plan.id ? "Selected · View payment methods" : "Select plan & payment method"}
               </button>
-              <p className="mt-2 text-xs text-muted-foreground">Live checkout locked · no charge</p>
+              <p className="mt-2 text-xs text-muted-foreground">{paypalLive?"Verified PayPal checkout available":"Live checkout locked · no charge"}</p>
             </article>
           ))}
         </div>
@@ -78,7 +78,7 @@ export function LowBarrierPricing() {
         </div>
       </div>
 
-      <LockedDualRailCheckout selection={selection} />
+      <LockedDualRailCheckout selection={selection} paypalLive={paypalLive} />
 
     </section>
   );
