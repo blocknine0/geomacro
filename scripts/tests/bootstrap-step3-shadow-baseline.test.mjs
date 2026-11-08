@@ -22,9 +22,9 @@ const env=()=>({
 const usage=()=>({status:"PASS",reserve_pct:30,provider_subscription_verified:true});
 const asResult=rows=>Response.json({success:true,result:[{success:true,
  results:rows,meta:{rows_read:Math.max(1,rows.length),rows_written:0}}]});
-test("baseline is nine exact reviewed migrations with no mutable wildcard SQL",()=>{
+test("baseline includes eleven dependency-closed reviewed migrations without wildcard SQL",()=>{
  const m=buildShadowBootstrapManifest();
- assert.equal(SHADOW_BASE_MIGRATIONS.length,9);
+ assert.equal(SHADOW_BASE_MIGRATIONS.length,11);
  assert.equal(new Set(SHADOW_BASE_MIGRATIONS).size,9);
  assert.deepEqual(m.migrations.map(x=>x.name),SHADOW_BASE_MIGRATIONS);
  assert.match(m.migration_set_sha256,/^[a-f0-9]{64}$/u);
@@ -49,11 +49,16 @@ test("empty local SQLite Shadow bootstrap supports exact staged 0204 0211 0212 0
   const names=new Set(db.prepare("SELECT name FROM sqlite_schema").all().map(x=>x.name));
   for(const needed of [
    "phase2h_private_raw_news","phase2h_raw_object_refs_v1",
+   "phase2h_archive_totals","idx_phase2h_risk_country_category_clock",
    "private_osint_news_25h","website_derived_intelligence",
    "p0b_committed_day_totals","phase2h_pending_hourly_v1",
    "idx_phase2h_retention_first_ingested","idx_phase2h_ref_ingest_clock_v1",
    "trg_p0b_day_committed_insert","trg_phase2h_hourly_pending_insert_v1"
   ])assert(names.has(needed),needed);
+  const columns=new Set(db.prepare("PRAGMA table_info(phase2h_private_raw_news)").all().map(x=>x.name));
+  assert(columns.has("risk_country_iso3"),"Stage1 pointer seed requires 0111 country column");
+  assert(names.has("trg_phase2h_census_insert"),"Stage1 archive ACK needs 0208 atomic counters");
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM phase2h_archive_totals").get().n,3);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM phase2h_private_raw_news").get().n,0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM phase2h_raw_object_refs_v1").get().n,0);
  }finally{db.close()}
