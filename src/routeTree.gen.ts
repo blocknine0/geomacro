@@ -17,6 +17,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BridgeRouteImport } from './routes/bridge'
 import { Route as BridgeSwapRouteImport } from './routes/bridge-swap'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DataApiRouteImport } from './routes/data-api'
 import { Route as DemoRouteImport } from './routes/demo'
@@ -68,6 +70,7 @@ import { Route as ApiGoatPilotOrderRouteImport } from './routes/api.goat.pilot.o
 import { Route as ApiGoatPilotStatusRouteImport } from './routes/api.goat.pilot.status'
 import { Route as ApiV1CustomerAccountRouteImport } from './routes/api.v1.customer.account'
 import { Route as ApiV1CustomerAuthRouteImport } from './routes/api.v1.customer.auth'
+import { Route as ApiV1CustomerHot50KeyRouteImport } from './routes/api.v1.customer.hot50-key'
 import { Route as ApiV1CustomerKeysRouteImport } from './routes/api.v1.customer.keys'
 import { Route as ApiV1IntelligenceAvailabilityRouteImport } from './routes/api.v1.intelligence.availability'
 import { Route as ApiV1IntelligenceCriticalMineralsRouteImport } from './routes/api.v1.intelligence.critical-minerals'
@@ -127,6 +130,21 @@ const BridgeSwapRoute = BridgeSwapRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
+  id: '/checkout/success',
+  path: '/checkout/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1CustomerHot50KeyRoute = ApiV1CustomerHot50KeyRouteImport.update({
+  id: '/api/v1/customer/hot50-key',
+  path: '/api/v1/customer/hot50-key',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -509,6 +527,8 @@ export interface FileRoutesByFullPath {
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/account': typeof AccountRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
@@ -558,6 +578,7 @@ export interface FileRoutesByFullPath {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
@@ -590,6 +611,8 @@ export interface FileRoutesByTo {
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/account': typeof AccountRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
@@ -639,6 +662,7 @@ export interface FileRoutesByTo {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
@@ -672,6 +696,8 @@ export interface FileRoutesById {
   '/bridge': typeof BridgeRoute
   '/bridge-swap': typeof BridgeSwapRoute
   '/contact': typeof ContactRoute
+  '/account': typeof AccountRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/dashboard': typeof DashboardRoute
   '/data-api': typeof DataApiRoute
   '/demo': typeof DemoRoute
@@ -721,6 +747,7 @@ export interface FileRoutesById {
   '/api/goat/pilot/artifact': typeof ApiGoatPilotArtifactRoute
   '/api/goat/pilot/order': typeof ApiGoatPilotOrderRoute
   '/api/goat/pilot/status': typeof ApiGoatPilotStatusRoute
+  '/api/v1/customer/hot50-key': typeof ApiV1CustomerHot50KeyRoute
   '/api/v1/customer/account': typeof ApiV1CustomerAccountRoute
   '/api/v1/customer/auth': typeof ApiV1CustomerAuthRoute
   '/api/v1/customer/keys': typeof ApiV1CustomerKeysRoute
@@ -755,6 +782,8 @@ export interface FileRouteTypes {
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/account'
+    | '/checkout/success'
     | '/dashboard'
     | '/data-api'
     | '/demo'
@@ -804,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
     | '/api/v1/customer/keys'
@@ -836,6 +866,8 @@ export interface FileRouteTypes {
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/account'
+    | '/checkout/success'
     | '/dashboard'
     | '/data-api'
     | '/demo'
@@ -885,6 +917,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
     | '/api/v1/customer/keys'
@@ -917,6 +950,8 @@ export interface FileRouteTypes {
     | '/bridge'
     | '/bridge-swap'
     | '/contact'
+    | '/account'
+    | '/checkout/success'
     | '/dashboard'
     | '/data-api'
     | '/demo'
@@ -966,6 +1001,7 @@ export interface FileRouteTypes {
     | '/api/goat/pilot/artifact'
     | '/api/goat/pilot/order'
     | '/api/goat/pilot/status'
+    | '/api/v1/customer/hot50-key'
     | '/api/v1/customer/account'
     | '/api/v1/customer/auth'
     | '/api/v1/customer/keys'
@@ -999,6 +1035,8 @@ export interface RootRouteChildren {
   BridgeRoute: typeof BridgeRoute
   BridgeSwapRoute: typeof BridgeSwapRoute
   ContactRoute: typeof ContactRoute
+  AccountRoute: typeof AccountRoute
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   DashboardRoute: typeof DashboardRoute
   DataApiRoute: typeof DataApiRoute
   DemoRoute: typeof DemoRoute
@@ -1050,6 +1088,7 @@ export interface RootRouteChildren {
   ApiGoatPilotStatusRoute: typeof ApiGoatPilotStatusRoute
   ApiV1CustomerAccountRoute: typeof ApiV1CustomerAccountRoute
   ApiV1CustomerAuthRoute: typeof ApiV1CustomerAuthRoute
+  ApiV1CustomerHot50KeyRoute: typeof ApiV1CustomerHot50KeyRoute
   ApiV1CustomerKeysRoute: typeof ApiV1CustomerKeysRoute
   ApiV1IntelligenceAvailabilityRoute: typeof ApiV1IntelligenceAvailabilityRoute
   ApiV1IntelligenceCriticalMineralsRoute: typeof ApiV1IntelligenceCriticalMineralsRoute
@@ -1128,6 +1167,20 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -1473,6 +1526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGoatPilotStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v1/customer/hot50-key': {
+      id: '/api/v1/customer/hot50-key'
+      path: '/api/v1/customer/hot50-key'
+      fullPath: '/api/v1/customer/hot50-key'
+      preLoaderRoute: typeof ApiV1CustomerHot50KeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v1/customer/account': {
       id: '/api/v1/customer/account'
       path: '/api/v1/customer/account'
@@ -1639,6 +1699,8 @@ const rootRouteChildren: RootRouteChildren = {
   BridgeRoute: BridgeRoute,
   BridgeSwapRoute: BridgeSwapRoute,
   ContactRoute: ContactRoute,
+  AccountRoute: AccountRoute,
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
   DashboardRoute: DashboardRoute,
   DataApiRoute: DataApiRoute,
   DemoRoute: DemoRoute,
@@ -1690,6 +1752,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGoatPilotStatusRoute: ApiGoatPilotStatusRoute,
   ApiV1CustomerAccountRoute: ApiV1CustomerAccountRoute,
   ApiV1CustomerAuthRoute: ApiV1CustomerAuthRoute,
+  ApiV1CustomerHot50KeyRoute: ApiV1CustomerHot50KeyRoute,
   ApiV1CustomerKeysRoute: ApiV1CustomerKeysRoute,
   ApiV1IntelligenceAvailabilityRoute: ApiV1IntelligenceAvailabilityRoute,
   ApiV1IntelligenceCriticalMineralsRoute:
