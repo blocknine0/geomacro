@@ -1,0 +1,86 @@
+name: Step3 Shadow Prerequisite Schema Bootstrap — Protected No Production DDL
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type BOOTSTRAP_SHADOW_ONLY_AFTER_SIGNED_R2_RECOVERY"
+        required: true
+        type: string
+      apply:
+        description: "One-time prerequisite schema DDL in isolated Shadow D1 only"
+        required: true
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - ".github/workflows/step3-shadow-prerequisite-bootstrap.yml"
+      - "scripts/ops/bootstrap-step3-shadow-baseline.mjs"
+      - "scripts/tests/bootstrap-step3-shadow-baseline.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-step3-shadow-prerequisite-ddl
+  cancel-in-progress: false
+jobs:
+  offline-prerequisite-sql:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Prove pristine base SQL and all four staged migrations locally
+        run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs
+      - name: Review only checked-in schema and no provider read/write
+        run: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan
+  protected-shadow-bootstrap:
+    needs: offline-prerequisite-sql
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.apply == true &&
+      inputs.approval == 'BOOTSTRAP_SHADOW_ONLY_AFTER_SIGNED_R2_RECOVERY'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED: ${{ vars.GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with: {node-version: "24"}
+      - name: Fail before provider mutation unless exact-main and hold file retained
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs
+      - name: Real Paid headroom + signed encrypted R2 checkpoint BEFORE Shadow DDL
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/bootstrap-step3-shadow-baseline.mjs --apply
+      - name: Preserve sanitized incomplete or successful schema receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-shadow-base-bootstrap-${{ github.run_id }}
+          path: artifacts/release/step3-shadow-schema-bootstrap.json
+          retention-days: 30
+          if-no-files-found: warn
