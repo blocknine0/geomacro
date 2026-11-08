@@ -5,14 +5,14 @@
  * must preserve their own D1 caps; unknown metrics are a strict HOLD.
  * Maintains separate protected original ingestion and discretionary research.
  */
-import {appendFileSync,readFileSync} from "node:fs";
+import {appendFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
 import {D1_FREE_DAILY,readCloudflareD1AccountQuota} from "./audit-d1-account-daily-quota-readonly.mjs";
 import {readCloudflareWorkersPaidProof,WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 import {readFiveUsdSpendGuard,SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
 import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
-import {checkD1PaidMonthlyHeadroom} from "../lib/d1-workers-paid-monthly-governor.mjs";
+import {checkD1PaidMonthlyHeadroom,assertPaidMonthlyPolicy} from "../lib/d1-workers-paid-monthly-governor.mjs";
 
 // Safeguard shared Cloudflare Free account capacity for the existing PREDGE
 // authenticated research pilot (500 atomic requests/UTC day). This is a
@@ -39,21 +39,10 @@ export const D1_BUNDLE_LANES=Object.freeze({
     read_opening_burst:250_000,write_opening_burst:2_500}),
 });
 const DAY_MS=86_400_000;
-const FIVE_USD_BUDGET=JSON.parse(readFileSync(
-  new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
-if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==140_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==0||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
-   FIVE_USD_BUDGET.provider_enforced_usage_blocks?.workers?.threshold_cents!==1||
-   FIVE_USD_BUDGET.provider_enforced_usage_blocks?.durable_objects?.threshold_cents!==1)
-  throw Error("CLOUDFLARE_CENTRAL_FIVE_USD_POLICY_WEAKENED");
+// Active Workers Paid quota policy is month-wide; the retired owner
+// daily 140k configuration is not imported into this admission planner.
+assertPaidMonthlyPolicy();
+
 /** Daily shaping is monotonic and resets only with the provider UTC clock. */
 export function d1LanePacedCeiling(lane,now){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime())||
