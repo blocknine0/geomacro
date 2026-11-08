@@ -67,7 +67,7 @@ function validCapability(c){
   return c;
 }
 function queryGrants(db,userId,now){
-  return db.prepare(`SELECT g.grant_id,g.tier,g.contract_version,g.starts_at,g.expires_at,
+  return db.prepare(`SELECT g.grant_id,g.receipt_id,g.tier,g.contract_version,g.starts_at,g.expires_at,
       (SELECT COALESCE(SUM(delta_credits),0) FROM credit_ledger
        WHERE receipt_id=g.receipt_id AND event_type IN ('funding','reversal')) AS allocated,
       (SELECT COALESCE(SUM(credit_cost),0) FROM customer_usage_receipts
@@ -228,7 +228,7 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
  * customer after full Hot50 signed/evidence acceptance. Old gmk_live_ keys
  * remain valid, preserving expand/contract compatibility with prior Workers.
  */
-export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso()){
+export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso(),checkoutReceiptId=null){
  if(env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
    fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
  requirePepper(env);
@@ -236,8 +236,21 @@ export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso()){
    "SELECT id FROM users WHERE id=? AND status='active' AND email_verified_at IS NOT NULL"
  ).bind(userId).first();
  if(!user)fail(403,'CUSTOMER_PAID_VERIFIED_USER_REQUIRED');
+ if(checkoutReceiptId!==null&&
+    (typeof checkoutReceiptId!=='string'||!/^r_paypal_[A-Z0-9]{8,32}$/u.test(checkoutReceiptId)))
+   fail(400,'CUSTOMER_PAYPAL_HANDOFF_RECEIPT_INVALID');
+ if(checkoutReceiptId!==null){
+  const existing=await db.prepare(
+   'SELECT key_id FROM commercial_hot50_checkout_key_handoffs '+
+   'WHERE receipt_id=? AND user_id=?'
+  ).bind(checkoutReceiptId,userId).first();
+  if(existing)return {api_key:null,key_id:existing.key_id,reveal_once:false,
+   idempotent_replay:true,key_issuance_status:'ALREADY_ISSUED'};
+ }
  const grants=(await queryGrants(db,userId,now)).results??[];
- const grant=grants.find(g=>customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle',env)&&
+ const grant=grants.find(g=>(checkoutReceiptId===null||
+   g.receipt_id===checkoutReceiptId)&&
+   customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle',env)&&
    Number.isSafeInteger(g.remaining)&&g.remaining>=CUSTOMER_CREDIT_COSTS.risk_gate_bundle);
  if(!grant)fail(402,'CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED');
  const secret='gm_live_'+randHex(16);
@@ -250,10 +263,27 @@ export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso()){
        'VALUES(?,?,?,?,?,?)')
        .bind(keyId,userId,digest,JSON.stringify(['risk-gate:read']),grant.expires_at,now),
      db.prepare('INSERT INTO tenant_api_keys_v1 (key_sha256,key_id,user_id,created_at) '+
-       'VALUES(?,?,?,?)').bind(sha,keyId,userId,now)
+       'VALUES(?,?,?,?)').bind(sha,keyId,userId,now),
+     ...(checkoutReceiptId===null?[]:[db.prepare(
+       'INSERT INTO commercial_hot50_checkout_key_handoffs '+
+       '(receipt_id,user_id,key_id,issued_at) VALUES(?,?,?,?)'
+      ).bind(checkoutReceiptId,userId,keyId,now)])
    ]);
- }catch{fail(503,'CUSTOMER_HOT50_KEY_ATOMIC_MINT_UNCONFIRMED');}
+ }catch{
+  // On a duplicate callback/concurrent mint the UNIQUE(receipt_id)
+  // constraint rolls back the entire losing batch, including its new
+  // API key. Return only the first key ID; plaintext is irrecoverable.
+  if(checkoutReceiptId!==null){
+   const prior=await db.prepare(
+    'SELECT key_id FROM commercial_hot50_checkout_key_handoffs '+
+    'WHERE receipt_id=? AND user_id=?'
+   ).bind(checkoutReceiptId,userId).first();
+   if(prior)return {api_key:null,key_id:prior.key_id,reveal_once:false,
+    idempotent_replay:true,key_issuance_status:'ALREADY_ISSUED'};
+  }
+  fail(503,'CUSTOMER_HOT50_KEY_ATOMIC_MINT_UNCONFIRMED');
+ }
  const check=await db.prepare('SELECT key_id FROM tenant_api_keys_v1 WHERE key_sha256=?').bind(sha).first();
  if(check?.key_id!==keyId)fail(503,'CUSTOMER_HOT50_KEY_READBACK_UNCONFIRMED');
- return {api_key:secret,key_id:keyId,sha256_prefix:sha.slice(0,12),expires_at:grant.expires_at,reveal_once:true};
+ return {api_key:secret,key_id:keyId,sha256_prefix:sha.slice(0,12),expires_at:grant.expires_at,reveal_once:true,idempotent_replay:false,key_issuance_status:'READY_REVEAL_ONCE'};
 }
