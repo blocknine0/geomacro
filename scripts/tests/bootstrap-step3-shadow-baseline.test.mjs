@@ -200,14 +200,42 @@ test("real Shadow-only preflight NEVER upgrades nonempty schema or absent Paid p
  }
 });
 
-test("uppercase Cloudflare internal Shadow table is identified but still HOLD",async()=>{
+test("Cloudflare reserved _cf_KV alone is not a user schema and requires exact SQL exclusion",async()=>{
+ let reads=0;
  const report=await readOnlyShadowBootstrapPreflight({
   env:env(),headroomCheck:async()=>usage(),
-  fetchImpl:async()=>asResult([{name:"_cf_KV"}])
+  fetchImpl:async(_url,init)=>{
+   const sql=JSON.parse(init.body).sql;
+   assert.match(sql,/name <> '_cf_KV'/u);
+   assert.doesNotMatch(sql,/name\s+NOT\s+LIKE\s+'_cf_%'/iu);
+   assert.match(sql,/name NOT LIKE 'sqlite_%'/u);
+   reads++;
+   // Provider filters its one reserved object, revealing no user tables.
+   return asResult([]);
+  }
  });
- assert.equal(report.status,"HOLD");
- assert.equal(report.shadow_schema_pristine,false);
- assert.deepEqual(report.shadow_existing_table_names,["_cf_KV"]);
+ assert.equal(reads,1);
+ assert.equal(report.status,"READONLY_PREREQUISITES_VERIFIED_NOT_DDL_AUTHORIZATION");
+ assert.equal(report.shadow_schema_pristine,true);
+ assert.deepEqual(report.shadow_existing_table_names,[]);
  assert.equal(report.production_d1_writes,0);
  assert.equal(report.shadow_d1_writes,0);
+ assert.equal(report.shadow_sql_mutated,undefined);
+ assert.equal(report.stage2_authorized,false);
+});
+test("all non-reserved Shadow tables still hard-HOLD, including Cloudflare-like prefixes",async()=>{
+ for(const name of ["_cf_KV_copy","_cf_shadow_unknown","website_derived_intelligence"]){
+  const report=await readOnlyShadowBootstrapPreflight({
+   env:env(),headroomCheck:async()=>usage(),
+   fetchImpl:async(_url,init)=>{
+    const sql=JSON.parse(init.body).sql;
+    assert.match(sql,/name <> '_cf_KV'/u);
+    return asResult([{name}]);
+   }
+  });
+  assert.equal(report.status,"HOLD");
+  assert.deepEqual(report.shadow_existing_table_names,[name]);
+  assert.equal(report.stage2_authorized,false);
+  assert.equal(report.shadow_d1_writes,0);
+ }
 });
