@@ -1,0 +1,63 @@
+{
+  "schema": "geomacro.d1-hotspot-benchmark-with-phase2h-shadow-v2",
+  "updated_utc": "2026-11-08",
+  "source": "deterministic local SQLite 3.46.1 benchmark; NOT D1 provider billing",
+  "local_fixture": {
+    "website_rows": 600,
+    "osint_rows": 12000,
+    "phase2h_rows": 24000
+  },
+  "website_category": {
+    "vm_steps_before": 756,
+    "vm_steps_after": 61,
+    "vm_steps_reduction_pct": 91.93
+  },
+  "osint_deep_page": {
+    "vm_steps_before": 2817,
+    "vm_steps_after": 1034,
+    "vm_steps_reduction_pct": 63.29
+  },
+  "phase2h_72h_census": {
+    "vm_steps_before": 105794,
+    "vm_steps_after": 1914,
+    "vm_steps_reduction_pct": 98.19,
+    "exact_parity": true
+  },
+  "publisher_50": {
+    "sql_statements_before": 50,
+    "sql_statements_after": 1,
+    "sqlite_rows_changed_before": 50,
+    "sqlite_rows_changed_after": 50
+  },
+  "phase2h_reference_cutover": {
+    "implementation": "STAGED_DISABLED",
+    "migration": "workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql",
+    "storage": "ONE PRIVATE R2 BUNDLE PER <=50 RAW OBSERVATIONS",
+    "d1_raw_json_for_new_ref_only_rows": false,
+    "cryptographic_proofs": [
+      "SHA-256 object readback",
+      "SHA-256 individual record",
+      "HMAC-SHA-256 pointer"
+    ],
+    "new_exact_reader": "workers/control-plane/src/phase2h-raw-object-refs.mjs",
+    "backward_compatibility": "D1 raw_json only when no signed ref exists",
+    "legacy_table_rewritten": false,
+    "legacy_source_migration_completed": false,
+    "downstream_risk_readers_merged": false,
+    "production_enabled": false,
+    "b2_archival_proof_for_new_ref_rows": false
+  },
+  "cloudflare_d1_billable": {
+    "probe": "scripts/ops/verify-d1-publisher-billable-shadow.mjs",
+    "scope": "dedicated provider-verified shadow database, never canonical production",
+    "first_50_rows_written": null,
+    "identical_retry_50_rows_written": null,
+    "one_changed_50_rows_written": null,
+    "individual_50_rows_written": null,
+    "provider_result_meta_verified": false,
+    "measured_result": "BLOCKED_WAITING_FOR_AUTHORIZED_SHADOW_RUN",
+    "do_not_substitute_sqlite_vm_steps": true,
+    "require_identical_retry_zero_rows_written": true
+  },
+  "warning": "Changes and local VM instruction counts are not proof that account-wide D1 daily rows_read/rows_written fall below 140000."
+}
