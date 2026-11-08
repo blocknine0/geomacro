@@ -11,6 +11,8 @@ import {createHash} from "node:crypto";
 import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
+import {readVerifiedPhase2hWorkerBatch}
+ from "../lib/phase2h-verified-worker-batch-reader.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195";
 import {gradeArchivedPhase2hEvidence,EVIDENCE_DRAFT_TTL_HOURS,
  type Phase2hArchivedRow,type EvidenceGrade,type GradedCategory}
@@ -146,7 +148,9 @@ export async function readDailyArchiveFromCanonicalD1({
  const seen=new Set<string>();
  while(rows.length<=MAX_ROWS){
   const paging=cursor!==null;
-  const sql="SELECT record_id,category,raw_sha256,raw_json,"+
+  // Query only indexed metadata: private originals are hydrated through
+  // the authenticated Worker R2/HMAC/SHA or verified legacy fallback.
+  const sql="SELECT record_id,category,raw_sha256,"+
    "b2_object_sha256,b2_archived_at,original_published_at,first_ingested_at "+
    "FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL "+
    "AND b2_archived_at IS NOT NULL AND b2_archived_at <= ? "+
@@ -166,13 +170,29 @@ export async function readDailyArchiveFromCanonicalD1({
   if(!res.ok||doc?.success!==true||result?.success===false||
     !Array.isArray(result?.results)||result.results.length>pageSize)
    fail("CANONICAL_D1_PAGE_UNAVAILABLE");
-  for(const item of result.results as Phase2hArchivedRow[]){
-   if(typeof item.record_id!=="string"||!SHA.test(item.record_id)||
-      typeof item.raw_json!=="string"||item.raw_json.length>12000||
-      typeof item.original_published_at!=="string"||
-      seen.has(item.record_id))
-    fail("CANONICAL_D1_PAGE_INVALID");
-   seen.add(item.record_id);rows.push(item);
+  const page=result.results as Pick<Phase2hArchivedRow,
+   "record_id"|"category"|"raw_sha256"|"b2_object_sha256"|
+   "b2_archived_at"|"original_published_at"|"first_ingested_at">[];
+  for(const meta of page)
+   if(typeof meta.record_id!=="string"||!SHA.test(meta.record_id)||
+      !SHA.test(meta.b2_object_sha256??"")||
+      seen.has(meta.record_id))fail("CANONICAL_D1_METADATA_PAGE_INVALID");
+  if(page.length){
+   const verified=await readVerifiedPhase2hWorkerBatch(
+    page.map(x=>x.record_id),{env,fetchImpl,now:now.getTime(),
+      requireB2Archive:true});
+   for(let i=0;i<page.length;i++){
+    const meta=page[i],v=verified[i];
+    if(v.record_id!==meta.record_id||v.raw_sha256!==meta.raw_sha256||
+       v.category!==meta.category||
+       v.b2_object_sha256!==meta.b2_object_sha256||
+       v.b2_archived_at!==meta.b2_archived_at||
+       v.original_published_at!==meta.original_published_at||
+       v.first_ingested_at!==meta.first_ingested_at)
+      fail("CANONICAL_B2_WORKER_METADATA_DIVERGED");
+    seen.add(meta.record_id);
+    rows.push({...meta,raw_json:JSON.stringify(v.record)} as Phase2hArchivedRow);
+   }
   }
   if(result.results.length<pageSize)break;
   const last=result.results[result.results.length-1] as Phase2hArchivedRow;
