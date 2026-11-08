@@ -64,6 +64,9 @@ Private, producer-token-protected:
 - POST /v1/internal/evidence/recover: empty object, bounded due candidates only.
 - POST /v1/internal/evidence/qualify: item_id plus independently signed attestation, returns deficits or real archive/hot pointer receipt.
 
+Public verification metadata (TLS publication is not an independent key trust root; clients must pin the issuer key):
+- GET /v1/evidence/keys: current active Ed25519 SPKI key and key ID; never a private key.
+
 Customer-token protected:
 - POST /v1/evidence/deliver: item_id only; signed, unexpired current artifact or fail closed.
 
