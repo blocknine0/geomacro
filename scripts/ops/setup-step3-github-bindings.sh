@@ -15,13 +15,16 @@ has_secret(){ grep -Fxq "$1" <<< "$secret_names" || grep -Fxq "$1" <<< "$repo_se
 has_variable(){ grep -Fxq "$1" <<< "$variable_names"; }
 set_variable_if_missing(){
  local name="$1" value="$2"
- if has_variable "$name"; then echo "$name: already configured"; return; fi
+ # A reviewed corrected value REPLACES an obsolete/stale repo variable.
+ # If no new value is supplied, an existing value is preserved.
  if [[ -z "$value" ]]; then
-  echo "$name: owner must supply existing verified live resource name" >&2
-  return 1
+  if has_variable "$name"; then
+   echo "$name: existing value preserved (verify independently)"; return
+  fi
+  echo "$name: verified value required" >&2; return 1
  fi
  gh variable set "$name" -R "$repo" --body "$value"
- echo "$name: configured"
+ echo "$name: owner-supplied verified value pinned"
 }
 if ! has_secret GEOMACRO_D1_RECOVERY_AES256_KEY_B64; then
  # This key is generated once and persists across D1 cold recovery.
@@ -51,6 +54,20 @@ if ! has_secret CONTROL_PLANE_TOKEN; then
   gh secret set CONTROL_PLANE_TOKEN -R "$repo" -e "$environment"
  echo "CONTROL_PLANE_TOKEN: existing Worker-compatible token configured"
 fi
+if [[ ! "${STEP3_VERIFIED_RECOVERY_R2_BUCKET:-}" =~ ^[a-z0-9][a-z0-9-]{2,62}$ ||
+      ! "${STEP3_VERIFIED_SHADOW_R2_BUCKET:-}" =~ ^[a-z0-9][a-z0-9-]{2,62}$ ||
+      "${STEP3_VERIFIED_RECOVERY_R2_BUCKET}" == "${STEP3_VERIFIED_SHADOW_R2_BUCKET}" ]]; then
+ echo "Owner must supply two distinct, already-provisioned private R2 buckets." >&2
+ exit 12
+fi
+if [[ ! "${STEP3_VERIFIED_PRODUCTION_D1_UUID:-}" =~ ^[a-fA-F0-9-]{36}$ ||
+      ! "${STEP3_VERIFIED_SHADOW_D1_UUID:-}" =~ ^[a-fA-F0-9-]{36}$ ||
+      "${STEP3_VERIFIED_PRODUCTION_D1_UUID,,}" == "${STEP3_VERIFIED_SHADOW_D1_UUID,,}" ]]; then
+ echo "Owner must supply two distinct verified production/shadow D1 UUIDs." >&2
+ exit 13
+fi
+set_variable_if_missing D1_DATABASE_ID "$STEP3_VERIFIED_PRODUCTION_D1_UUID"
+set_variable_if_missing GEOMACRO_D1_SHADOW_DATABASE_ID "$STEP3_VERIFIED_SHADOW_D1_UUID"
 set_variable_if_missing GEOMACRO_D1_RECOVERY_R2_BUCKET "${STEP3_VERIFIED_RECOVERY_R2_BUCKET:-}"
 set_variable_if_missing GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET "${STEP3_VERIFIED_SHADOW_R2_BUCKET:-}"
 if [[ ! "${STEP3_VERIFIED_SHADOW_WORKER_HOST:-}" =~ ^geomacro-step3-shadow\.[a-z0-9-]+\.workers\.dev$ ]]; then
@@ -93,4 +110,14 @@ if [[ "${STEP3_REAL_SHADOW_B2_ACKNOWLEDGED_RECORD_VERIFIED:-NO}" != YES ]]; then
  exit 7
 fi
 set_variable_if_missing GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED YES
+if [[ "${STEP3_SHADOW_REHEARSAL_OWNER_APPROVED:-NO}" == YES ]]; then
+ set_variable_if_missing GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED YES
+else
+ echo "Shadow workflow remains disabled until STEP3_SHADOW_REHEARSAL_OWNER_APPROVED=YES" >&2
+fi
+if [[ "${STEP3_PRODUCTION_RECOVERY_OWNER_APPROVED:-NO}" == YES ]]; then
+ set_variable_if_missing GEOMACRO_STEP3_RECOVERY_V2_APPROVED YES
+else
+ echo "Production Stage2 remains disabled until STEP3_PRODUCTION_RECOVERY_OWNER_APPROVED=YES" >&2
+fi
 echo "Bootstrap complete. No live Worker, D1, payment, or B2 object was modified."
