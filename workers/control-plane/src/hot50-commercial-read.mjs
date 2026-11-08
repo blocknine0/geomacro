@@ -193,10 +193,25 @@ export async function handleHot50CommercialRead(request,env,{now=()=>Date.now()}
   ).bind(key.user_id,requestId).first();
   if(prior&&(prior.view_key!==viewKey||prior.key_id!==key.key_id||prior.credit_cost!==15))
    return reply({ok:false,error:'REQUEST_REPLAY_MISMATCH'},409);
+  if(prior){
+   // A previously funded delivery is NOT an everlasting access token.
+   // Revocation, refund, grant expiry and suspension block replay too.
+   const grant=await db.prepare(
+    "SELECT 1 AS valid FROM commercial_hot50_delivery_receipts d "+
+    "JOIN customer_entitlement_grants g ON g.grant_id=d.grant_id "+
+    "JOIN customer_payment_receipts p ON p.receipt_id=g.receipt_id "+
+    "WHERE d.user_id=? AND d.request_id=? AND d.key_id=? "+
+    "AND g.user_id=? AND p.user_id=? AND g.status='active' "+
+    "AND g.starts_at<=? AND g.expires_at>? "+
+    "AND p.verified_at<=? AND NOT EXISTS ("+
+    "SELECT 1 FROM credit_ledger r WHERE r.receipt_id=p.receipt_id AND r.event_type='reversal')"
+   ).bind(key.user_id,requestId,key.key_id,key.user_id,key.user_id,at,at,at).first();
+   if(!grant)return reply({ok:false,error:'ACTIVE_PAID_GRANT_REQUIRED'},403);
+  }
   const row=prior
    ?await db.prepare('SELECT * FROM commercial_hot50_signed_snapshots WHERE snapshot_sha256=?').bind(prior.snapshot_sha256).first()
    :await cachedSignedSnapshot(db,viewKey,at,env);
-  if(!row)return reply({ok:false,error:'QUALIFIED_HOT50_SNAPSHOT_UNAVAILABLE'},503);
+  if(!row)return reply({ok:false,error:'INSUFFICIENT_EVIDENCE',qualified_snapshot_available:false,credits_charged:0},503);
   const data=await verifyHot50CommercialSnapshot(row,viewKey,env,now());
   if(!prior){
    // Current canonical tariff is 15 credits for risk_gate_bundle. The
@@ -235,6 +250,8 @@ export async function handleHot50CommercialRead(request,env,{now=()=>Date.now()}
  }catch(error){
   if(error instanceof CustomerPaidError)
    return reply({ok:false,error:error.code,...(error.status===402?{top_up_url:'https://geomacro.live/pricing'}:{})},error.status);
+  if(error.message==='HOT50_SIGNED_CONTENT_UNQUALIFIED_STALE_OR_INCOMPLETE')
+   return reply({ok:false,error:'INSUFFICIENT_EVIDENCE',credits_charged:0},503);
   const status=error.status===503||error.status===400?error.status:503;
   return reply({ok:false,error:/^HOT50_[A-Z0-9_]+$/.test(error.message)?error.message:'HOT50_DELIVERY_UNAVAILABLE'},status);
  }
