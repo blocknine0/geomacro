@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
- REQUIRE,verifyCommercialD1Schema,parseWranglerCommercialSchema,
+ REQUIRE,BASE_REQUIRED_OBJECTS,commercialSchemaSql,
+ verifyCommercialD1Schema,parseWranglerCommercialSchema,
  createCommercialReadbackReceipt
 } from '../ops/readback-commercial-d1-schema.mjs';
 function rows(){
@@ -26,6 +27,19 @@ function rows(){
  }));
 }
 const meta={rows_read:18,rows_written:0};
+test('read-only base phase verifies Step3 pointer and canonical ledger without falsely asserting 0215/0216',()=>{
+ const base=rows().filter(x=>Object.hasOwn(BASE_REQUIRED_OBJECTS,x.name));
+ const proof=verifyCommercialD1Schema(base,meta,'base');
+ assert.equal(proof.status,'PASS');
+ assert.equal(proof.verified_phase,'base');
+ assert.equal(proof.phase2h_ref_table_present,true);
+ assert.equal(proof.signed_commercial_delivery_schema_present,false);
+ assert.equal(proof.live_data_or_actual_paypal_settlement_verified,false);
+ assert.ok(!commercialSchemaSql('base').includes('commercial_hot50_signed_snapshots'));
+ assert.ok(commercialSchemaSql('base').includes('phase2h_raw_object_refs_v1'));
+ assert.throws(()=>verifyCommercialD1Schema(base.filter(x=>x.name!=='api_keys'),meta,'base'));
+ assert.throws(()=>verifyCommercialD1Schema(base,meta,'unknown'));
+});
 test('remote read-only schema verifier requires all exact objects',()=>{
  const proof=verifyCommercialD1Schema(rows(),meta);
  assert.equal(proof.status,'PASS');
