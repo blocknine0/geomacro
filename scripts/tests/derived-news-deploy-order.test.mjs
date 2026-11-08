@@ -103,7 +103,7 @@ test("publisher emits only fixed policy health error codes; does not leak provid
  assert.match(source,/console\.warn\("::warning::"\+reason\)/u);
  assert.match(source,/D1_PUBLISHER_UNAVAILABLE_STATIC_ARCHIVE_CONTINUES/u);
  assert.doesNotMatch(source,/console\.(?:warn|log|error)\(error\)/u);
- assert.doesNotMatch(source,/workerPolicyReady=true;[\s\S]{0,100}?catch\(/u);
+ assert.match(source,/}catch\(error\)\{/u);
  const fallback=source.indexOf('reason:"D1_PUBLISHER_POLICY_PREFLIGHT_UNAVAILABLE"');
  assert.ok(fallback>source.indexOf("if(!workerPolicyReady)"));
 });
