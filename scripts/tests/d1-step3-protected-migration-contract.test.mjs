@@ -85,7 +85,10 @@ test("protected runner must never revoke canary HOLD or auto promote/migrate on 
  assert.match(runner,/GEOMACRO_STEP3_EXACT_SHA/u);
  assert.match(runner,/runShadowBillableProbe/u);
  assert.ok(runner.includes('refreshedGate(state,"BEFORE_"+step.id)'));
- assert.match(runner,/time-travel","info"/u);
+ assert.match(runner,/captureDurableD1Checkpoint/u);
+ assert.match(runner,/ensureLedger/u);
+ assert.match(runner,/verifyRealPhase2hPointerRows/u);
+ assert.doesNotMatch(runner,/pre-step3-bookmark\\.private\\.json/u);
  assert.match(runner,/post_migration_readback_explicit_PASS/u);
  assert.doesNotMatch(runner,/unlinkSync\(/u);
  assert.doesNotMatch(runner,/time-travel","restore"/u);
