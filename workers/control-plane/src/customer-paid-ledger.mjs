@@ -220,3 +220,38 @@ export async function mintCanonicalCustomerPaidKey(db,env,userId,now=nowIso()){
   }catch{fail(403,'CUSTOMER_PAID_KEY_CREATION_DENIED');}
   return {key_id:keyId,api_key:key,reveal_once:true,expires_at:grant.expires_at};
 }
+
+/**
+ * One-time new-format risk credential minted ONLY for a verified, funded
+ * customer after full Hot50 signed/evidence acceptance. Old gmk_live_ keys
+ * remain valid, preserving expand/contract compatibility with prior Workers.
+ */
+export async function mintCanonicalHot50ApiKey(db,env,userId,now=nowIso()){
+ if(env.GEOMACRO_HOT50_COMMERCIAL_ACCEPTANCE!=='ACCEPTED_SIGNED_B2_VERIFIED_150_CELLS')
+   fail(503,'CUSTOMER_HOT50_RISK_GATE_NOT_VERIFIED');
+ requirePepper(env);
+ const user=await db.prepare(
+   "SELECT id FROM users WHERE id=? AND status='active' AND email_verified_at IS NOT NULL"
+ ).bind(userId).first();
+ if(!user)fail(403,'CUSTOMER_PAID_VERIFIED_USER_REQUIRED');
+ const grants=(await queryGrants(db,userId,now)).results??[];
+ const grant=grants.find(g=>customerPaidCapabilityPolicy(g.tier,'risk_gate_bundle')&&
+   Number.isSafeInteger(g.remaining)&&g.remaining>=CUSTOMER_CREDIT_COSTS.risk_gate_bundle);
+ if(!grant)fail(402,'CUSTOMER_HOT50_FUNDED_ENTITLEMENT_REQUIRED');
+ const secret='gm_live_'+randHex(16);
+ const digest=await customerPaidKeyDigest(env,secret);
+ const sha=hex(await crypto.subtle.digest('SHA-256',encoder.encode(secret)));
+ const keyId='gm_hot50_'+randHex(16);
+ try{
+   await db.batch([
+     db.prepare('INSERT INTO api_keys (key_id,user_id,hmac_sha256,scopes_json,expires_at,created_at) '+
+       'VALUES(?,?,?,?,?,?)')
+       .bind(keyId,userId,digest,JSON.stringify(['risk-gate:read']),grant.expires_at,now),
+     db.prepare('INSERT INTO tenant_api_keys_v1 (key_sha256,key_id,user_id,created_at) '+
+       'VALUES(?,?,?,?)').bind(sha,keyId,userId,now)
+   ]);
+ }catch{fail(503,'CUSTOMER_HOT50_KEY_ATOMIC_MINT_UNCONFIRMED');}
+ const check=await db.prepare('SELECT key_id FROM tenant_api_keys_v1 WHERE key_sha256=?').bind(sha).first();
+ if(check?.key_id!==keyId)fail(503,'CUSTOMER_HOT50_KEY_READBACK_UNCONFIRMED');
+ return {api_key:secret,key_id:keyId,sha256_prefix:sha.slice(0,12),expires_at:grant.expires_at,reveal_once:true};
+}
