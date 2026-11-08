@@ -30,6 +30,8 @@ on:
       - "scripts/tests/phase2h-r2-reference-cutover.test.mjs"
       - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
       - "scripts/tests/d1-publisher-shadow-billable.test.mjs"
+      - "scripts/ops/audit-phase2h-raw-canonical-readers.mjs"
+      - "scripts/lib/phase2h-verified-worker-batch-reader.mjs"
       - "workers/control-plane/migrations/0035_phase2h_private_raw_news.sql"
       - "workers/control-plane/migrations/0036_phase2h_72h_retention_index.sql"
       - "workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql"
@@ -295,6 +297,8 @@ jobs:
           node-version: "24"
       - name: Test complete Hot50 D1 census, fail-closed certification and parity cursors
         run: node --test scripts/tests/hot50-production-activation.test.mjs scripts/tests/phase2h-archive-counter-census.test.mjs scripts/tests/phase2h-r2-reference-cutover.test.mjs scripts/tests/d1-publisher-shadow-billable.test.mjs
+      - name: Inventory every direct Phase2H raw consumer; block unreviewed bypasses
+        run: node scripts/ops/audit-phase2h-raw-canonical-readers.mjs
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |
