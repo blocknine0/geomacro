@@ -16,8 +16,8 @@ import {existsSync,mkdirSync,mkdtempSync,readFileSync,writeFileSync} from "node:
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {checkD1Headroom,HEADROOM_HOLD_CODE}
- from "./check-d1-headroom.mjs";
+import {checkD1PaidMonthlyHeadroom,D1_PAID_HEADROOM_HOLD}
+ from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
 import {captureDurableD1Checkpoint,signStep3StatusReceipt}
@@ -152,14 +152,14 @@ function ensureLedger(config,manifests,report){
  return map;
 }
 async function refreshedGate(report,stage){
- const x=await checkD1Headroom();
+ const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind===\"shadow\"?\"shadow\":\"migration\"});
  report.latest_headroom={stage,status:x.status,code:x.code,
   day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
   read_remaining:x.remaining_rows_read,
   write_remaining:x.remaining_rows_written};
  save(report);
- if(x.status!=="PASS")throw Error(HEADROOM_HOLD_CODE);
+ if(x.status!=="PASS")throw Error(D1_PAID_HEADROOM_HOLD);
  return x;
 }
 function boundedInputs(config,step,report){
