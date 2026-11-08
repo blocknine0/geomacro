@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-08T22:09:02.972Z",
+  "checked_at": "2026-11-08T22:49:03.345Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -43,25 +43,6 @@
         "WTO news"
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-e17bb9c2",
-      "category": "rare_earth",
-      "title": "Geomacro finds Resolution Copper Mining approved $144m investment in Arizona project",
-      "what_changed": "A monitored source feed reports: Resolution Copper Mining approved $144m investment in Arizona project. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T22:15:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }
