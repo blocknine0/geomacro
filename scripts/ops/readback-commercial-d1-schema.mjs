@@ -21,13 +21,19 @@ export const REQUIRE=Object.freeze({
  customer_payment_receipts:'table',customer_entitlement_grants:'table',
  customer_usage_receipts:'table',customer_paypal_checkout_intents:'table',
  commercial_hot50_signed_snapshots:'table',
- commercial_hot50_delivery_receipts:'table',tenant_api_keys_v1:'table',
+ commercial_hot50_delivery_receipts:'table',
+ commercial_hot50_checkout_key_handoffs:'table',
+ tenant_api_keys_v1:'table',
  phase2h_raw_object_refs_v1:'table',
  tenants_v1:'view',customer_transactions_v1:'view',credit_ledger_v1:'view',
  idx_customer_receipts_user:'index',idx_customer_ledger_user_time:'index',
  idx_customer_api_keys_owner_active:'index',idx_customer_usage_user_recent:'index',
  idx_customer_usage_grant:'index',idx_commercial_hot50_live_view:'index',
  idx_commercial_hot50_receipt_snapshot:'index',
+ idx_commercial_hot50_handoff_user:'index',
+ trg_hot50_checkout_handoff_verified:'trigger',
+ trg_hot50_checkout_handoff_no_update:'trigger',
+ trg_hot50_checkout_handoff_no_delete:'trigger',
  idx_phase2h_ref_object_key_v1:'index',
  idx_phase2h_ref_country_category_clock_v1:'index',
  idx_phase2h_ref_ingest_clock_v1:'index'
@@ -35,9 +41,12 @@ export const REQUIRE=Object.freeze({
 export const BASE_REQUIRED_OBJECTS=Object.freeze(Object.fromEntries(
  Object.entries(REQUIRE).filter(([name])=>![
   'commercial_hot50_signed_snapshots','commercial_hot50_delivery_receipts',
+  'commercial_hot50_checkout_key_handoffs',
   'tenant_api_keys_v1','tenants_v1','customer_transactions_v1','credit_ledger_v1',
   'idx_customer_usage_user_recent','idx_commercial_hot50_live_view',
-  'idx_commercial_hot50_receipt_snapshot'
+  'idx_commercial_hot50_receipt_snapshot','idx_commercial_hot50_handoff_user',
+  'trg_hot50_checkout_handoff_verified','trg_hot50_checkout_handoff_no_update',
+  'trg_hot50_checkout_handoff_no_delete'
  ].includes(name))
 ));
 const objectsFor=phase=>phase==='base'?BASE_REQUIRED_OBJECTS:
@@ -69,6 +78,8 @@ export function verifyCommercialD1Schema(rows,meta,phase='full'){
     !sql('tenant_api_keys_v1').includes('key_sha256')||
     !sql('commercial_hot50_delivery_receipts').includes('foreign key')||
     !sql('commercial_hot50_signed_snapshots').includes('signature_b64')||
+    !sql('commercial_hot50_checkout_key_handoffs').includes('unique')||
+    !sql('trg_hot50_checkout_handoff_verified').includes("provider='paypal'")||
     !sql('idx_commercial_hot50_live_view').includes('view_key')))
   throw Error('COMMERCIAL_D1_COMMERCIAL_INDEX_OR_CRYPTO_CONTRACT_MISMATCH');
  return {schema:'geomacro.commercial-d1-physical-schema-readback.v1',
