@@ -1,0 +1,175 @@
+name: D1 November 9 UTC Protected Migration Reset Window
+
+# The event schedule is one-shot by exact-year guards below. GitHub Actions
+# schedules are best-effort, not clock-accurate: a late start is HOLD.
+# Worker deployments, sources, signatures, B2 and customer APIs are untouched.
+on:
+  workflow_dispatch:
+    inputs:
+      execute:
+        description: "Execute staged 0204/0211/0212/0213 only after all fresh provider gates and protected environment approval"
+        required: true
+        type: boolean
+        default: false
+  schedule:
+    - cron: "5 0 9 11 *"
+  pull_request:
+    paths:
+      - ".github/workflows/d1-nov9-utc-protected-migration-window.yml"
+      - "scripts/tests/d1-nov9-reset-workflow.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Validate source pin, one-time schedule, protected stage gates and no API/source changes
+        run: node --test scripts/tests/d1-nov9-reset-workflow.test.mjs
+
+  protected-window:
+    # Schedule is NOT armed until owner explicitly enables a production
+    # repository variable. Manual dispatch requires execute=true.
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'schedule' &&
+        vars.GEOMACRO_STEP3_NOV9_ARMED == 'YES') ||
+       (github.event_name == 'workflow_dispatch' && inputs.execute == true))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_TARGET_APPROVED: 'YES'
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      GEOMACRO_STEP3_EXACT_SHA: '3c8fe6a51c8b34aa75d43ab0c77e5395d3fe16f2'
+      GEOMACRO_STEP3_APPLY: 'APPROVE_ONLY_0204_0211_0212_0213'
+    steps:
+      - name: Checkout immutable approved Step 3 source (not moving draft branch)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: '3c8fe6a51c8b34aa75d43ab0c77e5395d3fe16f2'
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Verify immutable migration runner and protected HOLD without writing D1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GEOMACRO_STEP3_EXACT_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          node --check scripts/ops/check-d1-headroom.mjs
+          node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+      - name: Wait for November 9 at 00:05 UTC — reject late or other dates
+        shell: bash
+        env:
+          START: '2026-11-09T00:05:00Z'
+          END: '2026-11-09T00:09:59Z'
+        run: |
+          set -euo pipefail
+          start="$(date -u -d "$START" +%s)"
+          end="$(date -u -d "$END" +%s)"
+          now="$(date -u +%s)"
+          if (( now > end )); then echo "::error::NOV9_0005_WINDOW_MISSED"; exit 3; fi
+          if (( now < start )); then sleep "$((start-now))"; fi
+          test "$(date -u +%Y-%m-%d)" = "2026-11-09"
+      - name: 00:05 — full-account GraphQL D1 headroom, require under 10k rows in BOTH dimensions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-d1-headroom.mjs --check
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const d=JSON.parse(readFileSync('artifacts/release/d1-migration-headroom-current-utc.json','utf8'));
+          if(d.status!=='PASS'||d.day_utc!=='2026-11-09'||
+             !Number.isSafeInteger(d.observed_rows_read)||
+             !Number.isSafeInteger(d.observed_rows_written)||
+             d.observed_rows_read>=10000||d.observed_rows_written>=10000)
+            throw Error('NOV9_FRESH_RESET_UNDER_10K_NOT_PROVEN');
+          NODE
+      - name: Wait for 00:10 UTC — reject late shadow start
+        shell: bash
+        env:
+          START: '2026-11-09T00:10:00Z'
+          END: '2026-11-09T00:14:59Z'
+        run: |
+          set -euo pipefail
+          start="$(date -u -d "$START" +%s)"
+          end="$(date -u -d "$END" +%s)"
+          now="$(date -u +%s)"
+          if (( now > end )); then echo "::error::NOV9_0010_SHADOW_WINDOW_MISSED"; exit 3; fi
+          if (( now < start )); then sleep "$((start-now))"; fi
+      - name: 00:10 — re-check account 80k reserve and run strictly named shadow proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-d1-headroom.mjs --check
+          node scripts/ops/verify-d1-publisher-billable-shadow.mjs --run-shadow
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const x=JSON.parse(readFileSync('artifacts/release/d1-publisher-shadow-billable-rows.json','utf8'));
+          if(x.status!=='PASS_NATIVE_PROVIDER_ROWS'||
+             x.identical_retry_zero_billable_rows_written!==true||
+             x.batch_write_matches_single_changed_record_delta!==true||
+             x.conditional_batch_avoided_50_row_rewrite!==true)
+            throw Error('NOV9_NATIVE_SHADOW_BILLING_UNVERIFIED');
+          NODE
+      - name: Wait for 00:20 UTC — reject late mutation window
+        shell: bash
+        env:
+          START: '2026-11-09T00:20:00Z'
+          END: '2026-11-09T00:29:59Z'
+        run: |
+          set -euo pipefail
+          start="$(date -u -d "$START" +%s)"
+          end="$(date -u -d "$END" +%s)"
+          now="$(date -u +%s)"
+          if (( now > end )); then echo "::error::NOV9_0020_MIGRATION_WINDOW_MISSED"; exit 3; fi
+          if (( now < start )); then sleep "$((start-now))"; fi
+      - name: 00:20 — fresh account-wide quota and exact protected migrations; HOLD remains
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/check-d1-headroom.mjs --check
+          # The pinned Step 3 executor deliberately repeats its own real
+          # shadow test and provider headroom readback. Extra native D1 cost
+          # is counted in the current day's strict 140k/60k envelope.
+          node scripts/ops/run-step3-protected-d1-migrations.mjs --apply
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync('artifacts/release/d1-step3-migration-execution.json','utf8'));
+          if(r.status!=='PASS'||r.post_migration_readback_explicit_PASS!==true||
+             r.verified?.length!==4||r.hold_file_untouched!==true)
+            throw Error('NOV9_PROTECTED_POST_MIGRATION_PASS_NOT_VERIFIED');
+          NODE
+      - name: Preserve only sanitized receipts, even on HOLD
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-nov9-reset-${{ github.run_id }}
+          path: |
+            artifacts/release/d1-migration-headroom-current-utc.json
+            artifacts/release/d1-publisher-shadow-billable-rows.json
+            artifacts/release/d1-step3-migration-execution.json
+          retention-days: 14
+          if-no-files-found: warn
