@@ -143,7 +143,7 @@ test("missing secrets, forbidden provider responses or empty reports fail closed
  await assert.rejects(()=>readR2KVAccountAnalytics({
   now:NOW,env,fetchImpl:async()=>Response.json({data:{viewer:{accounts:[{
    r2OperationsAdaptiveGroups:[],kvOperationsAdaptiveGroups:[]}]}}})
- }),/R2_EMPTY_OR_TRUNCATED/);
+ }),/R2_AND_KV_DATASETS_BOTH_EMPTY/);
 });
 
 test("CLI always emits sanitized machine-readable HOLD artifact with nonzero exit",async()=>{
