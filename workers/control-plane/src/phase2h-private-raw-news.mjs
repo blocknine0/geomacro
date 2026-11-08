@@ -1,4 +1,4 @@
-import {hydrateVerifiedPhase2hIds,publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
+import {hydrateVerifiedPhase2hIds,readVerifiedPhase2hScope,publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
  from "./phase2h-raw-object-refs.mjs";
 import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 import {p0bProjectEvidenceBounded} from "../../../scripts/lib/p0b-event-grounded-projection.mjs";
@@ -394,7 +394,68 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
   // the newest 100 unrelated releases. No 585-query fanout per request.
   let countryQuery=null;
   const cutoff=phase2hNewsCutoff(now);
-  if(countryScoped){
+  let hydratedScope=null;
+  if(env.GEOMACRO_PHASE2H_REF_ONLY_READERS_V1==="1"){
+   // New verified-R2/legacy candidate lane is a separately reviewed
+   // opt-in. Return only previously authenticated exact records in-memory.
+   // Existing canonical archival selectors are untouched when flag is off.
+   dbReadStarted=true;
+   if(countryScoped){
+    hydratedScope=await readVerifiedPhase2hScope(env,{
+     category,countryIso3,now,
+     since:new Date(now-73*3600_000).toISOString(),
+     until:new Date(now).toISOString(),limit:100
+    },validPrivateRawNews);
+   }else{
+    let ids=[];
+    if(requestedId!==null){
+     if(qualityProbe){
+      const legacy=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_private_raw_news WHERE record_id=? "+
+       "AND first_ingested_at>? LIMIT 1"
+      ).bind(requestedId,cutoff).all();
+      ids=(legacy?.results??[]).map(x=>x.record_id);
+      // A current reference-only record must also be able to respond.
+      const reference=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_raw_object_refs_v1 WHERE record_id=? "+
+       "AND first_ingested_at>? LIMIT 1"
+      ).bind(requestedId,cutoff).all();
+      ids=[...new Set([...ids,...(reference?.results??[]).map(x=>x.record_id)])];
+     }else{
+      // Exact historic lookup requires a real B2 archive ACK, never R2
+      // staging. Reference-only rows are not archival certification.
+      const archived=await env.DB.prepare(
+       "SELECT record_id FROM phase2h_private_raw_news "+
+       "WHERE record_id=? AND b2_object_sha256 IS NOT NULL LIMIT 1"
+      ).bind(requestedId).all();
+      ids=(archived?.results??[]).map(x=>x.record_id);
+     }
+    }else if(question===null){
+     const sql="SELECT record_id FROM phase2h_private_raw_news "+
+      "WHERE b2_object_sha256 IS NULL AND first_ingested_at>? "+
+      (archiveKeyset?
+       "AND (first_ingested_at>? OR (first_ingested_at=? AND record_id>?)) ":"")+
+      "ORDER BY first_ingested_at,record_id LIMIT ?";
+     const args=archiveKeyset?
+      [cutoff,archiveClock,archiveClock,archiveId,limit]:[cutoff,limit];
+     const pending=await env.DB.prepare(sql).bind(...args).all();
+     ids=(pending?.results??[]).map(x=>x.record_id);
+    }else{
+     const archived=await env.DB.prepare(
+      "SELECT record_id FROM phase2h_private_raw_news "+
+      "WHERE b2_object_sha256 IS NOT NULL AND first_ingested_at>? "+
+      "ORDER BY original_published_at DESC,record_id LIMIT 100"
+     ).bind(cutoff).all();
+     ids=(archived?.results??[]).map(x=>x.record_id);
+    }
+    if(!Array.isArray(ids)||ids.length>100)fail("VERIFIED_SCOPE_INVALID");
+    hydratedScope=await hydrateVerifiedPhase2hIds(
+     env,ids,validPrivateRawNews,now,
+     {archivedOnly:question!==null&&requestedId===null||
+       requestedId!==null&&!qualityProbe});
+   }
+  }
+  if(countryScoped&&hydratedScope===null){
    const hints=phase2hCountrySqlHints(countryIso3);
    if(!hints.length)return safeReply({ok:false,error:"PRIVATE_RAW_QUERY_INVALID"},400);
    // Keep the entire SQL static: only bounded, reviewed country hints are
@@ -423,7 +484,7 @@ export async function phase2hPrivateRawGet(env,params=new URLSearchParams(),now=
    ).bind(category,cutoff,JSON.stringify(hints),topicJson,topicJson,topicJson);
   }
   dbReadStarted=true;
-  const results=countryQuery?
+  const results=hydratedScope!==null?{results:hydratedScope}:countryQuery?
     await countryQuery.all():
     question===null?
     (archiveKeyset?
