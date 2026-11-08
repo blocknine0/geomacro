@@ -12,8 +12,9 @@ const receipt={
  same_run_d1_bookmark_and_worker_version_retrieved:true,
  worker_version_uploaded:false,d1_sql_queries_issued:0,
  provider_write_operations:0,payments:0,
- normal_read_target:140000,normal_write_target:140000,
- daily_read_rows:40000,daily_written_rows:25000,
+ normal_read_target:120000,normal_write_target:120000,
+ emergency_read_reserve:20000,emergency_write_reserve:20000,
+ daily_read_rows:30000,daily_written_rows:25000,
  eligible_for_zero_traffic_stage:false};
 test("narrow one-time repair admission needs full provider readback, not a pacing bypass for public work",()=>{
  const x=assessMigrationOnlyPreflight(receipt,{now});
@@ -32,7 +33,7 @@ test("provider identity, day or 80k repair reserve missing always HOLD",()=>{
  {d1_sql_queries_issued:1},{reason:"CANARY_PROVIDER_DENIED"},
  {inspected_at:"2026-11-06T23:55:00Z"},
  {inspected_at:"2026-11-07T00:00:00Z"},
- {daily_read_rows:60000},{daily_written_rows:60000},
+ {daily_read_rows:40000},{daily_written_rows:40000},
  {daily_read_rows:NaN},{payments:1},{worker_version_uploaded:true},
  {normal_read_target:180000}
  ];
@@ -42,15 +43,15 @@ test("provider identity, day or 80k repair reserve missing always HOLD",()=>{
 test("migration runner may admit only a verified hourly-pace HOLD with actual headroom",async()=>{
  const {evaluateMigrationBudget}=await import("../ops/verify-protected-d1-migration-gate.mjs");
  const plan={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
- observed_rows_read:40000,observed_rows_written:25000,
+ observed_rows_read:30000,observed_rows_written:25000,
  critical:false,reason:"GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD",
  owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_HOURLY_BURN_RATE_HELD"},
- owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,
+ owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,
  emergency_auto_admission:false}};
  assert.equal(evaluateMigrationBudget(plan,now).admitted,true);
  for(const change of [{reason:"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD"},
- {owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_140K_NORMAL_CEILING_HELD"}},
- {observed_rows_read:60000},{observed_rows_written:60000}])
+ {owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_120K_NORMAL_CEILING_HELD"}},
+ {observed_rows_read:40000},{observed_rows_written:40000}])
  assert.equal(evaluateMigrationBudget({...plan,...change},now).admitted,false);
 });
 test("separate UTC migration headroom never changes ordinary Stage A exit semantics",()=>{
