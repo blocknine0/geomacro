@@ -203,9 +203,11 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
    const result=await db.prepare(`UPDATE api_keys SET revoked_at=? WHERE key_id=? AND user_id=? AND revoked_at IS NULL`).bind(at,body.key_id,user.id).run();
    if(result.meta?.changes!==1)fail(404,'CUSTOMER_KEY_NOT_FOUND');return reply({ok:true,revoked:true});
   }
-  const [funded,keys]=await Promise.all([
+  const [funded,keys,usage]=await Promise.all([
    readCanonicalCustomerPaidAccount(db,user.id,at),
    db.prepare(`SELECT key_id,scopes_json,created_at,expires_at,revoked_at,last_used_at FROM api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 25`).bind(user.id).all(),
+   db.prepare(`SELECT request_id,capability,credit_cost,occurred_at FROM customer_usage_receipts
+     WHERE user_id=? ORDER BY occurred_at DESC LIMIT 25`).bind(user.id).all(),
   ]);
   const paidAccepted=env.GEOMACRO_CUSTOMER_PAID_RUNTIME_ACCEPTANCE==='ACCEPTED_CANONICAL_D1_PAID_RUNTIME';
   const riskGateAccepted=env.GEOMACRO_RISK_GATE_COMMERCIAL_ACCEPTANCE==='ACCEPTED_RISK_GATE_PRICING_LEDGER';
@@ -217,7 +219,7 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
   const credits=funded.credits?{...funded.credits,
    status:(paidAccepted||riskGateAccepted||hot50Accepted)&&credentialReady?funded.credits.status:'pending_activation'}:null;
   return reply({ok:true,user:{email:user.email},principal_ready:true,credits,
-   verified_balance:credits?.remaining??0,keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
+   verified_balance:credits?.remaining??0,usage_history:(usage.results??[]).map(x=>({request_id:x.request_id,capability:x.capability,credit_cost:x.credit_cost,occurred_at:x.occurred_at})),keys:(keys.results??[]).map(k=>({...k,enabled:!k.revoked_at&&k.expires_at>at,scopes:JSON.parse(k.scopes_json)})),
    checkout_enabled:false,key_issuance_enabled:canIssue,
    key_issuance_code:canIssue?null:!(paidAccepted||riskGateAccepted||hot50Accepted)?CUSTOMER_KEY_GATE:
     !credentialReady?'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED':'CUSTOMER_PAID_VERIFIED_FUNDED_GRANT_REQUIRED'});
