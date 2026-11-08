@@ -31,15 +31,20 @@ export const SHADOW_BASE_MIGRATIONS=Object.freeze([
  "0030_website_derived_first_seen_index.sql",
  "0035_phase2h_private_raw_news.sql",
  "0036_phase2h_72h_retention_index.sql",
+ "0111_phase2h_risk_country_materialization.sql",
  "0113_p0a_source_registry.sql",
  "0114_p0_b_spool_queue.sql",
  "0116_p0b_microbatch_spool.sql",
+ "0208_phase2h_atomic_archive_census.sql",
 ]);
 const SCHEMA=Object.freeze([
  "website_derived_intelligence","private_osint_news_25h",
  "private_osint_source_checks_24h","phase2h_private_raw_news",
  "source_registry","ingestion_spool_queue","normalized_articles",
- "ingestion_spool_bundles","idx_phase2h_retention_first_ingested",
+ "ingestion_spool_bundles","phase2h_archive_totals",
+ "idx_phase2h_retention_first_ingested",
+ "idx_phase2h_risk_country_category_clock",
+ "idx_phase2h_pending_recent_ingested_category",
  "idx_spool_committed_day"
 ]);
 export function buildShadowBootstrapManifest({read=readFileSync}={}){
@@ -48,8 +53,12 @@ export function buildShadowBootstrapManifest({read=readFileSync}={}){
   const sql=read(path,"utf8");
   if(typeof sql!=="string"||sql.length<120||sql.length>25000||
      !sql.startsWith("--")||
-     /\b(?:DROP\s+TABLE|DELETE\s+FROM|UPDATE\s+\w+\s+SET|REPLACE\s+INTO)\b/iu.test(sql)||
-     (/\bALTER\s+TABLE\b/iu.test(sql)&&name!=="0116_p0b_microbatch_spool.sql"))
+     /\b(?:DROP\s+TABLE|DELETE\s+FROM|REPLACE\s+INTO)\b/iu.test(sql)||
+     (/\bUPDATE\s+\w+\s+SET\b/iu.test(sql)&&
+      name!=="0208_phase2h_atomic_archive_census.sql")||
+     (/\bALTER\s+TABLE\b/iu.test(sql)&&
+      !["0111_phase2h_risk_country_materialization.sql",
+        "0116_p0b_microbatch_spool.sql"].includes(name))
    fail("MIGRATION_SOURCE_UNREVIEWED_OR_DESTRUCTIVE");
   return Object.freeze({name,sequence:i+1,sql_sha256:hash(sql),
    size_bytes:Buffer.byteLength(sql)});
@@ -92,7 +101,7 @@ function parseSqlRows(doc,{max=40}={}){
 export async function readOnlyShadowSchema({env,fetchImpl=fetch,sql}={}){
  if(!["SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33",
     "SELECT type,name FROM sqlite_schema WHERE name IN ("+
-    SCHEMA.map(x=>"'"+x+"'").join(",")+") ORDER BY name LIMIT 10"].includes(sql))
+    SCHEMA.map(x=>"'"+x+"'").join(",")+") ORDER BY name LIMIT 13"].includes(sql))
   fail("PROVIDER_SQL_OUTSIDE_FIXED_READONLY_SCOPE");
  let response;
  try{
@@ -185,7 +194,7 @@ export async function bootstrapShadowBaseline({
   await apply(config);
   const rows=await readOnlyShadowSchema({env,fetchImpl,
    sql:"SELECT type,name FROM sqlite_schema WHERE name IN ("+
-     SCHEMA.map(x=>"'"+x+"'").join(",")+") ORDER BY name LIMIT 10"});
+     SCHEMA.map(x=>"'"+x+"'").join(",")+") ORDER BY name LIMIT 13"});
   const observed=new Map(rows.map(x=>[x.name,x.type]));
   if(rows.length!==SCHEMA.length||
      SCHEMA.some(x=>!observed.has(x)||!["table","index"].includes(observed.get(x))))
