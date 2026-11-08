@@ -152,7 +152,7 @@ function ensureLedger(config,manifests,report){
  return map;
 }
 async function refreshedGate(report,stage){
- const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind===\"shadow\"?\"shadow\":\"migration\"});
+ const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind==="shadow"?"shadow":"migration"});
  report.latest_headroom={stage,status:x.status,code:x.code,
   day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
