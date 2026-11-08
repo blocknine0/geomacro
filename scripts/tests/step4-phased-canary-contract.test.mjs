@@ -25,7 +25,7 @@ test('runtime enforces candidate-specific p95 no regression and tighter error th
  assert.match(source,/x\.worker_wall_time_p95_ms<=baselineP95Ms/u);
  assert.match(source,/errors\/requests<0\.001/u);
  assert.match(source,/ratio<0\.001/u);
- assert.match(source,/CANARY_D1_140K_PROVIDER_BREACH/u);
+ assert.match(source,/CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED/u);
  assert.match(source,/CANARY_PROVIDER_SAMPLE_FLOOR_UNMET/u);
 });
 test('any runtime failure returns traffic fully to baseline, does not unhold remote main',()=>{
@@ -39,12 +39,23 @@ test('any runtime failure returns traffic fully to baseline, does not unhold rem
  assert.doesNotMatch(workflow,/continue-on-error: true/u);
 });
 
-test('owner Cloudflare $5 account-wide 5800/hour read and write trajectory is enforced',()=>{
- assert.match(source,/const D1_MAX_OBSERVED_HOURLY_ROWS=5800/u);
+test('Cloudflare Workers Paid 25B/50M monthly trajectory replaces retired 5800/hour pacing',()=>{
+ assert.match(source,/const MONTHLY_WRITE_SOFT=45_000_000/u);
  assert.match(source,/read\*3600000\/ms/u);
  assert.match(source,/written\*3600000\/ms/u);
- assert.match(source,/CANARY_D1_HOURLY_5800_BURN_SPIKE/u);
- assert.match(source,/CANARY_D1_HOURLY_PACE_UNVERIFIED/u);
+ assert.match(source,/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/u);
+ assert.match(source,/CANARY_D1_PAID_MONTHLY_PACE_UNVERIFIED/u);
  assert.match(source,/provider_metrics_delayed:true/u);
  assert.match(source,/await deployBaseline\(base\)/u);
+});
+
+test('Paid monthly circuit guard checks all D1 databases and preserves existing HOT50 APIs',()=>{
+ assert.match(source,/checkD1PaidMonthlyHeadroom/u);
+ assert.match(source,/cycle_start_utc/u);
+ assert.match(source,/cycle_end_exclusive_utc/u);
+ assert.match(source,/provider_subscription_verified===true/u);
+ assert.match(source,/const MONTHLY_READ_SOFT=22_500_000_000/u);
+ assert.match(source,/const D1_MONTHLY_RESERVE_PCT=10/u);
+ assert.doesNotMatch(source,/const D1_MAX_OBSERVED_HOURLY_ROWS=5800/u);
+ assert.doesNotMatch(source,/CANARY_D1_140K_PROVIDER_BREACH/u);
 });
