@@ -8,6 +8,9 @@ const HOLD='config/d1-hotspot-v2-canary.hold';
 const STAGES=[0,1,5,25,50,100] as const;
 const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
 const INTERVAL_MS=30000;
+// Internal 140k/day policy (24*5,800=139,200), both dimensions separately.
+const D1_MAX_OBSERVED_HOURLY_ROWS=5800;
+const D1_MIN_RATE_SAMPLE_MS=5*60*1000;
 const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const route=`/workers/scripts/${WORKER}/deployments`;
 const info=(id:string)=>`/workers/scripts/${WORKER}/versions/${id}`;
@@ -133,7 +136,31 @@ async function checkLiveD1Budget(){
   ids.add(id);read+=r;written+=w;
  }
  need(read<=BUDGET&&written<=BUDGET,'CANARY_D1_140K_PROVIDER_BREACH');
- return {rows_read:read,rows_written:written,day_utc:day,provider_metrics_delayed:true};
+ return {rows_read:read,rows_written:written,day_utc:day,
+  observed_at_ms:Date.now(),provider_metrics_delayed:true};
+}
+/**
+ * Cloudflare GraphQL rows are delayed, so this rate gate is conservative:
+ * detect the first PROVIDER-OBSERVED spike and request atomic rollback.
+ * It cannot guarantee zero spend before observation; unknown => HOLD.
+ */
+function assertD1ObservedHourlyPace(start:any,latest:any){
+ need(start?.day_utc===latest?.day_utc &&
+  Number.isSafeInteger(start?.observed_at_ms)&&
+  Number.isSafeInteger(latest?.observed_at_ms),
+  'CANARY_D1_HOURLY_DAY_OR_CLOCK_UNVERIFIED');
+ const ms=latest.observed_at_ms-start.observed_at_ms;
+ if(ms<D1_MIN_RATE_SAMPLE_MS)return {status:'INSUFFICIENT_INTERVAL'};
+ const read=latest.rows_read-start.rows_read;
+ const written=latest.rows_written-start.rows_written;
+ need(read>=0&&written>=0,'CANARY_D1_METRIC_REGRESSION_UNVERIFIED');
+ const readRate=read*3600000/ms,writeRate=written*3600000/ms;
+ need(readRate<=D1_MAX_OBSERVED_HOURLY_ROWS&&
+  writeRate<=D1_MAX_OBSERVED_HOURLY_ROWS,
+  'CANARY_D1_HOURLY_5800_BURN_SPIKE');
+ return {status:'PASS_OBSERVED_ACCOUNT_HOURLY_PACE',
+  reads_per_hour:readRate,writes_per_hour:writeRate,
+  observed_window_ms:ms,metrics_are_delayed:true};
 }
 async function observeStage(base:string,candidate:string,pct:number,sha:string){
  const began=Date.now();let intervals=0;
@@ -141,6 +168,8 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
  // Inspect provider D1 spend at the start and every two health ticks.
  // A missing delayed provider receipt is HOLD, never a synthetic PASS.
  let d1=await checkLiveD1Budget();
+ const initialD1=d1;
+ let rate={status:'INSUFFICIENT_INTERVAL'} as any;
  while(Date.now()-began<windowMs){
   if(pct===0){
    // Version override can target the candidate only when the 0%-candidate
@@ -154,6 +183,7 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   intervals++;
   if(intervals%2===0){
    d1=await checkLiveD1Budget();
+   rate=assertD1ObservedHourlyPace(initialD1,d1);
    // Early complete provider windows may be under the statistical floor; once
    // 1000 real observations exist, any 5xx/latency regression rolls back now.
    if(Date.now()-began>=120000){
@@ -166,12 +196,16 @@ async function observeStage(base:string,candidate:string,pct:number,sha:string){
   await wait(Math.min(INTERVAL_MS,Math.max(1,windowMs-(Date.now()-began))));
  }
  d1=await checkLiveD1Budget();
+ rate=assertD1ObservedHourlyPace(initialD1,d1);
+ need(rate.status==='PASS_OBSERVED_ACCOUNT_HOURLY_PACE',
+  'CANARY_D1_HOURLY_PACE_UNVERIFIED');
  const result=await verifiedLiveObservability(new Date(began).toISOString(),new Date().toISOString(),
   pct===0?base:candidate,true);
  need(result.http_5xx_under_0_1pct&&result.version_errors_under_0_1pct&&result.p99_under_50ms,
   'CANARY_SLO_BREACH');
  return {stage_percent:pct,verified_minutes:(Date.now()-began)/60000,intervals,...result,
-  latest_d1_provider_observation:d1};
+  latest_d1_provider_observation:d1,
+  observed_d1_hourly_pace:rate};
 }
 function requireSchemaAcceptance(expectedSha:string){
  const file='artifacts/release/d1-schema-acceptance.json';
