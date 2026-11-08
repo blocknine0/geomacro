@@ -1,4 +1,4 @@
-import {publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
+import {hydrateVerifiedPhase2hIds,publishPhase2hReferenceBatch,readPhase2hReferenceOrLegacy}
  from "./phase2h-raw-object-refs.mjs";
 import {p0aAuditOriginal} from "../../../scripts/lib/p0a-evidence-quality.mjs";
 import {p0bProjectEvidenceBounded} from "../../../scripts/lib/p0b-event-grounded-projection.mjs";
@@ -718,4 +718,45 @@ export async function phase2hPrivateRawObjectReferenceGet(
   return safeReply({ok:false,error:"PHASE2H_REF_READBACK_UNVERIFIED",
    paid_eligible:false,rights_verified:false,payments:0},503);
  }
+}
+
+/** Authenticated internal-only bounded batch exact-record resolver.
+ * This is the sole approved bridge for Node/CI consumers to hydrate D1
+ * metadata IDs from HMAC+SHA-verified private R2, or verified legacy D1.
+ * No archival/rights promotion; index.mjs authorizes root before reading.
+ */
+export async function phase2hPrivateRawObjectReferencesBatchGet(
+ env,body,now=Date.now()
+){
+ if(!env?.DB?.prepare||!exact(body)||
+    Object.keys(body).sort().join(",")!=="record_ids,schema"||
+    body.schema!=="geomacro.phase2h.private-reference-batch-read.v1"||
+    !Array.isArray(body.record_ids)||body.record_ids.length<1||
+    body.record_ids.length>50||
+    body.record_ids.some(x=>!HEX.test(x))||
+    new Set(body.record_ids).size!==body.record_ids.length)
+  return safeReply({ok:false,error:"PHASE2H_REF_BATCH_QUERY_INVALID"},400);
+ try{
+  const rows=await hydrateVerifiedPhase2hIds(
+   env,body.record_ids,validPrivateRawNews,now);
+  if(rows.length!==body.record_ids.length||
+     rows.some((r,i)=>r.record_id!==body.record_ids[i]))
+    return safeReply({ok:false,error:"PHASE2H_REF_BATCH_ORIGINAL_MISSING",
+     paid_eligible:false},503);
+  return safeReply({
+   ok:true,schema:"geomacro.phase2h.private-verified-batch-originals.v1",
+   record_count:rows.length,
+   rows:rows.map(r=>({record_id:r.record_id,category:r.category,
+    original_published_at:r.original_published_at,
+    first_ingested_at:r.first_ingested_at,
+    raw_sha256:r.raw_sha256,
+    b2_object_sha256:r.b2_object_sha256,
+    b2_archived_at:r.b2_archived_at,
+    record:JSON.parse(r.raw_json),storage_proof:r.storage_proof,
+    independently_archived_to_b2:r.independently_archived_to_b2})),
+   raw_public_delivery:false,commercial_rights_verified:false,
+   chargeable:false,paid_eligible:false,payments:0
+  });
+ }catch{return safeReply({ok:false,error:"PHASE2H_REF_BATCH_AUTHENTICITY_UNVERIFIED",
+   paid_eligible:false,payments:0},503)}
 }
