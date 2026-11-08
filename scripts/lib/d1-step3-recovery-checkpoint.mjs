@@ -230,3 +230,64 @@ export function verifyStep3StatusReceipt(signed,publicJwk){
   fail("STATUS_SIGNATURE_INVALID");
  return signed.receipt;
 }
+
+/**
+ * Recovery reader for a SEPARATELY reviewed restore operator.
+ * Bookmark is passed only to an in-process callback; never written to logs,
+ * stdout, GitHub artifacts or returned in the public receipt.
+ * This function DOES NOT invoke D1 Time Travel restore.
+ */
+export async function withVerifiedD1RecoveryBookmark({
+ env=process.env,objectKey,expectedDbId,expectedMigrationSha,
+ fetchImpl=fetch,onBookmark
+}={}){
+ if(!UUID.test(expectedDbId??"")||!SHA.test(expectedMigrationSha??"")||
+    typeof objectKey!=="string"||
+    !objectKey.startsWith("backups/d1/manifests/"+
+      expectedDbId.toLowerCase()+"/")||
+    !objectKey.endsWith("_"+expectedMigrationSha+".enc")||
+    typeof onBookmark!=="function")
+  fail("COLD_RECOVERY_IDENTITY_INVALID");
+ const account=env.CLOUDFLARE_ACCOUNT_ID;
+ const bucket=env.GEOMACRO_D1_RECOVERY_R2_BUCKET;
+ const token=env.CLOUDFLARE_API_TOKEN;
+ if(!ACCOUNT.test(account??"")||!BUCKET.test(bucket??"")||
+    typeof token!=="string"||token.length<20)
+  fail("COLD_RECOVERY_PROVIDER_UNAVAILABLE");
+ const key=parseKey(env.GEOMACRO_D1_RECOVERY_AES256_KEY_B64);
+ const identity=signer(env.SIGNING_JWK);
+ const base={account,bucket,key:objectKey};
+ try{
+  const signedBytes=Buffer.from(await (await cfRequest(
+   endpoint({...base,key:objectKey+".manifest.json"}),
+   {token,fetchImpl})).arrayBuffer());
+  const manifest=verifyRecoveryManifest(signedBytes,identity);
+  const encrypted=Buffer.from(await (await cfRequest(endpoint(base),
+   {token,fetchImpl})).arrayBuffer());
+  if(manifest.database_uuid!==expectedDbId.toLowerCase()||
+     manifest.target_migration_sha!==expectedMigrationSha||
+     manifest.encrypted_object_key!==objectKey||
+     manifest.encrypted_byte_length!==encrypted.byteLength||
+     manifest.manifest_sha256!==digest(encrypted))
+   fail("COLD_RECOVERY_SIGNED_MANIFEST_MISMATCH");
+  const envelope=JSON.parse(encrypted.toString("utf8"));
+  if(envelope.iv!==manifest.encryption_iv)
+   fail("COLD_RECOVERY_IV_MISMATCH");
+  const plaintext=decryptPayload(key,envelope);
+  let data;try{data=JSON.parse(plaintext.toString("utf8"))}
+  catch{fail("COLD_RECOVERY_DECRYPTED_PAYLOAD_INVALID")}
+  if(data?.schema!=="geomacro.d1-private-recovery-payload.v1"||
+     data.database_uuid!==expectedDbId.toLowerCase()||
+     data.target_migration_sha!==expectedMigrationSha||
+     data.utc_timestamp!==manifest.utc_timestamp||
+     typeof data.bookmark!=="string"||
+     digest(Buffer.from(data.bookmark))!==manifest.bookmark_sha256)
+   fail("COLD_RECOVERY_BOOKMARK_IDENTITY_MISMATCH");
+  const outcome=await onBookmark(data.bookmark);
+  return {status:"PASS_SIGNED_ENCRYPTED_RECOVERY_READBACK",
+   database_uuid_sha256:digest(expectedDbId.toLowerCase()),
+   bookmark_sha256:manifest.bookmark_sha256,
+   encrypted_object_sha256:digest(encrypted),
+   result:outcome};
+ }finally{key.fill(0)}
+}
