@@ -48,8 +48,8 @@ test('user-required controls and no-funds release architecture remain explicit',
  assert.match(workflow,/npm run release:quota/);
  assert.match(workflow,/test -f config\/d1-hotspot-v2-canary\.hold/);
  assert.doesNotMatch(workflow,/continue-on-error: true/);
- assert.match(source,/const STAGES=\[0,1,10,100\]/);
- assert.match(source,/15\*60\*1000/);
+ assert.match(source,/const STAGES=\[0,1,5,25,50,100\]/);
+ assert.match(source,/percent===1\?30\*60\*1000:15\*60\*1000/);
  assert.match(source,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
  assert.match(source,/CANARY_D1_140K_PROVIDER_BREACH/);
  assert.match(admission,/account_wide_provider_hard_cap:false/);
