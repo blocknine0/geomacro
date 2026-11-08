@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-07T22:40:07.805Z",
+  "checked_at": "2026-11-08T00:40:13.271Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 20,
+  "item_count": 19,
   "counts": {
     "geopolitics": 2,
     "macro": 4,
-    "rare_earth": 14
+    "rare_earth": 13
   },
-  "source_native_ids_sha256": "60d109d209476850af906a22d1a3a11b90457bff81581f0c08c973b3c6735482",
+  "source_native_ids_sha256": "19c965b517809aa12e84405235eaa32d9b2c23b9fbc46d91806f940524f6623d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -377,25 +377,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-05T03:56:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-cd1b8e05",
-      "category": "rare_earth",
-      "title": "Geomacro finds Energy Fuels UUUU Mine-to-Magnet Strategy held Rating - Rare Earth Exchanges",
-      "what_changed": "A monitored source feed reports: Energy Fuels UUUU Mine-to-Magnet Strategy held Rating - Rare Earth Exchanges. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-04T23:55:23.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
