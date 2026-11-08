@@ -52,9 +52,17 @@ function inspectSource(row,parsed,now){
 export async function groEvidenceBackfill(env,now=Date.now()){
  if(!env?.DB?.prepare||!env?.DB?.batch||!Number.isFinite(now))
   fail("BACKFILL_DB_UNAVAILABLE");
+ // After protected 0214 readback, completing a historical scan is durable.
+ // New B2 archive ACKs always enqueue through the existing 0120 trigger.
+ const once=env.GEOMACRO_GRO_BACKFILL_ONCE_V1==="1";
  const checkpoint=await env.DB.prepare(
-  "SELECT last_record_id FROM gro_evidence_backfill_state WHERE singleton=1"
+  once?"SELECT last_record_id,scan_complete FROM gro_evidence_backfill_state WHERE singleton=1":
+   "SELECT last_record_id FROM gro_evidence_backfill_state WHERE singleton=1"
  ).first();
+ if(once&&checkpoint?.scan_complete===1)
+  return {schema:GRO_ENRICHMENT_SCHEMA,ok:true,scanned:0,
+   archive_jobs_recovered:0,backfill_cycle_complete:true,
+   source_probe_skipped:true,provider_requests:0};
  const last=checkpoint?.last_record_id??"";
  if(last!==""&&!HEX.test(last))fail("BACKFILL_CURSOR_INVALID");
  const out=await env.DB.prepare(
@@ -77,10 +85,20 @@ export async function groEvidenceBackfill(env,now=Date.now()){
  // Once one full archive scan finishes, start again at low ID on the next
  // tick. Backfilled originals cannot be manufactured and triggers handle new.
  const at=iso(now);
- if(!records.length) return {
-  schema:GRO_ENRICHMENT_SCHEMA,ok:true,scanned:0,archive_jobs_recovered:0,
-  backfill_cycle_complete:true,provider_requests:0,
- };
+ if(!records.length){
+  if(once){
+   const at=iso(now);
+   const saved=await env.DB.prepare(
+    "INSERT INTO gro_evidence_backfill_state(singleton,last_record_id,updated_at,scan_complete) "+
+    "VALUES(1,?,?,1) ON CONFLICT(singleton) DO UPDATE SET "+
+    "last_record_id=excluded.last_record_id,updated_at=excluded.updated_at,"+
+    "scan_complete=1 WHERE scan_complete=0"
+   ).bind(last,at).run();
+   if(saved?.success===false)fail("BACKFILL_COMPLETE_WRITE_INVALID");
+  }
+  return {schema:GRO_ENRICHMENT_SCHEMA,ok:true,scanned:0,
+   archive_jobs_recovered:0,backfill_cycle_complete:true,provider_requests:0};
+ }
  const packed=JSON.stringify(eligible.map(r=>[
   r.record_id,r.raw_sha256,r.b2_object_sha256,r.b2_archived_at,at]));
  const statements=[];
@@ -92,17 +110,22 @@ export async function groEvidenceBackfill(env,now=Date.now()){
   "json_extract(value,'$[4]'),'PENDING' FROM json_each(?)"
  ).bind(packed));
  statements.push(env.DB.prepare(
-  "INSERT INTO gro_evidence_backfill_state(singleton,last_record_id,updated_at) "+
-  "VALUES(1,?,?) ON CONFLICT(singleton) DO UPDATE "+
-  "SET last_record_id=excluded.last_record_id,updated_at=excluded.updated_at"
- ).bind(reset?"":next,at));
+  once?
+   "INSERT INTO gro_evidence_backfill_state(singleton,last_record_id,updated_at,scan_complete) "+
+   "VALUES(1,?,?,?) ON CONFLICT(singleton) DO UPDATE "+
+   "SET last_record_id=excluded.last_record_id,updated_at=excluded.updated_at,"+
+   "scan_complete=excluded.scan_complete":
+   "INSERT INTO gro_evidence_backfill_state(singleton,last_record_id,updated_at) "+
+   "VALUES(1,?,?) ON CONFLICT(singleton) DO UPDATE "+
+   "SET last_record_id=excluded.last_record_id,updated_at=excluded.updated_at"
+ ).bind(...(once?[next,at,reset?1:0]:[reset?"":next,at])));
  const result=await env.DB.batch(statements);
  if(!Array.isArray(result)||result.some(r=>r?.success===false))
   fail("BACKFILL_D1_WRITE_UNVERIFIED");
  const stored=await env.DB.prepare(
   "SELECT last_record_id FROM gro_evidence_backfill_state WHERE singleton=1"
  ).first();
- if(stored?.last_record_id!==(reset?"":next))
+ if(stored?.last_record_id!==(once?next:reset?"":next))
   fail("BACKFILL_CURSOR_READBACK_INVALID");
  return {schema:GRO_ENRICHMENT_SCHEMA,ok:true,scanned:records.length,
   archive_jobs_recovered:eligible.length,backfill_cycle_complete:reset,
