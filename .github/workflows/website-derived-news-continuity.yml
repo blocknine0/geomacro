@@ -163,6 +163,8 @@ jobs:
         run: |
           node --check scripts/ops/verify-hourly-public-archive-cohort.mjs
           node --test scripts/ops/verify-hourly-public-archive-cohort.test.mjs
+      - name: Test independent Paid Billing Read admission wiring offline
+        run: node --test scripts/tests/website-billing-token-wiring.test.mjs
       - name: Verify permanent archive append-only behavior without production credentials
         run: |
           node --check scripts/ops/publish-permanent-derived-news-archive.mjs
@@ -216,6 +218,7 @@ jobs:
       - name: Emit actual provider-readonly Phase 2F quota cause receipt
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
@@ -234,7 +237,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -243,6 +246,7 @@ jobs:
         name: Reserve D1 account-wide headroom for core original ingestion
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/ops/plan-d1-bundled-work.mjs
 
