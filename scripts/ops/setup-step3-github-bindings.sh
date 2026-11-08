@@ -42,15 +42,15 @@ else echo "GEOMACRO_D1_RECOVERY_AES256_KEY_B64: already configured"; fi
 # HMAC is 64 HEX characters in the existing runtime, NOT base64.
 # Shadow HMAC is independent from the production pointer HMAC.
 # Accept the exact local key material already deployed to the NEW shadow Worker.
-# Strip file line endings: openssl rand -hex 32 creates a trailing newline,
-# which MUST NOT be stored in Cloudflare/GitHub secret values.
+# Command substitution strips trailing LF from openssl rand output; reject
+# embedded CR/LF, and printf exactly 64 characters to GitHub.
 if ! has_secret PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY; then
  shadow_key_file="${STEP3_SHADOW_HMAC_FILE:-$HOME/.config/geomacro/phase2h-shadow-hmac.hex}"
  if [[ ! -f "$shadow_key_file" || ! -r "$shadow_key_file" ]]; then
   echo "Existing Shadow HMAC key file is missing; do not generate or rotate." >&2
   exit 14
  fi
- shadow_key="$(tr -d '\\r\\n' < "$shadow_key_file")"
+ shadow_key="$(cat "$shadow_key_file")"
  if [[ ! "$shadow_key" =~ ^[a-f0-9]{64}$ ]]; then
   echo "Shadow HMAC key must be 64 lowercase hexadecimal characters." >&2
   exit 15
