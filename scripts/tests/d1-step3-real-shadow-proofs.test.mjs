@@ -49,7 +49,7 @@ function fakeProvider({wrongShadow=false,newR2Missing=false}={}){
  const calls=[];
  const fetchImpl=async url=>{
   calls.push(url);
-  const isNew=url.includes("geomacro-step3-shadow.demo");
+  const isNew=url.includes("/workers/scripts/geomacro-step3-shadow/");
   const version="33333333-4444-4555-8666-777777777777";
   let data;
   if(url.endsWith("/settings")){
