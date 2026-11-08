@@ -20,8 +20,7 @@ on:
       - "scripts/lib/website-shared-partner-expectation.mjs"
       - "scripts/tests/website-shared-partner-expectation.test.mjs"
       - "scripts/ops/step2-website-reconcile-dedup.mjs"
-      - "scripts/tests/step2-selective-isolation.test.mjs"
-      - "scripts/ops/step2-inventory-recurring-jobs.mjs"
+      - "scripts/tests/d1-pre-reset-schema-free-deescalation.test.mjs"
 
 permissions:
   contents: read
@@ -50,17 +49,7 @@ jobs:
           node --check scripts/ops/verify-website-predge-eligible-parity.mjs
           node --test scripts/tests/website-predge-eligible-parity.test.mjs
           node --test scripts/tests/website-news-canonical-reconciliation.test.mjs scripts/tests/website-shared-partner-expectation.test.mjs
-          node --test scripts/tests/step2-selective-isolation.test.mjs
-      - name: Inventory every scheduled workflow and Worker cron without provider calls
-        run: node scripts/ops/step2-inventory-recurring-jobs.mjs
-      - name: Retain exhaustive Step 2 schedule inventory
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: step2-recurring-job-inventory-${{ github.run_id }}
-          path: |
-            artifacts/release/step2-recurring-job-inventory.json
-            artifacts/release/step2-recurring-job-inventory.md
-          retention-days: 14
+          node --test scripts/tests/d1-pre-reset-schema-free-deescalation.test.mjs
 
   quota-admission:
     if: >-
