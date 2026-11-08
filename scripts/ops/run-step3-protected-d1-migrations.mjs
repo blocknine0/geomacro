@@ -94,7 +94,9 @@ function runnerConfig(privateDir,dbId,migrationsDir){
  writeFileSync(config,JSON.stringify({
   name:"geomacro-step3-protected-db-only",
   compatibility_date:"2026-10-03",
-  d1_databases:[{binding:"DB",database_name:"geomacro-control-plane",
+  d1_databases:[{binding:"DB",
+   database_name:dbId===process.env.GEOMACRO_D1_SHADOW_DATABASE_ID?
+    "geomacro-d1-publisher-shadow":"geomacro-control-plane",
    database_id:dbId,migrations_dir:migrationsDir}]
  }),{mode:0o600});
  return config;
@@ -408,6 +410,93 @@ export async function applyStep3Migrations({env=process.env}={}){
   return state;
  }
 }
+/**
+ * Real shadow-only native Cloudflare D1 sequence.
+ * Requires a representative shadow dataset (never clones private prod rows).
+ * Finishes NOT_YET_VERIFIED until two actually deployed shadow-bound Worker
+ * versions have completed authenticated legacy/new read/write/rollback tests.
+ */
+export async function rehearseStep3Shadow({env=process.env}={}){
+ const report=receipt(),manifests=step3SqlManifests();
+ report.operation_kind="shadow";
+ report.source_migrations=manifests.map(x=>({
+  id:x.id,sql_sha256:x.sql_sha256
+ }));
+ report.schema="geomacro.step3.shadow-rehearsal.v1";
+ report.status="NOT_YET_VERIFIED";
+ report.code="STEP3_SHADOW_PROVIDER_REHEARSAL_NOT_STARTED";
+ report.legacy_worker_rollback_verified=false;
+ report.new_worker_hydration_verified=false;
+ report.b2_physical_parity_verified=false;
+ report.production_sql_mutated=false;
+ const path="artifacts/release/step3-shadow-rehearsal-receipt.json";
+ const write=()=>{
+  mkdirSync(ROOT,{recursive:true,mode:0o700});
+  writeFileSync(path,JSON.stringify(report,null,2)+"\\n",{mode:0o600});
+ };
+ try{
+  if(env.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED!=="YES"||
+     env.GEOMACRO_D1_SHADOW_TARGET_APPROVED!=="YES"||
+     !UUID.test(env.GEOMACRO_D1_SHADOW_DATABASE_ID??"")||
+     env.GEOMACRO_D1_SHADOW_DATABASE_ID.toLowerCase()===
+      (env.D1_DATABASE_ID??"").toLowerCase()||
+     !SHA.test(env.GEOMACRO_STEP3_EXACT_SHA??"")||
+     env.GEOMACRO_STEP3_EXACT_SHA!==getHash()||
+     !existsSync(HOLD_FILE))
+   fail("SHADOW_REHEARSAL_EXACT_APPROVAL_MISSING");
+  await refreshedGate(report,"SHADOW_BEFORE_PROVIDER_WRITES");
+  const base=mkdtempSync(join(tmpdir(),"geomacro-step3-shadow-"));
+  const shadow=env.GEOMACRO_D1_SHADOW_DATABASE_ID;
+  const config=runnerConfig(base,shadow,base);
+  const list=JSON.parse(wrangler(config,["d1","list","--json"]));
+  const matching=list.filter(x=>x.uuid?.toLowerCase()===shadow.toLowerCase()&&
+   /^geomacro-d1-publisher-shadow(?:-[a-z0-9-]+)?$/u.test(x.name??""));
+  if(matching.length!==1)fail("SHADOW_REAL_DATABASE_ID_NOT_MATCHED");
+  report.real_shadow_database_identity_verified=true;
+  for(const m of manifests)boundedInputs(config,m,report);
+  report.original_immutable_sample_sha256=baseline(config);
+  const checkpoint=await captureDurableD1Checkpoint({
+   env,dbId:shadow,migrationSha:sha256MigrationSet(manifests)
+  });
+  if(checkpoint.status!=="PASS_REAL_PROVIDER_R2_BYTE_READBACK")
+   fail("SHADOW_RECOVERY_CHECKPOINT_READBACK_FAILED");
+  report.recovery_checkpoint_verified=true;
+  report.backup_bookmark_sha256=checkpoint.bookmark_sha256;
+  report.recovery_checkpoint={
+   encrypted_object_key:checkpoint.object_key,
+   signed_manifest_object_key:checkpoint.manifest_object_key,
+   manifest_sha256:checkpoint.manifest_sha256
+  };
+  write();
+  await refreshedGate(report,"SHADOW_AFTER_BACKUP_BEFORE_DDL");
+  const ledger=ensureLedger(config,manifests,report);
+  for(const m of manifests){
+   await refreshedGate(report,"SHADOW_BEFORE_"+m.id);
+   migrateOne(base,config,m,report,shadow,ledger);
+   compareImmutableBaseline(report.original_immutable_sample_sha256,
+    baseline(config));
+   await refreshedGate(report,"SHADOW_AFTER_"+m.id);
+  }
+  report.migrations_0204_0211_0212_0213_provider_verified=
+   report.verified.length===4;
+  report.post_migration_hmac=await verifyHmacNewPointers(config,env);
+  // An HTTP response from the production Worker cannot prove that the
+  // shadow Worker bound to this D1 can survive rolling back. Do not forge.
+  report.code="STEP3_SHADOW_DUAL_WORKER_ROLLBACK_AND_B2_NOT_YET_VERIFIED";
+  report.status="NOT_YET_VERIFIED";
+ }catch(e){
+  report.status="NOT_YET_VERIFIED";
+  report.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
+    e.message:"STEP3_SHADOW_REAL_PROVIDER_REHEARSAL_NOT_VERIFIED";
+ }finally{
+  report.hold_file_untouched=existsSync(HOLD_FILE);
+  report.production_sql_mutated=false;
+  report.post_migration_readback_explicit_PASS=false;
+  write();
+ }
+ return report;
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const flags=process.argv.slice(2);
  if(flags.length===1&&flags[0]==="--plan"){
@@ -419,6 +508,14 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   save(result);
   console.log(JSON.stringify({status:result.status,ordered_ids:result.ordered_ids,
    report:LOG,production_mutated:false,bookmark_created:false}));
+ }else if(flags.length===1&&flags[0]==="--rehearse-shadow"){
+  const result=await rehearseStep3Shadow();
+  console.log(JSON.stringify({status:result.status,code:result.code,
+   report:"artifacts/release/step3-shadow-rehearsal-receipt.json",
+   real_shadow_database_identity_verified:
+    result.real_shadow_database_identity_verified===true,
+   production_sql_mutated:false,hold_file_untouched:result.hold_file_untouched}));
+  if(result.status!=="PASS")process.exitCode=3;
  }else if(flags.length===1&&flags[0]==="--apply"){
   const result=await applyStep3Migrations();
   console.log(JSON.stringify({status:result.status,code:result.code,
@@ -432,6 +529,6 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
    report:LOG}));
   if(result.status!=="PASS")process.exitCode=3;
  }else{
-  console.error("Usage: --plan | --apply");process.exitCode=2;
+  console.error("Usage: --plan | --rehearse-shadow | --apply");process.exitCode=2;
  }
 }
