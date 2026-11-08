@@ -21,12 +21,12 @@ export function assessP0bDeepCensusBudget(snapshot,{now=new Date()}={}){
    snapshot.observed_rows_read<0||snapshot.observed_rows_written<0)
   return held("P0B_PROVIDER_UTC_BUDGET_UNVERIFIED_OR_HELD");
  // Reserve a worst-case deep scan plus forecast lag and parallel writers
- // WITHOUT using the 20k emergency reserve in either D1 lane.
+ // WITHOUT consuming the separately protected 30% monthly reserve.
  const normal=snapshot.owner_d1_utc_daily_targets;
- if(normal?.rows_read!==140000||normal?.normal_rows_read!==120000||
-   normal?.normal_rows_written!==120000||
-   normal?.emergency_rows_read!==20000||
-   normal?.emergency_rows_written!==20000||
+ if(normal?.rows_read!==580000000||normal?.normal_rows_read!==580000000||
+   normal?.normal_rows_written!==1100000||
+   normal?.emergency_rows_read!==0||
+   normal?.emergency_rows_written!==0||
    normal?.emergency_auto_admission!==false)
   return held("P0B_OWNER_NORMAL_CEILING_POLICY_INVALID");
  const readRoom=normal.normal_rows_read-snapshot.observed_rows_read;
