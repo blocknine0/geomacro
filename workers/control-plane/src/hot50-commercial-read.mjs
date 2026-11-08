@@ -62,7 +62,10 @@ function validRating(r){
 function validCountry(item){
  return item&&HOT50_SET.has(item.iso3)&&item.ratings&&
   HOT50_CATEGORIES.every(c=>validRating(item.ratings[c]))&&
-  Object.keys(item.ratings).length===3;
+  Object.keys(item.ratings).length===3&&
+  Number.isFinite(item.composite_score)&&
+  Math.abs(item.composite_score-Math.round(
+   HOT50_CATEGORIES.reduce((s,c)=>s+item.ratings[c].score,0)/3*100)/100)<0.001;
 }
 function validDocuments(payload,key){
  const countries=payload.countries;
@@ -79,7 +82,10 @@ function validDocuments(payload,key){
  }
  const category=key.slice(9);
  return countries.length===50&&countries.every(x=>validRating(x.ratings?.[category]))&&
-  countries.every(x=>Object.keys(x.ratings).length===1);
+  countries.every((x,i)=>Object.keys(x.ratings).length===1&&x.rank===i+1&&
+    (i===0||countries[i-1].ratings[category].score>x.ratings[category].score||
+      (countries[i-1].ratings[category].score===x.ratings[category].score&&
+       countries[i-1].iso3.localeCompare(x.iso3)<=0)));
 }
 export async function verifyHot50CommercialSnapshot(row,viewKey,env,now=Date.now()){
  if(!row||!VIEW_RE.test(viewKey)||!SHA_RE.test(row.snapshot_sha256)||
