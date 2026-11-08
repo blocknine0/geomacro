@@ -7,11 +7,11 @@ const now=new Date("2026-11-07T12:00:00Z");
 const base={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
  owner_d1_normal_envelope:{held:false},critical:true,
  observed_rows_read:10000,observed_rows_written:10000,
- owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,
+ owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,
  emergency_auto_admission:false}};
 test("migration reserves 80k D1 read/write and never borrows emergency",()=>{
  assert.equal(evaluateMigrationBudget(base,now).admitted,true);
- for(const change of [{observed_rows_read:60000},{observed_rows_written:60000},
+ for(const change of [{observed_rows_read:40000},{observed_rows_written:40000},
  {critical:false},{day_utc:"2026-11-06"},
  {owner_d1_normal_envelope:{held:true}},{workers_paid_subscription_verified:false},
  {owner_d1_utc_daily_targets:{...base.owner_d1_utc_daily_targets,emergency_auto_admission:true}}])
