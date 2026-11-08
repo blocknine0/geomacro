@@ -69,6 +69,10 @@ test("fresh authentic Workers Paid proof admits ONLY critical source work under 
  assert.equal(grant.critical,true);
  assert.equal(grant.state,"CRITICAL_ONLY");
  assert.equal(grant.paid_capacity_verified_by_provider,true);
+ assert.equal(grant.predge_account_headroom_guard_enabled,true);
+ assert.equal(grant.predge_account_headroom_planning_reserve.rows_read,500_000);
+ assert.equal(grant.predge_account_headroom_planning_reserve.rows_written,8_000);
+ assert.equal(grant.predge_request_governor_is_separate_and_unchanged,true);
  assert.equal(grant.source_intake,true);
  assert.ok(grant.source_intake_max_new_rows>=3);
  assert.equal(grant.phase2h_raw_archive,true);
