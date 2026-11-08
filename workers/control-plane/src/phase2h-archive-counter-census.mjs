@@ -5,7 +5,7 @@
  * the entire sliding 72h window. Preflight 0212 before enabling this SQL.
  * Counters are metadata, never independent B2 readback or signed evidence.
  */
-export const PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL=
+export const PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL=
  "WITH boundary AS ("+
  "SELECT category,COUNT(*) AS n FROM phase2h_private_raw_news "+
  "INDEXED BY idx_phase2h_pending_recent_ingested_category "+
@@ -25,6 +25,28 @@ export const PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL=
  "(c.staged_count-c.archived_count-COALESCE(e.n,0)) AS pending_expired_72h "+
  "FROM phase2h_archive_totals c LEFT JOIN eligible e ON e.category=c.category "+
  "ORDER BY c.category";
+
+
+// Maintain the previous indexed-only pending census until 0212 seed, trigger
+// parity and provider EXPLAIN are verified. Never switch to a missing table.
+export const PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL=
+ "WITH eligible AS ("+
+ "SELECT category,COUNT(*) AS n FROM phase2h_private_raw_news "+
+ "INDEXED BY idx_phase2h_pending_recent_ingested_category "+
+ "WHERE b2_object_sha256 IS NULL AND first_ingested_at>"+
+ "strftime('%Y-%m-%dT%H:%M:%fZ','now','-72 hours') GROUP BY category) "+
+ "SELECT c.category,c.staged_count AS staged,"+
+ "(c.staged_count-c.archived_count) AS pending,"+
+ "c.archived_count AS archived,"+
+ "COALESCE(e.n,0) AS pending_eligible_72h,"+
+ "(c.staged_count-c.archived_count-COALESCE(e.n,0)) AS pending_expired_72h "+
+ "FROM phase2h_archive_totals c LEFT JOIN eligible e ON e.category=c.category "+
+ "ORDER BY c.category";
+
+export function phase2hCensusSqlForEnvironment(env){
+ return env?.GEOMACRO_D1_HOURLY_COUNTER_0212==="1"?
+   PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL:PHASE2H_ARCHIVE_COUNTER_CENSUS_SQL;
+}
 
 export const PHASE2H_ARCHIVE_HOT50_TOTALS_SQL=
  "SELECT COUNT(*) AS categories,COALESCE(SUM(staged_count),0) AS total,"+
