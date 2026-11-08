@@ -48,7 +48,8 @@ jobs:
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'schedule' &&
-        vars.GEOMACRO_STEP3_NOV9_ARMED == 'YES') ||
+        vars.GEOMACRO_STEP3_NOV9_ARMED == 'YES' &&
+        vars.GEOMACRO_STEP3_RECOVERY_V2_APPROVED == 'YES') ||
        (github.event_name == 'workflow_dispatch' && inputs.execute == true))
     runs-on: ubuntu-24.04
     timeout-minutes: 50
@@ -62,6 +63,14 @@ jobs:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_STEP3_EXACT_SHA: '3c8fe6a51c8b34aa75d43ab0c77e5395d3fe16f2'
       GEOMACRO_STEP3_APPLY: 'APPROVE_ONLY_0204_0211_0212_0213'
+      GEOMACRO_STEP3_RECOVERY_V2_APPROVED: ${{ vars.GEOMACRO_STEP3_RECOVERY_V2_APPROVED }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}
+      GEOMACRO_STEP3_VERIFIED_WORKER_HOST: 'api.geomacro.live'
     steps:
       - name: Checkout immutable approved Step 3 source (not moving draft branch)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -77,6 +86,16 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GEOMACRO_STEP3_EXACT_SHA"
           test -f config/d1-hotspot-v2-canary.hold
+          # Old pinned SHA MUST NOT bypass encrypted durable recovery. This
+          # fails CLOSED before any provider SQL even if a legacy variable is YES.
+          test -f scripts/lib/d1-step3-recovery-checkpoint.mjs
+          test -f scripts/lib/d1-step3-migration-ledger.mjs
+          test -f scripts/lib/d1-step3-crypto-proof.mjs
+          test -n "${GEOMACRO_D1_RECOVERY_AES256_KEY_B64:-}"
+          test -n "${GEOMACRO_D1_RECOVERY_R2_BUCKET:-}"
+          test -n "${SIGNING_JWK:-}"
+          test -n "${CONTROL_PLANE_TOKEN:-}"
+          test -n "${PHASE2H_R2_REFERENCE_HMAC_KEY:-}"
           node --check scripts/ops/check-d1-headroom.mjs
           node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
