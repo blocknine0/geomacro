@@ -100,9 +100,10 @@ test("one verified private R2 bundle / up to 50 records and D1 reference-only ro
   }
   const duplicate=await phase2hPrivateRawPut(f.env,body(records),DATE.getTime());
   assert.equal(duplicate.status,200);
-  assert.equal((await duplicate.json()).accepted,0);
+  const duplicateProof=await duplicate.json();
+  assert.equal(duplicateProof.accepted,0);
   assert.equal(f.counters().puts,1,"identical retries never rewrite R2 object");
-  assert.equal((await duplicate.json()).private_r2_readback_verified,true);
+  assert.equal(duplicateProof.private_r2_readback_verified,true);
  }finally{f.sqlite.close()}
 });
 
