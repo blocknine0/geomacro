@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-08T17:00:28.998Z",
+  "checked_at": "2026-11-08T17:42:38.506Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 6,
+  "item_count": 4,
   "counts": {
-    "geopolitics": 1,
+    "geopolitics": 0,
     "macro": 1,
-    "rare_earth": 4
+    "rare_earth": 3
   },
-  "source_native_ids_sha256": "753e84f32655d0d73fa9b54a544e5a6619ad3647555c3ac2d0ed543981a8c0bf",
+  "source_native_ids_sha256": "4b3e27e13f495a9d9da2926458516e65f416077ac63ddeab1254fed3deb047ab",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -100,44 +100,6 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-1a7c2643",
-      "category": "rare_earth",
-      "title": "Geomacro finds Lundin cut copper outlook again as Chile weather bites - The Northern Miner",
-      "what_changed": "A monitored source feed reports: Lundin cut copper outlook again as Chile weather bites - The Northern Miner. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-05T17:26:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-be331f64",
-      "category": "geopolitics",
-      "title": "Geomacro finds Security Council: adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "Security Council adopted Presidential Statement Directing All States to Use Peaceful Means in Settling International Disputes.",
-      "geography": null,
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-05T17:10:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "United Nations"
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }
