@@ -23,7 +23,9 @@ const obj=(x:unknown):Record<string,unknown>|null=>
  x&&typeof x==="object"&&!Array.isArray(x)?x as Record<string,unknown>:null;
 /** Do not log resource JSON, merchant secrets, HMAC attestations or raw PII. */
 export async function handleVerifiedPayPalCommercialWebhook(
- request:Request,{fetchImpl=fetch}:{fetchImpl?:typeof fetch}={}
+ request:Request,{fetchImpl=fetch,workerCall=callCustomerWorker}:{
+  fetchImpl?:typeof fetch;workerCall?:typeof callCustomerWorker
+ }={}
 ):Promise<Response>{
  if(request.method!=="POST"||new URL(request.url).search)
   return fail("PAYPAL_WEBHOOK_METHOD_INVALID",405);
@@ -61,7 +63,7 @@ export async function handleVerifiedPayPalCommercialWebhook(
  // intent, never a buyer email or amount from the webhook body.
  let intent;
  try{
-  intent=await callCustomerWorker(request,"paypal-webhook-intent",{order_id:orderId});
+  intent=await workerCall(request,"paypal-webhook-intent",{order_id:orderId});
  }catch{return fail("PAYPAL_CAPTURE_WEBHOOK_INTENT_READBACK_UNAVAILABLE");}
  if(typeof intent.intentId!=="string"||
     !/^gmpi_[a-f0-9-]{36}$/.test(intent.intentId)||
@@ -82,7 +84,7 @@ export async function handleVerifiedPayPalCommercialWebhook(
  const attestation=attestVerifiedPayPalCapture(proof,fundingKey);
  let funding;
  try{
-  funding=await callCustomerWorker(request,"paypal-webhook-fund",{proof,attestation});
+  funding=await workerCall(request,"paypal-webhook-fund",{proof,attestation});
  }catch{return fail("PAYPAL_CAPTURE_WEBHOOK_ATOMIC_FUNDING_UNCONFIRMED");}
  if(funding.ok!==true||typeof funding.receiptId!=="string"||
     !Number.isSafeInteger(funding.credits)||Number(funding.credits)<1)
