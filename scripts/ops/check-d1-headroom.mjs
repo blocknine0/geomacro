@@ -16,11 +16,11 @@ import {
 export const STEP3_BUDGET=Object.freeze({
  provider_included_monthly_rows_read:25_000_000_000,
  provider_included_monthly_rows_written:50_000_000,
- owner_normal_monthly_rows_read:22_500_000_000,
- owner_normal_monthly_rows_written:45_000_000,
+ owner_normal_monthly_rows_read:D1_PAID_MONTHLY_POLICY.owner_normal_monthly_ceiling.rows_read,
+ owner_normal_monthly_rows_written:D1_PAID_MONTHLY_POLICY.owner_normal_monthly_ceiling.rows_written,
  billing_anchor_day_utc:5,
- migration_reserve_rows_read:20_000_000,
- migration_reserve_rows_written:1_000_000,
+ migration_reserve_rows_read:D1_PAID_MONTHLY_POLICY.migration_reserve_rows_read,
+ migration_reserve_rows_written:D1_PAID_MONTHLY_POLICY.migration_reserve_rows_written,
  old_daily_140k_policy_applied:false
 });
 export const HEADROOM_REPORT="artifacts/release/d1-migration-headroom-current-utc.json";
@@ -37,17 +37,24 @@ export function assessD1MigrationHeadroom(snapshot,{now=new Date()}={}){
   snapshot.cycle_start_utc===cycle.start_utc&&
   snapshot.cycle_end_exclusive_utc===cycle.end_exclusive_utc&&
   snapshot.day_utc===cycle.observed_through_utc&&
-  snapshot.monthly_ceiling_read===22_500_000_000&&
-  snapshot.monthly_ceiling_written===45_000_000&&
+  snapshot.monthly_ceiling_read===STEP3_BUDGET.owner_normal_monthly_rows_read&&
+  snapshot.monthly_ceiling_written===STEP3_BUDGET.owner_normal_monthly_rows_written&&
   snapshot.paid_included_rows_read===25_000_000_000&&
   snapshot.paid_included_rows_written===50_000_000&&
-  snapshot.reserve_pct===10&&
+  snapshot.reserve_pct===D1_PAID_MONTHLY_POLICY.owner_included_quota_reserve_pct&&
+  snapshot.reserve_pct===30&&
+  snapshot.operational_daily_ceiling_read===D1_PAID_MONTHLY_POLICY.owner_daily_ceiling.rows_read&&
+  snapshot.operational_daily_ceiling_written===D1_PAID_MONTHLY_POLICY.owner_daily_ceiling.rows_written&&
+  snapshot.operational_hourly_ceiling_read===D1_PAID_MONTHLY_POLICY.owner_hourly_ceiling.rows_read&&
+  snapshot.operational_hourly_ceiling_written===D1_PAID_MONTHLY_POLICY.owner_hourly_ceiling.rows_written&&
+  snapshot.reserved_migration_rows_read>=D1_PAID_MONTHLY_POLICY.migration_reserve_rows_read&&
+  snapshot.reserved_migration_rows_written>=D1_PAID_MONTHLY_POLICY.migration_reserve_rows_written&&
   safe(snapshot.observed_rows_read)&&
   safe(snapshot.observed_rows_written)&&
   safe(snapshot.remaining_rows_read)&&
   safe(snapshot.remaining_rows_written)&&
-  snapshot.remaining_rows_read>=D1_PAID_MONTHLY_POLICY.migration_reserve_rows_read&&
-  snapshot.remaining_rows_written>=D1_PAID_MONTHLY_POLICY.migration_reserve_rows_written;
+  snapshot.remaining_rows_read>=snapshot.reserved_migration_rows_read&&
+  snapshot.remaining_rows_written>=snapshot.reserved_migration_rows_written;
  return Object.freeze({
   schema:"geomacro.d1-step3-paid-monthly-headroom.v2",
   status:valid?"PASS":"NOT_YET_VERIFIED",

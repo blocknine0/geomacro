@@ -87,19 +87,18 @@ jobs:
       GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: 'YES'
       GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
-      GEOMACRO_STEP3_EXACT_SHA: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
+      GEOMACRO_STEP3_EXACT_SHA: ${{ github.sha }}
       GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
       GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
       CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}
-      # Archived SHA-pinned shadow-only runner: never import production HMAC.
       PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY }}
       GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: 'a9cb982b346e86ed99401e0ae99a1f006c02bae6'
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -109,6 +108,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GEOMACRO_STEP3_EXACT_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GEOMACRO_STEP3_EXACT_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           test -f scripts/lib/d1-step3-recovery-checkpoint.mjs
           test -f scripts/lib/d1-step3-crypto-proof.mjs
@@ -129,7 +129,7 @@ jobs:
           set -euo pipefail
           node --test scripts/tests/d1-step3-durable-recovery.test.mjs
           node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
-      - name: Cloudflare Workers Paid month-wide 25B/50M inclusion and 10pct reserve
+      - name: Cloudflare Workers Paid account-wide billing cycle and 30pct reserve
         shell: bash
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Shadow UUID only — real encrypted recovery, migrations and signed status receipt

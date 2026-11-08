@@ -11,7 +11,10 @@ export const HOT50=Object.freeze('USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AU
 export const CATEGORIES=Object.freeze(['geopolitics','macro','critical_minerals']);
 export const ORIGIN='https://geomacro-control-plane.daspallab202391.workers.dev';
 export const WORKER='geomacro-control-plane';
-export const BUDGET=140000;
+export const D1_DAILY_READ_CEILING=580_000_000;
+export const D1_DAILY_WRITE_CEILING=1_100_000;
+export const D1_HOURLY_READ_CEILING=24_000_000;
+export const D1_HOURLY_WRITE_CEILING=45_000;
 
 export function need(condition:boolean,code:string):asserts condition {if(!condition)throw Error(code)}
 export function envString(name:string,min=1):string {const value=process.env[name]??'';need(value.length>=min,`RELEASE_ENV_${name}_MISSING`);return value}

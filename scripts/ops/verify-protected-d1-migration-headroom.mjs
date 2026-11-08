@@ -9,7 +9,7 @@
  *  - exactly one canonical D1 DB and current Time Travel bookmark
  *  - exactly one active Worker baseline at 100%
  *  - provider-verified Workers Paid, account-wide billed rows, UTC same-day
- *  - <40k observed on each 120k normal lane: >80k reserve before migration
+ *  - >80k owner paid headroom across separate 580M reads and 1.1M writes
  */
 import {writeFileSync,mkdirSync} from "node:fs";
 import {pathToFileURL} from "node:url";
@@ -39,10 +39,10 @@ export function assessMigrationOnlyPreflight(receipt,{now=new Date()}={}){
   receipt?.d1_sql_queries_issued!==0||
   receipt?.provider_write_operations!==0||
   receipt?.payments!==0||
-  receipt?.normal_read_target!==120000||
-  receipt?.normal_write_target!==120000||
-  receipt?.emergency_read_reserve!==20000||
-  receipt?.emergency_write_reserve!==20000||
+  receipt?.normal_read_target!==580000000||
+  receipt?.normal_write_target!==1100000||
+  receipt?.emergency_read_reserve!==0||
+  receipt?.emergency_write_reserve!==0||
   !Number.isSafeInteger(receipt?.daily_read_rows)||
   !Number.isSafeInteger(receipt?.daily_written_rows)||
   receipt.daily_read_rows<0||receipt.daily_written_rows<0)
@@ -52,7 +52,8 @@ export function assessMigrationOnlyPreflight(receipt,{now=new Date()}={}){
     now.getTime()-stamp>120000||
     receipt.inspected_at.slice(0,10)!==now.toISOString().slice(0,10))
   return hold("MIGRATION_PROVIDER_USAGE_NOT_FRESH_UTC");
- if(receipt.daily_read_rows>=40000||receipt.daily_written_rows>=40000)
+ if(receipt.daily_read_rows+80000>=580000000||
+    receipt.daily_written_rows+80000>=1100000)
   return hold("MIGRATION_ACCOUNT_80K_HEADROOM_UNAVAILABLE");
  return Object.freeze({
   schema:"geomacro.d1.migration-only-headroom.v1",status:"ADMITTED",
