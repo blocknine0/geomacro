@@ -99,7 +99,7 @@ function parseSqlRows(doc,{max=40}={}){
  return rows[0].results;
 }
 export async function readOnlyShadowSchema({env,fetchImpl=fetch,sql}={}){
- if(!["SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33",
+ if(!["SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_KV' ORDER BY name LIMIT 33",
     "SELECT type,name FROM sqlite_schema WHERE name IN ("+
     SCHEMA.map(x=>"'"+x+"'").join(",")+") ORDER BY name LIMIT 13"].includes(sql))
   fail("PROVIDER_SQL_OUTSIDE_FIXED_READONLY_SCOPE");
@@ -125,6 +125,10 @@ export function assertPristineShadowSchema(rows){
   fail("SHADOW_NOT_PRISTINE_OR_PARTIAL_BOOTSTRAP_REQUIRES_RECOVERY_REVIEW");
  return true;
 }
+// Cloudflare D1 always creates its exact reserved _cf_KV storage table.
+// It cannot be queried and is not a user schema. Explicitly exclude ONLY
+// this documented internal name; any other pre-existing table still HOLDS.
+// https://developers.cloudflare.com/d1/best-practices/import-export-data/
 const configFor=(base,db,dir)=>{
  const path=join(base,"wrangler-shadow-baseline.jsonc");
  writeFileSync(path,JSON.stringify({
@@ -167,7 +171,7 @@ export async function bootstrapShadowBaseline({
    fail("PAID_30PCT_PROVIDER_HEADROOM_NOT_VERIFIED");
   report.paid_headroom_verified_for_shadow=true;
   const before=await readOnlyShadowSchema({env,fetchImpl,
-   sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33"});
+   sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_KV' ORDER BY name LIMIT 33"});
   assertPristineShadowSchema(before);
   // No database mutation before real Time Travel and signed encrypted R2 PUT/GET.
   const checkpoint=await checkpointCapture({env,fetchImpl,dbId:SHADOW,
@@ -249,7 +253,7 @@ export async function readOnlyShadowBootstrapPreflight({
   output.headroom_status=headroom?.status??"HOLD";
   output.headroom_reason=headroom?.reason??"PROVIDER_UNVERIFIED";
   const rows=await readOnlyShadowSchema({env,fetchImpl,
-   sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name LIMIT 33"});
+   sql:"SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_KV' ORDER BY name LIMIT 33"});
   output.shadow_existing_table_count=rows.length;
   // Schema identifier names only, never column content or application rows.
   // Bounded to the existing LIMIT 33 and allowlisted to printable identifiers.
