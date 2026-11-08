@@ -27,13 +27,17 @@ function remoteObjectUrl(account,bucket,key){
 }
 async function req(url,env,method,fetchImpl,body){
  let res;
- try{res=await fetchImpl(url,{
-  method,redirect:"error",cache:"no-store",
-  headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
-   "Cache-Control":"no-store",
-   ...(body?{"Content-Type":"application/json"}:{})},
-  ...(body?{body}:{}),signal:AbortSignal.timeout(20000)
- })}catch{fail("R2_PROVIDER_UNAVAILABLE")}
+ try{
+  const form=body===undefined?null:new FormData();
+  if(form)form.set("body",new Blob([body],{
+   type:"application/octet-stream"}),"shadow-pointer.bin");
+  res=await fetchImpl(url,{
+   method,redirect:"error",cache:"no-store",
+   headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
+    "Cache-Control":"no-store"},
+   ...(form?{body:form}:{}),signal:AbortSignal.timeout(20000)
+  });
+ }catch{fail("R2_PROVIDER_UNAVAILABLE")}
  if(!res||res.redirected||res.status<200||res.status>=300)
   fail("R2_PROVIDER_REJECTED");
  return res;
