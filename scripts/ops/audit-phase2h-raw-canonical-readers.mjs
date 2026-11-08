@@ -42,7 +42,8 @@ function visit(path,out,depth=0){
    continue;
   const full=join(path,d.name);
   if(d.isDirectory()){visit(full,out,depth+1);continue}
-  if(!EXT.test(d.name)||/\.(?:test|spec)\.[jt]sx?$/u.test(d.name))continue;
+  if(!EXT.test(d.name)||/\.(?:test|spec)\.(?:mjs|cjs|js|ts|tsx)$/u.test(d.name)||
+     d.name==="audit-phase2h-raw-canonical-readers.mjs")continue;
   const source=readFileSync(full,"utf8");
   if(!source.includes("phase2h_private_raw_news")||!source.includes("raw_json"))
    continue;
