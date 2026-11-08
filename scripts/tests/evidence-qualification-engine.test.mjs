@@ -189,7 +189,7 @@ test('RSS unqualified -> bounded recovery -> signed review -> R2 byte readback -
  assert.equal(sql.prepare('SELECT SUM(delta_credits) n FROM credit_ledger').get().n,2);
  const live=sql.prepare('SELECT b2_key FROM eqe_qualified').get();
  store.objects.set(live.b2_key,Buffer.from('{"corrupt":true}'));
- await assert.rejects(()=>deliverVerifiedEvidence(env,{apiKey:key.api_key,itemId:item.id}),
+ await assert.rejects(()=>deliverVerifiedEvidence(env,{apiKey:keyRotated.api_key,itemId:item.id}),
   /EQE_ARCHIVE_READBACK_HASH_MISMATCH/);
  assert.equal(sql.prepare("SELECT COUNT(*) n FROM credit_ledger WHERE event_type='debit'").get().n,1);
  sql.close();
