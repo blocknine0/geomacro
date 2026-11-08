@@ -21,14 +21,14 @@ export function evaluateMigrationBudget(plan,now=new Date()){
   plan?.workers_paid_subscription_verified!==true||
   !(
    (plan?.owner_d1_normal_envelope?.held===false&&plan?.critical===true)||
-   (plan?.owner_d1_normal_envelope?.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"&&
+   (plan?.owner_d1_normal_envelope?.reason==="OWNER_D1_PAID_HOURLY_PACING_HELD"&&
     plan?.reason==="GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD")
   )||
-  plan?.owner_d1_utc_daily_targets?.rows_read!==140000||
-  plan?.owner_d1_utc_daily_targets?.normal_rows_read!==120000||
-  plan?.owner_d1_utc_daily_targets?.normal_rows_written!==120000||
-  plan?.owner_d1_utc_daily_targets?.emergency_rows_read!==20000||
-  plan?.owner_d1_utc_daily_targets?.emergency_rows_written!==20000||
+  plan?.owner_d1_utc_daily_targets?.rows_read!==580000000||
+  plan?.owner_d1_utc_daily_targets?.normal_rows_read!==580000000||
+  plan?.owner_d1_utc_daily_targets?.normal_rows_written!==1100000||
+  plan?.owner_d1_utc_daily_targets?.emergency_rows_read!==0||
+  plan?.owner_d1_utc_daily_targets?.emergency_rows_written!==0||
   plan?.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
   !Number.isSafeInteger(plan?.observed_rows_read)||plan.observed_rows_read<0||
   !Number.isSafeInteger(plan?.observed_rows_written)||plan.observed_rows_written<0)
@@ -41,8 +41,8 @@ export function evaluateMigrationBudget(plan,now=new Date()){
   admitted:true,reason:"PROVIDER_HEADROOM_FOR_PROTECTED_MIGRATIONS",
   observed_rows_read:plan.observed_rows_read,
   observed_rows_written:plan.observed_rows_written,
-  headroom_read:120000-plan.observed_rows_read,
-  headroom_write:120000-plan.observed_rows_written,
+  headroom_read:580000000-plan.observed_rows_read,
+  headroom_write:1100000-plan.observed_rows_written,
   account_wide_hard_cap_guaranteed:false,no_funds:true};
 }
 export function inspectPendingMigrations(raw){
@@ -105,7 +105,7 @@ export function checkBoundedMigrationSizeProbe(pendingRaw,jsonRaw){
    meta.rows_read>15000||meta?.rows_written!==0)
   throw Error("MIGRATION_SIZE_PROBE_PROVIDER_UNVERIFIED");
  if(Object.values(row).some(value=>value===1))
-  throw Error("MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_140K");
+  throw Error("MIGRATION_ORIGINAL_TABLE_TOO_LARGE_FOR_STAGED_BUDGET");
  return Object.freeze({schema:"geomacro.protected-d1-index-build-bound.v1",
    status:"ORIGINAL_TABLES_BOUNDED",scope_names:p.pending,
    proven_table_count:aliases.size,
@@ -113,7 +113,7 @@ export function checkBoundedMigrationSizeProbe(pendingRaw,jsonRaw){
    size_probe_provider_rows_read:meta.rows_read,
    size_probe_provider_rows_written:0,
    index_write_cost_still_needs_provider_receipt:true,
-   account_wide_atomic_140k_guaranteed:false,
+   account_wide_atomic_paid_cap_guaranteed:false,
    verified_for_this_preflight_only:true,
    no_funds:true});
 }
