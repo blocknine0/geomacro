@@ -69,7 +69,7 @@ test("0208 counter census equals full original category truth, with indexed only
    "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
    import.meta.url),"utf8"));
   db.exec(readFileSync(new URL(
-   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   "../../workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql",
    import.meta.url),"utf8"));
   const all=db.prepare(PHASE2H_ARCHIVE_HOURLY_CENSUS_SQL).all();
   assert.equal(all.length,3);
@@ -105,7 +105,7 @@ test("0208 counter census equals full original category truth, with indexed only
    "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
    import.meta.url),"utf8"));
   db.exec(readFileSync(new URL(
-   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   "../../workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql",
    import.meta.url),"utf8"));
   assert.deepEqual(db.prepare(PHASE2H_ARCHIVE_HOT50_TOTALS_SQL).get(),summary);
   db.prepare("DELETE FROM phase2h_archive_totals WHERE category='rare_earth'").run();
@@ -120,7 +120,7 @@ test("0212 exact pending hour counters track inserts, B2 ACK/reversal and deleti
    "../../workers/control-plane/migrations/0208_phase2h_atomic_archive_census.sql",
    import.meta.url),"utf8"));
   db.exec(readFileSync(new URL(
-   "../../workers/control-plane/migrations/0212_d1_keyset_hourly_pending_census.sql",
+   "../../workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql",
    import.meta.url),"utf8"));
   const id=add(211,"macro",0.4,false);
   const hour=db.prepare("SELECT substr(first_ingested_at,1,13) AS h FROM phase2h_private_raw_news WHERE record_id=?").get(id).h;
