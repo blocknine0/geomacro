@@ -51,7 +51,7 @@ async function reserve(db,kind,emailHash,ipHash,now){
 export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetchImpl=fetch}={}){
  try{
   const url=new URL(request.url),action=url.pathname.slice('/v1/internal/customer/'.length);
-  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','paypal-webhook-intent','paypal-webhook-fund','paypal-store-readiness','hot50-key-create'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
+  if(url.search||!['otp-start','otp-verify','session','account','key-create','key-revoke','logout','paid-authorize','paid-debit','paypal-intent-create','paypal-order-bind','paypal-intent-read','paypal-capture-claim','paypal-fund','paypal-webhook-intent','paypal-webhook-fund','paypal-store-readiness','hot50-key-create','hot50-checkout-key-handoff'].includes(action))fail(404,'CUSTOMER_ROUTE_NOT_FOUND');
   if(request.method!=='POST')fail(405,'CUSTOMER_METHOD_NOT_ALLOWED');
   const token=String(env.GEOMACRO_CUSTOMER_SSR_TOKEN??''),pepper=String(env.GEOMACRO_CUSTOMER_AUTH_PEPPER??'');
   if(token.length<64||pepper.length<64||!env.DB?.batch)fail(503,'CUSTOMER_D1_NOT_CONFIGURED');
@@ -258,6 +258,18 @@ export async function handleCustomerRuntime(request,env,{now=()=>Date.now(),fetc
     fail(400,'CUSTOMER_KEY_CREATE_FIELDS_INVALID');
    try{
     const minted=await mintCanonicalCustomerPaidKey(db,env,user.id,at);
+    return reply({ok:true,...minted});
+   }catch(error){
+    if(error instanceof CustomerPaidError)fail(error.status,error.code);
+    throw error;
+   }
+  }
+  if(action==='hot50-checkout-key-handoff'){
+   if(Object.keys(body).some(k=>!['session_token','receipt_id'].includes(k))||
+      typeof body.receipt_id!=='string')
+    fail(400,'CUSTOMER_HOT50_HANDOFF_FIELDS_INVALID');
+   try{
+    const minted=await mintCanonicalHot50ApiKey(db,env,user.id,at,body.receipt_id);
     return reply({ok:true,...minted});
    }catch(error){
     if(error instanceof CustomerPaidError)fail(error.status,error.code);
