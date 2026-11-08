@@ -74,6 +74,8 @@ test('all mandatory checks pass ONLY for detached trusted review and distinct or
  assert.ok(syndicated.deficits.includes(DEFICITS.QUORUM));
  const rights=await evalGate(item,attest({...proof,commercial_derived_use_rights_verified:false}));
  assert.ok(rights.deficits.includes(DEFICITS.RIGHTS));
+ const notRedistributable=await evalGate(item,attest({...proof,customer_full_text_distribution_rights_verified:false}));
+ assert.ok(notRedistributable.deficits.includes(DEFICITS.RIGHTS));
  const time=await evalGate(item,attest({...proof,original_published_at:clock(now()-3600000)}));
  assert.ok(time.deficits.includes(DEFICITS.TIME));
  const corrupt=structuredClone(item);corrupt.body+='tampered';
