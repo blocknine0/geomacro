@@ -173,6 +173,9 @@ const approvedPricing = [
   config.approved_verified_historical_indices_20261106,
   // Founder-approved Store/API price-credit parity; exact two source blobs only.
   config.approved_store_api_credit_parity_20261108,
+  // Founder-directed 8 Nov crypto-only Store: exact approved source blobs,
+  // zero funds, no general website baseline reset or global-risk unlock.
+  config.approved_crypto_only_store_20261108,
 ];
 // Each explicit founder approval is limited to EXACT committed blob content,
 // not a wildcard route or a mutable baseline. Future UI changes require a
