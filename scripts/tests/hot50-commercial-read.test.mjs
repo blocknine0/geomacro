@@ -17,13 +17,14 @@ const rating=()=>({score:72,confidence_low:66,confidence_high:78,
  confidence:0.8,qualified_evidence_count:3,
  b2_evidence_pointer:'b2://geomacro-evidence/signed/verified.json',
  b2_evidence_sha256:'a'.repeat(64)});
-function country(iso3){return {iso3,ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,rating()]))};}
+function country(iso3){return {iso3,composite_score:72,ratings:Object.fromEntries(HOT50_CATEGORIES.map(x=>[x,rating()]))};}
 function make(viewKey='hot50',modifier=()=>{}){
  let countries=RISK_GATE_HOT50.map(country);
  if(viewKey.startsWith('country:'))countries=[country(viewKey.slice(8))];
  if(viewKey.startsWith('category:')){
    const category=viewKey.slice(9);
-   countries=countries.map(x=>({...x,ratings:{[category]:rating()}}));
+   countries=countries.sort((a,b)=>a.iso3.localeCompare(b.iso3))
+     .map((x,i)=>({iso3:x.iso3,rank:i+1,ratings:{[category]:rating()}}));
  }
  const payload={schema:HOT50_SIGNED_SCHEMA,view_key:viewKey,
   public_key_id:'test-hot50-issuer',execution_authorized:false,
