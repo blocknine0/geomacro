@@ -41,14 +41,14 @@ const DAY_MS=86_400_000;
 const FIVE_USD_BUDGET=JSON.parse(readFileSync(
   new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"));
 if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==140_000||
-   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_read!==120_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==120_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_read!==20_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==20_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_read_max!==580_000_000||
+   FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==1_100_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==580_000_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==1_100_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_read!==580_000_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==1_100_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_read!==0||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==0||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
@@ -244,8 +244,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
 
 
   // Verified Workers Paid has no Free-plan 5M read/100k write daily stop.
-  // Only 120k normal/day plus 20k emergency/day in EACH lane, all INSIDE
-  // the same owner 140k total. Paid entitlement != permission to spend more.
+  // Paid admission uses 580M reads/day and 1.1M writes/day, with 30% of
+  // monthly included usage reserved. Paid entitlement is not unlimited spend.
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
   // Spend-policy verification is advisory; verified subscription and all
@@ -262,8 +262,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   if(paid){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
     const progress=Math.max(0,Math.min(1,elapsed));
-    // Pace only normal 120k/day per lane; the other 20k is emergency-only,
-    // never additional to the owner total and never automatically admitted.
+    // Pace owner paid daily ceilings; the separate monthly reserve cannot
+    // be automatically used by an unqualified discretionary workload.
     const dailyReads=Math.floor(
       FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_read*
       (0.05+0.95*progress));
@@ -289,9 +289,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     // would incorrectly stop intake immediately after every UTC reset.
     const rowsPerSlot=Math.min(100,Math.floor((futureWriteRoom-
       D1_BUNDLE_LANES.critical.write_reserve-slots*40-archiveReserve)/(slots*16)));
-    // The existing 3x15m + 20m read-worst-case envelope is often >140k/day.
-    // Keep source intake HELD until that workload is truly reduced and
-    // provider readback leaves enough room; never pretend one D1 call = 1 row.
+    // Keep source intake held unless the remaining-day D1 row accounting
+    // admits the entire producer schedule; one SQL call is not one billed row.
     const sourceIntake=admitted&&rowsPerSlot>=3&&
       writeRoom>D1_BUNDLE_LANES.critical.write_reserve+rowsPerSlot*16+40&&
       readRoom>D1_BUNDLE_LANES.critical.read_reserve+3200+30000&&
