@@ -20,7 +20,7 @@ import {checkD1Headroom,HEADROOM_HOLD_CODE}
  from "./check-d1-headroom.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
-import {captureDurableD1Checkpoint}
+import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
@@ -432,7 +432,17 @@ export async function rehearseStep3Shadow({env=process.env}={}){
  const path="artifacts/release/step3-shadow-rehearsal-receipt.json";
  const write=()=>{
   mkdirSync(ROOT,{recursive:true,mode:0o700});
-  writeFileSync(path,JSON.stringify(report,null,2)+"\\n",{mode:0o600});
+  let output;
+  try{
+   output=signStep3StatusReceipt(report,env.SIGNING_JWK);
+  }catch{
+   // Missing signing key must not turn a partial rehearsal into PASS.
+   report.status="NOT_YET_VERIFIED";
+   report.code="STEP3_SHADOW_STATUS_RECEIPT_SIGNER_UNVERIFIED";
+   output={schema:"geomacro.step3.unsigned-not-verified.v1",
+    receipt:report,attestation:null};
+  }
+  writeFileSync(path,JSON.stringify(output,null,2)+"\\n",{mode:0o600});
  };
  try{
   if(env.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED!=="YES"||
