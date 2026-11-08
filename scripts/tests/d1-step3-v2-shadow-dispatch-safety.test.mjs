@@ -50,3 +50,11 @@ test("eligibility preflight cannot touch Cloudflare or leak tokens",()=>{
  assert.match(block,/exit 3/u);
  assert.match(block,/exit 4/u);
 });
+
+test("all manual ref mistakes produce a read-only explanatory failure",()=>{
+ assert.match(y,/SHADOW_DISPATCH_REF: \$\{\{ github\.ref \}\}/u);
+ assert.match(y,/SHADOW_DISPATCH_REPOSITORY: \$\{\{ github\.repository \}\}/u);
+ assert.match(y,/Shadow dispatch branch or repository invalid/u);
+ assert.match(y,/exit 2/u);
+ assert.match(y,/if: github\.event_name == 'workflow_dispatch'/u);
+});
