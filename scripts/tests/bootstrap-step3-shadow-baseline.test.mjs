@@ -199,3 +199,15 @@ test("real Shadow-only preflight NEVER upgrades nonempty schema or absent Paid p
   }
  }
 });
+
+test("uppercase Cloudflare internal Shadow table is identified but still HOLD",async()=>{
+ const report=await readOnlyShadowBootstrapPreflight({
+  env:env(),headroomCheck:async()=>usage(),
+  fetchImpl:async()=>asResult([{name:"_cf_KV"}])
+ });
+ assert.equal(report.status,"HOLD");
+ assert.equal(report.shadow_schema_pristine,false);
+ assert.deepEqual(report.shadow_existing_table_names,["_cf_KV"]);
+ assert.equal(report.production_d1_writes,0);
+ assert.equal(report.shadow_d1_writes,0);
+});
