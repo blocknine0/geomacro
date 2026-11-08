@@ -107,11 +107,11 @@ export function assessWorkerPromotion({
   if(quota?.day_utc!==now.toISOString().slice(0,10))
    return refuse("PROVIDER_UTC_DAY_RECEIPT_STALE_OR_MISSING");
   const limits=quota?.owner_d1_utc_daily_targets;
-  if(limits?.rows_read!==140000||limits?.rows_written!==140000||
-     limits?.normal_rows_read!==120000||limits?.normal_rows_written!==120000||
-     limits?.emergency_rows_read!==20000||limits?.emergency_rows_written!==20000||
+  if(limits?.rows_read!==580000000||limits?.rows_written!==1100000||
+     limits?.normal_rows_read!==580000000||limits?.normal_rows_written!==1100000||
+     limits?.emergency_rows_read!==0||limits?.emergency_rows_written!==0||
      limits?.emergency_auto_admission!==false)
-   return refuse("OWNER_140K_POLICY_UNVERIFIED");
+   return refuse("OWNER_PAID_POLICY_UNVERIFIED");
   if(quota?.workers_paid_subscription_verified!==true)
    return refuse("WORKERS_PAID_UNVERIFIED");
   if(spendPolicyEnforced&&!(
