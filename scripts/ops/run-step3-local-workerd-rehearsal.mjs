@@ -73,6 +73,7 @@ export async function runLocalWorkerdRehearsal(){
  });
  let mf;
  try{
+  console.log("LOCAL_REHEARSAL: legacy runtime");
   mf=new Miniflare(config(legacyScript));
   const db=await mf.getD1Database("DB");
   await db.exec("CREATE TABLE phase2h_private_raw_news (record_id TEXT PRIMARY KEY, raw_sha256 TEXT NOT NULL, raw_json TEXT NOT NULL, first_ingested_at TEXT NOT NULL)");
@@ -95,8 +96,9 @@ export async function runLocalWorkerdRehearsal(){
   }));
   assert(bundle.length>=300);
   const digest=SHA(bundle),key="geomacro/private/phase2h/ref-only/v1/"+digest+".json";
+  console.log("LOCAL_REHEARSAL: staged DDL verified, R2 fixture");
   const bucket=await mf.getR2Bucket("STAGING_R2");
-  await bucket.put(key,bundle);
+  await bucket.put(key,new Uint8Array(bundle));
   const read=Buffer.from(await (await bucket.get(key)).arrayBuffer());
   assert(read.equals(bundle),"local R2 byte parity failed");
   const data={
@@ -111,6 +113,7 @@ export async function runLocalWorkerdRehearsal(){
   await db.prepare("INSERT INTO phase2h_raw_object_refs_v1("+
    keys.join(",")+") VALUES("+keys.map(()=>"?").join(",")+")")
    .bind(...keys.map(k=>data[k])).run();
+  console.log("LOCAL_REHEARSAL: new Worker runtime");
   await mf.setOptions(config(newScript));
   res=await mf.dispatchFetch("http://localhost/read?id="+a);
   assert.equal((await res.json()).legacy,true);
@@ -119,6 +122,7 @@ export async function runLocalWorkerdRehearsal(){
   const newRead=await res.json();
   assert.equal(newRead.legacy,false);assert.deepEqual(newRead.record,newer);
   // Roll back the Worker code, not the expand-only D1 schema.
+  console.log("LOCAL_REHEARSAL: legacy rollback");
   await mf.setOptions(config(legacyScript));
   res=await mf.dispatchFetch("http://localhost/read?id="+a);
   assert.equal((await res.json()).record.record_id,a);
