@@ -7,6 +7,11 @@ on:
       - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
       - "scripts/lib/d1-step3-migration-contract.mjs"
+      - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
+      - "scripts/lib/d1-step3-crypto-proof.mjs"
+      - "scripts/lib/d1-step3-migration-ledger.mjs"
+      - "scripts/tests/d1-step3-durable-recovery.test.mjs"
+      - "scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs"
       - "scripts/tests/d1-step3-headroom.test.mjs"
       - "scripts/tests/d1-step3-protected-migration-contract.test.mjs"
       - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
@@ -38,11 +43,16 @@ jobs:
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
           node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
           node --check scripts/lib/d1-step3-migration-contract.mjs
+          node --check scripts/lib/d1-step3-recovery-checkpoint.mjs
+          node --check scripts/lib/d1-step3-crypto-proof.mjs
+          node --check scripts/lib/d1-step3-migration-ledger.mjs
           node --test scripts/tests/d1-publisher-shadow-billable.test.mjs
       - name: Prove current UTC headroom strictness and all protected migration contracts
         run: |
           node --test scripts/tests/d1-step3-headroom.test.mjs
           node --test scripts/tests/d1-step3-protected-migration-contract.test.mjs
+          node --test scripts/tests/d1-step3-durable-recovery.test.mjs
+          node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
       - name: Generate hash-pinned migration plan only without provider credentials
         run: node scripts/ops/run-step3-protected-d1-migrations.mjs --plan
       - name: Confirm shadow demonstration is dry run only
