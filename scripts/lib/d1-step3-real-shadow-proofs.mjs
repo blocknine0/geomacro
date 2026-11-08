@@ -89,6 +89,18 @@ export async function verifyRealShadowB2Parity({
   b2_governor_required:true
  });
 }
+async function checkedPut(url,{token,fetchImpl=fetch,body}={}){
+ let r;
+ try{r=await fetchImpl(url,{
+  method:"PUT",redirect:"error",cache:"no-store",
+  headers:{Authorization:"Bearer "+token,"Cache-Control":"no-store",
+   "Content-Type":"application/json"},
+  body:JSON.stringify(body),signal:AbortSignal.timeout(15000)
+ })}catch{fail("LEGACY_SHADOW_WRITE_REQUEST_UNAVAILABLE")}
+ if(!r||r.status!==200||r.redirected)
+  fail("LEGACY_SHADOW_WRITE_HTTP_NOT_200");
+ try{return await r.json()}catch{fail("LEGACY_SHADOW_WRITE_RESPONSE_INVALID")}
+}
 async function workerDeployment(host,{env,fetchImpl}){
  const script=host.split(".")[0],account=env.CLOUDFLARE_ACCOUNT_ID;
  const base="https://api.cloudflare.com/client/v4/accounts/"+account+
@@ -150,6 +162,33 @@ export async function verifyRealShadowDualWorkers({
      x.archive_d1_ack_present===true)||
     legacy.paid_eligible!==false)
   fail("LEGACY_WORKER_D1_READ_AFTER_EXPAND_FAILED");
+ // Exercise the old deployed Worker WRITE on the expanded shadow schema.
+ // Reuse the exact immutable B2-backed shadow original; a successful retry
+ // writes zero new originals and proves existing D1 persistence survived.
+ let original;
+ try{original=JSON.parse(source.raw_json)}catch{
+  fail("LEGACY_SHADOW_SOURCE_ORIGINAL_JSON_INVALID");
+ }
+ if(original?.record_id!==source.record_id||
+    original.raw_sha256!==source.raw_sha256||
+    !isIso(original.ingested_at)||!isIso(original.original?.original_published_at)||
+    Date.now()-Date.parse(original.ingested_at)>71*3600_000||
+    Date.parse(original.ingested_at)>Date.now()+60_000)
+  fail("LEGACY_SHADOW_IDEMPOTENT_WRITE_FIXTURE_NOT_CURRENT");
+ const oldWrite=await checkedPut("https://"+old+
+  "/v1/internal/phase2h-raw-news",{
+  token:env.CONTROL_PLANE_TOKEN,fetchImpl,
+  body:{schema:"geomacro.phase2h.private-raw-batch.v1",items:[original]}
+ });
+ if(oldWrite?.ok!==true||
+    oldWrite.schema!=="geomacro.phase2h.private-d1-receipt.v1"||
+    oldWrite.accepted!==0||oldWrite.unchanged!==1||
+    oldWrite.d1_exact_readback_verified!==true||
+    oldWrite.per_original_readback_verified!==true||
+    oldWrite.per_original_verified_count!==1||
+    oldWrite.all_submitted_five_parts_exact!==true||
+    oldWrite.payments!==0)
+  fail("LEGACY_SHADOW_IDEMPOTENT_WRITE_OR_D1_READBACK_FAILED");
  const modernRead=await checkedGet("https://"+modern+
   "/v1/internal/phase2h-raw-object-ref?record_id="+source.record_id,
   {token:env.CONTROL_PLANE_TOKEN,fetchImpl});
@@ -164,6 +203,7 @@ export async function verifyRealShadowDualWorkers({
  return Object.freeze({
   status:"PASS_REAL_DISTINCT_SHADOW_WORKER_ROLLBACK_READBACK",
   legacy_worker_rollback_verified:true,
+  legacy_worker_idempotent_write_verified:true,
   new_worker_hydration_verified:true,
   shadow_d1_provider_binding_verified:true,
   legacy_deployed_version_id:legacyDeploy.version_id,
