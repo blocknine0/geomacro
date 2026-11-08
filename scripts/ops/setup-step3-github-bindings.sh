@@ -71,15 +71,27 @@ if ! has_secret PHASE2H_R2_REFERENCE_HMAC_KEY; then
   gh secret set PHASE2H_R2_REFERENCE_HMAC_KEY -R "$repo" -e "$environment"
  echo "PHASE2H_R2_REFERENCE_HMAC_KEY: existing Worker-compatible key configured"
 fi
-if ! has_secret CONTROL_PLANE_TOKEN; then
- if [[ -z "${EXISTING_CONTROL_PLANE_TOKEN:-}" ||
-       "${#EXISTING_CONTROL_PLANE_TOKEN}" -lt 32 ]]; then
-  echo "Required owner input: EXISTING_CONTROL_PLANE_TOKEN, matching the deployed Worker." >&2
-  exit 4
+# The two isolated shadow Workers MUST share their own bearer token.
+# The live CONTROL_PLANE_TOKEN is distinct and remains untouched.
+if ! has_secret GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN; then
+ shadow_token_file="${STEP3_SHADOW_TOKEN_FILE:-$HOME/.config/geomacro/step3-shadow-control-token.hex}"
+ if [[ ! -r "$shadow_token_file" ]]; then
+  echo "Shadow-only bearer token missing: securely create and deploy to BOTH shadow Workers first." >&2
+  exit 16
  fi
- printf %s "$EXISTING_CONTROL_PLANE_TOKEN" |
-  gh secret set CONTROL_PLANE_TOKEN -R "$repo" -e "$environment"
- echo "CONTROL_PLANE_TOKEN: existing Worker-compatible token configured"
+ shadow_token="$(cat "$shadow_token_file")"
+ if [[ ! "$shadow_token" =~ ^[a-f0-9]{64}$ ]]; then
+  echo "Shadow bearer token file must hold exactly 64 lower-case hex characters." >&2
+  exit 17
+ fi
+ printf '%s' "$shadow_token" |
+  gh secret set GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN -R "$repo" -e "$environment"
+ unset shadow_token
+ echo "GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN: existing owner-file key imported."
+else echo "GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN: already configured; verify both Worker values match."; fi
+if ! has_secret CONTROL_PLANE_TOKEN; then
+ # Stage2 stays HOLD; never replace a missing production token with shadow credentials.
+ echo "CONTROL_PLANE_TOKEN (production): absent, Stage2 HOLD; never substitute shadow bearer token." >&2
 fi
 if [[ ! "${STEP3_VERIFIED_RECOVERY_R2_BUCKET:-}" =~ ^[a-z0-9][a-z0-9-]{2,62}$ ||
       ! "${STEP3_VERIFIED_SHADOW_R2_BUCKET:-}" =~ ^[a-z0-9][a-z0-9-]{2,62}$ ||
