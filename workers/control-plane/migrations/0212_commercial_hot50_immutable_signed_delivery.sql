@@ -49,3 +49,17 @@ CREATE TRIGGER IF NOT EXISTS trg_hot50_delivery_no_update BEFORE UPDATE
 CREATE TRIGGER IF NOT EXISTS trg_hot50_delivery_no_delete BEFORE DELETE
  ON commercial_hot50_delivery_receipts BEGIN
  SELECT RAISE(ABORT,'IMMUTABLE_HOT50_DELIVERY_RECEIPT'); END;
+
+-- Read-only aliases retain exactly ONE financial system of record.
+CREATE VIEW IF NOT EXISTS tenants_v1 AS SELECT id AS tenant_id,email,status,created_at FROM users;
+CREATE VIEW IF NOT EXISTS customer_transactions_v1 AS SELECT receipt_id AS transaction_id,user_id,provider,environment,provider_event_id,sku,amount_minor_units,currency,settled_at,verified_at FROM customer_payment_receipts;
+CREATE VIEW IF NOT EXISTS credit_ledger_v1 AS SELECT event_id AS ledger_id,user_id,event_type,delta_credits,receipt_id,request_id,occurred_at FROM credit_ledger;
+-- New-format keys keep a plain SHA-256 reference, and existing api_keys keeps
+-- the canonical server-keyed HMAC. Neither table stores plaintext credentials.
+CREATE TABLE IF NOT EXISTS tenant_api_keys_v1 (
+  key_sha256 TEXT PRIMARY KEY CHECK(length(key_sha256)=64),
+  key_id TEXT NOT NULL UNIQUE REFERENCES api_keys(key_id) ON DELETE RESTRICT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  created_at TEXT NOT NULL,
+  CHECK(key_sha256 NOT LIKE 'gm_live_%')
+);
