@@ -154,5 +154,5 @@ export async function runLocalWorkerdRehearsal(){
 }
 if(process.argv[1]&&process.argv[1].endsWith("run-step3-local-workerd-rehearsal.mjs")){
  runLocalWorkerdRehearsal().then(x=>console.log(JSON.stringify(x)),
-  err=>{console.error("LOCAL_WORKERD_REHEARSAL_FAILED",err.message);process.exitCode=1});
+  err=>{console.error("LOCAL_WORKERD_REHEARSAL_FAILED",err.stack);process.exitCode=1});
 }
