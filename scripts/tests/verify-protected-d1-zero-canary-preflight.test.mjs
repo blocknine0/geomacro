@@ -28,8 +28,7 @@ const allowedPlan={
  paid_capacity_verified_by_provider:true,
  observed_rows_read:50000,observed_rows_written:40000,
  owner_d1_utc_daily_targets:{
-  rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,rows_written:140000,
-  emergency_rows_written:20000,emergency_auto_admission:false,
+  rows_read:580000000,normal_rows_read:580000000,normal_rows_written:1100000,emergency_rows_read:0,emergency_rows_written:0,rows_written:1100000,emergency_auto_admission:false,
   safety_buffer_rows_read:4000,safety_buffer_rows_written:2000,
  },
 };
@@ -64,14 +63,14 @@ test("spend-policy 404 is advisory while owner daily cap still HOLDS without spe
  assert.equal(spend.spend_policy_verification_enforced,false);
  assert.equal(spend.reason,"ZERO_TRAFFIC_PREFLIGHT_READY");
  const rows=await verifyProtectedD1CanaryPreflight({...base,
-  plan:async()=>({...allowedPlan,observed_rows_read:136001})
+  plan:async()=>({...allowedPlan,observed_rows_read:580000000})
  });
  assert.equal(rows.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
  const writes=await verifyProtectedD1CanaryPreflight({...base,
-  plan:async()=>({...allowedPlan,observed_rows_written:138100})
+  plan:async()=>({...allowedPlan,observed_rows_written:1100000})
  });
  assert.equal(writes.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
- assert.equal(writes.emergency_write_reserve,20000);
+ assert.equal(writes.emergency_write_reserve,0);
 });
 test("bad baseline, unverified bookmark or provider 403 never count as canary-ready",async()=>{
  const base={env,now:at,plan:async()=>allowedPlan};
@@ -97,20 +96,20 @@ test("bad baseline, unverified bookmark or provider 403 never count as canary-re
  assert.equal(stale.reason,"WORKER_DEPLOYED_VERSION_UNVERIFIED");
 });
 
-test("early UTC burn-rate spike HOLDS even below 140k; emergency writes never release",async()=>{
+test("early UTC paid-cap paced spike HOLDS; emergency writes never release",async()=>{
  const early=new Date("2026-11-07T01:00:00.000Z");
  const base={env,now:early,fetchImpl:mockFetch};
  const highReads=await verifyProtectedD1CanaryPreflight({...base,
-  plan:async()=>({...allowedPlan,observed_rows_read:11000,observed_rows_written:1000})
+  plan:async()=>({...allowedPlan,observed_rows_read:25000000,observed_rows_written:1000})
  });
  assert.equal(highReads.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
  assert.equal(highReads.pacing_or_daily_ceiling_held,true);
- assert.equal(highReads.account_wide_atomic_140k_guaranteed,false);
+ assert.equal(highReads.account_wide_atomic_paid_cap_guaranteed,false);
  const highWrites=await verifyProtectedD1CanaryPreflight({...base,
-  plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:9000})
+  plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:48000})
  });
  assert.equal(highWrites.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
- assert.equal(highWrites.emergency_write_reserve,20000);
+ assert.equal(highWrites.emergency_write_reserve,0);
  const safe=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,observed_rows_read:100,observed_rows_written:100})
  });
