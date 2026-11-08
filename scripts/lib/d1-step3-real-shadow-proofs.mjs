@@ -28,11 +28,13 @@ async function checkedGet(url,{token,fetchImpl=fetch,provider=false}={}){
   fail(provider?"CLOUDFLARE_WORKER_SETTINGS_UNVERIFIED":"WORKER_READBACK_NOT_200");
  try{return await r.json()}catch{fail("PROVIDER_JSON_INVALID")}
 }
-export function shadowArchivedSourceQuery(){
+export function shadowArchivedSourceQuery(now=Date.now()){
  // Only one existing B2-acknowledged canonical original, no full-table census.
  return "SELECT record_id,raw_sha256,b2_object_sha256,b2_archived_at,raw_json "+
   "FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL "+
-  "AND b2_archived_at IS NOT NULL ORDER BY record_id ASC LIMIT 1";
+  "AND b2_archived_at IS NOT NULL AND first_ingested_at >= '"+
+   new Date(now-70*3600_000).toISOString()+"' "+
+  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 1";
 }
 export async function verifyRealShadowB2Parity({
  env=process.env,source,b2Factory=createB2Client
