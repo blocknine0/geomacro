@@ -27,7 +27,7 @@ export const SHADOW_ONLY_REVIEWED_BLOBS=Object.freeze({
   classification:"OFFLINE_MINIFLARE_SIMULATION_ONLY_NO_PRODUCTION_PROOF"})
 });
 export const gitBlobSha1=text=>createHash("sha1")
- .update("blob "+Buffer.byteLength(text,"utf8")+"\\0")
+ .update("blob "+Buffer.byteLength(text,"utf8")+String.fromCharCode(0))
  .update(text).digest("hex");
 const PROTECTED_BOUNDARIES=Object.freeze({
  "workers/control-plane/src/phase2h-raw-object-refs.mjs":
