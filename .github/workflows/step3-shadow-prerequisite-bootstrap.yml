@@ -6,6 +6,10 @@ on:
       - ".github/workflows/step3-shadow-prerequisite-bootstrap.yml"
       - "scripts/ops/bootstrap-step3-shadow-baseline.mjs"
       - "scripts/tests/bootstrap-step3-shadow-baseline.test.mjs"
+      - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
+      - "scripts/ops/inspect-step3-shadow-recovery-readonly.mjs"
+      - "scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs"
+      - "scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -22,6 +26,10 @@ on:
       - ".github/workflows/step3-shadow-prerequisite-bootstrap.yml"
       - "scripts/ops/bootstrap-step3-shadow-baseline.mjs"
       - "scripts/tests/bootstrap-step3-shadow-baseline.test.mjs"
+      - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
+      - "scripts/ops/inspect-step3-shadow-recovery-readonly.mjs"
+      - "scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs"
+      - "scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs"
       - "config/github-workflow-inventory.v1.json"
 permissions:
   contents: read
@@ -38,7 +46,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: "24"}
       - name: Prove pristine base SQL and all four staged migrations locally
-        run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs
+        run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs
       - name: Review only checked-in schema and no provider read/write
         run: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan
 
@@ -59,6 +67,9 @@ jobs:
       GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
       GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED: ${{ vars.GEOMACRO_SHADOW_SCHEMA_BOOTSTRAP_APPROVED }}
       GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -73,6 +84,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           node scripts/ops/bootstrap-step3-shadow-baseline.mjs --preflight
+      - name: Independent read-only Shadow recovery key, signer, bookmark and bucket diagnostic
+        if: always()
+        run: node scripts/ops/inspect-step3-shadow-recovery-readonly.mjs
+      - name: Preserve sanitized recovery prerequisites HOLD or provider-readonly proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-recovery-prerequisites-${{ github.run_id }}
+          path: artifacts/release/step3-shadow-recovery-readonly.json
+          retention-days: 14
+          if-no-files-found: warn
       - name: Preserve sanitized Shadow preflight HOLD or provider-readonly proof
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
