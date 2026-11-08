@@ -6,7 +6,7 @@ visible research attribution, original clocks, zero added exact-release delay,
 2027-01-17 pilot expiry. Every PR runs an offline guard against the actual
 private Worker projection and the checked-in source schedules.
 
-The existing five-minute best-effort intake, hourly :07 collection and
+The existing five-minute best-effort intake, 20-minute :07/:27/:47 collection and
 :22/:52 bounded backstop remain active. Predge's independent authenticated
 watchdog now runs hourly at :17 and after every completed primary ingestion,
 including failed runs. It checks actual category producer checkpoints: an
@@ -20,8 +20,11 @@ or stale (70 minutes); healthy publishers cause no duplicate source scan.
 A dispatch acknowledgement is not a publication receipt. The subsequent
 source run and independent authenticated readback provide the evidence.
 
-Normal monitoring uses about 48 authenticated reads/day; the shared atomic
-500/day ceiling still protects partner and monitor calls. No laptop daemon,
+At a complete 20-minute primary cadence, the hourly watchdog and post-primary
+checks can use about 96 authenticated GETs/day (24 + 72), before any partner
+polling or additional triggers. The shared atomic 500/day ceiling still protects
+partner and monitor calls; the old 100/day recommended target is not a total
+budget guarantee after the cadence increase. No laptop daemon,
 new API subscription, partner driver changes or additional secret is needed.
 GitHub scheduling remains best effort, original publisher release frequency
 is outside Geomacro's control, and client acknowledgement remains separate.
@@ -59,11 +62,11 @@ separate from Geomacro endpoint acceptance and must not be inferred.
 
 ---
 
-# One hourly source ingest → three domain Intelligence cards → Predge evaluation feed
+# One shared 20-minute source ingest → three domain Intelligence cards → Predge evaluation feed
 
 ## Actual topology (no duplicate ingest, no new D1/B2 storage)
 
-* At 07 past each UTC hour, existing `Website Derived News Continuity`
+* At :07, :27 and :47 each UTC hour, existing `Website Derived News Continuity`
   reads official original release indexes for Geopolitics, Macro/FX and Critical
   Minerals. At 37 past, `Auto Ingest News` invokes the same D1 recovery
   path ONLY if the primary publisher has missed its 70m readback target.
