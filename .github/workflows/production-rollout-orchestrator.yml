@@ -53,6 +53,7 @@ jobs:
           scripts/tests/d1-step3-durable-recovery.test.mjs
           scripts/tests/d1-step3-production-final-acceptance.test.mjs
       - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+      - run: bash -n scripts/ops/setup-step3-github-bindings.sh
       - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
