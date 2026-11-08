@@ -10,6 +10,8 @@ on:
       - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
       - "scripts/lib/d1-step3-crypto-proof.mjs"
       - "scripts/lib/d1-step3-migration-ledger.mjs"
+      - "scripts/lib/d1-step3-shadow-pointer-seed.mjs"
+      - "scripts/tests/d1-step3-shadow-pointer-seed.test.mjs"
       - "scripts/tests/d1-step3-durable-recovery.test.mjs"
       - "scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs"
       - "scripts/tests/d1-step3-headroom.test.mjs"
@@ -46,6 +48,7 @@ jobs:
           node --check scripts/lib/d1-step3-recovery-checkpoint.mjs
           node --check scripts/lib/d1-step3-crypto-proof.mjs
           node --check scripts/lib/d1-step3-migration-ledger.mjs
+          node --check scripts/lib/d1-step3-shadow-pointer-seed.mjs
           node --test scripts/tests/d1-publisher-shadow-billable.test.mjs
       - name: Prove current UTC headroom strictness and all protected migration contracts
         run: |
@@ -53,6 +56,7 @@ jobs:
           node --test scripts/tests/d1-step3-protected-migration-contract.test.mjs
           node --test scripts/tests/d1-step3-durable-recovery.test.mjs
           node --test scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
+          node --test scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
       - name: Generate hash-pinned migration plan only without provider credentials
         run: node scripts/ops/run-step3-protected-d1-migrations.mjs --plan
       - name: Confirm shadow demonstration is dry run only
