@@ -25,21 +25,24 @@ export function evaluateMigrationBudget(plan,now=new Date()){
     plan?.reason==="GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD")
   )||
   plan?.owner_d1_utc_daily_targets?.rows_read!==140000||
-  plan?.owner_d1_utc_daily_targets?.normal_rows_written!==140000||
+  plan?.owner_d1_utc_daily_targets?.normal_rows_read!==120000||
+  plan?.owner_d1_utc_daily_targets?.normal_rows_written!==120000||
+  plan?.owner_d1_utc_daily_targets?.emergency_rows_read!==20000||
+  plan?.owner_d1_utc_daily_targets?.emergency_rows_written!==20000||
   plan?.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
   !Number.isSafeInteger(plan?.observed_rows_read)||plan.observed_rows_read<0||
   !Number.isSafeInteger(plan?.observed_rows_written)||plan.observed_rows_written<0)
    return held("D1_OWNER_PROVIDER_BUDGET_UNVERIFIED");
  // Reserve at least 80k rows in both lanes for one-time index build, seed,
- // telemetry lag and ongoing traffic. Never borrow the 40k write emergency.
- if(plan.observed_rows_read>=60000||plan.observed_rows_written>=60000)
+ // telemetry lag and ongoing traffic. Never borrow the separate 20k emergency in either lane.
+ if(plan.observed_rows_read>=40000||plan.observed_rows_written>=40000)
   return held("D1_MIGRATION_HEADROOM_UNDER_80K");
  return {schema:"geomacro.protected-d1-migration-budget.v1",
   admitted:true,reason:"PROVIDER_HEADROOM_FOR_PROTECTED_MIGRATIONS",
   observed_rows_read:plan.observed_rows_read,
   observed_rows_written:plan.observed_rows_written,
-  headroom_read:140000-plan.observed_rows_read,
-  headroom_write:140000-plan.observed_rows_written,
+  headroom_read:120000-plan.observed_rows_read,
+  headroom_write:120000-plan.observed_rows_written,
   account_wide_hard_cap_guaranteed:false,no_funds:true};
 }
 export function inspectPendingMigrations(raw){
