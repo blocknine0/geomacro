@@ -44,9 +44,29 @@ function harness({stopAfterApply=false,unknown=false,moved=false,failSchema=fals
  const sha='a'.repeat(40),applied=[],remaining=unknown?['0212_storage_directory_read_model.sql']:[REPAIR_PLANS[4].file,REPAIR_PLANS[7].file];
  const env={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'blocknine0/geomacro',GITHUB_REF:'refs/heads/main',GITHUB_SHA:sha,RUNNER_TEMP:tmp,WRANGLER_VERSION:'4.136.3'};
  let probes=0,budgetCalls=0;
- const plan=async()=>{budgetCalls++;return {day_utc:new Date().toISOString().slice(0,10),workers_paid_subscription_verified:true,
-  owner_d1_normal_envelope:{held:false},critical:true,observed_rows_read:stopAfterApply&&applied.length?65000:5000,observed_rows_written:5000,
-  owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,emergency_auto_admission:false}}};
+ const plan=async()=>{
+  budgetCalls++;
+  const now=new Date(),today=now.toISOString().slice(0,10);
+  // Local only. The actual runner still requires Cloudflare Billing Read
+  // plus all-account GraphQL; this fixture must not bypass release gates.
+  const start=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),5));
+  if(now.getUTCDate()<5)start.setUTCMonth(start.getUTCMonth()-1);
+  const next=new Date(Date.UTC(start.getUTCFullYear(),start.getUTCMonth()+1,5));
+  return {
+   workers_paid_subscription_verified:true,
+   monthly_owner_headroom:{
+    schema:'geomacro.d1-paid-monthly-headroom.v1',status:'PASS',
+    provider_subscription_verified:true,day_utc:today,
+    cycle_start_utc:start.toISOString().slice(0,10),
+    cycle_end_exclusive_utc:next.toISOString().slice(0,10),
+    observed_rows_read:10_000_000,observed_rows_written:1_000_000,
+    remaining_rows_read:stopAfterApply&&applied.length?0:22_490_000_000,
+    remaining_rows_written:stopAfterApply&&applied.length?0:44_000_000,
+    monthly_ceiling_read:22_500_000_000,monthly_ceiling_written:45_000_000,
+    reserve_pct:10,old_daily_140k_policy_applied:false,
+   }
+  };
+ };
  const run=(cmd,args)=>{
   if(cmd==='git')return args[0]==='ls-remote'?(moved?'b'.repeat(40):sha)+'\trefs/heads/main':sha;
   const cfg=args[args.indexOf('--config')+1];
