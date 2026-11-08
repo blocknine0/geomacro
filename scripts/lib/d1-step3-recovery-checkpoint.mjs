@@ -204,6 +204,68 @@ export async function captureDurableD1Checkpoint({
  }finally{key.fill(0)}
 }
 
+/**
+ * Zero-write provider preflight: validate existing AES-256 and private signer
+ * key locally, then GET the real Shadow Time Travel bookmark and R2 bucket
+ * metadata. This NEVER writes/reads an R2 object or certifies recovery.
+ */
+export async function inspectD1RecoveryPrerequisitesReadOnly({
+ env=process.env,dbId,fetchImpl=fetch
+}={}){
+ const report={schema:"geomacro.step3.recovery-prerequisites-readonly.v1",
+  status:"HOLD",code:"RECOVERY_PREFLIGHT_NOT_STARTED",
+  bookmark_available:false,private_recovery_bucket_metadata_verified:false,
+  signer_identity_verified:false,encrypted_checkpoint_verified:false,
+  production_d1_queries:0,shadow_d1_sql_queries:0,
+  r2_object_reads:0,r2_object_writes:0,payments:0};
+ try {
+  if(!ACCOUNT.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
+     !UUID.test(dbId??"")||
+     !BUCKET.test(env.GEOMACRO_D1_RECOVERY_R2_BUCKET??"")||
+     env.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED!=="YES"||
+     typeof env.CLOUDFLARE_API_TOKEN!=="string"||
+     env.CLOUDFLARE_API_TOKEN.length<20)
+   fail("READONLY_PROVIDER_IDENTITY_UNVERIFIED");
+  const key=parseKey(env.GEOMACRO_D1_RECOVERY_AES256_KEY_B64);
+  key.fill(0);
+  const identity=signer(env.SIGNING_JWK);
+  report.signer_identity_verified=true;
+  report.signer_public_key_sha256=identity.public_key_sha256;
+  const base="https://api.cloudflare.com/client/v4/accounts/"+
+   env.CLOUDFLARE_ACCOUNT_ID;
+  let stage="BOOKMARK_GET";
+  try{
+   const response=await cfRequest(base+"/d1/database/"+dbId+
+    "/time_travel/bookmark",{token:env.CLOUDFLARE_API_TOKEN,fetchImpl});
+   let doc;try{doc=await response.json()}catch{fail("BOOKMARK_RESPONSE_INVALID")}
+   if(doc?.success!==true||typeof doc?.result?.bookmark!=="string"||
+      doc.result.bookmark.length<16||doc.result.bookmark.length>4096)
+    fail("REAL_D1_BOOKMARK_UNVERIFIED");
+   report.bookmark_available=true;
+   stage="R2_BUCKET_METADATA_GET";
+   const bucket=env.GEOMACRO_D1_RECOVERY_R2_BUCKET;
+   const bucketResponse=await cfRequest(base+"/r2/buckets/"+bucket,{
+    token:env.CLOUDFLARE_API_TOKEN,fetchImpl});
+   let metadata;try{metadata=await bucketResponse.json()}
+   catch{fail("RECOVERY_BUCKET_RESPONSE_INVALID")}
+   if(metadata?.success!==true||metadata.result?.name!==bucket)
+    fail("RECOVERY_BUCKET_METADATA_UNVERIFIED");
+   report.private_recovery_bucket_metadata_verified=true;
+  }catch(e){
+   if(/^STEP3_RECOVERY_PROVIDER_REQUEST_(?:FAILED|UNAVAILABLE)$/u.test(e?.message??""))
+    fail("CLOUDFLARE_"+stage+"_HTTP_OR_NETWORK_UNVERIFIED");
+   throw e;
+  }
+  report.status="READONLY_RECOVERY_PREREQUISITES_VERIFIED_NOT_CHECKPOINT";
+  report.code="REAL_R2_ENCRYPTED_PUT_GET_STILL_REQUIRED";
+ }catch(e){
+  report.status="HOLD";
+  report.code=/^STEP3_RECOVERY_[A-Z0-9_]+$/u.test(e?.message??"")?
+   e.message:"STEP3_RECOVERY_PREFLIGHT_UNVERIFIED";
+ }
+ return Object.freeze(report);
+}
+
 /** Signed truthful status receipt. Signature proves authorship/integrity only;
  * it never upgrades NOT_YET_VERIFIED into a real provider PASS.
  */
