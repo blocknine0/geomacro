@@ -180,6 +180,20 @@ test('RSS unqualified -> bounded recovery -> signed review -> R2 byte readback -
  assert.equal(sql.prepare("SELECT COUNT(*) n FROM credit_ledger WHERE event_type='debit'").get().n,1);
  sql.close();
 });
+test('D1 unique claim prevents two distinct item IDs being published as one event',()=>{
+ const {sql}=inMemorySql();
+ const at=clock(now()),expires=clock(now()+2*3600000);
+ const stmt=sql.prepare('INSERT INTO eqe_qualified(item_id,payload_sha256,envelope_sha256,envelope_length,b2_key,signature_ref,signing_key_id,review_sha256,claim_sha256,simhash,qualified_at,expires_at,tags) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)');
+ const record=id=>[id,hex('payload'+id),hex('envelope'+id),512,
+  'evidence/v1/2026/11/'+hex('envelope'+id)+'.json',
+  'evidence/v1/2026/11/'+hex('signature'+id)+'.json',
+  'test-evidence-1',hex('review'+id),hex('same-event'),hex('x').slice(0,16),
+  at,expires,'["USA","geopolitics"]'];
+ stmt.run(...record('a'.repeat(64)));
+ assert.throws(()=>stmt.run(...record('b'.repeat(64))),/UNIQUE constraint failed: eqe_qualified.claim_sha256/);
+ assert.equal(sql.prepare('SELECT COUNT(*) n FROM eqe_qualified').get().n,1);
+ sql.close();
+});
 test('archive mutation/reviewer rejection must not create D1 qualified pointer or debit',async()=>{
  const {sql,db}=inMemorySql(),store=r2(),env=envWith(db,store),{raw,item,proof}=await fixtureItem();
  await ingestEvidence(env,raw);
