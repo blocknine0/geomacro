@@ -19,9 +19,12 @@ on:
       - "scripts/ops/reconcile-website-news-to-d1.ts"
       - "scripts/lib/website-shared-partner-expectation.mjs"
       - "scripts/tests/website-shared-partner-expectation.test.mjs"
+      - "scripts/ops/step2-website-reconcile-dedup.mjs"
+      - "scripts/tests/d1-pre-reset-schema-free-deescalation.test.mjs"
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: geomacro-website-canonical-d1-reconcile
@@ -46,6 +49,7 @@ jobs:
           node --check scripts/ops/verify-website-predge-eligible-parity.mjs
           node --test scripts/tests/website-predge-eligible-parity.test.mjs
           node --test scripts/tests/website-news-canonical-reconciliation.test.mjs scripts/tests/website-shared-partner-expectation.test.mjs
+          node --test scripts/tests/d1-pre-reset-schema-free-deescalation.test.mjs
 
   quota-admission:
     if: >-
@@ -94,11 +98,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Prove whether primary hourly D1 reconciliation already succeeded without touching D1
+        id: step2-dedup
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/step2-website-reconcile-dedup.mjs
       - name: Setup existing Bun 1.4.2 full-archive reconciler
+        if: steps.step2-dedup.outputs.should_run == 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: "1.4.2"
       - name: Fail visibly unless the existing quota guard authorizes source catch-up
+        if: steps.step2-dedup.outputs.should_run == 'true'
         env:
           D1_CRITICAL_ADMITTED: ${{ needs.quota-admission.outputs.critical }}
         shell: bash
@@ -113,10 +124,12 @@ jobs:
             exit 2
           fi
       - name: Prove full 72-hour archive rules and rights-safe projection before owner operation
+        if: steps.step2-dedup.outputs.should_run == 'true'
         run: |
           node --test scripts/tests/website-news-canonical-reconciliation.test.mjs
           node --test scripts/tests/website-shared-partner-expectation.test.mjs
       - name: Restore ALL current archive shards through existing one-bundle D1 journal
+        if: steps.step2-dedup.outputs.should_run == 'true'
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
         run: bun scripts/ops/reconcile-website-news-to-d1.ts
