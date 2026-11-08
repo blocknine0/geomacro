@@ -45,8 +45,10 @@ if(FIVE_USD_BUDGET.schema!=="geomacro.cloudflare-five-usd-central-budget.v1"||
    FIVE_USD_BUDGET.paid_admission?.d1_source_daily_soft_rows_written_max!==140_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_read!==140_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==140_000||
-   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==0||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_read!==120_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.normal_rows_written!==120_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_read!==20_000||
+   FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_rows_written!==20_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.emergency_auto_admission!==false||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_read!==4_000||
    FIVE_USD_BUDGET.owner_d1_utc_daily_targets?.safety_buffer_rows_written!==2_000||
@@ -242,9 +244,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
 
 
   // Verified Workers Paid has no Free-plan 5M read/100k write daily stop.
-  // GeoMacro keeps the owner's 140k normal UTC reads/writes, with the
-  // remaining 40k write rows (up to 180k total) reserved only for separately
-  // authorized emergency recovery. Paid monthly inclusion != daily permission.
+  // Only 120k normal/day plus 20k emergency/day in EACH lane, all INSIDE
+  // the same owner 140k total. Paid entitlement != permission to spend more.
   // No paid subscription is created. Research, signing, unrelated public
   // backfills and B2 upgrades are NOT granted by this special intake lane.
   // Spend-policy verification is advisory; verified subscription and all
@@ -261,13 +262,13 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   if(paid){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
     const progress=Math.max(0,Math.min(1,elapsed));
-    // 5% of the normal 140k/day allowance at UTC reset, pacing the rest
-    // across 24h; there is NO additional emergency WRITE capacity.
+    // Pace only normal 120k/day per lane; the other 20k is emergency-only,
+    // never additional to the owner total and never automatically admitted.
     const dailyReads=Math.floor(
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max*
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_read*
       (0.05+0.95*progress));
     const dailyWrites=Math.floor(
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max*
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_written*
       (0.05+0.95*progress));
     const admitted=snapshot.observed_rows_read+4_000<dailyReads&&
       snapshot.observed_rows_written+2_000<dailyWrites;
@@ -280,9 +281,9 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     const slots=3*Math.ceil(minutesLeft/15)+Math.ceil(minutesLeft/20);
     const archiveReserve=Math.ceil(minutesLeft/360)*750+150;
     const futureWriteRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_written_max-snapshot.observed_rows_written);
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_written-snapshot.observed_rows_written);
     const futureReadRoom=Math.max(0,
-      FIVE_USD_BUDGET.paid_admission.d1_source_daily_soft_rows_read_max-snapshot.observed_rows_read);
+      FIVE_USD_BUDGET.owner_d1_utc_daily_targets.normal_rows_read-snapshot.observed_rows_read);
     // Future slots use the full-day ceiling; this slot still uses its paced
     // allowance. Reserving tomorrow's work from today's early-hour allowance
     // would incorrectly stop intake immediately after every UTC reset.
@@ -657,6 +658,9 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // All writes, including recovery, belong to the same 140k owner target.
     // Emergency restoration requires separate explicit authorization; this
     // read-only receipt does NOT grant any emergency query or write.
+    const emergencyReadRemaining=Math.max(0,
+      ownerBudget.rows_read-Math.max(
+        ownerBudget.normal_rows_read,quota.observed_rows_read));
     const emergencyWriteRemaining=Math.max(0,
       ownerBudget.rows_written-Math.max(
         ownerBudget.normal_rows_written,quota.observed_rows_written));
@@ -670,8 +674,14 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       owner_d1_normal_envelope:ownerEnvelope,
       owner_d1_utc_budget_held:ownerNormalHold,
       owner_d1_regular_lane_held:ownerNormalHold,
+      emergency_d1_read_rows_remaining:emergencyReadRemaining,
       emergency_d1_write_rows_remaining:emergencyWriteRemaining,
+      emergency_d1_read_budget_auto_admitted:false,
       emergency_d1_write_budget_auto_admitted:false,
+      owner_d1_normal_headroom_rows_read:Math.max(0,
+        ownerBudget.normal_rows_read-quota.observed_rows_read),
+      owner_d1_normal_headroom_rows_written:Math.max(0,
+        ownerBudget.normal_rows_written-quota.observed_rows_written),
       cached_public_delivery_not_disabled_by_planner:true,
       observed_rows_read:quota.observed_rows_read,
       observed_rows_written:quota.observed_rows_written,

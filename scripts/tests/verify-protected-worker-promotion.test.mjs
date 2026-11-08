@@ -23,7 +23,7 @@ const version=(id,message="")=>({
 const quota={
  day_utc:"2026-11-07",
  owner_d1_utc_daily_targets:{
-  rows_read:140000,rows_written:140000,emergency_rows_written:0
+  rows_read:140000,rows_written:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,emergency_auto_admission:false
  },workers_paid_subscription_verified:true,state:"ADMITTED",
  observed_rows_read:100,observed_rows_written:100
 };

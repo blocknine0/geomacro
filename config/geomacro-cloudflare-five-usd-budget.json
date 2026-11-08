@@ -22,10 +22,12 @@
     "d1_source_daily_soft_rows_read_max": 140000,
     "d1_source_daily_soft_rows_written_max": 140000,
     "d1_account_wide_atomic_guarantee": false,
-    "daily_normal_writes_cap": 140000,
-    "emergency_write_reserve_rows": 0,
+    "daily_normal_writes_cap": 120000,
+    "emergency_write_reserve_rows": 20000,
     "emergency_funds_autorelease": false,
-    "verified_subscription_without_spend_policy": "FALLBACK_TO_CONSERVATIVE_FREE_ADMISSION_WITH_DAILY_OWNER_CAP"
+    "verified_subscription_without_spend_policy": "FALLBACK_TO_CONSERVATIVE_FREE_ADMISSION_WITH_DAILY_OWNER_CAP",
+    "daily_normal_reads_cap": 120000,
+    "emergency_read_reserve_rows": 20000
   },
   "monthly_guardrail_targets_not_provider_hard_caps": {
     "workers_requests": 8000000,
@@ -50,31 +52,36 @@
     "Soft quotas can be bypassed by independent Workers, cron, GitHub Actions, third-party clients and delayed provider counters unless individually integrated.",
     "A strict never-exceed-$5 invoice cannot be guaranteed with a metered Workers Paid account.",
     "Owner daily TOTAL D1 target: <=140k billed rows read and <=140k billed rows written, including all recovery work. There is no automatic or manual 40k D1 write extension; provider counters are delayed and non-atomic, so a global hard stop is not yet guaranteed.",
-    "Emergency writes share the same 140k TOTAL D1 daily target and are never granted an extra 40k; recovery work must pass the same actual provider-budget checks.",
+    "Emergency reads and writes each reserve 20k inside the existing 140k UTC TOTAL. Normal automated workloads must fit in 120k read and 120k write; recovery has no automatic access, no 40k extension.",
     "A KV get/put quota counter is not atomic; quota control uses provider-observed rows and UTC burn-rate pacing for admission-gated work, not a provider-enforced account-wide 140k hard stop."
   ],
   "owner_d1_utc_daily_targets": {
     "rows_read": 140000,
     "rows_written": 140000,
-    "normal_rows_read": 140000,
-    "normal_rows_written": 140000,
-    "emergency_rows_written": 0,
+    "normal_rows_read": 120000,
+    "normal_rows_written": 120000,
+    "emergency_rows_written": 20000,
     "safety_buffer_rows_read": 4000,
     "safety_buffer_rows_written": 2000,
     "emergency_auto_admission": false,
-    "basis": "OWNER_TOTAL_140K_UTC_READ_AND_WRITE_NO_EMERGENCY_EXTENSION_NOT_CLOUDFLARE_PHYSICAL_LIMIT"
+    "basis": "OWNER_140K_TOTAL_UTC_READ_WRITE_120K_NORMAL_20K_EMERGENCY_NO_EXTENSION",
+    "emergency_rows_read": 20000
   },
   "d1_budget_policy": {
     "max_daily_reads": 140000,
     "max_daily_writes": 140000,
     "enforce_circuit_breaker": true,
-    "burn_rate_alert_per_hour": 5833,
+    "burn_rate_alert_per_hour": 5000,
     "opening_burst_rows_read": 4000,
     "opening_burst_rows_written": 2000,
     "enforcement_scope": "ALL_WORKFLOWS_CALLING_SHARED_PLAN_AND_PROTECTED_CANARY_PREFLIGHT",
     "provider_telemetry_is_delayed": true,
     "account_wide_atomic_hard_cap_guaranteed": false,
     "emergency_writes_auto_eligible": false,
-    "remarks": "Fail closed for the governed workloads. Other D1 access paths and Cloudflare provider telemetry lag require separate centralized admission; never claim an account-wide atomic guarantee."
+    "remarks": "Ordinary admission is capped to 120k physical rows read/written per UTC day; 20k emergency per lane is separately reserved inside 140k total, never automatically used. Cloudflare counters are delayed/non-atomic and independent writers need the same admission policy.",
+    "normal_daily_reads": 120000,
+    "normal_daily_writes": 120000,
+    "emergency_read_reserve_rows": 20000,
+    "emergency_write_reserve_rows": 20000
   }
 }

@@ -45,8 +45,8 @@ function harness({stopAfterApply=false,unknown=false,moved=false,failSchema=fals
  const env={GITHUB_ACTIONS:'true',GITHUB_REPOSITORY:'blocknine0/geomacro',GITHUB_REF:'refs/heads/main',GITHUB_SHA:sha,RUNNER_TEMP:tmp,WRANGLER_VERSION:'4.136.3'};
  let probes=0,budgetCalls=0;
  const plan=async()=>{budgetCalls++;return {day_utc:new Date().toISOString().slice(0,10),workers_paid_subscription_verified:true,
-  owner_d1_normal_envelope:{held:false},critical:true,observed_rows_read:stopAfterApply&&applied.length?65000:5000,observed_rows_written:5000,
-  owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,emergency_auto_admission:false}}};
+  owner_d1_normal_envelope:{held:false},critical:true,observed_rows_read:stopAfterApply&&applied.length?65000:3000,observed_rows_written:3000,
+  owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_read:120000,normal_rows_written:120000,emergency_rows_read:20000,emergency_rows_written:20000,emergency_auto_admission:false}}};
  const run=(cmd,args)=>{
   if(cmd==='git')return args[0]==='ls-remote'?(moved?'b'.repeat(40):sha)+'\trefs/heads/main':sha;
   const cfg=args[args.indexOf('--config')+1];
