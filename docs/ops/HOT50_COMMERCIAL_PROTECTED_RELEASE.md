@@ -48,6 +48,98 @@
 
 PR #3732 reserves Step3 0212 (hourly counters) and 0213 (phase2h R2 ref-only). Commercial D1 migrations here now use 0215 and 0216 to avoid colliding migration ledgers and Wrangler history. The 0214 pointer bridge is separately staged in PR #3726. Apply the protected Step3 migrations first; commercial migrations must run separately using their own frozen checksums after a genuine encrypted checkpoint.
 
+## Exact owner-only interventions before provider verification
+
+Do not provide passwords, tokens, API keys or private receipts in ChatGPT.
+
+**1. PayPal Developer (Live, not Sandbox):** in PayPal Developer Dashboard
+> Apps & Credentials select/create a LIVE REST app linked to the receiving
+business merchant. Copy client ID/secret into your secret manager; add a
+webhook whose exact URL is
+`https://geomacro.live/api/v1/payments/paypal` and register
+`PAYMENT.CAPTURE.COMPLETED`,
+`PAYMENT.CAPTURE.REFUNDED`,
+`PAYMENT.CAPTURE.REVERSED`. Save the **LIVE** webhook ID. Separately
+check that your PayPal business account can receive the intended
+international USD commercial payment; OAuth cannot prove KYC or cross-border
+receivability. No need to pay anything at this stage.
+
+**2. Application deployment secrets:** supply the existing live
+`GEOMACRO_PAYPAL_CLIENT_ID`,
+`GEOMACRO_PAYPAL_CLIENT_SECRET`,
+`GEOMACRO_PAYPAL_WEBHOOK_ID`, `GEOMACRO_PAYPAL_ENVIRONMENT=live` and
+merchant ID in the authenticated SSR deployment (and the existing separate
+worker funding attestation secret in both SSR and D1 Worker). Standard
+`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`,
+`PAYPAL_WEBHOOK_ID` are now also accepted; if BOTH name families exist,
+all values for a field **must match** or the runtime refuses them. Never
+copy plaintext secrets into GitHub PR comments, chat, client bundles or
+the public Store. Existing customer SSR bridge, allowed origins and OTP
+configuration still have to pass protected verification.
+
+**3. GitHub Actions provider verification:** in
+`blocknine0/geomacro → Settings → Secrets and variables → Actions`,
+set either PayPal secret-name family and:
+`CLOUDFLARE_API_TOKEN` (dedicated READ-ONLY D1 token for this probe);
+`CLOUDFLARE_ACCOUNT_ID`, `D1_DATABASE_ID`,
+`GEOMACRO_D1_SHADOW_DATABASE_ID` (variables are acceptable for public
+IDs). The production ID and shadow ID **must be distinct**. Do not grant
+this read-only preflight token production D1 Edit or migration privileges.
+No credentials are printed in its output.
+
+Once the workflow has been reviewed and safely merged to default main,
+use **Actions → Hot50 Commercial Provider Read-only Preflight → Run
+workflow**, choose `db_target=shadow`, `schema_phase=base` first.
+Review two separate artifacts: PayPal live webhook configuration
+(`PASS_WEBHOOK_CONFIG_ONLY` proves OAuth and webhook registration,
+NOT KYC or funds), and remote D1 schema readback (`PASS` proves only
+canonical D1 + Step3 0213 schema for phase `base`). After the protected
+commercial migrations are applied, rerun with `schema_phase=full`
+against shadow and then production. Both scripts are read-only and
+must return `NOT_YET_VERIFIED` when provider proof is missing.
+
+**Before that workflow is present on main**, from an operator machine
+already holding the authorized credentials and using this reviewed
+feature branch, the equivalent *read-only* commands are:
+
+```bash
+node scripts/ops/check-paypal-live-webhook.mjs
+GEOMACRO_COMMERCIAL_READBACK_APPROVED=READ_ONLY_SCHEMA_PROOF \
+GEOMACRO_COMMERCIAL_READBACK_TARGET=shadow \
+GEOMACRO_COMMERCIAL_READBACK_PHASE=base \
+node scripts/ops/readback-commercial-d1-schema.mjs
+```
+
+The commands require `PAYPAL_*` or `GEOMACRO_PAYPAL_*` credentials,
+`GEOMACRO_PAYPAL_ENVIRONMENT=live`, and Cloudflare API token/account/
+D1 IDs **already exported securely** on that machine. Do not paste
+their values into terminals that log commands. Reports appear under
+`artifacts/release/`. Failures/absent Stage3 schema are release HOLDS,
+not evidence of a corrupted database.
+
+**4. Future owner actions—not yet:** protected Step3 shadow/production
+migration requires Cloudflare D1 Write and private R2 backup checkpoint
+permission with exact-main SHA approval, separately from this read-only
+token. Afterwards, provide consent for exactly one minimum real-money
+pilot using your own PayPal checkout account; preserve merchant capture
+ID (redacted), D1 receipt/credit/grant, verified 15-credit API usage,
+signed B2 hash/readback and refund handling. Do not make a live payment
+until actual Hot50 qualified 150-cell B2/Ed25519 snapshots and protected
+canary are verified. Public Store stays closed beforehand.
+
+### Webhook-first settlement / double-key prevention
+
+The browser callback now handles either ordering: PayPal's signed
+`CAPTURE.COMPLETED` webhook may fund first, or the authenticated
+buyer-return may fund first. In both cases the buyer's session uses
+one immutable `commercial_hot50_checkout_key_handoffs` record
+per actual verified PayPal receipt. D1 batch atomically creates
+the one-time plaintext `gm_live_` key hash and the unique handoff;
+retry/concurrency returns the existing **key ID only**, never mints
+a second key or recovers/records the plaintext. If the first response
+was lost, the verified dashboard can issue a new rotated key after
+proper acceptance, not recover the lost secret.
+
 ## Non-negotiable release blockers — do not flip flags yet
 
 1. Close existing protected 0204/0211 D1 migration gating and prove
