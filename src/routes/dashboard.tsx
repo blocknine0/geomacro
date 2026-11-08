@@ -10,7 +10,7 @@ export const Route=createFileRoute("/dashboard")({
 type KeyMeta={key_id:string;enabled:boolean;scopes:string[];created_at:string;expires_at:string|null;revoked_at:string|null;last_used_at:string|null};
 type Account={ok:boolean;code?:string;user?:{email:string};principal_ready?:boolean;
  credits?:{tier:string;allocated:number;used:number;remaining:number;period_ends_at:string;status:string}|null;
- keys?:KeyMeta[]};
+ keys?:KeyMeta[];usage_history?:{request_id:string;capability:string;credit_cost:number;occurred_at:string}[]};
 function CustomerDashboard(){
  const [account,setAccount]=useState<Account|null>(null);
  const [loading,setLoading]=useState(true);
@@ -43,6 +43,20 @@ function CustomerDashboard(){
    if(!response.ok||!result.ok||!result.api_key)throw Error(result.code??"Key unavailable");
    setSecret(result.api_key);await load();
   }catch(e){setError(e instanceof Error?e.message:"Key issuance unavailable");}
+  finally{setBusy(false);}
+ }
+ async function createHot50Key(){
+  setBusy(true);setError("");setSecret("");
+  try{
+   const response=await fetch("/api/v1/customer/hot50-key",{
+     method:"POST",credentials:"same-origin",cache:"no-store",
+   });
+   const result=await response.json() as {ok?:boolean;api_key?:string;code?:string};
+   if(!response.ok||!result.ok||!/^gm_live_[a-f0-9]{32}$/.test(result.api_key??""))
+     throw Error(result.code??"HOT50_KEY_NOT_YET_VERIFIED");
+   setSecret(result.api_key!);
+   await load();
+  }catch(e){setError(e instanceof Error?e.message:"HOT50_KEY_UNAVAILABLE");}
   finally{setBusy(false);}
  }
  async function revokeKey(keyId:string){
@@ -108,6 +122,8 @@ function CustomerDashboard(){
     <div className="flex flex-wrap justify-between gap-4">
      <div><div className="flex items-center gap-2"><KeyRound className="h-5 w-5 text-primary"/><h2 className="text-xl font-semibold">Personal API keys</h2></div>
       <p className="mt-2 max-w-xl text-sm text-muted-foreground">Create up to three active keys after payment settlement. Keys expire at the funded period boundary and can be revoked at any time.</p></div>
+     <button type="button" disabled={!funded||busy} onClick={()=>void createHot50Key()}
+      className="rounded-lg border border-primary px-5 py-3 text-sm font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50">Generate Hot 50 key</button>
      <button type="button" disabled={!funded||busy} onClick={()=>void createKey()}
       className="rounded-lg bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">Generate API key</button>
     </div>
@@ -124,6 +140,20 @@ function CustomerDashboard(){
       {key.enabled&&!key.revoked_at&&<button type="button" disabled={busy} onClick={()=>void revokeKey(key.key_id)} className="rounded-lg border border-border px-4 py-2 text-sm text-destructive">Revoke</button>}
      </div>):<p className="py-4 text-sm text-muted-foreground">No API keys issued yet.</p>}
     </div>
+   </section>
+   <section className="rounded-xl border border-border p-6">
+    <h2 className="text-xl font-semibold">Recent credit usage</h2>
+    <p className="mt-2 text-sm text-muted-foreground">Most recent 25 verified charges, from canonical D1 receipts.</p>
+    <div className="mt-4 divide-y divide-border">
+      {account.usage_history?.length?account.usage_history.map((usage,i)=>(
+        <div key={usage.request_id+"-"+i} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+          <div><p className="font-medium">{usage.capability}</p>
+            <p className="text-xs text-muted-foreground">{new Date(usage.occurred_at).toLocaleString()}</p></div>
+          <p className="font-mono">{usage.credit_cost} credits</p>
+        </div>
+      )):<p className="py-4 text-sm text-muted-foreground">No metered usage yet.</p>}
+    </div>
+    <Link to="/pricing" className="mt-4 inline-block text-sm font-medium text-primary underline">Purchase more credits</Link>
    </section>
   </div>}
  </main>;
