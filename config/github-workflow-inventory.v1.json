@@ -100,6 +100,7 @@
     "d1-gro-index-backfill.yml",
     "d1-launch-72h-observatory.yml",
     "d1-nov9-utc-protected-migration-window.yml",
+    "d1-paid-cycle-account-readonly-observation.yml",
     "d1-paid-monthly-provider-proof-readonly.yml",
     "d1-read-hotspot-v2-contract.yml",
     "d1-shadow-backfill.yml",
