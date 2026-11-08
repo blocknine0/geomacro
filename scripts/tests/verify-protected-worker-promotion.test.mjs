@@ -21,11 +21,19 @@ const version=(id,message="")=>({
  id,annotations:{"workers/message":message},resources:{bindings}
 });
 const quota={
- day_utc:"2026-11-07",
- owner_d1_utc_daily_targets:{
-  rows_read:140000,rows_written:140000,emergency_rows_written:0
- },workers_paid_subscription_verified:true,state:"ADMITTED",
- observed_rows_read:100,observed_rows_written:100
+ day_utc:"2026-11-07",workers_paid_subscription_verified:true,
+ state:"ADMITTED",paid_monthly_account_wide_verified:true,
+ monthly_owner_headroom:{
+  schema:"geomacro.d1-paid-monthly-headroom.v1",status:"PASS",
+  provider_subscription_verified:true,
+  day_utc:"2026-11-07",
+  cycle_start_utc:"2026-11-05",cycle_end_exclusive_utc:"2026-12-05",
+  observed_rows_read:18_140_000,observed_rows_written:1_350_000,
+  remaining_rows_read:22_481_860_000,remaining_rows_written:43_650_000,
+  monthly_ceiling_read:22_500_000_000,
+  monthly_ceiling_written:45_000_000,
+  reserve_pct:10,old_daily_140k_policy_applied:false
+ }
 };
 const at=(candidatePercent,includeZero=false)=>({
  deployments:[{versions:candidatePercent===0&&!includeZero?
@@ -63,12 +71,15 @@ test("unknown, changed or missing bindings hold rollout",()=>{
  }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
  assert.throws(()=>readBindings({resources:{bindings:[]}}),/UNREADABLE/);
 });
-test("account-wide physical rows and no emergency extension are required",()=>{
- assert.equal(check(1,0,{quota:{...quota,observed_rows_read:150000}}).eligible,false);
- assert.equal(check(1,0,{quota:{...quota,observed_rows_written:150000}}).eligible,false);
- assert.equal(check(1,0,{quota:{...quota,owner_d1_utc_daily_targets:{
-  rows_read:140000,rows_written:180000,emergency_rows_written:40000
- }}}).reason,"OWNER_140K_POLICY_UNVERIFIED");
+test("account-wide Paid monthly headroom supersedes retired 140k/day guard",()=>{
+ const x=quota.monthly_owner_headroom;
+ assert.equal(check(1,0).eligible,true);
+ assert.equal(check(1,0,{quota:{...quota,monthly_owner_headroom:
+  {...x,observed_rows_written:45_000_000,remaining_rows_written:0}}}).eligible,false);
+ assert.equal(check(1,0,{quota:{...quota,monthly_owner_headroom:
+  {...x,status:"HOLD"}}}).reason,"D1_PAID_MONTHLY_BUDGET_HELD");
+ assert.equal(check(1,0,{quota:{...quota,monthly_owner_headroom:
+  {...x,old_daily_140k_policy_applied:true}}}).eligible,false);
  assert.equal(check(1,0,{quota:{...quota,workers_paid_subscription_verified:false}}).eligible,false);
 });
 test("spend gate cannot be bypassed when enforcement is required",()=>{

@@ -7,72 +7,83 @@ const now=new Date("2026-11-07T00:05:00Z");
 const receipt={
  schema:"geomacro.d1.zero-traffic-canary-preflight.v1",
  stage:"A_READ_ONLY",inspected_at:"2026-11-07T00:04:50.000Z",
- reason:"CANARY_ACCOUNT_D1_BUDGET_HELD",paid_subscription_verified:true,
+ reason:"ZERO_TRAFFIC_PREFLIGHT_READY",paid_subscription_verified:true,
  d1_bookmark_obtained:true,worker_baseline_verified:true,
  same_run_d1_bookmark_and_worker_version_retrieved:true,
  worker_version_uploaded:false,d1_sql_queries_issued:0,
  provider_write_operations:0,payments:0,
- normal_read_target:140000,normal_write_target:140000,
- daily_read_rows:40000,daily_written_rows:25000,
- eligible_for_zero_traffic_stage:false};
-test("narrow one-time repair admission needs full provider readback, not a pacing bypass for public work",()=>{
+ paid_monthly_headroom_verified:true,
+ old_daily_140k_policy_applied:false,
+ safety_reserve_percent:10,monthly_read_target:22_500_000_000,
+ monthly_write_target:45_000_000,
+ included_monthly_rows_read:25_000_000_000,
+ included_monthly_rows_written:50_000_000,
+ billing_cycle_start_utc:"2026-11-05",
+ billing_cycle_end_exclusive_utc:"2026-12-05",
+ monthly_read_rows:18_140_000,monthly_written_rows:1_350_000,
+ eligible_for_zero_traffic_stage:true
+};
+test("one-time protected migration uses paid billing-month reserve, no daily 140k or 00UTC reset",()=>{
  const x=assessMigrationOnlyPreflight(receipt,{now});
  assert.equal(x.status,"ADMITTED");
- assert.equal(x.normal_canary_eligible,false);
- assert.equal(x.authorizes_normal_canary,false);
- assert.equal(x.authorizes_traffic_promotion,false);
+ assert.equal(x.code,"MIGRATION_PAID_CYCLE_RESERVED");
+ assert.equal(x.reserved_write_headroom_min,1_000_000);
+ assert.equal(x.reserved_read_headroom_min,20_000_000);
  assert.equal(x.authorizes_payment,false);
- assert.equal(x.authorizes_d1_emergency_spending,false);
+ assert.equal(x.authorizes_traffic_promotion,false);
+ assert.equal(x.old_daily_140k_policy_applied,false);
  assert.equal(x.account_wide_atomic_hard_cap_guaranteed,false);
 });
-test("provider identity, day or 80k repair reserve missing always HOLD",()=>{
- const changes=[
+test("missing provider/bookmark/usage or delayed receipt remains HOLD",()=>{
+ const alterations=[
  {paid_subscription_verified:false},{d1_bookmark_obtained:false},
  {worker_baseline_verified:false},{provider_write_operations:1},
- {d1_sql_queries_issued:1},{reason:"CANARY_PROVIDER_DENIED"},
+ {d1_sql_queries_issued:1},{reason:"CANARY_ACCOUNT_D1_BUDGET_HELD"},
  {inspected_at:"2026-11-06T23:55:00Z"},
- {inspected_at:"2026-11-07T00:00:00Z"},
- {daily_read_rows:60000},{daily_written_rows:60000},
- {daily_read_rows:NaN},{payments:1},{worker_version_uploaded:true},
- {normal_read_target:180000}
+ {monthly_read_rows:22_499_999_999},{monthly_written_rows:44_999_999},
+ {monthly_written_rows:NaN},{payments:1},{worker_version_uploaded:true},
+ {monthly_write_target:50_000_000},{safety_reserve_percent:0},
+ {old_daily_140k_policy_applied:true}
  ];
- for(const change of changes)
-  assert.equal(assessMigrationOnlyPreflight({...receipt,...change},{now}).status,"HOLD");
+ for(const alteration of alterations)
+  assert.equal(assessMigrationOnlyPreflight({...receipt,...alteration},{now}).status,"HOLD");
 });
-test("migration runner may admit only a verified hourly-pace HOLD with actual headroom",async()=>{
+test("protected 0204/0211 DDL budget accepts only real monthly receipt",async()=>{
  const {evaluateMigrationBudget}=await import("../ops/verify-protected-d1-migration-gate.mjs");
- const plan={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
- observed_rows_read:40000,observed_rows_written:25000,
- critical:false,reason:"GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD",
- owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_HOURLY_BURN_RATE_HELD"},
- owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,
- emergency_auto_admission:false}};
+ const plan={workers_paid_subscription_verified:true,
+  monthly_owner_headroom:{
+   schema:"geomacro.d1-paid-monthly-headroom.v1",
+   status:"PASS",provider_subscription_verified:true,
+   old_daily_140k_policy_applied:false,
+   day_utc:"2026-11-07",cycle_start_utc:"2026-11-05",
+   cycle_end_exclusive_utc:"2026-12-05",
+   monthly_ceiling_read:22_500_000_000,
+   monthly_ceiling_written:45_000_000,
+   reserve_pct:10,observed_rows_read:18_140_000,
+   observed_rows_written:1_350_000,
+   remaining_rows_read:22_481_860_000,
+   remaining_rows_written:43_650_000
+  }};
  assert.equal(evaluateMigrationBudget(plan,now).admitted,true);
- for(const change of [{reason:"GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD"},
- {owner_d1_normal_envelope:{held:true,reason:"OWNER_D1_140K_NORMAL_CEILING_HELD"}},
- {observed_rows_read:60000},{observed_rows_written:60000}])
- assert.equal(evaluateMigrationBudget({...plan,...change},now).admitted,false);
+ for(const change of [
+  {status:"HOLD"},{day_utc:"2026-11-06"},
+  {remaining_rows_read:1},{remaining_rows_written:10},
+  {old_daily_140k_policy_applied:true},
+  {monthly_ceiling_written:50_000_000}
+ ]){
+  const invalid={...plan,monthly_owner_headroom:
+   {...plan.monthly_owner_headroom,...change}};
+  assert.equal(evaluateMigrationBudget(invalid,now).admitted,false);
+ }
 });
-test("separate UTC migration headroom never changes ordinary Stage A exit semantics",()=>{
- const y=readFileSync(new URL("../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",import.meta.url),"utf8");
- assert.match(y,/provider-migration-headroom:/);
- assert.match(y,/needs: provider-migration-headroom/);
- assert.ok(y.includes("node scripts/ops/verify-protected-d1-migration-headroom.mjs"));
- assert.ok(y.includes('cron: "4 0 * * *"'));
- assert.ok(y.includes("node scripts/ops/verify-protected-d1-zero-canary-preflight.mjs"));
- assert.ok(y.includes("config/d1-hotspot-v2-canary.hold"));
- assert.ok(!y.includes("versions deploy"));
-});
-
-test("protected migration uses only two near-reset UTC schedules, never 72 all-day API checks",()=>{
- const yaml=readFileSync(new URL(
-  "../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",import.meta.url),"utf8");
- const cron=[...yaml.matchAll(/^\s+- cron: "([^"]+)"$/gmu)].map(m=>m[1]);
- assert.deepEqual(cron,["4 0 * * *","9 0 * * *"]);
- assert.doesNotMatch(yaml,/15,35,55 \* \* \* \*/u);
- assert.match(yaml,/workflow_dispatch: \{\}/u);
- assert.match(yaml,/needs\.provider-migration-headroom\.result == 'success'/u);
- assert.match(yaml,/group: geomacro-d1-control-plane-production/u);
- assert.match(yaml,/test -f config\/d1-hotspot-v2-canary\.hold/u);
- assert.doesNotMatch(yaml,/continue-on-error: true/u);
+test("existing protected workflow still enforces HOLD and does not deploy on a migration admission",()=>{
+ const y=readFileSync(new URL(
+  "../../.github/workflows/geomacro-protected-d1-canary-preflight.yml",
+  import.meta.url),"utf8");
+ assert.match(y,/provider-migration-headroom:/u);
+ assert.match(y,/needs: provider-migration-headroom/u);
+ assert.match(y,/verify-protected-d1-migration-headroom\.mjs/u);
+ assert.match(y,/config\/d1-hotspot-v2-canary\.hold/u);
+ assert.doesNotMatch(y,/versions deploy/u);
+ assert.doesNotMatch(y,/continue-on-error: true/u);
 });

@@ -4,18 +4,27 @@ import {readFileSync} from "node:fs";
 import {evaluateMigrationBudget,inspectPendingMigrations,checkMigrationSchema,
 checkTimeTravel} from "../ops/verify-protected-d1-migration-gate.mjs";
 const now=new Date("2026-11-07T12:00:00Z");
-const base={day_utc:"2026-11-07",workers_paid_subscription_verified:true,
- owner_d1_normal_envelope:{held:false},critical:true,
- observed_rows_read:10000,observed_rows_written:10000,
- owner_d1_utc_daily_targets:{rows_read:140000,normal_rows_written:140000,
- emergency_auto_admission:false}};
-test("migration reserves 80k D1 read/write and never borrows emergency",()=>{
+const month={schema:"geomacro.d1-paid-monthly-headroom.v1",status:"PASS",
+ provider_subscription_verified:true,day_utc:"2026-11-07",
+ cycle_start_utc:"2026-11-05",cycle_end_exclusive_utc:"2026-12-05",
+ observed_rows_read:10_000_000,observed_rows_written:1_000_000,
+ remaining_rows_read:22_490_000_000,remaining_rows_written:44_000_000,
+ monthly_ceiling_read:22_500_000_000,monthly_ceiling_written:45_000_000,
+ reserve_pct:10,old_daily_140k_policy_applied:false};
+const base={workers_paid_subscription_verified:true,monthly_owner_headroom:month};
+test("migration admission requires fresh monthly Paid provider proof plus 20m/1m reserve",()=>{
  assert.equal(evaluateMigrationBudget(base,now).admitted,true);
- for(const change of [{observed_rows_read:60000},{observed_rows_written:60000},
- {critical:false},{day_utc:"2026-11-06"},
- {owner_d1_normal_envelope:{held:true}},{workers_paid_subscription_verified:false},
- {owner_d1_utc_daily_targets:{...base.owner_d1_utc_daily_targets,emergency_auto_admission:true}}])
-  assert.equal(evaluateMigrationBudget({...base,...change},now).admitted,false);
+ for(const change of [
+  {status:"HOLD"},{provider_subscription_verified:false},
+  {day_utc:"2026-11-06"},{monthly_ceiling_read:140000},
+  {monthly_ceiling_written:140000},{reserve_pct:0},
+  {remaining_rows_read:19_999_999},{remaining_rows_written:999_999},
+  {old_daily_140k_policy_applied:true}
+ ]){
+  const value=evaluateMigrationBudget({...base,monthly_owner_headroom:{...month,...change}},now);
+  assert.equal(value.admitted,false);
+ }
+ assert.equal(evaluateMigrationBudget({...base,workers_paid_subscription_verified:false},now).admitted,false);
 });
 test("only exact 0204 / 0211 are admitted from Wrangler migration list",()=>{
  assert.equal(inspectPendingMigrations(

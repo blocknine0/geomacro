@@ -1,0 +1,34 @@
+{
+  "schema": "geomacro.d1-workers-paid-monthly-policy.v1",
+  "plan": "CLOUDFLARE_WORKERS_PAID",
+  "billing_cycle_anchor_day_utc": 5,
+  "provider_included_monthly": {
+    "rows_read": 25000000000,
+    "rows_written": 50000000,
+    "d1_storage_bytes": 5368709120
+  },
+  "owner_normal_monthly_ceiling": {
+    "rows_read": 22500000000,
+    "rows_written": 45000000
+  },
+  "owner_included_quota_reserve_pct": 10,
+  "monthly_opening_fraction": 0.08,
+  "migration_reserve_rows_read": 20000000,
+  "migration_reserve_rows_written": 1000000,
+  "maximum_approved_migration_estimated_rows_read": 10000000,
+  "maximum_approved_migration_estimated_rows_written": 500000,
+  "provider_metrics_are_delayed": true,
+  "account_wide_atomic_cap_guaranteed": false,
+  "holds_only_optional_migrations_and_background_work": true,
+  "hot50_ingestion_and_customer_apis_must_not_be_paused": true,
+  "automatic_paid_overage_or_billing_change_authorized": false,
+  "billing_cycle_identity": "BILLING_DASHBOARD_ANCHOR_5_NOV_2026_TO_5_DEC_2026_MUST_RECONFIRM_IF_CHANGED",
+  "notes": [
+    "Workers Paid D1 first 25B reads and 50M writes included per month, not daily quotas.",
+    "10% of included allowance is never admitted for elective workloads; telemetry lag can still cause overage.",
+    "All 4 reported D1 databases and any future databases share one account-wide GraphQL sum.",
+    "Not a $5 invoice guarantee. Workers, R2, B2, queues, KV, tax and subscription charges are separately metered.",
+    "Monthly pacing is for discretionary workloads; Hot50 ingestion and customer API endpoints are never disabled by a migration fail."
+  ],
+  "payment_auto_activation": false
+}
