@@ -658,6 +658,9 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
     // All writes, including recovery, belong to the same 140k owner target.
     // Emergency restoration requires separate explicit authorization; this
     // read-only receipt does NOT grant any emergency query or write.
+    const emergencyReadRemaining=Math.max(0,
+      ownerBudget.rows_read-Math.max(
+        ownerBudget.normal_rows_read,quota.observed_rows_read));
     const emergencyWriteRemaining=Math.max(0,
       ownerBudget.rows_written-Math.max(
         ownerBudget.normal_rows_written,quota.observed_rows_written));
@@ -671,8 +674,14 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       owner_d1_normal_envelope:ownerEnvelope,
       owner_d1_utc_budget_held:ownerNormalHold,
       owner_d1_regular_lane_held:ownerNormalHold,
+      emergency_d1_read_rows_remaining:emergencyReadRemaining,
       emergency_d1_write_rows_remaining:emergencyWriteRemaining,
+      emergency_d1_read_budget_auto_admitted:false,
       emergency_d1_write_budget_auto_admitted:false,
+      owner_d1_normal_headroom_rows_read:Math.max(0,
+        ownerBudget.normal_rows_read-quota.observed_rows_read),
+      owner_d1_normal_headroom_rows_written:Math.max(0,
+        ownerBudget.normal_rows_written-quota.observed_rows_written),
       cached_public_delivery_not_disabled_by_planner:true,
       observed_rows_read:quota.observed_rows_read,
       observed_rows_written:quota.observed_rows_written,
