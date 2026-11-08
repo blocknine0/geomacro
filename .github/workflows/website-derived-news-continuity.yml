@@ -1,6 +1,6 @@
 name: Website Derived News Continuity
 
-# Supabase-free hourly collection for all three public derived-news categories.
+# Supabase-free 20-minute scheduled collection across all three public derived-news categories.
 # GitHub cron is best effort; only owned structured news is written to Cloudflare D1.
 # Signed Finds/B2 backup retain the existing quota governor and rights boundary.
 on:
@@ -129,7 +129,7 @@ on:
       - "scripts/ops/build-material-gri-country-worklist.mjs"
       - "scripts/tests/material-gri-country-evidence-worklist.test.mjs"
   schedule:
-    - cron: "7 * * * *"
+    - cron: "7,27,47 * * * *"
 
 permissions:
   contents: read
@@ -254,10 +254,10 @@ jobs:
       group: geomacro-permanent-news-publication
       cancel-in-progress: false
     needs: quota-admission
-    # Same hourly publisher; an existing successful production-archive deploy
+    # The existing 20m publisher; a successful production-archive deploy
     # can also wake archive-only collection while the protected D1 lane is HELD.
     # Never bypass the quota governor or run from an untrusted PR/branch.
-    # No paid/provider/PREDGE mutations and no additional cron.
+    # No paid/provider/PREDGE mutations; no additional workflow or D1 writer.
     if: >-
       needs.quota-admission.result == 'success' &&
       needs.quota-admission.outputs.research == 'false' &&
@@ -332,7 +332,7 @@ jobs:
           cd workers/public-finds-archive
           npx -y wrangler@4.136.3 deploy --config wrangler.jsonc
 
-      - name: Verify independently that hourly archive and homepage are publicly readable
+      - name: Verify independently that 20-minute archive and homepage are publicly readable
         if: steps.permanent-archive.outcome == 'success'
         shell: bash
         run: |
