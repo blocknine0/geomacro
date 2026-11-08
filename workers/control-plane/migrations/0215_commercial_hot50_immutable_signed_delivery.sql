@@ -64,6 +64,46 @@ CREATE TABLE IF NOT EXISTS tenant_api_keys_v1 (
   CHECK(key_sha256 NOT LIKE 'gm_live_%')
 );
 
+-- One verified capture/receipt gets at most ONE automatic key handoff.
+-- The plaintext gm_live secret is NEVER stored and cannot be recovered.
+-- Browser/session retries after first mint receive the existing key ID only.
+CREATE TABLE IF NOT EXISTS commercial_hot50_checkout_key_handoffs (
+  receipt_id TEXT PRIMARY KEY NOT NULL
+    REFERENCES customer_payment_receipts(receipt_id) ON DELETE RESTRICT,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  key_id TEXT NOT NULL UNIQUE REFERENCES api_keys(key_id) ON DELETE RESTRICT,
+  issued_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_commercial_hot50_handoff_user
+ ON commercial_hot50_checkout_key_handoffs(user_id,issued_at DESC);
+CREATE TRIGGER IF NOT EXISTS trg_hot50_checkout_handoff_verified
+ BEFORE INSERT ON commercial_hot50_checkout_key_handoffs
+BEGIN
+ SELECT CASE WHEN NOT EXISTS (
+  SELECT 1 FROM customer_payment_receipts p
+   JOIN customer_entitlement_grants g ON g.receipt_id=p.receipt_id
+   JOIN api_keys k ON k.key_id=NEW.key_id
+  WHERE p.receipt_id=NEW.receipt_id AND p.user_id=NEW.user_id
+   AND p.provider='paypal' AND p.environment='live'
+   AND p.verified_at<=strftime('%Y-%m-%dT%H:%M:%fZ','now')
+   AND p.receipt_id='r_paypal_'||p.provider_event_id
+   AND g.user_id=NEW.user_id AND g.status='active'
+   AND g.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')
+   AND k.user_id=NEW.user_id AND k.revoked_at IS NULL
+   AND k.expires_at>strftime('%Y-%m-%dT%H:%M:%fZ','now')
+   AND EXISTS (SELECT 1 FROM json_each(k.scopes_json)
+      WHERE value='risk-gate:read')
+   AND NOT EXISTS (SELECT 1 FROM credit_ledger l
+    WHERE l.receipt_id=p.receipt_id AND l.event_type='reversal')
+ ) THEN RAISE(ABORT,'HOT50_CHECKOUT_PAID_GRANT_NOT_VERIFIED') END;
+END;
+CREATE TRIGGER IF NOT EXISTS trg_hot50_checkout_handoff_no_update
+ BEFORE UPDATE ON commercial_hot50_checkout_key_handoffs
+ BEGIN SELECT RAISE(ABORT,'IMMUTABLE_HOT50_CHECKOUT_HANDOFF'); END;
+CREATE TRIGGER IF NOT EXISTS trg_hot50_checkout_handoff_no_delete
+ BEFORE DELETE ON commercial_hot50_checkout_key_handoffs
+ BEGIN SELECT RAISE(ABORT,'IMMUTABLE_HOT50_CHECKOUT_HANDOFF'); END;
+
 -- Bounded account usage history uses this covering index rather than a scan.
 CREATE INDEX IF NOT EXISTS idx_customer_usage_user_recent
   ON customer_usage_receipts(user_id,occurred_at DESC);
