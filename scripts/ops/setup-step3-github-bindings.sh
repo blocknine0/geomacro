@@ -40,6 +40,27 @@ if ! has_secret GEOMACRO_D1_RECOVERY_AES256_KEY_B64; then
  echo "GEOMACRO_D1_RECOVERY_AES256_KEY_B64: generated and stored (value not exposed)"
 else echo "GEOMACRO_D1_RECOVERY_AES256_KEY_B64: already configured"; fi
 # HMAC is 64 HEX characters in the existing runtime, NOT base64.
+# Shadow HMAC is independent from the production pointer HMAC.
+# Accept the exact local key material already deployed to the NEW shadow Worker.
+# Strip file line endings: openssl rand -hex 32 creates a trailing newline,
+# which MUST NOT be stored in Cloudflare/GitHub secret values.
+if ! has_secret PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY; then
+ shadow_key_file="${STEP3_SHADOW_HMAC_FILE:-$HOME/.config/geomacro/phase2h-shadow-hmac.hex}"
+ if [[ ! -f "$shadow_key_file" || ! -r "$shadow_key_file" ]]; then
+  echo "Existing Shadow HMAC key file is missing; do not generate or rotate." >&2
+  exit 14
+ fi
+ shadow_key="$(tr -d '\\r\\n' < "$shadow_key_file")"
+ if [[ ! "$shadow_key" =~ ^[a-f0-9]{64}$ ]]; then
+  echo "Shadow HMAC key must be 64 lowercase hexadecimal characters." >&2
+  exit 15
+ fi
+ printf '%s' "$shadow_key" |
+  gh secret set PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY -R "$repo" -e "$environment"
+ unset shadow_key
+ echo "PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY: existing local Shadow Worker key imported."
+else echo "PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY: already configured; verify it matches shadow Worker." ; fi
+# Never substitute the generated shadow key for a missing production key.
 if ! has_secret PHASE2H_R2_REFERENCE_HMAC_KEY; then
  if [[ -z "${EXISTING_PHASE2H_HMAC_HEX:-}" ||
        ! "${EXISTING_PHASE2H_HMAC_HEX}" =~ ^[a-fA-F0-9]{64}$ ]]; then
