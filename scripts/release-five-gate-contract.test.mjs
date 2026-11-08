@@ -51,7 +51,7 @@ test('user-required controls and no-funds release architecture remain explicit',
  assert.match(source,/const STAGES=\[0,1,5,25,50,100\]/);
  assert.match(source,/percent===1\?30\*60\*1000:15\*60\*1000/);
  assert.match(source,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
- assert.match(source,/CANARY_D1_140K_PROVIDER_BREACH/);
+ assert.match(source,/CANARY_PAID_MONTHLY_D1_PROVIDER_UNVERIFIED/);
  assert.match(admission,/account_wide_provider_hard_cap:false/);
  assert.match(audit,/Promise\.all/);
 });
