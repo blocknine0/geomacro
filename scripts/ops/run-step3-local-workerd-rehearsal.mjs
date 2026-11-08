@@ -85,7 +85,7 @@ export async function runLocalWorkerdRehearsal(){
   const ddl=readFileSync("workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql","utf8")
    .split("\n").filter(line=>!line.trimStart().startsWith("--")).join("\n");
   for(const statement of ddl.split(";").map(x=>x.trim()).filter(Boolean)){
-   await db.exec(statement);
+   await db.prepare(statement).run();
   }
   const after=await db.prepare("SELECT name FROM sqlite_schema WHERE name='phase2h_raw_object_refs_v1'").first();
   assert.equal(after.name,"phase2h_raw_object_refs_v1");
