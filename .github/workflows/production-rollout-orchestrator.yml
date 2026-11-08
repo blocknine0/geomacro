@@ -42,7 +42,13 @@ jobs:
         with:
           node-version: "24"
       - run: npm install --prefix scripts/ops --no-save --ignore-scripts --package-lock=false miniflare@3
-      - run: node --test scripts/tests/d1-step3-receipt-admission.test.mjs scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs scripts/tests/d1-step3-real-shadow-proofs.test.mjs
+      - run: >-
+          node --test
+          scripts/tests/d1-step3-receipt-admission.test.mjs
+          scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
+          scripts/tests/d1-step3-real-shadow-proofs.test.mjs
+          scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
+          scripts/tests/d1-step3-durable-recovery.test.mjs
       - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
       - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
