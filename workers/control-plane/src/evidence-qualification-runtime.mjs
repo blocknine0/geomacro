@@ -234,7 +234,7 @@ export async function deliverVerifiedEvidence(env,{apiKey,itemId,now=Date.now()}
   fail('EQE_CONTRACT_WINDOW_REQUIRED');
  const customer=await authorizeCanonicalCustomerEvidenceKey(env.DB,env,apiKey,capability,iso(now));
  const {hot,envelope}=await verifiedHot(env,itemId);
- const window=String(Math.floor(now/(seconds*1000)));
+ const window='window-'+String(Math.floor(now/(seconds*1000))).padStart(12,'0');
  const idem=await sha256(customer.principal_id+'\0'+itemId+'\0'+window);
  const requestId='eqe-'+idem;
  const bytes=canonicalJcs({schema:'geomacro.evidence-delivery.v1',
