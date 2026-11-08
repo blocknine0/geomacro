@@ -85,15 +85,19 @@ for (const [provider, state] of Object.entries(launch.providers || {})) {
 if (launch.providers?.coinbase_x402?.launch_cohort !== true) {
   throw new Error("Coinbase must remain in the initial payment launch cohort");
 }
-if (launch.providers?.circle_gateway_x402?.launch_cohort !== true) {
-  throw new Error("Circle Gateway must remain in the initial payment launch cohort");
+if(launch.new_sale_rail_scope!=="CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC"){
+  throw new Error("Only owner-authorized Base/Polygon native USDC sales are eligible");
 }
-if (launch.providers?.circle_gateway_x402?.arc_mainnet_enabled !== false) {
-  throw new Error("Arc mainnet must remain disabled in the prepared Circle launch path");
+for(const name of ["xpay_x402","dexter_x402"]){
+  if(launch.providers?.[name]?.launch_cohort!==true)
+    throw new Error(name+" native USDC cohort missing");
 }
-if (launch.providers?.nevermined?.launch_cohort !== true) {
-  throw new Error("Nevermined must remain in the initial payment launch cohort");
+for(const name of ["circle_gateway_x402","nevermined","paypal","goat_x402"]){
+  if(launch.providers?.[name]?.launch_cohort!==false)
+    throw new Error(name+" out-of-crypto sale provider re-entered cohort");
 }
+if(launch.providers?.circle_gateway_x402?.arc_mainnet_enabled!==false)
+  throw new Error("Arc mainnet must remain disabled");
 if (launch.providers?.goat_x402?.launch_cohort !== false) {
   throw new Error("GOAT mainnet must remain deferred from the initial payment launch cohort");
 }
@@ -137,7 +141,7 @@ const evidence = {
   production_activation_performed: false,
   production_funds_authorized: false,
   official_launch_announced: false,
-  payment_launch_cohort: ["coinbase_x402", "circle_gateway_x402", "nevermined"],
+  payment_launch_cohort: ["coinbase_x402","xpay_x402","dexter_x402"],
   deferred_payment_providers: {
     goat_x402_mainnet: "manual_merchant_application_and_approval_required",
   },
