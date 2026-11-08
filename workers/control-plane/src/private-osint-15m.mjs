@@ -224,7 +224,7 @@ export async function privateOsint15mWrite(env,body,now=Date.now()){
  }
 }
 // An immutable, scope-bound keyset cursor replaces deep OFFSET scans.
-const osintCursorEncode=o=>btoa(JSON.stringify(o)).replace(/\\+/gu,"-").replace(/\\//gu,"_").replace(/=+$/u,"");
+const osintCursorEncode=o=>btoa(JSON.stringify(o)).replaceAll("+","-").replaceAll("/","_").replace(/=+$/u,"");
 function osintCursorDecode(raw,category,country,now){
  if(typeof raw!=="string"||raw.length>1000||!/^[A-Za-z0-9_-]+$/u.test(raw))
   throw Error("OSINT_CURSOR_INVALID");
