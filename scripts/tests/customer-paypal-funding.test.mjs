@@ -89,6 +89,29 @@ test('PayPal 6-SKU cents and credits exactly match owner-facing catalog',()=>{
    ['standard_pack',1500,500],['growth_pack',3000,1500],
  ]);
 });
+test('every approved six-SKU PayPal price funds exactly its immutable plan/pack credits once',async()=>{
+ for(const [sku,item] of Object.entries(CUSTOMER_PAYPAL_LOCKED_CATALOG)){
+  const f=await setup(sku);
+  try{
+   const params={userId,...proofFor(f.intentId,sku)};
+   const a=await fundCanonicalCustomerFromVerifiedPayPal(f.db,activeEnv,params);
+   assert.equal(a.credits,item.credits);
+   assert.equal(a.idempotent_replay,false);
+   const b=await fundCanonicalCustomerFromVerifiedPayPal(f.db,activeEnv,params);
+   assert.equal(b.credits,item.credits);
+   assert.equal(b.idempotent_replay,true);
+   const payment=f.sql.prepare('SELECT sku,amount_minor_units,currency FROM customer_payment_receipts').get();
+   assert.deepEqual(payment,{sku,amount_minor_units:item.price,currency:'USD'});
+   const grant=f.sql.prepare('SELECT tier FROM customer_entitlement_grants').get();
+   assert.equal(grant.tier,item.tier);
+   assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM customer_payment_receipts').get().n,1);
+   assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM customer_entitlement_grants').get().n,1);
+   assert.equal(f.sql.prepare('SELECT COUNT(*) n FROM credit_ledger WHERE event_type=\'funding\'').get().n,1);
+   assert.equal(f.sql.prepare('SELECT SUM(delta_credits) n FROM credit_ledger').get().n,item.credits);
+  }finally{f.sql.close();}
+ }
+});
+
 test('signed synthetic provider proof funds exact server-owned prepaid pack once',async()=>{
  const f=await setup();
  const params={userId,...proofFor(f.intentId)};
