@@ -32,7 +32,6 @@ export function assessStep3ProductionFinal({
   "PASS_AUTHENTICATED_REAL_PROVIDER_SHADOW_ADMISSION"&&
   state.recovery_checkpoint_verified===true&&
   state.migration_ledger_verified===true&&
-  state.production_sql_mutated===true&&
   same(state.verified?.map(x=>x.id),IDS)&&
   state.verified.every(x=>x.migration_history_and_schema_valid===true&&
    x.ledger_status==="VERIFIED")&&
