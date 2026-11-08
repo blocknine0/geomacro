@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {buildPhase2hPrivateRawRecords}
  from "../lib/phase2h-raw-original-records.mjs";
+import {buildPhase2hRawB2Plan,verifyPhase2hRawB2Restore}
+ from "../ops/phase2h-archive-private-raw-news.mjs";
 import {readIndexedRiskCountryOriginals}
  from "../../workers/control-plane/src/phase2h-risk-country-index.mjs";
 import {phase2hPrivateRawPut,phase2hPrivateRawObjectReferenceGet}
@@ -221,4 +223,17 @@ test("gated country-index reader hydrates R2 refs in memory, without D1 raw writ
   assert.deepEqual(JSON.parse(read[0].raw_json),record);
   assert.equal(f.sqlite.prepare("SELECT COUNT(*) AS n FROM phase2h_private_raw_news").get().n,0);
  }finally{f.sqlite.close()}
+});
+
+test("legacy Phase2H B2 compressed archive hash proof remains independent of R2 pointer",()=>{
+ const row=plan()[0];
+ const archived=buildPhase2hRawB2Plan([row],DATE);
+ assert.equal(verifyPhase2hRawB2Restore(archived.compressed,archived),true);
+ const corrupted=Buffer.from(archived.compressed);
+ corrupted[10]^=0xff;
+ assert.throws(()=>verifyPhase2hRawB2Restore(corrupted,archived),
+  /PHASE2H_RAW_B2_COMPRESSED_SHA_MISMATCH/u);
+ assert.equal(archived.record_count,1);
+ // This B2 archive proof does not automatically grant commercial rights.
+ assert.equal(archived.rows[0].commercial_rights_verified,false);
 });
