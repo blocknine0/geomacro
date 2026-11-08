@@ -1264,6 +1264,20 @@
     "risk_gate_sales_unlocked": false,
     "published_source_sha_unchanged": true,
     "pending_publish_acceptance": true
+  },
+  "approved_geopolitics_zero_d1_publication_recovery_20261108": {
+    "approval": "Owner explicitly authorized permanent Geopolitics Website Intelligence news restoration and protected Canary HOLD remediation on 2026-11-08; preserve exact source-native original dates, no-D1 browser reads and all existing independent signed release gates.",
+    "approved_source_commit": "aa80577f99a1489964ac99e029932a40424b4558",
+    "approved_paths": [
+      "src/routes/intelligence.tsx",
+      "src/components/intelligence/stateless-live-desk.tsx"
+    ],
+    "exact_blob_lock": true,
+    "scope": "Free Website Intelligence SSR/browser read-path only; independently fetch valid 72h permanent static latest plus R2 edge public offload, historical archive optional; no raw/private upstream data, no score or monetization.",
+    "global_risk_presentation_frozen": true,
+    "canary_hold_unchanged": true,
+    "pricing_and_payment_unchanged": true,
+    "new_unreviewed_website_changes_not_authorized": true,
+    "production_publish_requires_exact_sha_proof": true
   }
-
 }
