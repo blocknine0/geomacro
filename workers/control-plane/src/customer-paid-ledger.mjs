@@ -22,7 +22,7 @@ const PERMITTED=Object.freeze({
   credits_500:CUSTOMER_ENABLED_CAPABILITIES,
   credits_1500:CUSTOMER_ENABLED_CAPABILITIES,
 });
-const tokenPattern=/^gmk_live_[0-9a-f]{64}$/;
+const tokenPattern=/^(?:gmk_live_[0-9a-f]{64}|gm_live_[0-9a-f]{32})$/;
 const requestPattern=/^[A-Za-z0-9][A-Za-z0-9_.:-]{7,159}$/;
 const encoder=new TextEncoder();
 const hex=bytes=>Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('');
