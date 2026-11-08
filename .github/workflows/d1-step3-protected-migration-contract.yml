@@ -1,0 +1,56 @@
+name: D1 Step 3 Protected Headroom Shadow and Migration Contract (Offline Only)
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/d1-step3-protected-migration-contract.yml"
+      - "scripts/ops/check-d1-headroom.mjs"
+      - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
+      - "scripts/ops/run-step3-protected-d1-migrations.mjs"
+      - "scripts/lib/d1-step3-migration-contract.mjs"
+      - "scripts/tests/d1-step3-headroom.test.mjs"
+      - "scripts/tests/d1-step3-protected-migration-contract.test.mjs"
+      - "workers/control-plane/migrations/0204_d1_read_hotspot_optimization.sql"
+      - "workers/control-plane/migrations/0211_p0b_daily_committed_count.sql"
+      - "workers/control-plane/staged-migrations/0212_d1_keyset_hourly_pending_census.sql"
+      - "workers/control-plane/staged-migrations/0213_phase2h_raw_ref_only_v1.sql"
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: d1-step3-offline-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  contract:
+    if: github.repository == 'blocknine0/geomacro'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Checkout exact proposed source (no production access)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Offline syntax and original shadow contract
+        run: |
+          node --check scripts/ops/check-d1-headroom.mjs
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
+          node --check scripts/lib/d1-step3-migration-contract.mjs
+          node --test scripts/tests/d1-publisher-shadow-billable.test.mjs
+      - name: Prove current UTC headroom strictness and all protected migration contracts
+        run: |
+          node --test scripts/tests/d1-step3-headroom.test.mjs
+          node --test scripts/tests/d1-step3-protected-migration-contract.test.mjs
+      - name: Generate hash-pinned migration plan only without provider credentials
+        run: node scripts/ops/run-step3-protected-d1-migrations.mjs --plan
+      - name: Confirm shadow demonstration is dry run only
+        run: node scripts/ops/verify-d1-publisher-billable-shadow.mjs --dry-run
+      - name: Preserve explicit PLAN_ONLY proof; never claim live PASS
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: d1-step3-offline-migration-plan-${{ github.run_id }}
+          path: artifacts/release/d1-step3-migration-execution.json
+          retention-days: 14
+          if-no-files-found: error

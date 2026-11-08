@@ -52,6 +52,36 @@ export function providerUsage(result){
  return {rows_read:m.rows_read,rows_written:m.rows_written,
   changes:Number.isSafeInteger(m.changes)?m.changes:null};
 }
+/**
+ * The actual one-record delta can be >1 D1 billable rows because writes to
+ * indexes and materialized-revision triggers are also counted. Compare the
+ * 50-item conditional batch to a provider-measured SINGLE changed record
+ * under the same schema, rather than incorrectly asserting rows_written=1.
+ */
+export function assessOneChangedBatchDelta({
+ firstWrite,retry,oneChanged,singleControl,singleItemTotal
+}={}){
+ const integer=x=>Number.isSafeInteger(x)&&x>=0;
+ const metrics=[firstWrite,retry,oneChanged,singleControl];
+ const complete=metrics.every(m=>integer(m?.rows_read)&&integer(m?.rows_written))&&
+  integer(singleItemTotal);
+ const sameProviderDelta=complete&&
+  oneChanged.rows_written===singleControl.rows_written&&
+  (oneChanged.changes==null||singleControl.changes==null||
+   oneChanged.changes===singleControl.changes);
+ const accepted=complete&&
+  firstWrite.rows_written>oneChanged.rows_written&&
+  retry.rows_written===0&&
+  singleControl.rows_written>0&&sameProviderDelta&&singleItemTotal>0;
+ return Object.freeze({accepted,
+  identical_retry_zero_billable_rows_written:complete&&retry.rows_written===0,
+  single_changed_record_billable_rows:complete?singleControl.rows_written:null,
+  changed_batch_billable_rows:complete?oneChanged.rows_written:null,
+  batch_write_matches_single_changed_record_delta:sameProviderDelta,
+  no_bulk_50_row_rewrite:complete&&
+   oneChanged.rows_written<firstWrite.rows_written,
+  provider_index_and_trigger_rows_are_billable:true});
+}
 export function verifiedShadowConfig(env){
  if(env.GEOMACRO_D1_SHADOW_TARGET_APPROVED!=="YES"||
     !ACCOUNT.test(env.CLOUDFLARE_ACCOUNT_ID??"")||
@@ -150,6 +180,15 @@ export async function runShadowBillableProbe({env=process.env,
   singlesRead+=result.meta.rows_read;
   singlesWritten+=result.meta.rows_written;
  }
+ // Independent same-schema single-record control. Its native provider
+ // rows_written includes any secondary index and revision-trigger writes.
+ // A 50-item conditional batch with just one real delta MUST match it.
+ const control=[...baseline[0]];
+ const controlDoc=JSON.parse(control[4]);
+ controlDoc.what_changed="Changed synthetic statement once; not a real news event.";
+ control[4]=JSON.stringify(controlDoc);
+ const controlChange=await query("single_record_control_one_changed",
+  SINGLE_SQL,control);
  const modified=[...first.map(x=>[...x])];
  const updated=JSON.parse(modified[0][4]);
  updated.what_changed="Changed synthetic statement once; not a real news event.";
@@ -163,25 +202,34 @@ export async function runShadowBillableProbe({env=process.env,
   const expected=modified.find(r=>r[0]===x.id);
   return !expected||expected[4]!==x.story_json;
  }))error("SHADOW_READBACK_INCOMPLETE");
+ const comparison=assessOneChangedBatchDelta({
+  firstWrite:firstWrite.meta,retry:retry.meta,
+  oneChanged:oneChanged.meta,singleControl:controlChange.meta,
+  singleItemTotal:singlesWritten
+ });
  const metrics={
   first_50:firstWrite.meta,identical_retry_50:retry.meta,
-  one_changed_50:oneChanged.meta,individual_50_total:{
-   rows_read:singlesRead,rows_written:singlesWritten
-  }
+  one_changed_50:oneChanged.meta,
+  standalone_one_record_change:controlChange.meta,
+  individual_50_total:{rows_read:singlesRead,rows_written:singlesWritten}
  };
- const verified=firstWrite.meta.rows_written>0&&
-  retry.meta.rows_written===0&&oneChanged.meta.rows_written>0&&
-  singlesWritten>0;
+ const verified=comparison.accepted;
  const result={
   schema:"geomacro.cloudfare-native-d1-publisher-billable-shadow.v1",
   status:verified?"PASS_NATIVE_PROVIDER_ROWS":"HOLD_WRITES_NOT_PROVEN",
   measured_at:new Date().toISOString(),database_kind:"DEDICATED_NAMED_SHADOW_ONLY",
   shadow_uuid_sha256:sha(cfg.shadow),row_count:50,
-  identical_retry_zero_billable_rows_written:retry.meta.rows_written===0,
+  identical_retry_zero_billable_rows_written:comparison.identical_retry_zero_billable_rows_written,
   single_change_positive_billable_rows_written:oneChanged.meta.rows_written>0,
+  single_changed_record_billable_rows:comparison.single_changed_record_billable_rows,
+  batch_write_matches_single_changed_record_delta:
+   comparison.batch_write_matches_single_changed_record_delta,
+  conditional_batch_avoided_50_row_rewrite:comparison.no_bulk_50_row_rewrite,
+  provider_index_and_trigger_rows_are_billable:true,
   metrics,
   setup_and_readback_rows:usage.filter(x=>![
-   "bulk_50_first","bulk_50_identical_retry","bulk_50_one_changed"
+   "bulk_50_first","bulk_50_identical_retry","bulk_50_one_changed",
+   "single_record_control_one_changed"
   ].includes(x.label)&&!x.label.startsWith("single_item_"))
    .reduce((a,x)=>({rows_read:a.rows_read+x.rows_read,
      rows_written:a.rows_written+x.rows_written}),{rows_read:0,rows_written:0}),

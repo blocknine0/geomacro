@@ -102,6 +102,7 @@
     "d1-paid-monthly-provider-proof-readonly.yml",
     "d1-read-hotspot-v2-contract.yml",
     "d1-shadow-backfill.yml",
+    "d1-step3-protected-migration-contract.yml",
     "d1-step3-v2-shadow-only-rehearsal.yml",
     "daily-grounded-intelligence-digest.yml",
     "dan-commercial-readiness-v2.yml",
