@@ -85,7 +85,7 @@ function db() {
       };
     },
   });
-  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run()}}}};
+  return {data,counters,env:{DB:{prepare:statement,async batch(items){for(const item of items)await item.run();return items.map(()=>({success:true}))}}}};
 }
 describe("website-only Supabase-free derived news continuity",()=>{
   it("keeps real first-party UK trade source classification in sync with D1 publication allowlist",()=>{
