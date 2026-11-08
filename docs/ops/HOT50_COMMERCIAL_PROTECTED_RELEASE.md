@@ -44,6 +44,10 @@
   rights, original time, Ed25519 and B2 byte-readback verification is
   mandatory prior to signing and publication.
 
+## Migration ID conflict resolved in this branch
+
+PR #3732 reserves Step3 0212 (hourly counters) and 0213 (phase2h R2 ref-only). Commercial D1 migrations here now use 0215 and 0216 to avoid colliding migration ledgers and Wrangler history. The 0214 pointer bridge is separately staged in PR #3726. Apply the protected Step3 migrations first; commercial migrations must run separately using their own frozen checksums after a genuine encrypted checkpoint.
+
 ## Non-negotiable release blockers — do not flip flags yet
 
 1. Close existing protected 0204/0211 D1 migration gating and prove
