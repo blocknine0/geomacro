@@ -80,7 +80,8 @@ test('all mandatory checks pass ONLY for detached trusted review and distinct or
 test('Ed25519 JCS envelope is independently verifiable; signature, hash and payload tampering fail',async()=>{
  const {item,proof}=await fixtureItem(),review=attest(proof);
  const envelope=await signEvidence(item,review,{privatePkcs8B64:signer.privatePkcs8B64,
-  publicSpkiB64:signer.publicSpkiB64,keyId:'test-evidence-1'});
+  publicSpkiB64:signer.publicSpkiB64,keyId:'test-evidence-1',
+  reviewerPublicSpkiB64:reviewer.publicSpkiB64,approvedOrigins:approvals});
  const keys={'test-evidence-1':signer.publicSpkiB64};
  assert.equal(await verifyEvidence(envelope,keys),true);
  const bad=structuredClone(envelope);bad.payload.item.title+=' changed';
