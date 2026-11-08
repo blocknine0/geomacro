@@ -7,6 +7,8 @@ import {tickPrivateStrategicRiskGate,readPrivateRiskGateJit}
  from "../../workers/control-plane/src/corridor-risk-gate-jit.mjs";
 import {publishContinuousStrategicCorridors}
  from "../ops/publish-risk-gate-corridor-continuity.mjs";
+import {buildPhase2hPrivateRawRecords}
+ from "./phase2h-raw-original-records.mjs";
 const TIME="2026-11-02T13:06:00.000Z",now=Date.parse(TIME);
 const date=n=>new Date(now-n*60000).toISOString();
 const sha="f".repeat(64),enc=x=>JSON.stringify(x);
@@ -22,8 +24,20 @@ class MockD1{
  prepare(query){return {bind:(...params)=>({
   query,params,
   all:async()=>{
-   if(query.includes("FROM phase2h_private_raw_news"))
-    return {results:this.countryRows??[]};
+   if(query.includes("FROM phase2h_private_raw_news")){
+    if(query.includes("WHERE record_id IN ("))
+     return {results:this.countryRows.filter(r=>params.includes(r.record_id))};
+    if(query.includes("category=? AND original_published_at>=?")){
+     const [cat,since,until]=params;
+     const rows=this.countryRows.filter(r=>r.category===cat&&
+      r.original_published_at>=since&&r.original_published_at<=until)
+      .sort((a,b)=>b.original_published_at.localeCompare(a.original_published_at)||
+       b.record_id.localeCompare(a.record_id)).slice(0,64);
+     return {results:rows.map(r=>({record_id:r.record_id,
+      original_published_at:r.original_published_at}))};
+    }
+    throw Error("unexpected legacy scope query "+query);
+   }
    if(query.includes("FROM corridor_native_news_candidates"))
     return {results:this.input.filter(r=>
       r.native_published_at>=params[0]&&r.native_published_at<=params[1]&&
@@ -123,25 +137,33 @@ test("admin JIT preflight remains no-charge even when source titles appear to co
 });
 test("long-tail country lookup finds source-linked ORIGINAL headlines without signing or charging",async()=>{
  const db=new MockD1();
- db.countryRows=[{
-  record_id:"c".repeat(64),category:"geopolitics",
-  original_published_at:date(45),raw_sha256:"e".repeat(64),
-  raw_json:JSON.stringify({original:{
-   original_title:"United States government issues a new policy announcement",
-   original_published_at:date(45)}})
+ const records=buildPhase2hPrivateRawRecords([{
+  category:"geopolitics",sourceId:"un_press",
+  title:"United States government issues a new policy announcement",
+  publishedAt:date(45),articleUrl:"https://news.un.org/en/story/2026/11/us-policy",credit:null
  },{
-  record_id:"d".repeat(64),category:"macro",
-  original_published_at:date(40),raw_sha256:"e".repeat(64),
-  raw_json:JSON.stringify({original:{
-   original_title:"India central bank releases statement",
-   original_published_at:date(40)}})
- }];
+  category:"macro",sourceId:"rbi",
+  title:"India central bank releases statement",publishedAt:date(40),
+  articleUrl:"https://www.rbi.org.in/news/india-central-bank-statement",credit:null
+ }],{now:new Date(now),derive:sources=>sources.map(x=>({
+  category:x.category,published_at:x.publishedAt,
+  topic:"original public policy announcement",
+  what_changed:"The original publisher released a dated policy statement.",
+  why_it_matters:"This may affect risk assumptions; independent verification is pending."
+ }))}).records;
+ db.countryRows=records.map(r=>({
+  record_id:r.record_id,category:r.category,
+  original_published_at:r.original.original_published_at,
+  first_ingested_at:r.ingested_at,raw_sha256:r.raw_sha256,
+  raw_json:JSON.stringify(r),b2_object_sha256:null,b2_archived_at:null,
+  risk_country_iso3:null
+ }));
  const j=await readPrivateRiskGateJit({DB:db},
   new URLSearchParams("subject_type=country&subject_id=USA"),now);
  assert.equal(j.status,202);
  const result=await j.json();
  assert.equal(result.discovery_evidence_count,1);
- assert.equal(result.evidence_references[0].record_id,"c".repeat(64));
+ assert.equal(result.evidence_references[0].record_id,records[0].record_id);
  assert.equal(result.processing_tier,"JIT_REQUEST_ONLY");
  assert.equal(result.verification_status,"ORIGINAL_HEADLINE_COUNTRY_CANDIDATES_UNVERIFIED");
  assert.equal(result.independently_verified_events,0);
@@ -153,8 +175,12 @@ test("long-tail country lookup finds source-linked ORIGINAL headlines without si
 
 test("long-tail country JIT uses bounded indexed category scans, not unbounded JSON LIKE",()=>{
  const code=readFileSync(new URL("../../workers/control-plane/src/corridor-risk-gate-jit.mjs",import.meta.url),"utf8");
- assert.ok(code.includes("WHERE category=? AND original_published_at>=?"));
- assert.ok(code.includes("ORDER BY original_published_at DESC LIMIT 64"));
+ assert.ok(code.includes("readVerifiedPhase2hScope(env,"));
+ const reader=readFileSync(new URL(
+  "../../workers/control-plane/src/phase2h-raw-object-refs.mjs",import.meta.url),"utf8");
+ assert.ok(reader.includes("category=? AND original_published_at>=?"));
+ assert.ok(reader.includes("ORDER BY original_published_at DESC,record_id DESC LIMIT "));
+ assert.ok(reader.includes("hydrateVerifiedPhase2hIds(env,ids,validator,now"));
  assert.ok(!code.includes("json_extract(raw_json"));
 });
 test("real private publisher performs five corridor JIT checks and longtail safety check",async()=>{
