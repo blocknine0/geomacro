@@ -62,7 +62,12 @@ need(
 need(launch.launch_mode === "prelaunch", "launch manifest must remain prelaunch");
 need(launch.production_funds_authorized === false, "production funds must remain disabled");
 need(launch.official_launch_announced === false, "official launch announcement must remain disabled");
-need(launch.launch_rule?.allow_partial_provider_launch === false, "partial provider launch must remain disabled");
+need(launch.new_sale_rail_scope === "CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC",
+ "only native USDC Base/Polygon new-sale scope is authorized");
+need(launch.launch_rule?.allow_partial_provider_launch === true &&
+ launch.launch_rule?.partial_launch_scope ===
+ "ONLY_BASE_POLYGON_NATIVE_USDC_AFTER_ALL_MERCHANT_B2_SIGNED_EVIDENCE_AND_DURABLE_LEDGER_GATES",
+ "only approved USDC new-sale cohort may be considered, still evidence-gated");
 need(launch.launch_rule?.allow_testnet_as_revenue === false, "testnet must never count as revenue");
 need(launch.launch_rule?.allow_unreconciled_settlement_as_revenue === false, "unreconciled settlement must never count as revenue");
 need(launch.launch_rule?.require_external_first_purchase_before_revenue_claim === true, "external first-purchase revenue gate missing");
@@ -71,8 +76,12 @@ for (const [name, provider] of Object.entries(launch.providers || {})) {
   need(provider?.production_enabled === false, name + " production must remain disabled");
 }
 need(launch.providers?.coinbase_x402?.launch_cohort === true, "Coinbase launch cohort missing");
-need(launch.providers?.circle_gateway_x402?.launch_cohort === true, "Circle launch cohort missing");
-need(launch.providers?.nevermined?.launch_cohort === true, "Nevermined launch cohort missing");
+need(launch.providers?.xpay_x402?.launch_cohort === true, "Base xpay USDC cohort missing");
+need(launch.providers?.dexter_x402?.launch_cohort === true, "Base/Polygon Dexter USDC cohort missing");
+for(const name of ["circle_gateway_x402","nevermined","paypal","goat_x402"]){
+ need(launch.providers?.[name]?.launch_cohort === false,
+  name+" must remain outside owner crypto-only sales");
+}
 need(launch.providers?.goat_x402?.launch_cohort === false, "GOAT mainnet must remain deferred");
 
 need(commerce.service?.status === "prelaunch", "machine commerce discovery must remain prelaunch");
