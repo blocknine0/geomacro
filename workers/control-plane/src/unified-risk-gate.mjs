@@ -95,8 +95,13 @@ async function d1Observed(env,target,cat,now){
  // BEFORE the per-country 40-original limit. A global latest-40 page was
  // silently dropping valid originals when busy other countries displaced it.
  const rows=target.id==="TWN"?
-  (await env.DB.prepare("SELECT record_id,raw_sha256,raw_json,original_published_at FROM phase2h_private_raw_news WHERE category=? AND original_published_at>=? AND original_published_at<=? ORDER BY original_published_at DESC LIMIT 40")
-   .bind(spec.raw_category,since,until).all())?.results??[]:
+  await (async()=>{
+   const {readVerifiedPhase2hScope}=await import("./phase2h-raw-object-refs.mjs");
+   const {validPrivateRawNews}=await import("./phase2h-private-raw-news.mjs");
+   return readVerifiedPhase2hScope(env,{
+    category:spec.raw_category,since,until,limit:40,now
+   },validPrivateRawNews);
+  })():
   await readIndexedRiskCountryOriginals(env,{
    countryId:target.id,category:spec.raw_category,since,until,
   });
