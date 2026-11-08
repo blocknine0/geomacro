@@ -397,12 +397,40 @@ export async function applyStep3Migrations({env=process.env}={}){
     baseline(config));
    await refreshedGate(state,"AFTER_"+step.id);
   }
+  // Production B2 physical GET must be independent of the signed
+  // Stage 1 shadow B2 proof. Use one bounded canonical B2-ACK source.
+  await refreshedGate(state,"PRODUCTION_BEFORE_INDEPENDENT_B2_READBACK");
+  const productionSource=q(config,shadowArchivedSourceQuery(),{maxRows:1}).rows;
+  if(productionSource.length!==1)
+   fail("PRODUCTION_B2_ACKNOWLEDGED_ORIGINAL_UNAVAILABLE");
+  state.production_b2_archive_proof=await verifyRealShadowB2Parity({
+   env,source:productionSource[0]
+  });
+  if(state.production_b2_archive_proof.status!=="PASS_REAL_B2_BYTE_READBACK")
+   fail("PRODUCTION_INDEPENDENT_B2_GET_FAILED");
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
+  const emptyPointerTable=
+   state.post_migration_hmac.real_provider_pointer_count===0&&
+   state.post_migration_hmac.reason==="NO_REAL_R2_POINTER_ROWS";
+  // A newly created opt-in table has no real pointers. This is a
+  // schema/empty-table verification, NOT a production HMAC PASS.
+  // Stage 1 already attested to genuine shadow pointer HMAC/R2.
+  state.production_reference_table={
+   mode:emptyPointerTable?"EMPTY_OPT_IN_TABLE_SCHEMA_VERIFIED":
+    "EXISTING_PRODUCTION_POINTERS_CRYPTOGRAPHICALLY_VERIFIED",
+   real_production_pointer_hmac_verified:
+    state.post_migration_hmac.cryptographic_readback_verified===true,
+   zero_pointer_table_vacuous_proof:emptyPointerTable,
+   stage1_shadow_hmac_attestation_required:true
+  };
   state.post_migration_readback_explicit_PASS=
    state.verified.length===4&&state.recovery_checkpoint_verified===true&&
    state.migration_ledger_verified===true&&
-   state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true&&
-   state.post_migration_hmac.b2_physical_parity==="PASS_REAL_B2_BYTE_READBACK";
+   state.stage1_admission?.status===
+     "PASS_AUTHENTICATED_REAL_PROVIDER_SHADOW_ADMISSION"&&
+   (emptyPointerTable||
+    state.post_migration_hmac.all_hmac_and_r2_bytes_verified===true)&&
+   state.production_b2_archive_proof.independent_b2_full_get_verified===true;
   state.status=state.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
   state.code=state.post_migration_readback_explicit_PASS?
    "STEP3_FOUR_MIGRATIONS_SCHEMA_AND_HMAC_READBACK_PASS":
