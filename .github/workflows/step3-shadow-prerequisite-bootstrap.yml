@@ -10,6 +10,7 @@ on:
       - "scripts/ops/inspect-step3-shadow-recovery-readonly.mjs"
       - "scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs"
       - "scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs"
+      - "scripts/tests/step3-shadow-source-fallback-contract.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -30,6 +31,7 @@ on:
       - "scripts/ops/inspect-step3-shadow-recovery-readonly.mjs"
       - "scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs"
       - "scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs"
+      - "scripts/tests/step3-shadow-source-fallback-contract.test.mjs"
       - "config/github-workflow-inventory.v1.json"
 permissions:
   contents: read
@@ -46,16 +48,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: "24"}
       - name: Prove pristine base SQL and all four staged migrations locally
-        run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs
+        run: node --test scripts/tests/bootstrap-step3-shadow-baseline.test.mjs scripts/tests/d1-step3-recovery-r2-raw-transport.test.mjs scripts/tests/inspect-step3-shadow-recovery-readonly.test.mjs scripts/tests/step3-shadow-source-fallback-contract.test.mjs
       - name: Review only checked-in schema and no provider read/write
         run: node scripts/ops/bootstrap-step3-shadow-baseline.mjs --plan
 
   shadow-readonly-preflight:
     needs: offline-prerequisite-sql
+    # The manually approved DDL path must first obtain its own independent
+    # read-only Shadow schema, Paid headroom, bookmark and private R2 checks.
+    # A previous successful push preflight never authorizes a later dispatch.
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      github.event_name == 'push'
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' &&
+        inputs.apply == true &&
+        inputs.approval == 'BOOTSTRAP_SHADOW_ONLY_AFTER_SIGNED_R2_RECOVERY'))
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment: production
@@ -105,7 +113,8 @@ jobs:
           if-no-files-found: warn
 
   protected-shadow-bootstrap:
-    needs: offline-prerequisite-sql
+    # A failure in either physical read-only prerequisite stops all Shadow DDL.
+    needs: [offline-prerequisite-sql, shadow-readonly-preflight]
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
