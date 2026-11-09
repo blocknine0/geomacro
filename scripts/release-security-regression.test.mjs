@@ -69,9 +69,9 @@ test('B2 physical audit preserves permanent zero-list policy and never advertise
 test('canary version-specific wall-time p99 is converted from microseconds',()=>{
  const s=readFileSync('scripts/canary-promoter.ts','utf8');
  assert.match(s,/scriptVersion:\$version/);
- assert.match(s,/quantiles\{wallTimeP99\}/);
+ assert.match(s,/quantiles\{wallTimeP95 wallTimeP99\}/);
  assert.match(s,/const p99=wallTimeP99Us\/1000/);
- assert.match(s,/version_errors_under_0_1pct/);
+ assert.match(s,/version_errors_under_0_5pct/);
  assert.doesNotMatch(s,/quantiles\{requestDurationP99\}/);
  assert.match(s,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
 });
