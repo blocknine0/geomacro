@@ -26,6 +26,7 @@ function read(q,sql,cap){
 function digest(rows){
  if(rows.length>STEP3_0212_HOURLY_MAX_ROWS)fail("HOUR_BUCKET_CAP_EXCEEDED");
  const keys=new Set(),values=[];
+ let total=0;
  for(const row of rows){
   const k=row?.__audit_cat,h=row?.__audit_hour,n=row?.__audit_count;
   if(Object.keys(row??{}).sort().join(",")!=="__audit_cat,__audit_count,__audit_hour"||
@@ -33,6 +34,8 @@ function digest(rows){
      typeof h!=="string"||!/^\d{4}-\d\d-\d\dT(?:[01]\d|2[0-3])$/u.test(h)||
      !Number.isSafeInteger(n)||n<0||keys.has(k+"|"+h))
    fail("INVALID_DUPLICATE_OR_UNSORTED_UTC_BUCKET");
+  if(total+n>3000)fail("COUNTER_OR_SOURCE_BOUNDED_ROWS_EXCEEDED");
+  total+=n;
   keys.add(k+"|"+h);values.push([k,h,n]);
  }
  values.sort((a,b)=>(a[0]+"|"+a[1]).localeCompare(b[0]+"|"+b[1]));
@@ -75,18 +78,28 @@ export function auditStep30212ExactHourlyCounter(query){
  if(!rawPlan.some(x=>x?.detail==="SCAN "+TABLE)||
     !idxPlan.some(x=>typeof x?.detail==="string"&&x.detail.includes(PK)))
   fail("FORCED_PK_INDEX_PLAN_UNVERIFIED");
+ const sourceBefore=read(query,sourceSQL,3001);
  const before=read(query,tableSQL,3001),indexed=read(query,indexSQL,3001);
- const after=read(query,tableSQL,3001),grouped=read(query,sourceSQL,3001);
+ const after=read(query,tableSQL,3001);
+ const sourceAfter=read(query,sourceSQL,3001);
  const first=digest(before);
  if(first!==digest(indexed))fail("COUNTER_PK_INDEX_MEMBERSHIP_MISMATCH");
  if(first!==digest(after))fail("CONCURRENT_HOURLY_COUNTER_WRITE");
+ if(digest(sourceBefore)!==digest(sourceAfter))
+  fail("CONCURRENT_CANONICAL_SOURCE_UPDATE");
  // 0212's ACK/DELETE triggers deliberately retain a ZERO-count historical
  // hour bucket. A zero bin is valid and should not masquerade as an active
  // source row; validate ALL bins against the PK tree first, then compare only
  // positive bins with exactly the source's grouped pending originals.
  const positive=before.filter(x=>x.__audit_count>0);
- if(digest(positive)!==digest(grouped))
+ if(digest(positive)!==digest(sourceBefore))
   fail("EXACT_SOURCE_HOURLY_DISTRIBUTION_MISMATCH");
+ const duplications=read(query,"SELECT category,hour_utc FROM "+quoted(TABLE)+
+  " GROUP BY category,hour_utc HAVING COUNT(*)>1 LIMIT 1",1);
+ if(duplications.length!==0)fail("DUPLICATE_PK_HOUR_BUCKET");
+ const latestList=read(query,"PRAGMA index_list("+quoted(TABLE)+")",3);
+ if(JSON.stringify(latestList)!==JSON.stringify(list))
+  fail("CONCURRENT_HOURLY_INDEX_SCHEMA_CHANGE");
  const pending=read(query,existsSQL,1);
  if(pending.length!==1||![0,1].includes(pending[0]?.has_pending)||
     (pending[0].has_pending===1&&positive.length===0)||
