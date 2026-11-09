@@ -372,6 +372,7 @@
     "step3-shadow-canonical-candidate-http.yml",
     "step3-shadow-candidate-secret-align.yml",
     "step3-shadow-canonical-protected-promote.yml",
+    "step3-shadow-failed-promotion-readonly.yml",
     "step3-shadow-live-code-version-audit.yml",
     "step3-shadow-workersdev-route-repair.yml",
     "step3-shadow-prerequisite-bootstrap.yml",
