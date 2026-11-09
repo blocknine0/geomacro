@@ -1,6 +1,6 @@
 /**
  * Exact, D1-supported logical integrity proof for 0212's pre-existing
- * partial index. Never waive partial indexes or treat schema presence as
+ * partial indexes. Never waive partial indexes or treat schema presence as
  * evidence of complete index keys; this examines predicate-qualified rows.
  *
  * Cloudflare D1 does not support table-scoped PRAGMA integrity_check.
@@ -10,6 +10,7 @@
 import {createHash} from "node:crypto";
 const TABLE="phase2h_private_raw_news";
 const INDEX="idx_phase2h_pending_recent_ingested_category";
+const EXTRA_INDEX="idx_phase2h_risk_country_unindexed_recent";
 const PREDICATE='"b2_object_sha256" IS NULL';
 const COLS=["first_ingested_at","category"];
 const LIMIT=3001;
@@ -50,6 +51,69 @@ function plan(rows,needle){
  return rows.length>0&&rows.length<=20&&
  rows.some(x=>typeof x?.detail==="string"&&x.detail.includes(needle));
 }
+/**
+ * Independently verify the *other* reviewed phase2h predicate index from
+ * migration 0111. This is not a blanket partial-index exception.
+ */
+function auditSecondReviewedPartial(query){
+ const name=EXTRA_INDEX;
+ const schema=read(query,"SELECT name,type,sql FROM sqlite_schema WHERE name='"+
+  name+"' AND type='index' LIMIT 2",2);
+ const expected=/^CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?["'\x60]?idx_phase2h_risk_country_unindexed_recent["'\x60]?\s+ON\s+["'\x60]?phase2h_private_raw_news["'\x60]?\s*\(\s*["'\x60]?first_ingested_at["'\x60]?\s*,\s*["'\x60]?record_id["'\x60]?\s*\)\s*WHERE\s+["'\x60]?risk_country_iso3["'\x60]?\s+IS\s+NULL\s*;?\s*$/iu;
+ if(schema.length!==1||schema[0]?.name!==name||schema[0]?.type!=="index"||
+    typeof schema[0]?.sql!=="string"||
+    !expected.test(schema[0].sql.replace(/\s+/gu," ").trim()))
+  fail("EXTRA_REVIEWED_PARTIAL_DDL_MISMATCH");
+ const meta=read(query,"PRAGMA index_xinfo("+q(name)+")",6);
+ const keys=meta.filter(x=>x.key===1).sort((a,b)=>a.seqno-b.seqno);
+ if(keys.length!==2||keys[0]?.name!=="first_ingested_at"||
+    keys[1]?.name!=="record_id"||keys.some((x,i)=>
+     x.seqno!==i||!Number.isSafeInteger(x.cid)||x.cid<0||
+     x.coll!=="BINARY"||x.desc!==0))
+  fail("EXTRA_PARTIAL_INDEX_COLUMNS_OR_COLLATION_UNVERIFIED");
+ const base="SELECT rowid AS __audit_rowid,"+
+  q("first_ingested_at")+" AS __audit_key_0,"+
+  q("record_id")+" AS __audit_key_1 FROM "+q(TABLE);
+ const predicate=q("risk_country_iso3")+" IS NULL LIMIT "+LIMIT;
+ const baseline=base+" NOT INDEXED WHERE "+predicate;
+ const indexed=base+" INDEXED BY "+q(name)+" WHERE "+predicate;
+ const basePlan=read(query,"EXPLAIN QUERY PLAN "+baseline,20);
+ const indexPlan=read(query,"EXPLAIN QUERY PLAN "+indexed,20);
+ if(!plan(basePlan,"SCAN "+TABLE)||
+    !(plan(indexPlan,"USING INDEX "+name)||
+      plan(indexPlan,"USING COVERING INDEX "+name)))
+  fail("EXTRA_FORCED_PARTIAL_INDEX_PLAN_UNVERIFIED");
+ const digestExtra=rows=>{
+  if(rows.length>3000)fail("EXTRA_PARTIAL_ROWS_ABOVE_3000");
+  const seen=new Set(),tuples=[];
+  for(const r of rows){
+   if(Object.keys(r??{}).sort().join(",")!=="__audit_key_0,__audit_key_1,__audit_rowid"||
+      !Number.isSafeInteger(r.__audit_rowid)||seen.has(r.__audit_rowid)||
+      typeof r.__audit_key_0!=="string"||r.__audit_key_0.length<10||
+      r.__audit_key_0.length>48||
+      typeof r.__audit_key_1!=="string"||
+      !/^[0-9a-f]{64}$/u.test(r.__audit_key_1))
+    fail("EXTRA_PARTIAL_ROW_IDENTITY_OR_KEYS_INVALID");
+   seen.add(r.__audit_rowid);
+   tuples.push([r.__audit_rowid,r.__audit_key_0,r.__audit_key_1]);
+  }
+  tuples.sort((a,b)=>a[0]-b[0]);
+  return createHash("sha256").update(JSON.stringify(tuples)).digest("hex");
+ };
+ const before=read(query,baseline,LIMIT);
+ const byIndex=read(query,indexed,LIMIT);
+ const after=read(query,baseline,LIMIT);
+ const a=digestExtra(before),b=digestExtra(byIndex),d=digestExtra(after);
+ if(a!==b)fail("EXTRA_PARTIAL_INDEX_MEMBERSHIP_MISMATCH");
+ if(a!==d)fail("EXTRA_PARTIAL_INDEX_CONCURRENT_TABLE_DRIFT");
+ return Object.freeze({
+  index:name,qualified_rows_verified:before.length,
+  status:before.length>0?
+   "PASS_REVIEWED_RISK_COUNTRY_NULL_PARTIAL_MEMBERSHIP":
+   "OBSERVED_ZERO_RISK_COUNTRY_NULL_ROWS"
+ });
+}
+
 export function auditStep30212ExactPartialIndex(query){
  if(typeof query!=="function")fail("PROVIDER_READER_MISSING");
  const schema=read(query,schemaSQL,2);
@@ -59,10 +123,11 @@ export function auditStep30212ExactPartialIndex(query){
     !schemaPattern.test(schema[0].sql.replace(/\s+/gu," ").trim()))
    fail("EXACT_REVIEWED_PARTIAL_INDEX_DDL_MISMATCH");
  const indexList=read(query,"PRAGMA index_list("+q(TABLE)+")",48);
- const matched=indexList.filter(r=>r.name===INDEX);
- if(matched.length!==1||matched[0].partial!==1||
-   matched[0].unique!==0||matched[0].origin!=="c"||
-   indexList.some(r=>r.name!==INDEX&&r.partial===1))
+ const matched=indexList.filter(r=>r.partial===1);
+ if(matched.length!==2||
+    ![INDEX,EXTRA_INDEX].every(name=>matched.some(r=>r.name===name&&
+      r.unique===0&&r.origin==="c"))||
+    new Set(indexList.map(r=>r.name)).size!==indexList.length)
   fail("PARTIAL_INDEX_REGISTRY_OR_ADDITIONAL_PREDICATE_UNVERIFIED");
  const xinfo=read(query,"PRAGMA index_xinfo("+q(INDEX)+")",6);
  const keys=xinfo.filter(r=>r.key===1).sort((a,b)=>a.seqno-b.seqno);
@@ -88,11 +153,14 @@ export function auditStep30212ExactPartialIndex(query){
  const b=digest(before),i=digest(fromIndex),a=digest(after);
  if(b!==i)fail("PREDICATE_QUALIFIED_INDEX_MEMBERSHIP_MISMATCH");
  if(b!==a)fail("CONCURRENT_TABLE_WRITE_OR_READ_DRIFT");
- const nonvacuous=before.length>0;
+ const second=auditSecondReviewedPartial(query);
+ const nonvacuous=before.length>0&&second.qualified_rows_verified>0;
  return Object.freeze({
   status:nonvacuous?
-   "PASS_D1_0212_EXACT_PARTIAL_PREDICATE_BOUNDED_INDEX_PARITY":
-   "OBSERVED_ZERO_QUALIFYING_PARTIAL_ROWS",
+   "PASS_D1_0212_BOTH_REVIEWED_PARTIAL_PREDICATE_INDEX_PARITY":
+   "OBSERVED_AT_LEAST_ONE_REVIEWED_PARTIAL_INDEX_EMPTY",
+  reviewed_partial_index_count:2,
+  secondary_partial_index_proof:second,
   table:TABLE,index:INDEX,qualified_rows_verified:before.length,
   nonvacuous_index_membership_proven:nonvacuous,
   reviewed_partial_predicate_verified:true,
