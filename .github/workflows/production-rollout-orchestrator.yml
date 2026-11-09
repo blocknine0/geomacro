@@ -77,6 +77,8 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Dedicated read-only account subscription proof; never authorize plan changes.
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
@@ -132,7 +134,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-step3-real-shadow
-          path: artifacts/release/step3-shadow-rehearsal-receipt.json
+          path: |
+            artifacts/release/step3-shadow-rehearsal-receipt.json
+            artifacts/release/d1-paid-monthly-headroom.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -148,6 +152,8 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Dedicated read-only account subscription proof; never authorize plan changes.
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
@@ -199,6 +205,7 @@ jobs:
           path: |
             artifacts/release/d1-step3-migration-execution.json
             artifacts/release/step3-production-physical-pass.json
+            artifacts/release/d1-paid-monthly-headroom.json
           retention-days: 14
           if-no-files-found: warn
 
@@ -212,6 +219,8 @@ jobs:
     timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Dedicated read-only account subscription proof; never authorize plan changes.
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
