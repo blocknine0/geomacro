@@ -13,7 +13,7 @@ const HOSTS=Object.freeze([
  {script:"geomacro-step3-shadow",host:"geomacro-step3-shadow."+DOMAIN+".workers.dev",r2:true},
  {script:"geomacro-step3-shadow-legacy",host:"geomacro-step3-shadow-legacy."+DOMAIN+".workers.dev",r2:false},
 ]);
-const UUID=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{4}-[a-f0-9]{12}$/iu;
+const UUID=/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/iu;
 const SHA=/^[a-f0-9]{40}$/u;
 const OUT="artifacts/release/step3-shadow-workersdev-route-repair.json";
 const fail=x=>{throw Error("STEP3_SHADOW_ROUTE_"+x)};
