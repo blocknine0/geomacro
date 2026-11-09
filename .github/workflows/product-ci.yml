@@ -36,6 +36,9 @@ jobs:
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
         run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
 
+      - name: Protected canary candidate imports and Workers Paid monthly release contract (offline)
+        run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/d1-step3-headroom.test.mjs
+
       - name: Daily official Finds original-date, attribution and no-OSINT contracts
         run: node --test scripts/tests/public-daily-official-finds.test.mjs
 
