@@ -13,6 +13,9 @@ on:
       - "scripts/tests/d1-step3-real-shadow-proofs.test.mjs"
       - "scripts/ops/check-d1-paid-monthly-headroom.mjs"
       - "scripts/tests/step3-orchestrator-dedicated-billing-read.test.mjs"
+      - "scripts/ops/seed-step3-shadow-nonfact-index-fixture.mjs"
+      - "scripts/tests/seed-step3-shadow-nonfact-index-fixture.test.mjs"
+      - ".github/workflows/step3-shadow-0204-nonfact-index-fixture.yml"
   workflow_dispatch:
     inputs:
       approval:
@@ -52,6 +55,7 @@ jobs:
           scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
           scripts/tests/d1-step3-real-shadow-proofs.test.mjs
           scripts/tests/step3-orchestrator-dedicated-billing-read.test.mjs
+          scripts/tests/seed-step3-shadow-nonfact-index-fixture.test.mjs
           scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
           scripts/tests/d1-step3-durable-recovery.test.mjs
           scripts/tests/d1-step3-production-final-acceptance.test.mjs
