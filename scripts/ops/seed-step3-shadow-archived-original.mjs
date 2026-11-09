@@ -9,6 +9,7 @@ import {firstPartyOriginalUrl} from "../lib/phase2h-original-metadata.mjs";
 import {buildPhase2hPrivateRawRecords} from "../lib/phase2h-raw-original-records.mjs";
 import {stageB2FirstPrivateOriginals} from "./phase2h-b2-first-private-raw.mjs";
 import {verifyRealShadowB2Parity} from "../lib/d1-step3-real-shadow-proofs.mjs";
+import {classifyAuthProbe} from "./sync-step3-shadow-bearer.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 
@@ -86,6 +87,22 @@ async function assertRealShadow(e){
    fail("SHADOW_WORKERSDEV_ROUTE_NOT_ENABLED");
  }
 }
+// Authenticate both existing Shadow inlets before ANY governed B2 write.
+// Using an invalid query ensures the proof is free of D1 rows_read/written.
+async function assertLiveShadowIngress(e){
+ for(const host of [NEW,OLD]){
+  let state;
+  try{state=await classifyAuthProbe({host,
+   token:e.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN})}
+  catch(error){
+   // Carry only the fixed uppercase diagnostic classification, never an
+   // upstream HTTP body, token, host with query parameters, or source text.
+   const m=/^STEP3_BEARER_([A-Z0-9_]+)$/u.exec(String(error?.message??""));
+   fail("LIVE_INGRESS_"+(m?.[1]??"PROBE_UNCLASSIFIED"));
+  }
+  if(state!=="AUTHENTICATED")fail("SHADOW_LIVE_BEARER_NOT_AUTHENTICATED");
+ }
+}
 async function readShadow(e,id){
  const url="https://api.cloudflare.com/client/v4/accounts/"+
   e.CLOUDFLARE_ACCOUNT_ID+"/d1/database/"+
@@ -151,6 +168,9 @@ async function seed(){
   assertScope(e);
   await assertRealShadow(e);
   receipt.real_worker_and_d1_bindings_verified=true;
+  // Prevent orphaned B2 objects from a 404 or mismatched Worker auth.
+  await assertLiveShadowIngress(e);
+  receipt.both_shadow_workers_auth_proven_before_b2=true;
   const candidates=[],ids=new Set(),now=new Date();
   const observed=await collectRegisteredReusableNews({
    now,perCategory:8,normalize:normalizeReusableNewsJson,

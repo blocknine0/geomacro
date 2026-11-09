@@ -38,7 +38,7 @@ test("unauthenticated Worker routing probe MUST return JSON 401 from canonical g
    {ok:false,error:"CONTROL_PLANE_AUTH_UNCONFIGURED"},{status:503})}),
   /STEP3_SHADOW_ROUTE_SHADOW_ADMIN_AUTH_BOUNDARY_UNVERIFIED_HTTP_503/);
 });
-function mock({activeInitially=false,brokenHost=false,missingSecret=false}={}){
+function mock({activeInitially=false,previewsInitially=false,brokenHost=false,missingSecret=false}={}){
  const active=new Map(SCRIPTS.map(w=>[w,activeInitially]));
  const mutations=[],calls=[];
  const fetchImpl=async(url,init)=>{
@@ -68,11 +68,11 @@ function mock({activeInitially=false,brokenHost=false,missingSecret=false}={}){
    if(p.endsWith("/subdomain")){
     if(init.method==="POST"){
       const body=JSON.parse(init.body);
-      assert.deepEqual(body,{enabled:true,previews_enabled:false});
+      assert.deepEqual(body,{enabled:true,previews_enabled:previewsInitially});
       mutations.push(script);active.set(script,true);
     }
     return Response.json({success:true,result:{
-      enabled:active.get(script),previews_enabled:false
+      enabled:active.get(script),previews_enabled:previewsInitially
     }});
    }
    throw Error("Unexpected provider path "+p);
@@ -102,6 +102,18 @@ test("real Cloudflare route GET, isolated POST only when disabled, readback and 
  const rerun=await repairShadowRoutes({env:env(),fetchImpl:f.fetchImpl,hold:true});
  assert.equal(rerun.status,"PASS");
  assert.equal(f.mutations.length,2,"Idempotent already-enabled routes never re-POST");
+});
+test("a provider preview flag is preserved, not misclassified as a route failure",async()=>{
+ const f=mock({activeInitially:false,previewsInitially:true});
+ const r=await repairShadowRoutes({env:env(),fetchImpl:f.fetchImpl,hold:true});
+ assert.equal(r.status,"PASS");
+ assert.deepEqual(f.mutations,SCRIPTS);
+ assert(r.workers.every(w=>w.previews_enabled_preserved===true));
+ assert(r.observed_routes.every(w=>w.previews_enabled===true));
+ const already=mock({activeInitially:true,previewsInitially:true});
+ const second=await repairShadowRoutes({env:env(),fetchImpl:already.fetchImpl,hold:true});
+ assert.equal(second.status,"PASS");
+ assert.equal(already.mutations.length,0,"Existing workers.dev ingress remains untouched");
 });
 test("does not POST any route without strict Shadow admin secret binding",async()=>{
  const f=mock({missingSecret:true});
