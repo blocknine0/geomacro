@@ -32,7 +32,7 @@ function bindings(name,{wrongDb=false,missingBearer=false}={}){
   {name:"PHASE2H_R2_REFERENCE_HMAC_KEY",type:"secret_text"}
  ];
 }
-function mock({wrongDb=false,missingBearer=false,failLegacyUpload=false}={}){
+function mock({wrongDb=false,missingBearer=false,failLegacyUpload=false,staleLatest=false}={}){
  const uploaded=new Set(),calls=[],configs=[];
  const runtime={compatibility_date:"2026-10-03",compatibility_flags:["nodejs_compat"]};
  const api=async (url,opts)=>{
@@ -54,7 +54,8 @@ function mock({wrongDb=false,missingBearer=false,failLegacyUpload=false}={}){
   if(p.endsWith("/versions/"+OLD))return Response.json({success:true,result:result(OLD)});
   if(p.endsWith("/versions/"+NEW))return Response.json({success:true,result:result(NEW)});
   if(p.endsWith("/versions"))return Response.json({success:true,
-   result:{items:uploaded.has(name)?[{id:NEW}]:[]}});
+   result:{items:uploaded.has(name)?[{id:NEW},{id:OLD}]:
+    staleLatest?[{id:NEW},{id:OLD}]:[{id:OLD}]}});
   throw Error("Unexpected provider path "+p);
  };
  const run=(cmd,args)=>{
@@ -112,6 +113,15 @@ test("reject absent Shadow admin secret before upload, never substitute prod",as
  assert.equal(r.status,"HOLD");
  assert.match(r.code,/BEARER_SECRET_NOT_INHERITABLE/);
  assert.equal(f.configs.length,0);
+});
+test("refuse upload when latest-uploaded secret inheritance differs from deployed baseline",async()=>{
+ const f=mock({staleLatest:true});
+ const r=await prepareShadowCanonical({env:baseEnv(),fetchImpl:f.api,run:f.run,
+  holdPresent:true,headCheck:()=>SHA});
+ assert.equal(r.status,"HOLD");
+ assert.match(r.code,/LATEST_UPLOADED_VERSION_NOT_DEPLOYED_BASELINE/);
+ assert.equal(f.configs.length,0);
+ assert.equal(r.traffic_promoted,false);
 });
 test("two Shadow immutable canonical candidates can be uploaded with NO traffic and exact parity",async()=>{
  const f=mock();
