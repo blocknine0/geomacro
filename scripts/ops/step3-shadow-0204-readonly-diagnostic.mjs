@@ -17,7 +17,12 @@ const checks=Object.freeze([
  ["osint_index_plan","EXPLAIN QUERY PLAN SELECT item_id FROM private_osint_news_25h INDEXED BY idx_private_osint_country_category_clock_v2 WHERE country_iso3='USA' AND category='geopolitics' ORDER BY native_feed_published_at DESC,item_id DESC LIMIT 1"],
  ["osint_full_integrity","PRAGMA integrity_check('private_osint_news_25h')"],
  ["source_check_full_integrity","PRAGMA integrity_check('private_osint_source_checks_24h')"],
- ["website_full_integrity","PRAGMA integrity_check('website_derived_intelligence')"]
+ ["website_full_integrity","PRAGMA integrity_check('website_derived_intelligence')"],
+ // Compatibility-only probes. A quick_check result NEVER substitutes for
+ // full index parity or authorizes a production migration.
+ ["osint_table_quick_check","PRAGMA quick_check('private_osint_news_25h')"],
+ ["source_check_table_quick_check","PRAGMA quick_check('private_osint_source_checks_24h')"],
+ ["website_table_quick_check","PRAGMA quick_check('website_derived_intelligence')"]
 ]);
 export const SHADOW_0204_READONLY_QUERIES=checks;
 export function safeCheckResult(name,exitCode,data){
@@ -36,16 +41,17 @@ export function safeCheckResult(name,exitCode,data){
   rows[0].status:"UNKNOWN_OR_ABSENT";
  if(name==="0204_index_schema")x.index_names=rows
   .map(r=>r.name).filter(n=>/^(?:idx_private_osint_country_category_clock_v2|idx_private_osint_check_category_status_v2|idx_website_derived_hot_order_v2)$/u.test(n));
- if(name.endsWith("_full_integrity"))x.full_integrity_exact_ok=
-  rows.length===1&&Object.values(rows[0]).length===1&&
+ const exactOk=rows.length===1&&Object.values(rows[0]).length===1&&
   Object.values(rows[0])[0]==="ok";
+ if(name.endsWith("_full_integrity"))x.full_integrity_exact_ok=exactOk;
+ if(name.endsWith("_table_quick_check"))x.quick_check_exact_ok=exactOk;
  return x;
 }
 export function validateReadonlyCommands(list=checks){
- if(!Array.isArray(list)||list.length!==7)return false;
+ if(!Array.isArray(list)||list.length!==10)return false;
  return list.every(([name,sql])=>
   /^[a-z0-9_]{3,50}$/u.test(name)&&
-  /^(?:SELECT |EXPLAIN QUERY PLAN SELECT |PRAGMA integrity_check\(')/u.test(sql)&&
+  /^(?:SELECT |EXPLAIN QUERY PLAN SELECT |PRAGMA (?:integrity_check|quick_check)\(')/u.test(sql)&&
   !/\b(?:INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|ATTACH|VACUUM|REINDEX|PRAGMA\s+\w+\s*=)\b/iu.test(sql)&&
   sql.length<500);
 }

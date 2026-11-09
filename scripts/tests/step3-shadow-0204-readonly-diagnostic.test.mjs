@@ -13,10 +13,10 @@ const workflow=readFileSync(
 
 test("0204 physical probe contains only fixed read-only SQL",()=>{
  assert.equal(validateReadonlyCommands(),true);
- assert.equal(SHADOW_0204_READONLY_QUERIES.length,7);
+ assert.equal(SHADOW_0204_READONLY_QUERIES.length,10);
  for(const [name,sql] of SHADOW_0204_READONLY_QUERIES){
   assert.match(name,/^[a-z0-9_]+$/u);
-  assert.match(sql,/^(?:SELECT|EXPLAIN QUERY PLAN SELECT|PRAGMA integrity_check)/u);
+  assert.match(sql,/^(?:SELECT|EXPLAIN QUERY PLAN SELECT|PRAGMA (?:integrity_check|quick_check))/u);
  }
  assert.equal(validateReadonlyCommands([["unsafe","DELETE FROM x"]]),false);
  assert.equal(validateReadonlyCommands([["unsafe","PRAGMA journal_mode=OFF"]]),false);
@@ -29,6 +29,9 @@ test("provider readback never claims an integrity PASS for missing or failed dat
   meta:{rows_read:2,rows_written:0}}];
  assert.equal(safeCheckResult("osint_full_integrity",0,ok).full_integrity_exact_ok,true);
  assert.equal(safeCheckResult("osint_full_integrity",0,bad).full_integrity_exact_ok,false);
+ const quick=[{success:true,results:[{quick_check:"ok"}],meta:{rows_read:2,rows_written:0}}];
+ assert.equal(safeCheckResult("osint_table_quick_check",0,quick).quick_check_exact_ok,true);
+ assert.equal(safeCheckResult("osint_table_quick_check",0,quick).full_integrity_exact_ok,undefined);
  assert.equal(safeCheckResult("osint_full_integrity",1,ok).kind,"HOLD");
  assert.equal(safeCheckResult("osint_full_integrity",0,[
   {success:true,results:[],meta:{rows_read:2,rows_written:1}}

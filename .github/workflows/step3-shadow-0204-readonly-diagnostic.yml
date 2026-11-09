@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/step3-shadow-0204-readonly-diagnostic.yml"
+      - "scripts/ops/step3-shadow-0204-readonly-diagnostic.mjs"
+      - "scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs"
   pull_request:
     paths:
       - ".github/workflows/step3-shadow-0204-readonly-diagnostic.yml"
