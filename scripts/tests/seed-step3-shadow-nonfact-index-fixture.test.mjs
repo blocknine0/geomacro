@@ -57,7 +57,7 @@ test("reject any non-main or unauthorized operation BEFORE Cloudflare provider n
  let calls=0;
  const out=await seedShadowNonfactIndexes({env:{GITHUB_ACTIONS:"true",
   GITHUB_REPOSITORY:"untrusted/repo",GITHUB_REF:"refs/heads/main",
-  GITHUB_SHA:"a".repeat(40)},run:()=>({toString:()=>{}}),
+  GITHUB_SHA:"a".repeat(40)},run:()=> "a".repeat(40),
   headroom:async()=>{calls++;throw Error("should not reach provider");},
   checkpoint:async()=>{calls++;throw Error("should not reach provider");}});
  assert.equal(out.fixture_status,"HOLD");
