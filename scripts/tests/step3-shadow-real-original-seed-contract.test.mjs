@@ -1,0 +1,31 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+const y=readFileSync(".github/workflows/step3-shadow-real-original-b2-ack.yml","utf8");
+const s=readFileSync("scripts/ops/seed-step3-shadow-archived-original.mjs","utf8");
+test("manual exact main only; neither production DDL nor cash rails authorized",()=>{
+ assert.match(y,/workflow_dispatch:/u);
+ assert.match(y,/SEED_REAL_SHADOW_B2_ACK_ONLY/u);
+ assert.match(y,/github.ref == 'refs\/heads\/main'/u);
+ assert.match(y,/environment: production/u);
+ assert.match(y,/test -f config\/d1-hotspot-v2-canary\.hold/u);
+ assert.match(y,/check-d1-paid-monthly-headroom\.mjs --check/u);
+ assert.match(y,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/u);
+ assert.match(y,/B2_REQUEST_BUDGET: "12"/u);
+ assert.match(y,/secrets\.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN/u);
+ assert.doesNotMatch(y,/schedule:|continue-on-error: true|--apply|wrangler d1 migrations apply|secrets\.CONTROL_PLANE_TOKEN/u);
+});
+test("only native-dated issuer original may become governed B2-backed Shadow evidence",()=>{
+ assert.match(s,/collectRegisteredReusableNews/u);
+ assert.match(s,/firstPartyOriginalUrl/u);
+ assert.match(s,/buildPhase2hPrivateRawRecords/u);
+ assert.match(s,/stageB2FirstPrivateOriginals/u);
+ assert.match(s,/B2_FIRST_GZIP_PUT_TWO_GET_SHA256_VERIFIED/u);
+ assert.match(s,/independent_d1_archive_ack_verified/u);
+ assert.match(s,/verifyRealShadowB2Parity/u);
+ assert.match(s,/PASS_REAL_SHADOW_B2_ACK_ORIGINAL/u);
+ assert.match(s,/merchant_funds_authorized:false/u);
+ assert.match(s,/commercial_rights_verified:false/u);
+ assert.match(s,/production_original_table_mutated:false/u);
+ assert.doesNotMatch(s,/paid_eligible:true|commercial_rights_verified:true|stage2_authorized:true/u);
+});
