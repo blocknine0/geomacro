@@ -39,6 +39,10 @@ import {
 } from "../lib/d1-step3-migration-ledger.mjs";
 import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
  from "../lib/d1-step3-supported-integrity.mjs";
+import {auditStep30211WithoutRowidCounter}
+ from "../lib/d1-step3-0211-counter-integrity.mjs";
+import {auditStep30211SpoolSource}
+ from "../lib/d1-step3-0211-spool-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Integrity,verifyStep3Explain,
@@ -270,10 +274,50 @@ function checkIndexAndSchema(config,step,report){
    provenance:"FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY",
    complete_sqlite_file_integrity_not_claimed:true};
   save(report);
+ }else if(step.id==="0211"){
+  // D1 rejects table-scoped PRAGMA integrity_check. Verify 0211's actual
+  // WITHOUT ROWID PK and exact per-UTC-day canonical counter distribution,
+  // as well as every reviewed source index. Isolated Shadow legitimately has
+  // zero spool originals: strictly certify only EMPTY schema and no counters,
+  // never an actual original/B2/signed proof. The later independent B2/HMAC
+  // and dual-Worker checks are still mandatory to sign Stage1/Stage2 PASS.
+  const checked=(sql,maxRows)=>{
+   const r=q(config,sql,{maxRows});
+   report.counter_0211_rows_read??=0;
+   report.counter_0211_rows_read+=r.readRows;
+   if(report.counter_0211_rows_read>100000)
+    fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
+   return r.rows;
+  };
+  mark("SUPPORTED_0211_WITHOUT_ROWID_P0B_DAILY_COUNTER");
+  const counter=auditStep30211WithoutRowidCounter(checked);
+  mark("SUPPORTED_0211_SEVEN_SPOOL_INDEXES");
+  const spool=auditStep30211SpoolSource(checked);
+  const actual=(counter.status===
+    "PASS_D1_0211_WITHOUT_ROWID_PK_QUICK_FK_UNIQUE_COUNTER_PARITY"&&
+    spool.status==="PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS"&&
+    counter.canonical_committed_rows>0);
+  const empty=(counter.status==="OBSERVED_EMPTY_COUNTER_NO_NONVACUOUS_SOURCE"&&
+    spool.status==="OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE"&&
+    counter.canonical_committed_rows===0);
+  if(!actual&&!empty)
+   fail("0211_D1_SUPPORTED_COUNTER_AND_SPOOL_PROOF_UNVERIFIED");
+  report.supported_integrity_0211={
+   status:actual?"PASS_FRESH_NONEMPTY_D1_PROVIDER_COUNTER_SPOOL_PARITY":
+    "PASS_EMPTY_SHADOW_STAGING_SCHEMA_AND_ZERO_COUNTERS_ONLY",
+   proof_mode:actual?"NONEMPTY_CANONICAL":"EXPLICITLY_EMPTY_SOURCE_ONLY",
+   real_originals_verified_by_this_step:actual,
+   index_count:7,
+   sqlite_full_integrity_check_claimed:false,
+   b2_original_byte_readback_claimed:false,
+   production_release_authorized:false
+  };
+  integrity.push(counter,spool);
+  save(report);
  }else{
-  // Keep 0211/0212/0213 on their original strict full integrity
-  // requirement until their OWN independent real Shadow acceptance exists.
-  // Never promote a successful 0204 proof to a different migration.
+  // Keep 0212/0213 on their original strict full integrity requirement
+  // until their separate provider-approved full-scope D1 alternative is
+  // integrated. Never infer this from completed 0204/0211 proofs.
   for(const table of step.integrityTables){
    mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
