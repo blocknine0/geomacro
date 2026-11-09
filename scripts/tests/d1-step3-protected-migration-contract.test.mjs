@@ -129,7 +129,14 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/admitStep30204SupportedIntegrity\(integrity\)/u);
  assert.match(runner,/report\.composite_integrity_rows_read>100000/u);
  assert.match(runner,/FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY/u);
- assert.match(runner,/Keep 0211\/0212\/0213 on their original strict full integrity/u);
+ assert.match(runner,/Keep 0212\/0213 on their original strict full integrity/u);
+ assert.match(runner,/else if\(step\.id==="0211"\)/u);
+ assert.match(runner,/auditStep30211WithoutRowidCounter\(checked\)/u);
+ assert.match(runner,/auditStep30211SpoolSource\(checked\)/u);
+ assert.match(runner,/PASS_EMPTY_SHADOW_STAGING_SCHEMA_AND_ZERO_COUNTERS_ONLY/u);
+ assert.match(runner,/SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED/u);
+ assert.match(runner,/b2_original_byte_readback_claimed:false/u);
+ assert.match(runner,/production_release_authorized:false/u);
  assert.match(runner,/PRAGMA integrity_check/u);
  assert.match(runner,/step3LedgerStatusSQL\(manifest,"VERIFIED"/u);
  assert.doesNotMatch(runner,/unlinkSync\(HOLD_FILE\)/u);
