@@ -6,7 +6,8 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {checkD1BundledWork} from './plan-d1-bundled-work.mjs';
+import {checkD1PaidMonthlyHeadroom}
+ from './lib/d1-workers-paid-monthly-governor.mjs';
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
@@ -71,11 +72,20 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  if(!Array.isArray(versions)||versions.length!==1||Number(versions[0].percentage)!==100||
     !UUID.test(versions[0].version_id??''))throw Error('CANDIDATE_BASELINE_NOT_100_PERCENT');
  const baselineId=versions[0].version_id,baseline=await get('/versions/'+baselineId);
- const quota=await checkD1BundledWork({env,fetchImpl});
- const quotaSummary={checked_at:new Date().toISOString(),day_utc:quota.day_utc??null,
-  state:quota.state??null,observed_rows_read:quota.observed_rows_read??null,
-  observed_rows_written:quota.observed_rows_written??null,
-  normal_budget_held:quota.owner_d1_utc_budget_held??null};
+ // No candidate version upload with a Free-plan or stale UTC-day quota.
+ // Require the same physical monthly provider gate as the protected promoter.
+ const quota=await checkD1PaidMonthlyHeadroom({env,fetchImpl,
+  now:new Date(),lane:'canary'});
+ if(quota.status!=='PASS'||quota.provider_subscription_verified!==true||
+    quota.lane!=='canary')throw Error('CANDIDATE_PAID_MONTHLY_PROVIDER_HEADROOM_HOLD');
+ const quotaSummary={checked_at:quota.checked_at_utc,day_utc:quota.day_utc,
+  state:quota.status,monthly_cycle_start_utc:quota.cycle_start_utc,
+  monthly_cycle_end_exclusive_utc:quota.cycle_end_exclusive_utc,
+  observed_rows_read:quota.observed_rows_read,
+  observed_rows_written:quota.observed_rows_written,
+  monthly_read_headroom:quota.remaining_rows_read,
+  monthly_write_headroom:quota.remaining_rows_written,
+  normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
  const config=candidateConfig(baseline,env.GITHUB_SHA);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
