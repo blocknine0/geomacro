@@ -99,8 +99,22 @@ async function checkedPut(url,{token,fetchImpl=fetch,body}={}){
    "Content-Type":"application/json"},
   body:JSON.stringify(body),signal:AbortSignal.timeout(15000)
  })}catch{fail("LEGACY_SHADOW_WRITE_REQUEST_UNAVAILABLE")}
- if(!r||r.status!==200||r.redirected)
-  fail("LEGACY_SHADOW_WRITE_HTTP_NOT_200");
+ if(!r||r.redirected)fail("LEGACY_SHADOW_WRITE_HTTP_UNVERIFIED");
+ if(r.status!==200){
+  // Only a bounded machine-safe enum and HTTP status enter CI receipts.
+  // Never persist Worker response text, SQL, source data or credentials.
+  let errorCode="UNCLASSIFIED",reasonCode="UNCLASSIFIED";
+  try{
+   const rejected=await r.json();
+   if(rejected?.ok===false&&/^[A-Z][A-Z0-9_]{2,90}$/u.test(rejected.error??""))
+    errorCode=rejected.error;
+   if(rejected?.ok===false&&/^[A-Z][A-Z0-9_]{2,90}$/u.test(rejected.reason_code??""))
+    reasonCode=rejected.reason_code;
+  }catch{/* HTTP status remains the authoritative transport failure */}
+  const status=Number.isInteger(r.status)&&r.status>=100&&r.status<=599?
+   r.status:"UNCLASSIFIED";
+  fail("LEGACY_SHADOW_WRITE_HTTP_"+status+"_"+errorCode+"_"+reasonCode);
+ }
  try{return await r.json()}catch{fail("LEGACY_SHADOW_WRITE_RESPONSE_INVALID")}
 }
 async function workerDeployment(host,{env,fetchImpl}){
@@ -177,10 +191,17 @@ export async function verifyRealShadowDualWorkers({
     Date.now()-Date.parse(original.ingested_at)>71*3600_000||
     Date.parse(original.ingested_at)>Date.now()+60_000)
   fail("LEGACY_SHADOW_IDEMPOTENT_WRITE_FIXTURE_NOT_CURRENT");
+ // The deployed legacy ingestion contract admits only observations ingested
+ // within 15 minutes, even for an existing immutable record. Re-observe the
+ // exact B2-backed original NOW for this idempotency probe; do not modify its
+ // persisted D1 first_ingested_at or the independently verified B2 source.
+ // raw_sha256 explicitly covers the immutable original and five-part analysis,
+ // not the observation clock. The receipt must prove accepted=0, unchanged=1.
+ const retry={...original,ingested_at:new Date().toISOString()};
  const oldWrite=await checkedPut("https://"+old+
   "/v1/internal/phase2h-raw-news",{
   token:env.CONTROL_PLANE_TOKEN,fetchImpl,
-  body:{schema:"geomacro.phase2h.private-raw-batch.v1",items:[original]}
+  body:{schema:"geomacro.phase2h.private-raw-batch.v1",items:[retry]}
  });
  if(oldWrite?.ok!==true||
     oldWrite.schema!=="geomacro.phase2h.private-d1-receipt.v1"||
