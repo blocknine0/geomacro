@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {auditShadowCode,validateReadonlyScope,probeActualHost,inspectDownloadedCode}
- from "../ops/audit-step3-shadow-live-code-version.mjs";
+import {auditShadowCode,validateReadonlyScope,probeActualHost,inspectDownloadedCode,
+ sanitizedVersionRouting} from "../ops/audit-step3-shadow-live-code-version.mjs";
 const PROD="db057ca9-9f6e-4957-ac28-144f3b798f9b";
 const SHADOW="c4add153-229d-412a-b1bd-489526b7e02f";
 const NAMES=["geomacro-step3-shadow","geomacro-step3-shadow-legacy"];
@@ -21,7 +21,7 @@ const env=()=>({
 });
 function mock({http=404,versionHttp=401,handler=true,codeMarkers=true,
  contentAllowed=true,wrongDb=false,versionReadDenied=false,
- unsafeVersionHost=false}={}){
+ unsafeVersionHost=false,assetFirst=false,missingMainModule=false}={}){
  const requests=[];
  const fetchImpl=async (url,opts)=>{
   const u=new URL(url); requests.push({host:u.hostname,path:u.pathname,method:opts.method});
@@ -42,6 +42,12 @@ function mock({http=404,versionHttp=401,handler=true,codeMarkers=true,
    if(p.includes("/workers/workers/")&&p.includes("/versions/")){
     if(versionReadDenied)return new Response("denied",{status:403});
     return Response.json({success:true,result:{id:ID,
+     main_module:missingMainModule?undefined:"src/index.mjs",
+     compatibility_date:"2026-11-09",
+     assets:{jwt:"NEVER_PERSIST_ASSETS_JWT_SECRET",
+      config:{run_worker_first:!assetFirst,
+       not_found_handling:assetFirst?"404-page":"none",
+       html_handling:"auto-trailing-slash"}},
      urls:[unsafeVersionHost?"https://not-an-allowed-host.example.com":
       "https://"+PREFIX+"-"+name+".daspallab202391.workers.dev"]}});
    }
@@ -150,6 +156,36 @@ test("untrusted provider URL cannot redirect audit to unrelated domain",async()=
  assert.equal(report.status,"HOLD");
  assert(report.workers.every(w=>w.version_url_provenance.reason==="VERSION_PROVIDER_NO_UNIQUE_PINNED_URL"));
  assert(!f.requests.some(x=>x.host==="not-an-allowed-host.example.com"));
+});
+test("read-only deployed version metadata exposes entrypoint and asset routing WITHOUT JWT",async()=>{
+ const f=mock({assetFirst:true});
+ const report=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
+ assert.equal(report.status,"HOLD");
+ assert(report.workers.every(w=>w.deployed_version_routing.immutable_version_scoped));
+ assert(report.workers.every(w=>w.deployed_version_routing.main_module==="src/index.mjs"));
+ assert(report.workers.every(w=>w.deployed_version_routing.static_assets_config_present));
+ assert(report.workers.every(w=>w.deployed_version_routing.run_worker_first===false));
+ assert(report.workers.every(w=>w.deployed_version_routing.not_found_handling==="404-page"));
+ assert(!JSON.stringify(report).includes("NEVER_PERSIST_ASSETS_JWT_SECRET"));
+ assert(!JSON.stringify(report).includes(env().CLOUDFLARE_API_TOKEN));
+ assert(f.requests.every(x=>x.method==="GET"));
+});
+test("missing entrypoint and malformed assets patterns remain UNVERIFIED, not invented",()=>{
+ const v=sanitizedVersionRouting({main_module:"../unsafe\\secret",
+  compatibility_date:"invalid",
+  assets:{jwt:"NEVER_PERSIST_ASSETS_JWT_SECRET",
+   config:{run_worker_first:["/**",["not_valid"]],not_found_handling:"script"}}});
+ assert.equal(v.main_module,"UNVERIFIED");
+ assert.equal(v.run_worker_first,"UNVERIFIED");
+ assert.equal(v.not_found_handling,"UNVERIFIED");
+ assert.equal(v.compatibility_date,"UNVERIFIED");
+ assert(!JSON.stringify(v).includes("NEVER_PERSIST_ASSETS_JWT_SECRET"));
+});
+test("absent version API metadata stays UNKNOWN and cannot imply assets absent",async()=>{
+ const f=mock({versionReadDenied:true});
+ const r=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
+ assert(r.workers.every(w=>w.deployed_version_routing.metadata_unavailable===true));
+ assert(r.workers.every(w=>w.deployed_version_routing.immutable_version_scoped===false));
 });
 test("route host allowlist and scope protect against dynamic external URLs",async()=>{
  await assert.rejects(()=>probeActualHost("geomacro-control-plane",{fetchImpl:()=>{throw Error("never")}}),
