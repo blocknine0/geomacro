@@ -110,6 +110,11 @@ async function baseline(e,w,fetchImpl){
  if(!Array.isArray(live)||live.length!==1||
    Number(live[0]?.percentage)!==100||!UUID.test(live[0]?.version_id??""))
    fail("BASELINE_NOT_100_PERCENT_DEPLOYED");
+ // Cloudflare inherits from the LATEST UPLOADED version, which can differ
+ // from the currently DEPLOYED version. Never inherit unknown/stale secrets.
+ const listed=await cf(e,root+"/versions?deployable=true",fetchImpl);
+ if(!Array.isArray(listed.items)||listed.items[0]?.id!==live[0].version_id)
+  fail("LATEST_UPLOADED_VERSION_NOT_DEPLOYED_BASELINE");
  const v=await cf(e,root+"/versions/"+live[0].version_id,fetchImpl);
  verifyBindingScope(settings.bindings,w);
  verifyBindingScope(v.resources?.bindings,w);
