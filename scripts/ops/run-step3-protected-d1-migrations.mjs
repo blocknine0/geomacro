@@ -39,6 +39,8 @@ import {
 } from "../lib/d1-step3-migration-ledger.mjs";
 import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
  from "../lib/d1-step3-supported-integrity.mjs";
+import {auditStep30213EmptyRefStructure}
+ from "../lib/d1-step3-0213-empty-reference-proof.mjs";
 import {auditStep30211WithoutRowidCounter}
  from "../lib/d1-step3-0211-counter-integrity.mjs";
 import {auditStep30211SpoolSource}
@@ -314,10 +316,74 @@ function checkIndexAndSchema(config,step,report){
   };
   integrity.push(counter,spool);
   save(report);
+ }else if(step.id==="0213"){
+  // 0213 is additive reference-schema staging, not a B2/HMAC acceptance.
+  // Immediately after apply the ref table is EMPTY by design. Verify every
+  // reviewed index, PK, quick_check and FK without claiming real originals.
+  // On idempotent resume, a nonempty table MUST pass complete bounded
+  // source/index row/key parity; neither path substitutes for independently
+  // signed pointer HMAC, R2 bytes, B2 archive or two Shadow Worker probes.
+  const checked=(sql,maxRows)=>{
+   const r=q(config,sql,{maxRows});
+   report.refs_0213_rows_read??=0;
+   report.refs_0213_rows_read+=r.readRows;
+   if(report.refs_0213_rows_read>100000)
+    fail("SUPPORTED_0213_REF_AUDIT_READ_CAP_EXCEEDED");
+   return r.rows;
+  };
+  const src=checked(
+   'SELECT EXISTS(SELECT 1 FROM "phase2h_raw_object_refs_v1" LIMIT 1) AS has_any',1);
+  if(src.length!==1||Object.keys(src[0]??{}).join()!=="has_any"||
+     ![0,1].includes(src[0].has_any))
+   fail("0213_REF_PRESENCE_UNVERIFIED");
+  const hasRows=src[0].has_any===1;
+  mark("SUPPORTED_0213_EXACT_REF_SCHEMA_AND_INDEX_PROOF",
+   "phase2h_raw_object_refs_v1");
+  let ref;
+  if(!hasRows){
+   ref=auditStep30213EmptyRefStructure(checked);
+   if(ref.status!=="OBSERVED_EMPTY_REFERENCE_STRUCTURAL_ONLY"||
+      ref.index_schema_count!==4||ref.observed_rows!==0||
+      ref.nonvacuous_original_bytes_verified!==false||
+      ref.source_pointer_hmac_verified!==false)
+    fail("0213_EMPTY_REVIEWED_REF_STRUCTURE_UNVERIFIED");
+  }else{
+   ref=auditStep3AllIndexes("phase2h_raw_object_refs_v1",checked);
+   const expected=[
+    "idx_phase2h_ref_object_key_v1",
+    "idx_phase2h_ref_country_category_clock_v1",
+    "idx_phase2h_ref_ingest_clock_v1",
+    "sqlite_autoindex_phase2h_raw_object_refs_v1_1"
+   ].sort();
+   const actual=ref.index_proofs?.map(x=>x.index).sort();
+   if(ref.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
+      ref.total_existing_indexes!==4||
+      JSON.stringify(actual)!==JSON.stringify(expected)||
+      ref.index_proofs.some(x=>
+       x.status!=="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"||
+       !Number.isSafeInteger(x.rows_compared)||x.rows_compared<1))
+    fail("0213_NONEMPTY_REF_ALL_INDEX_KEY_PARITY_UNVERIFIED");
+  }
+  const again=checked(
+   'SELECT EXISTS(SELECT 1 FROM "phase2h_raw_object_refs_v1" LIMIT 1) AS has_any',1);
+  if(again.length!==1||again[0]?.has_any!==src[0].has_any)
+   fail("0213_CONCURRENT_REF_TABLE_CHANGE");
+  report.supported_integrity_0213={
+   status:hasRows?"PASS_FRESH_NONEMPTY_REF_INDEX_KEYS_UNSIGNED":
+    "PASS_EMPTY_REVIEWED_REF_STRUCTURE_ONLY",
+   provider_read_only_proven:true,index_count:4,
+   real_r2_hmac_pointer_verified_by_this_step:false,
+   real_b2_original_readback_verified_by_this_step:false,
+   independent_signing_and_worker_proof_required:true,
+   full_sqlite_file_integrity_claimed:false,
+   production_release_authorized:false,canary_promoted:false
+  };
+  integrity.push(ref);
+  save(report);
  }else{
-  // Keep 0212/0213 on their original strict full integrity requirement
-  // until their separate provider-approved full-scope D1 alternative is
-  // integrated. Never infer this from completed 0204/0211 proofs.
+  // Keep 0212 on its original strict full integrity requirement until
+  // independent real provider-supported full-scope 0212 acceptance exists.
+  // Never infer 0212 from completed 0204, 0211 or 0213 proofs.
   for(const table of step.integrityTables){
    mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");

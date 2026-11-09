@@ -129,7 +129,7 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/admitStep30204SupportedIntegrity\(integrity\)/u);
  assert.match(runner,/report\.composite_integrity_rows_read>100000/u);
  assert.match(runner,/FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY/u);
- assert.match(runner,/Keep 0212\/0213 on their original strict full integrity/u);
+ assert.match(runner,/Keep 0212 on its original strict full integrity/u);
  assert.match(runner,/else if\(step\.id==="0211"\)/u);
  assert.match(runner,/auditStep30211WithoutRowidCounter\(checked\)/u);
  assert.match(runner,/auditStep30211SpoolSource\(checked\)/u);
@@ -138,6 +138,15 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/b2_original_byte_readback_claimed:false/u);
  assert.match(runner,/production_release_authorized:false/u);
  assert.match(runner,/PRAGMA integrity_check/u);
+ assert.match(runner,/else if\(step\.id==="0213"\)/u);
+ assert.match(runner,/auditStep30213EmptyRefStructure\(checked\)/u);
+ assert.match(runner,/auditStep3AllIndexes\("phase2h_raw_object_refs_v1",checked\)/u);
+ assert.match(runner,/SUPPORTED_0213_REF_AUDIT_READ_CAP_EXCEEDED/u);
+ assert.match(runner,/0213_NONEMPTY_REF_ALL_INDEX_KEY_PARITY_UNVERIFIED/u);
+ assert.match(runner,/real_r2_hmac_pointer_verified_by_this_step:false/u);
+ assert.match(runner,/real_b2_original_readback_verified_by_this_step:false/u);
+ assert.match(runner,/independent_signing_and_worker_proof_required:true/u);
+ assert.match(runner,/0213_CONCURRENT_REF_TABLE_CHANGE/u);
  assert.match(runner,/step3LedgerStatusSQL\(manifest,"VERIFIED"/u);
  assert.doesNotMatch(runner,/unlinkSync\(HOLD_FILE\)/u);
 });
