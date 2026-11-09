@@ -102,7 +102,18 @@ async function putShadow(e,body){
     "Content-Type":"application/json"},
    body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
  }catch{fail("SHADOW_WORKER_UNAVAILABLE")}
- if(!res||res.status!==200||res.redirected)fail("SHADOW_WORKER_REJECTED");
+ if(!res||res.redirected)fail("SHADOW_WORKER_UNEXPECTED_REDIRECT");
+ if(res.status!==200){
+  // Only a machine-safe error code may enter a CI artifact. Never persist
+  // response bodies, headers, bearer values or original article payloads.
+  let reason="UNCLASSIFIED";
+  try{
+   const rejected=await res.json();
+   if(rejected?.ok===false&&/^[A-Z][A-Z0-9_]{2,90}$/u.test(rejected.error??""))
+    reason=rejected.error;
+  }catch{/* preserve HTTP status as the truthful diagnostic */}
+  fail("SHADOW_WORKER_HTTP_"+res.status+"_"+reason);
+ }
  let d;try{d=await res.json()}catch{fail("SHADOW_WORKER_JSON_INVALID")}
  if(d.ok!==true||d.payments!==0)fail("SHADOW_WORKER_RECEIPT_INVALID");
  return d;
