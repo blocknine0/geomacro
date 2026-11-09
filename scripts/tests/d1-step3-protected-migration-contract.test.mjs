@@ -93,3 +93,44 @@ test("protected runner must never revoke canary HOLD or auto promote/migrate on 
  assert.doesNotMatch(runner,/unlinkSync\(/u);
  assert.doesNotMatch(runner,/time-travel","restore"/u);
 });
+
+
+test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APPLIED ledger can reconcile",async()=>{
+ const {STEP3_0204_EXPECTED_EXISTING_INDEXES,admitStep30204SupportedIntegrity}
+  =await import("../lib/d1-step3-supported-integrity.mjs");
+ const proofs=Object.entries(STEP3_0204_EXPECTED_EXISTING_INDEXES).map(([table,names])=>({
+  table,status:"PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF",
+  total_existing_indexes:names.length,
+  index_proofs:names.map(name=>({index:name,
+   rows_compared:3,
+   unique_verified:name.startsWith("sqlite_autoindex_"),
+   status:"PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"})),
+  all_indexes_including_unique_considered:true,
+  real_sqlite_integrity_check_claimed:false,
+  physical_file_integrity_claimed:false,
+  raw_private_content_exposed:false
+ }));
+ const ok=admitStep30204SupportedIntegrity(proofs);
+ assert.equal(ok.existing_index_count,12);
+ assert.equal(ok.status,"PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY");
+ assert.equal(ok.sqlite_integrity_check_claimed,false);
+ assert.equal(ok.production_release_authorized,false);
+ assert.throws(()=>admitStep30204SupportedIntegrity(proofs.slice(1)),/0204_THREE_TABLES_REQUIRED/);
+ assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
+  ...p,total_existing_indexes:p.total_existing_indexes-1})),/0204_TABLE_SUPPORTED_PROOF_UNVERIFIED/);
+ assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
+  ...p,index_proofs:p.index_proofs.map((x,j)=>j?x:{...x,rows_compared:0})})),/0204_INDEX_REGISTRY_OR_ROW_PARITY_UNVERIFIED/);
+ assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
+  ...p,index_proofs:p.index_proofs.map(x=>({...x,unique_verified:false}))})),/0204_UNIQUE_INDEX_PROOF_REQUIRED/);
+ assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
+  ...p,real_sqlite_integrity_check_claimed:true})),/0204_TABLE_SUPPORTED_PROOF_UNVERIFIED/);
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/if\(step\.id==="0204"\)/u);
+ assert.match(runner,/admitStep30204SupportedIntegrity\(integrity\)/u);
+ assert.match(runner,/report\.composite_integrity_rows_read>100000/u);
+ assert.match(runner,/FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY/u);
+ assert.match(runner,/Keep 0211\/0212\/0213 on their original strict full integrity/u);
+ assert.match(runner,/PRAGMA integrity_check/u);
+ assert.match(runner,/step3LedgerStatusSQL\(manifest,"VERIFIED"/u);
+ assert.doesNotMatch(runner,/unlinkSync\(HOLD_FILE\)/u);
+});

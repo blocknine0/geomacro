@@ -37,6 +37,8 @@ import {
  verifyStep3LedgerRows,step3LedgerStartSQL,
  step3LedgerStatusSQL,sha256MigrationSet,decideResume
 } from "../lib/d1-step3-migration-ledger.mjs";
+import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
+ from "../lib/d1-step3-supported-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Integrity,verifyStep3Explain,
@@ -242,13 +244,42 @@ function checkIndexAndSchema(config,step,report){
   indices.push(verifyStep3Explain(x.rows,name));
  }
  const integrity=[];
- for(const table of step.integrityTables){
-  mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
-  if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-  // Physical SQLite table+associated index-tree integrity. If Cloudflare
-  // disallows PRAGMA or full proof exceeds headroom, stop; do not claim PASS.
-  const r=q(config,"PRAGMA integrity_check('"+table+"')",{maxRows:10});
-  integrity.push(verifyStep3Integrity(r.rows,table));
+ if(step.id==="0204"){
+  // Cloudflare D1 physically rejects PRAGMA integrity_check('table').
+  // Fresh, provider-metered 0204 D1-supported composite proof, not an
+  // assertion of SQLite low-level physical-file integrity. This requires
+  // all 12 named existing indexes, positive bounded key/row membership,
+  // independent UNIQUE queries, quick_check and foreign_key_check.
+  // Any missing, unsupported or unexpected index fails closed BEFORE the
+  // migration ledger is allowed to change to VERIFIED.
+  for(const table of step.integrityTables){
+   mark("D1_SUPPORTED_QUICK_FK_ALL_INDEX_AND_UNIQUE_PROOF",table);
+   if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
+   const p=auditStep3AllIndexes(table,(sql,maxRows)=>{
+    const r=q(config,sql,{maxRows});
+    report.composite_integrity_rows_read??=0;
+    report.composite_integrity_rows_read+=r.readRows;
+    if(report.composite_integrity_rows_read>100000)
+     fail("SUPPORTED_0204_INDEX_AUDIT_READ_CAP_EXCEEDED");
+    return r.rows;
+   });
+   integrity.push(p);
+  }
+  const accepted=admitStep30204SupportedIntegrity(integrity);
+  report.supported_integrity_0204={...accepted,
+   provenance:"FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY",
+   complete_sqlite_file_integrity_not_claimed:true};
+  save(report);
+ }else{
+  // Keep 0211/0212/0213 on their original strict full integrity
+  // requirement until their OWN independent real Shadow acceptance exists.
+  // Never promote a successful 0204 proof to a different migration.
+  for(const table of step.integrityTables){
+   mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
+   if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
+   const r=q(config,"PRAGMA integrity_check('"+table+"')",{maxRows:10});
+   integrity.push(verifyStep3Integrity(r.rows,table));
+  }
  }
  const result={migration:step.id,...proof,indices,integrity};
  report.verified.push(result);save(report);

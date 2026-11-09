@@ -137,3 +137,71 @@ export function auditStep3AllIndexes(table,query){
   raw_private_content_exposed:false
  });
 }
+
+
+/**
+ * Exact index registry proven in the real Shadow D1 provider receipt from
+ * workflow run #42639677098 on 2026-11-09. This registry must not shrink,
+ * silently expand, or be silently trusted from an artifact supplied by CI.
+ * The protected runner obtains fresh rows for EVERY index from the target D1.
+ */
+export const STEP3_0204_EXPECTED_EXISTING_INDEXES=Object.freeze({
+ private_osint_news_25h:Object.freeze([
+  "idx_private_osint_category_clock",
+  "idx_private_osint_country_category_clock_v2",
+  "idx_private_osint_first_seen",
+  "idx_private_osint_news_clock",
+  "sqlite_autoindex_private_osint_news_25h_1"
+ ]),
+ private_osint_source_checks_24h:Object.freeze([
+  "idx_private_osint_check_category_status_v2",
+  "idx_private_osint_check_time",
+  "sqlite_autoindex_private_osint_source_checks_24h_1"
+ ]),
+ website_derived_intelligence:Object.freeze([
+  "idx_website_derived_hot_order_v2",
+  "idx_website_derived_intelligence_first_seen",
+  "idx_website_derived_intelligence_latest",
+  "sqlite_autoindex_website_derived_intelligence_1"
+ ])
+});
+export function admitStep30204SupportedIntegrity(proofs){
+ const tables=Object.keys(STEP3_0204_EXPECTED_EXISTING_INDEXES);
+ if(!Array.isArray(proofs)||proofs.length!==tables.length)
+  fail("0204_THREE_TABLES_REQUIRED");
+ let count=0;
+ for(let i=0;i<tables.length;i++){
+  const table=tables[i],p=proofs[i];
+  const expected=STEP3_0204_EXPECTED_EXISTING_INDEXES[table];
+  if(p?.table!==table||
+     p.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
+     p.total_existing_indexes!==expected.length||
+     !Array.isArray(p.index_proofs)||
+     p.index_proofs.length!==expected.length||
+     p.all_indexes_including_unique_considered!==true||
+     p.real_sqlite_integrity_check_claimed!==false||
+     p.physical_file_integrity_claimed!==false||
+     p.raw_private_content_exposed!==false)
+   fail("0204_TABLE_SUPPORTED_PROOF_UNVERIFIED");
+  const received=p.index_proofs.map(x=>x.index).sort();
+  if(JSON.stringify(received)!==JSON.stringify([...expected].sort())||
+     p.index_proofs.some(x=>
+      x.status!=="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"||
+      !Number.isSafeInteger(x.rows_compared)||
+      x.rows_compared<1||x.rows_compared>STEP3_ALL_INDEX_MAX_ROWS||
+      typeof x.unique_verified!=="boolean"))
+   fail("0204_INDEX_REGISTRY_OR_ROW_PARITY_UNVERIFIED");
+  if(!p.index_proofs.some(x=>x.unique_verified===true))
+   fail("0204_UNIQUE_INDEX_PROOF_REQUIRED");
+  count+=expected.length;
+ }
+ if(count!==12)fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
+ return Object.freeze({
+  status:"PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY",
+  provider_query_proofs_required:true,
+  quick_check_fk_all_indexes_and_unique_verified:true,
+  existing_index_count:12,table_count:3,
+  sqlite_integrity_check_claimed:false,
+  production_release_authorized:false
+ });
+}
