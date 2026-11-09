@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-08T23:16:16.587Z",
+  "updated_at": "2026-11-09T00:07:51.363Z",
   "signals": [
+    {
+      "id": "rare_earth-9b061f58",
+      "category": "rare_earth",
+      "title": "Geomacro finds FireFly Metals extended high-grade copper zone, boosting mine plan and economics for 2027 feasibility study. - Pluang",
+      "what_changed": "A monitored source feed reports: FireFly Metals extended high-grade copper zone, boosting mine plan and economics for 2027 feasibility study. - Pluang. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-08T23:07:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-6da36b5c",
       "category": "rare_earth",

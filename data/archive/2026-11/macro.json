@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-08T23:16:16.587Z",
+  "updated_at": "2026-11-09T00:07:51.363Z",
   "signals": [
     {
       "id": "macro-94dfbed2",
@@ -81,6 +81,25 @@
       "severity": null
     },
     {
+      "id": "macro-380d4396",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying spree to two years as prices drop, adds 25.8 tonnes in October - Moneycontrol.com",
+      "what_changed": "A monitored source feed reports: China extended gold buying spree to two years as prices drop, adds 25.8 tonnes in October - Moneycontrol.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T12:35:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-2a6c8742",
       "category": "macro",
       "title": "Geomacro finds Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au",
@@ -119,6 +138,63 @@
       "severity": null
     },
     {
+      "id": "macro-8a603fd7",
+      "category": "macro",
+      "title": "Geomacro finds China Central Bank extended Gold-Buying Streak Amid Price Decline - BusinessToday Malaysia",
+      "what_changed": "A monitored source feed reports: China Central Bank extended Gold-Buying Streak Amid Price Decline - BusinessToday Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:40:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1ebcef46",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2aa6df24",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance Singapore",
+      "what_changed": "A monitored source feed reports: China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance Singapore. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-566d2b33",
       "category": "macro",
       "title": "Geomacro finds Jewellers reported brisk Dhanteras sales as gold price drop lures buyers; volumes seen flat - ET Retail",
@@ -147,6 +223,44 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-07T03:48:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-a5896a43",
+      "category": "macro",
+      "title": "Geomacro finds China extended Gold-Buying Streak to Two Years as Prices Drop - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: China extended Gold-Buying Streak to Two Years as Prices Drop - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T03:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f794b82e",
+      "category": "macro",
+      "title": "Geomacro finds Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint",
+      "what_changed": "A monitored source feed reports: Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T21:33:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

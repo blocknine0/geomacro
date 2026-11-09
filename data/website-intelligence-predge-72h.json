@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-08T23:16:16.587Z",
+  "checked_at": "2026-11-09T00:07:51.363Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 25,
+  "item_count": 31,
   "counts": {
     "geopolitics": 0,
-    "macro": 15,
-    "rare_earth": 10
+    "macro": 20,
+    "rare_earth": 11
   },
-  "source_native_ids_sha256": "49cbb8dbf5e681c4301e0f02aafc5705d487a209ee10aa24f904ff076f9069c6",
+  "source_native_ids_sha256": "b6c04a661177fa8634bebe770973a1f3ad4c48013b3577cd6cfc0615d1d9d389",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-9b061f58",
+      "category": "rare_earth",
+      "title": "Geomacro finds FireFly Metals extended high-grade copper zone, boosting mine plan and economics for 2027 feasibility study. - Pluang",
+      "what_changed": "A monitored source feed reports: FireFly Metals extended high-grade copper zone, boosting mine plan and economics for 2027 feasibility study. - Pluang. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-08T23:07:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-94dfbed2",
       "category": "macro",
@@ -106,6 +125,25 @@
       "severity": null
     },
     {
+      "id": "macro-380d4396",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying spree to two years as prices drop, adds 25.8 tonnes in October - Moneycontrol.com",
+      "what_changed": "A monitored source feed reports: China extended gold buying spree to two years as prices drop, adds 25.8 tonnes in October - Moneycontrol.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T12:35:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "macro-2a6c8742",
       "category": "macro",
       "title": "Geomacro finds Gold Price forecast Trimmed, As 2027 Outlook Continues To Shift - TheBull.com.au",
@@ -134,6 +172,63 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-07T07:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-8a603fd7",
+      "category": "macro",
+      "title": "Geomacro finds China Central Bank extended Gold-Buying Streak Amid Price Decline - BusinessToday Malaysia",
+      "what_changed": "A monitored source feed reports: China Central Bank extended Gold-Buying Streak Amid Price Decline - BusinessToday Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:40:06.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1ebcef46",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:15:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-2aa6df24",
+      "category": "macro",
+      "title": "Geomacro finds China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance Singapore",
+      "what_changed": "A monitored source feed reports: China extended gold buying streak to 24 months as prices slump below $4,000 - Yahoo Finance Singapore. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T04:15:00.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -182,6 +277,25 @@
       "severity": null
     },
     {
+      "id": "macro-a5896a43",
+      "category": "macro",
+      "title": "Geomacro finds China extended Gold-Buying Streak to Two Years as Prices Drop - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: China extended Gold-Buying Streak to Two Years as Prices Drop - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-07T03:32:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-6da36b5c",
       "category": "rare_earth",
       "title": "Geomacro finds U.S. Treasury Secretary and Chinese Vice Premier held Phone Call, Demand Fulfillment of Rare Earth Supply Commitments - BigGo Finance",
@@ -191,6 +305,25 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-07T01:55:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-f794b82e",
+      "category": "macro",
+      "title": "Geomacro finds Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint",
+      "what_changed": "A monitored source feed reports: Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-06T21:33:15.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
@@ -480,25 +613,6 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3d36b7ed",
-      "category": "macro",
-      "title": "Geomacro finds EU: launched safeguard investigation on certain PET resin chemicals · European Union",
-      "why_it_matters": "An original trade-policy notice may affect cross-border market access and supply chains. Enforceability, tariff magnitude, country impact and FX direction are not established by the announcement alone.",
-      "what_changed": "EU launched safeguard investigation on certain PET resin chemicals. Country or region mentioned: European Union.",
-      "geography": "European Union",
-      "development_type": "official update",
-      "topic": "international trade measures and disputes",
-      "published_at": "2026-11-06T00:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "WTO news"
-      ],
-      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     }
