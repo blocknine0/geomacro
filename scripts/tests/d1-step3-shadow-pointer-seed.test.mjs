@@ -85,7 +85,9 @@ test("offline: R2 PUT requires successful provider envelope and matching metadat
  const bytes=Buffer.from("immutable-test-fixture");
  const response=await shadowR2Request(url,env,"PUT",async(_url,init)=>{
   assert.equal(init.method,"PUT");
-  assert.ok(init.body instanceof FormData);
+  assert.ok(Buffer.isBuffer(init.body));
+  assert.deepEqual(init.body,bytes);
+  assert.equal(init.headers["Content-Type"],"application/octet-stream");
   return new Response(JSON.stringify({
    success:true,result:{key,size:String(bytes.length)}
   }),{status:200,headers:{"Content-Type":"application/json"}});
@@ -115,4 +117,17 @@ test("offline: R2 GET returns original bytes; exceptions remain sanitized",async
   assert.equal(e.message,"STEP3_SHADOW_SEED_R2_PROVIDER_UNAVAILABLE");
   return true;
  });
+});
+
+test("offline: invalid payload or GET-with-body cannot touch R2",async()=>{
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,"safe/object");
+ let calls=0;const never=async()=>{calls++;throw Error("do not call")};
+ await assert.rejects(shadowR2Request(url,env,"PUT",never,
+  Buffer.alloc(0)),/STEP3_SHADOW_SEED_R2_PUT_BODY_INVALID/u);
+ await assert.rejects(shadowR2Request(url,env,"PUT",never,
+  "not-bytes"),/STEP3_SHADOW_SEED_R2_PUT_BODY_INVALID/u);
+ await assert.rejects(shadowR2Request(url,env,"GET",never,
+  Buffer.from("not-a-get")),/STEP3_SHADOW_SEED_R2_GET_BODY_INVALID/u);
+ assert.equal(calls,0);
 });
