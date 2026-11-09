@@ -39,8 +39,11 @@ import {
 } from "../lib/d1-step3-migration-ledger.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
- verifyStep3Schema,verifyStep3Integrity,verifyStep3Explain,
+ verifyStep3Schema,verifyStep3D1SupportedQuickCheck,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
+
+import {step3IndexParityQueries,parseStep3IndexD1ReadOnly,
+ verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
 
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
 const SIGNED_PRODUCTION_PATH=ROOT+"/step3-production-physical-pass.json";
@@ -227,30 +230,89 @@ const explainSQL=Object.freeze({
  idx_phase2h_ref_ingest_clock_v1:
   "SELECT record_id FROM phase2h_raw_object_refs_v1 INDEXED BY idx_phase2h_ref_ingest_clock_v1 WHERE first_ingested_at>'2026-01-01' ORDER BY first_ingested_at,record_id LIMIT 1",
 });
+function physicalIndexKeyParity(config,index,report){
+ const queries=step3IndexParityQueries(index);
+ const mark=(phase)=>{report.last_verification_checkpoint={
+  migration:report.current_migration_id??null,phase,target:index};save(report);};
+ const read=(phase,sql,cap=3001)=>{
+  mark(phase);
+  const native=q(config,sql,{maxRows:cap});
+  const raw={schema:"PROVIDER_PARSED",rows:native.rows,rowsRead:native.readRows};
+  if(!Array.isArray(raw.rows)||!Number.isSafeInteger(raw.rowsRead))
+   fail("PARITY_NATIVE_QUERY_INVALID");
+  report.index_parity_provider_rows_read=
+   (report.index_parity_provider_rows_read??0)+raw.rowsRead;
+  if(report.index_parity_provider_rows_read>150000)
+   fail("INDEX_PARITY_OPERATIONAL_PROVIDER_READ_CAP_EXCEEDED");
+  return raw.rows;
+ };
+ const baselinePlan=read("BEFORE_FULL_NOT_INDEXED_EXPLAIN",
+  queries.baselinePlanSQL,20);
+ const indexPlan=read("BEFORE_FORCED_COVERING_INDEX_EXPLAIN",
+  queries.indexedPlanSQL,20);
+ const baselineBefore=read("BEFORE_FIRST_FULL_TABLE_KEYSET",
+  queries.baselineSQL);
+ const indexRows=read("BEFORE_FULL_COVERING_INDEX_KEYSET",
+  queries.indexedSQL);
+ const baselineAfter=read("BEFORE_STABLE_SECOND_TABLE_KEYSET",
+  queries.baselineSQL);
+ return verifyStep3IndexParity({index,baselinePlan,indexPlan,
+  baselineBefore,indexRows,baselineAfter});
+}
+function verifyPostSeedReferenceIndexParity(config,report){
+ report.current_migration_id="0213";
+ const names=Object.keys(STEP3_MIGRATIONS.find(m=>m.id==="0213").objects)
+  .filter(isIndex);
+ const indices=names.map(name=>physicalIndexKeyParity(config,name,report));
+ const done=indices.length===3&&indices.every(x=>x.status===
+  "PASS_BOUNDED_FULL_LOGICAL_INDEX_KEY_PARITY"&&x.rows_compared>0);
+ if(!done)fail("POST_SEED_REAL_REFERENCE_INDEX_KEY_PARITY_MISSING");
+ report.post_seed_reference_index_parity=indices;
+ report.post_seed_reference_index_parity_verified=true;
+ save(report);
+ return indices;
+}
 function checkIndexAndSchema(config,step,report){
  const mark=(phase,target)=>{report.last_verification_checkpoint={
    migration:step.id,phase,target:target??null};save(report);};
+ report.current_migration_id=step.id;
  mark("SCHEMA_READBACK");
  const rows=q(config,step3SchemaSQL(step.objects),{maxRows:30}).rows;
  const proof=verifyStep3Schema(step.objects,rows);
+ const names=Object.keys(step.objects).filter(isIndex);
  const indices=[];
- for(const name of Object.keys(step.objects).filter(isIndex)){
+ for(const name of names){
   mark("INDEX_QUERY_PLAN_READBACK",name);
   const sql=explainSQL[name];
   if(!sql)fail("INDEX_PLAN_NOT_DECLARED");
   const x=q(config,"EXPLAIN QUERY PLAN "+sql,{maxRows:15});
   indices.push(verifyStep3Explain(x.rows,name));
  }
- const integrity=[];
+ const supportedQuickChecks=[];
  for(const table of step.integrityTables){
-  mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
+  mark("SUPPORTED_D1_TABLE_QUICK_CHECK_NOT_FULL_SQLITE_INTEGRITY",table);
   if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-  // Physical SQLite table+associated index-tree integrity. If Cloudflare
-  // disallows PRAGMA or full proof exceeds headroom, stop; do not claim PASS.
-  const r=q(config,"PRAGMA integrity_check('"+table+"')",{maxRows:10});
-  integrity.push(verifyStep3Integrity(r.rows,table));
+  const r=q(config,"PRAGMA quick_check('"+table+"')",{maxRows:10});
+  supportedQuickChecks.push(verifyStep3D1SupportedQuickCheck(r.rows,table));
  }
- const result={migration:step.id,...proof,indices,integrity};
+ const indexKeyParity=[];
+ for(const name of names){
+  // 0213 new pointer table is empty until a genuine original B2/R2 HMAC
+  // pointer has been seeded; defer to a mandatory final nonempty proof.
+  if(step.id==="0213")continue;
+  mark("COMPLETE_BOUNDED_NEW_INDEX_KEY_PARITY",name);
+  indexKeyParity.push(physicalIndexKeyParity(config,name,report));
+ }
+ const accepted=step.id==="0213"||
+  names.length===indexKeyParity.length&&indexKeyParity.every(x=>
+   x.status==="PASS_BOUNDED_FULL_LOGICAL_INDEX_KEY_PARITY"&&x.rows_compared>0);
+ if(!accepted)fail("NONEMPTY_NEW_INDEX_KEY_PARITY_MISSING");
+ const result={migration:step.id,...proof,indices,
+  supported_d1_quick_checks:supportedQuickChecks,
+  new_index_key_parity:indexKeyParity,
+  reference_index_key_parity_deferred_until_real_pointer:step.id==="0213",
+  sqlite_full_integrity_check_claimed:false,
+  sqlite_unsupported_integrity_check_not_bypassed:true};
  report.verified.push(result);save(report);
  return result;
 }
@@ -467,6 +529,8 @@ export async function applyStep3Migrations({env=process.env}={}){
   if(state.production_b2_archive_proof.status!=="PASS_REAL_B2_BYTE_READBACK")
    fail("PRODUCTION_INDEPENDENT_B2_GET_FAILED");
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
+  await refreshedGate(state,"PRODUCTION_BEFORE_NONEMPTY_REAL_REFERENCE_INDEX_PARITY");
+  verifyPostSeedReferenceIndexParity(config,state);
   const final=assessStep3ProductionFinal({
    state,pointerProof:state.post_migration_hmac,
    b2Proof:state.production_b2_archive_proof
@@ -593,6 +657,8 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   if(report.real_archived_pointer_seed?.status!==
      "PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY")
    fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED");
+  await refreshedGate(report,"SHADOW_BEFORE_NONEMPTY_REAL_R2_REFERENCE_INDEX_PARITY");
+  verifyPostSeedReferenceIndexParity(config,report);
   write();
   // Independent B2 GET: actual compressed original, not the R2 staging copy.
   const originals=q(config,shadowArchivedSourceQuery(),{maxRows:1}).rows;
@@ -634,7 +700,8 @@ export async function rehearseStep3Shadow({env=process.env}={}){
    report.new_worker_hydration_verified===true&&
    report.b2_physical_parity_verified===true&&
    report.post_migration_hmac.cryptographic_readback_verified===true&&
-   report.post_migration_hmac.all_hmac_and_r2_bytes_verified===true;
+   report.post_migration_hmac.all_hmac_and_r2_bytes_verified===true&&
+   report.post_seed_reference_index_parity_verified===true;
   report.status=report.post_migration_readback_explicit_PASS?"PASS":"NOT_YET_VERIFIED";
   report.code=report.status==="PASS"?
    "STEP3_REAL_SHADOW_FOUR_MIGRATIONS_DUAL_WORKER_B2_PASS":
