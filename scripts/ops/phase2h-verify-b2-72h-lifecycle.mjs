@@ -65,10 +65,10 @@ const mac=(key,value)=>createHmac("sha256",key).update(value).digest();
 const tag=(xml,name)=>xml.match(new RegExp("<"+name+">([\\s\\S]*?)<\\/"+name+">","u"))?.[1]??null;
 export function parseS3LifecycleRules(xml){
  if(typeof xml!=="string"||xml.length>65536||xml.length<10||
-    /<!|&|<\\s*Transition\\b|<\\s*NoncurrentVersionTransition\\b/iu.test(xml)||
-    !/<LifecycleConfiguration(?:\\s[^>]*)?>[\\s\\S]*<\\/LifecycleConfiguration>/u.test(xml))
+    /<!|&|<\s*Transition\b|<\s*NoncurrentVersionTransition\b/iu.test(xml)||
+    !/<LifecycleConfiguration(?:\s[^>]*)?>[\s\S]*<\/LifecycleConfiguration>/u.test(xml))
   fail("PROVIDER_LIFECYCLE_XML_INVALID");
- const blocks=[...xml.matchAll(/<Rule>([\\s\\S]*?)<\\/Rule>/gu)];
+ const blocks=[...xml.matchAll(/<Rule>([\s\S]*?)<\/Rule>/gu)];
  const count=(xml.match(/<Rule>/gu)??[]).length;
  if(count!==blocks.length||count>100)fail("PROVIDER_LIFECYCLE_RULES_INVALID");
  const rules=[];
@@ -81,14 +81,14 @@ export function parseS3LifecycleRules(xml){
   const filter=tag(block,"Filter");
   const rawPrefix=tag(filter??block,"Prefix");
   const prefix=rawPrefix??"";
-  if(!/^[\\w./-]*$/u.test(prefix)||prefix.includes(".."))
+  if(!/^[\w./-]*$/u.test(prefix)||prefix.includes(".."))
    fail("PROVIDER_LIFECYCLE_PREFIX_INVALID");
   if(status==="Disabled")continue;
   const expiration=tag(block,"Expiration");
   const noncurrent=tag(block,"NoncurrentVersionExpiration");
-  if(/<(?:Expiration|NoncurrentVersionExpiration)\\b/u.test(block)&&
-     (expiration===null&&/<Expiration\\b/u.test(block)||
-      noncurrent===null&&/<NoncurrentVersionExpiration\\b/u.test(block)))
+  if(/<(?:Expiration|NoncurrentVersionExpiration)\b/u.test(block)&&
+     (expiration===null&&/<Expiration\b/u.test(block)||
+      noncurrent===null&&/<NoncurrentVersionExpiration\b/u.test(block)))
    fail("PROVIDER_LIFECYCLE_ACTION_INVALID");
   rules.push({
    fileNamePrefix:prefix,
@@ -119,17 +119,17 @@ async function readPrivateB2LifecycleRules({
  // Class C / metadata GET: a real global reservation, including provider
  // denials. No list of any bucket keys, object versions or other buckets.
  await shared.reserve("GET");
- const stamp=new Date().toISOString().replace(/[:-]|\\.\\d{3}/gu,"");
+ const stamp=new Date().toISOString().replace(/[:-]|\.\d{3}/gu,"");
  const day=stamp.slice(0,8),region="us-east-005";
  const host=new URL(LIFECYCLE_ORIGIN).host;
  const path="/"+LIFECYCLE_BUCKET;
  const query="lifecycle=";
  const signedHeaders="host;x-amz-content-sha256;x-amz-date";
  const canonical=["GET",path,query,
-  "host:"+host+"\\n"+"x-amz-content-sha256:"+EMPTY_SHA256+"\\n"+
-  "x-amz-date:"+stamp+"\\n",signedHeaders,EMPTY_SHA256].join("\\n");
+  "host:"+host+"\n"+"x-amz-content-sha256:"+EMPTY_SHA256+"\n"+
+  "x-amz-date:"+stamp+"\n",signedHeaders,EMPTY_SHA256].join("\n");
  const scope=day+"/"+region+"/s3/aws4_request";
- const toSign=["AWS4-HMAC-SHA256",stamp,scope,digest(canonical)].join("\\n");
+ const toSign=["AWS4-HMAC-SHA256",stamp,scope,digest(canonical)].join("\n");
  const key=mac(mac(mac(mac("AWS4"+secret,day),region),"s3"),"aws4_request");
  const signature=createHmac("sha256",key).update(toSign).digest("hex");
  let response;
@@ -153,7 +153,7 @@ async function readPrivateB2LifecycleRules({
  if(body.length>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
  // A *provider-returned* NoSuchLifecycleConfiguration is evidence of
  // no active bucket rules; arbitrary 404, 401 or 403 are NOT evidence.
- if(response.status===404&&/<Code>NoSuchLifecycleConfiguration<\\/Code>/u.test(body))
+ if(response.status===404&&/<Code>NoSuchLifecycleConfiguration<\/Code>/u.test(body))
   return [];
  if(response.status!==200)fail("PROVIDER_LIFECYCLE_UNAVAILABLE");
  return parseS3LifecycleRules(body);
