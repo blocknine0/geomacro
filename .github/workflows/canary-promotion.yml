@@ -32,6 +32,7 @@ on:
       - 'scripts/apply-d1-migrations.ts'
       - 'scripts/canary-promoter.ts'
       - 'scripts/verify-d1-quota-proof.ts'
+      - 'scripts/tests/canary-closed-d1-proof.test.mjs'
       - 'scripts/certify-b2-parity.ts'
       - 'scripts/release-common.ts'
       - 'scripts/release-remediate.ts'
@@ -68,6 +69,7 @@ jobs:
           node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
           node --test scripts/tests/prepare-five-gate-control-token.test.mjs
           node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
+          node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs
           node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs
   protected-release:
     needs: static-contract
