@@ -1,12 +1,12 @@
 {
   "schema": "geomacro.phase2i.195x3-source-coverage.v1",
-  "generated_at": "2026-11-09T01:46:51.252Z",
+  "generated_at": "2026-11-09T09:57:13.801Z",
   "canonical_registry": "src/lib/canonical-country-registry-195.ts",
   "country_count": 195,
   "category_count": 3,
   "cell_count": 585,
   "registered_source_count": 453,
-  "verified_http_source_count": 283,
+  "verified_http_source_count": 285,
   "actual_source_requests_this_run": 18,
   "status_counts": {
     "WORKING": 169,
@@ -11829,14 +11829,14 @@
     },
     {
       "source_id": "private_mesh_lrt_english",
-      "attempted_at": "2026-11-06T21:38:35.024Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_at": "2026-11-06T13:45:00.000Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 15:45:00 +0200",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:36:00.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 11:36:00 +0200",
       "observed_feed_items": 40,
-      "recent_native_dated_items": 6,
+      "recent_native_dated_items": 4,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11845,14 +11845,14 @@
     },
     {
       "source_id": "private_mesh_lsm_english",
-      "attempted_at": "2026-11-06T21:38:35.024Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_at": "2026-11-06T13:15:00.000Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 13:15:00 GMT",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T08:28:12.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 08:28:12 GMT",
       "observed_feed_items": 40,
-      "recent_native_dated_items": 13,
+      "recent_native_dated_items": 9,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11861,14 +11861,14 @@
     },
     {
       "source_id": "private_mesh_mehr_news",
-      "attempted_at": "2026-11-06T21:38:35.024Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_at": "2026-11-06T18:08:34.000Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 18:08:34 GMT",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:15:00.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:15:00 GMT",
       "observed_feed_items": 30,
-      "recent_native_dated_items": 11,
+      "recent_native_dated_items": 27,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11877,14 +11877,14 @@
     },
     {
       "source_id": "private_mesh_mexico_news_daily",
-      "attempted_at": "2026-11-06T21:38:35.024Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_at": "2026-11-06T20:27:46.000Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 20:27:46 +0000",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-08T22:00:10.000Z",
+      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:00:10 +0000",
       "observed_feed_items": 10,
-      "recent_native_dated_items": 10,
+      "recent_native_dated_items": 4,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11909,7 +11909,7 @@
     },
     {
       "source_id": "private_mesh_myjoyonline",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "UNSUPPORTED_FORMAT",
       "http_status": null,
       "last_successful_http_fetch_at": null,
@@ -11925,12 +11925,12 @@
     },
     {
       "source_id": "private_mesh_n1_croatia",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:28:44.000Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 17:28:44 +0100",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:49:02.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 10:49:02 +0100",
       "observed_feed_items": 40,
       "recent_native_dated_items": 40,
       "country_event_verified": false,
@@ -11941,12 +11941,12 @@
     },
     {
       "source_id": "private_mesh_naftemporiki",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:31:16.000Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 16:31:16 +0000",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:56:25.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:56:25 +0000",
       "observed_feed_items": 30,
       "recent_native_dated_items": 30,
       "country_event_verified": false,
@@ -11957,14 +11957,14 @@
     },
     {
       "source_id": "private_mesh_naharnet_lebanon",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T13:29:02.000Z",
-      "last_source_native_publication_time": "2026-11-05T15:29:02+02:00",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:45:40.000Z",
+      "last_source_native_publication_time": "2026-11-09T11:45:40+02:00",
       "observed_feed_items": 10,
-      "recent_native_dated_items": 8,
+      "recent_native_dated_items": 3,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11973,14 +11973,14 @@
     },
     {
       "source_id": "private_mesh_nbc_news",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:06:32.000Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 16:06:32 GMT",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T07:21:24.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 07:21:24 GMT",
       "observed_feed_items": 25,
-      "recent_native_dated_items": 22,
+      "recent_native_dated_items": 18,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -11989,12 +11989,12 @@
     },
     {
       "source_id": "private_mesh_newsmaker",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:20:29.000Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 16:20:29 +0000",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:36:46.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:36:46 +0000",
       "observed_feed_items": 10,
       "recent_native_dated_items": 10,
       "country_event_verified": false,
@@ -12005,12 +12005,12 @@
     },
     {
       "source_id": "private_mesh_nos_nieuws",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:03:04.000Z",
-      "last_source_native_publication_time": "Thu, 5 Nov 2026 17:03:04 +0100",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:50:48.000Z",
+      "last_source_native_publication_time": "Mon, 9 Nov 2026 10:50:48 +0100",
       "observed_feed_items": 20,
       "recent_native_dated_items": 20,
       "country_event_verified": false,
@@ -12037,12 +12037,12 @@
     },
     {
       "source_id": "private_mesh_npr_news",
-      "attempted_at": "2026-11-05T16:34:17.253Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_at": "2026-11-05T16:15:02.000Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 11:15:02 -0500",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:45:58.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 04:45:58 -0500",
       "observed_feed_items": 10,
       "recent_native_dated_items": 10,
       "country_event_verified": false,
@@ -13108,13 +13108,45 @@
       "failure_reason": null
     },
     {
+      "source_id": "private_repo_1eee878dce7c0efa8c56",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:14:37.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:14:37 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 39,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_1f288602c31217042c20",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T04:05:17.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 04:05:17 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 10,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
       "source_id": "private_repo_24f3d0d236e9af23750a",
-      "attempted_at": "2026-11-01T20:37:51.601Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "NO_NEW_EVENT",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-01T20:37:51.601Z",
-      "last_source_native_publication_at": "2026-10-29T06:02:00.000Z",
-      "last_source_native_publication_time": "Thu, 29 Oct 2026 06:02:00 GMT",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-06T13:00:00.000Z",
+      "last_source_native_publication_time": "Fri, 06 Nov 2026 13:00:00 GMT",
       "observed_feed_items": 40,
       "recent_native_dated_items": 0,
       "country_event_verified": false,
@@ -13125,12 +13157,12 @@
     },
     {
       "source_id": "private_repo_295885ae8782cf81682b",
-      "attempted_at": "2026-11-01T20:37:51.601Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "NO_NEW_EVENT",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-01T20:37:51.601Z",
-      "last_source_native_publication_at": "2026-10-30T20:45:00.000Z",
-      "last_source_native_publication_time": "Fri, 30 Oct 2026 20:45:00 GMT",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-06T19:06:00.000Z",
+      "last_source_native_publication_time": "Fri, 06 Nov 2026 19:06:00 GMT",
       "observed_feed_items": 5,
       "recent_native_dated_items": 0,
       "country_event_verified": false,
@@ -13141,28 +13173,28 @@
     },
     {
       "source_id": "private_repo_29c1b5d30a695ae320b5",
-      "attempted_at": "2026-11-01T20:37:51.601Z",
-      "status": "NO_NEW_EVENT",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
+      "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-01T20:37:51.601Z",
-      "last_source_native_publication_at": null,
-      "last_source_native_publication_time": null,
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T00:00:00.000Z",
+      "last_source_native_publication_time": "2026-11-09T08:00:00+08:00",
       "observed_feed_items": 40,
-      "recent_native_dated_items": 0,
+      "recent_native_dated_items": 40,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
       "commercial_rights_verified": false,
-      "failure_reason": "NATIVE_PUBLICATION_CLOCK_MISSING"
+      "failure_reason": null
     },
     {
       "source_id": "private_repo_2a20763d52ea7472a00b",
-      "attempted_at": "2026-11-01T20:37:51.601Z",
+      "attempted_at": "2026-11-09T09:57:13.801Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-01T20:37:51.601Z",
-      "last_source_native_publication_at": "2026-11-01T20:30:10.000Z",
-      "last_source_native_publication_time": "Mon, 02 Nov 2026 04:30:10 +0800",
+      "last_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_at": "2026-11-09T09:51:51.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 17:51:51 +0800",
       "observed_feed_items": 40,
       "recent_native_dated_items": 40,
       "country_event_verified": false,
@@ -29270,9 +29302,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 02:34:52 +0200",
-      "last_source_native_publication_at": "2026-11-08T00:34:52.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:56:25 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:56:25.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -29375,9 +29407,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 02:34:52 +0200",
-      "last_source_native_publication_at": "2026-11-08T00:34:52.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:56:25 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:56:25.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -29477,9 +29509,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 02:34:52 +0200",
-      "last_source_native_publication_at": "2026-11-08T00:34:52.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:56:25 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:56:25.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -30130,9 +30162,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 22:34:32 +0100",
-      "last_source_native_publication_at": "2026-11-06T21:34:32.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 10:49:02 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:49:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -30231,9 +30263,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 22:34:32 +0100",
-      "last_source_native_publication_at": "2026-11-06T21:34:32.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 10:49:02 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:49:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -30329,9 +30361,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 22:34:32 +0100",
-      "last_source_native_publication_at": "2026-11-06T21:34:32.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 10:49:02 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:49:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -31766,9 +31798,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sat, 07 Nov 2026 19:45:07 GMT",
-      "last_source_native_publication_at": "2026-11-07T19:45:07.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:15:00 GMT",
+      "last_source_native_publication_at": "2026-11-09T09:15:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -31858,9 +31890,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sat, 07 Nov 2026 19:45:07 GMT",
-      "last_source_native_publication_at": "2026-11-07T19:45:07.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:15:00 GMT",
+      "last_source_native_publication_at": "2026-11-09T09:15:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -31950,9 +31982,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Sat, 07 Nov 2026 19:45:07 GMT",
-      "last_source_native_publication_at": "2026-11-07T19:45:07.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:15:00 GMT",
+      "last_source_native_publication_at": "2026-11-09T09:15:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -35795,9 +35827,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "2026-11-05T15:29:02+02:00",
-      "last_source_native_publication_at": "2026-11-05T13:29:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "2026-11-09T11:45:40+02:00",
+      "last_source_native_publication_at": "2026-11-09T09:45:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -35885,9 +35917,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "2026-11-05T15:29:02+02:00",
-      "last_source_native_publication_at": "2026-11-05T13:29:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "2026-11-09T11:45:40+02:00",
+      "last_source_native_publication_at": "2026-11-09T09:45:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -35975,9 +36007,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "2026-11-05T15:29:02+02:00",
-      "last_source_native_publication_at": "2026-11-05T13:29:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "2026-11-09T11:45:40+02:00",
+      "last_source_native_publication_at": "2026-11-09T09:45:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37196,9 +37228,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 15:45:00 +0200",
-      "last_source_native_publication_at": "2026-11-06T13:45:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 11:36:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T09:36:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37295,9 +37327,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 15:45:00 +0200",
-      "last_source_native_publication_at": "2026-11-06T13:45:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 11:36:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T09:36:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37391,9 +37423,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 15:45:00 +0200",
-      "last_source_native_publication_at": "2026-11-06T13:45:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 11:36:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T09:36:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37778,9 +37810,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 13:15:00 GMT",
-      "last_source_native_publication_at": "2026-11-06T13:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 08:28:12 GMT",
+      "last_source_native_publication_at": "2026-11-09T08:28:12.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37877,9 +37909,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 13:15:00 GMT",
-      "last_source_native_publication_at": "2026-11-06T13:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 08:28:12 GMT",
+      "last_source_native_publication_at": "2026-11-09T08:28:12.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -37973,9 +38005,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 13:15:00 GMT",
-      "last_source_native_publication_at": "2026-11-06T13:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 08:28:12 GMT",
+      "last_source_native_publication_at": "2026-11-09T08:28:12.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -38497,9 +38529,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T23:43:47.969Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 20:15:28 +0000",
-      "last_source_native_publication_at": "2026-11-05T20:15:28.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:36:46 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:36:46.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -38598,9 +38630,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T23:43:47.969Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 20:15:28 +0000",
-      "last_source_native_publication_at": "2026-11-05T20:15:28.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:36:46 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:36:46.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -38696,9 +38728,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T23:43:47.969Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 20:15:28 +0000",
-      "last_source_native_publication_at": "2026-11-05T20:15:28.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 09:36:46 +0000",
+      "last_source_native_publication_at": "2026-11-09T09:36:46.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39150,9 +39182,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 20:27:46 +0000",
-      "last_source_native_publication_at": "2026-11-06T20:27:46.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:00:10 +0000",
+      "last_source_native_publication_at": "2026-11-08T22:00:10.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39200,9 +39232,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 20:27:46 +0000",
-      "last_source_native_publication_at": "2026-11-06T20:27:46.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:00:10 +0000",
+      "last_source_native_publication_at": "2026-11-08T22:00:10.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -39250,9 +39282,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-06T21:38:35.024Z",
-      "last_source_native_publication_time": "Fri, 06 Nov 2026 20:27:46 +0000",
-      "last_source_native_publication_at": "2026-11-06T20:27:46.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:00:10 +0000",
+      "last_source_native_publication_at": "2026-11-08T22:00:10.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -42480,9 +42512,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "Thu, 5 Nov 2026 17:03:04 +0100",
-      "last_source_native_publication_at": "2026-11-05T16:03:04.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 9 Nov 2026 10:50:48 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:50:48.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -42585,9 +42617,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "Thu, 5 Nov 2026 17:03:04 +0100",
-      "last_source_native_publication_at": "2026-11-05T16:03:04.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 9 Nov 2026 10:50:48 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:50:48.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -42683,9 +42715,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-05T16:34:17.253Z",
-      "last_source_native_publication_time": "Thu, 5 Nov 2026 17:03:04 +0100",
-      "last_source_native_publication_at": "2026-11-05T16:03:04.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 9 Nov 2026 10:50:48 +0100",
+      "last_source_native_publication_at": "2026-11-09T09:50:48.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -54048,9 +54080,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 11:15:02 -0500",
-      "last_source_native_publication_at": "2026-11-05T16:15:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 04:45:58 -0500",
+      "last_source_native_publication_at": "2026-11-09T09:45:58.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -54126,9 +54158,9 @@
         "rss",
         "json"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 11:15:02 -0500",
-      "last_source_native_publication_at": "2026-11-05T16:15:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 04:45:58 -0500",
+      "last_source_native_publication_at": "2026-11-09T09:45:58.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -54201,9 +54233,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T01:32:31.038Z",
-      "last_source_native_publication_time": "Thu, 05 Nov 2026 11:15:02 -0500",
-      "last_source_native_publication_at": "2026-11-05T16:15:02.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-09T09:57:13.801Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 04:45:58 -0500",
+      "last_source_native_publication_at": "2026-11-09T09:45:58.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -56327,10 +56359,10 @@
   "country_event_to_d1_to_b2_to_analysis_verified": false,
   "raw_archive_cycle": {
     "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
-    "production_main_sha": "749d2a020a8018ae8ee8c5a9b53d1a8b9cf00523",
-    "github_run_id": "42529603189",
-    "checked_at": "2026-11-08T22:19:12.368Z",
-    "provider_maintenance_admitted": false,
+    "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
+    "github_run_id": "42576249551",
+    "checked_at": "2026-11-09T06:58:29.664Z",
+    "provider_maintenance_admitted": true,
     "archive_schedule": "EVERY_SIX_HOURS_00_06_12_18_UTC",
     "archive_cycle_hours": 6,
     "archive_admitted_only_once_per_slot": true,
@@ -56338,11 +56370,141 @@
     "automatic_d1_deletion_paused": true,
     "batch_maximum_unmodified": 300,
     "account_governor_unchanged": true,
-    "status": "QUOTA_HELD_MAINTENANCE_NOT_ADMITTED",
-    "archive_job_result": "skipped",
-    "latest_verified_receipt": null,
-    "last_positive_receipt": null,
-    "category_census_from_canonical_d1": null,
+    "status": "VERIFIED_PARTIAL_ARCHIVE_BACKLOG",
+    "archive_job_result": "success",
+    "latest_verified_receipt": {
+      "verified_at": "2026-11-09T06:57:48.199Z",
+      "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
+      "object_sha256": [
+        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
+        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
+      ],
+      "newly_archived_object_sha256": [
+        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
+        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
+      ],
+      "independently_restored_object_sha256": [],
+      "archived_records_this_run": 600,
+      "category_archive_counts_this_run": {
+        "geopolitics": 207,
+        "macro": 217,
+        "rare_earth": 176
+      },
+      "verified_five_part_by_category": {
+        "geopolitics": 207,
+        "macro": 217,
+        "rare_earth": 176
+      },
+      "canonical_d1_census": {
+        "geopolitics": {
+          "staged": 4194,
+          "archived": 1719,
+          "pending": 2475,
+          "pending_eligible_72h": 728,
+          "pending_expired_72h": 1747
+        },
+        "macro": {
+          "staged": 3316,
+          "archived": 1372,
+          "pending": 1944,
+          "pending_eligible_72h": 429,
+          "pending_expired_72h": 1515
+        },
+        "rare_earth": {
+          "staged": 2652,
+          "archived": 1105,
+          "pending": 1547,
+          "pending_eligible_72h": 115,
+          "pending_expired_72h": 1432
+        }
+      },
+      "canonical_d1_staged_total": 10162,
+      "canonical_d1_archived_total": 4196,
+      "canonical_d1_pending_total": 5966,
+      "b2_put_and_one_get_and_sha_verified_for_reported_batches": true,
+      "same_object_d1_id_hash_reconciled_for_reported_batches": true,
+      "deployed_exact_question_verified_for_reported_categories": true,
+      "all_backlog_clear": false,
+      "historical_objects_all_independently_rechecked": false
+    },
+    "last_positive_receipt": {
+      "verified_at": "2026-11-09T06:57:48.199Z",
+      "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
+      "object_sha256": [
+        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
+        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
+      ],
+      "newly_archived_object_sha256": [
+        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
+        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
+      ],
+      "independently_restored_object_sha256": [],
+      "archived_records_this_run": 600,
+      "category_archive_counts_this_run": {
+        "geopolitics": 207,
+        "macro": 217,
+        "rare_earth": 176
+      },
+      "verified_five_part_by_category": {
+        "geopolitics": 207,
+        "macro": 217,
+        "rare_earth": 176
+      },
+      "canonical_d1_census": {
+        "geopolitics": {
+          "staged": 4194,
+          "archived": 1719,
+          "pending": 2475,
+          "pending_eligible_72h": 728,
+          "pending_expired_72h": 1747
+        },
+        "macro": {
+          "staged": 3316,
+          "archived": 1372,
+          "pending": 1944,
+          "pending_eligible_72h": 429,
+          "pending_expired_72h": 1515
+        },
+        "rare_earth": {
+          "staged": 2652,
+          "archived": 1105,
+          "pending": 1547,
+          "pending_eligible_72h": 115,
+          "pending_expired_72h": 1432
+        }
+      },
+      "canonical_d1_staged_total": 10162,
+      "canonical_d1_archived_total": 4196,
+      "canonical_d1_pending_total": 5966,
+      "b2_put_and_one_get_and_sha_verified_for_reported_batches": true,
+      "same_object_d1_id_hash_reconciled_for_reported_batches": true,
+      "deployed_exact_question_verified_for_reported_categories": true,
+      "all_backlog_clear": false,
+      "historical_objects_all_independently_rechecked": false
+    },
+    "category_census_from_canonical_d1": {
+      "geopolitics": {
+        "staged": 4194,
+        "archived": 1719,
+        "pending": 2475,
+        "pending_eligible_72h": 728,
+        "pending_expired_72h": 1747
+      },
+      "macro": {
+        "staged": 3316,
+        "archived": 1372,
+        "pending": 1944,
+        "pending_eligible_72h": 429,
+        "pending_expired_72h": 1515
+      },
+      "rare_earth": {
+        "staged": 2652,
+        "archived": 1105,
+        "pending": 1547,
+        "pending_eligible_72h": 115,
+        "pending_expired_72h": 1432
+      }
+    },
     "collected_by_category": {
       "geopolitics": null,
       "macro": null,

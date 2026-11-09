@@ -39,7 +39,29 @@
       "commercially_eligible_country_events": 0
     }
   },
-  "phase2ib_archive_cycle_status": "QUOTA_HELD_MAINTENANCE_NOT_ADMITTED",
+  "phase2ib_archive_cycle_status": "VERIFIED_PARTIAL_ARCHIVE_BACKLOG",
   "phase2ib_per_country_original_events_verified": 0,
-  "phase2ib_d1_census": null
+  "phase2ib_d1_census": {
+    "geopolitics": {
+      "staged": 4194,
+      "archived": 1719,
+      "pending": 2475,
+      "pending_eligible_72h": 728,
+      "pending_expired_72h": 1747
+    },
+    "macro": {
+      "staged": 3316,
+      "archived": 1372,
+      "pending": 1944,
+      "pending_eligible_72h": 429,
+      "pending_expired_72h": 1515
+    },
+    "rare_earth": {
+      "staged": 2652,
+      "archived": 1105,
+      "pending": 1547,
+      "pending_eligible_72h": 115,
+      "pending_expired_72h": 1432
+    }
+  }
 }
