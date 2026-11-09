@@ -69,11 +69,35 @@ const receipt=()=>{
 };
 const save=v=>{mkdirSync(ROOT,{recursive:true,mode:0o700});
  writeFileSync(LOG,JSON.stringify(v,null,2)+"\n",{mode:0o600})};
+// Provider command failures must be diagnosable without logging private SQL,
+ // provider responses, credentials, account identifiers or command arguments.
+export function classifyStep3ProviderCommand(cmd,args){
+ if(cmd==="git")return "GIT_STATUS";
+ if(cmd!=="npx"||!Array.isArray(args))return "OTHER_COMMAND";
+ const i=args.indexOf("d1");
+ const op=args[i+1],sub=args[i+2];
+ if(i<0)return "OTHER_NPX";
+ if(op==="execute")return "D1_EXECUTE";
+ if(op==="migrations"&&sub==="list")return "D1_MIGRATION_LIST";
+ if(op==="migrations"&&sub==="apply")return "D1_MIGRATION_APPLY";
+ if(op==="migrations")return "D1_MIGRATION_OTHER";
+ if(op==="list")return "D1_DATABASE_LIST";
+ if(op==="info")return "D1_DATABASE_INFO";
+ return "D1_OTHER";
+}
+export function classifyStep3ProviderExit(error){
+ if(Number.isInteger(error?.status)&&error.status>=0&&error.status<=255)
+  return "EXIT_"+error.status;
+ if(error?.code==="ETIMEDOUT")return "TIMEOUT";
+ if(typeof error?.signal==="string")return "SIGNAL";
+ return "UNAVAILABLE";
+}
 const run=(cmd,args,timeout=150000)=>{
  try{return execFileSync(cmd,args,{encoding:"utf8",
   maxBuffer:4_000_000,timeout,stdio:["ignore","pipe","pipe"],
   env:{...process.env,CI:"true"}}).trim();}
- catch{fail("PROVIDER_OR_COMMAND_UNAVAILABLE")}
+ catch(e){fail("PROVIDER_"+classifyStep3ProviderCommand(cmd,args)+
+   "_"+classifyStep3ProviderExit(e))}
 };
 function approved(env){
  if(env.GEOMACRO_STEP3_APPLY!=="APPROVE_ONLY_0204_0211_0212_0213"||
@@ -204,10 +228,14 @@ const explainSQL=Object.freeze({
   "SELECT record_id FROM phase2h_raw_object_refs_v1 INDEXED BY idx_phase2h_ref_ingest_clock_v1 WHERE first_ingested_at>'2026-01-01' ORDER BY first_ingested_at,record_id LIMIT 1",
 });
 function checkIndexAndSchema(config,step,report){
+ const mark=(phase,target)=>{report.last_verification_checkpoint={
+   migration:step.id,phase,target:target??null};save(report);};
+ mark("SCHEMA_READBACK");
  const rows=q(config,step3SchemaSQL(step.objects),{maxRows:30}).rows;
  const proof=verifyStep3Schema(step.objects,rows);
  const indices=[];
  for(const name of Object.keys(step.objects).filter(isIndex)){
+  mark("INDEX_QUERY_PLAN_READBACK",name);
   const sql=explainSQL[name];
   if(!sql)fail("INDEX_PLAN_NOT_DECLARED");
   const x=q(config,"EXPLAIN QUERY PLAN "+sql,{maxRows:15});
@@ -215,6 +243,7 @@ function checkIndexAndSchema(config,step,report){
  }
  const integrity=[];
  for(const table of step.integrityTables){
+  mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
   if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
   // Physical SQLite table+associated index-tree integrity. If Cloudflare
   // disallows PRAGMA or full proof exceeds headroom, stop; do not claim PASS.
@@ -253,6 +282,9 @@ function parsePending(singleText,filename){
  return true;
 }
 function migrateOne(privateDir,config,manifest,report,dbId,ledger){
+ const mark=phase=>{report.last_migration_checkpoint={
+  migration:manifest.id,phase};save(report);};
+ mark("BEFORE_REVIEWED_MIGRATION");
  const temp=mkdtempSync(join(privateDir,"single-"+manifest.id+"-"));
  const source=readFileSync(manifest.file,"utf8");
  if(digest(source)!==manifest.sql_sha256)
@@ -261,6 +293,7 @@ function migrateOne(privateDir,config,manifest,report,dbId,ledger){
  writeFileSync(filePath,source,{mode:0o600});
  const singleConfig=runnerConfig(temp,dbId,temp);
  const args=["d1","migrations","list","DB","--remote"];
+ mark("BEFORE_NATIVE_PENDING_LIST");
  const pending=parsePending(wrangler(singleConfig,args),manifest.filename);
  const previous=ledger.get(manifest.id);
  let schemaVerified=false;
@@ -284,17 +317,22 @@ function migrateOne(privateDir,config,manifest,report,dbId,ledger){
    fail("LEDGER_START_READBACK_FAILED");
  }
  if(action==="APPLY_REVIEWED_SQL"){
+  mark("BEFORE_NATIVE_APPLY");
   wrangler(singleConfig,["d1","migrations","apply","DB","--remote"],240000);
   report.production_sql_mutated=report.operation_kind==="production";
   report.shadow_sql_mutated=report.operation_kind==="shadow";
   report.applied.push({id:manifest.id,filename:manifest.filename,
    sha256:manifest.sql_sha256,at});
   save(report);
+  mark("AFTER_APPLY_BEFORE_NATIVE_HISTORY_READ");
   if(parsePending(wrangler(singleConfig,args),manifest.filename))
    fail("MIGRATION_HISTORY_PENDING_AFTER_APPLY");
+  mark("BEFORE_LEDGER_APPLIED_ACK");
   writeD1Sql(config,step3LedgerStatusSQL(manifest,"APPLIED",
    new Date().toISOString(),Date.now()-began));
+  mark("BEFORE_SCHEMA_INDEX_AND_INTEGRITY_READBACK");
   checkIndexAndSchema(config,manifest,report);
+  mark("BEFORE_COUNTER_PARITY");
   counterParity(config,manifest.id);
  }else if(action==="SKIP_VERIFIED"){
   // Already schema verified above; no duplicate DDL.
@@ -500,7 +538,7 @@ export async function rehearseStep3Shadow({env=process.env}={}){
    output={schema:"geomacro.step3.unsigned-not-verified.v1",
     receipt:report,attestation:null};
   }
-  writeFileSync(path,JSON.stringify(output,null,2)+"\\n",{mode:0o600});
+  writeFileSync(path,JSON.stringify(output,null,2)+"\n",{mode:0o600});
  };
  try{
   if(env.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED!=="YES"||
