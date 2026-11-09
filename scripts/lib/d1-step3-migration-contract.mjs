@@ -113,6 +113,24 @@ export function verifyStep3Schema(objects,rows){
   fail("SCHEMA_EXPECTED_OBJECT_MISSING");
  return {status:"PASS",schema_objects_verified:names.size};
 }
+/**
+ * Cloudflare D1 supports table-scoped PRAGMA quick_check, but that alone does
+ * not establish SQLite's full index-content integrity. Every NEW index must
+ * separately pass a full bounded table-versus-covering-index keyset parity.
+ * Never brand quick_check itself as full B-tree integrity acceptance.
+ */
+export function verifyStep3D1SupportedQuickCheck(results,table){
+ if(!safeName(table)||!Array.isArray(results)||
+    results.length!==1||Object.keys(results[0]??{}).length!==1||
+    Object.values(results[0])[0]!=="ok")
+  fail("D1_SUPPORTED_QUICK_CHECK_NOT_OK");
+ return Object.freeze({
+  table,d1_supported_quick_check:"PASS",
+  full_sqlite_integrity_check_claimed:false,
+  all_new_index_keys_still_require_independent_parity:true
+ });
+}
+
 export function verifyStep3Integrity(results,table){
  if(!safeName(table)||!Array.isArray(results)||
    results.length!==1||Object.keys(results[0]).length!==1||
