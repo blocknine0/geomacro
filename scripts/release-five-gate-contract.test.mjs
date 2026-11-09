@@ -48,10 +48,31 @@ test('user-required controls and no-funds release architecture remain explicit',
  assert.match(workflow,/npm run release:quota/);
  assert.match(workflow,/test -f config\/d1-hotspot-v2-canary\.hold/);
  assert.doesNotMatch(workflow,/continue-on-error: true/);
- assert.match(source,/const STAGES=\[0,1,10,100\]/);
+ assert.match(source,/const STAGES=\[0,1,5,25,50,100\]/);
  assert.match(source,/15\*60\*1000/);
  assert.match(source,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
- assert.match(source,/CANARY_D1_140K_PROVIDER_BREACH/);
+ assert.match(source,/CANARY_D1_PAID_MONTHLY_PACED_BURN_SPIKE/);
  assert.match(admission,/account_wide_provider_hard_cap:false/);
  assert.match(audit,/Promise\.all/);
+});
+
+test('canary schema acceptance relies on physical Paid monthly provider readback',()=>{
+ const read=readFileSync('scripts/apply-d1-migrations.ts','utf8');
+ const promoter=readFileSync('scripts/canary-promoter.ts','utf8');
+ assert.match(read,/checkD1PaidMonthlyHeadroom/u);
+ assert.match(read,/verifyCanaryPaidMonthQuota\(quota,new Date\(\)\)/u);
+ assert.match(read,/RELEASE_PAID_MONTHLY_PROVIDER_SCHEMA_HEADROOM_HOLD/u);
+ const verifyStart=read.indexOf('const quota=await checkD1PaidMonthlyHeadroom');
+ const oldMutationStart=read.indexOf('const legacy=await checkD1BundledWork');
+ assert(verifyStart>0&&oldMutationStart>verifyStart);
+ assert(read.slice(verifyStart,oldMutationStart).includes('if(apply)'));
+ for(const field of ['paid_monthly_subscription_verified','paid_monthly_billing_cycle_verified',
+  'paid_monthly_cycle_start_utc','paid_monthly_cycle_end_exclusive_utc',
+  'old_daily_140k_policy_applied','provider_account_wide_d1_usage_observed']){
+  assert(read.includes(field),field+' missing from signed producer');
+  assert(promoter.includes('report.'+field),field+' missing from consumer');
+ }
+ assert.match(promoter,/report\.schema==='geomacro\.d1-0204-0211\.schema-acceptance\.v1'/u);
+ assert.match(promoter,/verifySignedEnvelopeFile\(file\)/u);
+ assert.match(promoter,/CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED/u);
 });
