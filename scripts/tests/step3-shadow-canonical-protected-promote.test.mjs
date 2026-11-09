@@ -80,16 +80,16 @@ function fake({wrongDb=false,maliciousUrl=false,
    }
    if(p.endsWith("/subdomain"))return Response.json({success:true,result:{enabled:true,previews_enabled:true}});
    if(p.endsWith("/settings"))return Response.json({success:true,result:{bindings:bindings(w)}});
-   if(p.endsWith("/versions/"+w.next))return Response.json({success:true,
-    result:{id:w.next,resources:{bindings:bindings(w,{wrongDb}),
-     script_runtime:{compatibility_date:"2026-10-03"}}}});
-   if(p.endsWith("/versions/"+w.old))return Response.json({success:true,
-    result:{id:w.old,resources:{bindings:bindings(w)}}});
    if(p.includes("/workers/workers/")&&p.endsWith("/versions/"+w.next)){
     return Response.json({success:true,result:{id:w.next,main_module:"index.js",
      urls:[maliciousUrl?"https://untrusted.example.com":
       "https://cafe1234-"+w.name+".daspallab202391.workers.dev"]}});
    }
+   if(p.endsWith("/versions/"+w.next))return Response.json({success:true,
+    result:{id:w.next,resources:{bindings:bindings(w,{wrongDb}),
+     script_runtime:{compatibility_date:"2026-10-03"}}}});
+   if(p.endsWith("/versions/"+w.old))return Response.json({success:true,
+    result:{id:w.old,resources:{bindings:bindings(w)}}});
    throw Error("Unmocked provider path "+p);
   }
   assert.equal(opts.method,"GET");
