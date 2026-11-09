@@ -42,8 +42,7 @@ import {STEP3_MIGRATIONS,step3SqlManifests,
  verifyStep3Schema,verifyStep3D1SupportedQuickCheck,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
-import {step3IndexParityQueries,parseStep3IndexD1ReadOnly,
- verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
+import {step3IndexParityQueries,verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
 
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
 const SIGNED_PRODUCTION_PATH=ROOT+"/step3-production-physical-pass.json";
@@ -529,8 +528,20 @@ export async function applyStep3Migrations({env=process.env}={}){
   if(state.production_b2_archive_proof.status!=="PASS_REAL_B2_BYTE_READBACK")
    fail("PRODUCTION_INDEPENDENT_B2_GET_FAILED");
   state.post_migration_hmac=await verifyHmacNewPointers(config,env);
-  await refreshedGate(state,"PRODUCTION_BEFORE_NONEMPTY_REAL_REFERENCE_INDEX_PARITY");
-  verifyPostSeedReferenceIndexParity(config,state);
+  // 0213 is opt-in and may have zero production pointers until CONTRACT.
+  // Never fabricate an index keyset PASS for an empty index. The signed real
+  // Shadow pointer + real production DDL schema proof remain mandatory.
+  const refRows=q(config,"SELECT record_id FROM phase2h_raw_object_refs_v1 "+
+   "ORDER BY record_id ASC LIMIT 1",{maxRows:1}).rows;
+  if(refRows.length>0){
+   await refreshedGate(state,"PRODUCTION_BEFORE_NONEMPTY_REAL_REFERENCE_INDEX_PARITY");
+   verifyPostSeedReferenceIndexParity(config,state);
+  }else{
+   state.production_reference_index_parity_empty_opt_in_deferred=true;
+   state.production_reference_index_parity_verified=false;
+   state.production_reference_index_proof_scope="EMPTY_SCHEMA_ONLY_NOT_CRYPTOGRAPHICALLY_PROVEN";
+   save(state);
+  }
   const final=assessStep3ProductionFinal({
    state,pointerProof:state.post_migration_hmac,
    b2Proof:state.production_b2_archive_proof
