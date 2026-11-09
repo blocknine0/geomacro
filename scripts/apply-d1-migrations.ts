@@ -5,6 +5,8 @@ import {assertOfficialMain,api,canonicalD1,need,queryD1,signedReport,holdError,p
 import {REPAIR_PLANS,REPAIR_SCHEMA_OBJECTS,verifyRepairSql} from './ops/protected-d1-repair-plan.mjs';
 import {runProtectedD1Repair} from './ops/run-protected-d1-repair.mjs';
 import {checkD1BundledWork} from './ops/plan-d1-bundled-work.mjs';
+import {checkD1PaidMonthlyHeadroom} from './lib/d1-workers-paid-monthly-governor.mjs';
+import {verifyCanaryPaidMonthQuota} from './ops/verify-protected-worker-promotion.mjs';
 import {evaluateMigrationBudget} from './ops/verify-protected-d1-migration-gate.mjs';
 
 const REPORT='artifacts/release/d1-schema-acceptance.json';
@@ -96,12 +98,19 @@ async function main(){
  const db=await canonicalD1();verifyRunnerConfig(db.uuid);
  const bookmark=await api(`/d1/database/${db.uuid}/time_travel/bookmark`);
  need(/^[a-f0-9-]{20,100}$/i.test(bookmark.bookmark??''),'RELEASE_D1_TIME_TRAVEL_UNVERIFIED');
- const quota=await checkD1BundledWork();
- need(quota.workers_paid_subscription_verified===true,'RELEASE_WORKERS_PAID_UNVERIFIED');
+ // Same account-wide Paid billing-cycle governor as protected Step3/Step4.
+ // Retired 140k daily bundled-work policy cannot veto READ-ONLY --verify.
+ const quota=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'canary'});
+ const monthly=verifyCanaryPaidMonthQuota(quota,new Date());
+ need(monthly.verified===true,'RELEASE_PAID_MONTHLY_PROVIDER_SCHEMA_HEADROOM_HOLD');
  let mutation:{completed:string[]}|null=null;
  if(apply){
   need(existsSync('config/d1-hotspot-v2-canary.hold'),'RELEASE_PROTECTED_CANARY_HOLD_MISSING');
-  const allowance=evaluateMigrationBudget(quota);
+  // Independent legacy mutation safety gate remains mandatory.
+  // Production four-migration Stage2 is separately protected and signed.
+  const legacy=await checkD1BundledWork();
+  need(legacy.workers_paid_subscription_verified===true,'RELEASE_LEGACY_MIGRATION_PAID_UNVERIFIED');
+  const allowance=evaluateMigrationBudget(legacy);
   need(allowance.admitted===true,'RELEASE_D1_MIGRATION_80K_HEADROOM_UNAVAILABLE');
   // The existing pinned migration runner executes ONE original SQL file at a
   // time with fresh provider budget, Time Travel bookmark and exact-main check.
@@ -112,6 +121,13 @@ async function main(){
   database_name:'geomacro-control-plane',database_uuid:db.uuid,storage_file_size_bytes:db.file_size,
   time_travel_bookmark_sha256:(await import('node:crypto')).createHash('sha256').update(bookmark.bookmark).digest('hex'),
   migrations_applied_this_run:mutation?.completed??[],...proof,
+  paid_monthly_subscription_verified:true,
+  paid_monthly_billing_cycle_verified:true,
+  paid_monthly_cycle_start_utc:monthly.cycle_start_utc,
+  paid_monthly_cycle_end_exclusive_utc:monthly.cycle_end_exclusive_utc,
+  paid_monthly_provider_checked_at_utc:quota.checked_at_utc,
+  provider_account_wide_d1_usage_observed:quota.database_count>=1,
+  old_daily_140k_policy_applied:false,provider_metrics_are_delayed:true,
   source_version_deployed:false,traffic_promoted:false,payments_authorized:false,
   signed_envelope_integrity_not_external_certification:true};
  signedReport(REPORT,payload);
