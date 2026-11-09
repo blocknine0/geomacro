@@ -95,7 +95,9 @@ jobs:
           test -f config/d1-hotspot-v2-canary.hold
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
-          node --test scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/owner-d1-total-140k-policy.test.mjs
+          node --test scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/d1-step3-headroom.test.mjs
+      - name: Require real provider Workers Paid month-wide 30-percent reserve before canary preflight
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Verify D1 Time Travel backup and remote 0204/0211/P1 physical schema
         shell: bash
         run: |
@@ -224,6 +226,8 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-protected-hot50-worker-rollout
-          path: artifacts/protected-canary/*.json
+          path: |
+            artifacts/protected-canary/*.json
+            artifacts/release/d1-paid-monthly-headroom.json
           if-no-files-found: warn
           retention-days: 7
