@@ -19,9 +19,15 @@ After an exact-main PR merge, the owner may deliberately authorize only Shadow i
 gh workflow run step3-shadow-workersdev-route-repair.yml -R blocknine0/geomacro --ref main -f approval=ENABLE_ISOLATED_SHADOW_WORKERS_DEV_ONLY
 ```
 
-The workflow changes a disabled Shadow script route only if all prechecks pass; existing enabled routes are left untouched. It independently reads Cloudflare script subdomain state again and requires the actual Worker to reject an **unauthenticated** admin request with HTTP 401 + `{"ok":false,"error":"UNAUTHORIZED"}`. It does not assert the admin bearer matches yet; that proof remains the separately protected `step3-shadow-bearer-sync.yml` workflow. Any 404, non-JSON, error, permission denial, or unauthorized script binding retains HOLD and a redacted artifact.
+The workflow changes a disabled Shadow script route only if all prechecks pass; existing enabled routes are left untouched. Cloudflare `enabled` and `previews_enabled` are independent booleans. The job **preserves the existing `previews_enabled` value**, rather than refusing an otherwise valid route or turning previews off outside the scope of this owner approval. The receipt records only those two nonsensitive flags and the scoped script name for diagnosis. It independently reads Cloudflare script subdomain state again and requires the actual Worker to reject an **unauthenticated** admin request with HTTP 401 + `{"ok":false,"error":"UNAUTHORIZED"}`. It does not assert the admin bearer matches yet; that proof remains the separately protected `step3-shadow-bearer-sync.yml` workflow. Any 404, non-JSON, error, permission denial, or unauthorized script binding retains HOLD and a redacted artifact.
 
 The existing original/B2 ACK seed script now refuses governed Backblaze B2 writes if either Shadow script's provider subdomain is disabled. This avoids consuming B2 quota while the prerequisite ingress is missing.
+
+## Live acceptance gotcha: independent preview flag
+
+The first route-repair run [42568737575](https://github.com/blocknine0/geomacro/actions/runs/42568737575) returned `STEP3_SHADOW_ROUTE_SHADOW_SCRIPT_ROUTE_STATE_UNVERIFIED_OR_PREVIEW_ENABLED` without any confirmed route updates. Provider documentation returns independent `enabled` and `previews_enabled` fields, and an enabled preview is not proof of a disabled workers.dev ingress. The corrected job never changes preview configuration.
+
+The governed original/B2 ACK seed now requires BOTH deployed Shadow Workers to answer the authenticated, deliberately-invalid admin query with HTTP 400 `P0B_STATUS_QUERY_INVALID` **before** source discovery or any B2 physical PUT. This prevents repeated B2 quota exhaustion if the ingress is still a 404 despite provider metadata being enabled.
 
 ## Sequence after acceptance
 1. Review CI, CodeQL and the allowlisted changes; merge this PR to exact `main`.
