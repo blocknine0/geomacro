@@ -16,7 +16,7 @@
 This performs, sequentially:
 
 1. Verify both isolated old versions are the sole 100%-deployed versions on their script names; inspect each Cloudflare deployed version, D1 resource IDs and all effective binding names/types.
-2. Refuse **any** production D1 binding. Require the exact Shadow DB `c4add153-229d-412a-b1bd-489526b7e02f`, existing `CONTROL_PLANE_TOKEN` secret and, for modern Shadow, the private `PHASE2H_PRIVATE_R2=geomacro-step3-shadow-private` bucket. Do not export secret values.
+2. Require the most recently **uploaded** version ID to equal the current single 100%-**deployed** version ID for each script before any inheritance. Cloudflare `inherit` can resolve from the latest uploaded version rather than the deployed version; if they differ, HOLD without uploading. Refuse **any** production D1 binding. Require the exact Shadow DB `c4add153-229d-412a-b1bd-489526b7e02f`, existing `CONTROL_PLANE_TOKEN` secret and, for modern Shadow, the private `PHASE2H_PRIVATE_R2=geomacro-step3-shadow-private` bucket. Do not export secret values.
 3. Build `src/index.mjs` with the existing deployed version's compatibility date/flags and all existing bindings through `unsafe.bindings: [{name,type:"inherit"}]`. Pin `GEOMACRO_SOURCE_SHA` to the exact checked-out main revision.
 4. Run **only `wrangler versions upload`** for both *isolated Shadow* script names; no `wrangler deploy`, `versions deploy`, SQL, B2 PUT or client traffic move. Read back the candidate's immutable version ID, binding/resource/value parity, runtime parity and confirm the original deployed 100% version remains unchanged.
 5. Preserve redacted per-script candidate IDs and status in `artifacts/release/step3-shadow-canonical-unpromoted-candidates.json`.
