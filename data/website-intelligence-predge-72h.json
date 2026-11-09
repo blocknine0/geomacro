@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-09T00:07:51.363Z",
+  "checked_at": "2026-11-09T06:35:45.851Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 31,
+  "item_count": 30,
   "counts": {
     "geopolitics": 0,
     "macro": 20,
-    "rare_earth": 11
+    "rare_earth": 10
   },
-  "source_native_ids_sha256": "b6c04a661177fa8634bebe770973a1f3ad4c48013b3577cd6cfc0615d1d9d389",
+  "source_native_ids_sha256": "98ac34d391ead1311b9f7c50db90c2cf49e0387df6fdf5d87525c59e361ec65e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -592,25 +592,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-0bbf5147",
-      "category": "rare_earth",
-      "title": "Geomacro finds China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges",
-      "what_changed": "A monitored source feed reports: China issued 2030 Resource Security Plan-Rare Earth Export Deadline Looms November 10 Despite U.S. Trade Truce - Rare Earth Exchanges. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T05:37:11.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
