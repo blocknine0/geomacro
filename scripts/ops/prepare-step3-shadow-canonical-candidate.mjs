@@ -95,7 +95,6 @@ export function canonicalConfig(w,version,sha){
   compatibility_flags:rt.compatibility_flags??[],
   ...(rt.limits?{limits:rt.limits}:{}),
   ...(rt.cache_options?{cache:rt.cache_options}:{}),
-  workers_dev:true,preview_urls:true,
   vars:{GEOMACRO_SOURCE_SHA:sha},
   unsafe:{bindings:b.filter(x=>x.name!=="GEOMACRO_SOURCE_SHA")
    .map(x=>({name:x.name,type:"inherit"}))}
