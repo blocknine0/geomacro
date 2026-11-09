@@ -41,13 +41,17 @@ import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
+import {auditStep30212ExactHourlyCounter}
+ from "../lib/d1-step3-0212-hourly-counter-integrity.mjs";
+import {auditStep30212AllRawSourceIndexes}
+ from "../lib/d1-step3-0212-source-index-integrity.mjs";
 import {auditStep30211WithoutRowidCounter}
  from "../lib/d1-step3-0211-counter-integrity.mjs";
 import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
- verifyStep3Schema,verifyStep3Integrity,verifyStep3Explain,
+ verifyStep3Schema,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
 const ROOT="artifacts/release",LOG=ROOT+"/d1-step3-migration-execution.json";
@@ -380,16 +384,78 @@ function checkIndexAndSchema(config,step,report){
   };
   integrity.push(ref);
   save(report);
+ }else if(step.id==="0212"){
+  // Independent full-scope D1-supported logical integrity:
+  // 1) exact source category x UTC-hour pending counts including retained
+  //    zero bins; 2) five full + TWO reviewed partial source index trees;
+  // 3) all fourteen 0204+0212 existing OSINT/website index memberships.
+  // This never substitutes for full SQLite file integrity, real original
+  // source/HMAC, B2 bytes, independent R2 checkpoint, or two Worker probes.
+  const checked=(sql,maxRows)=>{
+   const r=q(config,sql,{maxRows});
+   report.census_0212_rows_read??=0;
+   report.census_0212_rows_read+=r.readRows;
+   if(report.census_0212_rows_read>100000)
+    fail("SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED");
+   return r.rows;
+  };
+  mark("SUPPORTED_0212_EXACT_CATEGORY_UTC_HOUR_COUNTER_PARITY");
+  const hourly=auditStep30212ExactHourlyCounter(checked);
+  if(!["PASS_D1_0212_EXACT_HOURLY_COUNTER_AND_PK_INDEX_PARITY",
+       "OBSERVED_EMPTY_HOURLY_COUNTER_AND_NO_PENDING_SOURCE"].includes(
+       hourly.status)||hourly.canonical_source_group_by_exact!==true)
+   fail("0212_HOURLY_COUNTER_OR_SOURCE_PARITY_UNVERIFIED");
+  mark("SUPPORTED_0212_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_PROOFS");
+  const source=auditStep30212AllRawSourceIndexes(checked);
+  if(!["PASS_0212_ALL_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_KEYS",
+       "OBSERVED_0212_SOURCE_EMPTY_OR_PARTIAL_PREDICATE_UNPOPULATED"].includes(
+       source.status)||
+     source.index_count!==7||source.full_index_count!==5||
+     source.reviewed_partial_index_count!==2||
+     source.two_exact_partial_predicates_observed!==true||
+     source.no_unknown_partial_indexes!==true)
+   fail("0212_SEVEN_SOURCE_INDEX_INTEGRITY_UNVERIFIED");
+  if(hourly.original_pending_source_nonempty!==(
+      source.partial_index_proof.qualified_rows_verified>0)||
+     (hourly.original_pending_source_nonempty&&
+      source.raw_source_has_rows!==true))
+   fail("0212_SOURCE_PARTIAL_INDEX_AND_HOURLY_PENDING_CONTRADICTION");
+  mark("SUPPORTED_0212_0204_PLUS_V3_FOURTEEN_INDEX_LINEAGE");
+  const lineageTables=[
+   "private_osint_news_25h","private_osint_source_checks_24h",
+   "website_derived_intelligence"
+  ];
+  const lineageInputs=lineageTables.map(table=>
+   auditStep3AllIndexes(table,checked));
+  const lineage=admitStep30204SupportedIntegrity(lineageInputs);
+  if(lineage.status!==
+      "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"||
+     lineage.existing_index_count!==14||
+     lineage.all_0212_v3_additive_index_memberships_verified!==true||
+     lineage.later_0212_ledger_verified!==false||
+     lineage.production_release_authorized!==false)
+   fail("0212_REVIEWED_V3_ADDITIVE_INDEX_LINEAGE_UNVERIFIED");
+  report.supported_integrity_0212={
+   status:source.fully_nonvacuous_data_memberships_proven&&
+       hourly.original_pending_source_nonempty?
+       "PASS_FRESH_NONEMPTY_0212_CENSUS_AND_ALL_TWENTY_TWO_INDEXES":
+       "PASS_REVIEWED_0212_STRUCTURE_WITH_NO_NONVACUOUS_PENDING_CLAIM",
+   exact_hour_bins_verified:true,
+   index_count:22,full_source_indexes:5,partial_source_indexes:2,
+   verified_0204_0212_lineage_indexes:14,
+   pending_source_nonempty:hourly.original_pending_source_nonempty,
+   partial_indexes_both_nonvacuous:
+    source.partial_index_proof.nonvacuous_index_membership_proven,
+   source_original_B2_byte_readback_claimed:false,
+   source_rights_verified_by_this_step:false,
+   sqlite_full_file_integrity_claimed:false,
+   independent_pointer_HMAC_R2_B2_and_worker_proofs_required:true,
+   production_release_authorized:false,canary_promoted:false
+  };
+  integrity.push(hourly,source,...lineageInputs);
+  save(report);
  }else{
-  // Keep 0212 on its original strict full integrity requirement until
-  // independent real provider-supported full-scope 0212 acceptance exists.
-  // Never infer 0212 from completed 0204, 0211 or 0213 proofs.
-  for(const table of step.integrityTables){
-   mark("FULL_TABLE_AND_INDEX_INTEGRITY_READBACK",table);
-   if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-   const r=q(config,"PRAGMA integrity_check('"+table+"')",{maxRows:10});
-   integrity.push(verifyStep3Integrity(r.rows,table));
-  }
+  fail("UNREVIEWED_STEP3_MIGRATION_INTEGRITY_ID");
  }
  const result={migration:step.id,...proof,indices,integrity};
  report.verified.push(result);save(report);
