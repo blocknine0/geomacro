@@ -106,8 +106,7 @@ async function getDeployedVersionUrls(e,name,id,fetchImpl){
   const hostPattern=new RegExp("^[a-f0-9]{8}-"+name+
      "\\."+SUBDOMAIN+"\\.workers\\.dev$","u");
   if(u.protocol!=="https:"||u.username||u.password||u.port||
-    !hostPattern.test(u.hostname)||u.pathname!=="/"||u.search||u.hash||
-    !u.hostname.startsWith(id.slice(0,8)+"-"))continue;
+    !hostPattern.test(u.hostname)||u.pathname!=="/"||u.search||u.hash)continue;
   allowed.push(u.hostname);
  }
  if(allowed.length!==1)return {status:"UNAVAILABLE",
@@ -116,8 +115,12 @@ async function getDeployedVersionUrls(e,name,id,fetchImpl){
 }
 export async function probePinnedVersionUrl(name,id,host,{fetchImpl=fetch}={}){
  if(!NAMES.includes(name)||!UUID.test(id)||
-   host!==id.slice(0,8)+"-"+name+"."+SUBDOMAIN+".workers.dev")
+   typeof host!=="string"||
+   !new RegExp("^[a-f0-9]{8}-"+name+"\\."+SUBDOMAIN+
+     "\\.workers\\.dev$","u").test(host))
     fail("VERSION_PROBE_HOST_NOT_PINNED");
+ // This name came from the exact id-bound Cloudflare version result.
+ // The hostname prefix is NOT necessarily the version UUID prefix.
  return probeActualHost(name,{fetchImpl,hostOverride:host});
 }
 export async function probeActualHost(name,{fetchImpl=fetch,hostOverride=null}={}){
