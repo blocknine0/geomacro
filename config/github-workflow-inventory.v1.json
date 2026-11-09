@@ -573,9 +573,11 @@
       "github.event_name == 'workflow_dispatch'",
       "config/d1-hotspot-v2-canary.hold",
       "node scripts/ops/verify-protected-worker-promotion.mjs",
-      "versions deploy",
       "CANARY_0204_0211_P1_REMOTE_SCHEMA_AND_BACKUP_VERIFIED",
-      "CANARY_PROMOTION_FAILED_ROLLBACK_ATTEMPTING_PREVIOUS_100_PERCENT_VERSION"
+      "run.path!=='.github/workflows/production-rollout-orchestrator.yml'",
+      "admitSignedStep3ProductionFile()",
+      "node --experimental-strip-types scripts/apply-d1-migrations.ts --verify",
+      "node --experimental-strip-types scripts/canary-promoter.ts --promote"
     ],
     "canary-promotion.yml": [
       "workflow_dispatch:",
