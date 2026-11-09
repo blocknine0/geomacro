@@ -9,6 +9,12 @@ on:
       - "scripts/tests/d1-step3-index-parity.test.mjs"
       - "scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs"
   workflow_dispatch:
+  # After owner-approved, successfully completed Shadow-only fixture: repeat
+  # provider readback automatically, but do not import event-supplied code.
+  workflow_run:
+    workflows:
+      - "Step3 Isolated Shadow 0204 Nonfact Index Fixture — Protected"
+    types: [completed]
   pull_request:
     paths:
       - ".github/workflows/step3-shadow-0204-readonly-diagnostic.yml"
@@ -32,7 +38,12 @@ jobs:
       - run: node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs
   physical-shadow-readonly:
     if: >-
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'workflow_dispatch' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_sha == github.sha)) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
