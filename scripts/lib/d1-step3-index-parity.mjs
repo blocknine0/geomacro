@@ -74,6 +74,9 @@ export function verifyStep3IndexParity({index,baselineBefore,indexRows,baselineA
     !Array.isArray(baselineAfter)||
     baselineBefore.length!==indexRows.length||
     baselineBefore.length!==baselineAfter.length)fail("ROWSET_CARDINALITY_MISMATCH");
+ // Empty index parity is tautological: it proves nothing about index keys.
+ // Do not let an empty Shadow source table authorize production acceptance.
+ if(baselineBefore.length===0)fail("NONEMPTY_REPRESENTATIVE_ROWS_REQUIRED");
  const before=canonicalRows(baselineBefore,queries.columns,cap),
   indexed=canonicalRows(indexRows,queries.columns,cap),
   after=canonicalRows(baselineAfter,queries.columns,cap);

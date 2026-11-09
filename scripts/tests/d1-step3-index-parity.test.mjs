@@ -51,8 +51,8 @@ test("fail closed for duplicate/unsafe rowid, invalid columns and over-cap data"
  assert.throws(()=>verifyStep3IndexParity({...valid,indexRows:[before[0],{...before[1],first_seen_at:undefined}]}),/PROJECTION_VALUE_INVALID/u);
  assert.throws(()=>verifyStep3IndexParity({...valid,baselineBefore:Array(3001).fill(before[0]),indexRows:Array(3001).fill(before[0]),baselineAfter:Array(3001).fill(before[0])}),/BOUNDED_ROW_CAP/u);
 });
-test("an empty table proves empty row parity but never claims SQLite full integrity",()=>{
- const v=verifyStep3IndexParity({...valid,baselineBefore:[],indexRows:[],baselineAfter:[]});
- assert.equal(v.rows_compared,0);
- assert.equal(v.sqlite_full_integrity_check_claimed,false);
+test("an empty table never establishes nonempty physical index parity",()=>{
+ assert.throws(()=>verifyStep3IndexParity({...valid,
+  baselineBefore:[],indexRows:[],baselineAfter:[]}),
+  /NONEMPTY_REPRESENTATIVE_ROWS_REQUIRED/u);
 });
