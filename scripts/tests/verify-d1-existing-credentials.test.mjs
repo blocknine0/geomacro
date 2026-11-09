@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {generateKeyPairSync} from 'node:crypto';
 import {observedD1Day,main} from '../verify-d1-quota-proof.ts';
-import {verifySignedEnvelopeFile} from '../release-common.ts';
+import {verifySignedEnvelopeFile,D1_DAILY_READ_CEILING} from '../release-common.ts';
 
 // OFFLINE ONLY. Disposable tokens, static GraphQL responses, fake day and
 // signer; cannot certify provider usage or substitute production evidence.
@@ -94,21 +94,23 @@ test('secondary provider data must still satisfy strict complete-day receipt con
  });
 });
 
-test('real-format >140k provider total produces signed HOLD receipt not a PASS',async()=>{
+test('real-format above Paid owner daily ceiling produces signed HOLD, not a PASS',async()=>{
  const closed=new Date(Date.now()-2*86400000).toISOString().slice(0,10);
+ const overLimit=D1_DAILY_READ_CEILING+1;
+ assert.equal(D1_DAILY_READ_CEILING,580_000_000);
  const pair=generateKeyPairSync('ed25519');
  const originalDir=process.cwd();
  const dir=mkdtempSync(join(tmpdir(),'geomacro-d1-auth-fallback-'));
  try{
   await withScenario({answer:bearer=>
-   bearer==='Bearer '+PRIMARY?denied:fixture(140001,32,closed)},async calls=>{
+   bearer==='Bearer '+PRIMARY?denied:fixture(overLimit,32,closed)},async calls=>{
    process.chdir(dir);
    process.env.SIGNING_JWK=JSON.stringify(pair.privateKey.export({format:'jwk'}));
-   await assert.rejects(main([closed]),/D1_PROOF_140K_BREACH/u);
+   await assert.rejects(main([closed]),/D1_PROOF_PAID_OWNER_DAILY_CEILING_BREACH/u);
    const saved=join(dir,'artifacts','release','d1-quota-proof-'+closed+'.json');
    const envelope=JSON.parse(readFileSync(saved,'utf8'));
    assert.equal(envelope.payload.status,'HOLD');
-   assert.equal(envelope.payload.rows_read,140001);
+   assert.equal(envelope.payload.rows_read,overLimit);
    assert.equal(envelope.payload.analytics_credential_source,'EXISTING_ACCOUNT_API_TOKEN');
    assert.throws(()=>verifySignedEnvelopeFile(saved),/RELEASE_SIGNED_RECEIPT_UNVERIFIED/u);
    assert.equal(calls.length,2);
