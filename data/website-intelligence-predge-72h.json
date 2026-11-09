@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-09T18:42:09.407Z",
+  "checked_at": "2026-11-09T19:52:15.526Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 24,
+  "item_count": 29,
   "counts": {
     "geopolitics": 1,
-    "macro": 15,
-    "rare_earth": 8
+    "macro": 16,
+    "rare_earth": 12
   },
-  "source_native_ids_sha256": "bb0ceab305de96e81f21ab5f2ab1c6f38c55cdc95e642bbf414f8446be6d626d",
+  "source_native_ids_sha256": "dc32fab67e6b35081faf941cefb9a1219b1d92114a899dcd83985a2b0bfbb56c",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -45,6 +45,120 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-28d0b11c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T15:08:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6b1093c0",
+      "category": "rare_earth",
+      "title": "Geomacro finds MC Mining maintained suspension of mining, production at Makhado",
+      "what_changed": "A monitored source feed reports: MC Mining maintained suspension of mining, production at Makhado. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T14:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7f00a2bd",
+      "category": "rare_earth",
+      "title": "Geomacro finds United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory",
+      "what_changed": "A monitored source feed reports: United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T12:39:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-21e817cd",
+      "category": "rare_earth",
+      "title": "Geomacro finds BLM approved Century Lithium's Angel Island min... - Pluang",
+      "what_changed": "A monitored source feed reports: BLM approved Century Lithium's Angel Island min... - Pluang. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T11:44:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-ac2fe0f3",
+      "category": "macro",
+      "title": "Geomacro finds Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette",
+      "what_changed": "A monitored source feed reports: Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T10:23:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1a2ebf39",
+      "category": "macro",
+      "title": "Geomacro finds Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project",
+      "what_changed": "A monitored source feed reports: Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T10:15:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -457,25 +571,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-06T21:12:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f7579a21",
-      "category": "macro",
-      "title": "Geomacro finds Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: Gold's Official-Sector Floor held Firm as Energy-Led Rate Fears Cap the Upside - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T18:51:12.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-09T18:42:09.407Z",
+  "updated_at": "2026-11-09T19:52:15.526Z",
   "signals": [
+    {
+      "id": "rare_earth-28d0b11c",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review",
+      "what_changed": "A monitored source feed reports: Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T15:08:21.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6b1093c0",
+      "category": "rare_earth",
+      "title": "Geomacro finds MC Mining maintained suspension of mining, production at Makhado",
+      "what_changed": "A monitored source feed reports: MC Mining maintained suspension of mining, production at Makhado. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T14:20:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-7f00a2bd",
+      "category": "rare_earth",
+      "title": "Geomacro finds United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory",
+      "what_changed": "A monitored source feed reports: United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T12:39:14.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-21e817cd",
+      "category": "rare_earth",
+      "title": "Geomacro finds BLM approved Century Lithium's Angel Island min... - Pluang",
+      "what_changed": "A monitored source feed reports: BLM approved Century Lithium's Angel Island min... - Pluang. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T11:44:11.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-739406bc",
       "category": "rare_earth",

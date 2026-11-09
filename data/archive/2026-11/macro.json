@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-09T18:42:09.407Z",
+  "updated_at": "2026-11-09T19:52:15.526Z",
   "signals": [
+    {
+      "id": "macro-ac2fe0f3",
+      "category": "macro",
+      "title": "Geomacro finds Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette",
+      "what_changed": "A monitored source feed reports: Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "official economic statistics",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T10:23:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1a2ebf39",
+      "category": "macro",
+      "title": "Geomacro finds Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project",
+      "what_changed": "A monitored source feed reports: Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T10:15:27.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-94dfbed2",
       "category": "macro",
