@@ -20,6 +20,9 @@ const uniqueSQL="SELECT day_utc FROM "+qt(TABLE)+
  " GROUP BY day_utc COLLATE BINARY HAVING COUNT(*)>1 LIMIT 1";
 const sourceSQL="SELECT COUNT(*) AS source_committed FROM "+
  "ingestion_spool_queue WHERE d1_committed_at IS NOT NULL";
+const sourceGroupedSQL="SELECT substr(d1_committed_at,1,10) AS __audit_day, "+
+ "COUNT(*) AS __audit_count FROM ingestion_spool_queue "+
+ "WHERE d1_committed_at IS NOT NULL GROUP BY substr(d1_committed_at,1,10) LIMIT 3001";
 const sumSQL="SELECT COALESCE(SUM(committed_count),0) AS counter_committed FROM "+
  qt(TABLE);
 const quickSQL="PRAGMA quick_check("+qt(TABLE)+")";
@@ -90,6 +93,12 @@ export function auditStep30211WithoutRowidCounter(query){
  if(a!==b)fail("PRIMARY_KEY_INDEX_COUNTER_PARITY_MISMATCH");
  if(a!==c)fail("CONCURRENT_COUNTER_TABLE_CHANGE");
  if(strict(query,uniqueSQL,1).length!==0)fail("DUPLICATE_PRIMARY_KEYS");
+ // Sum equality is insufficient: a corrupted day distribution can retain
+ // exactly the same total. Compare the canonical GROUP BY from the same
+ // bounded source queue against every persisted day/quantity pair.
+ const canonicalDays=strict(query,sourceGroupedSQL,STEP3_0211_MAX_COUNTER_DAYS+1);
+ if(rowsDigest(canonicalDays)!==a)
+  fail("PER_DAY_CANONICAL_COUNTER_MISMATCH");
  const sum=strict(query,sumSQL,1),source=strict(query,sourceSQL,1);
  if(sum.length!==1||source.length!==1||
     !Number.isSafeInteger(sum[0]?.counter_committed)||
