@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {STEP3_MIGRATIONS,step3SqlManifests,step3SizeProbeSQL,
  validateStep3SizeProbe,step3SchemaSQL,verifyStep3Schema,
- verifyStep3Integrity,verifyStep3Explain,compareImmutableBaseline}
+ verifyStep3Integrity,verifyStep3D1SupportedQuickCheck,
+ verifyStep3Explain,compareImmutableBaseline}
  from "../lib/d1-step3-migration-contract.mjs";
 import {parseStep3WranglerQuery}
  from "../ops/run-step3-protected-d1-migrations.mjs";
@@ -73,6 +74,31 @@ test("SQLite index integrity and index-backed EXPLAIN are mandatory",()=>{
  assert.throws(()=>verifyStep3Explain([{detail:"SCAN TABLE full"}],
   "idx_private_osint_country_clock_v3"),/INDEX_SEARCH_PLAN_NOT_VERIFIED/u);
 });
+test("D1 quick_check requires exact ok but never claims full SQLite index integrity",()=>{
+ const ok=verifyStep3D1SupportedQuickCheck([{quick_check:"ok"}],"private_osint_news_25h");
+ assert.equal(ok.d1_supported_quick_check,"PASS");
+ assert.equal(ok.full_sqlite_integrity_check_claimed,false);
+ assert.equal(ok.all_new_index_keys_still_require_independent_parity,true);
+ for(const bad of [[{quick_check:"bad"}],[],[{quick_check:"ok"},{quick_check:"ok"}],
+  [{quick_check:"ok",extra:1}]])
+  assert.throws(()=>verifyStep3D1SupportedQuickCheck(bad,"private_osint_news_25h"),
+   /D1_SUPPORTED_QUICK_CHECK_NOT_OK/u);
+});
+test("protected provider runner requires full nonempty parity for each new index",()=>{
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.ok(runner.includes("PRAGMA quick_check('"));
+ assert.ok(!runner.includes("PRAGMA integrity_check('"));
+ assert.match(runner,/verifyStep3D1SupportedQuickCheck/u);
+ assert.match(runner,/verifyStep3IndexParity/u);
+ assert.match(runner,/verifyPostSeedReferenceIndexParity/u);
+ assert.match(runner,/STEP3_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY/u);
+ assert.match(runner,/post_seed_reference_index_parity_verified===true/u);
+ assert.match(runner,/reference_index_parity_empty_opt_in_deferred/u);
+ assert.match(runner,/sqlite_full_integrity_check_claimed:false/u);
+ assert.match(runner,/INDEX_PARITY_OPERATIONAL_PROVIDER_READ_CAP_EXCEEDED/u);
+ assert.match(runner,/refreshedGate\(report,"SHADOW_BEFORE_NONEMPTY_REAL_R2_REFERENCE_INDEX_PARITY"\)/u);
+});
+
 test("sampled immutable source SHA cannot silently change during schema migration",()=>{
  const hash="f".repeat(64);
  assert.equal(compareImmutableBaseline(hash,hash).unchanged,true);
