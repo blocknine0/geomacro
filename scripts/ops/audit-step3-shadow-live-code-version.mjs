@@ -81,6 +81,41 @@ export async function inspectDownloadedCode(e,name,{fetchImpl=fetch}={}){
 }
 // Cloudflare's newer Workers version API supplies per-version immutable
 // routable URLs, unlike the older scripts/{name}/versions metadata.
+/** Redacted version-specific Worker runtime metadata, never JWT/bindings/source. */
+export function sanitizedVersionRouting(v){
+ const safeModule=typeof v?.main_module==="string"&&
+   /^[A-Za-z0-9_./-]{1,180}$/u.test(v.main_module)?
+    v.main_module:"UNVERIFIED";
+ const conf=v?.assets?.config;
+ const present=conf!==null&&typeof conf==="object"&&!Array.isArray(conf);
+ const pattern=x=>typeof x==="string"&&x.length<=120&&
+   /^!?\/[A-Za-z0-9_.*!/-]*$/u.test(x);
+ let first="UNVERIFIED";
+ if(present){
+  const x=conf.run_worker_first;
+  if(typeof x==="boolean")first=x;
+  else if(Array.isArray(x)&&x.length<=100&&x.every(pattern))first=x;
+  else if(x===null||x===undefined)first="UNSPECIFIED_DEFAULT_FALSE";
+ }
+ const handling=["none","404-page","single-page-application"]
+   .includes(conf?.not_found_handling)?conf.not_found_handling:"UNVERIFIED";
+ const html=["none","auto-trailing-slash","force-trailing-slash","drop-trailing-slash"]
+   .includes(conf?.html_handling)?conf.html_handling:"UNVERIFIED";
+ const date=/^\d{4}-\d{2}-\d{2}$/u.test(v?.compatibility_date??"")?
+   v.compatibility_date:"UNVERIFIED";
+ return {
+  immutable_version_scoped:true,
+  main_module:safeModule,
+  static_assets_config_present:present,
+  run_worker_first:first,
+  not_found_handling:handling,
+  html_handling:html,
+  compatibility_date:date,
+  // The module's content is NOT proven by metadata alone.
+  canonical_handler_content_verified:false,
+ };
+}
+
 async function getDeployedVersionUrls(e,name,id,fetchImpl){
  if(!NAMES.includes(name)||!UUID.test(id))fail("VERSION_URL_SCOPE_INVALID");
  const path="/workers/workers/"+name+"/versions/"+id;
@@ -96,8 +131,11 @@ async function getDeployedVersionUrls(e,name,id,fetchImpl){
  let v;try{v=await r.json()}catch{
   return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_INVALID_JSON"};
  }
- if(v?.success!==true||v.result?.id!==id||!Array.isArray(v.result?.urls))
+ if(v?.success!==true||v.result?.id!==id)
   return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_RESULT_INVALID"};
+ const routing=sanitizedVersionRouting(v.result);
+ if(!Array.isArray(v.result.urls))
+  return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_URLS_NOT_ARRAY",routing};
  const allowed=[];
  for(const raw of v.result.urls.slice(0,8)){
   if(typeof raw!=="string")continue;
@@ -110,8 +148,8 @@ async function getDeployedVersionUrls(e,name,id,fetchImpl){
   allowed.push(u.hostname);
  }
  if(allowed.length!==1)return {status:"UNAVAILABLE",
-  reason:"VERSION_PROVIDER_NO_UNIQUE_PINNED_URL"};
- return {status:"PINNED_URL_AVAILABLE",host:allowed[0]};
+  reason:"VERSION_PROVIDER_NO_UNIQUE_PINNED_URL",routing};
+ return {status:"PINNED_URL_AVAILABLE",host:allowed[0],routing};
 }
 export async function probePinnedVersionUrl(name,id,host,{fetchImpl=fetch}={}){
  if(!NAMES.includes(name)||!UUID.test(id)||
@@ -211,7 +249,14 @@ export async function auditShadowCode({env=process.env,fetchImpl=fetch,holdPrese
     version_url_provenance:{status:versionUrl.status,
       ...(versionUrl.reason?{reason:versionUrl.reason}:{}),
       immutable_version_id_match:versionUrl.status==="PINNED_URL_AVAILABLE"},
-    immutable_version_http_probe:versionProbe
+    immutable_version_http_probe:versionProbe,
+    deployed_version_routing:versionUrl.routing??{
+      immutable_version_scoped:false,metadata_unavailable:true},
+    legacy_version_script_runtime:{
+      fetch_handler:version.resources?.script?.handlers?.includes("fetch")===true,
+      has_assets_binding:Array.isArray(version.resources?.bindings)?
+       version.resources.bindings.some(b=>b.name==="ASSETS"):false,
+    },
    });
   }
   report.status=report.workers.every(w=>w.route_enabled&&
