@@ -43,7 +43,7 @@ test("real partial SQLite index requires predicate and USING INDEX, not a coveri
   assert.equal(r.canary_promoted,false);
   assert.equal(r.sqlite_integrity_check_claimed,false);
   assert.equal(r.raw_rows_or_digest_emitted,false);
-  assert.doesNotMatch(JSON.stringify(r),/pending|archived|2026-11-09T12/);
+  assert.doesNotMatch(JSON.stringify(r),/2026-11-09T12|__audit_rowid|__audit_key|"record_id"/);
  }finally{db.close()}
 });
 test("no qualified rows is explicitly not nonvacuous index membership proof",()=>{
