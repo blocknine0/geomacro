@@ -49,14 +49,114 @@ export function assertPhase2hB2ManualRetention(rules){
   no_bucket_mutation:true,other_b2_prefixes_untouched:true,
  });
 }
+/**
+ * A single governed S3 GetBucketLifecycle, NOT a bucket/object listing.
+ * The S3-compatible API is an independent read-only authority for real
+ * lifecycle rules. Nothing in a GitHub variable or user-provided receipt
+ * can claim that retention has been independently verified.
+ */
+import {createHash,createHmac} from "node:crypto";
+import {createB2D1AccountGovernor} from "./b2-d1-account-governor.mjs";
+const LIFECYCLE_ORIGIN="https://s3.us-east-005.backblazeb2.com";
+const LIFECYCLE_BUCKET="geomacro-private-archive";
+const EMPTY_SHA256=createHash("sha256").update("").digest("hex");
+const digest=x=>createHash("sha256").update(x).digest("hex");
+const mac=(key,value)=>createHmac("sha256",key).update(value).digest();
+const tag=(xml,name)=>xml.match(new RegExp("<"+name+">([\\s\\S]*?)<\\/"+name+">","u"))?.[1]??null;
+export function parseS3LifecycleRules(xml){
+ if(typeof xml!=="string"||xml.length>65536||xml.length<10||
+    /<!|&|<\s*Transition\b|<\s*NoncurrentVersionTransition\b/iu.test(xml)||
+    !/<LifecycleConfiguration(?:\s[^>]*)?>[\s\S]*<\/LifecycleConfiguration>/u.test(xml))
+  fail("PROVIDER_LIFECYCLE_XML_INVALID");
+ const blocks=[...xml.matchAll(/<Rule>([\s\S]*?)<\/Rule>/gu)];
+ const count=(xml.match(/<Rule>/gu)??[]).length;
+ if(count!==blocks.length||count>100)fail("PROVIDER_LIFECYCLE_RULES_INVALID");
+ const rules=[];
+ for(const [,block] of blocks){
+  const status=tag(block,"Status");
+  if(status!=="Enabled"&&status!=="Disabled")
+   fail("PROVIDER_LIFECYCLE_STATUS_INVALID");
+  if(/<And>|<Tag>|<ObjectSizeGreaterThan>|<ObjectSizeLessThan>/u.test(block))
+   fail("PROVIDER_LIFECYCLE_FILTER_UNSUPPORTED");
+  const filter=tag(block,"Filter");
+  const rawPrefix=tag(filter??block,"Prefix");
+  const prefix=rawPrefix??"";
+  if(!/^[\w./-]*$/u.test(prefix)||prefix.includes(".."))
+   fail("PROVIDER_LIFECYCLE_PREFIX_INVALID");
+  if(status==="Disabled")continue;
+  const expiration=tag(block,"Expiration");
+  const noncurrent=tag(block,"NoncurrentVersionExpiration");
+  if(/<(?:Expiration|NoncurrentVersionExpiration)\b/u.test(block)&&
+     (expiration===null&&/<Expiration\b/u.test(block)||
+      noncurrent===null&&/<NoncurrentVersionExpiration\b/u.test(block)))
+   fail("PROVIDER_LIFECYCLE_ACTION_INVALID");
+  rules.push({
+   fileNamePrefix:prefix,
+   // Any hide or deletion action on a matching prefix is a HOLD.
+   // Do not infer an original's expiry from a translated S3 "Days" field.
+   daysFromUploadingToHiding:expiration!==null?1:null,
+   daysFromHidingToDeleting:noncurrent!==null?1:null,
+  });
+ }
+ return rules;
+}
 async function readPrivateB2LifecycleRules({
- env=process.env,
+ env=process.env,fetchImpl=fetch,governor,
 }={}){
- // B2 bucket/key listing is disabled by policy. Lifecycle settings must be
- // applied and verified in the Backblaze Console; no provider list API is
- // called from application code.
- void env;
- fail("CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED");
+ if(env.GITHUB_ACTIONS!=="true"||
+    env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
+    env.GITHUB_REF!=="refs/heads/main"||
+    env.PHASE2H_PROVIDER_MAINTENANCE!=="true"||
+    env.B2_ACCOUNT_QUOTA_REQUIRED!=="1"||
+    !["registered_original_archive","derived_news_backup"]
+      .includes(env.B2_ACCOUNT_QUOTA_WORKFLOW_ID)||
+    (env.B2_ARCHIVE_READ_KEY_ID??env.B2_KEY_ID??"").length<12||
+    (env.B2_ARCHIVE_READ_APPLICATION_KEY??env.B2_APPLICATION_KEY??"").length<16)
+  fail("PROTECTED_GOVERNED_MAIN_REQUIRED");
+ const access=env.B2_ARCHIVE_READ_KEY_ID??env.B2_KEY_ID;
+ const secret=env.B2_ARCHIVE_READ_APPLICATION_KEY??env.B2_APPLICATION_KEY;
+ const shared=governor??createB2D1AccountGovernor({env,fetchImpl});
+ // Class C / metadata GET: a real global reservation, including provider
+ // denials. No list of any bucket keys, object versions or other buckets.
+ await shared.reserve("GET");
+ const stamp=new Date().toISOString().replace(/[:-]|\.\d{3}/gu,"");
+ const day=stamp.slice(0,8),region="us-east-005";
+ const host=new URL(LIFECYCLE_ORIGIN).host;
+ const path="/"+LIFECYCLE_BUCKET;
+ const query="lifecycle=";
+ const signedHeaders="host;x-amz-content-sha256;x-amz-date";
+ const canonical=["GET",path,query,
+  "host:"+host+"\n"+"x-amz-content-sha256:"+EMPTY_SHA256+"\n"+
+  "x-amz-date:"+stamp+"\n",signedHeaders,EMPTY_SHA256].join("\n");
+ const scope=day+"/"+region+"/s3/aws4_request";
+ const toSign=["AWS4-HMAC-SHA256",stamp,scope,digest(canonical)].join("\n");
+ const key=mac(mac(mac(mac("AWS4"+secret,day),region),"s3"),"aws4_request");
+ const signature=createHmac("sha256",key).update(toSign).digest("hex");
+ let response;
+ try{
+  response=await fetchImpl(LIFECYCLE_ORIGIN+path+"?lifecycle",{
+   method:"GET",redirect:"error",cache:"no-store",
+   headers:{
+    "x-amz-content-sha256":EMPTY_SHA256,
+    "x-amz-date":stamp,
+    Authorization:"AWS4-HMAC-SHA256 Credential="+access+"/"+scope+
+      ", SignedHeaders="+signedHeaders+", Signature="+signature,
+   },
+   signal:AbortSignal.timeout(15000),
+  });
+ }catch{fail("PROVIDER_UNAVAILABLE")}
+ if(response.redirected)fail("PROVIDER_RESPONSE_INVALID");
+ const size=Number(response.headers?.get("content-length")??0);
+ if(Number.isFinite(size)&&size>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
+ let body;
+ try{body=await response.text()}catch{fail("PROVIDER_RESPONSE_INVALID")}
+ if(body.length>65536)fail("PROVIDER_RESPONSE_TOO_LARGE");
+ // A *provider-returned* NoSuchLifecycleConfiguration is evidence of
+ // no active bucket rules; arbitrary 404, 401 or 403 are NOT evidence.
+ if(response.status===404&&/<Code>NoSuchLifecycleConfiguration<\/Code>/u.test(body))
+  return [];
+ if(response.status!==200)fail("PROVIDER_LIFECYCLE_UNAVAILABLE");
+ return parseS3LifecycleRules(body);
 }
 /** Separate strict 72h ciphertext-only queue prefix; never alter raw B2 rules. */
 export const PHASE2I_SOURCE_QUEUE_B2_PREFIX=
@@ -87,7 +187,12 @@ export function assertPhase2iSourceB2Lifecycle(rules){
  });
 }
 export async function verifyPhase2hB2Lifecycle(args={}){
- return assertPhase2hB2ManualRetention(await readPrivateB2LifecycleRules(args));
+ const result=assertPhase2hB2ManualRetention(await readPrivateB2LifecycleRules(args));
+ return Object.freeze({...result,
+  provider_lifecycle_readback_verified:true,
+  exact_private_bucket_scope_verified:true,
+  no_object_list_api:true,
+ });
 }
 export async function verifyPhase2iSourceB2Lifecycle(args={}){
  return assertPhase2iSourceB2Lifecycle(await readPrivateB2LifecycleRules(args));
