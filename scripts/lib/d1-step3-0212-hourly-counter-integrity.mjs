@@ -80,17 +80,25 @@ export function auditStep30212ExactHourlyCounter(query){
  const first=digest(before);
  if(first!==digest(indexed))fail("COUNTER_PK_INDEX_MEMBERSHIP_MISMATCH");
  if(first!==digest(after))fail("CONCURRENT_HOURLY_COUNTER_WRITE");
- if(first!==digest(grouped))fail("EXACT_SOURCE_HOURLY_DISTRIBUTION_MISMATCH");
+ // 0212's ACK/DELETE triggers deliberately retain a ZERO-count historical
+ // hour bucket. A zero bin is valid and should not masquerade as an active
+ // source row; validate ALL bins against the PK tree first, then compare only
+ // positive bins with exactly the source's grouped pending originals.
+ const positive=before.filter(x=>x.__audit_count>0);
+ if(digest(positive)!==digest(grouped))
+  fail("EXACT_SOURCE_HOURLY_DISTRIBUTION_MISMATCH");
  const pending=read(query,existsSQL,1);
  if(pending.length!==1||![0,1].includes(pending[0]?.has_pending)||
-    (pending[0].has_pending===1&&before.length===0)||
-    (pending[0].has_pending===0&&before.length!==0))
+    (pending[0].has_pending===1&&positive.length===0)||
+    (pending[0].has_pending===0&&positive.length!==0))
   fail("SOURCE_PENDING_NONVACUOUS_STATE_UNVERIFIED");
  return Object.freeze({
-  status:before.length>0?
+  status:positive.length>0?
    "PASS_D1_0212_EXACT_HOURLY_COUNTER_AND_PK_INDEX_PARITY":
    "OBSERVED_EMPTY_HOURLY_COUNTER_AND_NO_PENDING_SOURCE",
   counter_buckets_verified:before.length,
+  active_counter_buckets_verified:positive.length,
+  zero_count_history_buckets_verified:before.length-positive.length,
   original_pending_source_nonempty:pending[0].has_pending===1,
   canonical_source_group_by_exact:true,
   index_count:1,primary_key_columns_verified:2,
