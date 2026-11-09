@@ -72,3 +72,12 @@ test("0204 physical parity covers all three reviewed indexes with no private row
  assert.match(workflow,/scripts\/tests\/d1-step3-index-parity\.test\.mjs/u);
  assert.doesNotMatch(source,/console\.log\(.*(?:raw|baselineBefore|indexRows|baselineAfter)/u);
 });
+test("protected manual Shadow diagnosis is read-only and exact-main pinned",()=>{
+ assert.match(workflow,/^  workflow_dispatch:\s*$/mu);
+ assert.match(workflow,/github\.event_name == 'workflow_dispatch'/u);
+ assert.match(workflow,/git ls-remote https:\/\/github\.com\/blocknine0\/geomacro\.git refs\/heads\/main/u);
+ assert.match(probe,/\["push","workflow_dispatch"\]\.includes\(env\.GITHUB_EVENT_NAME\)/u);
+ assert.match(workflow,/node scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --check/u);
+ assert.doesNotMatch(workflow,/run-step3-protected-d1-migrations\.mjs --apply/u);
+ assert.doesNotMatch(probe,/--apply|--file|--command",process\.env/u);
+});

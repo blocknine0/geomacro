@@ -60,7 +60,7 @@ export function validateReadonlyCommands(list=checks){
 function main(env=process.env){
  if(!validateReadonlyCommands()||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
-  env.GITHUB_EVENT_NAME!=="push"||
+  !["push","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME)||
   !UUID.test(env.GEOMACRO_D1_SHADOW_DATABASE_ID??"")||
   !UUID.test(env.D1_DATABASE_ID??"")||
   env.GEOMACRO_D1_SHADOW_DATABASE_ID.toLowerCase()===
