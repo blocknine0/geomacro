@@ -108,7 +108,7 @@ export function auditStep30211WithoutRowidCounter(query){
   canonical_committed_rows:source[0].source_committed,
   nonvacuous_source_ledger_proven:nonvacuous,
   distinct_primary_key_readback_verified:true,
-  metadata_source:"FRESH_D1_PROVIDER",
+  provider_reader_provenance:"REQUIRES_INDEPENDENT_FRESH_SAME_TARGET_D1_CALLER",
   sqlite_full_integrity_check_claimed:false,
   physical_file_integrity_claimed:false,
   stage2_authorized:false,
