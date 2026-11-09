@@ -79,11 +79,59 @@ export async function inspectDownloadedCode(e,name,{fetchImpl=fetch}={}){
    }
  };
 }
-export async function probeActualHost(name,{fetchImpl=fetch}={}){
+// Cloudflare's newer Workers version API supplies per-version immutable
+// routable URLs, unlike the older scripts/{name}/versions metadata.
+async function getDeployedVersionUrls(e,name,id,fetchImpl){
+ if(!NAMES.includes(name)||!UUID.test(id))fail("VERSION_URL_SCOPE_INVALID");
+ const path="/workers/workers/"+name+"/versions/"+id;
+ let r;
+ try{r=await fetchImpl("https://api.cloudflare.com/client/v4/accounts/"+
+  ACCOUNT+path,{
+  method:"GET",redirect:"error",cache:"no-store",
+  headers:{Authorization:"Bearer "+e.CLOUDFLARE_API_TOKEN},
+  signal:AbortSignal.timeout(14000)})}
+ catch{return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_NETWORK_UNAVAILABLE"}}
+ if(!r||r.redirected)return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_REDIRECT"};
+ if(r.status!==200)return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_HTTP_"+r.status};
+ let v;try{v=await r.json()}catch{
+  return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_INVALID_JSON"};
+ }
+ if(v?.success!==true||v.result?.id!==id||!Array.isArray(v.result?.urls))
+  return {status:"UNAVAILABLE",reason:"VERSION_PROVIDER_RESULT_INVALID"};
+ const allowed=[];
+ for(const raw of v.result.urls.slice(0,8)){
+  if(typeof raw!=="string")continue;
+  let u;
+  try{u=new URL(raw)}catch{continue}
+  const hostPattern=new RegExp("^[a-f0-9]{8}-"+name+
+     "\\."+SUBDOMAIN+"\\.workers\\.dev$","u");
+  if(u.protocol!=="https:"||u.username||u.password||u.port||
+    !hostPattern.test(u.hostname)||u.pathname!=="/"||u.search||u.hash)continue;
+  allowed.push(u.hostname);
+ }
+ if(allowed.length!==1)return {status:"UNAVAILABLE",
+  reason:"VERSION_PROVIDER_NO_UNIQUE_PINNED_URL"};
+ return {status:"PINNED_URL_AVAILABLE",host:allowed[0]};
+}
+export async function probePinnedVersionUrl(name,id,host,{fetchImpl=fetch}={}){
+ if(!NAMES.includes(name)||!UUID.test(id)||
+   typeof host!=="string"||
+   !new RegExp("^[a-f0-9]{8}-"+name+"\\."+SUBDOMAIN+
+     "\\.workers\\.dev$","u").test(host))
+    fail("VERSION_PROBE_HOST_NOT_PINNED");
+ // This name came from the exact id-bound Cloudflare version result.
+ // The hostname prefix is NOT necessarily the version UUID prefix.
+ return probeActualHost(name,{fetchImpl,hostOverride:host});
+}
+export async function probeActualHost(name,{fetchImpl=fetch,hostOverride=null}={}){
+ if(hostOverride!==null&&
+    (typeof hostOverride!=="string"||
+     !/^[a-f0-9]{8}-geomacro-step3-shadow(?:-legacy)?\.daspallab202391\.workers\.dev$/u.test(hostOverride)))
+   fail("PROBE_HOST_OUTSIDE_VERSION_ALLOWLIST");
  if(!NAMES.includes(name))fail("HOST_NOT_ALLOWLISTED");
  let r;
- try{r=await fetchImpl("https://"+name+"."+SUBDOMAIN+
-  ".workers.dev/v1/internal/p0b/status?deep=invalid",{
+ try{r=await fetchImpl("https://"+(hostOverride??(name+"."+SUBDOMAIN+
+  ".workers.dev"))+"/v1/internal/p0b/status?deep=invalid",{
    method:"GET",redirect:"error",cache:"no-store",
    headers:{Accept:"application/json",Authorization:"Bearer invalid"},
    signal:AbortSignal.timeout(12000)})
@@ -144,6 +192,12 @@ export async function auditShadowCode({env=process.env,fetchImpl=fetch,holdPrese
     fail("VERSION_NOT_ISOLATED_FROM_PRODUCTION_D1");
    const content=await inspectDownloadedCode(env,name,{fetchImpl});
    const publicProbe=await probeActualHost(name,{fetchImpl});
+   const versionUrl=await getDeployedVersionUrls(env,name,active[0].version_id,fetchImpl);
+   // Never construct a URL from a guessed version ID: use only exact
+   // provider-returned immutable URL whose host is strictly pinned.
+   const versionProbe=versionUrl.status==="PINNED_URL_AVAILABLE"?
+     await probePinnedVersionUrl(name,active[0].version_id,versionUrl.host,{fetchImpl}):
+     {status:"UNAVAILABLE",reason:versionUrl.reason};
    report.workers.push({
     script:name,route_enabled:subdomain.enabled,
     previews_enabled:subdomain.previews_enabled,
@@ -153,16 +207,28 @@ export async function auditShadowCode({env=process.env,fetchImpl=fetch,holdPrese
     deployed_script_etag:typeof version.resources?.script?.etag==="string"?
       version.resources.script.etag:null,
     provider_content_endpoint:content,
-    http_probe:publicProbe
+    http_probe:publicProbe,
+    version_url_provenance:{status:versionUrl.status,
+      ...(versionUrl.reason?{reason:versionUrl.reason}:{}),
+      immutable_version_id_match:versionUrl.status==="PINNED_URL_AVAILABLE"},
+    immutable_version_http_probe:versionProbe
    });
   }
   report.status=report.workers.every(w=>w.route_enabled&&
      w.deployed_fetch_handler===true&&w.http_probe.expected_guard_verified)?
     "PASS_READONLY_ROUTE_CODE_BOUNDARY_NOT_AUTHENTICATED":
     "HOLD";
+  const versionReady=report.workers.every(w=>
+    w.immutable_version_http_probe.expected_guard_verified===true);
+  const productionRoute404=report.workers.every(w=>
+    w.http_probe.http_status===404&&!w.http_probe.json_type);
   report.code=report.status.startsWith("PASS")?
     "BOTH_SHADOW_ADMIN_AUTH_GUARDS_REACHABLE":
-    "SHADOW_DEPLOYED_HANDLER_OR_PUBLIC_INGRESS_NEEDS_RECONCILIATION";
+    (versionReady&&productionRoute404?
+      "BOTH_IMMUTABLE_VERSIONS_AUTH_GUARD_PASS_BUT_PRODUCTION_WORKERSDEV_404":
+     versionReady?
+      "IMMUTABLE_VERSION_INGRESS_PASS_PRODUCTION_ROUTE_MISMATCH":
+     "VERSION_OR_PUBLIC_SHADOW_INGRESS_NOT_VERIFIED");
  }catch(error){
   const m=String(error?.message??"");
   report.code=/^STEP3_SHADOW_CODE_[A-Z0-9_]+$/u.test(m)?
