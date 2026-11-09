@@ -46,6 +46,27 @@ test("auth query must pass real admin guard before returning deterministic 400",
       fetchImpl:async()=>Response.json({ok:false,error:"D1_BINDING_MISSING"},{status:503})}),
     /SHADOW_AUTH_PROBE_UNEXPECTED_HTTP_503/);
 });
+test("non-JSON Cloudflare responses disclose only safe HTTP classification and do not authorize mutation",async()=>{
+  for(const [status,headers,expected] of [
+    [403,{"Content-Type":"text/html","cf-mitigated":"challenge"},"SHADOW_AUTH_PROBE_HTTP_403_CF_CHALLENGE"],
+    [403,{"Content-Type":"text/html"},"SHADOW_AUTH_PROBE_HTTP_403_NON_JSON"],
+    [503,{"Content-Type":"text/plain"},"SHADOW_AUTH_PROBE_HTTP_503_NON_JSON"],
+  ]){
+    await assert.rejects(
+      ()=>classifyAuthProbe({host:hosts[0],token:TOKEN,
+        fetchImpl:async()=>new Response("<html>private-details</html>",{status,headers})}),
+      error=>error.message==="STEP3_BEARER_"+expected&&
+        !error.message.includes("private-details")
+    );
+  }
+  await assert.rejects(
+    ()=>classifyAuthProbe({host:hosts[0],token:TOKEN,
+      fetchImpl:async()=>new Response("invalid",{
+        status:401,headers:{"content-type":"application/json"}
+      })}),
+    /STEP3_BEARER_SHADOW_AUTH_PROBE_HTTP_401_INVALID_JSON/
+  );
+});
 test("only mismatched isolated Shadow credentials are synced, then proven live",async()=>{
   const updated=[],called=[],active=new Set([WORKERS[1]]);
   const fake=async(url,init)=>{
