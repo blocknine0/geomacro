@@ -1,6 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {seedShadowArchivedPointer} from "../lib/d1-step3-shadow-pointer-seed.mjs";
+import {seedShadowArchivedPointer,shadowR2ObjectUrl,shadowR2Request}
+ from "../lib/d1-step3-shadow-pointer-seed.mjs";
 
 const env={
  GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED:"YES",
@@ -50,4 +51,83 @@ test("offline: forged B2 ACK identifier cannot produce an R2 pointer",async()=>{
   writeD1:async()=>{throw Error("not allowed")},
   fetchImpl:async()=>{throw Error("not allowed")}
  }),/STEP3_SHADOW_SEED_ARCHIVED_SOURCE_IDENTITY_INVALID/u);
+});
+
+test("offline: Cloudflare REST R2 key keeps literal slash separators",()=>{
+ const key="geomacro/private/phase2h/ref-only/v1/a b.json";
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,key);
+ assert.match(url,/\/objects\/geomacro\/private\/phase2h\/ref-only\/v1\/a%20b\.json$/u);
+ assert.doesNotMatch(url,/%2F/iu);
+});
+test("offline: provider rejection retains only HTTP and numeric CF code",async()=>{
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,"safe/object");
+ for(const [status,code] of [[403,10000],[401,10002],[429,10058]]){
+  await assert.rejects(shadowR2Request(url,env,"PUT",async()=>new Response(
+   JSON.stringify({success:false,errors:[{code,message:"DO_NOT_LEAK_BODY"}]}),
+   {status,headers:{"Content-Type":"application/json"}}
+  ),Buffer.from("fixture")),e=>{
+   assert.equal(e.message,
+    "STEP3_SHADOW_SEED_R2_PUT_HTTP_"+status+"_CF_"+code);
+   assert.doesNotMatch(e.message,/DO_NOT_LEAK_BODY/u);
+   return true;
+  });
+ }
+ await assert.rejects(shadowR2Request(url,env,"GET",async()=>
+  new Response("opaque HTML response",{status:503})
+ ),/STEP3_SHADOW_SEED_R2_GET_HTTP_503_CF_UNKNOWN/u);
+});
+test("offline: R2 PUT requires successful provider envelope and matching metadata",async()=>{
+ const key="geomacro/private/phase2h/ref-only/v1/fixture.json";
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,key);
+ const bytes=Buffer.from("immutable-test-fixture");
+ const response=await shadowR2Request(url,env,"PUT",async(_url,init)=>{
+  assert.equal(init.method,"PUT");
+  assert.ok(Buffer.isBuffer(init.body));
+  assert.deepEqual(init.body,bytes);
+  assert.equal(init.headers["Content-Type"],"application/octet-stream");
+  return new Response(JSON.stringify({
+   success:true,result:{key,size:String(bytes.length)}
+  }),{status:200,headers:{"Content-Type":"application/json"}});
+ },bytes);
+ assert.equal(response.status,200);
+ await assert.rejects(shadowR2Request(url,env,"PUT",async()=>new Response(
+  JSON.stringify({success:false,errors:[{code:1000}]}),{status:200}
+ ),bytes),/STEP3_SHADOW_SEED_R2_PUT_ACK_INVALID/u);
+ await assert.rejects(shadowR2Request(url,env,"PUT",async()=>new Response(
+  JSON.stringify({success:true,result:{key:"other",size:String(bytes.length)}}),
+  {status:200}
+ ),bytes),/STEP3_SHADOW_SEED_R2_PUT_ACK_KEY_MISMATCH/u);
+});
+test("offline: R2 GET returns original bytes; exceptions remain sanitized",async()=>{
+ const key="geomacro/private/phase2h/ref-only/v1/fixture.json";
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,key);
+ const bytes=Buffer.from("immutable-test-fixture");
+ const res=await shadowR2Request(url,env,"GET",async(_url,init)=>{
+  assert.equal(init.method,"GET");
+  return new Response(bytes,{status:200});
+ });
+ assert.deepEqual(Buffer.from(await res.arrayBuffer()),bytes);
+ await assert.rejects(shadowR2Request(url,env,"PUT",async()=>{
+  throw Error("SECRET_SHOULD_NOT_LEAK");
+ },bytes),e=>{
+  assert.equal(e.message,"STEP3_SHADOW_SEED_R2_PROVIDER_UNAVAILABLE");
+  return true;
+ });
+});
+
+test("offline: invalid payload or GET-with-body cannot touch R2",async()=>{
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,"safe/object");
+ let calls=0;const never=async()=>{calls++;throw Error("do not call")};
+ await assert.rejects(shadowR2Request(url,env,"PUT",never,
+  Buffer.alloc(0)),/STEP3_SHADOW_SEED_R2_PUT_BODY_INVALID/u);
+ await assert.rejects(shadowR2Request(url,env,"PUT",never,
+  "not-bytes"),/STEP3_SHADOW_SEED_R2_PUT_BODY_INVALID/u);
+ await assert.rejects(shadowR2Request(url,env,"GET",never,
+  Buffer.from("not-a-get")),/STEP3_SHADOW_SEED_R2_GET_BODY_INVALID/u);
+ assert.equal(calls,0);
 });
