@@ -7,16 +7,69 @@
 import {readFileSync,mkdirSync,writeFileSync,existsSync} from "node:fs";
 import {pathToFileURL} from "node:url";
 import {resolve} from "node:path";
-import {checkD1BundledWork} from "./plan-d1-bundled-work.mjs";
+import {checkD1PaidMonthlyHeadroom,paidD1BillingCycle,
+ D1_PAID_MONTHLY_POLICY} from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
-import {evaluateOwnerD1DailyEnvelope} from "../lib/d1-owner-daily-envelope.mjs";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{40}$/;
 const STAGES=[0,1,5,25,50,100];
-const OWNER_POLICY=JSON.parse(readFileSync(
- new URL("../../config/geomacro-cloudflare-five-usd-budget.json",import.meta.url),"utf8"
-)).d1_budget_policy;
+const PAID_POLICY=D1_PAID_MONTHLY_POLICY;
+const nonnegative=x=>Number.isSafeInteger(x)&&x>=0;
+export function verifyCanaryPaidMonthQuota(quota,now=new Date()){
+ const cycle=paidD1BillingCycle(now);
+ const at=Date.parse(quota?.checked_at_utc??"");
+ if(quota?.schema!=="geomacro.d1-paid-monthly-headroom.v1"||
+    quota?.status!=="PASS"||
+    quota?.code!=="MIGRATION_PAID_MONTHLY_HEADROOM_VERIFIED"||
+    quota?.lane!=="canary"||
+    quota?.provider_subscription_verified!==true||
+    quota?.payment_activation_authorized!==false||
+    quota?.no_d1_sql_or_write_issued!==true||
+    quota?.provider_metrics_may_lag!==true||
+    quota?.account_wide_hard_cap_guaranteed!==false||
+    quota?.reserve_pct!==PAID_POLICY.owner_included_quota_reserve_pct||
+    quota?.old_daily_140k_policy_applied!==false)
+   return {verified:false,reason:"PROVIDER_PAID_MONTHLY_PLAN_OR_ADMISSION_UNVERIFIED"};
+ if(quota.day_utc!==cycle.observed_through_utc||
+    quota.cycle_start_utc!==cycle.start_utc||
+    quota.cycle_end_exclusive_utc!==cycle.end_exclusive_utc||
+    !Number.isFinite(at)||at>now.getTime()||
+    now.getTime()-at>120000)
+  return {verified:false,reason:"PROVIDER_BILLING_CYCLE_OR_SAMPLE_STALE"};
+ if(quota.monthly_ceiling_read!==PAID_POLICY.owner_normal_monthly_ceiling.rows_read||
+    quota.monthly_ceiling_written!==PAID_POLICY.owner_normal_monthly_ceiling.rows_written||
+    quota.operational_daily_ceiling_read!==PAID_POLICY.owner_daily_ceiling.rows_read||
+    quota.operational_daily_ceiling_written!==PAID_POLICY.owner_daily_ceiling.rows_written||
+    quota.operational_hourly_ceiling_read!==PAID_POLICY.owner_hourly_ceiling.rows_read||
+    quota.operational_hourly_ceiling_written!==PAID_POLICY.owner_hourly_ceiling.rows_written||
+    !nonnegative(quota.database_count)||quota.database_count<1||
+    !nonnegative(quota.observed_rows_read)||
+    !nonnegative(quota.observed_rows_written)||
+    !nonnegative(quota.remaining_rows_read)||
+    !nonnegative(quota.remaining_rows_written)||
+    !nonnegative(quota.monthly_paced_ceiling_read)||
+    !nonnegative(quota.monthly_paced_ceiling_written)||
+    quota.remaining_rows_read!==
+      quota.monthly_ceiling_read-quota.observed_rows_read||
+    quota.remaining_rows_written!==
+      quota.monthly_ceiling_written-quota.observed_rows_written||
+    quota.remaining_rows_read<PAID_POLICY.migration_reserve_rows_read||
+    quota.remaining_rows_written<PAID_POLICY.migration_reserve_rows_written||
+    quota.monthly_paced_ceiling_read-quota.observed_rows_read<
+      PAID_POLICY.migration_reserve_rows_read||
+    quota.monthly_paced_ceiling_written-quota.observed_rows_written<
+      PAID_POLICY.migration_reserve_rows_written)
+  return {verified:false,reason:"PAID_MONTHLY_OWNER_RESERVE_OR_PACING_UNVERIFIED"};
+ return {verified:true,reason:"CLOUDFLARE_PAID_MONTHLY_ACCOUNT_CAPACITY_VERIFIED",
+  observed_rows_read:quota.observed_rows_read,
+  observed_rows_written:quota.observed_rows_written,
+  remaining_rows_read:quota.remaining_rows_read,
+  remaining_rows_written:quota.remaining_rows_written,
+  cycle_start_utc:quota.cycle_start_utc,
+  cycle_end_exclusive_utc:quota.cycle_end_exclusive_utc,
+  provider_metrics_delayed:true};
+}
 
 export function readBindings(version){
  const raw=version?.resources?.bindings;
@@ -104,30 +157,15 @@ export function assessWorkerPromotion({
      findVar("GEOMACRO_P0B_ADMISSION_ACTIVE")!=="1"||
      findVar("GEOMACRO_P1_BUNDLED_LEASES_ENABLED")!=="1")
    return refuse("CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
-  if(quota?.day_utc!==now.toISOString().slice(0,10))
-   return refuse("PROVIDER_UTC_DAY_RECEIPT_STALE_OR_MISSING");
-  const limits=quota?.owner_d1_utc_daily_targets;
-  if(limits?.rows_read!==580000000||limits?.rows_written!==1100000||
-     limits?.normal_rows_read!==580000000||limits?.normal_rows_written!==1100000||
-     limits?.emergency_rows_read!==0||limits?.emergency_rows_written!==0||
-     limits?.emergency_auto_admission!==false)
-   return refuse("OWNER_PAID_POLICY_UNVERIFIED");
-  if(quota?.workers_paid_subscription_verified!==true)
-   return refuse("WORKERS_PAID_UNVERIFIED");
+  const proof=verifyCanaryPaidMonthQuota(quota,now);
+  if(!proof.verified)return refuse(proof.reason);
+  // Owner-authorized spend-policy read is advisory by default. If policy
+  // enforcement ever becomes mandatory, it must have independent provider
+  // proof; the D1 Paid subscription alone never fabricates that evidence.
   if(spendPolicyEnforced&&!(
-   quota?.paid_capacity_probe_status==="VERIFIED"&&
-   quota?.paid_capacity_verified_by_provider===true))
+    quota?.paid_capacity_probe_status==="VERIFIED"&&
+    quota?.paid_capacity_verified_by_provider===true))
    return refuse("SPEND_POLICY_UNVERIFIED");
-  const env=evaluateOwnerD1DailyEnvelope({
-   observedRowsRead:quota?.observed_rows_read,
-   observedRowsWritten:quota?.observed_rows_written,
-   now,policy:OWNER_POLICY
-  });
-  if(env.held||quota?.state==="HELD"||quota?.owner_d1_utc_budget_held)
-   return refuse("OWNER_D1_BUDGET_HELD",{
-    observed_rows_read:quota?.observed_rows_read??null,
-    observed_rows_written:quota?.observed_rows_written??null
-   });
   return Object.freeze({
    schema:"geomacro.hot50.protected-worker-promotion.v1",
    checked_at:now.toISOString(),stage:"READ_ONLY",eligible:true,
@@ -135,6 +173,11 @@ export function assessWorkerPromotion({
    source_sha:sourceSha,previous_percent:preceding,target_percent:targetPercent,
    baseline_id:baselineId,candidate_id:candidateId,bindings_checked:newBindings.length,
    observed_rows_read:quota.observed_rows_read,observed_rows_written:quota.observed_rows_written,
+   monthly_read_headroom:proof.remaining_rows_read,
+   monthly_write_headroom:proof.remaining_rows_written,
+   billing_cycle_start_utc:proof.cycle_start_utc,
+   billing_cycle_end_exclusive_utc:proof.cycle_end_exclusive_utc,
+   no_funds:true,provider_paid_metrics_delayed:true,
    provider_mutations:0,payments:0
   });
  }catch{return refuse("PROVIDER_RECEIPT_UNREADABLE");}
@@ -150,7 +193,7 @@ async function providerGet(env,path,fetchImpl=fetch){
  return body.result;
 }
 export async function inspectPromotion({
- env=process.env,fetchImpl=fetch,plan=checkD1BundledWork,now=new Date()
+ env=process.env,fetchImpl=fetch,plan=checkD1PaidMonthlyHeadroom,now=new Date()
 }={}){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
   env.GITHUB_REF!=="refs/heads/main"||
@@ -169,7 +212,7 @@ export async function inspectPromotion({
   providerGet(env,"/workers/scripts/"+name+"/deployments?per_page=1",fetchImpl),
   providerGet(env,"/workers/scripts/"+name+"/versions/"+baselineId,fetchImpl),
   providerGet(env,"/workers/scripts/"+name+"/versions/"+candidateId,fetchImpl),
-  plan({env,fetchImpl,now})
+  plan({env,fetchImpl,now,lane:"canary"})
  ]);
  const result=assessWorkerPromotion({
   deployment,baselineVersion,candidateVersion,baselineId,candidateId,
