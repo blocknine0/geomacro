@@ -7,6 +7,7 @@ on:
       - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
       - "scripts/lib/d1-step3-migration-contract.mjs"
+      - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
       - "scripts/lib/d1-step3-crypto-proof.mjs"
       - "scripts/lib/d1-step3-migration-ledger.mjs"
@@ -45,6 +46,7 @@ jobs:
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
           node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
           node --check scripts/lib/d1-step3-migration-contract.mjs
+          node --check scripts/lib/d1-step3-supported-integrity.mjs
           node --check scripts/lib/d1-step3-recovery-checkpoint.mjs
           node --check scripts/lib/d1-step3-crypto-proof.mjs
           node --check scripts/lib/d1-step3-migration-ledger.mjs
