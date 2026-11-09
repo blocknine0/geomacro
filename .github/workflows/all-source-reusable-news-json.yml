@@ -86,6 +86,7 @@ jobs:
           node --test scripts/lib/reusable-source-news-d1.test.mjs
           node --test scripts/tests/prepare-reusable-news-batches.test.mjs
           node --test scripts/tests/plan-d1-bundled-work.test.mjs
+          node --test scripts/tests/source-billing-read-admission-wiring.test.mjs
           node --test scripts/tests/phase2h-registered-private-quota.test.mjs
 
   collect-and-publish:
