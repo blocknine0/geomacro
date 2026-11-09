@@ -16,7 +16,7 @@ Cloudflare documents per-Worker immutable Version URLs in the format `<version-p
 
 The existing `step3-shadow-live-code-version-audit.yml` now:
 1. Confirms pinned account, production/Shadow D1 separation, existing HOLD and 100% deployed version.
-2. Requests the exact version's `urls` using **GET only**. It never guesses a Version URL: it only accepts a single provider-returned exact `https://<8-hex-version-prefix>-<allowlisted-shadow-script>.daspallab202391.workers.dev`.
+2. Requests the exact version's `urls` using **GET only**. It never guesses a Version URL: it only accepts a single provider-returned exact `https://<8-hex-version-prefix>-<allowlisted-shadow-script>.daspallab202391.workers.dev`. The prefix is a provider-assigned version URL label, **not guaranteed to equal the first eight characters of the UUID**; immutable version identity is anchored by the id-scoped API response.
 3. Sends a bounded **deliberately invalid bearer** probe to the immutable Version URL and separately to the production script hostname.
 4. Redacts all HTTP bodies, headers except response-type classification, cookies, token, Worker source and private bindings. The artifact records immutable version ID, provider URL provenance, HTTP status and whether exact JSON 401 `UNAUTHORIZED` was received. A Cloudflare Access redirect/challenge, 403 or unavailable Version URL is UNKNOWN/HOLD, not PASS.
 5. Preserves canary HOLD. A Version URL guard PASS plus production URL 404 is conclusive evidence of **production script-host routing mismatch**, not production Worker failure. If both URLs fail, inspect the account-level Cloudflare 404/error and access settings; do not deploy or promote without a checked recovery plan.
