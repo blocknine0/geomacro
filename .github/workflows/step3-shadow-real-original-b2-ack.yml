@@ -1,5 +1,10 @@
 name: Step3 Genuine Shadow Original B2 ACK - No Production DDL
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/step3-shadow-real-original-b2-ack.yml"
+      - "scripts/ops/seed-step3-shadow-archived-original.mjs"
+      - "scripts/tests/step3-shadow-real-original-seed-contract.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -25,8 +30,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - run: node --check scripts/ops/seed-step3-shadow-archived-original.mjs
       - run: node --test scripts/tests/step3-shadow-real-original-seed-contract.test.mjs
-      - shell: bash
+      - if: github.event_name == 'workflow_dispatch'
+        shell: bash
         run: |
           set -euo pipefail
           test "$REQUESTED_APPROVAL" = 'SEED_REAL_SHADOW_B2_ACK_ONLY'
