@@ -93,11 +93,17 @@ export function fixtureReadbackSql(f){
   " WHERE "+f.key+" IN ("+f.rows.map(r=>quote(r[f.key])).join(",")+
   ") ORDER BY "+f.key+" LIMIT 4";
 }
-export function fixtureReadbackMatches(f,rows){
- if(!Array.isArray(rows)||rows.length!==f.rows.length)return false;
+export function fixtureReadbackMatchesPartial(f,rows){
+ if(!Array.isArray(rows)||rows.length>f.rows.length)return false;
  const expected=new Map(f.rows.map(r=>[r[f.key],r]));
+ const seen=new Set();
  return rows.every(r=>expected.has(r[f.key])&&
-  f.columns.every(c=>r[c]===expected.get(r[f.key])[c]));
+  !seen.has(r[f.key])&&
+  (seen.add(r[f.key]),f.columns.every(c=>r[c]===expected.get(r[f.key])[c])));
+}
+export function fixtureReadbackMatches(f,rows){
+ return Array.isArray(rows)&&rows.length===f.rows.length&&
+  fixtureReadbackMatchesPartial(f,rows);
 }
 function validateEnv(env,gitHead){
  if(env.GITHUB_ACTIONS!=="true"||
@@ -189,8 +195,8 @@ export async function seedShadowNonfactIndexes({env=process.env,
   preflightSchema(config);
   for(const f of STEP3_SHADOW_NONFACT_FIXTURES){
    const before=dbQuery(config,fixtureReadbackSql(f)).rows;
-   if(before.length!==0&&!fixtureReadbackMatches(f,before))
-    fail("EXISTING_SHADOW_FIXTURE_COLLISION_OR_PARTIAL_ROWS");
+   if(!fixtureReadbackMatchesPartial(f,before))
+    fail("EXISTING_SHADOW_FIXTURE_KEY_COLLISION_OR_DRIFT");
   }
   out.stage="DURABLE_ENCRYPTED_SHADOW_RECOVERY";
   const fixtureManifestSha=sha(JSON.stringify(STEP3_SHADOW_NONFACT_FIXTURES));
