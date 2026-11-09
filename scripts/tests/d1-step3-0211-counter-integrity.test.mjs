@@ -64,7 +64,7 @@ test("fail closed if underlying canonical committed source diverges from maintai
  const db=database();
  try{
   db.exec("UPDATE p0b_committed_day_totals SET committed_count=10 WHERE day_utc='2026-11-09'");
-  assert.throws(()=>auditStep30211WithoutRowidCounter(reader(db)),/CANONICAL_SOURCE_COUNTER_PARITY_NOT_PROVEN/);
+  assert.throws(()=>auditStep30211WithoutRowidCounter(reader(db)),/PER_DAY_CANONICAL_COUNTER_MISMATCH/);
  }finally{db.close()}
 });
 test("corrupt per-day values with unchanged total still fail exact source parity",()=>{
