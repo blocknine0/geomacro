@@ -21,11 +21,15 @@ function same(a,b){
  return Buffer.byteLength(a)===Buffer.byteLength(b)&&
   timingSafeEqual(Buffer.from(a),Buffer.from(b));
 }
-function remoteObjectUrl(account,bucket,key){
+// R2 REST API requires literal slashes inside path-like object keys.
+export function shadowR2ObjectUrl(account,bucket,key){
  return "https://api.cloudflare.com/client/v4/accounts/"+account+
   "/r2/buckets/"+bucket+"/objects/"+key.split("/").map(encodeURIComponent).join("/");
 }
-async function req(url,env,method,fetchImpl,body){
+// Fail closed with a non-secret HTTP status + numeric provider error code.
+// Never emit response bodies, auth headers, original bytes, or Cloudflare messages.
+export async function shadowR2Request(url,env,method,fetchImpl,body){
+ if(method!=="PUT"&&method!=="GET")fail("R2_METHOD_UNSUPPORTED");
  let res;
  try{
   const form=body===undefined?null:new FormData();
@@ -38,8 +42,33 @@ async function req(url,env,method,fetchImpl,body){
    ...(form?{body:form}:{}),signal:AbortSignal.timeout(20000)
   });
  }catch{fail("R2_PROVIDER_UNAVAILABLE")}
- if(!res||res.redirected||res.status<200||res.status>=300)
-  fail("R2_PROVIDER_REJECTED");
+ if(!res||res.redirected)fail("R2_PROVIDER_UNAVAILABLE");
+ if(!Number.isSafeInteger(res.status)||res.status<200||res.status>=300){
+  let cloudflareCode="UNKNOWN";
+  try{
+   const err=await res.json();
+   const raw=err?.errors?.[0]?.code??err?.code;
+   const numeric=typeof raw==="string"&&/^\\d{1,6}$/u.test(raw)?
+    Number(raw):raw;
+   if(Number.isSafeInteger(numeric)&&numeric>=0&&numeric<=999999)
+    cloudflareCode=String(numeric);
+  }catch{/* Cloudflare may return HTML; do not print bodies. */}
+  const status=Number.isSafeInteger(res.status)&&res.status>=100&&
+   res.status<=599?String(res.status):"UNKNOWN";
+  fail("R2_"+method+"_HTTP_"+status+"_CF_"+cloudflareCode);
+ }
+ if(method==="PUT"){
+  let ack;
+  try{ack=await res.json()}catch{fail("R2_PUT_ACK_UNREADABLE")}
+  if(ack?.success!==true||!ack.result||typeof ack.result!=="object")
+   fail("R2_PUT_ACK_INVALID");
+  const key=decodeURIComponent(new URL(url).pathname.split("/objects/")[1]??"");
+  if(ack.result.key!==undefined&&ack.result.key!==key)
+   fail("R2_PUT_ACK_KEY_MISMATCH");
+  if(ack.result.size!==undefined&&
+     Number(ack.result.size)!==body?.byteLength)
+   fail("R2_PUT_ACK_SIZE_MISMATCH");
+ }
  return res;
 }
 export async function seedShadowArchivedPointer({
@@ -106,10 +135,10 @@ export async function seedShadowArchivedPointer({
  const objectSha=hash(bundle);
  const objectKey="geomacro/private/phase2h/ref-only/v1/"+objectSha+".json";
  const bucket=env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET;
- const url=remoteObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,bucket,objectKey);
- await req(url,env,"PUT",fetchImpl,bundle);
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,bucket,objectKey);
+ await shadowR2Request(url,env,"PUT",fetchImpl,bundle);
  const read=Buffer.from(await (
-  await req(url,env,"GET",fetchImpl)).arrayBuffer());
+  await shadowR2Request(url,env,"GET",fetchImpl)).arrayBuffer());
  if(read.length!==bundle.length||hash(read)!==objectSha||!same(read,bundle))
   fail("R2_PHYSICAL_BYTE_READBACK_MISMATCH");
  const signedAt=new Date(now).toISOString();
