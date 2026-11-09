@@ -94,8 +94,20 @@ export async function classifyAuthProbe({host,token,fetchImpl=fetch}){
     });
   }catch{fail("SHADOW_AUTH_PROBE_UNREACHABLE")}
   if(!response||response.redirected)fail("SHADOW_AUTH_PROBE_REDIRECT");
+  // HTTP status and Cloudflare challenge flag are safe diagnostic metadata;
+  // never save request credentials, Set-Cookie headers or untrusted HTML.
+  const http=Number(response.status);
+  const contentType=String(response.headers?.get("content-type")??"").toLowerCase();
+  const challenged=response.headers?.get("cf-mitigated")==="challenge";
+  if(!Number.isSafeInteger(http)||http<100||http>599)
+    fail("SHADOW_AUTH_PROBE_INVALID_HTTP_STATUS");
+  if(!contentType.includes("application/json"))
+    fail("SHADOW_AUTH_PROBE_HTTP_"+http+
+      (challenged?"_CF_CHALLENGE":"_NON_JSON"));
   let data;
-  try{data=await response.json()}catch{fail("SHADOW_AUTH_PROBE_JSON_INVALID")}
+  try{data=await response.json()}catch{
+    fail("SHADOW_AUTH_PROBE_HTTP_"+http+"_INVALID_JSON");
+  }
   if(response.status===400&&data?.error==="P0B_STATUS_QUERY_INVALID"&&data.ok===false)
     return "AUTHENTICATED";
   if(response.status===401&&data?.error==="UNAUTHORIZED"&&data.ok===false)
