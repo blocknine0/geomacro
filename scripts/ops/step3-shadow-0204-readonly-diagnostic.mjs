@@ -10,6 +10,7 @@ import {join,resolve} from "node:path";
 import {execFileSync} from "node:child_process";
 import {step3IndexParityQueries,parseStep3IndexD1ReadOnly,
  verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
+import {auditStep3AllIndexes} from "../lib/d1-step3-supported-integrity.mjs";
 const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu;
 const path="artifacts/release/step3-shadow-0204-readonly-diagnostic.json";
 const checks=Object.freeze([
@@ -138,6 +139,28 @@ function main(env=process.env){
  out.index_parity_bounded_0204_PASS=out.index_parity_checks.length===3&&
   out.index_parity_checks.every(x=>x.status===
    "PASS_BOUNDED_FULL_LOGICAL_INDEX_KEY_PARITY");
+ // Independent D1-supported audit of EVERY existing index, not only the
+ // new three: quick_check + foreign_key_check + provider index_list/xinfo
+ // + complete <=3000 table/index key parity + SQLite UNIQUE duplicate checks.
+ // Any unsupported/partial/expression index returns HOLD; never silently
+ // promote a quick_check result to full SQLite physical integrity.
+ out.all_existing_index_integrity_checks=[];
+ for(const table of ["private_osint_news_25h",
+   "private_osint_source_checks_24h","website_derived_intelligence"]){
+  try{
+   const proof=auditStep3AllIndexes(table,(sql,maxRows)=>readSQL(sql,maxRows));
+   out.all_existing_index_integrity_checks.push(proof);
+  }catch(e){
+   const code=/^STEP3_ALL_INDEX_[A-Z0-9_]{3,110}$/u.test(e?.message??"")?
+    e.message:"STEP3_ALL_INDEX_PROVIDER_READ_UNVERIFIED";
+   out.all_existing_index_integrity_checks.push({table,status:"HOLD",code,
+    private_row_material_exposed:false,production_sql_mutated:false});
+  }
+ }
+ out.d1_supported_all_existing_indexes_PASS=
+  out.all_existing_index_integrity_checks.length===3&&
+  out.all_existing_index_integrity_checks.every(x=>
+   x.status==="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF");
  out.sqlite_full_integrity_check_claimed=false;
  mkdirSync(resolve(path,".."),{recursive:true,mode:0o700});
  writeFileSync(path,JSON.stringify(out,null,2)+"\n",{mode:0o600});
