@@ -21,8 +21,13 @@ on:
         description: "Type PROMOTE_HOT50_NO_FUNDS (does not authorize payments)"
         required: true
         type: string
+      stage2_run_id:
+        description: "Real signed exact-main Stage2 production run ID required before any traffic mutation"
+        required: true
+        type: string
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: geomacro-d1-control-plane-production
   cancel-in-progress: false
@@ -43,7 +48,7 @@ jobs:
     needs: offline-contract
     if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 115
     environment: production
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -52,6 +57,26 @@ jobs:
       BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
+      GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID: ${{ inputs.stage2_run_id }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_SPOOL_ENCRYPTION_KEY: ${{ secrets.B2_SPOOL_ENCRYPTION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "hot50_release_parity"
+      B2_REQUEST_BUDGET: "500"
+      P0B_PRIVATE_R2_BUCKET: ${{ secrets.P0B_PRIVATE_R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      PARITY_MAX_B2_READS: "250"
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256: ${{ vars.GEOMACRO_MACHINE_FACTS_PUBLIC_KEY_SHA256 }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_PEM }}
+      GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256: ${{ vars.GEOMACRO_MACHINE_RIGHTS_PUBLIC_KEY_SHA256 }}
       WRANGLER_VERSION: "4.136.3"
       WORKER_ORIGIN: https://geomacro-control-plane.daspallab202391.workers.dev
     steps:
@@ -132,125 +157,67 @@ jobs:
           # and have EXACT matching production binding names and types.
           # Never call "wrangler deploy", "wrangler secret put" or create a D1 here.
           echo "CANARY_VERSION_UPLOAD_NOT_PERFORMED_BY_PROMOTION_WORKFLOW=true"
-      - name: Run provider-gated 0,1,5,25,50,100 percent promotion with rollback
-        shell: bash
+      - name: Verify exact-main authenticated real Stage2 workflow identity and both provider jobs
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROOF_RUN_ID: ${{ inputs.stage2_run_id }}
+          EXPECTED_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const id=String(process.env.PROOF_RUN_ID||'');
+            if(!/^[1-9][0-9]{5,20}$/.test(id)){
+              core.setFailed('CANARY_STAGE2_REAL_RUN_ID_REQUIRED');return;
+            }
+            const {owner,repo}=context.repo;
+            const {data:run}=await github.rest.actions.getWorkflowRun({
+              owner,repo,run_id:Number(id)});
+            if(run.path!=='.github/workflows/production-rollout-orchestrator.yml'||
+               run.event!=='workflow_dispatch'||run.head_branch!=='main'||
+               run.head_sha!==process.env.EXPECTED_SHA||
+               run.status!=='completed'||run.conclusion!=='success'){
+              core.setFailed('CANARY_STAGE2_WORKFLOW_IDENTITY_OR_CONCLUSION_UNVERIFIED');return;
+            }
+            const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
+              owner,repo,run_id:Number(id),per_page:100});
+            const stage2=jobs.jobs.filter(j=>j.name==='stage2-production');
+            const shadow=jobs.jobs.filter(j=>j.name==='shadow-physical');
+            if(stage2.length!==1||shadow.length!==1||
+               stage2[0].conclusion!=='success'||shadow[0].conclusion!=='success')
+              core.setFailed('CANARY_REAL_SHADOW_AND_STAGE2_JOBS_NOT_BOTH_SUCCESS');
+      - name: Download signed physical production evidence (not a local CI receipt)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-step3-production
+          path: artifacts/release
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.stage2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify genuine signed Stage2 R2/B2, HMAC and migration readback before mutation
         run: |
           set -euo pipefail
-          export ROLLBACK_NEEDED=0
-          rollback() {
-            status="$?"
-            if test "$ROLLBACK_NEEDED" = 1; then
-              echo "::error::CANARY_PROMOTION_FAILED_ROLLBACK_ATTEMPTING_PREVIOUS_100_PERCENT_VERSION"
-              if npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
-                "${BASELINE_VERSION_ID}@100%" --name geomacro-control-plane -y \
-                --message "geomacro no-funds canary rollback"; then
-                echo "CANARY_ROLLBACK_COMMAND_SUCCEEDED_REQUIRE_PROVIDER_CONFIRMATION"
-              else
-                echo "::error::CANARY_ROLLBACK_FAILED_MANUAL_CLOUDFLARE_INTERVENTION_REQUIRED"
-              fi
-            fi
-            exit "$status"
-          }
-          trap rollback ERR
-          for percent in 0 1 5 25 50 100; do
-            export TARGET_PERCENT="$percent"
-            # This is a fresh provider + owner-billing envelope check
-            # on each stage; if held, rollback rather than bypass.
-            node scripts/ops/verify-protected-worker-promotion.mjs
-            ROLLBACK_NEEDED=1
-            old=$((100-percent))
-            if test "$old" -eq 0; then
-              npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
-                "${CANDIDATE_VERSION_ID}@100%" --name geomacro-control-plane -y \
-                --message "geomacro Hot50 no-funds protected 100% rollout"
-            else
-              npx -y "wrangler@${WRANGLER_VERSION}" versions deploy \
-                "${BASELINE_VERSION_ID}@${old}%" "${CANDIDATE_VERSION_ID}@${percent}%" \
-                --name geomacro-control-plane -y \
-                --message "geomacro Hot50 no-funds protected ${percent}% rollout"
-            fi
-            # Confirm exact Cloudflare deployment split and version-directed
-            # protected HTTP /health before progressing. Never trust CLI exit alone.
-            node --input-type=module <<'NODE'
-            const {mkdirSync,writeFileSync}=await import('node:fs');
-            const pct=Number(process.env.TARGET_PERCENT);
-            const base=process.env.BASELINE_VERSION_ID;
-            const candidate=process.env.CANDIDATE_VERSION_ID;
-            const url='https://api.cloudflare.com/client/v4/accounts/'+
-              process.env.CLOUDFLARE_ACCOUNT_ID+
-              '/workers/scripts/geomacro-control-plane/deployments?per_page=1';
-            let ok=false;
-            for(let i=0;i<7;i++){
-              const r=await fetch(url,{headers:{Authorization:'Bearer '+
-                process.env.CLOUDFLARE_API_TOKEN},redirect:'error',
-                signal:AbortSignal.timeout(15000)});
-              const j=await r.json();
-              const vs=j?.result?.deployments?.[0]?.versions??[];
-              const a=vs.find(x=>x.version_id===base);
-              const b=vs.find(x=>x.version_id===candidate);
-              const expectedBase=100-pct;
-              if(r.ok&&j.success===true&&Number(b?.percentage)===pct&&
-                ((pct===100&&!a)||(Number(a?.percentage)===expectedBase))){
-                ok=true;break;
-              }
-              await new Promise(resolve=>setTimeout(resolve,3000));
-            }
-            if(!ok)throw Error('CANARY_REMOTE_DEPLOYMENT_PERCENT_UNVERIFIED');
-            const header={'Cloudflare-Workers-Version-Overrides':
-              'geomacro-control-plane="'+candidate+'"'};
-            let healthy=false;
-            for(let i=0;i<6;i++){
-              try{
-                const r=await fetch(process.env.WORKER_ORIGIN+'/health',{
-                  headers:header,redirect:'error',cache:'no-store',
-                  signal:AbortSignal.timeout(10000)});
-                const j=await r.json();
-                if(r.status===200&&j.ok===true&&
-                   j.deployed_source_sha===process.env.GITHUB_SHA){
-                  healthy=true;break;
-                }
-              }catch{}
-              await new Promise(resolve=>setTimeout(resolve,3000));
-            }
-            if(!healthy)throw Error('CANARY_VERSION_DIRECTED_MAIN_SHA_HEALTH_UNVERIFIED');
-            // Compare public delivery verification keys. This does not claim
-            // independent reviewer certificates or the 150 GRO cells exist.
-            const keyAt=async id=>{
-              const headers={'Cloudflare-Workers-Version-Overrides':
-                'geomacro-control-plane="'+id+'"'};
-              const r=await fetch(process.env.WORKER_ORIGIN+
-                '/v1/public/risk-gate-decision-key',{
-                headers,redirect:'error',cache:'no-store',
-                signal:AbortSignal.timeout(10000)});
-              const j=await r.json();
-              if(r.status!==200||j?.ok!==true)throw Error('CANARY_SIGNER_KEY_UNAVAILABLE');
-              return JSON.stringify(j);
-            };
-            const [oldKey,newKey]=await Promise.all([
-              keyAt(base),keyAt(candidate)]);
-            if(oldKey!==newKey)throw Error('CANARY_PUBLIC_SIGNER_PARITY_MISMATCH');
-            const unauth=await fetch(process.env.WORKER_ORIGIN+
-              '/v1/control/bootstrap_smoke',{
-              method:'PUT',headers:{...header,'Content-Type':'application/json'},
-              body:JSON.stringify({value:{probe:true},version:1}),
-              redirect:'error',signal:AbortSignal.timeout(10000)});
-            if(unauth.status!==401)throw Error('CANARY_UNAUTHENTICATED_WRITE_NOT_DENIED');
-            // Record only symbolic proof, never private key or response bodies.
-            mkdirSync('artifacts/protected-canary',{recursive:true});
-            writeFileSync('artifacts/protected-canary/promotion-'+pct+'.json',
-             JSON.stringify({schema:'geomacro.worker-promotion-stage.v1',
-              main_sha:process.env.GITHUB_SHA,traffic_percent:pct,
-              deployment_verified:true,version_directed_health_verified:true,
-              commercial_payment_lock_not_modified:true,payments_executed:0,no_funds:true,
-              signer_public_key_parity_checked:true,unauthenticated_write_denied:true}));
-            console.log('CANARY_PROVIDER_STAGE_VERIFIED:'+pct);
-            NODE
-            if test "$percent" -ne 100; then sleep 60; fi
-          done
-          ROLLBACK_NEEDED=0
-          trap - ERR
-          echo "CANARY_TRAFFIC_ROLLOUT_PROVIDER_DEPLOYMENTS_VERIFIED=true"
-          echo "CANARY_FULL_HOT50_SIGNED_GRO_AND_B2_PARITY_STILL_REQUIRE_SEPARATE_ACCEPTANCE"
+          node --input-type=module <<'NODE'
+          import {admitSignedStep3ProductionFile}
+            from './scripts/lib/d1-step3-production-canary-admission.mjs';
+          const a=admitSignedStep3ProductionFile();
+          if(a.status!=='PASS_REAL_PROVIDER_PRODUCTION'||a.canary_traffic_altered!==false)
+            throw Error('CANARY_STAGE2_REAL_SIGNED_PROOF_MISSING');
+          console.log(JSON.stringify(a));
+          NODE
+      - name: Verify provider version parity and account D1 headroom at stage zero
+        run: |
+          set -euo pipefail
+          export TARGET_PERCENT=0
+          node scripts/ops/verify-protected-worker-promotion.mjs
+      - name: Use canonical six-stage rollback-capable promoter (not minute-long fast path)
+        run: |
+          set -euo pipefail
+          # Cloudflare "versions deploy" traffic mutations happen only inside
+          # the canonical verified canary-promoter.ts, not this workflow.
+          node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
+          node --experimental-strip-types scripts/canary-promoter.ts --promote
+          # Canonical observations: stage 0=15m, 1%=30m, 5/25/50/100%=15m.
+          # Signed Stage2, per-version p95/p99, provider D1 monthly pace,
+          # rollback and no-funds holds remain mandatory.
       - name: Persist non-secret, source-free provider receipts even on HOLD
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
