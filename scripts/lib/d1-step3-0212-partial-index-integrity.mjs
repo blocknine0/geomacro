@@ -22,7 +22,7 @@ const indexedSQL=base+" INDEXED BY "+q(INDEX)+
  " WHERE "+PREDICATE+" LIMIT "+LIMIT;
 const schemaSQL="SELECT name,type,sql FROM sqlite_schema WHERE name='"+INDEX+
  "' AND type='index' LIMIT 2";
-const schemaPattern=/^CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?["'\`]?idx_phase2h_pending_recent_ingested_category["'\`]?\s+ON\s+["'\`]?phase2h_private_raw_news["'\`]?\s*\(\s*["'\`]?first_ingested_at["'\`]?\s*,\s*["'\`]?category["'\`]?\s*\)\s*WHERE\s+["'\`]?b2_object_sha256["'\`]?\s+IS\s+NULL\s*;?\s*$/iu;
+const schemaPattern=/^CREATE\s+INDEX\s+(?:IF\s+NOT\s+EXISTS\s+)?["'`]?idx_phase2h_pending_recent_ingested_category["'`]?\s+ON\s+["'`]?phase2h_private_raw_news["'`]?\s*\(\s*["'`]?first_ingested_at["'`]?\s*,\s*["'`]?category["'`]?\s*\)\s*WHERE\s+["'`]?b2_object_sha256["'`]?\s+IS\s+NULL\s*;?\s*$/iu;
 function read(query,sql,max){
  const rows=query(sql,max);
  if(!Array.isArray(rows)||rows.length>max)
