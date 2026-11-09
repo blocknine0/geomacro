@@ -26,7 +26,12 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  }else{
   const r=await runD1PaidMonthlyHeadroom().catch(()=>null);
   if(!r||r.status!=="PASS"){
+   // Preserve the exact fail-closed outcome while exposing only allowlisted
+   // diagnostic enum codes (no provider body, credential or account identifier).
+   const category=value=>typeof value==="string"&&
+     /^[A-Z][A-Z0-9_]{2,110}$/u.test(value)?value:"UNCLASSIFIED";
    console.error(JSON.stringify({status:"HOLD",code:D1_PAID_HEADROOM_HOLD,
+    reason:category(r?.reason),provider_error:category(r?.provider_error),
     report:PAID_D1_HEADROOM_REPORT,d1_mutations:0,
     payments:0,production_migration_executed:false}));
    process.exitCode=3;
