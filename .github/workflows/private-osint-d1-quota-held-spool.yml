@@ -55,6 +55,7 @@ on:
       - "scripts/lib/private-osint-shared-read-contract.test.mjs"
       - "scripts/lib/cloudflare-workers-paid-plan-proof.mjs"
       - "scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs"
+      - "scripts/tests/step3-shadow-source-fallback-contract.test.mjs"
 
 permissions:
   contents: read
@@ -92,6 +93,7 @@ jobs:
           node --test scripts/tests/private-osint-reuse-fresh-stage.test.mjs
           node --test scripts/tests/hot50-continuity-independent-fallback.test.mjs
           node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs
+          node --test scripts/tests/step3-shadow-source-fallback-contract.test.mjs
 
   quota-admission:
     needs: verify
@@ -130,15 +132,16 @@ jobs:
       contents: read
       actions: read
     needs: [verify, quota-admission]
-    # A quota-observation runner failure is UNKNOWN, not permission to write D1.
-    # Preserve native source polling to AES-GCM even if that job fails outright.
+    # This lane never writes D1. Preserve encrypted source observations
+    # whenever D1 source_intake is not admitted, including Paid CRITICAL_ONLY,
+    # unknown/failing provider proof, skipped admission and Free HELD.
+    # An unrelated critical=true grant does not grant source_intake.
     if: >-
       always() &&
       needs.verify.result == 'success' &&
       (needs.quota-admission.result == 'failure' ||
+       needs.quota-admission.result == 'skipped' ||
        (needs.quota-admission.result == 'success' &&
-        needs.quota-admission.outputs.state == 'HELD' &&
-        needs.quota-admission.outputs.critical != 'true' &&
         needs.quota-admission.outputs.source_intake != 'true')) &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
