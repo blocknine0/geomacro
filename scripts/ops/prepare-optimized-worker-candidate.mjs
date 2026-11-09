@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {checkD1PaidMonthlyHeadroom}
- from './lib/d1-workers-paid-monthly-governor.mjs';
+ from '../lib/d1-workers-paid-monthly-governor.mjs';
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
