@@ -103,7 +103,7 @@ async function getDeployedVersionUrls(e,name,id,fetchImpl){
   if(typeof raw!=="string")continue;
   let u;
   try{u=new URL(raw)}catch{continue}
-  const hostPattern=new RegExp("^[a-f0-9]{8}-"+name.replaceAll("-","\\-")+
+  const hostPattern=new RegExp("^[a-f0-9]{8}-"+name+
      "\\."+SUBDOMAIN+"\\.workers\\.dev$","u");
   if(u.protocol!=="https:"||u.username||u.password||u.port||
     !hostPattern.test(u.hostname)||u.pathname!=="/"||u.search||u.hash||
