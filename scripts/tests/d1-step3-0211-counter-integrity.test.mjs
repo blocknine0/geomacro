@@ -67,6 +67,17 @@ test("fail closed if underlying canonical committed source diverges from maintai
   assert.throws(()=>auditStep30211WithoutRowidCounter(reader(db)),/CANONICAL_SOURCE_COUNTER_PARITY_NOT_PROVEN/);
  }finally{db.close()}
 });
+test("corrupt per-day values with unchanged total still fail exact source parity",()=>{
+ const db=database();
+ try{
+  db.exec("UPDATE p0b_committed_day_totals SET committed_count=1 WHERE day_utc='2026-11-09'");
+  db.exec("UPDATE p0b_committed_day_totals SET committed_count=2 WHERE day_utc='2026-11-08'");
+  const sum=db.prepare("SELECT SUM(committed_count) AS total FROM p0b_committed_day_totals").get();
+  assert.equal(sum.total,3);
+  assert.throws(()=>auditStep30211WithoutRowidCounter(reader(db)),
+   /PER_DAY_CANONICAL_COUNTER_MISMATCH/);
+ }finally{db.close()}
+});
 test("fail closed for corrupt PK metadata, missing PK or index row drift",()=>{
  const db=database();
  try{
