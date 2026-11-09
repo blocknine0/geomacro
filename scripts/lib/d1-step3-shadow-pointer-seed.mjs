@@ -30,16 +30,19 @@ export function shadowR2ObjectUrl(account,bucket,key){
 // Never emit response bodies, auth headers, original bytes, or Cloudflare messages.
 export async function shadowR2Request(url,env,method,fetchImpl,body){
  if(method!=="PUT"&&method!=="GET")fail("R2_METHOD_UNSUPPORTED");
+ // Identical to the physically proven recovery-checkpoint R2 PUT: the
+ // REST object endpoint receives the exact bytes, not multipart FormData.
+ if(method==="PUT"&&(!Buffer.isBuffer(body)||body.length<1||
+    body.length>600000))fail("R2_PUT_BODY_INVALID");
+ if(method==="GET"&&body!==undefined)fail("R2_GET_BODY_INVALID");
  let res;
  try{
-  const form=body===undefined?null:new FormData();
-  if(form)form.set("body",new Blob([body],{
-   type:"application/octet-stream"}),"shadow-pointer.bin");
   res=await fetchImpl(url,{
    method,redirect:"error",cache:"no-store",
    headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
-    "Cache-Control":"no-store"},
-   ...(form?{body:form}:{}),signal:AbortSignal.timeout(20000)
+    "Cache-Control":"no-store",
+    ...(method==="PUT"?{"Content-Type":"application/octet-stream"}:{})},
+   ...(method==="PUT"?{body}:{}),signal:AbortSignal.timeout(20000)
   });
  }catch{fail("R2_PROVIDER_UNAVAILABLE")}
  if(!res||res.redirected)fail("R2_PROVIDER_UNAVAILABLE");
