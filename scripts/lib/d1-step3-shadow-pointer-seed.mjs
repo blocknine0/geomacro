@@ -48,7 +48,7 @@ export async function shadowR2Request(url,env,method,fetchImpl,body){
   try{
    const err=await res.json();
    const raw=err?.errors?.[0]?.code??err?.code;
-   const numeric=typeof raw==="string"&&/^\\d{1,6}$/u.test(raw)?
+   const numeric=typeof raw==="string"&&/^\d{1,6}$/u.test(raw)?
     Number(raw):raw;
    if(Number.isSafeInteger(numeric)&&numeric>=0&&numeric<=999999)
     cloudflareCode=String(numeric);
