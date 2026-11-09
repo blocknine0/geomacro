@@ -80,6 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
           bun -e "import('./scripts/ops/seed-step3-shadow-archived-original.mjs').then(x=>x.assertScope(process.env))"
