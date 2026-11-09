@@ -297,6 +297,30 @@ export function admitSignedClosedD1DayForCanary(proof:any,now=new Date()){
   zero_unindexed_database_claimed:false,no_funds:true,remote_hold_removed:false};
 }
 
+/** Pre-promotion verify checks the EXISTING 100% baseline. Requiring the new
+ * main SHA here would deadlock every protected upgrade (the new SHA must be
+ * verified on the 0% version override before routing any candidate traffic).
+ * This check performs zero provider mutation and certifies no new deployment. */
+export function assessLiveCanaryBaseline(active:any,health:any,status:number,mainSha:string){
+ need(/^[a-f0-9]{40}$/u.test(mainSha),'CANARY_MAIN_SHA_INVALID');
+ const versions=active?.versions;
+ need(Array.isArray(versions)&&versions.length===1&&
+  UUID_RE.test(versions[0]?.version_id??'')&&
+  Number(versions[0]?.percentage)===100,
+  'CANARY_PRODUCTION_VERSION_SPLIT_NOT_SETTLED');
+ need(status===200&&health?.ok===true&&
+  /^[a-f0-9]{40}$/u.test(health.deployed_source_sha??''),
+  'CANARY_LIVE_BASELINE_HEALTH_UNVERIFIED');
+ return Object.freeze({status:'PASS',
+  scope:'LIVE_EXISTING_BASELINE_100_NO_FUNDS',
+  baseline_version_id:versions[0].version_id,
+  baseline_source_sha:health.deployed_source_sha,
+  candidate_exact_main_sha:mainSha,
+  candidate_not_yet_promoted:health.deployed_source_sha!==mainSha,
+  deployment_mutated:false,provider_evidence_signed:false,
+  no_funds:true,remote_hold_unchanged:true});
+}
+
 async function main(){
  need(process.argv.slice(2).every(s=>s==='--promote'||s==='--release-hold'),'CANARY_ARGS_INVALID');
  const promote=process.argv.includes('--promote');
@@ -304,13 +328,12 @@ async function main(){
  need(existsSync(HOLD),'CANARY_EXISTING_PROTECTION_REQUIRED');
  if(!promote){
   const active=await liveCurrent();
-  need(active.versions?.length===1&&Number(active.versions[0]?.percentage)===100,
-   'CANARY_PRODUCTION_VERSION_SPLIT_NOT_SETTLED');
   const res=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
   const health=await res.json().catch(()=>null);
-  need(res.status===200&&health?.ok===true&&health.deployed_source_sha===mainSha,
-   'CANARY_CURRENT_MAIN_SHA_NOT_DEPLOYED');
-  console.log(JSON.stringify({status:'PASS',scope:'LIVE_MAIN_100_PERCENT_NO_FUNDS',source_sha:mainSha}));return;
+  // The baseline can legitimately be the last released SHA until the
+  // protected 0%-version-directed smoke and ordered promotion succeed.
+  console.log(JSON.stringify(assessLiveCanaryBaseline(active,health,res.status,mainSha)));
+  return;
  }
  requireSchemaAcceptance(mainSha);
  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
