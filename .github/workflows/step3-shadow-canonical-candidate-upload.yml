@@ -1,0 +1,79 @@
+name: Step3 Shadow Canonical Worker Candidate Upload - No Traffic or DDL
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/step3-shadow-canonical-candidate-upload.yml"
+      - "scripts/ops/prepare-step3-shadow-canonical-candidate.mjs"
+      - "scripts/tests/step3-shadow-canonical-candidate.test.mjs"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type STAGE_TWO_ISOLATED_SHADOW_CANONICAL_VERSIONS_NO_TRAFFIC"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-step3-shadow-original-b2-seed
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --check scripts/ops/prepare-step3-shadow-canonical-candidate.mjs
+      - run: node --test scripts/tests/step3-shadow-canonical-candidate.test.mjs
+  shadow-candidate-only:
+    needs: offline-contract
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.approval == 'STAGE_TWO_ISOLATED_SHADOW_CANONICAL_VERSIONS_NO_TRAFFIC' &&
+      vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED == 'YES'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    env:
+      SHADOW_CANONICAL_APPROVAL: ${{ inputs.approval }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
+      GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
+      GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
+      GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST }}
+      GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Protect exact main Shadow DB and unchanged canary HOLD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+          test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
+      - name: Upload only two immutable unpromoted Shadow canonical versions
+        run: node scripts/ops/prepare-step3-shadow-canonical-candidate.mjs
+      - name: Preserve candidate SHA, binding parity and no-traffic receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-shadow-canonical-candidates-${{ github.run_id }}
+          path: artifacts/release/step3-shadow-canonical-unpromoted-candidates.json
+          retention-days: 14
+          if-no-files-found: warn
