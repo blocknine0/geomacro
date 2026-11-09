@@ -77,6 +77,13 @@ async function assertRealShadow(e){
      x.name==="PHASE2H_PRIVATE_R2"&&
      x.bucket_name===e.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET).length!==1)
    fail("REAL_SHADOW_PRIVATE_R2_BINDING_UNVERIFIED");
+  // Persistent preflight: never incur another governed B2 PUT when the
+  // exact Shadow workers.dev ingress is disabled. This proves routing
+  // metadata, not bearer auth or the underlying news event.
+  const route=await getJson(base+"/workers/scripts/"+name+"/subdomain",
+   e.CLOUDFLARE_API_TOKEN);
+  if(route.success!==true||route.result?.enabled!==true)
+   fail("SHADOW_WORKERSDEV_ROUTE_NOT_ENABLED");
  }
 }
 async function readShadow(e,id){
