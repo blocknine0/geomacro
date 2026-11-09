@@ -103,6 +103,28 @@ test("invalid FK, source group, PK index and concurrent counter change fail clos
   ])assert.throws(()=>auditStep30212ExactHourlyCounter(reader(d,modify)));
  }finally{d.close()}
 });
+test("concurrent canonical source changes and schema drift fail closed on recheck",()=>{
+ const d=makeDatabase();
+ try{
+  let sourceReads=0;
+  assert.throws(()=>auditStep30212ExactHourlyCounter(reader(d,(sql,rows)=>{
+   if(sql.includes("FROM phase2h_private_raw_news")&&sql.includes("GROUP BY")){
+    sourceReads++;
+    return sourceReads===2?rows.map((x,i)=>
+     i===0?{...x,__audit_count:x.__audit_count+1}:x):rows;
+   }
+   return rows;
+  })),/CONCURRENT_CANONICAL_SOURCE_UPDATE/);
+  let indexCatalogReads=0;
+  assert.throws(()=>auditStep30212ExactHourlyCounter(reader(d,(sql,rows)=>{
+   if(sql.startsWith("PRAGMA index_list(")){
+    indexCatalogReads++;
+    return indexCatalogReads===2?[]:rows;
+   }
+   return rows;
+  })),/CONCURRENT_HOURLY_INDEX_SCHEMA_CHANGE/);
+ }finally{d.close()}
+});
 test("no mutation, fabricated source, payment or real signing authorization",()=>{
  const c=readFileSync("scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs","utf8");
  assert.doesNotMatch(c,/fetch\(|execFileSync|unlinkSync|wrangler deploy/);
