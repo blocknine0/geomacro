@@ -367,6 +367,7 @@
     "stateless-website-intelligence-live.yml",
     "step3-protected-binding-readiness.yml",
     "step3-r2-private-exposure.yml",
+    "step3-shadow-bearer-sync.yml",
     "step3-shadow-prerequisite-bootstrap.yml",
     "step3-shadow-provider-readonly-inventory.yml",
     "step3-shadow-real-original-b2-ack.yml",
