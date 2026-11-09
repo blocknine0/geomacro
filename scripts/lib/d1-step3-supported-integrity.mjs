@@ -165,14 +165,33 @@ export const STEP3_0204_EXPECTED_EXISTING_INDEXES=Object.freeze({
   "sqlite_autoindex_website_derived_intelligence_1"
  ])
 });
+/**
+ * Reviewed 0212 additive indexes affect two of the three 0204 source tables.
+ * Re-validating 0204 after a correctly applied 0212 must not become a
+ * permanent false HOLD because 12 grew to 14. A PARTIAL 13-index rollout,
+ * an unknown index or an unexpected schema is always HOLD.
+ * The 14-index logical proof does NOT certify that migration 0212 was applied
+ * or that its own ledger/recovery/B2/crypto signed acceptance exists.
+ */
+export const STEP3_0212_ADDITIVE_INDEX_LINEAGE=Object.freeze({
+ private_osint_news_25h:Object.freeze(["idx_private_osint_country_clock_v3"]),
+ private_osint_source_checks_24h:Object.freeze([]),
+ website_derived_intelligence:Object.freeze(["idx_website_derived_category_clock_v3"])
+});
 export function admitStep30204SupportedIntegrity(proofs){
  const tables=Object.keys(STEP3_0204_EXPECTED_EXISTING_INDEXES);
  if(!Array.isArray(proofs)||proofs.length!==tables.length)
   fail("0204_THREE_TABLES_REQUIRED");
+ const observedTotal=proofs.reduce((sum,x)=>sum+
+  (Number.isSafeInteger(x?.total_existing_indexes)?x.total_existing_indexes:0),0);
+ if(![12,14].includes(observedTotal))
+  fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
+ const future=observedTotal===14;
  let count=0;
  for(let i=0;i<tables.length;i++){
   const table=tables[i],p=proofs[i];
-  const expected=STEP3_0204_EXPECTED_EXISTING_INDEXES[table];
+  const expected=[...STEP3_0204_EXPECTED_EXISTING_INDEXES[table],
+   ...(future?STEP3_0212_ADDITIVE_INDEX_LINEAGE[table]:[])];
   if(p?.table!==table||
      p.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
      p.total_existing_indexes!==expected.length||
@@ -184,7 +203,7 @@ export function admitStep30204SupportedIntegrity(proofs){
      p.raw_private_content_exposed!==false)
    fail("0204_TABLE_SUPPORTED_PROOF_UNVERIFIED");
   const received=p.index_proofs.map(x=>x.index).sort();
-  if(JSON.stringify(received)!==JSON.stringify([...expected].sort())||
+  if(JSON.stringify(received)!==JSON.stringify(expected.sort())||
      p.index_proofs.some(x=>
       x.status!=="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"||
       !Number.isSafeInteger(x.rows_compared)||
@@ -195,12 +214,19 @@ export function admitStep30204SupportedIntegrity(proofs){
    fail("0204_UNIQUE_INDEX_PROOF_REQUIRED");
   count+=expected.length;
  }
- if(count!==12)fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
+ if(count!==observedTotal)
+  fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
  return Object.freeze({
-  status:"PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY",
+  status:future?
+   "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY":
+   "PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY",
   provider_query_proofs_required:true,
   quick_check_fk_all_indexes_and_unique_verified:true,
-  existing_index_count:12,table_count:3,
+  index_lineage:future?"0204_PLUS_REVIEWED_0212_ADDITIVE_PAIR":"0204_ONLY",
+  all_0212_v3_additive_index_memberships_verified:future,
+  later_0212_native_migration_history_verified:false,
+  later_0212_ledger_verified:false,
+  existing_index_count:count,table_count:3,
   sqlite_integrity_check_claimed:false,
   production_release_authorized:false
  });
