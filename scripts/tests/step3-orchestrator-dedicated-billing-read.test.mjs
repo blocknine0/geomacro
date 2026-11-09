@@ -52,3 +52,29 @@ test("Headroom HOLD still exits nonzero; only enum diagnostic fields are printed
  assert.match(headroom,/reason:category\(r\?\.reason\)/u);
  assert.doesNotMatch(headroom,/continue-on-error|console\.log\(JSON\.stringify\(process\.env\)/u);
 });
+
+test("Shadow authorization is evaluated inside the protected environment before provider access",()=>{
+ const shadow=getJob("shadow-physical");
+ const condition=shadow.slice(shadow.indexOf("    if: >-"),shadow.indexOf("    runs-on:"));
+ assert.match(condition,/github\.event_name == 'workflow_dispatch'/u);
+ assert.match(condition,/github\.repository == 'blocknine0\/geomacro'/u);
+ assert.match(condition,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(condition,/inputs\.approval == 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL'/u);
+ assert.doesNotMatch(condition,/vars\.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED/u);
+ assert.match(shadow,/SHADOW_APPROVAL_VALUE: \$\{\{ vars\.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED \}\}/u);
+ assert.doesNotMatch(shadow,/^\s+GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: "YES"/mu);
+ assert.doesNotMatch(shadow,/^\s+GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: \$\{\{/mu);
+ const steps=shadow.slice(shadow.indexOf("    steps:"));
+ const approval=steps.indexOf("Require protected Shadow rehearsal approval after environment admission");
+ const checkout=steps.indexOf("actions/checkout@");
+ const provider=steps.indexOf("node scripts/ops/check-d1-paid-monthly-headroom.mjs --check");
+ const physical=steps.indexOf("node scripts/ops/run-step3-protected-d1-migrations.mjs --rehearse-shadow");
+ assert(approval>0&&approval<checkout&&checkout<provider&&provider<physical);
+ assert.match(steps,/\$\{SHADOW_APPROVAL_VALUE:-\}" != "YES"/u);
+ assert.match(steps,/printf '%s\\n' 'GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED=YES' >> "\$GITHUB_ENV"/u);
+ assert.match(steps,/exit 3/u);
+ assert.doesNotMatch(steps,/continue-on-error: true/u);
+ const production=getJob("stage2-production");
+ assert.match(production,/needs\.shadow-physical\.result == 'success'/u);
+ assert.match(production,/inputs\.execute_stage2 == true/u);
+});

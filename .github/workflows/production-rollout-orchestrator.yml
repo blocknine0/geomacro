@@ -76,8 +76,7 @@ jobs:
       github.event_name == 'workflow_dispatch' &&
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      inputs.approval == 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL' &&
-      vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED == 'YES'
+      inputs.approval == 'REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL'
     runs-on: ubuntu-24.04
     environment: production
     timeout-minutes: 55
@@ -89,7 +88,6 @@ jobs:
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
-      GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: "YES"
       GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
       GEOMACRO_STEP3_EXACT_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA }}
@@ -109,6 +107,23 @@ jobs:
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_shadow_rehearsal"
       B2_REQUEST_BUDGET: "12"
     steps:
+      # Effective production-environment vars are resolved after job admission.
+      # No checkout or Cloudflare/D1 work precedes this fail-closed check.
+      - name: Require protected Shadow rehearsal approval after environment admission
+        shell: bash
+        env:
+          # Step-level vars resolve on the protected production runner.
+          SHADOW_APPROVAL_VALUE: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
+        run: |
+          set -euo pipefail
+          if [[ "${SHADOW_APPROVAL_VALUE:-}" != "YES" ]]; then
+            echo "::error title=Shadow authorization HOLD::Step3 Shadow rehearsal approval is not YES in the effective production environment"
+            exit 3
+          fi
+          # Export the verified authorization only to subsequent steps.
+          # This is not a default or bypass: the assertion above must pass.
+          printf '%s\n' 'GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED=YES' >> "$GITHUB_ENV"
+          echo "Protected Shadow approval verified; all provider gates remain in force."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
