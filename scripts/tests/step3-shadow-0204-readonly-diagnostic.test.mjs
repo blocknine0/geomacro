@@ -57,3 +57,18 @@ test("provider diagnosis runs only after main push with separate strict monthly 
  assert.match(workflow,/if: always\(\)/u);
  assert.doesNotMatch(workflow,/run-step3-protected-d1-migrations\.mjs --apply/u);
 });
+
+test("0204 physical parity covers all three reviewed indexes with no private row payloads in receipts",()=>{
+ const source=readFileSync("scripts/ops/step3-shadow-0204-readonly-diagnostic.mjs","utf8");
+ const workflow=readFileSync(".github/workflows/step3-shadow-0204-readonly-diagnostic.yml","utf8");
+ assert.match(source,/step3IndexParityQueries/u);
+ assert.match(source,/verifyStep3IndexParity/u);
+ assert.match(source,/baselineBefore=readSQL/u);
+ assert.match(source,/indexRows=readSQL/u);
+ assert.match(source,/baselineAfter=readSQL/u);
+ assert.match(source,/providerRowsRead>100000/u);
+ assert.match(source,/index_parity_bounded_0204_PASS/u);
+ assert.match(source,/sqlite_full_integrity_check_claimed=false/u);
+ assert.match(workflow,/scripts\/tests\/d1-step3-index-parity\.test\.mjs/u);
+ assert.doesNotMatch(source,/console\.log\(.*(?:raw|baselineBefore|indexRows|baselineAfter)/u);
+});
