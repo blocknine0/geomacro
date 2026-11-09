@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {assessLiveCanaryBaseline} from '../canary-promoter.ts';
 
 const main='a'.repeat(40),previous='b'.repeat(40);
@@ -36,7 +37,6 @@ test('unknown health, split, version, SHA or HTTP status always HOLD',()=>{
   assert.throws(()=>assessLiveCanaryBaseline(...args),/CANARY_[A-Z0-9_]+/u);
 });
 test('0-100% safety still checks candidate exact SHA and retains rollback',()=>{
- const {readFileSync}=await import('node:fs');
  const source=readFileSync('scripts/canary-promoter.ts','utf8');
  const workflow=readFileSync('.github/workflows/canary-promotion.yml','utf8');
  assert.match(source,/CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED/u);
