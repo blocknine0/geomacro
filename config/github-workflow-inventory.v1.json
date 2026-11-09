@@ -369,6 +369,7 @@
     "step3-r2-private-exposure.yml",
     "step3-shadow-prerequisite-bootstrap.yml",
     "step3-shadow-provider-readonly-inventory.yml",
+    "step3-shadow-real-original-b2-ack.yml",
     "store-12-variant-readiness-no-funds.yml",
     "strict-commercial-launch-closure.yml",
     "structured-commerce-db-concurrency.yml",
