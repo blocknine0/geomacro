@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-09T15:22:28.474Z",
+  "checked_at": "2026-11-09T18:42:09.407Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 28,
+  "item_count": 24,
   "counts": {
-    "geopolitics": 0,
-    "macro": 17,
-    "rare_earth": 11
+    "geopolitics": 1,
+    "macro": 15,
+    "rare_earth": 8
   },
-  "source_native_ids_sha256": "19d4978186468db62271b907d148a6c6969064c86debe408afd4e8fecb99e467",
+  "source_native_ids_sha256": "bb0ceab305de96e81f21ab5f2ab1c6f38c55cdc95e642bbf414f8446be6d626d",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-05a5a3c3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Along with our partners we will stand with Ukraine for as long as it takes · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Along with our partners we will stand with Ukraine for as long as it takes. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T16:27:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-739406bc",
       "category": "rare_earth",
@@ -457,101 +476,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-06T18:51:12.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-e99ca3d4",
-      "category": "rare_earth",
-      "title": "Geomacro finds China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance",
-      "what_changed": "A monitored source feed reports: China Securities Regulatory Commission approved Lithium Hydroxide Futures and Options at Guangzhou Futures Exchange, Expanding Risk-Control Toolkit for China's Lithium Industry - BigGo Finance. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T18:26:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-140f0ffd",
-      "category": "macro",
-      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
-      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T17:55:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-03548565",
-      "category": "rare_earth",
-      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
-      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T17:55:39.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3c0bcd12",
-      "category": "macro",
-      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
-      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "silver industrial demand and supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T17:31:55.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-56225938",
-      "category": "rare_earth",
-      "title": "Geomacro finds Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news",
-      "what_changed": "A monitored source feed reports: Nine Mile Metals reported high-grade Copper, Zinc and Silver at Wedge Mine - Proactive financial news. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T17:31:55.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

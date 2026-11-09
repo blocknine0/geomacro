@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-09T15:22:28.474Z",
+  "generated_at": "2026-11-09T18:42:09.407Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-05a5a3c3",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Along with our partners we will stand with Ukraine for as long as it takes · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Along with our partners we will stand with Ukraine for as long as it takes. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T16:27:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-be331f64",
       "category": "geopolitics",
@@ -307,23 +326,6 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-91dd0a56",
-      "category": "geopolitics",
-      "title": "Geomacro finds UN General Assembly on Wednesday: called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades · Cuba",
-      "why_it_matters": "Official sanctions-related developments can affect settlement, trade routing and cross-border exposure. The direction and enforceability of any change still need case-specific review.",
-      "what_changed": "UN General Assembly on Wednesday called for the 34th time for an end to the US economic, commercial and financial embargo on Cuba, but with the weakest backing for the resolution in two decades. Country or region mentioned: Cuba.",
-      "geography": "Cuba",
-      "development_type": "trade restriction",
-      "topic": "sanctions and trade restrictions",
-      "published_at": "2026-10-28T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
