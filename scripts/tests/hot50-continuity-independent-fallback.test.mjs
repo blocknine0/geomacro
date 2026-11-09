@@ -46,8 +46,11 @@ test("hourly 506-source private OSINT collection survives provider-admission run
  assert.ok(holding.includes("always()"));
  assert.ok(holding.includes("needs.verify.result == 'success'"));
  assert.ok(holding.includes("needs.quota-admission.result == 'failure'"));
- assert.ok(holding.includes("needs.quota-admission.outputs.state == 'HELD'"));
- assert.ok(holding.includes("needs.quota-admission.outputs.critical != 'true'"));
+ assert.ok(holding.includes("needs.quota-admission.result == 'skipped'"));
+ assert.ok(holding.includes("needs.quota-admission.outputs.source_intake != 'true'"));
+ // Paid CRITICAL_ONLY with source_intake=false must still retain ciphertext.
+ assert.ok(!holding.includes("needs.quota-admission.outputs.state == 'HELD'"));
+ assert.ok(!holding.includes("needs.quota-admission.outputs.critical != 'true'"));
  assert.ok(holding.includes('GEOMACRO_OSINT_SPOOL_ADMISSION: "HELD"'));
  assert.ok(holding.includes("bun scripts/ops/private-osint-stage-held.ts"));
  assert.ok(holding.includes("continue-on-error: true"));
