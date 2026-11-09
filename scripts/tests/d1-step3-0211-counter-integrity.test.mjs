@@ -6,7 +6,7 @@ import {auditStep30211WithoutRowidCounter} from "../lib/d1-step3-0211-counter-in
 
 function database(){
  const db=new DatabaseSync(":memory:");
- db.exec(\`
+ db.exec(`
  CREATE TABLE ingestion_spool_queue(
   record_id TEXT PRIMARY KEY NOT NULL,d1_committed_at TEXT
  );
@@ -21,7 +21,7 @@ function database(){
  ('uncommitted',NULL);
  INSERT INTO p0b_committed_day_totals VALUES
  ('2026-11-09',2),('2026-11-08',1);
- \`);
+ `);
  return db;
 }
 function reader(db,override=(sql,rows)=>rows){
