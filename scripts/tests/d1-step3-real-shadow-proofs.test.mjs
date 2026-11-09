@@ -99,6 +99,47 @@ test("two deployed shadow identities must each bind to the exact shadow DB",asyn
   fetchImpl:fakeProvider({newR2Missing:true}).fetchImpl}),
  /STEP3_PHYSICAL_NEW_WORKER_NOT_BOUND_TO_PRIVATE_SHADOW_R2/u);
 });
+test("stale B2-backed original is safely re-observed for the immutable legacy idempotency probe",async()=>{
+ const older={...original,ingested_at:new Date(Date.now()-45*60_000).toISOString()};
+ const prior=fakeProvider();
+ let checked=false;
+ const result=await verifyRealShadowDualWorkers({
+  env,source:{...source,raw_json:JSON.stringify(older)},
+  fetchImpl:async (url,init={})=>{
+   if(init.method==="PUT"&&url.endsWith("/v1/internal/phase2h-raw-news")){
+    const submitted=JSON.parse(init.body).items[0];
+    assert.equal(submitted.record_id,older.record_id);
+    assert.equal(submitted.raw_sha256,older.raw_sha256);
+    assert.deepEqual(submitted.original,older.original);
+    assert.deepEqual(submitted.analysis,older.analysis);
+    assert.notEqual(submitted.ingested_at,older.ingested_at);
+    assert.ok(Date.now()-Date.parse(submitted.ingested_at)<60_000);
+    assert.ok(Date.parse(submitted.ingested_at)<=Date.now()+60_000);
+    checked=true;
+   }
+   return prior.fetchImpl(url,init);
+  }
+ });
+ assert.equal(checked,true);
+ assert.equal(result.legacy_worker_idempotent_write_verified,true);
+});
+test("legacy write failure retains bounded HTTP status and server enum without leaking response text",async()=>{
+ const provider=fakeProvider();
+ await assert.rejects(verifyRealShadowDualWorkers({
+  env,source,fetchImpl:async(url,init={})=>{
+   if(init.method==="PUT"&&url.endsWith("/v1/internal/phase2h-raw-news"))
+    return Response.json({ok:false,
+     error:"PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED",
+     reason_code:"PHASE2H_PRIVATE_RAW_ROOT_INVALID",
+     sensitive_details:"DO_NOT_INCLUDE_IN_RECEIPT"},{status:503});
+   return provider.fetchImpl(url,init);
+  }
+ }),err=>{
+  assert.match(err.message,/^STEP3_PHYSICAL_LEGACY_SHADOW_WRITE_HTTP_503_PRIVATE_RAW_D1_WRITE_OR_READBACK_UNVERIFIED_PHASE2H_PRIVATE_RAW_ROOT_INVALID$/u);
+  assert.equal(err.message.includes("DO_NOT_INCLUDE_IN_RECEIPT"),false);
+  return true;
+ });
+});
 test("a localhost or only one Worker URL cannot prove production dual-version compatibility",async()=>{
  await assert.rejects(verifyRealShadowDualWorkers({env:{
   ...env,GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST:"shadow-worker.local"
