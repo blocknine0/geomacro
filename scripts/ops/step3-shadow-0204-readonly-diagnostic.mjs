@@ -11,6 +11,8 @@ import {execFileSync} from "node:child_process";
 import {step3IndexParityQueries,parseStep3IndexD1ReadOnly,
  verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
 import {auditStep3AllIndexes} from "../lib/d1-step3-supported-integrity.mjs";
+import {auditStep30212ExactPartialIndex}
+ from "../lib/d1-step3-0212-partial-index-integrity.mjs";
 import {STEP3_NEXT_STAGE_READONLY_PROBES,verifyStep3NextReadonlyPlan,
  summarizeStep3NextProbe,classifyStep3NextStageReadiness}
  from "../lib/d1-step3-next-migration-inventory.mjs";
@@ -183,6 +185,20 @@ function main(env=process.env){
  }
  out.next_step3_observation=classifyStep3NextStageReadiness(
   out.next_step3_readonly_probes);
+ // Review exactly ONE known phase2h predicate index in real provider Shadow.
+ // A generic partial-index waiver is forbidden; zero eligible rows remain
+ // observational only. Keep this separate from 0212 migration/Stage2 approval.
+ try{
+  out.phase2h_0212_partial_index_proof=auditStep30212ExactPartialIndex(
+   (sql,cap)=>readSQL(sql,cap));
+ }catch(e){
+  const code=/^STEP3_0212_PARTIAL_[A-Z0-9_]{3,110}$/u.test(e?.message??"")?
+   e.message:"STEP3_0212_PARTIAL_PROVIDER_OR_HEADROOM_UNVERIFIED";
+  out.phase2h_0212_partial_index_proof={status:"HOLD",code,
+   private_originals_logged:false,production_sql_mutated:false,
+   canary_promoted:false};
+ }
+
  out.sqlite_full_integrity_check_claimed=false;
  mkdirSync(resolve(path,".."),{recursive:true,mode:0o700});
  writeFileSync(path,JSON.stringify(out,null,2)+"\n",{mode:0o600});
