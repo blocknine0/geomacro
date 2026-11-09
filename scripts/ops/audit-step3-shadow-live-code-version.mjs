@@ -123,7 +123,7 @@ export async function probePinnedVersionUrl(name,id,host,{fetchImpl=fetch}={}){
 export async function probeActualHost(name,{fetchImpl=fetch,hostOverride=null}={}){
  if(hostOverride!==null&&
     (typeof hostOverride!=="string"||
-     !/^[a-f0-9]{8}-geomacro-step3-shadow(?:-legacy)?\\.daspallab202391\\.workers\\.dev$/u.test(hostOverride)))
+     !/^[a-f0-9]{8}-geomacro-step3-shadow(?:-legacy)?\.daspallab202391\.workers\.dev$/u.test(hostOverride)))
    fail("PROBE_HOST_OUTSIDE_VERSION_ALLOWLIST");
  if(!NAMES.includes(name))fail("HOST_NOT_ALLOWLISTED");
  let r;
