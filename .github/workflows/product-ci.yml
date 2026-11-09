@@ -74,6 +74,9 @@ jobs:
         # burst concurrency; do not relax integrity, versions or scripts.
         run: bun install --frozen-lockfile --registry=https://registry.npmjs.org/ --network-concurrency=8
 
+      - name: Parse all GitHub Actions workflow YAML and protected Shadow checkout ref (offline)
+        run: node --test scripts/tests/github-workflow-yaml-parse.test.mjs
+
       - name: Lovable mirror TypeScript source check (strict, GitHub authoritative)
         # Regression guard: app-only exclusions do NOT skip the separate Vitest suite.
         # Compilation does not emit JS, edit secrets, publish or contact payment endpoints.
