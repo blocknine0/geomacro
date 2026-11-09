@@ -60,7 +60,7 @@ function verifyBindingScope(bindings,w){
   bindings.some(b=>typeof b.name!=="string"||
    !/^[A-Z][A-Z0-9_]{0,95}$/u.test(b.name)||
    typeof b.type!=="string"||
-   !/^[a-z_]{2,60}$/u.test(b.type))||
+   !/^[a-z][a-z0-9_]{1,59}$/u.test(b.type))||
   new Set(bindings.map(b=>b.name)).size!==bindings.length)
   fail("BASELINE_BINDING_LIST_UNVERIFIED");
  const db=bindings.filter(x=>x.name==="DB"&&x.type==="d1");
