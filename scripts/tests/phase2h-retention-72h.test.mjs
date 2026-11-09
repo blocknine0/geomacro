@@ -217,28 +217,59 @@ test("cleanup cannot exceed provider grant or borrow critical capacity",async()=
    fetchImpl:db.fetchImpl}),/PROTECTED_PROVIDER_ADMISSION_REQUIRED/u);
 });
 
-test("Phase2H lifecycle verifier requires console proof and performs no B2 bucket listing",async()=>{
+test("provider lifecycle is independently verified by one governed S3 GET, never object LIST",async()=>{
  for(const workflowId of ["derived_news_backup","registered_original_archive"]){
-  let calls=0;
+  let calls=0;const reservations=[];
   const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:workflowId,
    B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key",
   };
-  await assert.rejects(verifyPhase2hB2Lifecycle({env,
-   fetchImpl:async()=>{calls+=1;throw Error("B2 must not be called");},
-  }),/CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED/u);
-  assert.equal(calls,0);
+  const result=await verifyPhase2hB2Lifecycle({env,
+   governor:{reserve:async kind=>{reservations.push(kind)}},
+   fetchImpl:async(url,init)=>{
+    calls++;
+    assert.equal(url,"https://s3.us-east-005.backblazeb2.com/geomacro-private-archive?lifecycle");
+    assert.equal(init.method,"GET");
+    assert.match(init.headers.Authorization,/^AWS4-HMAC-SHA256 Credential=/u);
+    return new Response("<LifecycleConfiguration><Rule><Filter><Prefix>another/</Prefix></Filter><Status>Enabled</Status><Expiration><Days>1</Days></Expiration></Rule></LifecycleConfiguration>",{status:200});
+   }
+  });
+  assert.equal(calls,1);
+  assert.deepEqual(reservations,["GET"]);
+  assert.equal(result.auto_deletion_paused,true);
+  assert.equal(result.provider_lifecycle_readback_verified,true);
+  assert.equal(result.no_object_list_api,true);
  }
 });
-test("arbitrary B2 identity remains rejected before native HTTP calls",async()=>{
- let called=false;
+test("overlapping provider lifecycle rule blocks archive before B2 PUT",async()=>{
+ const env={GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
+  GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
+  B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"derived_news_backup",
+  B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key"};
+ await assert.rejects(()=>verifyPhase2hB2Lifecycle({env,governor:{reserve:async()=>{}},
+  fetchImpl:async()=>new Response("<LifecycleConfiguration><Rule><Filter><Prefix>geomacro-evidence/v1/private/</Prefix></Filter><Status>Enabled</Status><NoncurrentVersionExpiration><NoncurrentDays>1</NoncurrentDays></NoncurrentVersionExpiration></Rule></LifecycleConfiguration>",{status:200}),
+ }),/PHASE2H_B2_72H_AUTOMATIC_DELETION_STILL_ENABLED/u);
+ const empty=await verifyPhase2hB2Lifecycle({env,governor:{reserve:async()=>{}},
+  fetchImpl:async()=>new Response("<Error><Code>NoSuchLifecycleConfiguration</Code></Error>",{status:404}),
+ });
+ assert.equal(empty.provider_lifecycle_readback_verified,true);
+ for(const response of [
+  new Response("<Error><Code>AccessDenied</Code></Error>",{status:403}),
+  new Response("<Error><Code>NoSuchBucket</Code></Error>",{status:404}),
+  new Response("<!DOCTYPE bad><LifecycleConfiguration/>",{status:200})
+ ])await assert.rejects(()=>verifyPhase2hB2Lifecycle({env,governor:{reserve:async()=>{}},
+   fetchImpl:async()=>response
+ }),/PHASE2H_B2_72H_PROVIDER_/u);
+});
+test("untrusted B2 identity and missing quota admission reject before any provider call",async()=>{
+ let calls=0;
  await assert.rejects(verifyPhase2hB2Lifecycle({
   env:{GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
    GITHUB_REF:"refs/heads/main",PHASE2H_PROVIDER_MAINTENANCE:"true",
    B2_ACCOUNT_QUOTA_REQUIRED:"1",B2_ACCOUNT_QUOTA_WORKFLOW_ID:"untrusted_actor",
    B2_KEY_ID:"existing-write-key-id",B2_APPLICATION_KEY:"existing-write-application-key"},
-   fetchImpl:async()=>{called=true;throw Error("B2 must not be called");},
- }),/PHASE2H_B2_72H_CONSOLE_LIFECYCLE_VERIFICATION_REQUIRED/u);
- assert.equal(called,false);
+  fetchImpl:async()=>{calls++;throw Error("SHOULD_NOT_CALL")},
+ }),/PHASE2H_B2_72H_PROTECTED_GOVERNED_MAIN_REQUIRED/u);
+ assert.equal(calls,0);
 });
