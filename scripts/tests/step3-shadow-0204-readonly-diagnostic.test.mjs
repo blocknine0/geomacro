@@ -76,8 +76,23 @@ test("protected manual Shadow diagnosis is read-only and exact-main pinned",()=>
  assert.match(workflow,/^  workflow_dispatch:\s*$/mu);
  assert.match(workflow,/github\.event_name == 'workflow_dispatch'/u);
  assert.match(workflow,/git ls-remote https:\/\/github\.com\/blocknine0\/geomacro\.git refs\/heads\/main/u);
- assert.match(probe,/\["push","workflow_dispatch"\]\.includes\(env\.GITHUB_EVENT_NAME\)/u);
+ assert.match(probe,/\["push","workflow_dispatch","workflow_run"\]\.includes\(env\.GITHUB_EVENT_NAME\)/u);
  assert.match(workflow,/node scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --check/u);
  assert.doesNotMatch(workflow,/run-step3-protected-d1-migrations\.mjs --apply/u);
  assert.doesNotMatch(probe,/--apply|--file|--command",process\.env/u);
+});
+
+test("completed owner-approved Shadow fixture auto-triggers read-only parity on immutable main only",()=>{
+ assert.match(workflow,/^  workflow_run:/mu);
+ assert.match(workflow,/Step3 Isolated Shadow 0204 Nonfact Index Fixture — Protected/u);
+ assert.match(workflow,/types: \[completed\]/u);
+ assert.match(workflow,/github\.event\.workflow_run\.conclusion == 'success'/u);
+ assert.match(workflow,/github\.event\.workflow_run\.event == 'workflow_dispatch'/u);
+ assert.match(workflow,/github\.event\.workflow_run\.head_branch == 'main'/u);
+ assert.match(workflow,/github\.event\.workflow_run\.head_sha == github\.sha/u);
+ assert.match(workflow,/github\.repository == 'blocknine0\/geomacro'/u);
+ assert.match(workflow,/test "\$\(git ls-remote https:\/\/github\.com\/blocknine0\/geomacro\.git refs\/heads\/main \| cut -f1\)" = "\$GITHUB_SHA"/u);
+ assert.match(workflow,/node scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --check/u);
+ assert.doesNotMatch(workflow,/run-step3-protected-d1-migrations\.mjs --apply|d1 migrations apply/u);
+ assert.doesNotMatch(probe,/\bINSERT\s+INTO\s+phase2h_raw_object_refs_v1\b/u);
 });
