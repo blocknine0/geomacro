@@ -106,24 +106,34 @@ export async function repairShadowRoutes({env=process.env,fetchImpl=fetch,hold=e
     ]);
     const version=assertSettings(env,w,settings,versions);
     if(typeof domain.enabled!=="boolean"||
-       typeof domain.previews_enabled!=="boolean"||domain.previews_enabled)
-      fail("SHADOW_SCRIPT_ROUTE_STATE_UNVERIFIED_OR_PREVIEW_ENABLED");
-    readiness.push({...w,version,initially_enabled:domain.enabled});
+       typeof domain.previews_enabled!=="boolean")
+      fail("SHADOW_SCRIPT_ROUTE_STATE_INVALID");
+    // Preview URLs are a separate Cloudflare feature. Preserve the provider's
+    // existing preview setting; this approval changes ONLY workers.dev ingress.
+    readiness.push({...w,version,initially_enabled:domain.enabled,
+      initially_previews_enabled:domain.previews_enabled});
+    receipt.observed_routes??=[];
+    receipt.observed_routes.push({script:w.script,enabled:domain.enabled,
+      previews_enabled:domain.previews_enabled});
   }
   for(const w of readiness){
     const base="/workers/scripts/"+w.script+"/subdomain";
     if(!w.initially_enabled){
       const changed=await provider(env,base,{
-        method:"POST",payload:{enabled:true,previews_enabled:false},fetchImpl});
-      if(changed.enabled!==true||changed.previews_enabled!==false)
+        method:"POST",payload:{enabled:true,
+          previews_enabled:w.initially_previews_enabled},fetchImpl});
+      if(changed.enabled!==true||
+         changed.previews_enabled!==w.initially_previews_enabled)
         fail("SHADOW_ROUTE_ENABLE_ACK_INVALID");
     }
     const verified=await provider(env,base,{fetchImpl});
-    if(verified.enabled!==true||verified.previews_enabled!==false)
+    if(verified.enabled!==true||
+       verified.previews_enabled!==w.initially_previews_enabled)
       fail("SHADOW_ROUTE_PROVIDER_READBACK_FAILED");
     await readShadowProbe(w.host,{fetchImpl});
     receipt.workers.push({
       script:w.script,initially_enabled:w.initially_enabled,
+      previews_enabled_preserved:w.initially_previews_enabled,
       changed:!w.initially_enabled,workersdev_route_live:true,
       expected_admin_auth_401_verified:true,version:w.version,
       shadow_binding_verified:true
