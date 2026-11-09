@@ -8,6 +8,8 @@ import {mkdtempSync,writeFileSync,mkdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {execFileSync} from "node:child_process";
+import {step3IndexParityQueries,parseStep3IndexD1ReadOnly,
+ verifyStep3IndexParity} from "../lib/d1-step3-index-parity.mjs";
 const UUID=/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/iu;
 const path="artifacts/release/step3-shadow-0204-readonly-diagnostic.json";
 const checks=Object.freeze([
@@ -93,6 +95,50 @@ function main(env=process.env){
   }
   out.checks.push(result);
  }
+ // Verify every row/key of each 0204 *new* index against two independent
+ // NOT INDEXED full-table snapshots. A forced covering index scan is mandatory.
+ // Private rows and digest values stay in runner memory: receipt has only enums.
+ const indexes=[
+  "idx_private_osint_country_category_clock_v2",
+  "idx_private_osint_check_category_status_v2",
+  "idx_website_derived_hot_order_v2"
+ ];
+ let providerRowsRead=0;
+ const readSQL=(sql,cap=3001)=>{
+  const raw=execFileSync("npx",["-y","wrangler@4.136.3",
+   "d1","execute","DB","--remote","--json","--command",sql,
+   "--config",config],{encoding:"utf8",timeout:60000,
+   maxBuffer:4_000_000,stdio:["ignore","pipe","pipe"]});
+  const verified=parseStep3IndexD1ReadOnly(raw,cap);
+  providerRowsRead+=verified.rowsRead;
+  if(providerRowsRead>100000)throw Error("STEP3_INDEX_PARITY_OPERATIONAL_READ_CAP_EXCEEDED");
+  return verified.rows;
+ };
+ out.index_parity_checks=[];
+ for(const index of indexes){
+  try{
+   const queries=step3IndexParityQueries(index);
+   const baselinePlan=readSQL(queries.baselinePlanSQL,20);
+   const indexPlan=readSQL(queries.indexedPlanSQL,20);
+   const baselineBefore=readSQL(queries.baselineSQL);
+   const indexRows=readSQL(queries.indexedSQL);
+   const baselineAfter=readSQL(queries.baselineSQL);
+   const proof=verifyStep3IndexParity({index,baselineBefore,indexRows,baselineAfter,
+    baselinePlan,indexPlan});
+   out.index_parity_checks.push(proof);
+  }catch(e){
+   // Never report actual queries, private row values, source content or stderr.
+   const code=/^STEP3_INDEX_PARITY_[A-Z0-9_]{3,110}$/u.test(e?.message??"")?
+    e.message:"STEP3_INDEX_PARITY_PROVIDER_READ_UNVERIFIED";
+   out.index_parity_checks.push({index,status:"HOLD",code,
+    private_row_material_exposed:false,production_sql_mutated:false});
+  }
+ }
+ out.index_parity_provider_rows_read=providerRowsRead;
+ out.index_parity_bounded_0204_PASS=out.index_parity_checks.length===3&&
+  out.index_parity_checks.every(x=>x.status===
+   "PASS_BOUNDED_FULL_LOGICAL_INDEX_KEY_PARITY");
+ out.sqlite_full_integrity_check_claimed=false;
  mkdirSync(resolve(path,".."),{recursive:true,mode:0o700});
  writeFileSync(path,JSON.stringify(out,null,2)+"\n",{mode:0o600});
  console.log(JSON.stringify({code:out.code,checks:out.checks,

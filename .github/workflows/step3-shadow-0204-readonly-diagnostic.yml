@@ -5,6 +5,10 @@ on:
     paths:
       - ".github/workflows/step3-shadow-0204-readonly-diagnostic.yml"
       - "scripts/ops/step3-shadow-0204-readonly-diagnostic.mjs"
+      - "scripts/lib/d1-step3-index-parity.mjs"
+      - "scripts/tests/d1-step3-index-parity.test.mjs"
+      - "scripts/lib/d1-step3-index-parity.mjs"
+      - "scripts/tests/d1-step3-index-parity.test.mjs"
       - "scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs"
   pull_request:
     paths:
@@ -26,7 +30,7 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: '24'}
-      - run: node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs
+      - run: node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs
   physical-shadow-readonly:
     if: >-
       github.event_name == 'push' &&
@@ -55,7 +59,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
-          node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs
+          node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs
       - name: Independent Paid monthly account-wide provider headroom before any Shadow read
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Read only Shadow native history, ledger, index plans and full table/index integrity
