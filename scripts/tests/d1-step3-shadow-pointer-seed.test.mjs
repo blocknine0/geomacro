@@ -57,7 +57,7 @@ test("offline: Cloudflare REST R2 key keeps literal slash separators",()=>{
  const key="geomacro/private/phase2h/ref-only/v1/a b.json";
  const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
   env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,key);
- assert.match(url,/\/objects\/geomacro\/private\/phase2h\/ref-only\/v1\/a%20b\\.json$/u);
+ assert.match(url,/\/objects\/geomacro\/private\/phase2h\/ref-only\/v1\/a%20b\.json$/u);
  assert.doesNotMatch(url,/%2F/iu);
 });
 test("offline: provider rejection retains only HTTP and numeric CF code",async()=>{
