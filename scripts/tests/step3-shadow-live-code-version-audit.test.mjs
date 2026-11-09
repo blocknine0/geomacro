@@ -18,7 +18,9 @@ const env=()=>({
  GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST:
    NAMES[1]+".daspallab202391.workers.dev"
 });
-function mock({http=404,handler=true,codeMarkers=true,contentAllowed=true,wrongDb=false}={}){
+function mock({http=404,versionHttp=401,handler=true,codeMarkers=true,
+ contentAllowed=true,wrongDb=false,versionReadDenied=false,
+ unsafeVersionHost=false}={}){
  const requests=[];
  const fetchImpl=async (url,opts)=>{
   const u=new URL(url); requests.push({host:u.hostname,path:u.pathname,method:opts.method});
@@ -33,8 +35,15 @@ function mock({http=404,handler=true,codeMarkers=true,contentAllowed=true,wrongD
     return Response.json({success:true,result:{uuid:id,
      name:id===PROD?"geomacro-control-plane":"geomacro-d1-publisher-shadow"}});
    }
-   const name=NAMES.find(n=>p.includes("/workers/scripts/"+n+"/"));
+   const name=NAMES.find(n=>p.includes("/workers/scripts/"+n+"/")||
+     p.includes("/workers/workers/"+n+"/"));
    assert(name,"Provider request outside script allowlist");
+   if(p.includes("/workers/workers/")&&p.includes("/versions/")){
+    if(versionReadDenied)return new Response("denied",{status:403});
+    return Response.json({success:true,result:{id:ID,
+     urls:[unsafeVersionHost?"https://not-an-allowed-host.example.com":
+      "https://"+ID.slice(0,8)+"-"+name+".daspallab202391.workers.dev"]}});
+   }
    if(p.endsWith("/subdomain"))return Response.json({
     success:true,result:{enabled:true,previews_enabled:true}});
    if(p.endsWith("/deployments"))return Response.json({
@@ -56,14 +65,17 @@ function mock({http=404,handler=true,codeMarkers=true,contentAllowed=true,wrongD
    }
    throw Error("Unexpected API path "+p);
   }
-  assert(NAMES.some(x=>u.hostname===x+".daspallab202391.workers.dev"));
+  const isVersion=NAMES.some(x=>
+   u.hostname===ID.slice(0,8)+"-"+x+".daspallab202391.workers.dev");
+  assert(isVersion||NAMES.some(x=>u.hostname===x+".daspallab202391.workers.dev"));
   assert.equal(opts.headers.Authorization,"Bearer invalid");
   assert.equal(u.pathname,"/v1/internal/p0b/status");
-  if(http===404)return new Response("<html>PRIVATE_UNTRUSTED_BODY</html>",{
+  const effectiveHttp=isVersion?versionHttp:http;
+  if(effectiveHttp===404)return new Response("<html>PRIVATE_UNTRUSTED_BODY</html>",{
    status:404,headers:{"content-type":"text/html"}});
-  if(http===401)return Response.json({ok:false,error:"UNAUTHORIZED"},{
+  if(effectiveHttp===401)return Response.json({ok:false,error:"UNAUTHORIZED"},{
    status:401,headers:{"cf-ray":"do-not-persist"}});
-  return Response.json({ok:false,error:"OTHER"}, {status:http});
+  return Response.json({ok:false,error:"OTHER"}, {status:effectiveHttp});
  };
  return {fetchImpl,requests};
 }
@@ -80,6 +92,10 @@ test("live 404 is captured for BOTH Workers even when Cloudflare route is enable
  assert.equal(report.workers.length,2);
  assert(report.workers.every(w=>w.route_enabled===true));
  assert(report.workers.every(w=>w.http_probe.http_status===404));
+ assert(report.workers.every(w=>w.immutable_version_http_probe.http_status===401));
+ assert(report.workers.every(w=>w.immutable_version_http_probe.expected_guard_verified===true));
+ assert.equal(report.code,
+  "BOTH_IMMUTABLE_VERSIONS_AUTH_GUARD_PASS_BUT_PRODUCTION_WORKERSDEV_404");
  assert(report.workers.every(w=>w.provider_content_endpoint.markers.p0b_admin===true));
  assert(!JSON.stringify(report).includes("PRIVATE_UNTRUSTED_BODY"));
  assert(!JSON.stringify(report).includes(env().CLOUDFLARE_API_TOKEN));
@@ -112,6 +128,27 @@ test("content read permissions absent remain UNKNOWN and never fabricate deploye
  const report=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
  assert(report.workers.every(w=>w.provider_content_endpoint.reason==="CONTENT_PROVIDER_HTTP_403"));
  assert(report.workers.every(w=>w.provider_content_endpoint.status==="UNAVAILABLE"));
+});
+test("provider-authoritative version URL 404 is not misrepresented as code functioning",async()=>{
+ const f=mock({versionHttp:404});
+ const report=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
+ assert.equal(report.status,"HOLD");
+ assert(report.workers.every(w=>w.immutable_version_http_probe.http_status===404));
+ assert.equal(report.code,"VERSION_OR_PUBLIC_SHADOW_INGRESS_NOT_VERIFIED");
+});
+test("new provider endpoint permission denial retains read-only uncertainty",async()=>{
+ const f=mock({versionReadDenied:true});
+ const report=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
+ assert.equal(report.status,"HOLD");
+ assert(report.workers.every(w=>w.version_url_provenance.reason==="VERSION_PROVIDER_HTTP_403"));
+ assert(!f.requests.some(x=>x.method!=="GET"));
+});
+test("untrusted provider URL cannot redirect audit to unrelated domain",async()=>{
+ const f=mock({unsafeVersionHost:true});
+ const report=await auditShadowCode({env:env(),fetchImpl:f.fetchImpl,holdPresent:true});
+ assert.equal(report.status,"HOLD");
+ assert(report.workers.every(w=>w.version_url_provenance.reason==="VERSION_PROVIDER_NO_UNIQUE_PINNED_URL"));
+ assert(!f.requests.some(x=>x.host==="not-an-allowed-host.example.com"));
 });
 test("route host allowlist and scope protect against dynamic external URLs",async()=>{
  await assert.rejects(()=>probeActualHost("geomacro-control-plane",{fetchImpl:()=>{throw Error("never")}}),
