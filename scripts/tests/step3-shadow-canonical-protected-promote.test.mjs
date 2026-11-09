@@ -40,10 +40,10 @@ function bindings(w,{wrongDb=false}={}){
  ];
 }
 function fake({wrongDb=false,maliciousUrl=false,
- failSecondPost=false,badPublicAfter=false,missingToken=false,
+ failSecondPost=false,badPublicAfter=false,transientModernOld=false,
  oldDeploymentChanged=false,concurrentChange=false}={}){
  const deployed=new Map(W.map(w=>[w.name,oldDeploymentChanged?w.next:w.old]));
- const calls=[],writes=[],counts=new Map();
+ const calls=[],writes=[],counts=new Map(),httpCount=new Map();
  const fetchImpl=async (url,opts)=>{
   const u=new URL(url);
   calls.push({host:u.hostname,path:u.pathname,method:opts.method});
@@ -101,7 +101,10 @@ function fake({wrongDb=false,maliciousUrl=false,
   const kind=u.pathname==="/v1/public/intelligence-publications"?"pub":
     opts.headers.Authorization==="Bearer invalid"?"invalid":"valid";
   if(kind==="valid")assert.equal(opts.headers.Authorization,"Bearer "+TOKEN);
-  if(badPublicAfter&&!immutable&&w.name===W[0].name)
+  const requests=(httpCount.get(w.name)??0)+1;
+  if(!immutable)httpCount.set(w.name,requests);
+  if((badPublicAfter||transientModernOld&&requests===1)&&
+     !immutable&&w.name===W[0].name)
     return new Response("not found",{status:404,headers:{"content-type":"text/plain"}});
   if(!aligned)return new Response("old worker 404",{status:404,headers:{"content-type":"text/plain"}});
   if(kind==="pub")return Response.json({ok:false,error:"NOT_FOUND"},{status:404});
@@ -134,7 +137,7 @@ test("immutable version URLs reject external origins, redirects and duplicates",
 test("both Shadow-only deployments promote to pinned 100% after candidate auth, ordinary host 404/401/400",async()=>{
  const m=fake();
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"PASS_BOTH_SHADOW_ONLY_WORKERS_CANONICAL_LIVE");
  assert.deepEqual(m.writes,W.map(w=>({name:w.name,id:w.next})));
  assert(r.workers.every(w=>w.live_404_401_400_verified&&w.promoted_100_percent));
@@ -150,10 +153,21 @@ test("both Shadow-only deployments promote to pinned 100% after candidate auth, 
  assert(!JSON.stringify(r).includes(TOKEN));
  assert(!JSON.stringify(r).includes(env().CLOUDFLARE_API_TOKEN));
 });
+test("bounded edge propagation retry succeeds without rollback when first old response remains",async()=>{
+ const m=fake({transientModernOld:true});
+ let sleeps=0;
+ const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{sleeps++}});
+ assert.equal(r.status,"PASS_BOTH_SHADOW_ONLY_WORKERS_CANONICAL_LIVE");
+ assert(sleeps>=1);
+ assert.equal(r.workers[0].edge_propagation_probe_attempts,2);
+ assert.equal(r.rollback_fully_verified,null);
+ assert(m.writes.every(x=>x.id===W.find(w=>w.name===x.name).next));
+});
 test("wrong Shadow D1 binding blocks before any Worker deployment",async()=>{
  const m=fake({wrongDb:true});
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"HOLD");
  assert.match(r.code,/SHADOW_VS_PRODUCTION_D1_ISOLATION_FAILURE/);
  assert.equal(m.writes.length,0);
@@ -161,7 +175,7 @@ test("wrong Shadow D1 binding blocks before any Worker deployment",async()=>{
 test("malicious version URL cannot trigger external request nor deployment",async()=>{
  const m=fake({maliciousUrl:true});
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"HOLD");
  assert.equal(m.writes.length,0);
  assert(!m.calls.some(c=>c.host==="untrusted.example.com"));
@@ -169,7 +183,7 @@ test("malicious version URL cannot trigger external request nor deployment",asyn
 test("second Worker deployment error rolls first Worker back to exact old version",async()=>{
  const m=fake({failSecondPost:true});
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"HOLD");
  assert.equal(r.rollback_fully_verified,true);
  assert.equal(r.shadow_traffic_changed,false);
@@ -180,7 +194,7 @@ test("second Worker deployment error rolls first Worker back to exact old versio
 test("bad ordinary hostname HTTP contract triggers rollback, never PASS",async()=>{
  const m=fake({badPublicAfter:true});
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"HOLD");
  assert.equal(r.rollback_fully_verified,true);
  assert.equal(m.deployed.get(W[0].name),W[0].old);
@@ -190,7 +204,7 @@ test("bad ordinary hostname HTTP contract triggers rollback, never PASS",async()
 test("unreviewed active Worker deployment drift aborts before mutating second Worker",async()=>{
  const m=fake({concurrentChange:true});
  const r=await promoteShadowOnly({env:env(),fetchImpl:m.fetchImpl,holdPresent:true,
-  headCheck:()=>env().GITHUB_SHA});
+  headCheck:()=>env().GITHUB_SHA,sleep:async()=>{}});
  assert.equal(r.status,"HOLD");
  assert.equal(r.rollback_fully_verified,true);
  assert.equal(m.deployed.get(W[0].name),W[0].old);
