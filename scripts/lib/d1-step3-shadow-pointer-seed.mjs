@@ -74,6 +74,72 @@ export async function shadowR2Request(url,env,method,fetchImpl,body){
  }
  return res;
 }
+/**
+ * Read-only physical idempotency proof for an ALREADY persisted Shadow D1
+ * pointer. Only invoke after original B2-ACK source validation.
+ * No new D1 INSERT, no R2 PUT and never a B2 parity claim.
+ */
+export async function verifyExistingShadowArchivedPointer({
+ row,pointer,env=process.env,fetchImpl=fetch,now=Date.now()
+}={}){
+ if(!row||!pointer||!SHA.test(row.record_id??"")||
+    typeof row.raw_json!=="string"||
+    !SHA.test(row.raw_sha256??"")||
+    !SHA.test(row.b2_object_sha256??"")||
+    !Number.isFinite(now)||
+    !SHA.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"")||
+    !BUCKET.test(env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET??"")||
+    !/^[a-f0-9]{32}$/u.test(env.CLOUDFLARE_ACCOUNT_ID??""))
+  fail("EXISTING_POINTER_PREREQUISITES_INVALID");
+ const bundle=Buffer.from(JSON.stringify({
+  schema:"geomacro.phase2h.r2-private-reference-bundle.v1",
+  records:[row.raw_json]
+ }),"utf8");
+ if(bundle.length<1||bundle.length>600000)
+  fail("EXISTING_POINTER_BUNDLE_SIZE_INVALID");
+ const objectSha=hash(bundle);
+ const objectKey="geomacro/private/phase2h/ref-only/v1/"+
+  objectSha+".json";
+ const signedAt=Date.parse(pointer.signed_at??"");
+ if(pointer.record_id!==row.record_id||
+    pointer.category!==row.category||
+    pointer.original_published_at!==row.original_published_at||
+    pointer.first_ingested_at!==row.first_ingested_at||
+    pointer.raw_sha256!==row.raw_sha256||
+    pointer.object_sha256!==objectSha||
+    pointer.object_key!==objectKey||
+    pointer.bundle_bytes!==bundle.length||
+    pointer.record_sha256!==hash(row.raw_json)||
+    pointer.record_bytes!==Buffer.byteLength(row.raw_json)||
+    pointer.bundle_index!==0||
+    pointer.storage_backend!=="private_r2"||
+    pointer.risk_country_iso3!==row.risk_country_iso3||
+    !ISO.test(pointer.signed_at??"")||
+    !Number.isFinite(signedAt)||signedAt>now+60_000||
+    signedAt<Date.parse(row.first_ingested_at??""))
+  fail("EXISTING_POINTER_IMMUTABLE_OR_METADATA_MISMATCH");
+ try{assertRealPointerMac(pointer,env.PHASE2H_R2_REFERENCE_HMAC_KEY)}
+ catch{fail("EXISTING_POINTER_HMAC_INVALID")}
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,objectKey);
+ const response=await shadowR2Request(url,env,"GET",fetchImpl);
+ const bytes=Buffer.from(await response.arrayBuffer());
+ if(bytes.length!==bundle.length||hash(bytes)!==objectSha||
+    !same(bytes,bundle))
+  fail("EXISTING_POINTER_R2_PHYSICAL_BYTE_READBACK_MISMATCH");
+ return Object.freeze({
+  status:"PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY",
+  reused_existing_pointer:true,r2_puts:0,r2_gets:1,
+  d1_pointer_readback_verified:true,
+  r2_object_byte_length:bundle.length,
+  object_sha256:objectSha,
+  original_record_id_sha256:hash(row.record_id),
+  pointer_hmac_sha256_sha256:hash(pointer.pointer_hmac_sha256),
+  b2_provider_byte_readback:"NOT_YET_VERIFIED",
+  production_d1_mutated:false,paid_delivery_authorized:false
+ });
+}
+
 export async function seedShadowArchivedPointer({
  env=process.env,readD1,writeD1,fetchImpl=fetch,now=Date.now()
 }={}){
@@ -124,12 +190,17 @@ export async function seedShadowArchivedPointer({
   fail("SOURCE_ORIGINAL_VALIDATION_FAILED");
  // Duplicate shadow pointer is not silently overwritten: idempotent safety.
  const old=await readD1(
-  "SELECT record_id FROM phase2h_raw_object_refs_v1 "+
+  "SELECT record_id,category,original_published_at,first_ingested_at,"+
+  "raw_sha256,object_sha256,object_key,bundle_bytes,record_sha256,"+
+  "record_bytes,bundle_index,signed_at,pointer_hmac_sha256,"+
+  "risk_country_iso3,storage_backend FROM phase2h_raw_object_refs_v1 "+
   "WHERE record_id='"+row.record_id+"' LIMIT 1");
  if(!Array.isArray(old)||old.length>1)fail("POINTER_BEFORE_READ_INVALID");
- if(old.length)return {status:"NOT_YET_VERIFIED",
-  code:"SHADOW_POINTER_ALREADY_EXISTS_REQUIRES_READBACK",
-  r2_puts:0};
+ // A legitimate previous rehearsal may already have staged the exact
+ // pointer. A duplicate must prove real D1 HMAC and R2 bytes, not abort.
+ if(old.length)return verifyExistingShadowArchivedPointer({
+  row,pointer:old[0],env,fetchImpl,now
+ });
  const bundle=Buffer.from(JSON.stringify({
   schema:"geomacro.phase2h.r2-private-reference-bundle.v1",
   records:[row.raw_json]

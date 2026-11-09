@@ -131,3 +131,84 @@ test("offline: invalid payload or GET-with-body cannot touch R2",async()=>{
   Buffer.from("not-a-get")),/STEP3_SHADOW_SEED_R2_GET_BODY_INVALID/u);
  assert.equal(calls,0);
 });
+
+
+test("offline: existing Shadow pointer requires signed HMAC + independent R2 byte GET, zero new writes",async()=>{
+ const {createHash,createHmac}=await import("node:crypto");
+ const {pointerEnvelope}=await import("../lib/d1-step3-crypto-proof.mjs");
+ const {verifyExistingShadowArchivedPointer}=await import(
+  "../lib/d1-step3-shadow-pointer-seed.mjs");
+ const sha=x=>createHash("sha256").update(x).digest("hex");
+ const row={
+  record_id:"a".repeat(64),raw_sha256:"b".repeat(64),
+  b2_object_sha256:"c".repeat(64),b2_archived_at:"2026-11-08T12:01:00.000Z",
+  first_ingested_at:"2026-11-08T12:00:00.000Z",
+  original_published_at:"2026-11-08T11:59:00.000Z",
+  category:"geopolitics",risk_country_iso3:"USA"
+ };
+ row.raw_json=JSON.stringify({record_id:row.record_id,
+  raw_sha256:row.raw_sha256,category:row.category,
+  ingested_at:row.first_ingested_at,
+  original:{original_published_at:row.original_published_at}});
+ const bundle=Buffer.from(JSON.stringify({
+  schema:"geomacro.phase2h.r2-private-reference-bundle.v1",
+  records:[row.raw_json]
+ }));
+ const objectSha=sha(bundle),now=Date.parse("2026-11-09T19:45:00.000Z");
+ const pointer={
+  record_id:row.record_id,category:row.category,
+  original_published_at:row.original_published_at,
+  first_ingested_at:row.first_ingested_at,raw_sha256:row.raw_sha256,
+  object_sha256:objectSha,
+  object_key:"geomacro/private/phase2h/ref-only/v1/"+objectSha+".json",
+  bundle_bytes:bundle.length,record_sha256:sha(row.raw_json),
+  record_bytes:Buffer.byteLength(row.raw_json),bundle_index:0,
+  signed_at:"2026-11-09T19:00:00.000Z",
+  pointer_hmac_sha256:"0".repeat(64),risk_country_iso3:"USA",
+  storage_backend:"private_r2"
+ };
+ pointer.pointer_hmac_sha256=createHmac("sha256",
+  Buffer.from(env.PHASE2H_R2_REFERENCE_HMAC_KEY,"hex"))
+  .update(pointerEnvelope(pointer)).digest("hex");
+ let gets=0;
+ const fetchImpl=async(url,init)=>{
+  assert.equal(init.method,"GET");
+  assert.equal(url,shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+   env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,pointer.object_key));
+  gets++;return new Response(bundle,{status:200});
+ };
+ const args={row,pointer,env,fetchImpl,now};
+ const ok=await verifyExistingShadowArchivedPointer(args);
+ assert.equal(ok.status,"PASS_REAL_SHADOW_ARCHIVED_ORIGINAL_POINTER_STAGING_ONLY");
+ assert.equal(ok.reused_existing_pointer,true);
+ assert.equal(ok.r2_puts,0);assert.equal(ok.r2_gets,1);
+ assert.equal(ok.b2_provider_byte_readback,"NOT_YET_VERIFIED");
+ assert.equal(ok.production_d1_mutated,false);
+ assert.equal(gets,1);
+ await assert.rejects(verifyExistingShadowArchivedPointer({
+  ...args,pointer:{...pointer,pointer_hmac_sha256:"d".repeat(64)}
+ }),/STEP3_SHADOW_SEED_EXISTING_POINTER_HMAC_INVALID/u);
+ for(const mutation of [
+  {raw_sha256:"0".repeat(64)},{object_sha256:"0".repeat(64)},
+  {record_sha256:"0".repeat(64)},{bundle_bytes:bundle.length+1},
+  {risk_country_iso3:"CAN"},{signed_at:"2099-01-01T00:00:00.000Z"}
+ ]){
+  await assert.rejects(verifyExistingShadowArchivedPointer({
+   ...args,pointer:{...pointer,...mutation}
+  }),/STEP3_SHADOW_SEED_EXISTING_POINTER_IMMUTABLE_OR_METADATA_MISMATCH/u);
+ }
+ assert.equal(gets,1);
+ await assert.rejects(verifyExistingShadowArchivedPointer({
+  ...args,fetchImpl:async()=>new Response(Buffer.from("wrong"),{status:200})
+ }),/STEP3_SHADOW_SEED_EXISTING_POINTER_R2_PHYSICAL_BYTE_READBACK_MISMATCH/u);
+ await assert.rejects(verifyExistingShadowArchivedPointer({
+  ...args,fetchImpl:async()=>new Response("missing",{status:404})
+ }),/STEP3_SHADOW_SEED_R2_GET_HTTP_404_CF_UNKNOWN/u);
+});
+test("offline: duplicate staging must query complete pointer and perform physical readback",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const code=readFileSync("scripts/lib/d1-step3-shadow-pointer-seed.mjs","utf8");
+ assert.match(code,/SELECT record_id,category,original_published_at,first_ingested_at,/u);
+ assert.match(code,/if\(old.length\)return verifyExistingShadowArchivedPointer/u);
+ assert.doesNotMatch(code,/SHADOW_POINTER_ALREADY_EXISTS_REQUIRES_READBACK/u);
+});
