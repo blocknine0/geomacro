@@ -15,6 +15,19 @@ test("manual exact main only; neither production DDL nor cash rails authorized",
  assert.match(y,/secrets\.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN/u);
  assert.doesNotMatch(y,/schedule:|continue-on-error: true|--apply|wrangler d1 migrations apply|secrets\.CONTROL_PLANE_TOKEN/u);
 });
+test("real Paid subscription proof is independently wired and failed provider receipts are retained",()=>{
+ const job=y.slice(y.indexOf("  shadow-source:"));
+ assert.match(job,/CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/u);
+ assert.match(job,/CLOUDFLARE_BILLING_READ_TOKEN: \$\{\{ secrets\.CLOUDFLARE_BILLING_READ_TOKEN \}\}/u);
+ assert.match(job,/run: bun scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --check/u);
+ assert.match(job,/artifacts\/release\/d1-paid-monthly-headroom\.json/u);
+ assert.match(job,/if: always\(\)/u);
+ const checker=readFileSync("scripts/lib/d1-workers-paid-monthly-governor.mjs","utf8");
+ assert.match(checker,/readCloudflareWorkersPaidProof/u);
+ assert.match(checker,/readCloudflareD1PaidCycleUsage/u);
+ assert.match(checker,/D1_PAID_HEADROOM_HOLD/u);
+ assert.doesNotMatch(job,/WORKERS_PAID=true|continue-on-error: true/u);
+});
 test("only native-dated issuer original may become governed B2-backed Shadow evidence",()=>{
  assert.match(s,/collectRegisteredReusableNews/u);
  assert.match(s,/firstPartyOriginalUrl/u);
