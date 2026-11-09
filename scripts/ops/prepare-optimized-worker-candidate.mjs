@@ -76,6 +76,19 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  // Require the same physical monthly provider gate as the protected promoter.
  const quota=await checkD1PaidMonthlyHeadroom({env,fetchImpl,
   now:new Date(),lane:'canary'});
+ mkdirSync('artifacts/protected-canary',{recursive:true});
+ writeFileSync('artifacts/protected-canary/candidate-paid-monthly-headroom.json',
+  JSON.stringify({schema:'geomacro.optimized-worker-candidate-paid-monthly-headroom.v1',
+   status:quota.status,code:quota.code,reason:quota.reason,
+   provider_subscription_verified:quota.provider_subscription_verified===true,
+   cycle_start_utc:quota.cycle_start_utc,cycle_end_exclusive_utc:quota.cycle_end_exclusive_utc,
+   observed_rows_read:quota.observed_rows_read,
+   observed_rows_written:quota.observed_rows_written,
+   monthly_read_headroom:quota.remaining_rows_read,
+   monthly_write_headroom:quota.remaining_rows_written,
+   reserve_pct:quota.reserve_pct,provider_metrics_delayed:true,
+   version_uploaded:false,traffic_promoted:false,payments:0},null,2)+'\n',
+  {mode:0o600});
  if(quota.status!=='PASS'||quota.provider_subscription_verified!==true||
     quota.lane!=='canary')throw Error('CANDIDATE_PAID_MONTHLY_PROVIDER_HEADROOM_HOLD');
  const quotaSummary={checked_at:quota.checked_at_utc,day_utc:quota.day_utc,
