@@ -42,3 +42,15 @@ test("only native-dated issuer original may become governed B2-backed Shadow evi
  assert.match(s,/production_original_table_mutated:false/u);
  assert.doesNotMatch(s,/paid_eligible:true|commercial_rights_verified:true|stage2_authorized:true/u);
 });
+
+test("B2 physical PUT cannot precede root authenticated live ingress for BOTH Shadow Workers",()=>{
+ assert.match(s,/import \{classifyAuthProbe\} from "\.\/sync-step3-shadow-bearer\.mjs";/u);
+ assert.match(s,/for\(const host of \[NEW,OLD\]\)/u);
+ assert.match(s,/if\(state!=="AUTHENTICATED"\)fail\("SHADOW_LIVE_BEARER_NOT_AUTHENTICATED"\)/u);
+ const preflight=s.indexOf("await assertLiveShadowIngress(e);");
+ const candidates=s.indexOf("const candidates=[]");
+ const b2=s.indexOf("const b2=await stageB2FirstPrivateOriginals");
+ assert(preflight>=0 && candidates>preflight && b2>preflight,
+  "Both Shadow auth proofs must happen before source collection and governed B2 PUT");
+ assert.match(s,/both_shadow_workers_auth_proven_before_b2=true/u);
+});
