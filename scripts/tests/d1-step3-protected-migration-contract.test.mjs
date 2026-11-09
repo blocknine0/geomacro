@@ -117,7 +117,7 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.equal(ok.production_release_authorized,false);
  assert.throws(()=>admitStep30204SupportedIntegrity(proofs.slice(1)),/0204_THREE_TABLES_REQUIRED/);
  assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
-  ...p,total_existing_indexes:p.total_existing_indexes-1})),/0204_TABLE_SUPPORTED_PROOF_UNVERIFIED/);
+  ...p,total_existing_indexes:p.total_existing_indexes-1})),/0204_EXACT_INDEX_CARDINALITY_UNVERIFIED/);
  assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
   ...p,index_proofs:p.index_proofs.map((x,j)=>j?x:{...x,rows_compared:0})})),/0204_INDEX_REGISTRY_OR_ROW_PARITY_UNVERIFIED/);
  assert.throws(()=>admitStep30204SupportedIntegrity(proofs.map((p,i)=>i? p:{
