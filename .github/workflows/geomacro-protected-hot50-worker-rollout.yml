@@ -7,6 +7,7 @@ on:
       - ".github/workflows/geomacro-protected-hot50-worker-rollout.yml"
       - "scripts/ops/verify-protected-worker-promotion.mjs"
       - "scripts/tests/verify-protected-worker-promotion.test.mjs"
+      - "scripts/tests/canonical-canary-stage2-only.test.mjs"
   workflow_dispatch:
     inputs:
       baseline_version_id:
@@ -42,7 +43,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node --test scripts/tests/verify-protected-worker-promotion.test.mjs
+      - run: node --test scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/canonical-canary-stage2-only.test.mjs
 
   protected-zero-and-gradual-rollout:
     needs: offline-contract
