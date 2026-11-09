@@ -9,6 +9,8 @@ on:
       - "scripts/lib/d1-step3-migration-contract.mjs"
       - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/lib/d1-step3-0211-counter-integrity.mjs"
+      - "scripts/lib/d1-step3-0212-source-index-integrity.mjs"
+      - "scripts/tests/d1-step3-0212-source-index-integrity.test.mjs"
       - "scripts/lib/d1-step3-0211-spool-integrity.mjs"
       - "scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs"
       - "scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs"
@@ -61,6 +63,8 @@ jobs:
           node --check scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs
           node --test scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs
           node --test scripts/tests/d1-step3-0211-counter-integrity.test.mjs
+          node --check scripts/lib/d1-step3-0212-source-index-integrity.mjs
+          node --test scripts/tests/d1-step3-0212-source-index-integrity.test.mjs
           node --check scripts/lib/d1-step3-0213-empty-reference-proof.mjs
           node --test scripts/tests/d1-step3-0213-empty-reference-proof.test.mjs
           node --check scripts/lib/d1-step3-recovery-checkpoint.mjs
