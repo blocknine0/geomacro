@@ -88,9 +88,6 @@ jobs:
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_DATABASE_ID: ${{ vars.GEOMACRO_D1_SHADOW_DATABASE_ID || secrets.GEOMACRO_D1_SHADOW_DATABASE_ID }}
       GEOMACRO_D1_SHADOW_TARGET_APPROVED: "YES"
-      # Resolve effective approval only inside protected production environment.
-      # Never hardcode YES: a revoked or missing approval must HOLD.
-      GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
       GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED: ${{ vars.GEOMACRO_STEP3_SHADOW_POINTER_SEED_APPROVED }}
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
       GEOMACRO_STEP3_EXACT_SHA: ${{ vars.GEOMACRO_STEP3_REVIEWED_SHA }}
@@ -114,12 +111,18 @@ jobs:
       # No checkout or Cloudflare/D1 work precedes this fail-closed check.
       - name: Require protected Shadow rehearsal approval after environment admission
         shell: bash
+        env:
+          # Step-level vars resolve on the protected production runner.
+          SHADOW_APPROVAL_VALUE: ${{ vars.GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED }}
         run: |
           set -euo pipefail
-          if [[ "${GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED:-}" != "YES" ]]; then
+          if [[ "${SHADOW_APPROVAL_VALUE:-}" != "YES" ]]; then
             echo "::error title=Shadow authorization HOLD::Step3 Shadow rehearsal approval is not YES in the effective production environment"
             exit 3
           fi
+          # Export the verified authorization only to subsequent steps.
+          # This is not a default or bypass: the assertion above must pass.
+          printf '%s\n' 'GEOMACRO_STEP3_SHADOW_REHEARSAL_APPROVED=YES' >> "$GITHUB_ENV"
           echo "Protected Shadow approval verified; all provider gates remain in force."
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
