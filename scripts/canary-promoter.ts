@@ -3,7 +3,7 @@
 import {existsSync,readFileSync,unlinkSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER} from './release-common.ts';
+import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
 import {
  checkD1PaidMonthlyHeadroom,paidD1BillingCycle
 } from './lib/d1-workers-paid-monthly-governor.mjs';
@@ -246,6 +246,57 @@ function requireSchemaAcceptance(expectedSha:string){
   Date.now()-Date.parse(String(report.verified_at))<600000&&Date.now()>=Date.parse(String(report.verified_at)),
   'CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED');
 }
+/** Verify the real previous closed UTC-day producer receipt, not invented
+ * monthly fields. Caller MUST verify its signed envelope and separately
+ * refresh the Paid monthly account-wide governor before any hold release. */
+export function admitSignedClosedD1DayForCanary(proof:any,now=new Date()){
+ const DAY=86_400_000,HOUR=3_600_000;
+ const day=new Date(now.getTime()-DAY).toISOString().slice(0,10);
+ const begin=Date.parse(day+'T00:00:00.000Z'),end=begin+DAY;
+ need(proof?.schema==='geomacro.d1-account-utc-24h-observation.v1'&&
+  proof.status==='PASS'&&proof.day===day&&
+  proof.period_start_utc===new Date(begin).toISOString()&&
+  proof.period_end_exclusive_utc===new Date(end).toISOString()&&
+  proof.expected_last_second_utc===new Date(end-1000).toISOString()&&
+  now.getTime()>=end+HOUR&&now.getTime()<end+2*DAY&&
+  proof.all_account_databases===true&&
+  proof.no_unreported_group_claimed===false&&
+  proof.analytics_provider_observation_not_provider_signed_ledger===true&&
+  proof.account_wide_atomic_hard_cap_guaranteed===false&&
+  proof.no_funds===true&&
+  /^[a-f0-9]{64}$/.test(proof.provider_query_result_sha256??'')&&
+  ['BILLING_READ_TOKEN','EXISTING_ACCOUNT_API_TOKEN'].includes(proof.analytics_credential_source)&&
+  proof.budget_rows_read===D1_DAILY_READ_CEILING&&
+  proof.budget_rows_written===D1_DAILY_WRITE_CEILING&&
+  Number.isSafeInteger(proof.rows_read)&&proof.rows_read>=0&&
+  Number.isSafeInteger(proof.rows_written)&&proof.rows_written>=0&&
+  proof.rows_read<=D1_DAILY_READ_CEILING&&
+  proof.rows_written<=D1_DAILY_WRITE_CEILING&&
+  Number.isFinite(Date.parse(String(proof.observed_at)))&&
+  Date.parse(String(proof.observed_at))>=end+HOUR&&
+  Date.parse(String(proof.observed_at))<=now.getTime()&&
+  now.getTime()-Date.parse(String(proof.observed_at))<2*DAY,
+  'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
+ const rows=proof.database_receipts;
+ need(Array.isArray(rows)&&rows.length>=1&&rows.length<1000&&
+  proof.database_count===rows.length,'CANARY_HOLD_RELEASE_D1_DATABASE_COUNT_INVALID');
+ let read=0,written=0,last='';
+ for(const row of rows){
+  need(typeof row?.database_id==='string'&&row.database_id.length>=10&&
+   row.database_id>last&&Number.isSafeInteger(row.rows_read)&&row.rows_read>=0&&
+   Number.isSafeInteger(row.rows_written)&&row.rows_written>=0,
+   'CANARY_HOLD_RELEASE_D1_DATABASE_ROW_INVALID');
+  last=row.database_id;read+=row.rows_read;written+=row.rows_written;
+  need(Number.isSafeInteger(read)&&Number.isSafeInteger(written),
+   'CANARY_HOLD_RELEASE_D1_SUM_OVERFLOW');
+ }
+ need(read===proof.rows_read&&written===proof.rows_written,
+  'CANARY_HOLD_RELEASE_D1_TOTALS_DIVERGED');
+ return {status:'PASS_CLOSED_UTC_DAY',day,account_wide_report_verified:true,
+  monthly_provider_verification_required_separately:true,
+  zero_unindexed_database_claimed:false,no_funds:true,remote_hold_removed:false};
+}
+
 async function main(){
  need(process.argv.slice(2).every(s=>s==='--promote'||s==='--release-hold'),'CANARY_ARGS_INVALID');
  const promote=process.argv.includes('--promote');
@@ -298,19 +349,19 @@ async function main(){
       Date.now()-Date.parse(String(p.verified_at??p.generated_at))<3600000&&
       Date.now()>=Date.parse(String(p.verified_at??p.generated_at)),
       'CANARY_HOLD_RELEASE_CERTIFICATE_UNVERIFIED')}
-   // A complete CLOSED UTC day proof remains mandatory for permanent release.
-   const proof=envString('D1_24H_PROOF_PATH');need(existsSync(proof),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
-   const p=verifySignedEnvelopeFile(proof);
-   need(p.all_account_databases===true&&
-    p.paid_monthly_billing_cycle_verified===true&&
-    p.old_daily_140k_policy_applied===false&&
-    Number.isSafeInteger(p.monthly_rows_read)&&
-    Number.isSafeInteger(p.monthly_rows_written)&&
-    p.monthly_rows_read<=MONTHLY_READ_SOFT&&
-    p.monthly_rows_written<=MONTHLY_WRITE_SOFT&&
-    Number.isFinite(Date.parse(String(p.period_end_exclusive_utc)))&&
-    Date.now()-Date.parse(String(p.period_end_exclusive_utc))<48*3600000,
+   // The actual previous-UTC-day producer signs rows_read/rows_written and
+   // per-database totals. It NEVER emits monthly_rows_read. Keep the daily
+   // signature and a separate FRESH provider Paid monthly admission.
+   const now=new Date(),day=new Date(now.getTime()-86_400_000).toISOString().slice(0,10);
+   const proof='artifacts/release/d1-quota-proof-'+day+'.json';
+   need(!process.env.D1_24H_PROOF_PATH||
+    process.env.D1_24H_PROOF_PATH===proof,'CANARY_HOLD_RELEASE_D1_PROOF_PATH_MISMATCH');
+   need(existsSync(proof),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
+   const daily=admitSignedClosedD1DayForCanary(
+    verifySignedEnvelopeFile(proof),now);
+   need(daily.status==='PASS_CLOSED_UTC_DAY',
     'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
+   await checkLiveD1Budget();
    // Remove only from the ephemeral job checkout: protected PR review/merge
    // is required to remove the authoritative hold from remote Git main.
    unlinkSync(HOLD);
