@@ -172,6 +172,32 @@ test("real published older source is equivalent only for a trusted exact-head op
    ...fixture(),expectedSha:main,websiteSourceEquivalent:false,
  }).ok,false);
 });
+test("only reviewed Step3 12-index integrity library may preserve website parity after non-rendered migration fix",()=>{
+ const site="9f39126ccd498f5fda2ff834ce4a23f9a15f3656";
+ const main="1c779d9bafb41997f04ece7a886498897c9fd4f9";
+ const files=[
+  ".github/workflows/d1-step3-protected-migration-contract.yml",
+  "scripts/lib/d1-step3-supported-integrity.mjs",
+  "scripts/ops/run-step3-protected-d1-migrations.mjs",
+  "scripts/tests/d1-step3-protected-migration-contract.test.mjs"
+ ].map(filename=>({filename,status:"modified"}));
+ const compare={status:"ahead",base_commit:{sha:site},
+  merge_base_commit:{sha:site},ahead_by:1,behind_by:0,total_commits:1,
+  commits:[{sha:main}],files};
+ assert.equal(classifyPublishedSourceEquivalence(compare,site,main),true);
+ for(const filename of [
+  "scripts/lib/d1-step3-supported-integrity-api.mjs",
+  "scripts/lib/d1-step3-unknown.mjs","scripts/lib/website-derived-news.mjs",
+  "src/routes/intelligence.tsx","public/.well-known/geomacro-build.json",
+  "workers/control-plane/src/index.mjs","src/pages/Index.tsx"
+ ]){
+  assert.equal(classifyPublishedSourceEquivalence({...compare,
+   files:[...files,{filename,status:"modified"}]},site,main),false,filename);
+ }
+ assert.equal(classifyPublishedSourceEquivalence({...compare,files:files.map(x=>
+  x.filename==="scripts/lib/d1-step3-supported-integrity.mjs"?
+   {...x,status:"removed"}:x)},site,main),false);
+});
 test("network-bounded GitHub comparison refuses invalid, unavailable and noncanonical attestation",async()=>{
  const site="a".repeat(40),main="b".repeat(40);
  const cmp={status:"ahead",base_commit:{sha:site},merge_base_commit:{sha:site},
