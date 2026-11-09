@@ -12,6 +12,7 @@ on:
       - "scripts/tests/d1-step3-0212-partial-index-integrity.test.mjs"
       - "scripts/tests/d1-step3-next-migration-inventory.test.mjs"
       - "scripts/tests/d1-step3-supported-integrity.test.mjs"
+      - "scripts/tests/d1-step3-0204-index-lineage.test.mjs"
       - "scripts/tests/d1-step3-index-parity.test.mjs"
       - "scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs"
   workflow_dispatch:
@@ -41,7 +42,7 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with: {node-version: '24'}
-      - run: node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs scripts/tests/d1-step3-supported-integrity.test.mjs scripts/tests/d1-step3-next-migration-inventory.test.mjs scripts/tests/d1-step3-0212-partial-index-integrity.test.mjs
+      - run: node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs scripts/tests/d1-step3-supported-integrity.test.mjs scripts/tests/d1-step3-next-migration-inventory.test.mjs scripts/tests/d1-step3-0212-partial-index-integrity.test.mjs scripts/tests/d1-step3-0204-index-lineage.test.mjs
   physical-shadow-readonly:
     if: >-
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
@@ -76,7 +77,7 @@ jobs:
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
           test "$D1_DATABASE_ID" != "$GEOMACRO_D1_SHADOW_DATABASE_ID"
-          node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs scripts/tests/d1-step3-supported-integrity.test.mjs scripts/tests/d1-step3-next-migration-inventory.test.mjs scripts/tests/d1-step3-0212-partial-index-integrity.test.mjs
+          node --test scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs scripts/tests/d1-step3-index-parity.test.mjs scripts/tests/d1-step3-supported-integrity.test.mjs scripts/tests/d1-step3-next-migration-inventory.test.mjs scripts/tests/d1-step3-0212-partial-index-integrity.test.mjs scripts/tests/d1-step3-0204-index-lineage.test.mjs
       - name: Independent Paid monthly account-wide provider headroom before any Shadow read
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Read only Shadow 0204 integrity and next migrations schema, ledger, index/size caps
