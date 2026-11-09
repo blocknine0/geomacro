@@ -7,6 +7,7 @@ const PROD="db057ca9-9f6e-4957-ac28-144f3b798f9b";
 const SHADOW="c4add153-229d-412a-b1bd-489526b7e02f";
 const NAMES=["geomacro-step3-shadow","geomacro-step3-shadow-legacy"];
 const ID="f37d1f52-ff5b-4f6f-9322-cc3cf0c8dfd8";
+const PREFIX="9387e76d"; // Cloudflare API examples show this need not match ID first 8 hex.
 const env=()=>({
  GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"blocknine0/geomacro",
  GITHUB_REF:"refs/heads/main",GITHUB_SHA:"f".repeat(40),
@@ -42,7 +43,7 @@ function mock({http=404,versionHttp=401,handler=true,codeMarkers=true,
     if(versionReadDenied)return new Response("denied",{status:403});
     return Response.json({success:true,result:{id:ID,
      urls:[unsafeVersionHost?"https://not-an-allowed-host.example.com":
-      "https://"+ID.slice(0,8)+"-"+name+".daspallab202391.workers.dev"]}});
+      "https://"+PREFIX+"-"+name+".daspallab202391.workers.dev"]}});
    }
    if(p.endsWith("/subdomain"))return Response.json({
     success:true,result:{enabled:true,previews_enabled:true}});
@@ -66,7 +67,7 @@ function mock({http=404,versionHttp=401,handler=true,codeMarkers=true,
    throw Error("Unexpected API path "+p);
   }
   const isVersion=NAMES.some(x=>
-   u.hostname===ID.slice(0,8)+"-"+x+".daspallab202391.workers.dev");
+   u.hostname===PREFIX+"-"+x+".daspallab202391.workers.dev");
   assert(isVersion||NAMES.some(x=>u.hostname===x+".daspallab202391.workers.dev"));
   assert.equal(opts.headers.Authorization,"Bearer invalid");
   assert.equal(u.pathname,"/v1/internal/p0b/status");
