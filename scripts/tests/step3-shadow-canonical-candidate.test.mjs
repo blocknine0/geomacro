@@ -89,6 +89,8 @@ test("config inherits ALL old scoped bindings, retains runtime and canonical mod
  const c=canonicalConfig(w,{resources:{bindings:b,
   script_runtime:{compatibility_date:"2026-10-03",compatibility_flags:["nodejs_compat"]}}},SHA);
  assert.equal(c.main,"src/index.mjs");
+ assert.equal(c.workers_dev,undefined,"Candidate upload cannot change routing");
+ assert.equal(c.preview_urls,undefined,"Candidate upload cannot change preview URLs");
  assert.equal(c.name,MODERN);
  assert.equal(c.unsafe.bindings.length,b.length);
  assert(!JSON.stringify(c).includes(SHADOW));
