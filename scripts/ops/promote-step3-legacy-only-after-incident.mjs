@@ -248,7 +248,7 @@ export async function promoteOnlyLegacy({
   assertLegacyScope(env,holdPresent);
   if(headCheck()!==env.GITHUB_SHA)err("MAIN_SHA_MOVED");
   const ready=await preflight(env,fetchImpl);
-  r.workers.push({script:MODERN.name,old_traffic_preserved:false,
+  r.workers.push({script:MODERN.name,unchanged_by_workflow:true,
    verified_current_version:ready.modern.version_id,
    expected_json_guards:ready.modernProbe.map(p=>p.verified),
    no_deployment_action:true});
