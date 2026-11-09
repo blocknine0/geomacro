@@ -8,7 +8,7 @@ on:
       - "scripts/lib/d1-step3-index-parity.mjs"
       - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/tests/d1-step3-supported-integrity.test.mjs"
-      - "scripts/tests/d1-step3-index-parity.test.mjs scripts/tests/d1-step3-supported-integrity.test.mjs"
+      - "scripts/tests/d1-step3-index-parity.test.mjs"
       - "scripts/tests/step3-shadow-0204-readonly-diagnostic.test.mjs"
   workflow_dispatch:
   # After owner-approved, successfully completed Shadow-only fixture: repeat
