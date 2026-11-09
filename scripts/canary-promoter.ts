@@ -231,7 +231,18 @@ function requireSchemaAcceptance(expectedSha:string){
  const file='artifacts/release/d1-schema-acceptance.json';
  need(existsSync(file),'CANARY_D1_SCHEMA_PROOF_MISSING');
  const report=verifySignedEnvelopeFile(file);
- need(report.migrations_verified?.length===8&&report.release_sha===expectedSha&&
+ need(report.schema==='geomacro.d1-0204-0211.schema-acceptance.v1'&&
+  report.status==='PASS'&&
+  report.migrations_verified?.length===8&&report.release_sha===expectedSha&&
+  report.paid_monthly_subscription_verified===true&&
+  report.paid_monthly_billing_cycle_verified===true&&
+  report.provider_account_wide_d1_usage_observed===true&&
+  report.old_daily_140k_policy_applied===false&&
+  report.paid_monthly_cycle_start_utc===paidD1BillingCycle(new Date()).start_utc&&
+  report.paid_monthly_cycle_end_exclusive_utc===paidD1BillingCycle(new Date()).end_exclusive_utc&&
+  Number.isFinite(Date.parse(String(report.paid_monthly_provider_checked_at_utc)))&&
+  Date.now()-Date.parse(String(report.paid_monthly_provider_checked_at_utc))<600000&&
+  Date.now()>=Date.parse(String(report.paid_monthly_provider_checked_at_utc))&&
   Date.now()-Date.parse(String(report.verified_at))<600000&&Date.now()>=Date.parse(String(report.verified_at)),
   'CANARY_D1_SCHEMA_PROOF_NOT_ACCEPTED');
 }
