@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-09T07:55:03.342Z",
+  "checked_at": "2026-11-09T15:22:28.474Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 33,
+  "item_count": 28,
   "counts": {
     "geopolitics": 0,
-    "macro": 20,
-    "rare_earth": 13
+    "macro": 17,
+    "rare_earth": 11
   },
-  "source_native_ids_sha256": "5ef986f0bf52fd6d04f33ed8d755b0851b5625529eda59a1da334760efe384c4",
+  "source_native_ids_sha256": "19d4978186468db62271b907d148a6c6969064c86debe408afd4e8fecb99e467",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,44 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-739406bc",
+      "category": "rare_earth",
+      "title": "Geomacro finds France's Eramet announced plans to sell stakes in lithium, nickel mines",
+      "what_changed": "A monitored source feed reports: France's Eramet announced plans to sell stakes in lithium, nickel mines. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T08:07:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-80486eff",
+      "category": "rare_earth",
+      "title": "Geomacro finds France's Eramet announced plans to sell stakes in lithium, nickel mines - Mining Weekly",
+      "what_changed": "A monitored source feed reports: France's Eramet announced plans to sell stakes in lithium, nickel mines - Mining Weekly. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T08:07:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-f6b92502",
       "category": "rare_earth",
@@ -518,137 +556,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3620d63d",
-      "category": "macro",
-      "title": "Geomacro finds Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: Gold's Official-Sector Anchor held While Forecasters Rethink the Ceiling - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T14:22:06.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-3726d379",
-      "category": "macro",
-      "title": "Geomacro finds Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News",
-      "what_changed": "A monitored source feed reports: Herculis Tokens SA published KPMG verification of Swiss gold reserves backing XAUH - Crypto News. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T11:26:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-9446609f",
-      "category": "rare_earth",
-      "title": "Geomacro finds Shri G. Kishan Reddy: called for Expediting Mineral Exploration and Strengthening Centre, State Coordination · India",
-      "why_it_matters": "Extractive-sector updates can affect long-run supply expectations, but an announcement is not proof of operating capacity or delivered output.",
-      "what_changed": "Shri G. Kishan Reddy called for Expediting Mineral Exploration and Strengthening Centre, State Coordination. Country or region mentioned: India.",
-      "geography": "India",
-      "development_type": "research",
-      "topic": "mineral exploration and production",
-      "published_at": "2026-11-06T10:52:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-c5175de3",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance",
-      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Yahoo Finance. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T09:05:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-db78f32f",
-      "category": "macro",
-      "title": "Geomacro finds Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK",
-      "what_changed": "A monitored source feed reports: Goldman lowered year-end gold price forecast on hawkish Fed shift - Yahoo Finance UK. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T08:24:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-fc6cd487",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology",
-      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US - Mining Technology. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T08:10:23.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-4c080a05",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto approved $144m for copper project in Arizona, US",
-      "what_changed": "A monitored source feed reports: Rio Tinto approved $144m for copper project in Arizona, US. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T08:05:59.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
