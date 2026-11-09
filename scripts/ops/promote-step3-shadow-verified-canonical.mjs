@@ -196,6 +196,18 @@ async function threeProbes(w,host,token,fetchImpl,immutable){
   out.push({kind,...await probeHttp(w,{host,kind,token,fetchImpl,immutable})});
  return out;
 }
+/** Edge propagation can briefly serve the previous Shadow version.
+ * Retry only the same three fixed no-D1 read-only contracts.
+ */
+async function probeLiveWithBoundedRetry(w,token,fetchImpl,sleep){
+ let last=[];
+ for(let attempt=1;attempt<=5;attempt++){
+  last=await threeProbes(w,w.name+"."+DOMAIN,token,fetchImpl,false);
+  if(last.every(x=>x.verified))return {attempts:attempt,probes:last,verified:true};
+  if(attempt<5)await sleep(2000);
+ }
+ return {attempts:5,probes:last,verified:false};
+}
 async function preflight(e,w,fetchImpl){
  const base="/workers/scripts/"+w.name;
  const [d,domain,settings,v,imm]=await Promise.all([
@@ -236,6 +248,7 @@ async function readback(e,w,id,fetchImpl){
 }
 export async function promoteShadowOnly({env=process.env,fetchImpl=fetch,
  holdPresent=existsSync("config/d1-hotspot-v2-canary.hold"),
+ sleep=ms=>new Promise(r=>setTimeout(r,ms)),
  headCheck=()=>execFileSync("git",
   ["ls-remote","https://github.com/blocknine0/geomacro.git","refs/heads/main"],
   {encoding:"utf8"}).trim().split(/\s/u)[0]}={}){
@@ -270,14 +283,20 @@ export async function promoteShadowOnly({env=process.env,fetchImpl=fetch,
    await deployOne(env,w,w.next,fetchImpl);
    receipt.shadow_traffic_changed=true;
    await readback(env,w,w.next,fetchImpl);
-   const probes=await threeProbes(w,w.name+"."+DOMAIN,
-      env.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN,fetchImpl,false);
+   const observed=await probeLiveWithBoundedRetry(w,
+      env.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN,fetchImpl,sleep);
    receipt.workers.push({script:w.name,previous_version:w.old,
     canonical_version:w.next,promoted_100_percent:true,
-    live_404_401_400_verified:probes.every(p=>p.verified),
-    live_probes:probes});
-   if(!probes.every(p=>p.verified))fail("LIVE_SHADOW_HOST_HTTP_CONTRACT_FAILED");
+    live_404_401_400_verified:observed.verified,
+    edge_propagation_probe_attempts:observed.attempts,
+    live_probes:observed.probes});
+   if(!observed.verified)fail("LIVE_SHADOW_HOST_HTTP_CONTRACT_FAILED");
   }
+  // A contemporaneous final provider deployment readback prevents a
+  // concurrent Shadow release being disguised as a verified dual release.
+  for(const w of WORKERS)await readback(env,w,w.next,fetchImpl);
+  if(headCheck()!==env.GITHUB_SHA)
+    fail("MAIN_SHA_MOVED_BEFORE_FINAL_RELEASE_RECEIPT");
   receipt.status="PASS_BOTH_SHADOW_ONLY_WORKERS_CANONICAL_LIVE";
   receipt.code="TWO_SHADOW_100_PERCENT_VERSIONS_AND_404_401_400_HTTP_VERIFIED";
   receipt.rollback_fully_verified=null;
