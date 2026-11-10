@@ -311,6 +311,14 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       // requires a fresh real-provider 30% monthly reserve receipt.
       paid_derived_news_source_lane:sourceIntake&&archive,
       paid_derived_news_max_rows:sourceIntake&&archive?Math.min(30,rowsPerSlot):0,
+      // Paid owns a SEPARATE original-source B2-first lane; the old
+      // Free-only registered_private_max_new_rows stays zero by design.
+      // This is ONLY a non-atomic daily allowance, requiring a fresh
+      // independently verified billing-cycle 30%-reserve provider PASS
+      // (hot50_source) in the publishing workflow before ANY provider write.
+      paid_registered_original_source_lane:sourceIntake&&archive,
+      paid_registered_original_max_rows:
+       sourceIntake&&archive?Math.min(20,rowsPerSlot):0,
       phase2h_raw_archive_max_rows_per_slot:300,
       phase2h_raw_archive_requires_atomic_b2_quota:true,
       historical_recovery_max_rows:0,source_intake_interval_minutes:sourceIntake?20:null,
@@ -722,6 +730,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       String(result.paid_derived_news_source_lane===true)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_max_rows="+
       String(result.paid_derived_news_max_rows??0)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_registered_original_source_lane="+
+      String(result.paid_registered_original_source_lane===true)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_registered_original_max_rows="+
+      String(result.paid_registered_original_max_rows??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
   }
