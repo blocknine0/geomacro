@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-derived-risk-gate-discovery-single-consumer
+  group: ${{ github.event_name == 'pull_request' && format('geomacro-derived-risk-gate-contract-pr-{0}', github.event.pull_request.number) || github.event_name == 'push' && format('geomacro-derived-risk-gate-contract-push-{0}', github.sha) || 'geomacro-derived-risk-gate-scheduled-consumer' }}
   cancel-in-progress: false
 
 jobs:
@@ -36,6 +36,10 @@ jobs:
           node-version: "24"
       - run: node --test scripts/tests/derived-risk-gate-runner-isolation.test.mjs
   protected-five-lane-intake:
+    # PR/push verification cannot starve the protected 20m source cursor.
+    concurrency:
+      group: geomacro-derived-risk-gate-single-production-consumer
+      cancel-in-progress: false
     needs: failure-isolation-regression
     runs-on: ubuntu-latest
     timeout-minutes: 14
@@ -43,7 +47,7 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
