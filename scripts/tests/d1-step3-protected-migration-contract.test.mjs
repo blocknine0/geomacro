@@ -39,6 +39,25 @@ test("bounded pre-seed and CREATE INDEX probe forbids >3k existing rows",()=>{
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
 });
+test("Stage2 recovers only an authenticated existing Worker bearer before D1 provider writes",()=>{
+ const y=readFileSync(".github/workflows/production-rollout-orchestrator.yml","utf8");
+ const stage=y.indexOf("  stage2-production:");
+ const auth=y.indexOf("Authenticate existing live Control Plane bearer without rotation",stage);
+ const root=y.indexOf("secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN",auth);
+ const status=y.indexOf("node scripts/ops/prepare-five-gate-control-token.mjs",root);
+ const receipt=y.indexOf("Check signed receipt before any D1 provider call",status);
+ const apply=y.indexOf("node scripts/ops/run-step3-protected-d1-migrations.mjs --apply",receipt);
+ assert(stage>0&&auth>stage&&root>auth&&status>root&&receipt>status&&apply>receipt);
+ assert.match(y.slice(auth,receipt),/if: github.event_name == 'workflow_dispatch' && inputs.execute_stage2 == true/u);
+ assert.doesNotMatch(y.slice(auth,receipt),/wrangler.*secret put|gh secret set|continue-on-error/u);
+ assert.match(y.slice(stage,auth),/PHASE2H_R2_REFERENCE_HMAC_KEY: \${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}/u);
+ const helper=readFileSync("scripts/ops/prepare-five-gate-control-token.mjs","utf8");
+ assert.match(helper,/deriveControlPlaneRootToken\(root\)/u);
+ assert.match(helper,/response\?\.status!==200/u);
+ assert.match(helper,/mask\(token\)/u);
+ assert.match(helper,/appendEnv\(env.GITHUB_ENV/u);
+});
+
 test("native D1 history distinguishes applied 0204/0211 from pending 0212/0213",()=>{
  const manifests=step3SqlManifests();
  const rows=[
