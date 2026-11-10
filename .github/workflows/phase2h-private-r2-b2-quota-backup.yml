@@ -16,6 +16,8 @@ on:
       - ".github/workflows/phase2h-private-r2-b2-quota-backup.yml"
       - "scripts/lib/phase2h-b2-r2-backup.mjs"
       - "scripts/lib/phase2h-risk-gate-minimum-facts.mjs"
+      - "scripts/lib/phase2h-risk-minimum-r2-lifecycle.mjs"
+      - "scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs"
       - "scripts/ops/phase2h-r2-b2-quota-backup.mjs"
       - "scripts/tests/phase2h-r2-b2-quota-backup.test.mjs"
       - "config/github-workflow-inventory.v1.json"
@@ -38,6 +40,8 @@ jobs:
           node-version: "24"
       - name: Authenticated encrypted backup and failure regression
         run: |
+          node --check scripts/lib/phase2h-risk-minimum-r2-lifecycle.mjs
+          node --test scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs
           node --check scripts/lib/phase2h-risk-gate-minimum-facts.mjs
           node --check scripts/lib/phase2h-b2-r2-backup.mjs
           node --check scripts/ops/phase2h-r2-b2-quota-backup.mjs
@@ -79,7 +83,7 @@ jobs:
       - name: Source code / encrypted-backup contract
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs
+          node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs
       - name: Independent real provider private R2 domain exposure check
         run: node scripts/ops/audit-step3-r2-private-exposure.mjs
       - name: Backup bounded canonical originals with provider R2 PUT and full-body GET
