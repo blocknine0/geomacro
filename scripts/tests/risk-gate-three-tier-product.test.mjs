@@ -259,3 +259,13 @@ test("Complex corridor archive proof migration upgrades existing D1 hot rows wit
   "FROM corridor_gro_verified_hot").get().v,1);
  db.close();
 });
+
+test("Complex accepts independently readback-acknowledged Brotli11 private archive reference, but never without seven true signed days",()=>{
+ const archiveProof={object_id:"gro-verified-hormuz-1",archive_write_acknowledged:1,
+  archive_readback_verified:1,archive_sha256:"e".repeat(64),
+  archive_key:"geomacro-evidence/v1/private/verified/gro-hormuz-1.json.br"};
+ const result=render("complex_full",{verified_gro:gro(),archive_proof:archiveProof});
+ assert.equal(result.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+ assert.equal(result.chargeable,false);
+ assert.equal(result.b2_archive,null);
+});

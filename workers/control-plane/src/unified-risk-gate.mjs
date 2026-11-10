@@ -1008,32 +1008,67 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
      }else observations.push(replacement);
     }
    }
-   let archive_proof=null,history=[];
+   let archive_proof=null,history=[],complex_history_source_state=null;
    if(payload.product_tier==="complex_full"){
-    const lookup=target.type==="COUNTRY"?
-     "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
-      "archive_readback_verified FROM country_gro_verified_hot "+
-      "WHERE country_iso3=? AND object_id=? LIMIT 1":
-     "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
-      "archive_readback_verified FROM corridor_gro_verified_hot "+
-      "WHERE corridor_id=? AND object_id=? LIMIT 1";
-    if(gro)archive_proof=await env.DB.prepare(lookup).bind(target.id,gro.object_id).first();
-    const beginning=iso(now-6*DAY).slice(0,10);
-    const scanned=await env.DB.prepare(
-     "SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,"+
-     "content_sha256 FROM unified_risk_snapshots "+
-     "WHERE entity_type=? AND entity_id=? AND day_utc>=? AND day_utc<=? "+
-     "ORDER BY day_utc ASC LIMIT 8"
-    ).bind(target.type,target.id,beginning,iso(now).slice(0,10)).all();
-    if(!Array.isArray(scanned?.results)||scanned.results.length>7)
-     throw Error("RISK_GATE_THREE_TIER_HISTORY_PAGE_UNVERIFIED");
-    for(const r of scanned.results){
-     const hist=JSON.parse(r.snapshot_json),proof=JSON.parse(r.audit_proof_json);
-     if(r.entity_type!==target.type||r.entity_id!==target.id||
-       r.day_utc!==hist.day_utc||r.content_sha256!==proof.content_sha256||
-       !await verifySnapshot(hist,proof,env))
-      throw Error("RISK_GATE_THREE_TIER_HISTORY_PROOF_MISMATCH");
-     history.push({...r,snapshot:hist,proof_verified:true});
+    // A missing current verified GRO is NOT a storage failure. Do not issue
+    // seven-day D1 scans before the prerequisite signed evidence exists.
+    complex_history_source_state=gro?"B2_ARCHIVE_READBACK_NOT_VERIFIED":
+     "CURRENT_SIGNED_GRO_UNAVAILABLE";
+    if(gro){
+     const lookup=target.type==="COUNTRY"?
+      "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
+       "archive_readback_verified FROM country_gro_verified_hot "+
+       "WHERE country_iso3=? AND object_id=? LIMIT 1":
+      "SELECT object_id,archive_key,archive_sha256,archive_write_acknowledged,"+
+       "archive_readback_verified FROM corridor_gro_verified_hot "+
+       "WHERE corridor_id=? AND object_id=? LIMIT 1";
+     try{
+      archive_proof=await env.DB.prepare(lookup).bind(target.id,gro.object_id).first();
+     }catch{complex_history_source_state="B2_ARCHIVE_METADATA_QUERY_UNAVAILABLE";}
+     const archiveReady=archive_proof?.object_id===gro.object_id&&
+      Number(archive_proof.archive_write_acknowledged)===1&&
+      Number(archive_proof.archive_readback_verified)===1&&
+      hex.test(String(archive_proof.archive_sha256??""))&&
+      typeof archive_proof.archive_key==="string"&&
+      /^geomacro-evidence\/v1\/[a-zA-Z0-9_./-]{1,420}\.json(?:\.gz|\.br)?$/u.test(archive_proof.archive_key)&&
+      !archive_proof.archive_key.includes("..");
+     if(archiveReady){
+      try{
+       const beginning=iso(now-6*DAY).slice(0,10);
+       const scanned=await env.DB.prepare(
+        "SELECT entity_type,entity_id,day_utc,snapshot_json,audit_proof_json,"+
+        "content_sha256 FROM unified_risk_snapshots "+
+        "WHERE entity_type=? AND entity_id=? AND day_utc>=? AND day_utc<=? "+
+        "ORDER BY day_utc ASC LIMIT 8"
+       ).bind(target.type,target.id,beginning,iso(now).slice(0,10)).all();
+       if(!Array.isArray(scanned?.results)||scanned.results.length>7)
+        throw Error("RISK_GATE_THREE_TIER_HISTORY_PAGE_UNVERIFIED");
+       const checked=[],days=new Set();
+       for(const r of scanned.results){
+        const hist=JSON.parse(r.snapshot_json),proof=JSON.parse(r.audit_proof_json);
+        if(r.entity_type!==target.type||r.entity_id!==target.id||
+          !/^\d{4}-\d{2}-\d{2}$/u.test(r.day_utc)||
+          days.has(r.day_utc)||r.day_utc<beginning||
+          r.day_utc>iso(now).slice(0,10)||
+          hist.target_type!==target.type||hist.target_id!==target.id||
+          r.day_utc!==hist.day_utc||r.content_sha256!==proof.content_sha256||
+          !await verifySnapshot(hist,proof,env))
+         throw Error("RISK_GATE_THREE_TIER_HISTORY_PROOF_MISMATCH");
+        days.add(r.day_utc);
+        checked.push({...r,snapshot:hist,proof_verified:true});
+       }
+       history=checked;
+       complex_history_source_state=history.length===7?
+        "SEVEN_HMAC_VERIFIED_DAILY_SNAPSHOTS":
+        "INCOMPLETE_HMAC_VERIFIED_DAILY_SNAPSHOTS";
+      }catch{
+       // Never convert a failed HMAC, D1 read or malformed row into
+       // a partial verified history. A signed, nonchargeable HOLD remains
+       // available while storage recovery happens outside the sale path.
+       history=[];
+       complex_history_source_state="HISTORY_D1_READBACK_OR_HMAC_UNAVAILABLE";
+      }
+     }
     }
    }
    // Standard must see today's newly corroborated events immediately,
@@ -1046,6 +1081,8 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
     tier:payload.product_tier,snapshot:productSnapshot,observations,
     verified_gro:gro,archive_proof,history,now,
    });
+   if(payload.product_tier==="complex_full")
+    tiered_product.complex_history_source_state=complex_history_source_state;
    tiered_product.intraday_override=flash.active===true;
    tiered_product.flash_check_available=flash.available===true;
    if(flash.active)tiered_product.flash_details=flash;

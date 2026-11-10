@@ -167,7 +167,7 @@ function archiveLocation(proof,gro){
     proof.archive_write_acknowledged!==1||proof.object_id!==gro.object_id||
     !HEX.test(String(proof.archive_sha256??""))||
     typeof proof.archive_key!=="string"||
-    !/^geomacro-evidence\/v1\/[a-zA-Z0-9_./-]{1,420}\.json(?:\.gz)?$/u.test(proof.archive_key)||
+    !/^geomacro-evidence\/v1\/[a-zA-Z0-9_./-]{1,420}\.json(?:\.gz|\.br)?$/u.test(proof.archive_key)||
     proof.archive_key.includes(".."))return null;
  return {
   b2_archive_link:"b2://geomacro-private-archive/"+proof.archive_key,
