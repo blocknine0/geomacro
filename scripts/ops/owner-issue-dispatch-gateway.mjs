@@ -72,8 +72,16 @@ export async function executeOwnerIssueDispatch({
  const endpoint=ROOT+"/actions/workflows/"+plan.target+"/dispatches";
  let accepted=false;
  try{
+  const inputs=plan.intent==="stage2-production"?{
+   ...plan.inputs,
+   owner_dispatch_issue:String(plan.issue_number),
+   owner_dispatch_gateway_run:String(env.GITHUB_RUN_ID)
+  }:plan.inputs;
+  if(plan.intent==="stage2-production"&&
+     !/^[1-9][0-9]{5,20}$/u.test(String(env.GITHUB_RUN_ID??"")))
+    throw Error(FAIL_PREFIX+"GATEWAY_RUN_ID_REQUIRED");
   const ack=await call("POST",endpoint,{
-   ref:plan.ref,inputs:plan.inputs
+   ref:plan.ref,inputs
   });
   if(ack?.status!==204)
    throw Error(FAIL_PREFIX+"WORKFLOW_DISPATCH_ACK_NOT_204");
