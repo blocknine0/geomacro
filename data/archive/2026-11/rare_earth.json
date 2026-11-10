@@ -2,8 +2,65 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-10T08:52:39.181Z",
+  "updated_at": "2026-11-10T16:59:45.752Z",
   "signals": [
+    {
+      "id": "rare_earth-2ac416f6",
+      "category": "rare_earth",
+      "title": "Geomacro finds Lumen Technologies announced plans to mine its old copper network as it pivots to AI - Crypto Briefing",
+      "what_changed": "A monitored source feed reports: Lumen Technologies announced plans to mine its old copper network as it pivots to AI - Crypto Briefing. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T13:44:58.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-82a9d309",
+      "category": "rare_earth",
+      "title": "Geomacro finds Okopa signed deals for Namibian copper project",
+      "what_changed": "A monitored source feed reports: Okopa signed deals for Namibian copper project. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T10:01:15.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-cb981acd",
+      "category": "rare_earth",
+      "title": "Geomacro finds Army launched critical minerals consortium - Metal Tech News",
+      "what_changed": "A monitored source feed reports: Army launched critical minerals consortium - Metal Tech News. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T23:25:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-28d0b11c",
       "category": "rare_earth",
