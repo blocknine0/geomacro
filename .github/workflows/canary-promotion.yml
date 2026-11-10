@@ -24,6 +24,10 @@ on:
         description: 'Successful exact-main Step3 protected physical Stage2 run ID, required for promote/release-hold'
         required: false
         type: string
+      promotion_run_id:
+        description: 'For release-hold only, prior successful exact-main 0-to-100 canary run ID'
+        required: false
+        type: string
   schedule:
     - cron: '15 1 * * *' # closed previous UTC day; guarded provider reads only
   pull_request:
@@ -70,7 +74,7 @@ jobs:
           node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
           node --test scripts/tests/prepare-five-gate-control-token.test.mjs
           node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
-          node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs
+          node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs scripts/tests/canary-hold-review-no-repromotion.test.mjs
           node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs scripts/tests/canary-preflight-baseline.test.mjs
   protected-release:
     needs: static-contract
@@ -89,6 +93,7 @@ jobs:
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
       GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID: ${{ inputs.stage2_run_id }}
+      GEOMACRO_APPROVED_CANARY_PROMOTION_RUN_ID: ${{ inputs.promotion_run_id }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
       BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
@@ -163,7 +168,7 @@ jobs:
                stage2[0].conclusion!=='success'||shadow[0].conclusion!=='success')
               core.setFailed('CANARY_REAL_SHADOW_AND_STAGE2_JOBS_NOT_BOTH_SUCCESS');
       - name: Download independently signed Stage2 provider receipt
-        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'promote' || inputs.operation == 'release-hold')
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'promote'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: geomacro-step3-production
@@ -172,7 +177,7 @@ jobs:
           run-id: ${{ inputs.stage2_run_id }}
           github-token: ${{ github.token }}
       - name: Verify signed 0204→0213 production evidence before any canary mutation
-        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'promote' || inputs.operation == 'release-hold')
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'promote'
         run: |
           node --input-type=module <<'NODE'
           import {admitSignedStep3ProductionFile}
@@ -180,6 +185,41 @@ jobs:
           const proof=admitSignedStep3ProductionFile();
           console.log(JSON.stringify(proof));
           NODE
+      - name: Verify successful exact-main prior promotion run for read-only HOLD review
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'release-hold'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROMOTION_RUN_ID: ${{ inputs.promotion_run_id }}
+          EXPECTED_SHA: ${{ github.sha }}
+        with:
+          script: |
+            const id=String(process.env.PROMOTION_RUN_ID||'');
+            const num=Number(id);
+            if(!/^[1-9][0-9]{5,20}$/.test(id)||!Number.isSafeInteger(num)){
+              core.setFailed('CANARY_HOLD_PRIOR_PROMOTION_RUN_ID_REQUIRED');return;
+            }
+            const {owner,repo}=context.repo;
+            const {data:run}=await github.rest.actions.getWorkflowRun({owner,repo,run_id:num});
+            if(run.path!=='.github/workflows/canary-promotion.yml'||
+               run.event!=='workflow_dispatch'||run.head_branch!=='main'||
+               run.head_sha!==process.env.EXPECTED_SHA||
+               run.conclusion!=='success'||run.status!=='completed'){
+              core.setFailed('CANARY_HOLD_SIGNED_PRIOR_PROMOTION_RUN_NOT_VERIFIED');return;
+            }
+            const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
+              owner,repo,run_id:num,per_page:100});
+            if(jobs.jobs.filter(x=>x.name==='protected-release'&&
+               x.conclusion==='success').length!==1)
+              core.setFailed('CANARY_HOLD_PRIOR_PROTECTED_PROMOTION_JOB_NOT_VERIFIED');
+      - name: Download signed 0-to-100 canary artifacts without traffic replay
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'release-hold'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-five-gate-provider-receipts
+          path: artifacts/release
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.promotion_run_id }}
+          github-token: ${{ github.token }}
       - name: Execute ONLY selected gated operation
         shell: bash
         env:
@@ -208,7 +248,9 @@ jobs:
             release-hold)
               test "$EVENT_NAME" = workflow_dispatch
               npm run release:remediate
-              node --experimental-strip-types scripts/canary-promoter.ts --promote --release-hold ;;
+              # Prior 100% proof + live candidate 100% checked read-only.
+              # No replay from 0%, no local HOLD deletion.
+              node --experimental-strip-types scripts/canary-promoter.ts --review-hold ;;
             *) echo 'RELEASE_OPERATION_INVALID' >&2; exit 2 ;;
           esac
       - name: Retain evidence and HOLD receipts independently of result
