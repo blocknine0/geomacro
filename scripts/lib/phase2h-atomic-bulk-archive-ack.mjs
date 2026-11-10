@@ -22,8 +22,8 @@ export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
   if(!HEX.test(row?.record_id)||!HEX.test(row?.raw_sha256)||
     seen.has(row.record_id))fail("IDENTITY_INVALID");
   if(exactOriginalBytes&&(typeof row.raw_json!=="string"||
-      Buffer.byteLength(row.raw_json)<300||
-      Buffer.byteLength(row.raw_json)>12000))
+      new TextEncoder().encode(row.raw_json).byteLength<300||
+      new TextEncoder().encode(row.raw_json).byteLength>12000))
    fail("EXACT_JSON_REQUIRED");
   seen.add(row.record_id);
   params.push(row.record_id,row.raw_sha256,
