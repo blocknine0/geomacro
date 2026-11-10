@@ -95,9 +95,9 @@ export async function stageB2FirstPrivateOriginals({
   d1_receipt_pending:true,paid_eligible:false,rights_verified:false,
  });
 }
-/** D1 exact-record ack only if all selected originals were newly and
- * immutably written; already retained projector versions may have a
- * different raw SHA, and must be archived by canonical recovery instead.
+/** Per-original B2 ACK only AFTER each exact-ID canonical D1 readback.
+ * Verified siblings may ACK even when ONE immutable source ID collided.
+ * The conflicting ID remains D1/B2 pending; no batch counts prove identity.
  */
 export async function acknowledgeB2FirstD1({
  receipt,postResult,endpoint,token,fetchImpl=fetch,
@@ -107,23 +107,47 @@ export async function acknowledgeB2FirstD1({
  if(!Array.isArray(receipt.rows)||!Number.isSafeInteger(receipt.record_count)||
     receipt.record_count!==receipt.rows.length||receipt.record_count>SOURCE_MAX)
   safeFailure("ACK_INVALID_BATCH");
+ const selected=new Map(receipt.rows.map(row=>[row?.record_id,row]));
+ if(selected.size!==receipt.record_count||
+    receipt.rows.some(row=>!/^[a-f0-9]{64}$/u.test(row?.record_id??"")||
+      !/^[a-f0-9]{64}$/u.test(row?.raw_sha256??""))||
+    !/^[a-f0-9]{64}$/u.test(receipt.object_sha256??""))
+  safeFailure("ACK_INVALID_ORIGINAL_IDENTITIES");
+ const verified=postResult?.verified_record_ids;
+ const quarantined=postResult?.quarantined_record_ids;
+ // Fail CLOSED on any absent, duplicate, fabricated or unreconciled proof.
+ // It is never valid to "guess" which record the aggregate accepted.
+ const proofIds=Array.isArray(verified)&&Array.isArray(quarantined)?
+  [...verified,...quarantined]:[];
+ const properIds=proofIds.length===receipt.record_count&&
+  new Set(proofIds).size===receipt.record_count&&
+  proofIds.every(id=>selected.has(id))&&
+  verified.length===postResult?.verified_originals&&
+  quarantined.length===postResult?.rejected_conflicts;
  if(postResult?.readback_verified!==true||
-    postResult?.verified_originals!==receipt.record_count||
-    postResult?.stored+postResult?.duplicate!==receipt.record_count||
-    postResult?.rejected_conflicts!==0){
+    postResult?.per_original_readback_verified!==true||
+    !Number.isSafeInteger(postResult?.stored)||
+    !Number.isSafeInteger(postResult?.duplicate)||
+    !Number.isSafeInteger(postResult?.verified_originals)||
+    !Number.isSafeInteger(postResult?.rejected_conflicts)||
+    postResult.stored+postResult.duplicate!==postResult.verified_originals||
+    postResult.verified_originals+postResult.rejected_conflicts!==receipt.record_count||
+    !properIds){
   return {status:"B2_FIRST_D1_HISTORIC_IDENTITY_NEEDS_RECOVERY",
     archived:0,deferred:receipt.record_count,storage_confirmed:true,
-    all_selected_originals_archived:false};
+    all_selected_originals_archived:false,
+    independently_verified_id_count:0};
  }
  if(endpoint!=="https://geomacro-control-plane.daspallab202391.workers.dev"||
     typeof token!=="string"||token.length<32)
   safeFailure("ACK_AUTH_REQUIRED");
- let archived=0,deferred=0;
- // Every original was independently D1-readback-verified by the canonical
- // writer. A prior duplicate may still have a different immutable projector
- // hash or an existing B2 ACK. Isolate exactly that ID, never block the other
- // freshly inserted originals in the same verified gzip object.
+ let archived=0,deferred=quarantined.length;
+ const allowedIds=new Set(verified);
+ // The endpoint independently verifies each original ID + raw_sha256 against
+ // the real B2 bytes and canonical D1 before returning an ACK. Never submit
+ // any quarantined ID, including one with a previous immutable D1 version.
  for(const row of receipt.rows){
+  if(!allowedIds.has(row.record_id))continue;
   const body={
    schema:"geomacro.phase2h.b2-archive-ack.v1",
    object_sha256:receipt.object_sha256,
@@ -155,6 +179,8 @@ export async function acknowledgeB2FirstD1({
    archived>0?"B2_FIRST_PARTIAL_D1_ACK_VERIFIED":
    "B2_FIRST_D1_ACK_ALL_DEFERRED_FOR_RECOVERY",
   archived,deferred,
+  independently_verified_id_count:verified.length,
+  quarantined_immutable_collision_count:quarantined.length,
   b2_verified:archived>0,d1_ack_verified:archived>0,
   all_selected_originals_archived:deferred===0,
   paid_eligible:false,commercial_rights_verified:false,

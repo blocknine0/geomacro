@@ -63,7 +63,9 @@ test("genuine gzip object has two GET/SHA proofs before D1 write/ack",async()=>{
  assert.equal(receipt.paid_eligible,false);
  let calls=0;
  const ack=await acknowledgeB2FirstD1({
-  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,verified_originals:1},
+  receipt,postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,
+   per_original_readback_verified:true,verified_originals:1,
+   verified_record_ids:[rows[0].record_id],quarantined_record_ids:[]},
   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
   token:"a".repeat(64),
   fetchImpl:async(url,opts)=>{
@@ -117,7 +119,9 @@ test("historic immutable duplicates do not get bogus B2 archived metadata",async
 test("false Worker ACK cannot be counted as B2-first D1 parity",async()=>{
  const result=await acknowledgeB2FirstD1({
   receipt:{storage_confirmed:true,rows,record_count:1,object_sha256:"e".repeat(64)},
-  postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,verified_originals:1},
+  postResult:{stored:1,duplicate:0,rejected_conflicts:0,readback_verified:true,
+   per_original_readback_verified:true,verified_originals:1,
+   verified_record_ids:[rows[0].record_id],quarantined_record_ids:[]},
   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
   token:"a".repeat(64),
   fetchImpl:async()=>Response.json({ok:true,archived:1,
@@ -140,7 +144,9 @@ test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original 
   object_sha256:"e".repeat(64)};
  const result=await acknowledgeB2FirstD1({
   receipt,postResult:{stored:1,duplicate:1,rejected_conflicts:0,
-   verified_originals:2,readback_verified:true},
+   verified_originals:2,readback_verified:true,
+   per_original_readback_verified:true,
+   verified_record_ids:selected.map(r=>r.record_id),quarantined_record_ids:[]},
   endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
   token:"a".repeat(64),
   fetchImpl:async(url,opts)=>{
@@ -163,6 +169,69 @@ test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original 
 });
 
 
+test("real 20-original B2 PUT/GET proof ACKs 19 readback-verified siblings, never one quarantined collision",async()=>{
+ const selected=Array.from({length:20},(_,i)=>({
+  record_id:i.toString(16).padStart(64,"0"),
+  raw_sha256:(i+20).toString(16).padStart(64,"0"),
+  category:["geopolitics","macro","rare_earth"][i%3]
+ }));
+ const quarantine=selected[9].record_id;
+ const accepted=selected.filter(r=>r.record_id!==quarantine);
+ const calls=[];
+ const receipt={storage_confirmed:true,rows:selected,record_count:20,
+  object_sha256:"e".repeat(64)};
+ const result=await acknowledgeB2FirstD1({
+  receipt,postResult:{stored:18,duplicate:1,rejected_conflicts:1,
+   verified_originals:19,readback_verified:true,
+   per_original_readback_verified:true,
+   verified_record_ids:accepted.map(r=>r.record_id),
+   quarantined_record_ids:[quarantine]},
+  endpoint:"https://geomacro-control-plane.daspallab202391.workers.dev",
+  token:"a".repeat(64),
+  fetchImpl:async(url,opts)=>{
+   const request=JSON.parse(opts.body);
+   calls.push(request.items[0].record_id);
+   assert.equal(request.object_sha256,receipt.object_sha256);
+   assert.equal(request.items.length,1);
+   assert.equal(request.items[0].raw_sha256,
+    selected.find(x=>x.record_id===request.items[0].record_id).raw_sha256);
+   return Response.json({ok:true,archived:1,
+    independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+  }
+ });
+ assert.equal(result.status,"B2_FIRST_PARTIAL_D1_ACK_VERIFIED");
+ assert.equal(result.archived,19);
+ assert.equal(result.deferred,1);
+ assert.equal(result.independently_verified_id_count,19);
+ assert.equal(result.quarantined_immutable_collision_count,1);
+ assert.equal(result.d1_ack_verified,true);
+ assert.equal(result.all_selected_originals_archived,false);
+ assert.deepEqual(calls,accepted.map(r=>r.record_id));
+ assert(!calls.includes(quarantine));
+});
+test("incomplete, duplicate or forged per-record proofs NEVER authorize B2 ACK network writes",async()=>{
+ const selected=[...rows],receipt={storage_confirmed:true,
+  rows:selected,record_count:1,object_sha256:"e".repeat(64)};
+ const base={stored:1,duplicate:0,rejected_conflicts:0,
+  verified_originals:1,readback_verified:true,
+  per_original_readback_verified:true,verified_record_ids:[rows[0].record_id],
+  quarantined_record_ids:[]};
+ for(const mutant of [
+  {...base,verified_record_ids:[]},
+  {...base,verified_record_ids:["f".repeat(64)]},
+  {...base,quarantined_record_ids:[rows[0].record_id]},
+  {...base,per_original_readback_verified:false},
+  {...base,verified_originals:0},
+  {...base,rejected_conflicts:1},
+ ]){
+  let calls=0;
+  const result=await acknowledgeB2FirstD1({receipt,postResult:mutant,
+   fetchImpl:async()=>{calls++;throw Error("UNAUTHORIZED_NETWORK");}});
+  assert.equal(result.archived,0);
+  assert.equal(result.d1_ack_verified??false,false);
+  assert.equal(calls,0);
+ }
+});
 test("known provider-native lifecycle rejection remains a redacted actionable error",async()=>{
  let puts=0;
  await assert.rejects(stageB2FirstPrivateOriginals({

@@ -28,6 +28,8 @@ test("one immutable original collision never suppresses independent other catego
   geopolitics:0,macro:1,rare_earth:0
  });
  assert.equal(receipt.verified_originals,2);
+ assert.deepEqual(receipt.verified_record_ids,["geopolitics-one","rare-earth-one"]);
+ assert.deepEqual(receipt.quarantined_record_ids,["macro-collision"]);
  assert.equal(receipt.readback_verified,true);
  assert.ok(attempts<=5);
  assert.equal(receipt.b2_verified,false);
