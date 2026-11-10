@@ -1088,7 +1088,9 @@ export async function unifiedRiskGateEvaluate(request,env,opts={}){
    if(flash.active)tiered_product.flash_details=flash;
   }
   const body={...x.snapshot,audit_proof:x.audit_proof,supabase_synced:x.supabase_synced,
-   ...(tiered_product?{tiered_product}:{}),
+   // Tier-specific billing eligibility never inherits Basic's provisional
+   // chargeable flag from the immutable once-daily observation snapshot.
+   ...(tiered_product?{tiered_product,chargeable:tiered_product.chargeable===true}:{}),
    client_policy:payload.client_policy??"STRICT",
    tiers:customTiers,client_policy_decision:clientPolicyDecision,
    intraday_override:flash.active===true,flash_check_available:flash.available===true,
