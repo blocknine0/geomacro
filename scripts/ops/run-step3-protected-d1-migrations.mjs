@@ -349,7 +349,7 @@ function checkIndexAndSchema(config,step,report){
    report.counter_0211_rows_read??=0;
    report.counter_0211_rows_read+=r.readRows;
    // Full-volume SQLite-side set parity may touch every source row
-   // for each of 7 indexes, but the backend's actual billed reads are
+   // for each reviewed 6- or 7-index profile, but actual billed reads are
    // metered and capped. An unexpectedly costly query fails Stage 2.
    if(report.counter_0211_rows_read>3000000)
     fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
@@ -357,14 +357,34 @@ function checkIndexAndSchema(config,step,report){
   };
   mark("SUPPORTED_0211_WITHOUT_ROWID_P0B_DAILY_COUNTER");
   const counter=auditStep30211WithoutRowidCounter(checked);
-  mark("SUPPORTED_0211_SEVEN_SPOOL_INDEXES");
+  mark("SUPPORTED_0211_SEVEN_LEGACY_OR_SIX_OPTIMIZED_SPOOL_INDEXES");
   const spool=auditStep30211SpoolSource(checked);
+  const profiles=[
+   "0114_0116_SEVEN_INDEX_LEGACY",
+   "0206_SIX_INDEX_LEGACY_SOURCE",
+   "0206_0210_SIX_INDEX_IMMUTABLE_SOURCE"
+  ];
+  if(!profiles.includes(spool.reviewed_index_profile)||
+     ![6,7].includes(spool.index_count)||
+     spool.candidate_unique_autoindex_verified!==true||
+     (spool.index_count===7)!==spool.redundant_candidate_index_present)
+   fail("0211_REVIEWED_NATIVE_SPOOL_INDEX_PROFILE_UNVERIFIED");
   const actual=(counter.status===
     "PASS_D1_0211_WITHOUT_ROWID_PK_QUICK_FK_UNIQUE_COUNTER_PARITY"&&
-    spool.status==="PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS"&&
+    [
+     "PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS",
+     "PASS_0211_NONEMPTY_SPOOL_ALL_SIX_REVIEWED_INDEX_KEYS"
+    ].includes(spool.status)&&
+    spool.nonempty_source===true&&
+    spool.source_rows_verified>0&&
     counter.canonical_committed_rows>0);
   const empty=(counter.status==="OBSERVED_EMPTY_COUNTER_NO_NONVACUOUS_SOURCE"&&
-    spool.status==="OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE"&&
+    [
+     "OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE",
+     "OBSERVED_EMPTY_SOURCE_ALL_SIX_REVIEWED_INDEX_STRUCTURE"
+    ].includes(spool.status)&&
+    spool.nonempty_source===false&&
+    spool.source_rows_verified===0&&
     counter.canonical_committed_rows===0);
   if(!actual&&!empty)
    fail("0211_D1_SUPPORTED_COUNTER_AND_SPOOL_PROOF_UNVERIFIED");
@@ -372,8 +392,11 @@ function checkIndexAndSchema(config,step,report){
    status:actual?"PASS_FRESH_NONEMPTY_D1_PROVIDER_COUNTER_SPOOL_PARITY":
     "PASS_EMPTY_SHADOW_STAGING_SCHEMA_AND_ZERO_COUNTERS_ONLY",
    proof_mode:actual?"NONEMPTY_CANONICAL":"EXPLICITLY_EMPTY_SOURCE_ONLY",
-   real_originals_verified_by_this_step:actual,
-   index_count:7,
+   source_metadata_nonempty_verified:actual,
+   real_originals_verified_by_this_step:false,
+   reviewed_spool_index_profile:spool.reviewed_index_profile,
+   candidate_unique_autoindex_verified:spool.candidate_unique_autoindex_verified,
+   index_count:spool.index_count,
    sqlite_full_integrity_check_claimed:false,
    b2_original_byte_readback_claimed:false,
    production_release_authorized:false
