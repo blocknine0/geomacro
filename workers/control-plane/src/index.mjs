@@ -2058,7 +2058,8 @@ export default {
           const body=await readJson(request,240000);
           if(body.schema==="geomacro.phase2h.private-raw-batch.v1")
             return phase2hPrivateRawPut(env,body);
-          if(body.schema==="geomacro.phase2h.b2-archive-ack.v1")
+          if(body.schema==="geomacro.phase2h.b2-archive-ack.v1"||
+             body.schema==="geomacro.phase2h.b2-first-archive-ack.v2")
             return phase2hPrivateRawMarkArchived(env,body);
         }
         return json({ok:false,error:"PRIVATE_RAW_METHOD_INVALID"},405);
