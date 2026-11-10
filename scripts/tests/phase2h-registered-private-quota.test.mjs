@@ -93,10 +93,14 @@ test("150 genuinely distinct originals can be selected fairly when the provider 
  assert.equal(batch.deferred_reobserve,60);
  assert.equal(batch.max_collision_attempts,128);
 });
-test("critical-only without a source budget continues discovery, not a failing D1 publication",()=>{
+test("Free-budget HOLD continues discovery unless a separate real Paid-month original source PASS",()=>{
  const wf=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
- const match=wf.matchAll(/if: steps\.quota\.outputs\.critical == 'true' && steps\.quota\.outputs\.registered_private_max_new_rows != '0'/gu);
- assert.equal([...match].length,2);
- const zero=wf.matchAll(/if: steps\.quota\.outputs\.critical != 'true' \|\| steps\.quota\.outputs\.registered_private_max_new_rows == '0'/gu);
+ const paid=wf.indexOf("id: paid-monthly-originals");
+ const b2=wf.indexOf("id: b2-db");
+ assert(paid>0&&b2>paid);
+ const match=wf.matchAll(/steps\.quota\.outputs\.registered_private_max_new_rows != '0' \|\| steps\.paid-monthly-originals\.outputs\.admitted == 'true'/gu);
+ assert.equal([...match].length,3);
+ const zero=wf.matchAll(/steps\.quota\.outputs\.registered_private_max_new_rows == '0' && steps\.paid-monthly-originals\.outputs\.admitted != 'true'/gu);
  assert.equal([...zero].length,2);
+ assert.match(wf,/node scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --hot50-source/u);
 });
