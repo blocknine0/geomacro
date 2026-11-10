@@ -22,6 +22,8 @@ import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
 import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
+import {summarizeD1BackendMetadata}
+ from "./step3-d1-native-backend-readonly.mjs";
 import {admitSignedStep3ShadowReceipt}
  from "../lib/d1-step3-receipt-admission.mjs";
 import {assessStep3ProductionFinal}
@@ -631,16 +633,31 @@ export async function applyStep3Migrations({env=process.env}={}){
    x.uuid?.toLowerCase()===env.D1_DATABASE_ID.toLowerCase());
   if(found.length!==1)fail("CANONICAL_PRODUCTION_DATABASE_ID_UNVERIFIED");
   const info=JSON.parse(wrangler(config,["d1","info","DB","--json"]));
-  if(info?.version!=="production")fail("D1_TIME_TRAVEL_BACKEND_NOT_PRODUCTION");
+  // Wrangler DB info may omit backend version even when the canonical UUID
+  // has native Time Travel. An absent label is NOT real bookmark proof.
+  // Reject explicit legacy alpha / unknown labels; require a genuine
+  // Cloudflare native bookmark + protected encrypted R2 checkpoint below.
+  const backend=summarizeD1BackendMetadata(info);
+  if(backend.version_label==="alpha"||
+     backend.version_label==="UNRECOGNIZED")
+   fail("D1_TIME_TRAVEL_BACKEND_EXPLICITLY_UNSUPPORTED");
+  state.d1_backend_advertised_version=backend.version_label;
+  state.native_time_travel_bookmark_still_required=true;
+  save(state);
   for(const manifest of manifests)boundedInputs(config,manifest,state);
   state.original_immutable_sample_sha256=baseline(config);
   const migrationSha=sha256MigrationSet(manifests);
   const checkpoint=await captureDurableD1Checkpoint({
    env,dbId:env.D1_DATABASE_ID,migrationSha});
+  // Require an actual native provider bookmark, signed encrypted R2 manifest
+  // and byte-for-byte R2 readback BEFORE any D1 ledger DDL/migration.
   if(checkpoint.status!=="PASS_REAL_PROVIDER_R2_BYTE_READBACK"||
+     checkpoint.real_provider_bookmark_observed!==true||
+     !/^[a-f0-9]{64}$/u.test(checkpoint.bookmark_sha256??"")||
      checkpoint.private_r2_encrypted_readback_verified!==true||
      checkpoint.signed_manifest_readback_verified!==true)
    fail("RECOVERY_CHECKPOINT_NOT_DURABLE");
+  state.native_time_travel_provider_verified=true;
   state.recovery_checkpoint_verified=true;
   state.recovery_checkpoint={
    encrypted_bytes:checkpoint.encrypted_byte_length,
