@@ -37,7 +37,9 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
     issue?.title!==OWNER_ISSUE_DISPATCH_TITLE||
     issue?.state!=="open"||issue?.pull_request!=null||
     !Number.isSafeInteger(issue?.number)||issue.number<=0||
-    typeof issue?.body!=="string"||issue.body.length>1400)
+    typeof issue?.body!=="string"||issue.body.length>1400||
+    !Number.isFinite(Date.parse(issue?.updated_at??""))||
+    Date.parse(issue.updated_at)<Date.parse(issue.created_at??""))
   fail("TRUSTED_OWNER_NEW_ISSUE_REQUIRED");
  const created=Date.parse(issue.created_at??"");
  if(!Number.isFinite(created)||created>now.getTime()+120000||
@@ -80,6 +82,7 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
  return Object.freeze({
   issue_number:issue.number,issue_body:issue.body,
   event_issue_created_at:issue.created_at,
+  event_issue_updated_at:issue.updated_at,
   source_sha:request.source_sha,
   intent:request.intent,target: selected.target,
   ref:"main",inputs:Object.freeze({...selected.inputs}),
@@ -97,7 +100,8 @@ export function assertLiveOwnerIssue({current,plan}={}){
     current?.user?.type!=="User"||
     current?.author_association!=="OWNER"||
     current?.pull_request!=null||
-    current?.created_at!==plan.event_issue_created_at)
+    current?.created_at!==plan.event_issue_created_at||
+    current?.updated_at!==plan.event_issue_updated_at)
   fail("LIVE_ISSUE_CHANGED_OR_ALREADY_CONSUMED");
  return true;
 }
