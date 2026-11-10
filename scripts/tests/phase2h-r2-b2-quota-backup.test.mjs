@@ -181,6 +181,77 @@ test("real admission flow: exact main + read-only source -> one private R2 PUT, 
  assert.equal(openPhase2hBackupCursor({
   body:v,secretB64:SECRET}).cycle_complete,true);
 });
+test("same UTC-hour changed keyset is safe deferred, never overwrite, then next hour really archives",async()=>{
+ const x=stub(),e=env();let batch=1;
+ const reader=async (ignoredEnv,ignoredFetch,cursor)=>{
+  x.observed.push(cursor);
+  return {rows:[rec(batch)],scanned_count:1,
+   rejected_unverified_or_expired_count:0,scan_complete:true};
+ };
+ const args={env:e,now:NOW,fetchImpl:x.api,storage:x.store,
+  readExportImpl:reader,validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+   no_matching_auto_deletion:true})};
+ const one=await backupPhase2hPrivateOriginals(args);
+ assert.equal(one.status,"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP");
+ const oldCursor=Buffer.from(x.objects.get(PHASE2H_R2_CURSOR_KEY));
+ const oldObject=Buffer.from(x.objects.get(phase2hBackupHourKey(NOW)));
+ const putsBefore=x.calls.filter(z=>z.kind==="R2"&&z.method==="PUT").length;
+ batch=2;
+ const deferred=await backupPhase2hPrivateOriginals(args);
+ assert.equal(deferred.status,"DEFERRED_TO_NEXT_UTC_HOUR_VERIFIED_EXISTING_BACKUP");
+ assert.equal(deferred.new_derived_fact_rows_backed_up,0);
+ assert.equal(deferred.pending_minimum_facts_unarchived,true);
+ assert.equal(deferred.provider_private_r2_put_readback,false);
+ assert.equal(deferred.provider_private_r2_get_readback,true);
+ assert.equal(deferred.b2_ack_verified,false);
+ assert.equal(deferred.risk_gate_certified,false);
+ assert.equal(deferred.canary_hold_removed,false);
+ assert.deepEqual(x.objects.get(PHASE2H_R2_CURSOR_KEY),oldCursor);
+ assert.deepEqual(x.objects.get(phase2hBackupHourKey(NOW)),oldObject);
+ assert.equal(x.calls.filter(z=>z.kind==="R2"&&z.method==="PUT").length,putsBefore);
+ const nextHour=await backupPhase2hPrivateOriginals({
+  ...args,now:new Date("2026-11-10T19:01:00.000Z")});
+ assert.equal(nextHour.status,"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP");
+ assert.equal(nextHour.retained_derived_fact_rows,1);
+ assert.equal(x.objects.size,3);
+ assert.notDeepEqual(x.objects.get(PHASE2H_R2_CURSOR_KEY),oldCursor);
+});
+test("quiet UTC-hour after authenticated cursor is explicit IDLE, not invented new backup",async()=>{
+ const x=stub();let empty=false;
+ const args={env:env(),now:NOW,fetchImpl:x.api,storage:x.store,
+  readExportImpl:async()=>{
+   if(empty)return {rows:[],scanned_count:0,
+    rejected_unverified_or_expired_count:0,scan_complete:true};
+   return {rows:[rec(1)],scanned_count:1,
+    rejected_unverified_or_expired_count:0,scan_complete:true};
+  },validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+   no_matching_auto_deletion:true})};
+ await backupPhase2hPrivateOriginals(args);
+ empty=true;
+ const before=x.calls.filter(z=>z.kind==="R2"&&z.method==="PUT").length;
+ const idle=await backupPhase2hPrivateOriginals(args);
+ assert.equal(idle.status,"IDLE_VERIFIED_EXISTING_R2_BACKUP_NO_NEW_ORIGINALS");
+ assert.equal(idle.new_derived_fact_rows_backed_up,0);
+ assert.equal(idle.provider_private_r2_get_readback,true);
+ assert.equal(idle.provider_private_r2_put_readback,false);
+ assert.equal(idle.risk_gate_certified,false);
+ assert.equal(x.calls.filter(z=>z.kind==="R2"&&z.method==="PUT").length,before);
+});
+test("changed same-hour facts without matching signed cursor never silently defer",async()=>{
+ const x=stub(),args={env:env(),now:NOW,fetchImpl:x.api,
+  storage:x.store,readExportImpl:x.reader,
+  validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+   no_matching_auto_deletion:true})};
+ await backupPhase2hPrivateOriginals(args);
+ x.objects.delete(PHASE2H_R2_CURSOR_KEY);
+ await assert.rejects(backupPhase2hPrivateOriginals({
+  ...args,readExportImpl:async()=>({rows:[rec(2)],scanned_count:1,
+   rejected_unverified_or_expired_count:0,scan_complete:true})}),
+  /PHASE2H_R2_BACKUP_EXISTING_HOUR_KEYSET_OR_CURSOR_DIVERGED/u);
+});
 test("R2 cursor corruption and provider failure HOLD before any new backup writes",async()=>{
  const x=stub();
  const args={env:env(),now:NOW,fetchImpl:x.api,storage:x.store,
