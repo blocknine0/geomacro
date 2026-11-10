@@ -212,3 +212,45 @@ test("offline: duplicate staging must query complete pointer and perform physica
  assert.match(code,/if\(old.length\)return verifyExistingShadowArchivedPointer/u);
  assert.doesNotMatch(code,/SHADOW_POINTER_ALREADY_EXISTS_REQUIRES_READBACK/u);
 });
+
+test("offline: bounded Shadow R2 GET transport retries preserve strict fail-closed proof",async()=>{
+ const url=shadowR2ObjectUrl(env.CLOUDFLARE_ACCOUNT_ID,
+  env.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET,"immutable/ref-only.json");
+ let calls=0;
+ const res=await shadowR2Request(url,env,"GET",async(_url,init)=>{
+  calls++;
+  assert.equal(init.method,"GET");
+  assert.equal(init.redirect,"error");
+  if(calls<3)throw Error("NETWORK_PRIVATE_RESPONSE_DO_NOT_PRINT");
+  return new Response(Buffer.from("exact-existing-object-bytes"),{status:200});
+ });
+ assert.equal(calls,3);
+ assert.equal((await res.text()),"exact-existing-object-bytes");
+
+ let persistent=0;
+ await assert.rejects(shadowR2Request(url,env,"GET",async()=>{
+  persistent++;
+  throw Error("SECRET_NETWORK_DIAGNOSTIC_NOT_FOR_LOG");
+ }),e=>{
+  assert.equal(e.message,"STEP3_SHADOW_SEED_R2_PROVIDER_UNAVAILABLE");
+  assert.doesNotMatch(e.message,/SECRET_NETWORK/u);
+  return true;
+ });
+ assert.equal(persistent,3);
+
+ let forbidden=0;
+ await assert.rejects(shadowR2Request(url,env,"GET",async()=>{
+  forbidden++;
+  return new Response(JSON.stringify({success:false,errors:[{code:10000}]}),
+   {status:403,headers:{"Content-Type":"application/json"}});
+ }),/STEP3_SHADOW_SEED_R2_GET_HTTP_403_CF_10000/u);
+ assert.equal(forbidden,1,"HTTP auth failures MUST NEVER be retried");
+
+ let writes=0;
+ await assert.rejects(shadowR2Request(url,env,"PUT",async()=>{
+  writes++;
+  throw Error("UNKNOWN_PUT_ACK");
+ },Buffer.from("fixture")) ,
+ /STEP3_SHADOW_SEED_R2_PROVIDER_UNAVAILABLE/u);
+ assert.equal(writes,1,"unknown PUT acknowledgement MUST NEVER be retried");
+});
