@@ -205,13 +205,17 @@ export async function backupPhase2hPrivateOriginals({
   rows:source,now,sourceSha:env.GITHUB_SHA,secretB64
  });
  const found=await storage("GET",plan.key,env,fetchImpl);
+ let archivedSourceSha=env.GITHUB_SHA;
  if(found){
+  // A previous immutable main may have archived this SAME hour. Verify
+  // actual AEAD, exact derived fact rows and frozen source provenance;
+  // never rewrite just because a later, independently reviewed main merged.
   const old=openPhase2hR2Backup({
-   body:found,secretB64,expectedHour:plan.hour,
-   expectedSha:env.GITHUB_SHA
+   body:found,secretB64,expectedHour:plan.hour
   });
   if(JSON.stringify(old.records)!==JSON.stringify(expectedFacts))
    fail("EXISTING_HOUR_MINIMUM_FACTS_CHANGED");
+  archivedSourceSha=old.source_sha;
  }else{
   // At most ONE bundle PUT per UTC-hour, after authenticated original export.
   await exactMain(env,fetchImpl);
@@ -225,14 +229,14 @@ export async function backupPhase2hPrivateOriginals({
   fail("INDEPENDENT_PRIVATE_R2_READBACK_MISMATCH");
  const restored=openPhase2hR2Backup({
   body:physical,secretB64,expectedHour:plan.hour,
-  expectedSha:env.GITHUB_SHA
+  expectedSha:archivedSourceSha
  });
  if(restored.records.length!==answer.rows.length||
     restored.full_private_originals_retained!==false||
     JSON.stringify(restored.records)!==JSON.stringify(expectedFacts))
   fail("RESTORED_MINIMUM_RISK_FACTS_MISMATCH");
  const next=sealPhase2hBackupCursor({
-  sourceSha:env.GITHUB_SHA,hour:plan.hour,
+  sourceSha:archivedSourceSha,hour:plan.hour,
   objectKey:plan.key,objectSha:trustedSha,
   lastClock:plan.last_record.ingested_at,
   lastId:plan.last_record.record_id,
