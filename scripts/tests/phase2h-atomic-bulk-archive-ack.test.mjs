@@ -72,3 +72,43 @@ test("real SQLite bounds ACK lookups by expected IDs and preserves atomic mismat
   assert.equal(db.prepare('SELECT COUNT(*) n FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL').get().n,49);
  }finally{db.close()}
 });
+
+test("B2-first exact raw JSON is immutable, atomic, indexed, and limited to 32 three-param originals",async()=>{
+ const {DatabaseSync}=await import("node:sqlite");
+ const db=new DatabaseSync(":memory:");
+ db.exec(`CREATE TABLE phase2h_private_raw_news(
+  record_id TEXT PRIMARY KEY,raw_sha256 TEXT NOT NULL,
+  raw_json TEXT NOT NULL,b2_object_sha256 TEXT,b2_archived_at TEXT);`);
+ const native=row=>JSON.stringify({ingested_at:now.toISOString(),
+  record_id:row.record_id,raw_sha256:row.raw_sha256,
+  immutable_original:"x".repeat(370)});
+ const base=rows(32).map(x=>({...x,raw_json:native(x)}));
+ for(const row of base)
+  db.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,NULL,NULL)")
+   .run(row.record_id,row.raw_sha256,row.raw_json);
+ const plan=phase2hAtomicBulkArchiveAck(base,objectSha,now);
+ assert.equal(plan.exact_original_json_bytes_required,true);
+ assert.equal(plan.params.length,99);
+ assert.equal(plan.d1_statements,1);
+ assert.match(plan.sql,/expected\\(record_id,raw_sha256,raw_json\\)/u);
+ assert.match(plan.sql,/AND r.raw_json=e.raw_json/u);
+ // Same record ID + immutable raw_sha256 but a different ingestion clock
+ // must NOT be silently acknowledged as the same B2 object.
+ const changed=base.map(x=>({...x}));
+ changed[2].raw_json=changed[2].raw_json.replace(now.toISOString(),
+  "2026-11-04T07:59:00.000Z");
+ const mismatch=phase2hAtomicBulkArchiveAck(changed,objectSha,now);
+ assert.equal(db.prepare(mismatch.sql).all(...mismatch.params).length,0);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL").get().n,0);
+ const exactResult=db.prepare(plan.sql).all(...plan.params);
+ assert.equal(exactResult.length,32);
+ assert.equal(assertPhase2hBulkArchiveAckReturning({results:exactResult},base,objectSha).archived,32);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM phase2h_private_raw_news WHERE b2_object_sha256 IS NOT NULL").get().n,32);
+ assert.throws(()=>phase2hAtomicBulkArchiveAck([...base,base[0]],objectSha,now),
+  /PHASE2H_BULK_ACK_EXACT_JSON_BATCH_TOO_LARGE/u);
+ for(const bad of ["", "{}", null]){
+  assert.throws(()=>phase2hAtomicBulkArchiveAck([{...base[0],raw_json:bad}],objectSha,now),
+   /PHASE2H_BULK_ACK_EXACT_JSON_REQUIRED/u);
+ }
+ db.close();
+});
