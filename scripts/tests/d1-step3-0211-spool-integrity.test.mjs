@@ -77,7 +77,7 @@ test("an unexpected extra or removed source index fails closed for empty and pop
  const d=db();
  try{
   d.exec("CREATE INDEX idx_unreviewed_shadow ON ingestion_spool_queue(state)");
-  assert.throws(()=>auditStep30211SpoolSource(read(d)),/SEVEN_REVIEWED_INDEX_REGISTRY_DRIFT/);
+  assert.throws(()=>auditStep30211SpoolSource(read(d)),/REVIEWED_0114_0206_INDEX_REGISTRY_DRIFT/);
  }finally{d.close()}
 });
 test("false provider quick, index column, forced plan, FK and concurrent source writes never pass",()=>{
