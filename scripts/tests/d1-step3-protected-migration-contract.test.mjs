@@ -446,7 +446,9 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/admitStep30204SupportedIntegrity\(lineageInputs\)/u);
  assert.match(runner,/SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED/u);
  assert.match(runner,/0212_SOURCE_PARTIAL_INDEX_AND_HOURLY_PENDING_CONTRADICTION/u);
- assert.match(runner,/PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY/u);
+ assert.match(runner,/lineage\.existing_index_count<14/u);
+ assert.match(runner,/lineage\.existing_index_count>17/u);
+ assert.match(runner,/14\+lineage\.reviewed_extra_index_count/u);
  assert.match(runner,/source_original_B2_byte_readback_claimed:false/u);
  assert.match(runner,/independent_pointer_HMAC_R2_B2_and_worker_proofs_required:true/u);
  assert.match(runner,/UNREVIEWED_STEP3_MIGRATION_INTEGRITY_ID/u);
