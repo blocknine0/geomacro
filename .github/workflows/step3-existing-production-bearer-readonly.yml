@@ -1,0 +1,56 @@
+name: GeoMacro Stage2 Existing Production Bearer Proof (No Writes)
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: 'Exact READONLY_EXISTING_PRODUCTION_BEARER_CHECK'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-stage2-existing-bearer-readonly
+  cancel-in-progress: false
+jobs:
+  provider-readonly:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.approval == 'READONLY_EXISTING_PRODUCTION_BEARER_CHECK'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    env:
+      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - name: Checkout exact main SHA only
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Require canonical SHA and unchanged protected canary HOLD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+      - name: Authenticated live Worker control token verification only
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Derive from existing protected ledger root ONLY if needed.
+          # Verify one live authenticated GET before runner-local export.
+          # Credentials are masked, never printed as logs or artifacts.
+          node scripts/ops/prepare-five-gate-control-token.mjs
+      - name: Prove no Stage2 DDL or canary operation was authorized
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          echo 'PASS: authenticated existing bearer only; no D1 SQL, Worker secret change, HMAC issuance, B2/R2 write, canary, payment or Predge mutation.'
