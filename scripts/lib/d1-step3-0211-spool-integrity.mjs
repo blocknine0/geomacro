@@ -5,7 +5,7 @@
  * no synthetic original, B2 ACK, signed decision or paid evidence is created.
  */
 import {auditStep3AllIndexes} from "./d1-step3-supported-integrity.mjs";
-import {auditStep3AllIndexesSet}
+import {auditStep3AllIndexesJoin}
  from "./d1-step3-large-index-set-proof.mjs";
 import {auditStep30211ReviewedSpoolIndexLineage}
  from "./d1-step3-0211-spool-index-lineage.mjs";
@@ -91,15 +91,17 @@ export function auditStep30211SpoolSource(query){
   // A nonempty source requires complete real key/row membership across ALL
   // seven existing indexes; do not substitute schema-only evidence for data.
   // The legacy per-row verifier has a strict 3000-row result cap.
-  // For larger live sources use a D1-side complete bidirectional EXCEPT
-  // set proof, never a 3000-row sample misrepresented as full integrity.
+  // For larger live sources verify EVERY indexed rowid and EVERY key
+  // against its canonical ROWID inside a single covering-index join per
+  // reviewed index. Exact total/distinct counts prohibit missing or duplicate
+  // members. This is complete set parity, not a truncated 3000-row sample.
   const probe=read(query,
    'SELECT COUNT(*) AS n FROM (SELECT 1 FROM "ingestion_spool_queue" LIMIT 3001)',1);
   if(probe.length!==1||!Number.isSafeInteger(probe[0]?.n)||
      probe[0].n<1||probe[0].n>3001)
    fail("LARGE_SOURCE_SIZE_PROBE_UNVERIFIED");
   const proof=probe[0].n>3000?
-   auditStep3AllIndexesSet(TABLE,query):
+   auditStep3AllIndexesJoin(TABLE,query):
    auditStep3AllIndexes(TABLE,query);
   if(proof.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
      proof.total_existing_indexes!==lineage.index_count||
