@@ -126,3 +126,21 @@ provider headroom. Initial daily target: 150 (6.25/hour), then capacity can
 increase only against real concurrency, p95 latency, no-charge ratio, webhook
 delivery and D1/B2 usage evidence. The plan is an actionable repair queue
 for operators, **not** a newly deployed source-poller or a certified uptime SLA.
+
+## Authenticated transport proof — direct Worker origin
+
+The daily Hot50 no-funds verifier now uses the direct deployed control-plane
+Worker endpoint already configured as the commercial API's default
+`RISK_EVIDENCE_ORIGIN`. The historical `api.geomacro.live` custom-domain
+proxy is not certified by the deploy canary
+(`UNIFIED_RISK_207_PRODUCTION_ACCEPTANCE_20261103.md`).
+An authorized HTTP 401/503 JSON response is not conflated with network failure,
+invalid JSON, unexpected HTML or an unexpected redirect. Results expose
+only aggregate transport classes, HTTP statuses, symbolic tier states and
+source-gap counts; credentials and response body stay private.
+
+Run 42878465451 on 10 Nov returned all 150 tier probes as
+`TRANSPORT_UNAVAILABLE` against the uncertified custom domain, so the
+result cannot assess original source coverage or real qualified delivery.
+This change fixes probe origin and classification, not issuer eligibility,
+production source rights, signing, canary holds or actual paid throughput.
