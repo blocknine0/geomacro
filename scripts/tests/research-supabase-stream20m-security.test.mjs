@@ -70,7 +70,7 @@ test("new source-specific alternatives remain private, unverified candidates",()
   uk_ukef_ogl_macro_atom:"MACRO",
   uk_ukri_ogl_minerals_atom:"CRITICAL_MINERALS",
  };
- const src=JSON.parse(ingest.match(/const SOURCES=(\\[.*?\\]);\\nconst COUNTRIES=/u)?.[1]??"null");
+ const src=JSON.parse(ingest.match(/const SOURCES=(\[.*?\]);\nconst COUNTRIES=/u)?.[1]??"null");
  for(const [id,cat] of Object.entries(expected)){
   const registered=inventory.sources.find(s=>s.source_id===id);
   assert.equal(registered?.category,cat);
@@ -78,8 +78,8 @@ test("new source-specific alternatives remain private, unverified candidates",()
   assert.equal(registered?.original_article_verified_at_registration,false);
   assert.equal(src.filter(s=>s.id===id&&s.category===cat&&s.url===registered.feed_url).length,1);
  }
- assert.match(ingest,/originalUrl\\(deent\\(href\\|\\|""\\)\\)/u);
- assert.match(ingest,/firstPublished\\(e,Date\\.now\\(\\)\\)/u);
+ assert.ok(ingest.includes('const url=originalUrl(deent(href||""));'));
+ assert.ok(ingest.includes("const at=await firstPublished(e,Date.now());"));
  assert.match(ingest,/source_http_healthy:healthy/u);
  assert.match(ingest,/commercial_eligible:false/u);
 });
