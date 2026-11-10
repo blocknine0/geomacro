@@ -20,6 +20,8 @@ import {checkD1PaidMonthlyHeadroom,D1_PAID_HEADROOM_HOLD}
  from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {runShadowBillableProbe}
  from "./verify-d1-publisher-billable-shadow.mjs";
+import {readStep3FreshHeadroomWithRetry}
+ from "../lib/step3-fresh-headroom-retry.mjs";
 import {captureDurableD1Checkpoint,signStep3StatusReceipt}
  from "../lib/d1-step3-recovery-checkpoint.mjs";
 import {summarizeD1BackendMetadata}
@@ -219,18 +221,29 @@ function ensureLedger(config,manifests,report){
 async function refreshedGate(report,stage){
  const estimate=report.operation_kind==="production"?
    report.large_0212_production_cost_envelope:null;
- const x=await checkD1PaidMonthlyHeadroom({
-  lane:report.operation_kind==="shadow"?"shadow":"migration",
-  estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
-  estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0
+ const verified=await readStep3FreshHeadroomWithRetry({
+  request:{lane:report.operation_kind==="shadow"?"shadow":"migration",
+   estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
+   estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0},
+  read:options=>checkD1PaidMonthlyHeadroom(options),
+  wait:ms=>new Promise(resolve=>setTimeout(resolve,ms))
  });
- report.latest_headroom={stage,status:x.status,code:x.code,
-  day:x.day_utc,rows_read:x.observed_rows_read,
-  rows_written:x.observed_rows_written,
-  read_remaining:x.remaining_rows_read,
-  write_remaining:x.remaining_rows_written};
+ const x=verified.receipt;
+ // Never permit an outage to turn into an inferred subscription, quota
+ // number or PASS. Each retry is a new actual Cloudflare provider reading.
+ report.latest_headroom={stage,status:x?.status??"HOLD",code:x?.code??null,
+  day:x?.day_utc??null,rows_read:x?.observed_rows_read??null,
+  rows_written:x?.observed_rows_written??null,
+  read_remaining:x?.remaining_rows_read??null,
+  write_remaining:x?.remaining_rows_written??null,
+  provider_error:x?.provider_error??null,
+  checked_at_utc:x?.checked_at_utc??null,
+  actual_provider_checks:verified.attempts};
  save(report);
- if(x.status!=="PASS")throw Error(D1_PAID_HEADROOM_HOLD);
+ if(!verified.provider_pass_observed||x?.status!=="PASS"||
+    x.code!=="MIGRATION_PAID_MONTHLY_HEADROOM_VERIFIED"||
+    x.provider_subscription_verified!==true)
+  throw Error(D1_PAID_HEADROOM_HOLD);
  return x;
 }
 function boundedInputs(config,step,report){
