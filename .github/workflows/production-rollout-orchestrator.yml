@@ -291,7 +291,7 @@ jobs:
           ]){
             const value=createHmac("sha256",root).update(scope).digest("hex");
             console.log("::add-mask::"+value);
-            appendFileSync(process.env.GITHUB_ENV,name+"="+value+"\\n");
+            appendFileSync(process.env.GITHUB_ENV,name+"="+value+"\n");
           }
           NODE
       # This is a REAL provider B2 S3 GET/AES-GCM/D1 manifest comparison.
@@ -302,9 +302,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ops/audit-hot50-b2-d1-parity.mjs \\
-            > /tmp/hot50-proof/parity.json \\
-            2> /tmp/hot50-proof/parity-error.json
+          node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/hot50-proof/parity.json 2> /tmp/hot50-proof/parity-error.json
       - name: Require all five genuine Hot50 production gates
         run: node scripts/ops/verify-hot50-production-activation.mjs
       - name: Require all 150 live signed country-category cells across priced risk-gate tiers
