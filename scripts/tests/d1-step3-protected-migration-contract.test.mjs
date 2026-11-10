@@ -206,15 +206,22 @@ test("sampled immutable source SHA cannot silently change during schema migratio
  assert.throws(()=>compareImmutableBaseline(hash,"0".repeat(64)),
   /LEGACY_IMMUTABLE_SAMPLE_CHANGED/u);
 });
-test("missing production bearer/HMAC is rejected BEFORE backup and migration DDL",()=>{
+test("real bearer required; missing production HMAC only permits strict new 0213 schema staging",()=>{
  const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  const approval=r.indexOf("function approved(env)");
- const auth=r.indexOf("PRODUCTION_POINTER_AUTH_DEPENDENCIES_UNVERIFIED",approval);
- const migration=r.indexOf("const ledger=ensureLedger(config,manifests,state)",auth);
- const backup=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",auth);
- assert(approval>0&&auth>approval&&backup>auth&&migration>backup);
+ const auth=r.indexOf("PRODUCTION_CONTROL_BEARER_MISSING",approval);
+ const schema=r.indexOf("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED",auth);
+ const backup=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",schema);
+ const ledger=r.indexOf("const ledger=ensureLedger(config,manifests,state)",backup);
+ assert(approval>0&&auth>approval&&schema>auth&&backup>schema&&ledger>backup);
  assert.match(r,/env.CONTROL_PLANE_TOKEN.length<32/u);
- assert.match(r,/PHASE2H_R2_REFERENCE_HMAC_KEY/u);
+ assert.match(r,/UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC/u);
+ assert.match(r,/status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY"/u);
+ assert.match(r,/original_pointer_bytes_or_hmac_claimed:false/u);
+ assert.match(r,/NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC/u);
+ assert.match(r,/const empty=inspectPointerProofCount\(result.rows\)/u);
+ assert(r.indexOf("NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC")>
+  r.indexOf("inspectPointerProofCount(result.rows)"));
  assert.doesNotMatch(r,/env.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY/u);
 });
 
