@@ -26,6 +26,7 @@ function fixture(intent="gateway-handshake"){
   issue:{
    id:12345,number:4611,state:"open",
    created_at:"2026-11-10T15:58:00.000Z",
+   updated_at:"2026-11-10T15:58:00.000Z",
    author_association:"OWNER",user:{login:"blocknine0",type:"User"},
    title:OWNER_ISSUE_DISPATCH_TITLE,
    body:JSON.stringify({
@@ -95,7 +96,8 @@ test("live edit/close and moved main cannot be used to replay a request",()=>{
  for(const change of [
   x=>{x.body="{}";},x=>{x.state="closed";},
   x=>{x.user.login="attacker";},x=>{x.title="changed";},
-  x=>{x.number=11;},x=>{x.created_at="2026-11-09T00:00:00.000Z";}
+  x=>{x.number=11;},x=>{x.created_at="2026-11-09T00:00:00.000Z";},
+  x=>{x.updated_at="2026-11-10T15:59:59.000Z";}
  ]){
   const x=structuredClone(event.issue);change(x);
   assert.throws(()=>assertLiveOwnerIssue({current:x,plan}),/OWNER_DISPATCH_/u);
