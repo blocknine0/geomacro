@@ -47,10 +47,10 @@ test("reviewed production B2 ACK is exact-blob pinned, write-only and never cert
  const review=PRODUCTION_B2_ACK_REVIEWED_BLOBS[path];
  assert.ok(review);
  assert.equal(gitBlobSha1(source),review.blob);
- assert.notEqual(gitBlobSha1(source+"\\n"),review.blob);
+ assert.notEqual(gitBlobSha1(source+String.fromCharCode(10)),review.blob);
  assert.match(source,/UPDATE phase2h_private_raw_news/u);
- assert.match(source,/r\\.raw_json=e\\.raw_json/u);
- assert.match(source,/eligible\\(total\\)/u);
+ assert.ok(source.includes("r.raw_json=e.raw_json"));
+ assert.ok(source.includes("eligible(total)"));
  assert.match(source,/RETURNING record_id/u);
  assert.doesNotMatch(source,/DELETE FROM phase2h_private_raw_news/u);
  const report=auditPhase2hRawConsumers();
