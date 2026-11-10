@@ -153,7 +153,9 @@ function stub(){
 test("real admission flow: exact main + read-only source -> one private R2 PUT, GET, HMAC cursor + 0 B2",async()=>{
  const x=stub();
  const args={env:env(),now:NOW,fetchImpl:x.api,storage:x.store,
-  readExportImpl:x.reader,validateBucket:async()=>true};
+  readExportImpl:x.reader,validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+    no_matching_auto_deletion:true})};
  const result=await backupPhase2hPrivateOriginals(args);
  assert.equal(result.status,"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP");
  assert.equal(result.provider_private_r2_put_readback,true);
@@ -182,7 +184,9 @@ test("real admission flow: exact main + read-only source -> one private R2 PUT, 
 test("R2 cursor corruption and provider failure HOLD before any new backup writes",async()=>{
  const x=stub();
  const args={env:env(),now:NOW,fetchImpl:x.api,storage:x.store,
-  readExportImpl:x.reader,validateBucket:async()=>true};
+  readExportImpl:x.reader,validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+    no_matching_auto_deletion:true})};
  await backupPhase2hPrivateOriginals(args);
  const damaged=JSON.parse(x.objects.get(PHASE2H_R2_CURSOR_KEY));
  damaged.object_sha256="e".repeat(64);
@@ -206,7 +210,9 @@ test("no protected credentials or unreviewed event means no provider operations"
   const e=env(),x=stub();change(e);
   await assert.rejects(backupPhase2hPrivateOriginals({
    env:e,now:NOW,fetchImpl:x.api,storage:x.store,
-   readExportImpl:x.reader,validateBucket:async()=>true
+   readExportImpl:x.reader,validateBucket:async()=>true,
+  validateLifecycle:async()=>({status:"PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES",
+    no_matching_auto_deletion:true})
   }),/PHASE2H_R2_BACKUP_/u);
   assert.equal(x.calls.length,0);
  }
