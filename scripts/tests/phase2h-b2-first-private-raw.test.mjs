@@ -73,10 +73,15 @@ test("genuine gzip object has two GET/SHA proofs before D1 write/ack",async()=>{
    assert.match(url,/\/v1\/internal\/phase2h-raw-news$/u);
    assert.equal(opts.method,"PUT");
    assert.equal(b.object_sha256,receipt.object_sha256);
+   assert.equal(b.schema,"geomacro.phase2h.b2-first-archive-ack.v2");
+   assert.equal(b.items[0].raw_json,JSON.stringify(rows[0]));
    assert.equal(b.items.length,1);
    assert.equal(b.items[0].record_id,rows[0].record_id);
    return Response.json({ok:true,archived:1,
-    independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+    independent_d1_archive_ack_verified:true,
+    d1_atomic_one_statement_returning_verified:true,
+    b2_first_exact_raw_json_d1_verified:true,
+    rights_verified:false,payments:0});
   },
  });
  assert.equal(calls,1);
@@ -157,6 +162,8 @@ test("one duplicate cannot block a genuine fresh B2/D1 ACK in the same original 
    return id===r2.record_id?
     Response.json({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},{status:503}):
     Response.json({ok:true,archived:1,independent_d1_archive_ack_verified:true,
+     d1_atomic_one_statement_returning_verified:true,
+     b2_first_exact_raw_json_d1_verified:true,
      rights_verified:false,payments:0});
   },
  });
@@ -196,7 +203,10 @@ test("real 20-original B2 PUT/GET proof ACKs 19 readback-verified siblings, neve
    assert.equal(request.items[0].raw_sha256,
     selected.find(x=>x.record_id===request.items[0].record_id).raw_sha256);
    return Response.json({ok:true,archived:1,
-    independent_d1_archive_ack_verified:true,rights_verified:false,payments:0});
+    independent_d1_archive_ack_verified:true,
+    d1_atomic_one_statement_returning_verified:true,
+    b2_first_exact_raw_json_d1_verified:true,
+    rights_verified:false,payments:0});
   }
  });
  assert.equal(result.status,"B2_FIRST_PARTIAL_D1_ACK_VERIFIED");
