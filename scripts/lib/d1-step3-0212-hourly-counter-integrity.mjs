@@ -34,7 +34,9 @@ function digest(rows){
      typeof h!=="string"||!/^\d{4}-\d\d-\d\dT(?:[01]\d|2[0-3])$/u.test(h)||
      !Number.isSafeInteger(n)||n<0||keys.has(k+"|"+h))
    fail("INVALID_DUPLICATE_OR_UNSORTED_UTC_BUCKET");
-  if(total+n>3000)fail("COUNTER_OR_SOURCE_BOUNDED_ROWS_EXCEEDED");
+  // 3000 is a bound on distinct category/hour BUCKETS, not the number
+  // of originals in those buckets. Real source totals can be much larger.
+  if(total+n>100000)fail("COUNTER_OR_SOURCE_BOUNDED_ROWS_EXCEEDED");
   total+=n;
   keys.add(k+"|"+h);values.push([k,h,n]);
  }
