@@ -69,6 +69,26 @@ test("local PASS, stale, wrong run, wrong DB, missing archive, incomplete ledger
    /STEP3_CANARY_(FOUR_MIGRATIONS_OR_PHYSICAL_PROOFS_MISSING|STALE_OR_NONMONOTONIC_PHYSICAL_PROOF)/u);
  }
 });
+test("signed Stage2 cannot mislabel empty R2 table as actual pointer HMAC",()=>{
+ const mutated=[
+  p=>{p.production_reference_table.mode="EXISTING_PRODUCTION_POINTERS_CRYPTOGRAPHICALLY_VERIFIED"},
+  p=>{p.production_reference_table.real_production_pointer_hmac_verified=true},
+  p=>{p.production_reference_table.zero_pointer_table_vacuous_proof=false},
+  p=>{delete p.production_reference_table.mode},
+  p=>{p.production_reference_table={
+    stage1_shadow_hmac_attestation_required:true,
+    mode:"EXISTING_PRODUCTION_POINTERS_CRYPTOGRAPHICALLY_VERIFIED",
+    zero_pointer_table_vacuous_proof:false,
+    real_production_pointer_hmac_verified:false
+  }}
+ ];
+ for(const mutate of mutated){
+  const x=valid();mutate(x);
+  assert.throws(()=>admitSignedStep3ProductionForCanary(options(x)),
+   /STEP3_CANARY_REFERENCE_POINTER_MODE_OR_HMAC_EVIDENCE_UNVERIFIED/u);
+ }
+});
+
 test("tampered or forged signer never passes canary admission",()=>{
  const signed=signStep3StatusReceipt(valid(),privateJwk);
  signed.receipt.status="NOT_YET_VERIFIED";
