@@ -7,6 +7,8 @@
 import {auditStep3AllIndexes} from "./d1-step3-supported-integrity.mjs";
 import {auditStep3AllIndexesSet}
  from "./d1-step3-large-index-set-proof.mjs";
+import {auditStep30211ReviewedSpoolIndexLineage}
+ from "./d1-step3-0211-spool-index-lineage.mjs";
 const TABLE="ingestion_spool_queue";
 export const STEP3_0211_REVIEWED_SPOOL_INDEXES=Object.freeze([
  "idx_p0b_bundle_items",
@@ -30,24 +32,15 @@ function isEmpty(query){
   fail("SOURCE_NONEMPTY_STATE_UNVERIFIED");
  return x[0].present===0;
 }
-function checkIndexNames(rows){
- if(rows.length!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
-    new Set(rows.map(x=>x?.name)).size!==rows.length||
-    STEP3_0211_REVIEWED_SPOOL_INDEXES.some(name=>
-     !rows.some(x=>x?.name===name))||
-    rows.some(x=>x?.partial!==0||
-     !["c","pk","u"].includes(x.origin)||
-     x.unique!==(x.name.startsWith("sqlite_autoindex_")?1:0)))
-   fail("SEVEN_REVIEWED_INDEX_REGISTRY_DRIFT");
-}
 export function auditStep30211SpoolSource(query){
  if(typeof query!=="function")fail("PROVIDER_READER_REQUIRED");
  const beforeEmpty=isEmpty(query);
  const indexList=read(query,'PRAGMA index_list("ingestion_spool_queue")',16);
- checkIndexNames(indexList);
+ const lineage=auditStep30211ReviewedSpoolIndexLineage(
+  query,indexList,STEP3_0211_REVIEWED_SPOOL_INDEXES);
  if(!beforeEmpty){
   // A nonempty source requires complete real key/row membership across ALL
-  // seven existing indexes; do not substitute schema-only evidence for data.
+  // actual reviewed indexes, whether legacy Shadow or optimized production.
   // The legacy per-row verifier has a strict 3000-row result cap.
   // For larger live sources use a D1-side complete bidirectional EXCEPT
   // set proof, never a 3000-row sample misrepresented as full integrity.
@@ -60,16 +53,21 @@ export function auditStep30211SpoolSource(query){
    auditStep3AllIndexesSet(TABLE,query):
    auditStep3AllIndexes(TABLE,query);
   if(proof.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
-     proof.total_existing_indexes!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
-     proof.index_proofs.length!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
-     STEP3_0211_REVIEWED_SPOOL_INDEXES.some(n=>
+     proof.total_existing_indexes!==lineage.index_count||
+     proof.index_proofs.length!==lineage.index_count||
+     lineage.expected_indexes.some(n=>
       !proof.index_proofs.some(x=>x.index===n&&
        x.status==="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"&&
        x.rows_compared>0)))
    fail("NONEMPTY_SOURCE_ALL_INDEX_PARITY_UNVERIFIED");
   return Object.freeze({
-   status:"PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS",
-   index_count:7,nonempty_source:true,
+   status:lineage.index_count===7?
+    "PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS":
+    "PASS_0211_NONEMPTY_SPOOL_ALL_SIX_REVIEWED_INDEX_KEYS",
+   index_count:lineage.index_count,reviewed_index_profile:lineage.profile,
+   candidate_unique_autoindex_verified:lineage.candidate_unique_autoindex_verified,
+   redundant_candidate_index_present:lineage.redundant_candidate_index_present,
+   nonempty_source:true,
    source_rows_verified:proof.index_proofs[0].rows_compared,
    sqlite_full_integrity_check_claimed:false,
    stage2_authorized:false,canary_promoted:false,
@@ -89,7 +87,7 @@ export function auditStep30211SpoolSource(query){
    fail("D1_QUICK_CHECK_FAILED");
  if(read(query,'PRAGMA foreign_key_check("ingestion_spool_queue")',1).length!==0)
    fail("SOURCE_FOREIGN_KEYS_UNVERIFIED");
- for(const name of STEP3_0211_REVIEWED_SPOOL_INDEXES){
+ for(const name of lineage.expected_indexes){
   const xinfo=read(query,'PRAGMA index_xinfo("'+name+'")',20);
   const keys=xinfo.filter(x=>x.key===1);
   if(!keys.length||keys.length>8||
@@ -108,8 +106,13 @@ export function auditStep30211SpoolSource(query){
  }
  if(!isEmpty(query))fail("CONCURRENT_EMPTY_SOURCE_DRIFT");
  return Object.freeze({
-  status:"OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE",
-  index_count:7,nonempty_source:false,
+  status:lineage.index_count===7?
+   "OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE":
+   "OBSERVED_EMPTY_SOURCE_ALL_SIX_REVIEWED_INDEX_STRUCTURE",
+  index_count:lineage.index_count,reviewed_index_profile:lineage.profile,
+  candidate_unique_autoindex_verified:lineage.candidate_unique_autoindex_verified,
+  redundant_candidate_index_present:lineage.redundant_candidate_index_present,
+  nonempty_source:false,
   source_rows_verified:0,nonvacuous_original_evidence:false,
   source_to_b2_physical_parity_verified:false,
   sqlite_full_integrity_check_claimed:false,
