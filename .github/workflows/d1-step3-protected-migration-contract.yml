@@ -12,6 +12,8 @@ on:
       - "scripts/lib/d1-step3-0212-source-index-integrity.mjs"
       - "scripts/tests/d1-step3-0212-source-index-integrity.test.mjs"
       - "scripts/lib/d1-step3-0211-spool-integrity.mjs"
+      - "scripts/lib/d1-step3-large-index-set-proof.mjs"
+      - "scripts/tests/d1-step3-large-index-set-proof.test.mjs"
       - "scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs"
       - "scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs"
       - "scripts/tests/d1-step3-0211-spool-integrity.test.mjs"
@@ -59,6 +61,8 @@ jobs:
           node --check scripts/lib/d1-step3-supported-integrity.mjs
           node --check scripts/lib/d1-step3-0211-counter-integrity.mjs
           node --check scripts/lib/d1-step3-0211-spool-integrity.mjs
+          node --check scripts/lib/d1-step3-large-index-set-proof.mjs
+          node --test scripts/tests/d1-step3-large-index-set-proof.test.mjs
           node --test scripts/tests/d1-step3-0211-spool-integrity.test.mjs
           node --check scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs
           node --test scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs
