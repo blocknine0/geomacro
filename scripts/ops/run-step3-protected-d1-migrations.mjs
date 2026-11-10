@@ -137,13 +137,19 @@ function approved(env){
   .split("\n").filter(Boolean).filter(s=>
    !/^artifacts\/release\//u.test(s.slice(3)));
  if(dirty.length)fail("SOURCE_TREE_DIRTY_EXACT_SHA_UNVERIFIED");
- // Production original-pointer verification occurs AFTER schema migrations.
- // Fail before backup or any DDL if the genuine existing Worker credentials
- // are not supplied. A shadow-only bearer/HMAC must never be substituted.
+ // Existing production control bearer MUST authenticate before any DDL.
+ // Reference-only 0213 is opt-in and deliberately creates an EMPTY table:
+ // its independently reviewed final acceptance recognizes this structural-
+ // only mode. Never invent a real pointer HMAC for an empty opt-in table.
+ // A configured production HMAC MUST be 64 hex and NEVER a Shadow fallback.
  if(typeof env.CONTROL_PLANE_TOKEN!=="string"||
-    env.CONTROL_PLANE_TOKEN.length<32||
-    !/^[a-f0-9]{64}$/iu.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
-  fail("PRODUCTION_POINTER_AUTH_DEPENDENCIES_UNVERIFIED");
+    env.CONTROL_PLANE_TOKEN.length<32)
+  fail("PRODUCTION_CONTROL_BEARER_MISSING");
+ const productionPointerHmac=env.PHASE2H_R2_REFERENCE_HMAC_KEY??"";
+ if(typeof productionPointerHmac!=="string"||
+    (productionPointerHmac!==""&&
+     !/^[a-f0-9]{64}$/iu.test(productionPointerHmac)))
+  fail("PRODUCTION_POINTER_HMAC_MALFORMED");
 }
 function runnerConfig(privateDir,dbId,migrationsDir){
  const config=join(privateDir,"wrangler-step3.jsonc");
@@ -609,7 +615,13 @@ async function verifyHmacNewPointers(config,env){
    code:"POINTER_PROOF_PAGE_EXCEEDS_BOUNDED_BUDGET",
    all_hmac_and_r2_bytes_verified:false};
  const empty=inspectPointerProofCount(result.rows);
- if(empty)return {...empty,all_hmac_and_r2_bytes_verified:false};
+ if(empty)return {...empty,all_hmac_and_r2_bytes_verified:false,
+  production_hmac_required_for_zero_rows:false,
+  structural_only_no_existing_pointers:true};
+ // A real pointer MUST have the *original* production HMAC. Never accept
+ // a shadow key, a rotated value, or fake cryptographic readback.
+ if(!/^[a-f0-9]{64}$/iu.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
+  fail("NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC");
  const proof=await verifyRealPhase2hPointerRows({rows:result.rows,env});
  return {...proof,
   all_hmac_and_r2_bytes_verified:
@@ -699,6 +711,32 @@ export async function applyStep3Migrations({env=process.env}={}){
     // Any other pending migration retains the strict 3k bound.
     boundedInputs(config,manifest,state);
    }
+  }
+  // Missing production HMAC is admissible ONLY for an entirely new
+  // reference-only 0213 schema with no canonical pointer table at all.
+  // Native history and a fresh provider schema query must BOTH confirm
+  // that no existing pointers can be encountered by this migration.
+  // This is not an activation of the R2 reference writer/readers.
+  if(!(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"")){
+   if(state.native_history_preflight.native_applied_ids.includes("0213"))
+    fail("UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC");
+   const prior=q(config,
+    "SELECT name,type FROM sqlite_schema WHERE name='phase2h_raw_object_refs_v1'",
+    {maxRows:1});
+   if(prior.rows.length!==0)
+    fail("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED");
+   state.production_0213_hmac_mode={
+    status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY",
+    no_existing_d1_reference_schema_verified:true,
+    production_hmac_present:false,
+    actual_hmac_verified:false,
+    ref_only_writer_authorized:false,
+    ref_only_reader_cutover_authorized:false,
+    original_pointer_bytes_or_hmac_claimed:false,
+    canary_promoted:false
+   };
+   state.production_0213_hmac_preflight_provider_rows_read=prior.readRows;
+   save(state);
   }
   state.original_immutable_sample_sha256=baseline(config);
   const migrationSha=sha256MigrationSet(manifests);
