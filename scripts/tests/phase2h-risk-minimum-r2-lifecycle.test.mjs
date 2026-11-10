@@ -41,6 +41,36 @@ test("parent/bucket-wide, exact-prefix and nested cold delete rules HOLD, regard
    /PHASE2H_RISK_COLD_LIFECYCLE_BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED/u);
  }
 });
+test("unscoped abort-incomplete-multipart-only housekeeping cannot expire completed cold objects",()=>{
+ for(const conditions of [undefined,{}, {prefix:null}]){
+  const rule={id:"provider-default-abort",enabled:true,
+   abortMultipartUploadsTransition:{condition:{type:"Age",maxAge:604800}},
+   deleteObjectsTransition:null,storageClassTransitions:[]};
+  if(conditions!==undefined)rule.conditions=conditions;
+  const p=assertPermanentRiskColdR2Lifecycle({success:true,result:{rules:[rule]}});
+  assert.equal(p.no_matching_auto_deletion,true);
+  assert.equal(p.harmless_unscoped_multipart_abort_rules,1);
+  assert.equal(p.reviewed_applicable_rules,0);
+ }
+});
+test("unscoped deletion, class transition, incomplete abort schema and unknown action always HOLD",()=>{
+ const abort={condition:{type:"Age",maxAge:604800}};
+ for(const extra of [
+  {deleteObjectsTransition:{condition:{type:"Age",maxAge:1}}},
+  {storageClassTransitions:[{storageClass:"InfrequentAccess"}]},
+  {unexpectedFutureTransition:{type:"Delete"}},
+  {abortMultipartUploadsTransition:{condition:{type:"Date",date:"2027-01-01"}}},
+  {abortMultipartUploadsTransition:{}},
+  {abortMultipartUploadsTransition:null}
+ ]){
+  const rule={enabled:true,conditions:{},
+   abortMultipartUploadsTransition:abort,...extra};
+  assert.throws(()=>assertPermanentRiskColdR2Lifecycle({
+   success:true,result:{rules:[rule]}}),
+   /PHASE2H_RISK_COLD_LIFECYCLE_BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED/u);
+ }
+});
+
 test("non-deletion transitions into fee-bearing R2 class also HOLD",()=>{
  const actual={success:true,result:{rules:[{
   enabled:true,conditions:{prefix:"geomacro/private/phase2h-risk-minimum-br11/v2/"},
