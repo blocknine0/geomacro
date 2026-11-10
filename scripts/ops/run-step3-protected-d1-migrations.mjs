@@ -41,7 +41,7 @@ import {
  verifyStep3LedgerRows,step3LedgerStartSQL,
  step3LedgerStatusSQL,sha256MigrationSet,decideResume
 } from "../lib/d1-step3-migration-ledger.mjs";
-import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
+import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,admitStep30204SupportedIntegrity}
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
@@ -290,11 +290,11 @@ function checkIndexAndSchema(config,step,report){
   for(const table of step.integrityTables){
    mark("D1_SUPPORTED_QUICK_FK_ALL_INDEX_AND_UNIQUE_PROOF",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-   const p=auditStep3AllIndexes(table,(sql,maxRows)=>{
+   const p=auditStep3AllIndexesCurrentRows(table,(sql,maxRows)=>{
     const r=q(config,sql,{maxRows});
     report.composite_integrity_rows_read??=0;
     report.composite_integrity_rows_read+=r.readRows;
-    if(report.composite_integrity_rows_read>100000)
+    if(report.composite_integrity_rows_read>3000000)
      fail("SUPPORTED_0204_INDEX_AUDIT_READ_CAP_EXCEEDED");
     return r.rows;
    });
@@ -456,7 +456,7 @@ function checkIndexAndSchema(config,step,report){
    "website_derived_intelligence"
   ];
   const lineageInputs=lineageTables.map(table=>
-   auditStep3AllIndexes(table,checked));
+   auditStep3AllIndexesCurrentRows(table,checked));
   const lineage=admitStep30204SupportedIntegrity(lineageInputs);
   if(lineage.status!==
       "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"||
