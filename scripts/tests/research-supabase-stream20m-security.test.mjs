@@ -12,7 +12,10 @@ test("isolated official sources and 195 canonical countries from the exact repo 
  const canonical=read("scripts/lib/phase2h-country-originals-195.mjs")
   .split("const ROWS=\`")[1].split("\`;")[0].trim().split("\n")
   .map(x=>x.split("|")[0]);
- assert.equal(src.length,8);
+ assert.equal(src.length,12);
+ assert.equal(new Set(src.map(x=>x.url)).size,12);
+ assert.equal(new Set(src.map(x=>x.id)).size,12);
+ assert.equal(inventory.sources.length,12);
  assert.equal(countries.length,195);
  assert.deepEqual(countries.map(x=>x.iso3),canonical);
  for(const s of src){
@@ -20,6 +23,9 @@ test("isolated official sources and 195 canonical countries from the exact repo 
   assert.ok(pin);
   assert.equal(s.url,pin.feed_url);
   assert.equal(pin.private_research_only,true);
+  assert.equal(pin.commercial_promotion_requires_separate_main_gates,true);
+  assert.equal(pin.telegram_content_license,false);
+  assert.equal(pin.uses_publisher_native_clock_only,true);
   assert.equal(new URL(s.url).hostname,"www.gov.uk");
  }
  assert.deepEqual([...new Set(src.map(x=>x.category))].sort(),
@@ -55,4 +61,25 @@ test("ingest and private gate do not use commercial output or hardcoded secrets"
   assert.doesNotMatch(source,/gm_live_sec_|sk_live_[a-z0-9]/iu);
   assert.doesNotMatch(source,/rabbitmqctl\s+purge|drop table public\.country_risk_state/iu);
  }
+});
+
+test("new source-specific alternatives remain private, unverified candidates",()=>{
+ const expected={
+  uk_ofsi_ogl_sanctions_atom:"GEOPOLITICS",
+  uk_otsi_ogl_sanctions_atom:"GEOPOLITICS",
+  uk_ukef_ogl_macro_atom:"MACRO",
+  uk_ukri_ogl_minerals_atom:"CRITICAL_MINERALS",
+ };
+ const src=JSON.parse(ingest.match(/const SOURCES=(\\[.*?\\]);\\nconst COUNTRIES=/u)?.[1]??"null");
+ for(const [id,cat] of Object.entries(expected)){
+  const registered=inventory.sources.find(s=>s.source_id===id);
+  assert.equal(registered?.category,cat);
+  assert.equal(registered?.transport_verified_at_registration,false);
+  assert.equal(registered?.original_article_verified_at_registration,false);
+  assert.equal(src.filter(s=>s.id===id&&s.category===cat&&s.url===registered.feed_url).length,1);
+ }
+ assert.match(ingest,/originalUrl\\(deent\\(href\\|\\|""\\)\\)/u);
+ assert.match(ingest,/firstPublished\\(e,Date\\.now\\(\\)\\)/u);
+ assert.match(ingest,/source_http_healthy:healthy/u);
+ assert.match(ingest,/commercial_eligible:false/u);
 });
