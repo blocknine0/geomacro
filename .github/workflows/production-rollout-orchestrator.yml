@@ -12,6 +12,8 @@ on:
       - "scripts/tests/d1-step3-receipt-admission.test.mjs"
       - "scripts/lib/d1-step3-real-shadow-proofs.mjs"
       - "scripts/lib/d1-step3-shadow-pointer-seed.mjs"
+      - "scripts/lib/d1-step3-0213-safe-resume.mjs"
+      - "scripts/tests/d1-step3-0213-safe-resume.test.mjs"
       - "scripts/tests/d1-step3-shadow-pointer-seed.test.mjs"
       - "scripts/lib/d1-step3-production-final-acceptance.mjs"
       - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
@@ -81,6 +83,7 @@ jobs:
           scripts/tests/seed-step3-shadow-nonfact-index-fixture.test.mjs
           scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
           scripts/tests/d1-step3-durable-recovery.test.mjs
+          scripts/tests/d1-step3-0213-safe-resume.test.mjs
           scripts/tests/d1-step3-production-final-acceptance.test.mjs
           scripts/tests/step3-protected-binding-readiness.test.mjs
           scripts/tests/owner-dispatch-reviewed-sha.test.mjs
