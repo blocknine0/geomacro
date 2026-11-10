@@ -266,6 +266,8 @@
     "oecd-sovereign-fiscal-coverage.yml",
     "offline-machine-issuer-no-funds.yml",
     "open-realtime-source-mesh.yml",
+    "owner-dispatch-handshake.yml",
+    "owner-issue-dispatch-gateway.yml",
     "owner-telegram-export-derived-json.yml",
     "p0-infrastructure-readiness.yml",
     "p0-live-alignment-diagnostic.yml",
@@ -469,6 +471,8 @@
     "intelligence-orchestrator.yml",
     "news-intelligence-hub-continuity.yml",
     "open-realtime-source-mesh.yml",
+    "owner-dispatch-handshake.yml",
+    "owner-issue-dispatch-gateway.yml",
     "permanent-runtime-health.yml",
     "predge-research-continuity.yml",
     "predge-shared-d1-news-live-acceptance.yml",
@@ -498,6 +502,8 @@
     "website-news-gap-backfill.yml"
   ],
   "lockedDisplayNames": {
+    "owner-dispatch-handshake.yml": "GeoMacro Owner Dispatch Gateway Handshake (No Funds)",
+    "owner-issue-dispatch-gateway.yml": "GeoMacro Owner Issue Dispatch Gateway (No Funds)",
     "product-ci.yml": "Product CI",
     "codeql-security.yml": "CodeQL Security Scan",
     "deploy-d1-control-plane.yml": "Deploy D1 Control Plane",
@@ -530,6 +536,19 @@
     "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)"
   },
   "lockedTriggerStrings": {
+    "owner-issue-dispatch-gateway.yml": [
+      "types: [opened]",
+      "github.actor == 'blocknine0'",
+      "github.event.issue.author_association == 'OWNER'",
+      "actions: write",
+      "issues: write",
+      "cancel-in-progress: false"
+    ],
+    "owner-dispatch-handshake.yml": [
+      "workflow_dispatch:",
+      "GATEWAY_HANDSHAKE_EXACT_MAIN_NO_FUNDS_PASS=true",
+      "test -f config/d1-hotspot-v2-canary.hold"
+    ],
     "private-global-osint-15m.yml": [
       "cron: \"*/15 * * * *\"",
       "\"Deploy D1 Control Plane\""
