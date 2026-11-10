@@ -8,6 +8,8 @@ import {step3AllIndexDescriptor,verifyStep3AllIndex}
  from "./d1-step3-supported-integrity.mjs";
 import {auditStep30212ExactPartialIndex}
  from "./d1-step3-0212-partial-index-integrity.mjs";
+import {reviewedSourceIndexCatalog,sourceIndexPassStatus}
+ from "./d1-step3-0212-reviewed-index-profile.mjs";
 import {step3BuildIndexSetSQL,verifyStep3IndexSetResult,
  STEP3_SET_MAX_SOURCE_ROWS}
  from "./d1-step3-large-index-set-proof.mjs";
@@ -28,18 +30,7 @@ function read(query,sql,cap){
  if(!Array.isArray(x)||x.length>cap)fail("BOUNDED_PROVIDER_READ_UNVERIFIED");
  return x;
 }
-function catalogRows(query){
- const x=read(query,'PRAGMA index_list("phase2h_private_raw_news")',48);
- const observed=x.map(i=>i.name).sort();
- if(x.length!==7||JSON.stringify(observed)!==
-   JSON.stringify(Object.keys(EXPECTED).sort())||
-   x.some(i=>i.partial!==EXPECTED[i.name]||
-     i.unique!==(i.name.startsWith("sqlite_autoindex_")?1:0)||
-     i.origin!==(i.name.startsWith("sqlite_autoindex_")?"pk":"c"))||
-   new Set(observed).size!==7)
-  fail("SEVEN_REVIEWED_FULL_AND_PARTIAL_INDEX_REGISTRY_DRIFT");
- return x;
-}
+function catalogRows(query){return reviewedSourceIndexCatalog(query,read);}
 
 /**
  * Large canonical source: full membership with bounded SQL EXCEPT snapshots.
@@ -126,7 +117,8 @@ function largeSourceAudit(query,oldIndexList){
     compared_rows:count});
   }
  }
- if(full.length!==5||partial.length!==2)fail("LARGE_SEVEN_INDEX_COUNT_DRIFT");
+ if(full.length!==oldIndexList.length-2||partial.length!==2)
+  fail("LARGE_REVIEWED_INDEX_COUNT_DRIFT");
  const latest=catalogRows(query);
  if(JSON.stringify(latest)!==JSON.stringify(oldIndexList))
   fail("CONCURRENT_LARGE_INDEX_CATALOG_DRIFT");
@@ -157,9 +149,11 @@ function largeSourceAudit(query,oldIndexList){
  });
  return Object.freeze({
   status:nonvacuous?
-   "PASS_0212_ALL_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_KEYS":
+   sourceIndexPassStatus(oldIndexList.length):
    "OBSERVED_0212_SOURCE_EMPTY_OR_PARTIAL_PREDICATE_UNPOPULATED",
-  index_count:7,full_index_count:5,reviewed_partial_index_count:2,
+  index_count:oldIndexList.length,full_index_count:full.length,
+  reviewed_0117_present:oldIndexList.some(x=>x.name==="idx_phase2h_derived_discovery_cursor"),
+  reviewed_partial_index_count:2,
   raw_source_has_rows:true,full_index_proofs:full,
   two_exact_partial_predicates_observed:true,
   partial_index_proof:partialProof,
@@ -234,7 +228,7 @@ export function auditStep30212AllRawSourceIndexes(query){
     compared_rows:proof.rows_compared});
   }
  }
- if(full.length!==5)fail("FIVE_REVIEWED_FULL_INDEXES_REQUIRED");
+ if(full.length!==indexList.length-2)fail("REVIEWED_FULL_INDEX_COUNT_DRIFT");
  const again=catalogRows(query);
  if(JSON.stringify(indexList)!==JSON.stringify(again))
   fail("CONCURRENT_SOURCE_INDEX_SCHEMA_DRIFT");
@@ -245,9 +239,11 @@ export function auditStep30212AllRawSourceIndexes(query){
  const nonvacuous=hasData&&partial.nonvacuous_index_membership_proven===true;
  return Object.freeze({
   status:nonvacuous?
-   "PASS_0212_ALL_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_KEYS":
+   sourceIndexPassStatus(indexList.length):
    "OBSERVED_0212_SOURCE_EMPTY_OR_PARTIAL_PREDICATE_UNPOPULATED",
-  index_count:7,full_index_count:5,reviewed_partial_index_count:2,
+  index_count:indexList.length,full_index_count:full.length,
+  reviewed_0117_present:indexList.some(x=>x.name==="idx_phase2h_derived_discovery_cursor"),
+  reviewed_partial_index_count:2,
   raw_source_has_rows:hasData,
   full_index_proofs:full,
   two_exact_partial_predicates_observed:true,
