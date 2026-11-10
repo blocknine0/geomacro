@@ -141,6 +141,19 @@ test("11,822-row source passes exact complete forced-index and both partial memb
   assert(proof.partial_index_proof.qualified_rows_verified>3000);
   assert.equal(proof.private_rows_or_digest_exposed,false);
   assert.equal(proof.production_release_authorized,false);
+  // Exact 0117 derived cursor is also fully checked on the same populated
+  // source, including every row/key, rather than waived as a surplus index.
+  db.exec("CREATE INDEX IF NOT EXISTS idx_phase2h_derived_discovery_cursor "+
+   "ON phase2h_private_raw_news(first_ingested_at,record_id)");
+  const productionProfile=auditStep30212AllRawSourceIndexes(largeReader);
+  assert.equal(productionProfile.status,
+   "PASS_0212_ALL_EIGHT_REVIEWED_SOURCE_INDEX_KEYS");
+  assert.equal(productionProfile.index_count,8);
+  assert.equal(productionProfile.full_index_count,6);
+  assert.equal(productionProfile.reviewed_0117_present,true);
+  assert.equal(productionProfile.full_index_proofs.length,6);
+  assert(productionProfile.full_index_proofs.every(x=>x.compared_rows===11822));
+  assert.equal(productionProfile.production_release_authorized,false);
  }finally{db.close()}
 });
 
