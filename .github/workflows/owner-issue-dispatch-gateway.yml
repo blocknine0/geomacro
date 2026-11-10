@@ -11,6 +11,8 @@ on:
       - "scripts/lib/owner-issue-dispatch-contract.mjs"
       - "scripts/ops/owner-issue-dispatch-gateway.mjs"
       - "scripts/tests/owner-issue-dispatch-gateway.test.mjs"
+      - "scripts/tests/owner-gateway-canary-stages.test.mjs"
+      - "scripts/lib/owner-issue-dispatch-contract.mjs"
       - "config/github-workflow-inventory.v1.json"
 permissions:
   contents: read
@@ -32,7 +34,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs
+      - run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs scripts/tests/owner-gateway-canary-stages.test.mjs
       - run: node scripts/ops/verify-github-workflow-inventory.mjs
 
   owner-issue-dispatch:
@@ -61,7 +63,7 @@ jobs:
         with:
           node-version: "24"
       - name: Validate exact owner issue request and single-use gate
-        run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs
+        run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs scripts/tests/owner-gateway-canary-stages.test.mjs
       - name: One-shot allowlisted workflow_dispatch with ephemeral token
         env:
           GITHUB_TOKEN: ${{ github.token }}
