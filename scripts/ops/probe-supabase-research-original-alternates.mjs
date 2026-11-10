@@ -6,12 +6,13 @@
  */
 import {readFileSync,writeFileSync} from "node:fs";
 const manifest=JSON.parse(readFileSync(new URL(
- "../../config/official-ogl-atom-sources.json",import.meta.url),"utf8"));
+ "../../config/research-risk-gate-official-atom-alternates.v1.json",import.meta.url),"utf8"));
 const pins=[
  "uk_ofsi_ogl_sanctions_atom","uk_otsi_ogl_sanctions_atom",
  "uk_ukef_ogl_macro_atom","uk_ukri_ogl_minerals_atom"
 ];
-if(manifest?.schema!=="geomacro.official-free-atom-license-registry.v1")
+if(manifest?.schema!=="geomacro.research-risk-gate-official-atom-alternates.v1" ||
+   manifest.scope!=="ISOLATED_SUPABASE_NONCOMMERCIAL_RESEARCH_ONLY")
  throw Error("RESEARCH_PROBE_REGISTRY_INVALID");
 const report=[];
 for(const id of pins){
