@@ -149,9 +149,12 @@ export async function acknowledgeB2FirstD1({
  for(const row of receipt.rows){
   if(!allowedIds.has(row.record_id))continue;
   const body={
-   schema:"geomacro.phase2h.b2-archive-ack.v1",
+   schema:"geomacro.phase2h.b2-first-archive-ack.v2",
    object_sha256:receipt.object_sha256,
-   items:[{record_id:row.record_id,raw_sha256:row.raw_sha256}],
+   // Already verified two full independent B2 GET+SHA. Compare the exact
+   // immutable JSON bytes (including first-ingested clock) in canonical D1.
+   items:[{record_id:row.record_id,raw_sha256:row.raw_sha256,
+    raw_json:JSON.stringify(row)}],
   };
   let response,data;
   try{
@@ -166,6 +169,8 @@ export async function acknowledgeB2FirstD1({
   }
   if(response.status===200&&data?.ok===true&&
      data.archived===1&&data.independent_d1_archive_ack_verified===true&&
+     data.d1_atomic_one_statement_returning_verified===true&&
+     data.b2_first_exact_raw_json_d1_verified===true&&
      data.rights_verified===false&&data.payments===0)
     archived++;
   else deferred++;

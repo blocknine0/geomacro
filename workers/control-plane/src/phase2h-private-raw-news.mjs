@@ -748,15 +748,28 @@ export async function phase2hPrivateRawArchiveExportV2(
  });
 }
 export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
- if(!env?.DB||body?.schema!=="geomacro.phase2h.b2-archive-ack.v1"||
+ const b2FirstExact=body?.schema==="geomacro.phase2h.b2-first-archive-ack.v2";
+ if(!env?.DB||!(b2FirstExact||body?.schema==="geomacro.phase2h.b2-archive-ack.v1")||
     !HEX.test(body.object_sha256)||!Array.isArray(body.items)||
-    body.items.length<1||body.items.length>MAX_D1_BULK_ARCHIVE_ACK)
+    body.items.length<1||body.items.length>MAX_D1_BULK_ARCHIVE_ACK||
+    b2FirstExact&&body.items.length>20)
   return safeReply({ok:false,error:"PRIVATE_ARCHIVE_PROOF_INVALID"},400);
  try{
   const ids=new Set(),rows=[];
   for(const item of body.items){
    if(!HEX.test(item?.record_id)||!HEX.test(item?.raw_sha256)||
       ids.has(item.record_id))throw Error();
+   if(b2FirstExact){
+    if(Object.keys(item).sort().join(",")!=="raw_json,raw_sha256,record_id"||
+       typeof item.raw_json!=="string"||
+       new TextEncoder().encode(item.raw_json).byteLength<300||
+       new TextEncoder().encode(item.raw_json).byteLength>12000)throw Error("INVALID_EXACT_BYTES");
+    const original=JSON.parse(item.raw_json);
+    if(original.record_id!==item.record_id||
+       original.raw_sha256!==item.raw_sha256||
+       await validPrivateRawNews(original,now,false)!==item.raw_json)
+     throw Error("UNVERIFIED_ORIGINAL_BYTES");
+   }else if(Object.hasOwn(item,"raw_json"))throw Error("UNREVIEWED_LEGACY_RAW");
    ids.add(item.record_id);rows.push(item);
   }
   // Exactly one D1 write statement per verified <=48-original batch (<=99 bindings).
@@ -769,6 +782,8 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
   return safeReply({ok:true,archived:proof.archived,
    independent_d1_archive_ack_verified:true,
    d1_atomic_one_statement_returning_verified:true,
+   b2_first_exact_raw_json_d1_verified:b2FirstExact&&
+    plan.exact_original_json_bytes_required===true,
    rights_verified:false,payments:0});
  }catch{return safeReply({ok:false,error:"PRIVATE_ARCHIVE_ACK_READBACK_UNVERIFIED"},503)}
 }

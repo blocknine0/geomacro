@@ -29,6 +29,14 @@ export const SHADOW_ONLY_REVIEWED_BLOBS=Object.freeze({
   blob:"58d8ebc16b7f48cd54884956ca118c10d8cd0d47",
   classification:"OFFLINE_MINIFLARE_SIMULATION_ONLY_NO_PRODUCTION_PROOF"})
 });
+// A production B2-first acknowledgement is an exact-byte guarded atomic
+// UPDATE, not a direct raw reader. Pin its full Git blob independently of
+// shadow-only allowlists: any code drift restores the safety HOLD.
+export const PRODUCTION_B2_ACK_REVIEWED_BLOBS=Object.freeze({
+ "scripts/lib/phase2h-atomic-bulk-archive-ack.mjs":Object.freeze({
+  blob:"80aad3fcf73e5a6dfb9490716bb8e56ffec3c382",
+  classification:"B2_FIRST_ATOMIC_EXACT_BYTES_D1_ACK_WRITE_ONLY_REVIEWED"})
+});
 export const gitBlobSha1=text=>createHash("sha1")
  .update("blob "+Buffer.byteLength(text,"utf8")+String.fromCharCode(0))
  .update(text).digest("hex");
@@ -70,7 +78,8 @@ function visit(path,out,depth=0){
   if(!source.includes("phase2h_private_raw_news")||!source.includes("raw_json"))
    continue;
   const file=relative(ROOT,full).replaceAll("\\","/");
-  const reviewed=SHADOW_ONLY_REVIEWED_BLOBS[file];
+  const reviewed=SHADOW_ONLY_REVIEWED_BLOBS[file]??
+   PRODUCTION_B2_ACK_REVIEWED_BLOBS[file];
   const pinned=reviewed?.blob===gitBlobSha1(source);
   out.push({file,classification:reviewed?
     (pinned?reviewed.classification:"UNREVIEWED_DIRECT_RAW_REFERENCE_HOLD"):

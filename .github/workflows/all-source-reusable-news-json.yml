@@ -77,6 +77,7 @@ jobs:
           node --check scripts/lib/phase2h-original-metadata.mjs
           node --check scripts/ops/phase2h-b2-first-private-raw.mjs
           node --test scripts/tests/phase2h-b2-first-private-raw.test.mjs
+          node --test scripts/tests/phase2h-atomic-bulk-archive-ack.test.mjs scripts/tests/phase2h-bulk-worker-archive.test.mjs
           node --test scripts/tests/phase2h-original-metadata.test.mjs
           node --check scripts/ops/collect-registered-source-health-only.mjs
           node --check scripts/lib/direct-global-corridor-sources.mjs

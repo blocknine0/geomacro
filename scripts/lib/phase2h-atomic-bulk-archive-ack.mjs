@@ -14,24 +14,34 @@ export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
  if(!Array.isArray(rows)||rows.length<1||rows.length>MAX_D1_BULK_ARCHIVE_ACK||
     !HEX.test(objectSha)||!(now instanceof Date)||!Number.isFinite(now.getTime()))
   fail("INPUT_INVALID");
+ const exactOriginalBytes=rows.some(row=>row&&Object.hasOwn(row,"raw_json"));
+ // Three bounded parameters per source + three for the UPDATE: <=99.
+ if(exactOriginalBytes&&rows.length>32)fail("EXACT_JSON_BATCH_TOO_LARGE");
  const seen=new Set(),params=[];
  for(const row of rows){
   if(!HEX.test(row?.record_id)||!HEX.test(row?.raw_sha256)||
     seen.has(row.record_id))fail("IDENTITY_INVALID");
+  if(exactOriginalBytes&&(typeof row.raw_json!=="string"||
+      new TextEncoder().encode(row.raw_json).byteLength<300||
+      new TextEncoder().encode(row.raw_json).byteLength>12000))
+   fail("EXACT_JSON_REQUIRED");
   seen.add(row.record_id);
-  params.push(row.record_id,row.raw_sha256);
+  params.push(row.record_id,row.raw_sha256,
+   ...(exactOriginalBytes?[row.raw_json]:[]));
  }
- const values=rows.map(()=>"(?,?)").join(",");
+ const values=rows.map(()=>exactOriginalBytes?"(?,?,?)":"(?,?)").join(",");
  // Materialized 'eligible' makes an all-or-nothing precondition for the
  // entire expected set. A conflicting hash or previous archive produces
  // ZERO updates, never an opportunistic partial ACK.
- const sql="WITH expected(record_id,raw_sha256) AS MATERIALIZED (VALUES "+values+"), "+
+ const sql="WITH expected(record_id,raw_sha256"+
+  (exactOriginalBytes?",raw_json":"")+") AS MATERIALIZED (VALUES "+values+"), "+
   // Resolve the small expected set through the unique record ID first.
   // Driving UPDATE from the unarchived index scans the entire backlog even
   // for one ACK. Materialized rowids keep both eligibility and mutation bounded.
   "targets(rid) AS MATERIALIZED ("+
   "SELECT (SELECT r.rowid FROM phase2h_private_raw_news AS r "+
   "WHERE r.record_id=e.record_id AND r.raw_sha256=e.raw_sha256 "+
+  (exactOriginalBytes?"AND r.raw_json=e.raw_json ":"")+
   "AND r.b2_object_sha256 IS NULL) FROM expected AS e), "+
   "eligible(total) AS MATERIALIZED ("+
   "SELECT COUNT(*) FROM targets WHERE rid IS NOT NULL) "+
@@ -44,7 +54,8 @@ export function phase2hAtomicBulkArchiveAck(rows,objectSha,now=new Date()){
  if(boundParams.length>100)fail("D1_BOUND_PARAMETER_LIMIT_EXCEEDED");
  return Object.freeze({sql,params:boundParams,
   object_sha256:objectSha,count:rows.length,
-  d1_statements:1,all_or_nothing_expected_guard:true});
+  d1_statements:1,all_or_nothing_expected_guard:true,
+  exact_original_json_bytes_required:exactOriginalBytes});
 }
 export function assertPhase2hBulkArchiveAckReturning(reply,rows,objectSha){
  const returned=reply?.results;
