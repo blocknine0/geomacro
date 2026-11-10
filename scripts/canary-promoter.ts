@@ -398,7 +398,7 @@ async function main(){
   const run=envString('GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID');
   const promotionRun=envString('GEOMACRO_APPROVED_CANARY_PROMOTION_RUN_ID');
   need(/^[1-9][0-9]{5,20}$/u.test(promotionRun)&&
-    envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS',
+    envString('RELEASE_CONFIRMATION')==='REVIEW_HOT50_HOLD_NO_FUNDS',
     'CANARY_HOLD_REVIEW_OWNER_AND_RUN_APPROVAL_REQUIRED');
   const promotion=verifySignedEnvelopeFile('artifacts/release/canary-promotion.json');
   const stages=STAGES.map(pct=>verifySignedEnvelopeFile(
