@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /** Guarded Cloudflare Workers versions promotion: 0,1,5,25,50,100; no funds. */
-import {existsSync,readFileSync,unlinkSync} from 'node:fs';
+import {existsSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
+import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,sha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
 import {
  checkD1PaidMonthlyHeadroom,paidD1BillingCycle
 } from './lib/d1-workers-paid-monthly-governor.mjs';
@@ -321,11 +321,144 @@ export function assessLiveCanaryBaseline(active:any,health:any,status:number,mai
   no_funds:true,remote_hold_unchanged:true});
 }
 
+
+/**
+ * Offline shape admission ONLY. The caller must first verify each historical
+ * receipt signature, exact GitHub workflow identity, current cloud version,
+ * original source and fresh daily B2/Hot50/D1 account-wide proofs.
+ * A completed 100% canary MUST NOT be replayed from 0% for HOLD review.
+ */
+export function admitCompletedCanaryForHoldReview({
+ promotion,stageReceipts,headSha,baseline,candidate,stage2RunId
+}:any){
+ need(/^[a-f0-9]{40}$/u.test(headSha??'')&&
+  UUID_RE.test(baseline??'')&&UUID_RE.test(candidate??'')&&
+  baseline!==candidate&&/^[1-9][0-9]{5,20}$/u.test(String(stage2RunId??'')),
+  'CANARY_HOLD_REVIEW_IDENTITY_INVALID');
+ need(promotion?.schema==='geomacro.hot50.promotion.v1'&&
+  promotion.status==='PASS'&&promotion.source_sha===headSha&&
+  promotion.baseline_version===baseline&&
+  promotion.candidate_version===candidate&&
+  promotion.approved_stage2_run===String(stage2RunId)&&
+  /^[a-f0-9]{64}$/u.test(promotion.signed_stage2_receipt_sha256??'')&&
+  promotion.hold_still_present===true&&promotion.payments_authorized===false&&
+  promotion.no_funds===true&&
+  promotion.independent_hot50_gate_acceptance_not_inferred===true&&
+  Array.isArray(promotion.stages)&&promotion.stages.length===STAGES.length&&
+  Array.isArray(stageReceipts)&&stageReceipts.length===STAGES.length,
+  'CANARY_HOLD_REVIEW_SIGNED_PROMOTION_INCOMPLETE');
+ for(let i=0;i<STAGES.length;i++){
+  const current=promotion.stages[i],proof=stageReceipts[i],pct=STAGES[i];
+  const {schema,status,source_sha,baseline_version,candidate_version,
+   no_funds,...observed}=proof??{};
+  need(schema==='geomacro.hot50.canary-slo.v1'&&status==='PASS'&&
+    source_sha===headSha&&baseline_version===baseline&&
+    candidate_version===candidate&&no_funds===true&&
+    canonical(observed)===canonical(current)&&
+    current?.stage_percent===pct&&
+    typeof current.verified_minutes==='number'&&
+    current.verified_minutes>=stageWindowMs(pct)/60000&&
+    current.worker_script_version===(pct===0?baseline:candidate)&&
+    Number.isSafeInteger(current.worker_requests)&&current.worker_requests>=1000&&
+    Number.isSafeInteger(current.host_requests)&&current.host_requests>=1000&&
+    current.http_5xx_under_0_5pct===true&&
+    current.version_errors_under_0_5pct===true&&
+    current.p99_under_50ms===true&&
+    current.observed_d1_hourly_pace?.status==='PASS_OBSERVED_PAID_MONTHLY_PACE'&&
+    Number.isSafeInteger(current.latest_d1_provider_observation?.rows_read)&&
+    Number.isSafeInteger(current.latest_d1_provider_observation?.rows_written),
+    'CANARY_HOLD_REVIEW_SIX_SIGNED_STAGES_UNVERIFIED');
+ }
+ return Object.freeze({status:'PASS_SIGNED_PROMOTION_SHAPE',
+  source_sha:headSha,approved_stage2_run:String(stage2RunId),
+  candidate_version:candidate,fully_verified_stages:STAGES.length,
+  independent_provider_readback_and_signatures_required:true,
+  no_funds:true,traffic_mutated:false,remote_hold_removed:false});
+}
+
 async function main(){
- need(process.argv.slice(2).every(s=>s==='--promote'||s==='--release-hold'),'CANARY_ARGS_INVALID');
- const promote=process.argv.includes('--promote');
+ const args=process.argv.slice(2);
+ need(args.length<=1&&(!args.length||
+   args[0]==='--promote'||args[0]==='--review-hold'),
+  'CANARY_ARGS_INVALID_OR_UNSAFE_REPROMOTION');
+ const promote=args[0]==='--promote',reviewHold=args[0]==='--review-hold';
  const mainSha=assertOfficialMain();
  need(existsSync(HOLD),'CANARY_EXISTING_PROTECTION_REQUIRED');
+
+ if(reviewHold){
+  // Read-only final admission AFTER a separately signed, complete 100%
+  // rollout. Never call deployVersions, rollback, D1 SQL or unlink(HOLD).
+  requireSchemaAcceptance(mainSha);
+  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
+  const run=envString('GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID');
+  const promotionRun=envString('GEOMACRO_APPROVED_CANARY_PROMOTION_RUN_ID');
+  need(/^[1-9][0-9]{5,20}$/u.test(promotionRun)&&
+    envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS',
+    'CANARY_HOLD_REVIEW_OWNER_AND_RUN_APPROVAL_REQUIRED');
+  const promotion=verifySignedEnvelopeFile('artifacts/release/canary-promotion.json');
+  const stages=STAGES.map(pct=>verifySignedEnvelopeFile(
+   'artifacts/release/canary-stage-'+pct+'.json'));
+  const admitted=admitCompletedCanaryForHoldReview({
+   promotion,stageReceipts:stages,headSha:mainSha,
+   baseline:base,candidate,stage2RunId:run});
+  const active=await liveCurrent();
+  verifyDistribution(active,[{version_id:candidate,percentage:100}]);
+  await checkVersionParity(base,candidate);
+  await checkSource(candidate,mainSha);
+  const response=await fetch(ORIGIN+'/health',{
+   redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
+  const health=await response.json().catch(()=>null);
+  need(response.status===200&&health?.ok===true&&
+    health.deployed_source_sha===mainSha,
+    'CANARY_HOLD_REVIEW_PUBLIC_100_PERCENT_SHA_UNVERIFIED');
+  const now=new Date();
+  for(const file of [
+    'artifacts/release/b2-physical-parity-certificate.json',
+    'artifacts/release/hot50-risk-gate-proof.json'
+  ]){
+   need(existsSync(file),'CANARY_HOLD_RELEASE_DEPENDENCY_MISSING');
+   const proof=verifySignedEnvelopeFile(file);
+   const time=Date.parse(String(proof.verified_at??proof.generated_at??''));
+   need(proof.status==='PASS'&&time<=now.getTime()&&
+     now.getTime()-time<3_600_000,
+     'CANARY_HOLD_RELEASE_CERTIFICATE_UNVERIFIED');
+  }
+  const previous=new Date(now.getTime()-86_400_000).toISOString().slice(0,10);
+  const dayPath='artifacts/release/d1-quota-proof-'+previous+'.json';
+  need(!process.env.D1_24H_PROOF_PATH||
+    process.env.D1_24H_PROOF_PATH===dayPath,
+    'CANARY_HOLD_RELEASE_D1_PROOF_PATH_MISMATCH');
+  need(existsSync(dayPath),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
+  const daily=admitSignedClosedD1DayForCanary(
+    verifySignedEnvelopeFile(dayPath),now);
+  need(daily.status==='PASS_CLOSED_UTC_DAY',
+    'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
+  const freshPaid=await checkLiveD1Budget();
+  // This is a review receipt, never remote permission to remove the HOLD.
+  // The remote repository hold requires a separately authorized reviewed PR.
+  signedReport('artifacts/release/hold-release-review.json',{
+   schema:'geomacro.canary.hold-review.v2',status:'PASS',
+   source_sha:mainSha,completed_canary_run_id:promotionRun,
+   approved_stage2_run:run,
+   signed_promotion_payload_sha256:sha256(canonical(promotion)),
+   signed_stages_verified:admitted.fully_verified_stages,
+   actual_candidate_version:admitted.candidate_version,
+   remote_candidate_100_percent_verified:true,
+   current_deployed_source_sha_verified:true,
+   closed_utc_day_d1_verified:daily.day,
+   fresh_paid_monthly_provider_observation:true,
+   paid_observed_rows_read:freshPaid.rows_read,
+   paid_observed_rows_written:freshPaid.rows_written,
+   independent_b2_and_hot50_receipts_verified:true,
+   removed_from_ephemeral_checkout:false,
+   remote_main_hold_not_removed:true,
+   reviewed_release_commit_required:true,no_funds:true,
+   traffic_mutated:false,payments_authorized:false});
+  console.log(JSON.stringify({status:'PASS',scope:'HOLD_REVIEW_READ_ONLY',
+   signed_stages_verified:admitted.fully_verified_stages,
+   traffic_mutated:false,remote_main_hold_not_removed:true}));
+  return;
+ }
  if(!promote){
   const active=await liveCurrent();
   const res=await fetch(ORIGIN+'/health',{redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
@@ -336,6 +469,7 @@ async function main(){
   return;
  }
  requireSchemaAcceptance(mainSha);
+ const signedStage2=admitSignedStep3ProductionFile();
  const base=envString('BASELINE_VERSION_ID'),candidate=envString('CANDIDATE_VERSION_ID');
  need(UUID_RE.test(base)&&UUID_RE.test(candidate)&&base!==candidate,'CANARY_VERSION_IDS_INVALID');
  need(envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS','CANARY_OWNER_CONFIRMATION_REQUIRED');
@@ -364,34 +498,11 @@ async function main(){
   signedReport('artifacts/release/canary-promotion.json',{
    schema:'geomacro.hot50.promotion.v1',status:'PASS',source_sha:mainSha,stages:records,
    hold_still_present:existsSync(HOLD),payments_authorized:false,
+   no_funds:true,baseline_version:base,candidate_version:candidate,
+   approved_stage2_run:signedStage2.approved_stage2_run,
+   signed_stage2_receipt_sha256:signedStage2.signed_receipt_sha256,
    independent_hot50_gate_acceptance_not_inferred:true});
-  if(process.argv.includes('--release-hold')){
-   const files=['artifacts/release/b2-physical-parity-certificate.json','artifacts/release/hot50-risk-gate-proof.json'];
-   for(const file of files){need(existsSync(file),'CANARY_HOLD_RELEASE_DEPENDENCY_MISSING');const p=verifySignedEnvelopeFile(file);
-    need(p.status==='PASS'&&
-      Date.now()-Date.parse(String(p.verified_at??p.generated_at))<3600000&&
-      Date.now()>=Date.parse(String(p.verified_at??p.generated_at)),
-      'CANARY_HOLD_RELEASE_CERTIFICATE_UNVERIFIED')}
-   // The actual previous-UTC-day producer signs rows_read/rows_written and
-   // per-database totals. It NEVER emits monthly_rows_read. Keep the daily
-   // signature and a separate FRESH provider Paid monthly admission.
-   const now=new Date(),day=new Date(now.getTime()-86_400_000).toISOString().slice(0,10);
-   const proof='artifacts/release/d1-quota-proof-'+day+'.json';
-   need(!process.env.D1_24H_PROOF_PATH||
-    process.env.D1_24H_PROOF_PATH===proof,'CANARY_HOLD_RELEASE_D1_PROOF_PATH_MISMATCH');
-   need(existsSync(proof),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
-   const daily=admitSignedClosedD1DayForCanary(
-    verifySignedEnvelopeFile(proof),now);
-   need(daily.status==='PASS_CLOSED_UTC_DAY',
-    'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
-   await checkLiveD1Budget();
-   // Remove only from the ephemeral job checkout: protected PR review/merge
-   // is required to remove the authoritative hold from remote Git main.
-   unlinkSync(HOLD);
-   signedReport('artifacts/release/hold-release-review.json',{schema:'geomacro.canary.hold-review.v1',status:'PASS',
-    source_sha:mainSha,removed_from_ephemeral_checkout:true,remote_main_hold_not_removed:true,
-    reviewed_release_commit_required:true,no_funds:true});
-  }
+
  }catch(e){
   if(mutated){
    try{await deployBaseline(base);console.error('CANARY_ROLLBACK_BASELINE_100_VERIFIED')}
