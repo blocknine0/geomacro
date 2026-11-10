@@ -2,8 +2,103 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-10T01:47:22.835Z",
+  "updated_at": "2026-11-10T08:52:39.181Z",
   "signals": [
+    {
+      "id": "macro-5ddf0c5a",
+      "category": "macro",
+      "title": "Geomacro finds Singapore launched gold vaulting service for central banks - The Edge Malaysia",
+      "what_changed": "A monitored source feed reports: Singapore launched gold vaulting service for central banks - The Edge Malaysia. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T03:27:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4fea1783",
+      "category": "macro",
+      "title": "Geomacro finds MAS launched gold vaulting service with 500-tonne capacity, extends GST waiver to some gold services - CNA",
+      "what_changed": "A monitored source feed reports: MAS launched gold vaulting service with 500-tonne capacity, extends GST waiver to some gold services - CNA. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T03:00:05.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-1d27b819",
+      "category": "macro",
+      "title": "Geomacro finds Singapore launched Gold Vaulting Service for Central Banks - Bloomberg.com",
+      "what_changed": "A monitored source feed reports: Singapore launched Gold Vaulting Service for Central Banks - Bloomberg.com. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T03:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-59013733",
+      "category": "macro",
+      "title": "Geomacro finds Singapore launched central bank gold-vaulting, extends GST waiver to wholesale activities - The Business Times",
+      "what_changed": "A monitored source feed reports: Singapore launched central bank gold-vaulting, extends GST waiver to wholesale activities - The Business Times. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-10T03:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-84f9d2c3",
+      "category": "macro",
+      "title": "Geomacro finds Shafaq News..Iraq held third spot in Arab Gold reserves - شفق نيوز",
+      "what_changed": "A monitored source feed reports: Shafaq News..Iraq held third spot in Arab Gold reserves - شفق نيوز. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-09T22:30:44.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-ac2fe0f3",
       "category": "macro",
