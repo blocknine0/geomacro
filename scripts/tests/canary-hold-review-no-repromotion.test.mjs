@@ -23,7 +23,8 @@ function fixture(){
   observed_d1_hourly_pace:{status:"PASS_OBSERVED_PAID_MONTHLY_PACE",
    reads_per_hour:100,writes_per_hour:10,observed_window_ms:900000},
   latest_d1_provider_observation:{rows_read:1000,
-   rows_written:100,cycle_start_utc:"2026-11-05"}
+   rows_written:100,observed_at_ms:Date.parse("2026-11-10T00:00:00Z")+p*60000+1000,
+   cycle_start_utc:"2026-11-05"}
  }));
  const stageReceipts=stages.map(stage=>({
   schema:"geomacro.hot50.canary-slo.v1",status:"PASS",
