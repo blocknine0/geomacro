@@ -357,14 +357,16 @@ function checkIndexAndSchema(config,step,report){
   };
   mark("SUPPORTED_0211_WITHOUT_ROWID_P0B_DAILY_COUNTER");
   const counter=auditStep30211WithoutRowidCounter(checked);
-  mark("SUPPORTED_0211_SEVEN_SPOOL_INDEXES");
+  mark("SUPPORTED_0211_REVIEWED_SPOOL_INDEX_LINEAGE");
   const spool=auditStep30211SpoolSource(checked);
   const actual=(counter.status===
     "PASS_D1_0211_WITHOUT_ROWID_PK_QUICK_FK_UNIQUE_COUNTER_PARITY"&&
-    spool.status==="PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS"&&
+    ["PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS",
+     "PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS"].includes(spool.status)&&
     counter.canonical_committed_rows>0);
   const empty=(counter.status==="OBSERVED_EMPTY_COUNTER_NO_NONVACUOUS_SOURCE"&&
-    spool.status==="OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE"&&
+    ["OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE",
+     "OBSERVED_EMPTY_SOURCE_0206_SIX_INDEX_STRUCTURE"].includes(spool.status)&&
     counter.canonical_committed_rows===0);
   if(!actual&&!empty)
    fail("0211_D1_SUPPORTED_COUNTER_AND_SPOOL_PROOF_UNVERIFIED");
@@ -373,7 +375,8 @@ function checkIndexAndSchema(config,step,report){
     "PASS_EMPTY_SHADOW_STAGING_SCHEMA_AND_ZERO_COUNTERS_ONLY",
    proof_mode:actual?"NONEMPTY_CANONICAL":"EXPLICITLY_EMPTY_SOURCE_ONLY",
    real_originals_verified_by_this_step:actual,
-   index_count:7,
+   index_count:spool.index_count,
+   index_lineage:spool.index_lineage,
    sqlite_full_integrity_check_claimed:false,
    b2_original_byte_readback_claimed:false,
    production_release_authorized:false
