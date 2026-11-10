@@ -98,6 +98,46 @@ actions:write, the gateway remains fail-closed. Owner must configure the
 corresponding repository GitHub Actions policy; no token or secret should be
 copied into chat.
 
+## Permanent reviewed-SHA drift prevention for owner-authorized Stage2
+
+The 10 Nov run #42852599905 proved that a correctly owner-authenticated
+gateway dispatch can still HOLD when the production environment
+GEOMACRO_STEP3_REVIEWED_SHA is pinned to the previous main SHA.
+
+The Stage2 gateway now supplies its immutable issue number and the
+authentic GITHUB_RUN_ID of the gateway workflow. The protected
+production-rollout-orchestrator independently performs GitHub read-only
+proof before any provider D1, B2, R2 or Worker calls:
+
+- original closed issue was CREATED by blocknine0 with OWNER association,
+  with exact schema, explicit real-Stage2 authorization and exact main SHA
+- issue was closed by github-actions[bot] and has a bot-authored authenticated
+  successful one-time HTTP 204 dispatch receipt identifying that gateway run
+- gateway run has correct GitHub Actions path, issue event, owner actor,
+  exact HEAD, completed/success result and successful owner-issue-dispatch job
+- target run has matching exact HEAD, correct workflow path and
+  github-actions[bot] actor, and a distinct issue-number run-name
+- exhaustive recent workflow-run list covers the new issue creation clock,
+  includes the active target, and contains NO other run with the same issue
+  number (no replay)
+- a fresh remote main GET matches both the issue and target SHA
+
+Only after that independent admission does the runner set its
+GEOMACRO_STEP3_EXACT_SHA environment for THAT SINGLE JOB to the approved
+owner-issued SHA. Both protected Shadow and production Stage2 jobs repeat
+the admission. This is a separately reviewed SHA authority, NOT an
+unreviewed bypass: if any API or proof is missing, the run FAILS CLOSED.
+
+Manual workflow_dispatch (no owner-issue reference) STILL requires
+GEOMACRO_STEP3_REVIEWED_SHA from the protected environment. The existing
+environment approval, physical Shadow proof, billing-cycle headroom,
+encrypted recovery checkpoint, migrations, B2 parity, dual-worker acceptance,
+Hot50, no-funds and Canary HOLD gates are fully preserved.
+
+This does not mutate GitHub production variables and removes the need to
+re-pin those variables for each NEW explicitly owner-authorized gateway
+request. The gateway does not have GitHub environment variable admin access.
+
 ## What gateway success does NOT mean
 
 The handshake / HTTP 204 alone is NOT Step3 production D1 0204–0213 PASS,
