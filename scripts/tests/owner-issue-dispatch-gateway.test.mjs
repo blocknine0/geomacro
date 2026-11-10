@@ -141,7 +141,8 @@ test("real request executor consumes issue BEFORE dispatch and posts one receipt
   "/repos/blocknine0/geomacro/actions/workflows/production-rollout-orchestrator.yml/dispatches");
  assert.deepEqual(f.calls[3].body,{ref:"main",
   inputs:{approval:"REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL",
-   execute_stage2:"true",verify_hot50:"true"}});
+   execute_stage2:"true",verify_hot50:"true",
+   owner_dispatch_issue:"4611",owner_dispatch_gateway_run:"123456789"}});
  assert.match(f.calls[4].body.body,/ACCEPTED \(HTTP 204; queued only\)/u);
 });
 test("moved main or already-closed issue makes ZERO mutation calls",async()=>{

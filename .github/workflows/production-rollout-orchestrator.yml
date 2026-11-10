@@ -1,4 +1,7 @@
 name: Step3 Protected Local Shadow and Stage2 Orchestrator
+# Distinct immutable owner issue is a separately verifiable one-shot review.
+# Legacy manual workflow_dispatch still requires protected reviewed SHA variable.
+run-name: "Step3 owner issue #${{ inputs.owner_dispatch_issue || 'manual' }}"
 on:
   pull_request:
     paths:
@@ -12,6 +15,9 @@ on:
       - "scripts/tests/d1-step3-shadow-pointer-seed.test.mjs"
       - "scripts/lib/d1-step3-production-final-acceptance.mjs"
       - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
+      - "scripts/ops/verify-owner-dispatch-reviewed-sha.mjs"
+      - "scripts/tests/owner-dispatch-reviewed-sha.test.mjs"
+      - "scripts/ops/owner-issue-dispatch-gateway.mjs"
       - "scripts/tests/d1-step3-real-shadow-proofs.test.mjs"
       - "scripts/tests/step3-hot50-physical-parity-wiring.test.mjs"
       - "scripts/ops/audit-hot50-b2-d1-parity.mjs"
@@ -37,8 +43,18 @@ on:
         required: true
         type: boolean
         default: false
+      owner_dispatch_issue:
+        description: "Optional verified owner gateway issue number; manual runs keep protected SHA pin"
+        required: false
+        type: string
+      owner_dispatch_gateway_run:
+        description: "Optional real owner gateway Actions run ID; requires issue number"
+        required: false
+        type: string
 permissions:
   contents: read
+  actions: read
+  issues: read
 concurrency:
   group: geomacro-d1-control-plane-production
   cancel-in-progress: false
@@ -67,6 +83,7 @@ jobs:
           scripts/tests/d1-step3-durable-recovery.test.mjs
           scripts/tests/d1-step3-production-final-acceptance.test.mjs
           scripts/tests/step3-protected-binding-readiness.test.mjs
+          scripts/tests/owner-dispatch-reviewed-sha.test.mjs
       - run: node --check scripts/ops/run-step3-protected-d1-migrations.mjs
       - run: bash -n scripts/ops/setup-step3-github-bindings.sh
       - run: node scripts/ops/run-step3-local-workerd-rehearsal.mjs
@@ -138,6 +155,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
+      - name: Authenticate owner issue exact-main SHA or retain manual protected SHA pin
+        env:
+          OWNER_DISPATCH_ISSUE: ${{ inputs.owner_dispatch_issue }}
+          OWNER_DISPATCH_GATEWAY_RUN: ${{ inputs.owner_dispatch_gateway_run }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/verify-owner-dispatch-reviewed-sha.mjs
       - name: Require reviewed main SHA and genuine private bindings
         shell: bash
         run: |
@@ -214,6 +237,12 @@ jobs:
         with:
           name: geomacro-step3-real-shadow
           path: artifacts/release
+      - name: Authenticate owner issue exact-main SHA or retain manual protected SHA pin
+        env:
+          OWNER_DISPATCH_ISSUE: ${{ inputs.owner_dispatch_issue }}
+          OWNER_DISPATCH_GATEWAY_RUN: ${{ inputs.owner_dispatch_gateway_run }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/verify-owner-dispatch-reviewed-sha.mjs
       - name: Authenticate existing live Control Plane bearer without rotation
         if: github.event_name == 'workflow_dispatch' && inputs.execute_stage2 == true
         shell: bash
