@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-10T16:59:45.752Z",
+  "updated_at": "2026-11-10T21:20:15.979Z",
   "signals": [
+    {
+      "id": "geopolitics-ea497c95",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning South Sudan's authorities must allow UNMISS to operate without obstruction · United Kingdom",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning South Sudan's authorities must allow UNMISS to operate without obstruction. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-10T17:04:02.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-05a5a3c3",
       "category": "geopolitics",
