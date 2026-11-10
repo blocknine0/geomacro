@@ -50,7 +50,7 @@ The raw-news queue is neither purged nor required for this research path.
 
 ## Scientific and commercial boundaries
 
-Only eight pinned official GOV.UK Atom sources across Geopolitics,
+At the 4 November deployment, only eight pinned official GOV.UK Atom sources across Geopolitics,
 Macro/FX and Critical Minerals are actively queried. The source adapter
 uses <updated> only as a discovery hint. The exact first-party original
 article HTML and the publisher Content API first_published_at must
@@ -136,3 +136,35 @@ Sources:
 Security controls: private independent Vault tokens, Ed25519 in encrypted
 Vault, restricted service-role RPC, deny-by-default RLS, strict proof clocks,
 signed CAS version checks and fail-closed read API.
+
+
+## 10 November 2026 source gap repair
+
+Direct SQL audit of the isolated research 20-minute producer showed 72 out of
+72 ticks in the preceding 24 hours classified `NO_FRESH_QUALIFIED`:
+eight feeds HTTP-healthy, but zero qualifying source candidates, verified
+original pages, risk-state updates and signed snapshots. This is **not**
+evidence of a working 50-country × three-category commercial Risk Gate.
+The cron jobs themselves remain active, with the independent recovery
+schedule retained.
+
+This change registers four additional, separately named first-party
+GOV.UK organisation Atom feeds in the private research-only native producer:
+Office of Financial Sanctions Implementation; Office of Trade Sanctions
+Implementation; UK Export Finance; UK Research and Innovation. Total
+research feeds: 12, within the existing database source_count <= 12
+limit. Each added feed is explicitly `transport_verified_at_registration:
+false` until live transport and native-clock verification.
+
+The sources run in the already authenticated 20-minute Supabase producer
+without another scheduler or queue, and the guarded exact original HTML +
+official Content API date/title/path verification remains mandatory. No
+index hints, scraped Telegram text, paid news, invented event, score,
+external content licensing, funds, Predge, D1 or B2 mutation is introduced.
+
+**Operational acceptance after deployment**: inspect at least one new
+`gm_research_stream20m_runs` row with `source_count=12`, compare its
+`source_http_healthy`, candidates, original verification, signed updates and
+failure counts. HTTP healthy or a source registry entry is not
+verified-country coverage. Keep the decision API fail-closed until genuine
+signed risk state is read back; do not infer all 150 country/category cells.
