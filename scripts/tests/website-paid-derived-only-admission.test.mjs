@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {planD1BundledWork} from "../ops/plan-d1-bundled-work.mjs";
+import {planD1BundledWork,admitPaidCanonicalReadOnlyCatchup} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 import {WORKERS_PAID_PROOF_SCHEMA} from "../lib/cloudflare-workers-paid-plan-proof.mjs";
 
@@ -83,4 +83,72 @@ test("source-only publisher strictly bounds three categories and never unlocks c
  assert(planner.includes("String(result.paid_derived_news_source_lane===true)"));
  assert(planner.includes("paid_derived_news_max_rows"));
  assert(!planner.includes("research:sourceIntake"));
+});
+
+test("Paid read-only canonical archive may continue when normal D1 writes are hourly-paced HOLD",()=>{
+ const at=new Date("2026-11-10T03:35:00.000Z");
+ const provider={
+  schema:"geomacro.d1-account-daily-quota-readonly.v1",
+  day_utc:"2026-11-10",provider_graphql_usage_observed:true,
+  observed_rows_read:719198,observed_rows_written:246401
+ };
+ const owner={
+  schema:"geomacro.owner-d1-paid-utc-envelope.v2",
+  day_utc:"2026-11-10",held:true,
+  reason:"OWNER_D1_PAID_HOURLY_PACING_HELD",
+  observed_rows_read:719198,observed_rows_written:246401,
+  paced_rows_read_ceiling:86393433,
+  paced_rows_written_ceiling:163980,
+  normal_daily_rows_read_ceiling:580000000,
+  normal_rows_read_remaining:85674235,
+  normal_rows_written_remaining:0
+ };
+ const props={snapshot:provider,ownerEnvelope:owner,
+  paidSubscriptionVerified:true,now:at};
+ assert.equal(admitPaidCanonicalReadOnlyCatchup(props),true);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  paidSubscriptionVerified:false}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  snapshot:{...provider,day_utc:"2026-11-09"}}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  ownerEnvelope:{...owner,normal_rows_read_remaining:754000}}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  snapshot:{...provider,provider_graphql_usage_observed:false}}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  ownerEnvelope:{...owner,observed_rows_read:1}}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  ownerEnvelope:{...owner,normal_daily_rows_read_ceiling:999999999}}),false);
+ assert.equal(admitPaidCanonicalReadOnlyCatchup({...props,
+  snapshot:{...provider,observed_rows_read:579800000},
+  ownerEnvelope:{...owner,observed_rows_read:579800000,
+   normal_rows_read_remaining:400000}}),false);
+});
+test("archive-only canonical Paid GET requires two independent grants and never authorizes D1 writes",()=>{
+ const planner=readFileSync("scripts/ops/plan-d1-bundled-work.mjs","utf8");
+ const wf=readFileSync(".github/workflows/website-derived-news-continuity.yml","utf8");
+ const job=wf.split("  archive-only-when-d1-held:")[1].split("  refresh-derived-news:")[0];
+ for(const phrase of [
+  "canonical_archive_catchup_readonly:canonicalArchiveReadOnly",
+  "canonical_archive_catchup_d1_writes_authorized:false",
+  "String(result.canonical_archive_catchup_readonly===true)",
+  "snapshot:quota,ownerEnvelope,paidSubscriptionVerified,now"
+ ])assert(planner.includes(phrase),phrase);
+ for(const phrase of [
+  "needs.quota-admission.outputs.canonical_archive_catchup_readonly == 'true'",
+  "steps.canonical-readonly-monthly.outputs.admitted == 'true'",
+  "node scripts/ops/check-d1-paid-monthly-headroom.mjs --check",
+  "GEOMACRO_CANONICAL_D1_CATCHUP:",
+  "GEOMACRO_COMMERCE_LEDGER_TOKEN:"
+ ])assert(job.includes(phrase),phrase);
+ assert(job.indexOf("canonical-readonly-monthly.outputs.admitted")<
+   job.indexOf("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
+ assert(!job.includes("continue-on-error: true"));
+ assert(!job.includes("wrangler d1 execute"));
+ assert(!job.includes("secret put"));
+ const source=readFileSync("workers/control-plane/src/website-derived-intelligence.mjs","utf8");
+ assert.match(source,/export async function readDerivedStoriesBundle/u);
+ assert.match(source,/LIMIT 601/u);
+ const handler=readFileSync("workers/control-plane/src/index.mjs","utf8");
+ assert.match(handler,/readDerivedStoriesBundle\(env,Date\.now\(\),false\)/u);
+ assert.match(handler,/X-GeoMacro-Origin-Readback/u);
 });

@@ -229,6 +229,32 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
+/**
+ * A single canonical 600-row GET is not a D1 publisher write.
+ * The normal writer can be paced-HOLD while paid read capacity remains
+ * independently available. This strictly grants only a bounded, read-only
+ * catch-up; it never authorizes source intake, D1 writes, signing or funds.
+ * An independent fresh 30% Paid billing-month provider receipt and valid
+ * live-worker bearer remain mandatory immediately before the actual GET.
+ */
+export function admitPaidCanonicalReadOnlyCatchup({
+ snapshot,ownerEnvelope,paidSubscriptionVerified=false,now=new Date()
+}={}){
+ const budget=250_000+PREDGE_D1_FREE_HEADROOM.rows_read+4_000;
+ return paidSubscriptionVerified===true&&
+   snapshot?.schema==="geomacro.d1-account-daily-quota-readonly.v1"&&
+   snapshot.provider_graphql_usage_observed===true&&
+   snapshot.day_utc===now.toISOString().slice(0,10)&&
+   safeInt(snapshot.observed_rows_read)&&safeInt(snapshot.observed_rows_written)&&
+   ownerEnvelope?.schema==="geomacro.owner-d1-paid-utc-envelope.v2"&&
+   ownerEnvelope.day_utc===snapshot.day_utc&&
+   ownerEnvelope.observed_rows_read===snapshot.observed_rows_read&&
+   ownerEnvelope.observed_rows_written===snapshot.observed_rows_written&&
+   ownerEnvelope.normal_daily_rows_read_ceiling===580_000_000&&
+   ownerEnvelope.normal_rows_read_remaining>budget&&
+   snapshot.observed_rows_read+budget<
+     ownerEnvelope.normal_daily_rows_read_ceiling;
+}
 export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
@@ -656,6 +682,12 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       now,policy:FIVE_USD_BUDGET.d1_budget_policy,
     });
     const ownerNormalHold=ownerEnvelope.held||quota.day_utc!==now.toISOString().slice(0,10);
+    // Read-only canonical reconciliation is separately paced on observed
+    // Paid account reads. A write-only hourly HOLD must not starve an
+    // immutable static archive; no D1 write authority follows this grant.
+    const canonicalArchiveReadOnly=admitPaidCanonicalReadOnlyCatchup({
+      snapshot:quota,ownerEnvelope,paidSubscriptionVerified,now
+    });
     const result=ownerNormalHold?
       held(ownerEnvelope.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"?
         "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
@@ -671,6 +703,10 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       ownerBudget.rows_written-Math.max(
         ownerBudget.normal_rows_written,quota.observed_rows_written));
     return {...result,
+      canonical_archive_catchup_readonly:canonicalArchiveReadOnly,
+      canonical_archive_catchup_max_rows:canonicalArchiveReadOnly?601:0,
+      canonical_archive_catchup_requires_monthly_provider_pass:true,
+      canonical_archive_catchup_d1_writes_authorized:false,
       paid_capacity_probe_status:paidProbe,
       spend_policy_verification_enforced:SPEND_POLICY_VERIFICATION_ENFORCED,
       spend_policy_verification_status:spendGuardProof?.verified===true?"VERIFIED":"UNVERIFIED_ADVISORY",
@@ -722,6 +758,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       String(result.paid_derived_news_source_lane===true)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_max_rows="+
       String(result.paid_derived_news_max_rows??0)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"canonical_archive_catchup_readonly="+String(result.canonical_archive_catchup_readonly===true)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
   }
