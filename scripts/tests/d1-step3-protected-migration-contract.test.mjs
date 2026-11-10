@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {STEP3_MIGRATIONS,step3SqlManifests,step3SizeProbeSQL,
  validateStep3SizeProbe,step3NativeHistorySQL,
- classifyStep3NativeHistory,step3SchemaSQL,verifyStep3Schema,
+ classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
+ validateStep30212PendingSourcePreflight,
+ step3SchemaSQL,verifyStep3Schema,
  verifyStep3Integrity,verifyStep3Explain,compareImmutableBaseline}
  from "../lib/d1-step3-migration-contract.mjs";
 import {parseStep3WranglerQuery}
@@ -74,6 +76,44 @@ test("only pending DDL is size-probed; native schema is not acceptance",()=>{
  assert(a>0&&b>a&&c>b&&d>c);
  assert(src.includes('status:"SCHEMA_PRESENT_NOT_FULL_INTEGRITY_VERIFIED"'));
  assert(src.includes('if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD")'));
+});
+
+test("0212 pending reviewed large-source envelope covers 11822 rows, no 3k bypass elsewhere",()=>{
+ const sql=step30212PendingSourcePreflightSQL();
+ assert.match(sql,/phase2h_private_raw_news/u);
+ assert.match(sql,/LIMIT 24001/u);
+ assert.match(sql,/LIMIT 3001/u);
+ assert.doesNotMatch(sql,/\b(?:INSERT|DELETE|UPDATE|ALTER|DROP|REPLACE)\b/iu);
+ const a=validateStep30212PendingSourcePreflight([
+  {raw_rows:11822,pending_rows:8000,hour_bins:216,
+   osint_rows:2800,website_rows:2200}
+ ]);
+ assert.equal(a.status,"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL");
+ assert.equal(a.source_rows_verified,11822);
+ assert(a.estimated_rows_read>11822);
+ assert(a.estimated_rows_written<500000);
+ assert.equal(a.production_release_authorized,false);
+ assert.equal(a.no_sql_writes_performed,true);
+ for(const x of [
+  {raw_rows:24001,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:1},
+  {raw_rows:11822,pending_rows:11823,hour_bins:216,osint_rows:1,website_rows:1},
+  {raw_rows:11822,pending_rows:8000,hour_bins:3001,osint_rows:1,website_rows:1},
+  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:3001,website_rows:1},
+  {raw_rows:11822,pending_rows:8000,hour_bins:216,osint_rows:1,website_rows:3001},
+  {raw_rows:11822,pending_rows:0,hour_bins:216,osint_rows:1,website_rows:1},
+  {raw_rows:22000,pending_rows:21000,hour_bins:216,osint_rows:3000,website_rows:3000}
+ ])assert.throws(()=>validateStep30212PendingSourcePreflight([x]),
+   /0212_REVIEWED_LARGE_SOURCE_BUDGET_EXCEEDED|0212_PENDING_HOUR_BIN_CONTRADICTION|0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED/);
+});
+test("production estimated cost is presented to live Paid admission before any DDL",()=>{
+ const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(r,/estimatedMigrationRowsRead:estimate\?\.estimated_rows_read\?\?0/u);
+ assert.match(r,/estimatedMigrationRowsWritten:estimate\?\.estimated_rows_written\?\?0/u);
+ const pre=r.indexOf("validateStep30212PendingSourcePreflight(source.rows)");
+ const checkpoint=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",pre);
+ const ledger=r.indexOf("const ledger=ensureLedger(config,manifests,state)",pre);
+ assert(pre>0&&checkpoint>pre&&ledger>checkpoint);
+ assert.match(r,/if\(source.readRows>200000\)/u);
 });
 
 test("exact D1 native meta readback refuses missing rows and nonzero writes",()=>{
