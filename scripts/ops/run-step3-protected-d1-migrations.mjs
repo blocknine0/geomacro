@@ -137,6 +137,13 @@ function approved(env){
   .split("\n").filter(Boolean).filter(s=>
    !/^artifacts\/release\//u.test(s.slice(3)));
  if(dirty.length)fail("SOURCE_TREE_DIRTY_EXACT_SHA_UNVERIFIED");
+ // Production original-pointer verification occurs AFTER schema migrations.
+ // Fail before backup or any DDL if the genuine existing Worker credentials
+ // are not supplied. A shadow-only bearer/HMAC must never be substituted.
+ if(typeof env.CONTROL_PLANE_TOKEN!=="string"||
+    env.CONTROL_PLANE_TOKEN.length<32||
+    !/^[a-f0-9]{64}$/iu.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
+  fail("PRODUCTION_POINTER_AUTH_DEPENDENCIES_UNVERIFIED");
 }
 function runnerConfig(privateDir,dbId,migrationsDir){
  const config=join(privateDir,"wrangler-step3.jsonc");
