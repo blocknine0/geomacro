@@ -38,7 +38,11 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
      rule.deleteNoncurrentVersionsTransition!=null||
      rule.noncurrentVersionExpiration!=null||
      rule.expiration!=null||
-     rule.storageClassTransition!=null)
+     rule.storageClassTransition!=null||
+     (Array.isArray(rule.storageClassTransitions)&&
+      rule.storageClassTransitions.length>0)||
+     rule.storageClassTransitions!=null&&
+      !Array.isArray(rule.storageClassTransitions))
    die("COLD_PREFIX_EXPIRY_OR_PAID_CLASS_CONFLICT");
  }
  return Object.freeze({
