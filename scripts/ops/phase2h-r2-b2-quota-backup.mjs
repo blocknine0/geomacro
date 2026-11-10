@@ -2,18 +2,18 @@
 /**
  * Main-only, protected, B2-independent private R2 archival continuity.
  * Canonical originals are fetched ONLY through existing authenticated
- * Phase2H D1-only export. AES-256-GCM originals are stored in the existing
- * separately provider-verified PRIVATE recovery R2 bucket, then full GET,
+ * Phase2H D1-only export. Only MINIMAL DERIVED Risk Gate facts are stored
+ * using Brotli quality 11 + AES-256-GCM in existing private R2, then GET,
  * authenticated decrypt and byte equality are required. HMAC-bound cursor
- * makes each hourly bundle discoverable without ListObjects.
+ * makes each UTC-hour compact bundle discoverable without enumeration.
  *
  * A verified R2 backup NEVER implies B2 ACK, full B2 object inventory,
  * paid-source rights, migration completion, Worker promotion or HOLD release.
  */
-import {readFileSync,mkdirSync,writeFileSync} from "node:fs";
+import {mkdirSync,writeFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {pathToFileURL} from "node:url";
-import {createHash,timingSafeEqual} from "node:crypto";
+import {createHash} from "node:crypto";
 import {deriveControlPlaneRootToken}
  from "./derive-control-plane-root-token.mjs";
 import {validPrivateRawNews}
@@ -21,10 +21,12 @@ import {validPrivateRawNews}
 import {shadowR2ObjectUrl}
  from "../lib/d1-step3-shadow-pointer-seed.mjs";
 import {
- PHASE2H_R2_CURSOR_KEY,phase2hBackupHourKey,
+ PHASE2H_R2_BACKUP_PREFIX,PHASE2H_R2_CURSOR_KEY,phase2hBackupSourceRows,
  openPhase2hBackupCursor,sealPhase2hBackupCursor,
  sealPhase2hR2Backup,openPhase2hR2Backup,
-} from "../lib/phase2h-b2-r2-backup.mjs";
+ } from "../lib/phase2h-b2-r2-backup.mjs";
+import {minimumRiskFactsFromOriginals,minimumFactId,minimumFactClock}
+ from "../lib/phase2h-risk-gate-minimum-facts.mjs";
 
 const SHA=/^[a-f0-9]{40}$/u;
 const BUCKET=/^[a-z0-9][a-z0-9-]{2,62}$/u;
@@ -94,7 +96,7 @@ async function privateBucket(env,fetchImpl){
 }
 async function readExport(env,fetchImpl,cursor){
  const params=new URLSearchParams({limit:String(LIMIT)});
- if(cursor&&!cursor.cycle_complete){
+ if(cursor){
   params.set("archive_cursor_clock",cursor.last_clock);
   params.set("archive_cursor_id",cursor.last_id);
  }
@@ -132,7 +134,7 @@ async function readExport(env,fetchImpl,cursor){
 }
 async function r2Call(method,key,env,fetchImpl,body){
  if(!["GET","PUT"].includes(method)||!key.startsWith(
-   "geomacro/private/phase2h-b2-quota-backup/v1/"))
+   PHASE2H_R2_BACKUP_PREFIX))
   fail("R2_OBJECT_SCOPE_INVALID");
  if(method==="PUT"&&(!Buffer.isBuffer(body)||body.length<1||
     body.length>MAX_BODY))fail("R2_PUT_LIMIT_INVALID");
@@ -185,8 +187,8 @@ export async function backupPhase2hPrivateOriginals({
    body:old,secretB64,expectedHour:cursor.hour,
    expectedSha:cursor.source_sha
   });
-  if(verified.records.at(-1)?.record_id!==cursor.last_id||
-     verified.records.at(-1)?.ingested_at!==cursor.last_clock)
+  if(minimumFactId(verified.records.at(-1))!==cursor.last_id||
+     minimumFactClock(verified.records.at(-1))!==cursor.last_clock)
    fail("PRIOR_BACKUP_KEYSET_CURSOR_DIVERGED");
  }
  const answer=await readExportImpl(env,fetchImpl,cursor);
@@ -197,8 +199,10 @@ export async function backupPhase2hPrivateOriginals({
    b2_ack_verified:false,b2_inventory_proven:false,canary_hold_removed:false
   });
  }
+ const source=phase2hBackupSourceRows(answer.rows,now);
+ const expectedFacts=minimumRiskFactsFromOriginals(source);
  const plan=sealPhase2hR2Backup({
-  rows:answer.rows,now,sourceSha:env.GITHUB_SHA,secretB64
+  rows:source,now,sourceSha:env.GITHUB_SHA,secretB64
  });
  const found=await storage("GET",plan.key,env,fetchImpl);
  if(found){
@@ -206,12 +210,8 @@ export async function backupPhase2hPrivateOriginals({
    body:found,secretB64,expectedHour:plan.hour,
    expectedSha:env.GITHUB_SHA
   });
-  if(JSON.stringify(old.records)!==
-     JSON.stringify([...answer.rows].sort((a,b)=>
-      a.ingested_at===b.ingested_at?
-       a.record_id.localeCompare(b.record_id):
-       a.ingested_at.localeCompare(b.ingested_at))))
-   fail("EXISTING_HOUR_CANONICAL_ORIGINALS_CHANGED");
+  if(JSON.stringify(old.records)!==JSON.stringify(expectedFacts))
+   fail("EXISTING_HOUR_MINIMUM_FACTS_CHANGED");
  }else{
   // At most ONE bundle PUT per UTC-hour, after authenticated original export.
   await exactMain(env,fetchImpl);
@@ -228,12 +228,9 @@ export async function backupPhase2hPrivateOriginals({
   expectedSha:env.GITHUB_SHA
  });
  if(restored.records.length!==answer.rows.length||
-    JSON.stringify(restored.records)!==
-     JSON.stringify([...answer.rows].sort((a,b)=>
-      a.ingested_at===b.ingested_at?
-       a.record_id.localeCompare(b.record_id):
-       a.ingested_at.localeCompare(b.ingested_at))))
-  fail("RESTORED_CANONICAL_ORIGINALS_MISMATCH");
+    restored.full_private_originals_retained!==false||
+    JSON.stringify(restored.records)!==JSON.stringify(expectedFacts))
+  fail("RESTORED_MINIMUM_RISK_FACTS_MISMATCH");
  const next=sealPhase2hBackupCursor({
   sourceSha:env.GITHUB_SHA,hour:plan.hour,
   objectKey:plan.key,objectSha:trustedSha,
@@ -251,14 +248,17 @@ export async function backupPhase2hPrivateOriginals({
     checked.object_key!==plan.key)
   fail("CURSOR_BACKUP_LINKAGE_INVALID");
  return Object.freeze({
-  schema:"geomacro.phase2h.r2-b2-quota-private-backup-receipt.v1",
-  status:"PASS_PRIVATE_R2_ENCRYPTED_B2_QUOTA_CONTINUITY_BACKUP",
+  schema:"geomacro.phase2h.r2-minimum-risk-facts-brotli11-receipt.v2",
+  status:"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP",
   utc_hour:plan.hour,object_key:plan.key,
   object_sha256:trustedSha,compressed_cipher_bytes:physical.length,
-  backed_up_originals:restored.records.length,
+  retained_derived_fact_rows:restored.records.length,
+  full_originals_stored_long_term:false,
+  compression:"BROTLI_QUALITY_11",
   provider_private_r2_put_readback:true,
   hmac_cursor_readback:true,
-  original_sha256_unchanged:true,canonical_source_verified:true,
+  original_sha256_links_preserved:true,canonical_source_verified:true,
+  independent_corroboration_verified:false,risk_gate_certified:false,
   d1_original_rows_mutated:0,raw_public_delivery:false,
   b2_requests:0,b2_ack_verified:false,b2_inventory_proven:false,
   canary_hold_removed:false,paid_eligible:false,payments_authorized:false
