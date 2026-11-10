@@ -84,6 +84,30 @@ test("11,822-row source passes exact complete forced-index and both partial memb
  }finally{db.close()}
 });
 
+test("large raw source still requires real D1 quick_check and foreign key proof",()=>{
+ const db=sample();
+ try{
+  const ins=db.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,?,?,?)");
+  db.exec("BEGIN");
+  for(let i=2;i<3100;i++)
+   ins.run(i.toString(16).padStart(64,"0"),"macro",
+    "2026-11-09T12:00:00Z","2026-11-09T12:03:00Z",null,null);
+  db.exec("COMMIT");
+  for(const mutate of [
+   (sql,rows)=>sql.startsWith("PRAGMA quick_check(")?
+    [{quick_check:"corrupt"}]:rows,
+   (sql,rows)=>sql.startsWith("PRAGMA foreign_key_check(")?
+    [{table:"phase2h_private_raw_news",rowid:1}]:rows
+  ]){
+   assert.throws(()=>auditStep30212AllRawSourceIndexes((sql,cap)=>{
+    const rows=mutate(sql,db.prepare(sql).all());
+    assert(rows.length<=cap);
+    return rows;
+   }),/LARGE_D1_QUICK_CHECK_NOT_OK|LARGE_D1_FOREIGN_KEYS_UNVERIFIED/);
+  }
+ }finally{db.close()}
+});
+
 test("empty source has reviewed schema but cannot become nonvacuous signed evidence",()=>{
  const db=sample();
  try{
