@@ -316,6 +316,15 @@ function checkIndexAndSchema(config,step,report){
    });
    integrity.push(p);
   }
+  // On HOLD, preserve only non-sensitive provider index metadata in the
+  // encrypted/restricted run artifact. Never print article rows, SQL values,
+  // credentials, pointer bytes or a fake cryptographic integrity certificate.
+  report.provider_0204_index_registry=integrity.map(p=>({
+   table:p.table,index_count:p.total_existing_indexes,
+   index_names:p.index_proofs.map(x=>x.index).sort(),
+   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true
+  }));
+  save(report);
   const accepted=admitStep30204SupportedIntegrity(integrity);
   report.supported_integrity_0204={...accepted,
    provenance:"FRESH_SAME_TARGET_REAL_PROVIDER_D1_READ_ONLY",
@@ -473,6 +482,12 @@ function checkIndexAndSchema(config,step,report){
   ];
   const lineageInputs=lineageTables.map(table=>
    auditStep30204IndexLineage(table,checked));
+  report.provider_0212_index_lineage_registry=lineageInputs.map(p=>({
+   table:p.table,index_count:p.total_existing_indexes,
+   index_names:p.index_proofs.map(x=>x.index).sort(),
+   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true
+  }));
+  save(report);
   const lineage=admitStep30204SupportedIntegrity(lineageInputs);
   if(![
       "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY",
