@@ -207,3 +207,67 @@ test("V2 archival-only selector includes retained >72h private original",async()
  assert.doesNotMatch(seen[0],/first_ingested_at>\?/u);
  assert.deepEqual(seen[1],[1]);
 });
+
+test("authenticated B2-FIRST v2 binds full original JSON in one atomic D1 ACK; reobserved clock fails",async()=>{
+ const {DatabaseSync}=await import("node:sqlite");
+ const db=new DatabaseSync(":memory:");
+ db.exec(`CREATE TABLE phase2h_private_raw_news(
+  record_id TEXT PRIMARY KEY,raw_sha256 TEXT NOT NULL,
+  raw_json TEXT NOT NULL,b2_object_sha256 TEXT,b2_archived_at TEXT);`);
+ db.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,NULL,NULL)")
+  .run(item.record_id,item.raw_sha256,JSON.stringify(item));
+ let statements=0;
+ const realDb={DB:{prepare(sql){
+  statements++;
+  return {bind(...params){
+   return {all:async()=>({success:true,
+    results:db.prepare(sql).all(...params)})};
+  }};
+ }}};
+ const v2=raw_json=>({
+  schema:"geomacro.phase2h.b2-first-archive-ack.v2",
+  object_sha256:"d".repeat(64),
+  items:[{record_id:item.record_id,raw_sha256:item.raw_sha256,raw_json}]
+ });
+ // raw_sha256 excludes volatile reobservation clock, so the versioned
+ // API MUST reject a byte-different re-observation before marking archived.
+ const newer={...item,ingested_at:new Date(now.getTime()-60_000).toISOString()};
+ assert.equal(await validPrivateRawNews(newer,now.getTime(),false),JSON.stringify(newer));
+ const mismatched=await phase2hPrivateRawMarkArchived(realDb,
+  v2(JSON.stringify(newer)),now.getTime());
+ assert.equal(mismatched.status,503);
+ assert.equal((await mismatched.json()).ok,false);
+ assert.equal(db.prepare("SELECT b2_object_sha256 FROM phase2h_private_raw_news").get().b2_object_sha256,null);
+ const valid=await phase2hPrivateRawMarkArchived(realDb,
+  v2(JSON.stringify(item)),now.getTime());
+ assert.equal(valid.status,200);
+ const body=await valid.json();
+ assert.equal(body.archived,1);
+ assert.equal(body.b2_first_exact_raw_json_d1_verified,true);
+ assert.equal(body.d1_atomic_one_statement_returning_verified,true);
+ assert.equal(db.prepare("SELECT b2_object_sha256 FROM phase2h_private_raw_news").get().b2_object_sha256,"d".repeat(64));
+ assert.equal(statements,2);
+ db.close();
+});
+test("B2-FIRST v2 missing JSON and v1 JSON smuggling fail before D1",async()=>{
+ let called=0;
+ const only={DB:{prepare(){called++;throw Error("PROVIDER_CALLED");}}};
+ const cases=[
+  {schema:"geomacro.phase2h.b2-first-archive-ack.v2",
+   object_sha256:"d".repeat(64),
+   items:[{record_id:item.record_id,raw_sha256:item.raw_sha256}]},
+  {schema:"geomacro.phase2h.b2-archive-ack.v1",
+   object_sha256:"d".repeat(64),
+   items:[{record_id:item.record_id,raw_sha256:item.raw_sha256,
+    raw_json:JSON.stringify(item)}]},
+  {schema:"geomacro.phase2h.b2-first-archive-ack.v2",
+   object_sha256:"d".repeat(64),
+   items:[{record_id:item.record_id,raw_sha256:item.raw_sha256,
+    raw_json:JSON.stringify(item),extra:"INJECTED"}]}
+ ];
+ for(const input of cases){
+  const response=await phase2hPrivateRawMarkArchived(only,input,now.getTime());
+  assert.notEqual(response.status,200);
+ }
+ assert.equal(called,0);
+});
