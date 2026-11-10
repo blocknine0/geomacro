@@ -401,7 +401,9 @@ function checkIndexAndSchema(config,step,report){
    const r=q(config,sql,{maxRows});
    report.census_0212_rows_read??=0;
    report.census_0212_rows_read+=r.readRows;
-   if(report.census_0212_rows_read>100000)
+   // Exhaustive D1-side set equality may scan large source/index trees;
+   // never let an unbounded operation exhaust the monthly admission.
+   if(report.census_0212_rows_read>3000000)
     fail("SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };
