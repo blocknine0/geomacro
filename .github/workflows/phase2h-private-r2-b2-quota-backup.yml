@@ -1,5 +1,6 @@
-name: Phase2H B2 Quota Private R2 Encrypted Original Backup (No Funds)
-# Independent calendar-addressable AES-256-GCM backup when B2 is held.
+name: Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)
+# Permanent DERIVED-only, Brotli-quality-11 AES-GCM compact Risk Gate archive.
+# Raw source texts remain ephemeral and are never written to this R2 prefix.
 # Writes NO production D1 tables, never calls B2, and cannot release Canary.
 on:
   schedule:
@@ -14,6 +15,7 @@ on:
     paths:
       - ".github/workflows/phase2h-private-r2-b2-quota-backup.yml"
       - "scripts/lib/phase2h-b2-r2-backup.mjs"
+      - "scripts/lib/phase2h-risk-gate-minimum-facts.mjs"
       - "scripts/ops/phase2h-r2-b2-quota-backup.mjs"
       - "scripts/tests/phase2h-r2-b2-quota-backup.test.mjs"
       - "config/github-workflow-inventory.v1.json"
@@ -36,6 +38,7 @@ jobs:
           node-version: "24"
       - name: Authenticated encrypted backup and failure regression
         run: |
+          node --check scripts/lib/phase2h-risk-gate-minimum-facts.mjs
           node --check scripts/lib/phase2h-b2-r2-backup.mjs
           node --check scripts/ops/phase2h-r2-b2-quota-backup.mjs
           node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs
