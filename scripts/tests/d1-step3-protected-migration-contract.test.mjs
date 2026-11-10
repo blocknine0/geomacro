@@ -242,6 +242,71 @@ test("protected runner must never revoke canary HOLD or auto promote/migrate on 
 });
 
 
+test("0119 website risk-source index is admitted only as exact migration DDL and full lineage",async()=>{
+ const {
+  STEP3_0204_EXPECTED_EXISTING_INDEXES,
+  STEP3_0119_WEBSITE_REVIEWED_INDEX,
+  STEP3_0212_ADDITIVE_INDEX_LINEAGE,
+  verifyStep30119WebsiteIndexDDL,
+  admitStep30204SupportedIntegrity
+ }=await import("../lib/d1-step3-supported-integrity.mjs");
+ const extraName="idx_website_risk_raw_source_scan";
+ assert.equal(STEP3_0119_WEBSITE_REVIEWED_INDEX,extraName);
+ const validDDL=[{name:extraName,type:"index",
+  tbl_name:"website_derived_intelligence",
+  sql:"CREATE INDEX IF NOT EXISTS idx_website_risk_raw_source_scan\n ON website_derived_intelligence(first_seen_at,id)"}];
+ assert.equal(verifyStep30119WebsiteIndexDDL(validDDL),true);
+ for(const changed of [
+  [],[{...validDDL[0],sql:"CREATE INDEX idx_website_risk_raw_source_scan ON website_derived_intelligence(published_at,id)"}],
+  [{...validDDL[0],tbl_name:"other_table"}],
+  [{...validDDL[0],type:"view"}],
+  [validDDL[0],validDDL[0]]
+ ])assert.throws(()=>verifyStep30119WebsiteIndexDDL(changed),/0119_WEBSITE_INDEX_DDL_UNVERIFIED/u);
+ function proofs({elevenNine=false,twentyTwelve=false,unreviewed=false}={}){
+  return Object.entries(STEP3_0204_EXPECTED_EXISTING_INDEXES).map(([table,names])=>{
+   const list=[...names,...(twentyTwelve?
+    STEP3_0212_ADDITIVE_INDEX_LINEAGE[table]:[]),
+    ...(elevenNine&&table==="website_derived_intelligence"?[extraName]:[]),
+    ...(unreviewed&&table==="website_derived_intelligence"?["idx_unreviewed"]:[])];
+   return {
+    table,status:"PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF",
+    total_existing_indexes:list.length,
+    index_proofs:list.map(index=>({
+     index,rows_compared:3,unique_verified:index.startsWith("sqlite_autoindex_"),
+     status:"PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"
+    })),
+    reviewed_0119_index_ddl_verified:elevenNine,
+    all_indexes_including_unique_considered:true,
+    real_sqlite_integrity_check_claimed:false,
+    physical_file_integrity_claimed:false,
+    raw_private_content_exposed:false
+   };
+  });
+ }
+ const legacy=admitStep30204SupportedIntegrity(proofs());
+ assert.equal(legacy.existing_index_count,12);
+ const real=admitStep30204SupportedIntegrity(proofs({elevenNine:true}));
+ assert.equal(real.existing_index_count,13);
+ assert.equal(real.reviewed_0119_production_website_index_verified,true);
+ assert.equal(real.production_release_authorized,false);
+ const shadowPost=admitStep30204SupportedIntegrity(proofs({twentyTwelve:true}));
+ assert.equal(shadowPost.existing_index_count,14);
+ const prodPost=admitStep30204SupportedIntegrity(proofs({elevenNine:true,twentyTwelve:true}));
+ assert.equal(prodPost.existing_index_count,15);
+ assert.equal(prodPost.all_0212_v3_additive_index_memberships_verified,true);
+ for(const bad of [
+  proofs({elevenNine:true}).map((p,i)=>i===2?{...p,reviewed_0119_index_ddl_verified:false}:p),
+  proofs({elevenNine:true,unreviewed:true}),
+  proofs({twentyTwelve:true}).map((p,i)=>i===2?{...p,index_proofs:p.index_proofs.filter(x=>x.index!=="idx_website_derived_category_clock_v3"),total_existing_indexes:p.total_existing_indexes-1}:p),
+  proofs({elevenNine:true,twentyTwelve:true}).map((p,i)=>i===1?{
+   ...p,index_proofs:p.index_proofs.map((x,j)=>j===0?{...x,rows_compared:0}:x)}:p)
+ ])assert.throws(()=>admitStep30204SupportedIntegrity(bad),/STEP3_ALL_INDEX_/u);
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/verifyStep30119WebsiteIndexDDL\(ddl\)/u);
+ assert.match(runner,/auditStep30204IndexLineage\(table,checked\)/u);
+ assert.match(runner,/PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY/u);
+});
+
 test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APPLIED ledger can reconcile",async()=>{
  const {STEP3_0204_EXPECTED_EXISTING_INDEXES,admitStep30204SupportedIntegrity}
   =await import("../lib/d1-step3-supported-integrity.mjs");
