@@ -16,6 +16,8 @@ on:
       - "scripts/lib/d1-step3-0211-spool-integrity.mjs"
       - "scripts/lib/d1-step3-large-index-set-proof.mjs"
       - "scripts/lib/d1-step3-production-reference-only-off-proof.mjs"
+      - "scripts/lib/d1-step3-production-canary-admission.mjs"
+      - "scripts/tests/d1-step3-production-canary-admission.test.mjs"
       - "scripts/tests/d1-step3-production-reference-only-off-proof.test.mjs"
       - "scripts/tests/d1-step3-large-index-set-proof.test.mjs"
       - "scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs"
@@ -69,6 +71,7 @@ jobs:
           node --check scripts/lib/d1-step3-production-reference-only-off-proof.mjs
           node --test scripts/tests/d1-step3-large-index-set-proof.test.mjs
           node --test scripts/tests/d1-step3-production-reference-only-off-proof.test.mjs
+          node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --test scripts/tests/d1-step3-0211-spool-integrity.test.mjs
           node --check scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs
           node --test scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs
