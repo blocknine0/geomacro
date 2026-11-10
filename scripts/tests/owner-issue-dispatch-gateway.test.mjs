@@ -56,6 +56,21 @@ test("strict one-shot fixed targets and explicit OWNER-approved production autho
  assert.equal(prod.inputs.approval,"REHEARSE_D1_SHADOW_ONLY_NO_PRODUCTION_SQL");
  assert.equal(prod.target_protected_admission_required,true);
  assert.equal(prod.direct_prod_sql_authorized,false);
+ // Source authorization cannot reuse older v1 Stage2 or arbitrary targets.
+ const bad=fixture("gateway-handshake");
+ const source={schema:"geomacro.owner-issue-dispatch.v2",
+  intent:"registered-original-source-intake",source_sha:SHA,
+  authorization:"OWNER_AUTHORIZE_VERIFIED_ORIGINAL_SOURCE_B2_FIRST_NO_FUNDS",
+  verify_hot50:false};
+ bad.issue.body=JSON.stringify(source);
+ const approved=planOwnerIssueDispatch({event:bad,env:env(),now:NOW});
+ assert.equal(approved.target,"all-source-reusable-news-json.yml");
+ assert.deepEqual(approved.inputs,{approved_main_sha:SHA});
+ assert.equal(approved.no_funds,true);
+ const injection=structuredClone(bad);
+ const r=JSON.parse(injection.issue.body);r.authorization="OWNER_AUTHORIZE_REAL_PRODUCTION_D1_0204_0211_0212_0213_NO_FUNDS";
+ injection.issue.body=JSON.stringify(r);
+ assert.throws(()=>planOwnerIssueDispatch({event:injection,env:env(),now:NOW}),/OWNER_DISPATCH_/u);
 });
 test("reject non-owner, unauthorized, injection, wrong SHA and stale issues BEFORE GitHub IO",()=>{
  const attacks=[
