@@ -301,8 +301,15 @@ test("0119 website risk-source index is admitted only as exact migration DDL and
   proofs({elevenNine:true,twentyTwelve:true}).map((p,i)=>i===1?{
    ...p,index_proofs:p.index_proofs.map((x,j)=>j===0?{...x,rows_compared:0}:x)}:p)
  ])assert.throws(()=>admitStep30204SupportedIntegrity(bad),/STEP3_ALL_INDEX_/u);
+ const migration=readFileSync(
+  "workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql","utf8");
+ assert.match(migration,
+  /CREATE INDEX IF NOT EXISTS idx_website_risk_raw_source_scan\s+ON website_derived_intelligence\(first_seen_at,id\)/u);
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(runner,/verifyStep30119WebsiteIndexDDL\(ddl\)/u);
+ assert.match(runner,/provider_0204_index_registry=integrity\.map/u);
+ assert.match(runner,/provider_0212_index_lineage_registry=lineageInputs\.map/u);
+ assert.doesNotMatch(runner,/report\.provider_0204_index_registry=integrity;/u);
  assert.match(runner,/auditStep30204IndexLineage\(table,checked\)/u);
  assert.match(runner,/PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY/u);
 });
