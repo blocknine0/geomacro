@@ -149,6 +149,7 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
    if(product_tier==="complex_full"){
     assert.equal(evaluated.tiered_product.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
     assert.equal(evaluated.tiered_product.chargeable,false);
+    assert.equal(evaluated.chargeable,false);
     assert.equal(evaluated.tiered_product.complex_history_source_state,
      "CURRENT_SIGNED_GRO_UNAVAILABLE");
    }
