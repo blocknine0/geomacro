@@ -226,7 +226,14 @@ test("no SQL mutation and no bypass in source proof",()=>{
  const s=readFileSync("scripts/lib/d1-step3-0212-source-index-integrity.mjs","utf8");
  assert.match(s,/auditStep30212ExactPartialIndex/u);
  assert.match(s,/verifyStep3AllIndex/u);
- assert.match(s,/seven|SEVEN/u);
+ assert.match(s,/reviewedSourceIndexCatalog/u);
+ const catalog=readFileSync(
+  "scripts/lib/d1-step3-0212-reviewed-index-profile.mjs","utf8");
+ assert.match(catalog,/REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/u);
+ assert.match(catalog,/REVIEWED_0117_SOURCE_DDL_DRIFT/u);
+ assert.match(catalog,/REVIEWED_0117_SOURCE_INDEX_KEYS_DRIFT/u);
+ assert.match(catalog,/idx_phase2h_derived_discovery_cursor/u);
+ assert.match(catalog,/\bseven\b|\bseven-index\b|\b7\b/u);
  assert.match(s,/stage|production_release_authorized:false/u);
  assert.doesNotMatch(s,/wrangler.*deploy|d1 migrations apply|SIGNING_JWK|unlinkSync/u);
 });
