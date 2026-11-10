@@ -4,7 +4,7 @@ name: Permanent Qualified Signed GRO Production
 # Only independently qualified immutable inputs are signed; no funds.
 on:
   workflow_run:
-    workflows: ["Deploy D1 Control Plane", "Machine Dual-Authority Intelligence Publication"]
+    workflows: ["Deploy D1 Control Plane", "Machine Dual-Authority Intelligence Publication", "Hot-50 Direct Original News (20-Minute Cron)", "Global OSINT to Website Intelligence (15-Minute Discovery)"]
     types: [completed]
   schedule:
     - cron: "3,23,43 * * * *"
@@ -14,6 +14,8 @@ on:
       - ".github/workflows/permanent-qualified-signed-gro-production.yml"
       - "scripts/ops/run-automatic-gro-signing.ts"
       - "scripts/lib/gro-auto-signing-jobs.mjs"
+      - "scripts/ops/verify-qualified-gro-source-wakeup.mjs"
+      - "scripts/tests/qualified-gro-source-wakeup.test.mjs"
   repository_dispatch:
     types: [qualified_machine_gro_ready]
   workflow_dispatch:
@@ -29,6 +31,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: geomacro-qualified-machine-gro-production
@@ -41,7 +44,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       (
         github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push' ||
-        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_sha == github.sha) ||
         (github.event_name == 'repository_dispatch' &&
          github.event.action == 'qualified_machine_gro_ready' &&
          github.event.client_payload.schema == 'geomacro.qualified-machine-gro-ready.v1')
@@ -79,6 +82,18 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Prove successful exact-main native source sweep before source-triggered signing
+        if: >-
+          github.event_name == 'workflow_run' &&
+          (github.event.workflow_run.name == 'Hot-50 Direct Original News (20-Minute Cron)' ||
+           github.event.workflow_run.name == 'Global OSINT to Website Intelligence (15-Minute Discovery)')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/ops/verify-qualified-gro-source-wakeup.mjs
+
+      - name: Verify source-wakeup admission regression without provider requests
+        run: node --test scripts/tests/qualified-gro-source-wakeup.test.mjs
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
