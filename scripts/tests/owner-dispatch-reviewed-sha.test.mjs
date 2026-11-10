@@ -156,5 +156,8 @@ test("workflow reauthenticates before both protected Shadow and Stage2, preservi
  assert.match(w,/test -f config\/d1-hotspot-v2-canary\.hold/u);
  assert.match(gate,/owner_dispatch_issue:String\(plan.issue_number\)/u);
  assert.match(gate,/owner_dispatch_gateway_run:String\(env.GITHUB_RUN_ID\)/u);
- assert.doesNotMatch(w,/continue-on-error: true|rm config\/d1-hotspot-v2-canary\.hold/u);
+ const authStep=w.split("      - name: Authenticate owner issue exact-main SHA or retain manual protected SHA pin")[1]?.split("      - name: Require reviewed main SHA")[0];
+ assert.ok(authStep);
+ assert.doesNotMatch(authStep,/continue-on-error:/u);
+ assert.doesNotMatch(w,/rm config\/d1-hotspot-v2-canary\.hold/u);
 });
