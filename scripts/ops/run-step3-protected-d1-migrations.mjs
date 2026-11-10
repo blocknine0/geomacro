@@ -722,6 +722,19 @@ export async function applyStep3Migrations({env=process.env}={}){
   await refreshedGate(state,"AFTER_LEDGER_BEFORE_MIGRATIONS");
   for(const step of manifests){
    await refreshedGate(state,"BEFORE_"+step.id);
+   if(step.id==="0212"&&state.large_0212_production_cost_envelope){
+    // Re-observe a live source immediately before pending DDL. Concurrent
+    // ingestion is permitted, but any increased cost reservation must be
+    // re-admitted; no stale one-time quantity is treated as an atomic cap.
+    const latest=q(config,step30212PendingSourcePreflightSQL(),{maxRows:1});
+    if(latest.readRows>200000)
+     fail("0212_FRESH_PREFLIGHT_PROVIDER_COST_EXCEEDED");
+    state.large_0212_production_cost_envelope=
+     validateStep30212PendingSourcePreflight(latest.rows);
+    state.large_0212_refreshed_provider_rows_read=latest.readRows;
+    save(state);
+    await refreshedGate(state,"0212_FRESH_COST_BEFORE_DDL");
+   }
    migrateOne(base,config,step,state,env.D1_DATABASE_ID,ledger);
    compareImmutableBaseline(state.original_immutable_sample_sha256,
     baseline(config));
