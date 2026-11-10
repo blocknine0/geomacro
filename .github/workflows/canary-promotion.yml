@@ -71,7 +71,7 @@ jobs:
           node scripts/release-static-check.mjs
           node --experimental-strip-types --test scripts/release-five-gate-contract.test.mjs scripts/release-security-regression.test.mjs
           test -f config/d1-hotspot-v2-canary.hold
-          node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs
+          node --test scripts/tests/protected-d1-repair-plan.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/canonical-canary-stage2-only.test.mjs
           node --test scripts/tests/prepare-five-gate-control-token.test.mjs
           node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs scripts/tests/canary-hold-review-no-repromotion.test.mjs
