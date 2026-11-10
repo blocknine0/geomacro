@@ -200,15 +200,20 @@ jobs:
             }
             const {owner,repo}=context.repo;
             const {data:run}=await github.rest.actions.getWorkflowRun({owner,repo,run_id:num});
-            if(run.path!=='.github/workflows/canary-promotion.yml'||
-               run.event!=='workflow_dispatch'||run.head_branch!=='main'||
-               run.head_sha!==process.env.EXPECTED_SHA||
+            const eligible={
+              '.github/workflows/canary-promotion.yml':'protected-release',
+              '.github/workflows/geomacro-protected-hot50-worker-rollout.yml':
+                'protected-zero-and-gradual-rollout'
+            };
+            const expectedJob=eligible[run.path];
+            if(!expectedJob||run.event!=='workflow_dispatch'||
+               run.head_branch!=='main'||run.head_sha!==process.env.EXPECTED_SHA||
                run.conclusion!=='success'||run.status!=='completed'){
               core.setFailed('CANARY_HOLD_SIGNED_PRIOR_PROMOTION_RUN_NOT_VERIFIED');return;
             }
             const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
               owner,repo,run_id:num,per_page:100});
-            if(jobs.jobs.filter(x=>x.name==='protected-release'&&
+            if(jobs.jobs.filter(x=>x.name===expectedJob&&
                x.conclusion==='success').length!==1)
               core.setFailed('CANARY_HOLD_PRIOR_PROTECTED_PROMOTION_JOB_NOT_VERIFIED');
       - name: Download signed 0-to-100 canary artifacts without traffic replay
