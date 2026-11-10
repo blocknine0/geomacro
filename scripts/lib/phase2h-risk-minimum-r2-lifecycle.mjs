@@ -16,7 +16,7 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
     rules.length>1000||typeof prefix!=="string"||
     !prefix.startsWith("geomacro/private/phase2h-risk-minimum-br11/v2/"))
   die("EXACT_PROVIDER_LIFECYCLE_UNVERIFIED");
- let reviewed=0;
+ let reviewed=0,harmlessUnscopedMultipartAbort=0;
  for(const rule of rules){
   if(!rule||typeof rule!=="object"||Array.isArray(rule)||
      !["boolean","undefined"].includes(typeof rule.enabled))
@@ -24,9 +24,38 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
   if(rule.enabled!==true)continue;
   const prefixApplied=rule?.conditions?.prefix;
   if(typeof prefixApplied!=="string"){
-   // Missing exact prefix may be an account-wide rule; cannot rule out
-   // expiration of this private cold namespace. Fail closed.
-   die("BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED");
+   // Cloudflare may return an unscoped abort-incomplete-multipart-only
+   // housekeeping rule. It cannot expire a COMPLETED object. Admit ONLY
+   // the exact reviewed schema with an actual finite Age condition and
+   // absolutely no object deletion, version expiry or class transition.
+   // Unknown provider fields/actions remain HOLD, not a permissive fallback.
+   const keys=new Set(Object.keys(rule));
+   const allowed=["id","enabled","conditions","abortMultipartUploadsTransition",
+    "deleteObjectsTransition","deleteNoncurrentVersionsTransition",
+    "noncurrentVersionExpiration","expiration","storageClassTransition",
+    "storageClassTransitions"];
+   const cond=rule.conditions;
+   const abort=rule.abortMultipartUploadsTransition;
+   const age=abort?.condition;
+   const onlyHarmless=Array.from(keys).every(k=>allowed.includes(k))&&
+    (cond===undefined||(cond!==null&&typeof cond==="object"&&
+     !Array.isArray(cond)&&Object.keys(cond).every(k=>k==="prefix")&&
+     cond.prefix==null))&&
+    abort!==null&&typeof abort==="object"&&!Array.isArray(abort)&&
+    Object.keys(abort).every(k=>k==="condition")&&
+    age!==null&&typeof age==="object"&&!Array.isArray(age)&&
+    Object.keys(age).every(k=>["type","maxAge"].includes(k))&&
+    age.type==="Age"&&Number.isSafeInteger(age.maxAge)&&age.maxAge>0&&
+    rule.deleteObjectsTransition==null&&
+    rule.deleteNoncurrentVersionsTransition==null&&
+    rule.noncurrentVersionExpiration==null&&rule.expiration==null&&
+    rule.storageClassTransition==null&&
+    (rule.storageClassTransitions==null||
+     Array.isArray(rule.storageClassTransitions)&&
+      rule.storageClassTransitions.length===0);
+   if(!onlyHarmless)die("BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED");
+   harmlessUnscopedMultipartAbort++;
+   continue;
   }
   if(!prefix.startsWith(prefixApplied)&&
      !prefixApplied.startsWith(prefix))continue;
@@ -51,6 +80,7 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
   provider_readonly_observation:true,
   no_matching_auto_deletion:true,
   reviewed_applicable_rules:reviewed,
+  harmless_unscoped_multipart_abort_rules:harmlessUnscopedMultipartAbort,
   bucket_metadata_writes:0,b2_requests:0,payments_authorized:false,
   account_wide_r2_cost_headroom_verified:false
  });
