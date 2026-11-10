@@ -100,7 +100,7 @@ test("0211 covering-index ROWID join proves every key without full EXCEPT amplif
   const provider=(sql,max)=>{
    assert.doesNotMatch(sql,/\bEXCEPT\b/u);
    assert.match(sql,/^(?:SELECT |PRAGMA |EXPLAIN QUERY PLAN SELECT )/u);
-   if(sql.includes("COUNT(DISTINCT i.rowid)"))completeIndexJoins++;
+   if(sql.startsWith("SELECT ")&&sql.includes("COUNT(DISTINCT i.rowid)"))completeIndexJoins++;
    const rows=d.prepare(sql).all();
    assert(rows.length<=max);
    return rows;
