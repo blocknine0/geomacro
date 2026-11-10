@@ -49,6 +49,16 @@ test("non-deletion transitions into fee-bearing R2 class also HOLD",()=>{
  assert.throws(()=>assertPermanentRiskColdR2Lifecycle(actual),
   /PHASE2H_RISK_COLD_LIFECYCLE_COLD_PREFIX_EXPIRY_OR_PAID_CLASS_CONFLICT/u);
 });
+test("Cloudflare actual plural storageClassTransitions format also holds before cold WRITE",()=>{
+ const actual={success:true,result:{rules:[{
+  enabled:true,conditions:{prefix:"geomacro/private/phase2h-risk-minimum-br11/v2/"},
+  storageClassTransitions:[{condition:{type:"Age",maxAge:3600},
+   storageClass:"InfrequentAccess"}]
+ }]}};
+ assert.throws(()=>assertPermanentRiskColdR2Lifecycle(actual),
+  /PHASE2H_RISK_COLD_LIFECYCLE_COLD_PREFIX_EXPIRY_OR_PAID_CLASS_CONFLICT/u);
+});
+
 test("unknown/corrupt provider lifecycle never counts as missing rules",()=>{
  for(const doc of [null,{success:false,result:{rules:[]}},
   {success:true,result:{}},{success:true,result:{rules:null}},
