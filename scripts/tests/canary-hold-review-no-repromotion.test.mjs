@@ -81,6 +81,11 @@ test("release-hold uses separate signed successful prior promotion, never a seco
  assert.match(flow,/CANARY_HOLD_PRIOR_PROMOTION_RUN_ID_REQUIRED/);
  assert.match(flow,/CANARY_HOLD_PRIOR_PROTECTED_PROMOTION_JOB_NOT_VERIFIED/);
  assert.match(flow,/name: geomacro-five-gate-provider-receipts/);
+ const alt=readFileSync(".github/workflows/geomacro-protected-hot50-worker-rollout.yml","utf8");
+ assert.match(alt,/name: geomacro-five-gate-provider-receipts/);
+ assert.match(alt,/artifacts\/release\/canary-stage-\*\.json/);
+ assert.match(alt,/artifacts\/release\/canary-promotion\.json/);
+ assert.match(flow,/protected-zero-and-gradual-rollout/);
  assert.match(flow,/inputs.operation == 'release-hold'/);
  assert.match(flow,/canary-promoter\.ts --review-hold/);
  assert.doesNotMatch(flow,/canary-promoter\.ts --promote --release-hold/);
