@@ -90,7 +90,7 @@ test("B2-first exact raw JSON is immutable, atomic, indexed, and limited to 32 t
  assert.equal(plan.exact_original_json_bytes_required,true);
  assert.equal(plan.params.length,99);
  assert.equal(plan.d1_statements,1);
- assert.match(plan.sql,/expected\\(record_id,raw_sha256,raw_json\\)/u);
+ assert.ok(plan.sql.includes("expected(record_id,raw_sha256,raw_json)"));
  assert.match(plan.sql,/AND r.raw_json=e.raw_json/u);
  // Same record ID + immutable raw_sha256 but a different ingestion clock
  // must NOT be silently acknowledged as the same B2 object.
