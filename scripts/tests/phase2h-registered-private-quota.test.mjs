@@ -49,6 +49,8 @@ test("one immutable collision cannot halt other category originals",async()=>{
  assert.equal(receipt.stored,2);
  assert.equal(receipt.rejected_conflicts,1);
  assert.equal(receipt.verified_originals,2);
+ assert.deepEqual(receipt.verified_record_ids,[records[0].record_id,records[2].record_id]);
+ assert.deepEqual(receipt.quarantined_record_ids,[records[1].record_id]);
  assert.equal(receipt.readback_verified,true);
 });
 test("production registered-source script actually uses guarded admission",()=>{
