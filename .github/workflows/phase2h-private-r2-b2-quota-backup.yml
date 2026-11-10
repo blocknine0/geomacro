@@ -1,0 +1,100 @@
+name: Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)
+# Permanent DERIVED-only, Brotli-quality-11 AES-GCM compact Risk Gate archive.
+# Raw source texts remain ephemeral and are never written to this R2 prefix.
+# Writes NO production D1 tables, never calls B2, and cannot release Canary.
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Exact BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS"
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - ".github/workflows/phase2h-private-r2-b2-quota-backup.yml"
+      - "scripts/lib/phase2h-b2-r2-backup.mjs"
+      - "scripts/lib/phase2h-risk-gate-minimum-facts.mjs"
+      - "scripts/lib/phase2h-risk-minimum-r2-lifecycle.mjs"
+      - "scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs"
+      - "scripts/ops/phase2h-r2-b2-quota-backup.mjs"
+      - "scripts/tests/phase2h-r2-b2-quota-backup.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-phase2h-private-r2-b2-quota-hourly
+  cancel-in-progress: false
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Authenticated encrypted backup and failure regression
+        run: |
+          node --check scripts/lib/phase2h-risk-minimum-r2-lifecycle.mjs
+          node --test scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs
+          node --check scripts/lib/phase2h-risk-gate-minimum-facts.mjs
+          node --check scripts/lib/phase2h-b2-r2-backup.mjs
+          node --check scripts/ops/phase2h-r2-b2-quota-backup.mjs
+          node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs
+      - run: node scripts/ops/verify-github-workflow-inventory.mjs
+
+  private-r2-backup:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'schedule' &&
+        github.event.schedule == '43 * * * *') ||
+       (github.event_name == 'workflow_dispatch' &&
+        inputs.approval == 'BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: production
+    permissions:
+      contents: read
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
+      GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED: ${{ vars.GEOMACRO_D1_RECOVERY_R2_PRIVATE_APPROVED }}
+      GEOMACRO_D1_RECOVERY_AES256_KEY_B64: ${{ secrets.GEOMACRO_D1_RECOVERY_AES256_KEY_B64 }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+    steps:
+      - name: Checkout immutable main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Source code / encrypted-backup contract
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs scripts/tests/phase2h-risk-minimum-r2-lifecycle.test.mjs
+      - name: Independent real provider private R2 domain exposure check
+        run: node scripts/ops/audit-step3-r2-private-exposure.mjs
+      - name: Backup bounded canonical originals with provider R2 PUT and full-body GET
+        run: node scripts/ops/phase2h-r2-b2-quota-backup.mjs
+      - name: Durable redacted receipt for independent reviewer
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-phase2h-r2-b2-quota-backup
+          path: |
+            artifacts/release/phase2h-r2-b2-quota-backup.json
+            artifacts/release/step3-r2-private-exposure-readonly.json
+          retention-days: 7
+          if-no-files-found: warn

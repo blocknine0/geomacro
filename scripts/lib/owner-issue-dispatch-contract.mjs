@@ -17,6 +17,7 @@ export const OWNER_ISSUE_HANDSHAKE_TARGET="owner-dispatch-handshake.yml";
 export const OWNER_ISSUE_CANARY_CANDIDATE_TARGET="geomacro-optimized-worker-candidate.yml";
 export const OWNER_ISSUE_CANARY_ROLLOUT_TARGET="geomacro-protected-hot50-worker-rollout.yml";
 export const OWNER_ISSUE_HOLD_REVIEW_TARGET="canary-promotion.yml";
+export const OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET="phase2h-private-r2-b2-quota-backup.yml";
 export const OWNER_ISSUE_CANARY_SCHEMA="geomacro.owner-issue-dispatch.v2";
 const SHA=/^[a-f0-9]{40}$/u;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -24,6 +25,7 @@ const RUN_ID=/^[1-9][0-9]{5,20}$/u;
 const ISSUE_KEYS=["authorization","intent","schema","source_sha","verify_hot50"];
 const CANARY_KEYS=Object.freeze({
  "candidate-upload":ISSUE_KEYS,
+ "minimum-risk-facts-backup":ISSUE_KEYS,
  "canary-rollout":[...ISSUE_KEYS,
   "baseline_version_id","candidate_version_id","stage2_run_id"],
  "canary-hold-review":[...ISSUE_KEYS,
@@ -74,7 +76,7 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
     request.source_sha!==env.GITHUB_SHA||
     typeof request.verify_hot50!=="boolean")
   fail("STRICT_REQUEST_SCHEMA_OR_SHA_MISMATCH");
- if(isCanary&&request.intent!=="candidate-upload"&&(
+ if(isCanary&&["canary-rollout","canary-hold-review"].includes(request.intent)&&(
     !UUID.test(request.baseline_version_id??"")||
     !UUID.test(request.candidate_version_id??"")||
     request.baseline_version_id.toLowerCase()===
@@ -105,6 +107,11 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
   }
  };
  const canaryIntents={
+  "minimum-risk-facts-backup":{
+   authorization:"OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
+   verify_hot50:false,target:OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET,
+   inputs:{approval:"BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS"}
+  },
   "candidate-upload":{
    authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
    verify_hot50:false,target:OWNER_ISSUE_CANARY_CANDIDATE_TARGET,

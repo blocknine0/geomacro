@@ -291,6 +291,7 @@
     "phase2h-b2-independent-retention.yml",
     "phase2h-historical-recovery-10m.yml",
     "phase2h-manual-d1-storage-cleanup.yml",
+    "phase2h-private-r2-b2-quota-backup.yml",
     "phase2h-private-raw-archive.yml",
     "phase2i-195x3-source-coverage.yml",
     "phase2i-585-coverage-audit.yml",
@@ -474,6 +475,7 @@
     "owner-dispatch-handshake.yml",
     "owner-issue-dispatch-gateway.yml",
     "permanent-runtime-health.yml",
+    "phase2h-private-r2-b2-quota-backup.yml",
     "predge-research-continuity.yml",
     "predge-shared-d1-news-live-acceptance.yml",
     "predge-signed-market-public-verification.yml",
@@ -533,7 +535,8 @@
     "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)",
     "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator",
     "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds",
-    "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)"
+    "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)",
+    "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)"
   },
   "lockedTriggerStrings": {
     "owner-issue-dispatch-gateway.yml": [
@@ -665,6 +668,14 @@
       "environment: production",
       "github.ref == 'refs/heads/main'",
       "node scripts/ops/step3-d1-native-backend-readonly.mjs"
+    ],
+    "phase2h-private-r2-b2-quota-backup.yml": [
+      "cron: \"43 * * * *\"",
+      "environment: production",
+      "cancel-in-progress: false",
+      "audit-step3-r2-private-exposure.mjs",
+      "phase2h-r2-b2-quota-backup.mjs",
+      "GEOMACRO_D1_RECOVERY_AES256_KEY_B64"
     ]
   },
   "predgeBlobSha1": {

@@ -17,6 +17,12 @@ const env=()=>({
  GITHUB_ACTOR:"blocknine0",GITHUB_SHA:SHA,GITHUB_RUN_ID:"42860000001"
 });
 const configs={
+ "minimum-risk-facts-backup":{
+  authorization:"OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
+  verify_hot50:false,
+  target:"phase2h-private-r2-b2-quota-backup.yml",
+  inputs:{approval:"BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS"}
+ },
  "candidate-upload":{
   authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
   verify_hot50:false,
@@ -46,7 +52,7 @@ function fixture(intent){
  const request={
   schema:OWNER_ISSUE_CANARY_SCHEMA,intent,source_sha:SHA,
   authorization:c.authorization,verify_hot50:c.verify_hot50,
-  ...(intent==="candidate-upload"?{}:
+  ...(["candidate-upload","minimum-risk-facts-backup"].includes(intent)?{}:
    {baseline_version_id:BASELINE,candidate_version_id:CANDIDATE,
     stage2_run_id:"42860000010"}),
   ...(intent==="canary-hold-review"?
@@ -68,7 +74,7 @@ function fixture(intent){
 function plan(intent){return planOwnerIssueDispatch({
  event:fixture(intent).event,env:env(),now:NOW
 })}
-test("only three reviewed no-funds immutable canary operations are addressable",()=>{
+test("only reviewed no-funds immutable canary and private derived backup operations are addressable",()=>{
  for(const intent of Object.keys(configs)){
   const x=plan(intent),want=configs[intent];
   assert.equal(x.target,want.target);
@@ -96,7 +102,7 @@ test("all custom workflow, version, run, auth and SHA injection attempts fail be
    r=>{r.schema="geomacro.owner-issue-dispatch.v1";},
    r=>{r.intent="delete-hold";},
   ];
-  if(intent!=="candidate-upload")modifications.push(
+  if(["canary-rollout","canary-hold-review"].includes(intent))modifications.push(
    r=>{r.baseline_version_id="invalid";},
    r=>{r.candidate_version_id=BASELINE;},
    r=>{r.stage2_run_id="0";},

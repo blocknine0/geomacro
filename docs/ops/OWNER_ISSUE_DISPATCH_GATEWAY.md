@@ -150,6 +150,35 @@ gateway refuses moved main and consumes each issue only once. Use real,
 provider-derived immutable Worker version UUIDs and signed exact-main Step3/
 prior promotion run IDs. No guessing or placeholder IDs.
 
+### B2-limit private R2 minimum Risk Gate facts backup (no funds)
+
+After this repository feature merges and exact-head CI + CodeQL pass,
+create a trusted owner-authored issue titled GeoMacro Owner Dispatch Request.
+The issue body must have EXACTLY this v2 JSON shape, substituting only
+the actual current main SHA:
+
+~~~json
+{
+  "schema": "geomacro.owner-issue-dispatch.v2",
+  "intent": "minimum-risk-facts-backup",
+  "source_sha": "<exact-current-main-sha>",
+  "authorization": "OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
+  "verify_hot50": false
+}
+~~~
+
+Gateway only dispatches phase2h-private-r2-b2-quota-backup.yml with the
+fixed approval BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS. The protected
+runner independently revalidates main SHA, private bucket/domain
+exposure, canonical admin-only source export and AES-256-GCM Brotli
+quality-11 derived-facts full-body readback before reporting any PASS.
+No full original/news payload is written to long-term private R2.
+The gateway itself does NO B2/R2 call, D1 SQL, payment or Canary action.
+
+Provider receipt or HOLD (never assumed success) is in the protected
+Actions run. The backup is not an archived B2 original ACK, Standard
+corroboration, Complex signed GRO or permission to remove Canary HOLD.
+
 ### Zero-traffic candidate upload (after real Stage2 PASS)
 
 ~~~json
