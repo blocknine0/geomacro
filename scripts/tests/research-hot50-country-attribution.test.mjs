@@ -20,6 +20,20 @@ const {parse,aliases}=runInNewContext(pure+
  "\n({parse:countryFromTitle,aliases:HOT50_ORIGINAL_TITLE_ALIASES});",
  {COUNTRIES:countries});
 
+test("isolated Risk Gate state updates are restricted to exact Hot50, not the 195-country discovery mesh",()=>{
+ const match=src.match(/const HOT50_RISK_GATE_SCOPE=new Set\("([^"]+)"\.split\(" "\)\);/u);
+ assert.ok(match,"explicit Hot50 gate scope required");
+ const declared=match[1].split(" ");
+ const hot50=("USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AUS BRA MEX ITA ESP "+
+  "NLD CHE NOR SWE POL UKR TUR SAU ARE IRN ISR EGY QAT OMN IRQ ZAF NGA COD "+
+  "ZMB CHL PER ARG BOL IDN VNM THA MYS SGP PHL PAK BGD KAZ MNG MMR").split(" ");
+ assert.equal(new Set(declared).size,50);
+ assert.deepEqual([...declared].sort(),hot50.sort());
+ assert.match(src,/if\(!HOT50_RISK_GATE_SCOPE\.has\(e\.country\)\)continue;/u);
+ assert.ok(src.indexOf("if(!HOT50_RISK_GATE_SCOPE.has(e.country))continue;")<
+  src.indexOf("update_country_realtime_score"));
+});
+
 test("all owner-selected Hot50 countries get conservative explicit native-title aliases",()=>{
  const hot50=("USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AUS BRA MEX ITA ESP "+
   "NLD CHE NOR SWE POL UKR TUR SAU ARE IRN ISR EGY QAT OMN IRQ ZAF NGA COD "+
