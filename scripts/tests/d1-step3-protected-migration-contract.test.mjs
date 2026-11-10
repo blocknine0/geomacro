@@ -2,7 +2,8 @@ import {test} from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {STEP3_MIGRATIONS,step3SqlManifests,step3SizeProbeSQL,
- validateStep3SizeProbe,step3SchemaSQL,verifyStep3Schema,
+ validateStep3SizeProbe,step3NativeHistorySQL,
+ classifyStep3NativeHistory,step3SchemaSQL,verifyStep3Schema,
  verifyStep3Integrity,verifyStep3Explain,compareImmutableBaseline}
  from "../lib/d1-step3-migration-contract.mjs";
 import {parseStep3WranglerQuery}
@@ -36,6 +37,45 @@ test("bounded pre-seed and CREATE INDEX probe forbids >3k existing rows",()=>{
  assert.throws(()=>step3SizeProbeSQL(["sqlite_master;DELETE FROM x"]),
   /TABLE_SIZE_SCOPE_INVALID/u);
 });
+test("native D1 history distinguishes applied 0204/0211 from pending 0212/0213",()=>{
+ const manifests=step3SqlManifests();
+ const rows=[
+  {id:89,name:manifests[0].filename,applied_at:"2026-11-06 07:24:08"},
+  {id:96,name:manifests[1].filename,applied_at:"2026-11-07 16:41:52"}
+ ];
+ assert.match(step3NativeHistorySQL(),/FROM d1_migrations WHERE/);
+ const history=classifyStep3NativeHistory(manifests,rows);
+ assert.deepEqual(history.native_applied_ids,["0204","0211"]);
+ assert.deepEqual(history.pending_ids,["0212","0213"]);
+ assert.equal(history.sql_checksum_verified,false);
+ assert.equal(history.production_release_authorized,false);
+ assert.throws(()=>classifyStep3NativeHistory(manifests,[rows[0],rows[0]]),
+  /NATIVE_HISTORY_AMBIGUOUS_OR_CHANGED/);
+ assert.throws(()=>classifyStep3NativeHistory(manifests,
+  [{...rows[0],name:"0204_changed.sql"}]),
+  /NATIVE_HISTORY_AMBIGUOUS_OR_CHANGED/);
+ assert.throws(()=>classifyStep3NativeHistory(manifests,
+  [{id:100,name:manifests[2].filename,applied_at:"2026-11-10 09:00:00"}]),
+  /NATIVE_HISTORY_GAPPED/);
+ assert.throws(()=>classifyStep3NativeHistory(manifests,
+  [{...rows[0],applied_at:"unverified"}]),
+  /NATIVE_HISTORY_AMBIGUOUS_OR_CHANGED/);
+ assert.deepEqual(classifyStep3NativeHistory(manifests,[]).native_applied_ids,[]);
+ assert.deepEqual(classifyStep3NativeHistory(manifests,
+  manifests.map((m,i)=>({id:100+i,name:m.filename,
+   applied_at:"2026-11-10 09:00:00"}))).pending_ids,[]);
+});
+test("only pending DDL is size-probed; native schema is not acceptance",()=>{
+ const src=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ const a=src.indexOf("const nativeHistory=q(config,step3NativeHistorySQL()");
+ const b=src.indexOf("verifyStep3Schema(manifest.objects,observed.rows);",a);
+ const c=src.indexOf("boundedInputs(config,manifest,state);",b);
+ const d=src.indexOf("const checkpoint=await captureDurableD1Checkpoint",c);
+ assert(a>0&&b>a&&c>b&&d>c);
+ assert(src.includes('status:"SCHEMA_PRESENT_NOT_FULL_INTEGRITY_VERIFIED"'));
+ assert(src.includes('if(state.status!=="PASS")fail("FINAL_PROTECTED_READBACK_HELD")'));
+});
+
 test("exact D1 native meta readback refuses missing rows and nonzero writes",()=>{
  const positive=JSON.stringify([{success:true,results:[{name:"materialized_cache"}],
   meta:{rows_read:2,rows_written:0}}]);
