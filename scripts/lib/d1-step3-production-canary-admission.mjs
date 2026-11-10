@@ -40,6 +40,19 @@ export function admitSignedStep3ProductionForCanary({
  if(!Number.isFinite(started)||!Number.isFinite(ended)||
     started>ended||ended>now+120000||now-ended>3_600_000)
   fail("STALE_OR_NONMONOTONIC_PHYSICAL_PROOF");
+ const reference=report?.production_reference_table;
+ const empty=reference?.mode==="EMPTY_OPT_IN_TABLE_SCHEMA_VERIFIED"&&
+  reference.zero_pointer_table_vacuous_proof===true&&
+  reference.real_production_pointer_hmac_verified===false;
+ const signedPointer=reference?.mode===
+  "EXISTING_PRODUCTION_POINTERS_CRYPTOGRAPHICALLY_VERIFIED"&&
+  reference.zero_pointer_table_vacuous_proof===false&&
+  reference.real_production_pointer_hmac_verified===true;
+ // Signed provider proof must identify its EXACT post-DDL reference mode:
+ // no empty staging can masquerade as a cryptographically verified R2
+ // pointer, and no existing pointer can pass without the original HMAC.
+ if(!empty&&!signedPointer)
+  fail("REFERENCE_POINTER_MODE_OR_HMAC_EVIDENCE_UNVERIFIED");
  const checksums=manifests.map(x=>x.sql_sha256);
  const stages=report.verified;
  if(report.schema!=="geomacro.step3.migrations-execution.v1"||
