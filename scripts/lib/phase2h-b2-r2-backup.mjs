@@ -24,11 +24,12 @@ export const PHASE2H_R2_CURSOR_KEY=PREFIX+"cursor.json";
 const DOC_SCHEMA="geomacro.phase2h.risk-minimum-brotli11-aesgcm.v2";
 const CURSOR_SCHEMA="geomacro.phase2h.risk-minimum-cursor.v2";
 const HEX=/^[a-f0-9]{64}$/u, SHA=/^[a-f0-9]{40}$/u;
-const COLUMN_SHA=hash(JSON.stringify(MINIMUM_FACT_COLUMNS));
+
 const ISO=/^20\d{2}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u;
 const MAX_ROWS=25,MAX_BYTES=500_000,MAX_CIPHER=600_000;
 const err=code=>{throw Error("PHASE2H_R2_BACKUP_"+code)};
 const hash=b=>createHash("sha256").update(b).digest("hex");
+const COLUMN_SHA=hash(JSON.stringify(MINIMUM_FACT_COLUMNS));
 const canon=o=>JSON.stringify(o);
 function keys(secretB64){
  if(typeof secretB64!=="string"||!/^[A-Za-z0-9+/]{43}=$/u.test(secretB64))
