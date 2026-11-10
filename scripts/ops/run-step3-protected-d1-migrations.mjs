@@ -43,7 +43,8 @@ import {
 } from "../lib/d1-step3-migration-ledger.mjs";
 import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,
  admitStep30204SupportedIntegrity,STEP3_0119_WEBSITE_REVIEWED_INDEX,
- verifyStep30119WebsiteIndexDDL}
+ STEP3_PRE0212_REVIEWED_EXTRA_INDEXES,
+ verifyStep3ReviewedExtraIndexDDL}
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
@@ -268,16 +269,19 @@ const explainSQL=Object.freeze({
 });
 function auditStep30204IndexLineage(table,query){
  const p=auditStep3AllIndexesCurrentRows(table,query);
- if(table!=="website_derived_intelligence"||
-    !p.index_proofs.some(x=>x.index===STEP3_0119_WEBSITE_REVIEWED_INDEX))
-  return p;
- // Only the exact previous 0119 index shape is allowed, verified against
- // real same-target D1 sqlite_schema, not merely a count or a name.
- const ddl=query("SELECT name,type,tbl_name,sql FROM sqlite_schema WHERE "+
-  "name='idx_website_risk_raw_source_scan' AND "+
-  "tbl_name='website_derived_intelligence' AND type='index' LIMIT 2",2);
- return {...p,reviewed_0119_index_ddl_verified:
-  verifyStep30119WebsiteIndexDDL(ddl)};
+ const approved=STEP3_PRE0212_REVIEWED_EXTRA_INDEXES[table];
+ if(!Array.isArray(approved))fail("UNREVIEWED_0204_SOURCE_TABLE");
+ const verified={};
+ for(const name of approved){
+  if(!p.index_proofs.some(x=>x.index===name))continue;
+  // Only exact known 0110/0117/0119 DDL is admitted, always same-target.
+  const sql="SELECT name,type,tbl_name,sql FROM sqlite_schema WHERE "+
+   "name='"+name+"' AND tbl_name='"+table+"' AND type='index' LIMIT 2";
+  verified[name]=verifyStep3ReviewedExtraIndexDDL(table,name,query(sql,2));
+ }
+ return {...p,reviewed_extra_index_ddl_verified:verified,
+  reviewed_0119_index_ddl_verified:
+   verified[STEP3_0119_WEBSITE_REVIEWED_INDEX]===true};
 }
 
 function checkIndexAndSchema(config,step,report){
@@ -322,7 +326,10 @@ function checkIndexAndSchema(config,step,report){
   report.provider_0204_index_registry=integrity.map(p=>({
    table:p.table,index_count:p.total_existing_indexes,
    index_names:p.index_proofs.map(x=>x.index).sort(),
-   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true
+   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true,
+   reviewed_0110_0117_exact_ddl:
+    p.table==="private_osint_news_25h"?
+     p.reviewed_extra_index_ddl_verified:null
   }));
   save(report);
   const accepted=admitStep30204SupportedIntegrity(integrity);
@@ -475,7 +482,7 @@ function checkIndexAndSchema(config,step,report){
      (hourly.original_pending_source_nonempty&&
       source.raw_source_has_rows!==true))
    fail("0212_SOURCE_PARTIAL_INDEX_AND_HOURLY_PENDING_CONTRADICTION");
-  mark("SUPPORTED_0212_0204_PLUS_V3_FOURTEEN_INDEX_LINEAGE");
+  mark("SUPPORTED_0212_COMPLETE_REVIEWED_14_TO_17_INDEX_LINEAGE");
   const lineageTables=[
    "private_osint_news_25h","private_osint_source_checks_24h",
    "website_derived_intelligence"
@@ -485,15 +492,19 @@ function checkIndexAndSchema(config,step,report){
   report.provider_0212_index_lineage_registry=lineageInputs.map(p=>({
    table:p.table,index_count:p.total_existing_indexes,
    index_names:p.index_proofs.map(x=>x.index).sort(),
-   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true
+   reviewed_0119_exact_ddl:p.reviewed_0119_index_ddl_verified===true,
+   reviewed_0110_0117_exact_ddl:
+    p.table==="private_osint_news_25h"?
+     p.reviewed_extra_index_ddl_verified:null
   }));
   save(report);
   const lineage=admitStep30204SupportedIntegrity(lineageInputs);
-  if(![
-      "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY",
-      "PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY"
-     ].includes(lineage.status)||
-     lineage.existing_index_count!==14||
+  if(!lineage.status.startsWith("PASS_D1_SUPPORTED_0204_")||
+     !Number.isSafeInteger(lineage.existing_index_count)||
+     lineage.existing_index_count<14||
+     lineage.existing_index_count>17||
+     lineage.existing_index_count!==
+      14+lineage.reviewed_extra_index_count||
      lineage.all_0212_v3_additive_index_memberships_verified!==true||
      lineage.later_0212_ledger_verified!==false||
      lineage.production_release_authorized!==false)
@@ -501,11 +512,12 @@ function checkIndexAndSchema(config,step,report){
   report.supported_integrity_0212={
    status:source.fully_nonvacuous_data_memberships_proven&&
        hourly.original_pending_source_nonempty?
-       "PASS_FRESH_NONEMPTY_0212_CENSUS_AND_ALL_TWENTY_TWO_INDEXES":
+       "PASS_FRESH_NONEMPTY_0212_CENSUS_AND_ALL_REVIEWED_INDEXES":
        "PASS_REVIEWED_0212_STRUCTURE_WITH_NO_NONVACUOUS_PENDING_CLAIM",
    exact_hour_bins_verified:true,
-   index_count:22,full_source_indexes:5,partial_source_indexes:2,
-   verified_0204_0212_lineage_indexes:14,
+   index_count:lineage.existing_index_count+8,
+   full_source_indexes:5,partial_source_indexes:2,
+   verified_0204_0212_lineage_indexes:lineage.existing_index_count,
    pending_source_nonempty:hourly.original_pending_source_nonempty,
    partial_indexes_both_nonvacuous:
     source.partial_index_proof.nonvacuous_index_membership_proven,

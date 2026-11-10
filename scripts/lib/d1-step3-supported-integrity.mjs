@@ -225,6 +225,47 @@ export function verifyStep30119WebsiteIndexDDL(rows){
  return true;
 }
 
+/**
+ * Earlier, independently reviewed migrations add exactly these index objects
+ * before 0212. Do not confuse this production 15-index lineage with Shadow's
+ * 12-index fixture or a genuine post-0212 17-index state.
+ */
+export const STEP3_PRE0212_REVIEWED_EXTRA_INDEXES=Object.freeze({
+ private_osint_news_25h:Object.freeze([
+  "idx_private_osint_unified_country_category_clock",
+  "idx_osint_derived_discovery_cursor"
+ ]),
+ private_osint_source_checks_24h:Object.freeze([]),
+ website_derived_intelligence:Object.freeze([
+  STEP3_0119_WEBSITE_REVIEWED_INDEX
+ ])
+});
+const REVIEWED_EXTRA_DDL=Object.freeze({
+ idx_private_osint_unified_country_category_clock:
+  "createindexidx_private_osint_unified_country_category_clock"+
+  "onprivate_osint_news_25h(country_iso3,category,native_feed_published_atdesc,item_iddesc)",
+ idx_osint_derived_discovery_cursor:
+  "createindexidx_osint_derived_discovery_cursor"+
+  "onprivate_osint_news_25h(first_seen_at,item_id)",
+ idx_website_risk_raw_source_scan:
+  "createindexidx_website_risk_raw_source_scan"+
+  "onwebsite_derived_intelligence(first_seen_at,id)"
+});
+export function verifyStep3ReviewedExtraIndexDDL(table,name,rows){
+ const allowed=STEP3_PRE0212_REVIEWED_EXTRA_INDEXES[table];
+ const expected=REVIEWED_EXTRA_DDL[name],r=rows?.[0];
+ if(!Array.isArray(allowed)||!allowed.includes(name)||!expected||
+    !Array.isArray(rows)||rows.length!==1||
+    Object.keys(r??{}).some(k=>!["name","type","tbl_name","sql"].includes(k))||
+    r?.type!=="index"||r?.name!==name||r?.tbl_name!==table||
+    typeof r.sql!=="string")
+   fail("REVIEWED_EXTRA_INDEX_DDL_UNVERIFIED");
+ const normalized=r.sql.toLowerCase().replace(/["\x60]/gu,"")
+  .replace(/\s+/gu,"").replace("ifnotexists","").replace(/;$/u,"");
+ if(normalized!==expected)fail("REVIEWED_EXTRA_INDEX_DDL_UNVERIFIED");
+ return true;
+}
+
 export function admitStep30204SupportedIntegrity(proofs){
  const tables=Object.keys(STEP3_0204_EXPECTED_EXISTING_INDEXES);
  if(!Array.isArray(proofs)||proofs.length!==tables.length)
@@ -234,12 +275,22 @@ export function admitStep30204SupportedIntegrity(proofs){
  const website=proofs[2],osint=proofs[0];
  const has0119=website?.index_proofs?.some(x=>
   x.index===STEP3_0119_WEBSITE_REVIEWED_INDEX)===true;
+ const has0110=osint?.index_proofs?.some(x=>
+  x.index==="idx_private_osint_unified_country_category_clock")===true;
+ const has0117=osint?.index_proofs?.some(x=>
+  x.index==="idx_osint_derived_discovery_cursor")===true;
  const has0212=osint?.index_proofs?.some(x=>
   x.index===STEP3_0212_ADDITIVE_INDEX_LINEAGE.private_osint_news_25h[0])===true;
- const expectedTotal=12+(has0119?1:0)+(has0212?2:0);
- if(![12,13,14,15].includes(observedTotal)||
+ const has0212Website=website?.index_proofs?.some(x=>
+  x.index===STEP3_0212_ADDITIVE_INDEX_LINEAGE.website_derived_intelligence[0])===true;
+ const additional=[has0110,has0117,has0119].filter(Boolean).length;
+ const expectedTotal=12+additional+(has0212?2:0);
+ if(has0212!==has0212Website||
     observedTotal!==expectedTotal||
-    (has0119&&website.reviewed_0119_index_ddl_verified!==true))
+    observedTotal<12||observedTotal>17||
+    (has0119&&website.reviewed_0119_index_ddl_verified!==true)||
+    (has0110&&osint?.reviewed_extra_index_ddl_verified?.idx_private_osint_unified_country_category_clock!==true)||
+    (has0117&&osint?.reviewed_extra_index_ddl_verified?.idx_osint_derived_discovery_cursor!==true))
   fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
  const future=has0212;
  let count=0;
@@ -247,8 +298,8 @@ export function admitStep30204SupportedIntegrity(proofs){
   const table=tables[i],p=proofs[i];
   const expected=[...STEP3_0204_EXPECTED_EXISTING_INDEXES[table],
    ...(future?STEP3_0212_ADDITIVE_INDEX_LINEAGE[table]:[]),
-   ...(table==="website_derived_intelligence"&&has0119?
-    [STEP3_0119_WEBSITE_REVIEWED_INDEX]:[])];
+   ...STEP3_PRE0212_REVIEWED_EXTRA_INDEXES[table].filter(name=>
+    p?.index_proofs?.some(x=>x.index===name))];
   if(p?.table!==table||
      p.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
      p.total_existing_indexes!==expected.length||
@@ -274,11 +325,16 @@ export function admitStep30204SupportedIntegrity(proofs){
  if(count!==observedTotal)
   fail("0204_EXACT_INDEX_CARDINALITY_UNVERIFIED");
  return Object.freeze({
-  status:future?
-   (has0119?"PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY":
-    "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"):
-   (has0119?"PASS_D1_SUPPORTED_0204_PLUS_0119_THIRTEEN_INDEX_LOGICAL_INTEGRITY":
-    "PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY"),
+  status:(has0110&&has0117&&has0119)?
+   (future?"PASS_D1_SUPPORTED_0204_PLUS_0110_0117_0119_AND_0212_SEVENTEEN_INDEX_LOGICAL_INTEGRITY":
+    "PASS_D1_SUPPORTED_0204_PLUS_0110_0117_0119_FIFTEEN_INDEX_LOGICAL_INTEGRITY"):
+   (has0110||has0117)?
+    "PASS_D1_SUPPORTED_0204_REVIEWED_"+observedTotal+"_INDEX_LOGICAL_INTEGRITY":
+    (future?
+     (has0119?"PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY":
+      "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"):
+     (has0119?"PASS_D1_SUPPORTED_0204_PLUS_0119_THIRTEEN_INDEX_LOGICAL_INTEGRITY":
+      "PASS_D1_SUPPORTED_0204_THREE_TABLE_TWELVE_INDEX_INTEGRITY")),
   provider_query_proofs_required:true,
   quick_check_fk_all_indexes_and_unique_verified:true,
   index_lineage:future?
@@ -286,6 +342,13 @@ export function admitStep30204SupportedIntegrity(proofs){
     "0204_PLUS_REVIEWED_0212_ADDITIVE_PAIR"):
    (has0119?"0204_PLUS_REVIEWED_0119_WEBSITE_SCAN":"0204_ONLY"),
   reviewed_0119_production_website_index_verified:has0119,
+  reviewed_0110_osint_index_verified:has0110,
+  reviewed_0117_osint_index_verified:has0117,
+  reviewed_extra_index_count:additional,
+  exact_15_index_pre0212_production_lineage_verified:
+   !future&&has0110&&has0117&&has0119&&observedTotal===15,
+  exact_17_index_post0212_production_lineage_verified:
+   future&&has0110&&has0117&&has0119&&observedTotal===17,
   all_0212_v3_additive_index_memberships_verified:future,
   later_0212_native_migration_history_verified:false,
   later_0212_ledger_verified:false,

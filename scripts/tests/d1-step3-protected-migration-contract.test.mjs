@@ -306,12 +306,103 @@ test("0119 website risk-source index is admitted only as exact migration DDL and
  assert.match(migration,
   /CREATE INDEX IF NOT EXISTS idx_website_risk_raw_source_scan\s+ON website_derived_intelligence\(first_seen_at,id\)/u);
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
- assert.match(runner,/verifyStep30119WebsiteIndexDDL\(ddl\)/u);
+ assert.match(runner,/verifyStep3ReviewedExtraIndexDDL\(table,name,query\(sql,2\)\)/u);
  assert.match(runner,/provider_0204_index_registry=integrity\.map/u);
  assert.match(runner,/provider_0212_index_lineage_registry=lineageInputs\.map/u);
  assert.doesNotMatch(runner,/report\.provider_0204_index_registry=integrity;/u);
  assert.match(runner,/auditStep30204IndexLineage\(table,checked\)/u);
- assert.match(runner,/PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY/u);
+ assert.match(runner,/lineage\.existing_index_count!==/u);
+ assert.match(runner,/14\+lineage\.reviewed_extra_index_count/u);
+});
+
+test("Nov 10 real production 15-index pre-0212 registry has exact reviewed 0110/0117/0119 DDL",async()=>{
+ const {
+  STEP3_0204_EXPECTED_EXISTING_INDEXES,
+  STEP3_PRE0212_REVIEWED_EXTRA_INDEXES,
+  STEP3_0212_ADDITIVE_INDEX_LINEAGE,
+  verifyStep3ReviewedExtraIndexDDL,
+  admitStep30204SupportedIntegrity
+ }=await import("../lib/d1-step3-supported-integrity.mjs");
+ const DDL=[
+  {table:"private_osint_news_25h",
+   name:"idx_private_osint_unified_country_category_clock",
+   sql:"CREATE INDEX idx_private_osint_unified_country_category_clock\n ON private_osint_news_25h(country_iso3,category,native_feed_published_at DESC,item_id DESC)",
+   file:"workers/control-plane/migrations/0110_unified_private_osint_evidence_index.sql"},
+  {table:"private_osint_news_25h",
+   name:"idx_osint_derived_discovery_cursor",
+   sql:"CREATE INDEX idx_osint_derived_discovery_cursor\n ON private_osint_news_25h(first_seen_at,item_id)",
+   file:"workers/control-plane/migrations/0117_derived_risk_gate_discovery_bridge.sql"},
+  {table:"website_derived_intelligence",
+   name:"idx_website_risk_raw_source_scan",
+   sql:"CREATE INDEX idx_website_risk_raw_source_scan\n ON website_derived_intelligence(first_seen_at,id)",
+   file:"workers/control-plane/migrations/0119_derived_risk_gate_website_raw.sql"}
+ ];
+ for(const d of DDL){
+  const source=readFileSync(d.file,"utf8");
+  assert(source.includes(d.sql.replace("CREATE INDEX ","CREATE INDEX IF NOT EXISTS ")));
+  const row={name:d.name,type:"index",tbl_name:d.table,sql:d.sql};
+  assert.equal(verifyStep3ReviewedExtraIndexDDL(d.table,d.name,[row]),true);
+  for(const wrong of [
+    {...row,sql:row.sql.replace("CREATE INDEX","CREATE UNIQUE INDEX")},
+    {...row,sql:row.sql.replace(" ON "," ON not_the_table ")},
+    {...row,tbl_name:"another_table"},
+    {...row,name:"idx_unreviewed"}
+  ])assert.throws(()=>verifyStep3ReviewedExtraIndexDDL(d.table,d.name,[wrong]),
+   /STEP3_ALL_INDEX_REVIEWED_EXTRA_INDEX_DDL_UNVERIFIED/u);
+ }
+ function build({extra=true,future=false,unreviewed=false}={}){
+  const entries=Object.entries(STEP3_0204_EXPECTED_EXISTING_INDEXES);
+  return entries.map(([table,names])=>{
+   const extras=extra?STEP3_PRE0212_REVIEWED_EXTRA_INDEXES[table]:[];
+   const list=[...names,...extras,...(future?STEP3_0212_ADDITIVE_INDEX_LINEAGE[table]:[]),
+    ...(unreviewed&&table==="private_osint_news_25h"?["idx_unknown"]:[])];
+   return {
+    table,status:"PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF",
+    total_existing_indexes:list.length,
+    index_proofs:list.map(index=>({
+     index,rows_compared:table==="private_osint_news_25h"?2787:44,
+     unique_verified:index.startsWith("sqlite_autoindex_"),
+     status:"PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"
+    })),
+    reviewed_0119_index_ddl_verified:extra&&table==="website_derived_intelligence",
+    reviewed_extra_index_ddl_verified:Object.fromEntries(extras.map(x=>[x,true])),
+    all_indexes_including_unique_considered:true,
+    real_sqlite_integrity_check_claimed:false,
+    physical_file_integrity_claimed:false,
+    raw_private_content_exposed:false
+   };
+  });
+ }
+ const actual=admitStep30204SupportedIntegrity(build());
+ assert.equal(actual.existing_index_count,15);
+ assert.equal(actual.status,
+  "PASS_D1_SUPPORTED_0204_PLUS_0110_0117_0119_FIFTEEN_INDEX_LOGICAL_INTEGRITY");
+ assert.equal(actual.exact_15_index_pre0212_production_lineage_verified,true);
+ assert.equal(actual.production_release_authorized,false);
+ const post=admitStep30204SupportedIntegrity(build({future:true}));
+ assert.equal(post.existing_index_count,17);
+ assert.equal(post.exact_17_index_post0212_production_lineage_verified,true);
+ assert.equal(post.all_0212_v3_additive_index_memberships_verified,true);
+ assert.equal(admitStep30204SupportedIntegrity(build({extra:false})).existing_index_count,12);
+ assert.equal(admitStep30204SupportedIntegrity(build({extra:false,future:true})).existing_index_count,14);
+ const invalid=[
+  build({unreviewed:true}),
+  build().map((p,i)=>i===0?{...p,
+    reviewed_extra_index_ddl_verified:{...p.reviewed_extra_index_ddl_verified,
+     idx_osint_derived_discovery_cursor:false}}:p),
+  build({future:true}).map((p,i)=>i===2?{...p,
+    index_proofs:p.index_proofs.filter(x=>x.index!=="idx_website_derived_category_clock_v3"),
+    total_existing_indexes:p.total_existing_indexes-1}:p),
+  build().map((p,i)=>i===1?{...p,index_proofs:p.index_proofs.map((x,j)=>
+    j===0?{...x,rows_compared:0}:x)}:p)
+ ];
+ for(const bad of invalid)
+  assert.throws(()=>admitStep30204SupportedIntegrity(bad),/STEP3_ALL_INDEX_/u);
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/auditStep30204IndexLineage\(table,checked\)/u);
+ assert.match(runner,/lineage\.reviewed_extra_index_count/u);
+ assert.match(runner,/verified_0204_0212_lineage_indexes:lineage\.existing_index_count/u);
+ assert.match(runner,/verifyStep3ReviewedExtraIndexDDL\(table,name,query\(sql,2\)\)/u);
 });
 
 test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APPLIED ledger can reconcile",async()=>{
@@ -355,7 +446,9 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/admitStep30204SupportedIntegrity\(lineageInputs\)/u);
  assert.match(runner,/SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED/u);
  assert.match(runner,/0212_SOURCE_PARTIAL_INDEX_AND_HOURLY_PENDING_CONTRADICTION/u);
- assert.match(runner,/PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY/u);
+ assert.match(runner,/lineage\.existing_index_count<14/u);
+ assert.match(runner,/lineage\.existing_index_count>17/u);
+ assert.match(runner,/14\+lineage\.reviewed_extra_index_count/u);
  assert.match(runner,/source_original_B2_byte_readback_claimed:false/u);
  assert.match(runner,/independent_pointer_HMAC_R2_B2_and_worker_proofs_required:true/u);
  assert.match(runner,/UNREVIEWED_STEP3_MIGRATION_INTEGRITY_ID/u);
