@@ -53,7 +53,8 @@ import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
  step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
- classifyStep3NativeHistory,step3SchemaSQL,
+ classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
+ validateStep30212PendingSourcePreflight,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
@@ -196,7 +197,13 @@ function ensureLedger(config,manifests,report){
  return map;
 }
 async function refreshedGate(report,stage){
- const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind==="shadow"?"shadow":"migration"});
+ const estimate=report.operation_kind==="production"?
+   report.large_0212_production_cost_envelope:null;
+ const x=await checkD1PaidMonthlyHeadroom({
+  lane:report.operation_kind==="shadow"?"shadow":"migration",
+  estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
+  estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0
+ });
  report.latest_headroom={stage,status:x.status,code:x.code,
   day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
@@ -668,9 +675,21 @@ export async function applyStep3Migrations({env=process.env}={}){
      provider_rows_read:observed.readRows
     });
     save(state);
+   }else if(manifest.id==="0212"){
+    // The 0212 source is genuinely >3000 rows in production. Admit only a
+    // reviewed one-time bounded 24k-source envelope; the entire existing
+    // SQL hash, seven-index audit, pending-hour parity, and 30% Paid
+    // reserve are unchanged. If unverified, stop BEFORE checkpoint/DDL.
+    const source=q(config,step30212PendingSourcePreflightSQL(),{maxRows:1});
+    if(source.readRows>200000)
+     fail("0212_PREFLIGHT_PROVIDER_READ_COST_EXCEEDED");
+    state.large_0212_production_cost_envelope=
+     validateStep30212PendingSourcePreflight(source.rows);
+    state.large_0212_preflight_provider_rows_read=source.readRows;
+    save(state);
+    await refreshedGate(state,"LARGE_0212_ESTIMATED_COST_AFTER_SOURCE_PROBE");
    }else{
-    // Large pending 0212 still needs a reviewed bounded build/backfill.
-    // A missing history record is NEVER an excuse to skip its cost gate.
+    // Any other pending migration retains the strict 3k bound.
     boundedInputs(config,manifest,state);
    }
   }
