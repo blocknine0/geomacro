@@ -206,7 +206,7 @@ test("sampled immutable source SHA cannot silently change during schema migratio
  assert.throws(()=>compareImmutableBaseline(hash,"0".repeat(64)),
   /LEGACY_IMMUTABLE_SAMPLE_CHANGED/u);
 });
-test("real bearer required; missing production HMAC only permits strict new 0213 schema staging",()=>{
+test("real bearer required; absent HMAC permits only fresh or exactly empty 0213",()=>{
  const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  const approval=r.indexOf("function approved(env)");
  const auth=r.indexOf("PRODUCTION_CONTROL_BEARER_MISSING",approval);
@@ -216,7 +216,15 @@ test("real bearer required; missing production HMAC only permits strict new 0213
  const ledger=r.indexOf("const ledger=ensureLedger(config,manifests,state)",backup);
  assert(approval>0&&auth>approval&&off>auth&&schema>off&&backup>schema&&ledger>backup);
  assert.match(r,/env.CONTROL_PLANE_TOKEN.length<32/u);
- assert.match(r,/UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC/u);
+ // A native-applied 0213 is admissible only when the actual deployed
+ // ref-only switches are OFF and the existing table is proven EMPTY by
+ // exact D1 index/PK, quick/FK and forced-plan proof before any mutation.
+ const native=r.indexOf('const applied0213=state.native_history_preflight.native_applied_ids.includes("0213")');
+ const fullAudit=r.indexOf("auditStep30213EmptyRefStructure(checked)",native);
+ const admission=r.indexOf("admitUnsigned0213AppliedEmptyResume({",fullAudit);
+ assert(native>off&&fullAudit>native&&admission>fullAudit&&backup>admission);
+ assert.match(r,/UNSIGNED_0213_PRECHECK_READ_BUDGET_EXCEEDED/u);
+ assert.match(r,/refOnlyOffProof:state.production_ref_only_live_off_proof/u);
  assert.match(r,/status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY"/u);
  assert.match(r,/original_pointer_bytes_or_hmac_claimed:false/u);
  assert.match(r,/NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC/u);
