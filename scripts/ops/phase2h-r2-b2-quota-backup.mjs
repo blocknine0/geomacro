@@ -38,11 +38,25 @@ const NOW_BACKUP_ENDPOINT=
  "https://geomacro-control-plane.daspallab202391.workers.dev";
 const repo="blocknine0/geomacro";
 const fail=s=>{throw Error("PHASE2H_R2_BACKUP_"+s)};
+const BACKUP_PHASES=Object.freeze([
+ "ADMISSION","EXACT_MAIN","PRIVATE_BUCKET","PROVIDER_LIFECYCLE",
+ "CURSOR_LOOKUP","PRIOR_BACKUP_READBACK","CANONICAL_ORIGINAL_EXPORT",
+ "MINIMUM_FACT_PROJECTION","HOUR_OBJECT_LOOKUP","HOUR_OBJECT_PUT",
+ "HOUR_OBJECT_GET","HOUR_OBJECT_DECRYPT","CURSOR_PUT",
+ "CURSOR_GET","COMPLETE"
+]);
+let backupPhase="ADMISSION";
+const markStage=s=>{if(!BACKUP_PHASES.includes(s))fail("UNREVIEWED_DIAGNOSTIC_STAGE");
+ backupPhase=s;};
 const sha=b=>createHash("sha256").update(b).digest("hex");
 const redacted=e=>{
  const message=String(e?.message??"");
- return /^PHASE2H_R2_BACKUP_[A-Z0-9_]{3,100}$/u.test(message)?
-  message:"PHASE2H_R2_BACKUP_PROVIDER_OR_INTEGRITY_UNKNOWN";
+ if(/^PHASE2H_R2_BACKUP_[A-Z0-9_]{3,100}$/u.test(message))
+  return message;
+ if(/^PHASE2H_RISK_COLD_LIFECYCLE_[A-Z0-9_]{3,100}$/u.test(message)||
+    /^PHASE2H_RISK_MINIMUM_[A-Z0-9_]{3,100}$/u.test(message))
+  return "PHASE2H_R2_BACKUP_"+message;
+ return "PHASE2H_R2_BACKUP_PROVIDER_OR_INTEGRITY_UNKNOWN";
 };
 function admission(env,now){
  if(env.GITHUB_ACTIONS!=="true"||
@@ -174,17 +188,20 @@ export async function backupPhase2hPrivateOriginals({
  readExportImpl=readExport,storage=r2Call,validateBucket=privateBucket,
  validateLifecycle=verifyPermanentRiskColdR2Lifecycle
 }={}){
- admission(env,now);
- await exactMain(env,fetchImpl);
- await validateBucket(env,fetchImpl);
+ markStage("ADMISSION");admission(env,now);
+ markStage("EXACT_MAIN");await exactMain(env,fetchImpl);
+ markStage("PRIVATE_BUCKET");await validateBucket(env,fetchImpl);
+ markStage("PROVIDER_LIFECYCLE");
  const lifecycle=await validateLifecycle({env,fetchImpl});
  if(lifecycle?.status!=="PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES"||
     lifecycle?.no_matching_auto_deletion!==true)
   fail("COLD_R2_LIFECYCLE_NOT_PROVEN_PERMANENT");
  const secretB64=env.GEOMACRO_D1_RECOVERY_AES256_KEY_B64;
+ markStage("CURSOR_LOOKUP");
  const state=await storage("GET",PHASE2H_R2_CURSOR_KEY,env,fetchImpl);
  const cursor=state?openPhase2hBackupCursor({body:state,secretB64}):null;
  if(cursor){
+  markStage("PRIOR_BACKUP_READBACK");
   // Prove previous cursor still addresses exactly a genuinely readable
   // AES-GCM object before advancing the canonical D1 keyset.
   const old=await storage("GET",cursor.object_key,env,fetchImpl);
@@ -198,6 +215,7 @@ export async function backupPhase2hPrivateOriginals({
      minimumFactClock(verified.records.at(-1))!==cursor.last_clock)
    fail("PRIOR_BACKUP_KEYSET_CURSOR_DIVERGED");
  }
+ markStage("CANONICAL_ORIGINAL_EXPORT");
  const answer=await readExportImpl(env,fetchImpl,cursor);
  if(answer.rows.length===0){
   return Object.freeze({
@@ -206,11 +224,13 @@ export async function backupPhase2hPrivateOriginals({
    b2_ack_verified:false,b2_inventory_proven:false,canary_hold_removed:false
   });
  }
+ markStage("MINIMUM_FACT_PROJECTION");
  const source=phase2hBackupSourceRows(answer.rows,now);
  const expectedFacts=minimumRiskFactsFromOriginals(source);
  const plan=sealPhase2hR2Backup({
   rows:source,now,sourceSha:env.GITHUB_SHA,secretB64
  });
+ markStage("HOUR_OBJECT_LOOKUP");
  const found=await storage("GET",plan.key,env,fetchImpl);
  let archivedSourceSha=env.GITHUB_SHA;
  if(found){
@@ -226,14 +246,17 @@ export async function backupPhase2hPrivateOriginals({
  }else{
   // At most ONE bundle PUT per UTC-hour, after authenticated original export.
   await exactMain(env,fetchImpl);
+  markStage("HOUR_OBJECT_PUT");
   await storage("PUT",plan.key,env,fetchImpl,plan.body);
  }
+ markStage("HOUR_OBJECT_GET");
  const physical=await storage("GET",plan.key,env,fetchImpl);
  const trustedBytes=found??plan.body;
  const trustedSha=sha(trustedBytes);
  if(!physical||sha(physical)!==trustedSha||
     !physical.equals(trustedBytes))
   fail("INDEPENDENT_PRIVATE_R2_READBACK_MISMATCH");
+ markStage("HOUR_OBJECT_DECRYPT");
  const restored=openPhase2hR2Backup({
   body:physical,secretB64,expectedHour:plan.hour,
   expectedSha:archivedSourceSha
@@ -250,7 +273,9 @@ export async function backupPhase2hPrivateOriginals({
   cycleComplete:answer.scan_complete,secretB64
  });
  await exactMain(env,fetchImpl);
+ markStage("CURSOR_PUT");
  await storage("PUT",PHASE2H_R2_CURSOR_KEY,env,fetchImpl,next);
+ markStage("CURSOR_GET");
  const verify=await storage("GET",PHASE2H_R2_CURSOR_KEY,env,fetchImpl);
  if(!verify||!verify.equals(next))
   fail("CURSOR_WRITE_READBACK_UNVERIFIED");
@@ -258,6 +283,7 @@ export async function backupPhase2hPrivateOriginals({
  if(checked.object_sha256!==trustedSha||
     checked.object_key!==plan.key)
   fail("CURSOR_BACKUP_LINKAGE_INVALID");
+ markStage("COMPLETE");
  return Object.freeze({
   schema:"geomacro.phase2h.r2-minimum-risk-facts-brotli11-receipt.v2",
   status:"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP",
@@ -288,6 +314,7 @@ if(process.argv[1]&&import.meta.url===
   if(!receipt.provider_private_r2_put_readback)process.exitCode=3;
  }catch(e){
   console.error(JSON.stringify({status:"HOLD",code:redacted(e),
+   diagnostic_stage:backupPhase,
    private_originals_logged:false,b2_parity_claimed:false,
    canary_hold_unchanged:true,paid_delivery_authorized:false}));
   process.exitCode=3;
