@@ -159,6 +159,18 @@ test("sampled immutable source SHA cannot silently change during schema migratio
  assert.throws(()=>compareImmutableBaseline(hash,"0".repeat(64)),
   /LEGACY_IMMUTABLE_SAMPLE_CHANGED/u);
 });
+test("missing production bearer/HMAC is rejected BEFORE backup and migration DDL",()=>{
+ const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ const approval=r.indexOf("function approved(env)");
+ const auth=r.indexOf("PRODUCTION_POINTER_AUTH_DEPENDENCIES_UNVERIFIED",approval);
+ const migration=r.indexOf("const ledger=ensureLedger(config,manifests,state)",auth);
+ const backup=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",auth);
+ assert(approval>0&&auth>approval&&backup>auth&&migration>backup);
+ assert.match(r,/env.CONTROL_PLANE_TOKEN.length<32/u);
+ assert.match(r,/PHASE2H_R2_REFERENCE_HMAC_KEY/u);
+ assert.doesNotMatch(r,/env.PHASE2H_SHADOW_R2_REFERENCE_HMAC_KEY/u);
+});
+
 test("protected runner must never revoke canary HOLD or auto promote/migrate on CI",()=>{
  const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(runner,/GEOMACRO_STEP3_APPLY/u);
