@@ -210,10 +210,11 @@ test("real bearer required; missing production HMAC only permits strict new 0213
  const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  const approval=r.indexOf("function approved(env)");
  const auth=r.indexOf("PRODUCTION_CONTROL_BEARER_MISSING",approval);
- const schema=r.indexOf("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED",auth);
+ const off=r.indexOf("await verifyProductionRefOnlyOff({env})",auth);
+ const schema=r.indexOf("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED",off);
  const backup=r.indexOf("const checkpoint=await captureDurableD1Checkpoint",schema);
  const ledger=r.indexOf("const ledger=ensureLedger(config,manifests,state)",backup);
- assert(approval>0&&auth>approval&&schema>auth&&backup>schema&&ledger>backup);
+ assert(approval>0&&auth>approval&&off>auth&&schema>off&&backup>schema&&ledger>backup);
  assert.match(r,/env.CONTROL_PLANE_TOKEN.length<32/u);
  assert.match(r,/UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC/u);
  assert.match(r,/status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY"/u);
