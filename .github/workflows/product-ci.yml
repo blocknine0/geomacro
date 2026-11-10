@@ -44,6 +44,11 @@ jobs:
           node --check scripts/ops/verify-owner-dispatch-reviewed-sha.mjs
           node --test scripts/tests/owner-dispatch-reviewed-sha.test.mjs scripts/tests/owner-issue-dispatch-gateway.test.mjs
 
+      - name: Protected owner issue candidate-canary-hold workflow dispatch contract (offline)
+        run: |
+          node --check scripts/lib/owner-issue-dispatch-contract.mjs
+          node --test scripts/tests/owner-gateway-canary-stages.test.mjs
+
       - name: Daily official Finds original-date, attribution and no-OSINT contracts
         run: node --test scripts/tests/public-daily-official-finds.test.mjs
 
