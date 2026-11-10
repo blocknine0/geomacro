@@ -7,6 +7,7 @@ on:
       - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
       - ".github/workflows/production-rollout-orchestrator.yml"
+      - ".github/workflows/step3-existing-production-bearer-readonly.yml"
       - "scripts/lib/d1-step3-migration-contract.mjs"
       - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/lib/d1-step3-0211-counter-integrity.mjs"
