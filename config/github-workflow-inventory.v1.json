@@ -365,22 +365,23 @@
     "standing-delegated-derived-attestation.yml",
     "stateless-live-structured-no-funds.yml",
     "stateless-website-intelligence-live.yml",
+    "step3-d1-native-backend-readonly.yml",
+    "step3-legacy-only-canonical-completion.yml",
     "step3-protected-binding-readiness.yml",
     "step3-r2-private-exposure.yml",
+    "step3-shadow-0204-nonfact-index-fixture.yml",
+    "step3-shadow-0204-readonly-diagnostic.yml",
     "step3-shadow-bearer-sync.yml",
-    "step3-shadow-canonical-candidate-upload.yml",
-    "step3-shadow-canonical-candidate-http.yml",
     "step3-shadow-candidate-secret-align.yml",
+    "step3-shadow-canonical-candidate-http.yml",
+    "step3-shadow-canonical-candidate-upload.yml",
     "step3-shadow-canonical-protected-promote.yml",
     "step3-shadow-failed-promotion-readonly.yml",
-    "step3-legacy-only-canonical-completion.yml",
     "step3-shadow-live-code-version-audit.yml",
-    "step3-shadow-workersdev-route-repair.yml",
     "step3-shadow-prerequisite-bootstrap.yml",
     "step3-shadow-provider-readonly-inventory.yml",
-    "step3-shadow-0204-readonly-diagnostic.yml",
-    "step3-shadow-0204-nonfact-index-fixture.yml",
     "step3-shadow-real-original-b2-ack.yml",
+    "step3-shadow-workersdev-route-repair.yml",
     "store-12-variant-readiness-no-funds.yml",
     "strict-commercial-launch-closure.yml",
     "structured-commerce-db-concurrency.yml",
@@ -483,6 +484,7 @@
     "rss-private-d1-15m.yml",
     "source-network-governance.yml",
     "source-rights-intake-observer.yml",
+    "step3-d1-native-backend-readonly.yml",
     "step3-protected-binding-readiness.yml",
     "telegram-b2-d1-consumer.yml",
     "three-domain-30m-original-publisher-pulse.yml",
@@ -522,7 +524,8 @@
     "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)",
     "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)",
     "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator",
-    "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds"
+    "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds",
+    "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)"
   },
   "lockedTriggerStrings": {
     "private-global-osint-15m.yml": [
@@ -635,6 +638,12 @@
       "github.ref == 'refs/heads/main'",
       "node scripts/ops/audit-step3-r2-private-exposure.mjs",
       "ref: ${{ github.sha }}"
+    ],
+    "step3-d1-native-backend-readonly.yml": [
+      "workflow_dispatch:",
+      "environment: production",
+      "github.ref == 'refs/heads/main'",
+      "node scripts/ops/step3-d1-native-backend-readonly.mjs"
     ]
   },
   "predgeBlobSha1": {
