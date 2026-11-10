@@ -1,0 +1,55 @@
+name: Step3 Production D1 Index Inventory (Read Only, No Funds)
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: 'Type READ_ONLY_STEP3_PRODUCTION_INDEX_INVENTORY'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-d1-control-plane-production
+  cancel-in-progress: false
+jobs:
+  protected-index-inventory:
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.approval == 'READ_ONLY_STEP3_PRODUCTION_INDEX_INVENTORY'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - name: Prove exact current main and retain mandatory hold
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+      - name: Collect only provider index and migration-name metadata
+        run: node scripts/ops/step3-production-index-inventory-readonly.mjs
+      - name: Preserve index metadata (no source data or credentials)
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-step3-index-inventory-readonly
+          path: artifacts/release/step3-production-index-inventory-readonly.json
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Confirm hold unchanged after provider observation
+        if: success()
+        run: test -f config/d1-hotspot-v2-canary.hold
