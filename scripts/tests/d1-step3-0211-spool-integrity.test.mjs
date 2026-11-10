@@ -69,6 +69,16 @@ test("real 3500-row spool is proven by full-volume forced-index EXCEPT, not a tr
   assert.equal(p.index_count,7);
   assert.equal(p.stage2_authorized,false);
   assert.equal(p.canary_promoted,false);
+  // Same genuine 3500-row fixture after reviewed 0206/0210 index changes:
+  // prove every optimized index with full D1-side bidirectional EXCEPT.
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  d.exec(readFileSync("workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql","utf8"));
+  const optimized=auditStep30211SpoolSource(read(d));
+  assert.equal(optimized.status,"PASS_0211_NONEMPTY_SPOOL_ALL_SIX_REVIEWED_INDEX_KEYS");
+  assert.equal(optimized.index_count,6);
+  assert.equal(optimized.source_rows_verified,3500);
+  assert.equal(optimized.candidate_unique_autoindex_verified,true);
+  assert.equal(optimized.source_private_rows_logged,false);
  }finally{d.close()}
 });
 
