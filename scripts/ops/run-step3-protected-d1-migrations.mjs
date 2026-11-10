@@ -52,7 +52,8 @@ import {auditStep30211WithoutRowidCounter}
 import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
- step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
+ step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
+ classifyStep3NativeHistory,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
@@ -644,7 +645,30 @@ export async function applyStep3Migrations({env=process.env}={}){
   state.d1_backend_advertised_version=backend.version_label;
   state.native_time_travel_bookmark_still_required=true;
   save(state);
-  for(const manifest of manifests)boundedInputs(config,manifest,state);
+  const nativeHistory=q(config,step3NativeHistorySQL(),{maxRows:5});
+  state.native_history_preflight=classifyStep3NativeHistory(
+   manifests,nativeHistory.rows);
+  state.native_history_rows_read=nativeHistory.readRows;
+  state.native_history_schema_presence=[];
+  save(state);
+  for(const manifest of manifests){
+   if(state.native_history_preflight.native_applied_ids.includes(manifest.id)){
+    // Applied native D1 history bypasses only the cost estimate for PENDING
+    // DDL. It never bypasses later full index, counter, signer or B2 proofs.
+    const observed=q(config,step3SchemaSQL(manifest.objects),{maxRows:30});
+    verifyStep3Schema(manifest.objects,observed.rows);
+    state.native_history_schema_presence.push({
+     migration_id:manifest.id,
+     status:"SCHEMA_PRESENT_NOT_FULL_INTEGRITY_VERIFIED",
+     provider_rows_read:observed.readRows
+    });
+    save(state);
+   }else{
+    // Large pending 0212 still needs a reviewed bounded build/backfill.
+    // A missing history record is NEVER an excuse to skip its cost gate.
+    boundedInputs(config,manifest,state);
+   }
+  }
   state.original_immutable_sample_sha256=baseline(config);
   const migrationSha=sha256MigrationSet(manifests);
   const checkpoint=await captureDurableD1Checkpoint({
