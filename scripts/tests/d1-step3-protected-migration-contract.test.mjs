@@ -58,6 +58,18 @@ test("Stage2 recovers only an authenticated existing Worker bearer before D1 pro
  assert.match(helper,/appendEnv\(env.GITHUB_ENV/u);
 });
 
+test("manual existing production bearer verifier is provider read-only and main-only",()=>{
+ const y=readFileSync(".github/workflows/step3-existing-production-bearer-readonly.yml","utf8");
+ assert.match(y,/workflow_dispatch:/u);
+ assert.doesNotMatch(y,/schedule:|pull_request:/u);
+ assert.match(y,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(y,/environment: production/u);
+ assert.match(y,/secrets\.GEOMACRO_COMMERCE_LEDGER_TOKEN/u);
+ assert.match(y,/node scripts\/ops\/prepare-five-gate-control-token\.mjs/u);
+ assert.match(y,/test -f config\/d1-hotspot-v2-canary\.hold/u);
+ assert.doesNotMatch(y,/--apply|wrangler.*secret put|gh secret set|continue-on-error|d1 migrations apply|canary-promoter|release:remediate/u);
+});
+
 test("native D1 history distinguishes applied 0204/0211 from pending 0212/0213",()=>{
  const manifests=step3SqlManifests();
  const rows=[
