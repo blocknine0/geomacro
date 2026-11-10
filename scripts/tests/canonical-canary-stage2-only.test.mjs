@@ -32,3 +32,15 @@ test("alternate 60s stage shortcut is retired in favor of canonical SLO, rollbac
   assert.match(canonical,/await deployBaseline\(base\)/);
   assert.match(workflow,/timeout-minutes: 115/);
 });
+
+
+test("Hot50 promotion derives and authenticates existing production bearer before canary gates",()=>{
+ const auth=workflow.indexOf("Verify existing production bearer from protected root");
+ const root=workflow.indexOf("secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN",auth);
+ const derived=workflow.indexOf("node scripts/ops/prepare-five-gate-control-token.mjs",root);
+ const billing=workflow.indexOf("Require real provider Workers Paid month-wide 30-percent reserve",derived);
+ const signed=workflow.indexOf("admitSignedStep3ProductionFile()",billing);
+ const promoter=workflow.indexOf("scripts/canary-promoter.ts --promote",signed);
+ assert(auth>0&&root>auth&&derived>root&&billing>derived&&signed>billing&&promoter>signed);
+ assert.doesNotMatch(workflow.slice(auth,billing),/wrangler.*secret put|gh secret set|continue-on-error/u);
+});

@@ -56,3 +56,18 @@ test('protected candidate receives existing independent read-only Billing token'
  assert.match(proof,/\/subscriptions/u);
  assert.doesNotMatch(candidate,/npm run release:hold|--promote|deployments.*POST/u);
 });
+
+
+test('manual exact-main candidate upload is opt-in and never deploys traffic',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const y=readFileSync(new URL('../../.github/workflows/geomacro-optimized-worker-candidate.yml',import.meta.url),'utf8');
+ const cand=y.split('  candidate:')[1];
+ assert.match(y,/workflow_dispatch:/u);
+ assert.match(y,/UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS/u);
+ assert.match(cand,/github\.ref == 'refs\/heads\/main'/u);
+ assert.match(cand,/github\.event_name == 'workflow_dispatch'/u);
+ assert.match(cand,/inputs\.approval == 'UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS'/u);
+ assert.match(cand,/test -f config\/d1-hotspot-v2-canary\.hold/u);
+ assert.match(cand,/node scripts\/ops\/prepare-optimized-worker-candidate\.mjs/u);
+ assert.doesNotMatch(cand,/canary-promoter|wrangler deploy|versions deploy|--release-hold/u);
+});

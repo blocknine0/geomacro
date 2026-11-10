@@ -96,6 +96,15 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           node --test scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/d1-step3-headroom.test.mjs
+      - name: Verify existing production bearer from protected root, without rotation
+        shell: bash
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          # One verified live admin GET. Export only a masked runner-local
+          # bearer for later release checks; no Worker secret edits.
+          node scripts/ops/prepare-five-gate-control-token.mjs
       - name: Require real provider Workers Paid month-wide 30-percent reserve before canary preflight
         run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
       - name: Verify D1 Time Travel backup and remote 0204/0211/P1 physical schema
