@@ -22,19 +22,14 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
      !["boolean","undefined"].includes(typeof rule.enabled))
    die("UNKNOWN_LIFECYCLE_RULE");
   if(rule.enabled!==true)continue;
+  // Cloudflare's default bucket-wide rule aborts INCOMPLETE multipart
+  // uploads after 7d. This does not delete completed cold objects. Provider
+  // can omit conditions.prefix entirely for this default rule. Such a rule
+  // is accepted ONLY when it is syntactically and semantically abort-only:
+  // all other unknown properties, delete/paid-class transitions or missing
+  // explicit maxAge/type MUST remain HOLD, not silently interpreted as safe.
   const prefixApplied=rule?.conditions?.prefix;
-  if(typeof prefixApplied!=="string"){
-   // Missing exact prefix may be an account-wide rule; cannot rule out
-   // expiration of this private cold namespace. Fail closed.
-   die("BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED");
-  }
-  if(!prefix.startsWith(prefixApplied)&&
-     !prefixApplied.startsWith(prefix))continue;
-  reviewed++;
-  // Both parent-prefix and child-prefix automatic-delete policies can
-  // threaten objects in this cold store. No age threshold is acceptable
-  // for a long-term archive, regardless of stated number of days.
-  if(rule.deleteObjectsTransition!=null||
+  const hasDeleteOrPaidTransition=rule.deleteObjectsTransition!=null||
      rule.deleteNoncurrentVersionsTransition!=null||
      rule.noncurrentVersionExpiration!=null||
      rule.expiration!=null||
@@ -42,7 +37,31 @@ export function assertPermanentRiskColdR2Lifecycle(document,{
      (Array.isArray(rule.storageClassTransitions)&&
       rule.storageClassTransitions.length>0)||
      rule.storageClassTransitions!=null&&
-      !Array.isArray(rule.storageClassTransitions))
+      !Array.isArray(rule.storageClassTransitions);
+  if(typeof prefixApplied!=="string"){
+   const onlyKeys=["id","enabled","conditions","abortMultipartUploadsTransition"];
+   const abort=rule.abortMultipartUploadsTransition?.condition;
+   const noUnknown=Object.keys(rule).every(x=>onlyKeys.includes(x));
+   const conditionKeys=rule.conditions==null||
+     typeof rule.conditions==="object"&&!Array.isArray(rule.conditions)&&
+     Object.keys(rule.conditions).length===0;
+   if(hasDeleteOrPaidTransition||!noUnknown||!conditionKeys||
+      !abort||abort.type!=="Age"||
+      !Number.isSafeInteger(abort.maxAge)||abort.maxAge<1||
+      abort.maxAge>30*86400||
+      Object.keys(rule.abortMultipartUploadsTransition).length!==1||
+      Object.keys(abort).sort().join("|")!=="maxAge|type")
+    die("BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED");
+   reviewed++;
+   continue;
+  }
+  if(!prefix.startsWith(prefixApplied)&&
+     !prefixApplied.startsWith(prefix))continue;
+  reviewed++;
+  // Both parent-prefix and child-prefix automatic-delete policies can
+  // threaten objects in this cold store. No age threshold is acceptable
+  // for a long-term archive, regardless of stated number of days.
+  if(hasDeleteOrPaidTransition)
    die("COLD_PREFIX_EXPIRY_OR_PAID_CLASS_CONFLICT");
  }
  return Object.freeze({
