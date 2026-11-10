@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {auditStep30211SpoolSource,STEP3_0211_REVIEWED_SPOOL_INDEXES}
+import {auditStep30211SpoolSource,STEP3_0211_REVIEWED_SPOOL_INDEXES,
+  STEP3_0206_REVIEWED_SPOOL_INDEXES}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
 
 function db(){
@@ -99,4 +100,57 @@ test("strict source-only proof never authorizes migration, cash, synthetic B2 AC
  assert.match(c,/nonvacuous_original_evidence:false/);
  assert.match(c,/stage2_authorized:false/);
  assert.match(c,/sqlite_full_integrity_check_claimed:false/);
+});
+
+test("0206 migration deliberately drops only the redundant spool candidate index",()=>{
+ const migration=readFileSync(
+  "workers/control-plane/migrations/0206_d1_poll_index_write_relief.sql","utf8");
+ assert.match(migration,/DROP INDEX IF EXISTS idx_spool_candidate_sha;/u);
+ assert.match(readFileSync(
+  "workers/control-plane/migrations/0114_p0_b_spool_queue.sql","utf8"),
+  /candidate_sha256 TEXT NOT NULL UNIQUE/u);
+ assert.deepEqual(STEP3_0206_REVIEWED_SPOOL_INDEXES,
+  STEP3_0211_REVIEWED_SPOOL_INDEXES.filter(x=>x!=="idx_spool_candidate_sha"));
+});
+test("real post-0206 six-index populated spool retains complete UNIQUE and full index parity",()=>{
+ const d=db();
+ try{
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  d.prepare("INSERT INTO source_registry(source_id) VALUES(?)").run("nonfact-source");
+  d.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,state,d1_committed_at) VALUES(?,?,?,?,?,?,?)")
+   .run("12345678-1234-1234-1234-123456789abc","b".repeat(64),
+    "nonfact-source","b2://nonfact-fixture",401,"D1_COMMITTED",
+    "2026-11-09T00:00:00.000Z");
+  const p=auditStep30211SpoolSource(read(d));
+  assert.equal(p.status,"PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS");
+  assert.equal(p.index_count,6);
+  assert.equal(p.index_lineage,"0206_DROPPED_REDUNDANT_CANDIDATE_SHA_INDEX");
+  assert.equal(p.source_rows_verified,1);
+  assert.equal(p.stage2_authorized,false);
+  const list=d.prepare('PRAGMA index_list("ingestion_spool_queue")').all();
+  assert.equal(list.find(x=>x.name==="sqlite_autoindex_ingestion_spool_queue_2").unique,1);
+ }finally{d.close()}
+});
+test("empty source with exact post-0206 registry stays structural only",()=>{
+ const d=db();
+ try{
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  const p=auditStep30211SpoolSource(read(d));
+  assert.equal(p.status,"OBSERVED_EMPTY_SOURCE_0206_SIX_INDEX_STRUCTURE");
+  assert.equal(p.nonvacuous_original_evidence,false);
+  assert.equal(p.source_to_b2_physical_parity_verified,false);
+ }finally{d.close()}
+});
+test("post-0206 acceptance rejects candidate-SHA unique metadata tampering or further missing indexes",()=>{
+ const d=db();
+ try{
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  assert.throws(()=>auditStep30211SpoolSource(read(d,(sql,rows)=>
+   sql==='PRAGMA index_xinfo("sqlite_autoindex_ingestion_spool_queue_2")'?
+    rows.map(x=>x.key===1?{...x,name:"source_id"}:x):rows)),
+   /CANDIDATE_SHA_UNIQUE_KEY_UNVERIFIED/u);
+  d.exec("DROP INDEX idx_spool_committed_day");
+  assert.throws(()=>auditStep30211SpoolSource(read(d)),
+   /REVIEWED_0114_0206_INDEX_REGISTRY_DRIFT/u);
+ }finally{d.close()}
 });
