@@ -101,3 +101,28 @@ sample is not extrapolated to all 50.
   independently verified deliveries, not future projections.
 
 No commercial launch or provider quota/canary hold is waived by this runbook.
+
+## Continuous source-gap repair triage (11 Nov 2026)
+
+The protected tier proof now emits an additional `standard_source_recovery` artifact:
+the precise missing Hot50 country/category cells, ranked by (a) upstream
+tier-contract failure, (b) zero eligible **candidate** first-party host groups,
+(c) only one candidate host group, then (d) verification/signing deficit.
+It excludes retired transport pins. Grouping by host is deliberately conservative
+and is **not** proof of an independently authored same-event claim. All
+candidates still require native publication timestamps, legal use-term review,
+distinct original authorship, exact-event corroboration and cryptographically
+verified current signed GRO. No Google News, Telegram or editorial syndication
+counts as an original first-party issuer.
+
+A complete governed 50-country x three-tier no-funds census is now scheduled
+once daily at 00:07 UTC after provider quota admission. Other 20-minute
+samples continue unchanged. The periodic full census does not imply successful
+payments, lift paid product launch holds, increase spending permissions or
+weaken the independent production release/canary requirements.
+
+Scaling is limited by measured genuine paid delivery/settlement and verified
+provider headroom. Initial daily target: 150 (6.25/hour), then capacity can
+increase only against real concurrency, p95 latency, no-charge ratio, webhook
+delivery and D1/B2 usage evidence. The plan is an actionable repair queue
+for operators, **not** a newly deployed source-poller or a certified uptime SLA.
