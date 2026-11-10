@@ -41,7 +41,9 @@ import {
  verifyStep3LedgerRows,step3LedgerStartSQL,
  step3LedgerStatusSQL,sha256MigrationSet,decideResume
 } from "../lib/d1-step3-migration-ledger.mjs";
-import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,admitStep30204SupportedIntegrity}
+import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,
+ admitStep30204SupportedIntegrity,STEP3_0119_WEBSITE_REVIEWED_INDEX,
+ verifyStep30119WebsiteIndexDDL}
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
@@ -264,6 +266,20 @@ const explainSQL=Object.freeze({
  idx_phase2h_ref_ingest_clock_v1:
   "SELECT record_id FROM phase2h_raw_object_refs_v1 INDEXED BY idx_phase2h_ref_ingest_clock_v1 WHERE first_ingested_at>'2026-01-01' ORDER BY first_ingested_at,record_id LIMIT 1",
 });
+function auditStep30204IndexLineage(table,query){
+ const p=auditStep3AllIndexesCurrentRows(table,query);
+ if(table!=="website_derived_intelligence"||
+    !p.index_proofs.some(x=>x.index===STEP3_0119_WEBSITE_REVIEWED_INDEX))
+  return p;
+ // Only the exact previous 0119 index shape is allowed, verified against
+ // real same-target D1 sqlite_schema, not merely a count or a name.
+ const ddl=query("SELECT name,type,tbl_name,sql FROM sqlite_schema WHERE "+
+  "name='idx_website_risk_raw_source_scan' AND "+
+  "tbl_name='website_derived_intelligence' AND type='index' LIMIT 2",2);
+ return {...p,reviewed_0119_index_ddl_verified:
+  verifyStep30119WebsiteIndexDDL(ddl)};
+}
+
 function checkIndexAndSchema(config,step,report){
  const mark=(phase,target)=>{report.last_verification_checkpoint={
    migration:step.id,phase,target:target??null};save(report);};
@@ -290,7 +306,7 @@ function checkIndexAndSchema(config,step,report){
   for(const table of step.integrityTables){
    mark("D1_SUPPORTED_QUICK_FK_ALL_INDEX_AND_UNIQUE_PROOF",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-   const p=auditStep3AllIndexesCurrentRows(table,(sql,maxRows)=>{
+   const p=auditStep30204IndexLineage(table,(sql,maxRows)=>{
     const r=q(config,sql,{maxRows});
     report.composite_integrity_rows_read??=0;
     report.composite_integrity_rows_read+=r.readRows;
@@ -456,10 +472,12 @@ function checkIndexAndSchema(config,step,report){
    "website_derived_intelligence"
   ];
   const lineageInputs=lineageTables.map(table=>
-   auditStep3AllIndexesCurrentRows(table,checked));
+   auditStep30204IndexLineage(table,checked));
   const lineage=admitStep30204SupportedIntegrity(lineageInputs);
-  if(lineage.status!==
-      "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"||
+  if(![
+      "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY",
+      "PASS_D1_SUPPORTED_0204_PLUS_0119_AND_0212_FIFTEEN_INDEX_LOGICAL_INTEGRITY"
+     ].includes(lineage.status)||
      lineage.existing_index_count!==14||
      lineage.all_0212_v3_additive_index_memberships_verified!==true||
      lineage.later_0212_ledger_verified!==false||
