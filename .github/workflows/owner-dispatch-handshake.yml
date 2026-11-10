@@ -1,0 +1,45 @@
+name: GeoMacro Owner Dispatch Gateway Handshake (No Funds)
+# Only used for an end-to-end zero-provider dispatch acceptance receipt.
+# No secrets, no D1/B2/R2, no Worker traffic, no payment.
+on:
+  workflow_dispatch:
+    inputs:
+      approved_main_sha:
+        description: "Exact reviewed main SHA"
+        required: true
+        type: string
+      request_issue:
+        description: "Single-use owner GitHub issue number"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  accepted-no-provider-mutation:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify pinned source and authenticated workflow_dispatch context
+        shell: bash
+        env:
+          APPROVED_MAIN: ${{ inputs.approved_main_sha }}
+          REQUEST_ISSUE: ${{ inputs.request_issue }}
+        run: |
+          set -euo pipefail
+          [[ "$APPROVED_MAIN" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$REQUEST_ISSUE" =~ ^[1-9][0-9]{0,12}$ ]]
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_SHA" = "$APPROVED_MAIN"
+          test "$(git rev-parse HEAD)" = "$APPROVED_MAIN"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$APPROVED_MAIN"
+          test -f config/d1-hotspot-v2-canary.hold
+          echo "GATEWAY_HANDSHAKE_EXACT_MAIN_NO_FUNDS_PASS=true"
+          echo "GATEWAY_ISSUE=$REQUEST_ISSUE"
+          echo "PRODUCTION_SQL_MUTATED=false"
+          echo "CANARY_HOLD_UNCHANGED=true"
+          echo "PAYMENTS_AUTHORIZED=false"

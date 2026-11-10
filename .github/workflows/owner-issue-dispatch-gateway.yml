@@ -1,0 +1,68 @@
+name: GeoMacro Owner Issue Dispatch Gateway (No Funds)
+# Owner-created, single-use GitHub issues are requests, never approvals of
+# production migration. No schedule, push, issue_comment or PR write access.
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    paths:
+      - ".github/workflows/owner-issue-dispatch-gateway.yml"
+      - ".github/workflows/owner-dispatch-handshake.yml"
+      - "scripts/lib/owner-issue-dispatch-contract.mjs"
+      - "scripts/ops/owner-issue-dispatch-gateway.mjs"
+      - "scripts/tests/owner-issue-dispatch-gateway.test.mjs"
+      - "config/github-workflow-inventory.v1.json"
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-owner-issue-dispatch-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  offline-contract:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs
+      - run: node scripts/ops/verify-github-workflow-inventory.mjs
+
+  owner-issue-dispatch:
+    if: >-
+      github.event_name == 'issues' &&
+      github.event.action == 'opened' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.actor == 'blocknine0' &&
+      github.event.issue.user.login == 'blocknine0' &&
+      github.event.issue.author_association == 'OWNER' &&
+      github.event.issue.title == 'GeoMacro Owner Dispatch Request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    # No production environment, secrets, auth material, Cloudflare/D1/B2/R2
+    # access or payment credentials. The target protected workflow independently
+    # applies production environment approval and physical provider safety gates.
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Validate exact owner issue request and single-use gate
+        run: node --test scripts/tests/owner-issue-dispatch-gateway.test.mjs
+      - name: One-shot allowlisted workflow_dispatch with ephemeral token
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ops/owner-issue-dispatch-gateway.mjs
