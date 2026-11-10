@@ -157,6 +157,7 @@ jobs:
 
       - name: Protected B2-limit private R2 AES quota-backup and cursor integrity (offline)
         run: |
+          node --check scripts/lib/phase2h-risk-gate-minimum-facts.mjs
           node --check scripts/lib/phase2h-b2-r2-backup.mjs
           node --check scripts/ops/phase2h-r2-b2-quota-backup.mjs
           node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs
