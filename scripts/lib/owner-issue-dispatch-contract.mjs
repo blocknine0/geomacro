@@ -18,6 +18,7 @@ export const OWNER_ISSUE_CANARY_CANDIDATE_TARGET="geomacro-optimized-worker-cand
 export const OWNER_ISSUE_CANARY_ROLLOUT_TARGET="geomacro-protected-hot50-worker-rollout.yml";
 export const OWNER_ISSUE_HOLD_REVIEW_TARGET="canary-promotion.yml";
 export const OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET="phase2h-private-r2-b2-quota-backup.yml";
+export const OWNER_ISSUE_REGISTERED_SOURCE_TARGET="all-source-reusable-news-json.yml";
 export const OWNER_ISSUE_CANARY_SCHEMA="geomacro.owner-issue-dispatch.v2";
 const SHA=/^[a-f0-9]{40}$/u;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
@@ -26,6 +27,7 @@ const ISSUE_KEYS=["authorization","intent","schema","source_sha","verify_hot50"]
 const CANARY_KEYS=Object.freeze({
  "candidate-upload":ISSUE_KEYS,
  "minimum-risk-facts-backup":ISSUE_KEYS,
+ "registered-original-source-intake":ISSUE_KEYS,
  "canary-rollout":[...ISSUE_KEYS,
   "baseline_version_id","candidate_version_id","stage2_run_id"],
  "canary-hold-review":[...ISSUE_KEYS,
@@ -107,6 +109,11 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
   }
  };
  const canaryIntents={
+  "registered-original-source-intake":{
+   authorization:"OWNER_AUTHORIZE_VERIFIED_ORIGINAL_SOURCE_B2_FIRST_NO_FUNDS",
+   verify_hot50:false,target:OWNER_ISSUE_REGISTERED_SOURCE_TARGET,
+   inputs:{approved_main_sha:request.source_sha}
+  },
   "minimum-risk-facts-backup":{
    authorization:"OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
    verify_hot50:false,target:OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET,

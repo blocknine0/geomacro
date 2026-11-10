@@ -12,6 +12,9 @@ on:
       - "scripts/ops/owner-issue-dispatch-gateway.mjs"
       - "scripts/tests/owner-issue-dispatch-gateway.test.mjs"
       - "scripts/tests/owner-gateway-canary-stages.test.mjs"
+      - "scripts/ops/verify-owner-protected-source-main.mjs"
+      - "scripts/tests/owner-protected-source-main.test.mjs"
+      - ".github/workflows/all-source-reusable-news-json.yml"
       - "scripts/lib/owner-issue-dispatch-contract.mjs"
       - "config/github-workflow-inventory.v1.json"
 permissions:
