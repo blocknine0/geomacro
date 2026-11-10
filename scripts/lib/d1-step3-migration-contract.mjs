@@ -72,6 +72,47 @@ export function step3SqlManifests({read=readFileSync}={}){
   return {...p,sql_sha256:hash(sql),filename:p.file.split("/").at(-1)};
  });
 }
+
+/** Native D1 history reports names and timestamps, NOT SQL checksums. */
+export function step3NativeHistorySQL(){
+ return "SELECT id,name,applied_at FROM d1_migrations WHERE "+
+  STEP3_MIGRATIONS.map(m=>"name LIKE '"+m.id+"%'").join(" OR ")+
+  " ORDER BY id";
+}
+export function classifyStep3NativeHistory(manifests,rows){
+ if(!Array.isArray(manifests)||manifests.length!==4||
+    manifests.map(m=>m.id).join(",")!=="0204,0211,0212,0213"||
+    manifests.some(m=>typeof m.filename!=="string"||
+      m.filename!==m.file.split("/").at(-1))||
+    !Array.isArray(rows)||rows.length>4)
+  fail("NATIVE_HISTORY_INPUT_INVALID");
+ const names=new Map(manifests.map(m=>[m.id,m.filename]));
+ const found=new Set();let lastId=0;
+ for(const row of rows){
+  const prefix=typeof row?.name==="string"?row.name.slice(0,4):"";
+  if(!Number.isSafeInteger(row?.id)||row.id<=lastId||
+     !names.has(prefix)||row.name!==names.get(prefix)||
+     found.has(prefix)||typeof row.applied_at!=="string"||
+     !/^20\d\d-\d\d-\d\d[ T]\d\d:\d\d:\d\d/.test(row.applied_at))
+   fail("NATIVE_HISTORY_AMBIGUOUS_OR_CHANGED");
+  found.add(prefix);lastId=row.id;
+ }
+ // This is an ordered-only migration family: a later applied migration
+ // with an earlier missing migration is inconsistent, not proof of PASS.
+ const firstMissing=manifests.findIndex(m=>!found.has(m.id));
+ if(firstMissing!==-1&&manifests.slice(firstMissing).some(m=>found.has(m.id)))
+  fail("NATIVE_HISTORY_GAPPED");
+ return Object.freeze({
+  status:"OBSERVED_NATIVE_NAMES_ONLY_NOT_SQL_CHECKSUM",
+  native_applied_ids:manifests.filter(m=>found.has(m.id)).map(m=>m.id),
+  pending_ids:manifests.filter(m=>!found.has(m.id)).map(m=>m.id),
+  native_history_rows:rows.length,
+  sql_checksum_verified:false,
+  full_index_or_counter_integrity_verified:false,
+  production_release_authorized:false
+ });
+}
+
 export function step3SizeProbeSQL(tables,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
  if(!Array.isArray(tables)||tables.length===0||
     tables.length>5||tables.some(x=>!safeName(x))||
