@@ -39,6 +39,11 @@ jobs:
       - name: Protected canary candidate imports and Workers Paid monthly release contract (offline)
         run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/d1-step3-headroom.test.mjs
 
+      - name: Owner-dispatch production exact-SHA review authority and anti-replay (offline)
+        run: |
+          node --check scripts/ops/verify-owner-dispatch-reviewed-sha.mjs
+          node --test scripts/tests/owner-dispatch-reviewed-sha.test.mjs scripts/tests/owner-issue-dispatch-gateway.test.mjs
+
       - name: Daily official Finds original-date, attribution and no-OSINT contracts
         run: node --test scripts/tests/public-daily-official-finds.test.mjs
 
