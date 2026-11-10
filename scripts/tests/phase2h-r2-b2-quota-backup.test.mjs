@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {randomBytes} from "node:crypto";
+import {createHash} from "node:crypto";
+import {minimumFactId,MINIMUM_FACT_CONTENT_FORBIDDEN}
+ from "../lib/phase2h-risk-gate-minimum-facts.mjs";
 import {
  phase2hBackupHour,phase2hBackupHourKey,sealPhase2hR2Backup,
  openPhase2hR2Backup,sealPhase2hBackupCursor,openPhase2hBackupCursor,
@@ -15,8 +17,30 @@ const rec=(id,time="2026-11-10T18:06:00.000Z")=>({
  schema:"geomacro.phase2h.private-raw-observation.v1",
  record_id:String(id).padStart(64,"0"),raw_sha256:"b".repeat(64),
  ingested_at:time,category:"geopolitics",
- original:{original_title:"PRIVATE example event "+id,
-  original_published_at:"2026-11-10T17:44:00.000Z"},
+ original:{
+  original_title:"PRIVATE confidential example event title number "+id,
+  original_source_id:"unit-original-source-"+id,
+  original_published_at:"2026-11-10T17:44:00.000Z",
+  original_url:"https://example.gov/news/event/"+id,
+  original_content:"Private source description text not retained in archival facts.",
+  source_credit:null
+ },
+ analysis:{
+  schema:"geomacro.phase2h.private-five-part.v1",
+  what_happened:{text:"The issuer changed a security screening policy covering cross-border transactions and notified stakeholders."},
+  why_it_matters:{text:"The observed policy development introduces a possible review channel without claiming any market price change."},
+  market_relevance:{potential_watch_channels:["trade_and_logistics","fx_and_payments"]},
+  what_to_watch:{
+   event_topic:"Official follow-up and trade screening enforcement",
+   trigger:"NEXT_ORIGINAL_RELEASE_OR_INDEPENDENT_CONFIRMATION"
+  },
+  evidence_and_confidence:{
+   source_content_identity_sha256:createHash("sha256").update(
+    "private title hash "+id).digest("hex"),
+   commercial_rights_verified:false,paid_eligible:false,
+   independent_event_verified:false,original_article_page_verified:false
+  }
+ },
  commercial_rights_verified:false,commercial_delivery_authorized:false
 });
 const env=()=>({
@@ -30,21 +54,32 @@ const env=()=>({
  GEOMACRO_D1_RECOVERY_AES256_KEY_B64:SECRET,
  GEOMACRO_COMMERCE_LEDGER_TOKEN:"p".repeat(48)
 });
-test("AES-256-GCM encrypted R2 backup can recover every original without plaintext in object",()=>{
+test("Brotli11 AES-GCM retains ONLY compact derived facts, no full originals or verbatim source text",()=>{
  const rows=[rec(3),rec(1),rec(2)];
  const sealed=sealPhase2hR2Backup({rows,now:NOW,sourceSha:SHA,
   secretB64:SECRET,nonce:Buffer.alloc(12,9)});
  assert.equal(phase2hBackupHour(NOW),"2026-11-10T18:00:00.000Z");
  assert.equal(sealed.key,
-  "geomacro/private/phase2h-b2-quota-backup/v1/2026/11/10/18.json.enc");
+  "geomacro/private/phase2h-risk-minimum-br11/v2/2026/11/10/18.br11.enc");
  assert.equal(sealed.records_count,3);
- assert.doesNotMatch(sealed.body.toString("utf8"),/PRIVATE example event/u);
+ assert.doesNotMatch(sealed.body.toString("utf8"),/PRIVATE confidential example/u);
+ assert.equal(sealed.full_private_originals_retained,false);
+ assert.ok(sealed.compressed_bytes<sealed.plaintext_bytes);
  const p=openPhase2hR2Backup({body:sealed.body,secretB64:SECRET,
   expectedHour:sealed.hour,expectedSha:SHA});
  assert.equal(p.verified,true);
- assert.deepEqual(p.records.map(x=>x.record_id),
+ assert.deepEqual(p.records.map(minimumFactId),
   [1,2,3].map(x=>String(x).padStart(64,"0")));
- assert.equal(p.records[0].original.original_title,"PRIVATE example event 1");
+ assert.equal(p.records[0][9],rec(1).analysis.what_happened.text);
+ assert.equal(p.records[0][11],rec(1).analysis.what_to_watch.event_topic);
+ assert.equal(p.records[0][6],"https://example.gov/news/event/1");
+ assert.equal(p.records[0][12],6);
+ assert.equal(p.full_private_originals_retained,false);
+ assert.equal(p.risk_gate_certified,false);
+ const exposed=JSON.stringify(p.records);
+ for(const forbidden of MINIMUM_FACT_CONTENT_FORBIDDEN)
+  assert.ok(!exposed.includes('"' + forbidden + '"'),forbidden);
+ assert.doesNotMatch(exposed,/PRIVATE confidential example|Private source description/u);
  assert.equal(p.body_sha256,sealed.body_sha256);
  const mutated=JSON.parse(sealed.body.toString("utf8"));
  mutated.tag=Buffer.alloc(16,1).toString("base64");
@@ -73,7 +108,7 @@ test("HMAC cursor prevents replay, rewrites, wrong source SHA or object substitu
   body:Buffer.from(JSON.stringify(fake)),secretB64:SECRET}),
   /PHASE2H_R2_BACKUP_CURSOR_HMAC_MISMATCH/u);
 });
-test("reject unqualified, colliding or over-cap original metadata",()=>{
+test("reject unqualified, colliding or over-cap evidence before derived archive",()=>{
  const x=rec(1);
  for(const invalid of [
   {...x,commercial_rights_verified:true},
@@ -120,7 +155,7 @@ test("real admission flow: exact main + read-only source -> one private R2 PUT, 
  const args={env:env(),now:NOW,fetchImpl:x.api,storage:x.store,
   readExportImpl:x.reader,validateBucket:async()=>true};
  const result=await backupPhase2hPrivateOriginals(args);
- assert.equal(result.status,"PASS_PRIVATE_R2_ENCRYPTED_B2_QUOTA_CONTINUITY_BACKUP");
+ assert.equal(result.status,"PASS_PRIVATE_R2_BROTLI11_DERIVED_RISK_GATE_BACKUP");
  assert.equal(result.provider_private_r2_put_readback,true);
  assert.equal(result.hmac_cursor_readback,true);
  assert.equal(result.b2_requests,0);
@@ -128,11 +163,13 @@ test("real admission flow: exact main + read-only source -> one private R2 PUT, 
  assert.equal(result.b2_inventory_proven,false);
  assert.equal(result.canary_hold_removed,false);
  assert.equal(result.d1_original_rows_mutated,0);
- assert.equal(result.backed_up_originals,1);
+ assert.equal(result.retained_derived_fact_rows,1);
+ assert.equal(result.full_originals_stored_long_term,false);
+ assert.equal(result.compression,"BROTLI_QUALITY_11");
  assert.equal(x.objects.size,2);
  assert.equal(x.calls.filter(c=>c.kind==="R2"&&c.method==="PUT").length,2);
  assert.equal(x.observed[0],null);
- assert.doesNotMatch(JSON.stringify(result),/PRIVATE example event|raw_json/u);
+ assert.doesNotMatch(JSON.stringify(result),/PRIVATE confidential example|raw_json/u);
  // Same hour, same canonical original: re-GET independently, NO new hour PUT.
  const retry=await backupPhase2hPrivateOriginals(args);
  assert.equal(retry.status,result.status);
