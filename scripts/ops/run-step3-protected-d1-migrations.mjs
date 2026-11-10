@@ -48,6 +48,8 @@ import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
+import {admitUnsigned0213AppliedEmptyResume}
+ from "../lib/d1-step3-0213-safe-resume.mjs";
 import {auditStep30212ExactHourlyCounter}
  from "../lib/d1-step3-0212-hourly-counter-integrity.mjs";
 import {auditStep30212AllRawSourceIndexes}
@@ -795,25 +797,47 @@ export async function applyStep3Migrations({env=process.env}={}){
    state.production_ref_only_live_off_proof=
     await verifyProductionRefOnlyOff({env});
    save(state);
-   if(state.native_history_preflight.native_applied_ids.includes("0213"))
-    fail("UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC");
-   const prior=q(config,
-    "SELECT name,type FROM sqlite_schema WHERE name='phase2h_raw_object_refs_v1'",
-    {maxRows:1});
-   if(prior.rows.length!==0)
-    fail("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED");
-   state.production_0213_hmac_mode={
-    status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY",
-    no_existing_d1_reference_schema_verified:true,
-    production_hmac_present:false,
-    actual_hmac_verified:false,
-    ref_only_writer_authorized:false,
-    ref_only_reader_cutover_authorized:false,
-    original_pointer_bytes_or_hmac_claimed:false,
-    canary_promoted:false
-   };
-   state.production_0213_hmac_preflight_provider_rows_read=prior.readRows;
-   save(state);
+   const applied0213=state.native_history_preflight.native_applied_ids.includes("0213");
+   if(applied0213){
+    // The native Cloudflare history is already APPLIED, but the 0213
+    // opt-in pointer table can still be truly EMPTY. Require fresh real D1
+    // exact index/PK/quick/FK/forced-plan AND zero-row proof before any
+    // checkpoint or migration mutation. No HMAC is claimed or generated.
+    let readRows=0;
+    const checked=(sql,maxRows)=>{
+     const proof=q(config,sql,{maxRows});
+     readRows+=proof.readRows;
+     if(readRows>100000)fail("UNSIGNED_0213_PRECHECK_READ_BUDGET_EXCEEDED");
+     return proof.rows;
+    };
+    const structural=auditStep30213EmptyRefStructure(checked);
+    state.production_0213_hmac_mode=admitUnsigned0213AppliedEmptyResume({
+     nativeApplied:true,structuralProof:structural,
+     refOnlyOffProof:state.production_ref_only_live_off_proof
+    });
+    state.production_0213_hmac_preflight_provider_rows_read=readRows;
+    state.production_0213_empty_native_history_reverified=true;
+    save(state);
+   }else{
+    // A pending 0213 must still have no pre-existing reference schema.
+    const prior=q(config,
+     "SELECT name,type FROM sqlite_schema WHERE name='phase2h_raw_object_refs_v1'",
+     {maxRows:1});
+    if(prior.rows.length!==0)
+     fail("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED");
+    state.production_0213_hmac_mode={
+     status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY",
+     no_existing_d1_reference_schema_verified:true,
+     production_hmac_present:false,
+     actual_hmac_verified:false,
+     ref_only_writer_authorized:false,
+     ref_only_reader_cutover_authorized:false,
+     original_pointer_bytes_or_hmac_claimed:false,
+     canary_promoted:false
+    };
+    state.production_0213_hmac_preflight_provider_rows_read=prior.readRows;
+    save(state);
+   }
   }
   state.original_immutable_sample_sha256=baseline(config);
   const migrationSha=sha256MigrationSet(manifests);
