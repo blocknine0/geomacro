@@ -343,8 +343,8 @@ test("Nov 10 real production 15-index pre-0212 registry has exact reviewed 0110/
   const row={name:d.name,type:"index",tbl_name:d.table,sql:d.sql};
   assert.equal(verifyStep3ReviewedExtraIndexDDL(d.table,d.name,[row]),true);
   for(const wrong of [
-    {...row,sql:row.sql.replace("first_seen_at","published_at")},
-    {...row,sql:row.sql.replace("native_feed_published_at DESC","native_feed_published_at ASC")},
+    {...row,sql:row.sql.replace("CREATE INDEX","CREATE UNIQUE INDEX")},
+    {...row,sql:row.sql.replace(" ON "," ON not_the_table ")},
     {...row,tbl_name:"another_table"},
     {...row,name:"idx_unreviewed"}
   ])assert.throws(()=>verifyStep3ReviewedExtraIndexDDL(d.table,d.name,[wrong]),
