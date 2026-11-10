@@ -294,7 +294,10 @@ function checkIndexAndSchema(config,step,report){
    const r=q(config,sql,{maxRows});
    report.counter_0211_rows_read??=0;
    report.counter_0211_rows_read+=r.readRows;
-   if(report.counter_0211_rows_read>100000)
+   // Full-volume SQLite-side set parity may touch every source row
+   // for each of 7 indexes, but the backend's actual billed reads are
+   // metered and capped. An unexpectedly costly query fails Stage 2.
+   if(report.counter_0211_rows_read>3000000)
     fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };
