@@ -59,6 +59,38 @@ test("Cloudflare actual plural storageClassTransitions format also holds before 
   /PHASE2H_RISK_COLD_LIFECYCLE_COLD_PREFIX_EXPIRY_OR_PAID_CLASS_CONFLICT/u);
 });
 
+test("Cloudflare default unscoped abort-incomplete-multipart is NOT deletion of completed cold facts",()=>{
+ const defaultRule={id:"Abort incomplete multipart uploads",enabled:true,
+  abortMultipartUploadsTransition:{condition:{type:"Age",maxAge:7*86400}}};
+ for(const conditions of [undefined,{}, {prefix:undefined}]){
+  // Omitted prefix or empty conditions is provider-default syntax.
+  if(conditions?.prefix===undefined&&Object.hasOwn(conditions??{},"prefix"))continue;
+  const rule={...defaultRule,...(conditions===undefined?{}:{conditions})};
+  const proof=assertPermanentRiskColdR2Lifecycle({success:true,result:{
+   rules:[rule]}});
+  assert.equal(proof.no_matching_auto_deletion,true);
+  assert.equal(proof.reviewed_applicable_rules,1);
+ }
+});
+test("unscoped rule with any object deletion, paid transition, unknown effect or malformed abort still HOLDS",()=>{
+ const abort={id:"default",enabled:true,abortMultipartUploadsTransition:{
+  condition:{type:"Age",maxAge:7*86400}}};
+ const cases=[
+  {...abort,deleteObjectsTransition:{condition:{type:"Age",maxAge:3600}}},
+  {...abort,storageClassTransitions:[{storageClass:"InfrequentAccess"}]},
+  {...abort,unknownObjectAction:true},
+  {...abort,abortMultipartUploadsTransition:null},
+  {...abort,abortMultipartUploadsTransition:{condition:{type:"Date",maxAge:7*86400}}},
+  {...abort,abortMultipartUploadsTransition:{condition:{type:"Age",maxAge:-1}}},
+  {...abort,abortMultipartUploadsTransition:{condition:{type:"Age",maxAge:7*86400},extra:true}},
+  {...abort,abortMultipartUploadsTransition:{condition:{type:"Age",maxAge:7*86400,extra:true}}},
+  {...abort,conditions:{prefix:42}}
+ ];
+ for(const rule of cases)
+  assert.throws(()=>assertPermanentRiskColdR2Lifecycle({success:true,result:{rules:[rule]}}),
+   /PHASE2H_RISK_COLD_LIFECYCLE_BUCKET_WIDE_OR_UNSCOPED_RULE_UNVERIFIED/u);
+});
+
 test("unknown/corrupt provider lifecycle never counts as missing rules",()=>{
  for(const doc of [null,{success:false,result:{rules:[]}},
   {success:true,result:{}},{success:true,result:{rules:null}},
