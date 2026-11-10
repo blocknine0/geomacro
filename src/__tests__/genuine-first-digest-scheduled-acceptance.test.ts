@@ -45,13 +45,13 @@ describe("genuine first paid-capability source acceptance, strictly no funds",()
     expect(proofScript).toContain('price.amount_atomic !== "20000"');
     expect(proofScript).toContain("prepared_answer_sha256: hash");
   });
-  it("keeps every locked price and 14 structured variants identical on all 3 USDC previews",()=>{
+  it("keeps every locked price and 14 variants identical on both owner-approved USDC preview networks",()=>{
     expect(geomacroStructuredOutputCatalog()).toHaveLength(14); // immutable historical contracts
     const outputs=publicGeomacroStructuredOutputCatalog();
     expect(outputs).toHaveLength(12);
     let checks=0;
     for(const output of outputs){
-      for(const net of Object.keys(GEOMACRO_USDC_NATIVE_RAILS)){
+      for(const net of ["base","polygon"]){
         const q=quoteGeomacroUsdcCapabilityPreflight({
           network:net,capability:output.capability,variant:output.variant,
         });
@@ -68,6 +68,10 @@ describe("genuine first paid-capability source acceptance, strictly no funds",()
       }
     }
     expect(Object.keys(GEOMACRO_CAPABILITY_PRICES)).toHaveLength(8);
-    expect(checks).toBe(36);
+    expect(checks).toBe(24);
+    expect(GEOMACRO_USDC_NATIVE_RAILS.arc.caip2).toBe("eip155:5042");
+    expect(()=>quoteGeomacroUsdcCapabilityPreflight({
+      network:"arc",capability:"intelligence_query",variant:"focused",
+    })).toThrow("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
   });
 });

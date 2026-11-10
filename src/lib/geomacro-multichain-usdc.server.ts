@@ -26,6 +26,11 @@ export const GEOMACRO_USDC_NETWORKS_PATH="/api/v1/payments/networks" as const;
 export const GEOMACRO_USDC_QUOTE_PREFLIGHT_PATH="/api/v1/payments/preflight" as const;
 export const GEOMACRO_USDC_RAIL_SCHEMA="geomacro.usdc-rails.v1" as const;
 
+/** Owner's new-sale offer scope; the Arc rail stays in legacy type
+ * declarations for historical proof compatibility but is not a new offer.
+ */
+export const GEOMACRO_NEW_SALE_USDC_NETWORKS=Object.freeze(["base","polygon"] as const);
+
 const HASH=/^[a-f0-9]{64}$/u;
 const address=/^0x[0-9a-fA-F]{40}$/u;
 
@@ -41,7 +46,11 @@ export function quoteGeomacroUsdcCapabilityPreflight(input:unknown){
      typeof body.network!=="string"||
      !Object.hasOwn(GEOMACRO_USDC_NETWORKS,body.network))
     throw Error("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
+  // Historical retired-capability error remains stable on every known
+  // chain, while Arc is unavailable for any NEW paid/nonpaid offer.
   if(!isPublicStoreCapability(body.capability))throw Error("CAPABILITY_RETIRED_NO_CHARGE");
+  if(!GEOMACRO_NEW_SALE_USDC_NETWORKS.some(network=>network===body.network))
+    throw Error("USDC_PREFLIGHT_SCOPE_UNSUPPORTED");
   const rail=GEOMACRO_USDC_NETWORKS[body.network as GeomacroUsdcNetwork];
   if(!address.test(rail.asset))throw Error("USDC_NATIVE_ASSET_INVALID");
   const price=resolveGeomacroCapabilityPrice(body.capability,body.variant);
@@ -105,14 +114,15 @@ export function publicGeomacroUsdcRailDiscovery(
   return {
     schema:GEOMACRO_USDC_RAIL_SCHEMA,ok:true,
     chain_policy:"NATIVE_CIRCLE_USDC_ONLY",
-    network_count:3,
+    network_count:GEOMACRO_NEW_SALE_USDC_NETWORKS.length,
+    new_sale_rail_scope:"CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC",
     receiving_policy:"ONE_SHARED_EVM_MERCHANT_ADDRESS",
     receiving_address_control_and_configuration_require_verification:true,
     native_facilitator_distinct_from_gateway_batching:true,
     merchant_receiver:{state:receiverState,address:receiver,
       same_address_configuration_verified:receiver!==null,
       wallet_control_verified:walletControlVerified},
-    networks:Object.values(GEOMACRO_USDC_NETWORKS).map(rail=>({
+    networks:GEOMACRO_NEW_SALE_USDC_NETWORKS.map(key=>GEOMACRO_USDC_NETWORKS[key]).map(rail=>({
       ...rail,scheme:"exact" as const,x402_version:2 as const,
       // Rail support from Circle != Geomacro merchant activation.
       protocol_supported:true,merchant_settlement_ready:false,
@@ -131,6 +141,7 @@ export function publicGeomacroUsdcRailDiscovery(
     },
     raw_data_delivery:false,
     all_three_merchant_settlements_verified:false,
+    base_polygon_merchant_settlements_verified:false,
     settlement_authorized:false,real_money_acknowledged:false,
     customer_charge_authorized:false,
   };

@@ -4,7 +4,7 @@ const ADDRESS=/^0x[0-9a-fA-F]{40}$/u;
 const ZERO=/^0x0{40}$/iu;
 const NAMES=["GEOMACRO_USDC_RECEIVER","COINBASE_X402_PAY_TO","CIRCLE_X402_SELLER_ADDRESS"] as const;
 
-/** One merchant address across the three EVM mainnets. This checks configuration
+/** One owner-signed merchant address reused across Base and Polygon USDC mainnets. This checks configuration
  * equality only; it is not wallet-control proof or settlement acceptance. */
 export function resolveSharedUsdcReceiver(env:Record<string,string|undefined>=process.env){
  const entries=NAMES.map(name=>({name,value:env[name]?.trim()})).filter(x=>x.value);

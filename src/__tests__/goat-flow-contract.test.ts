@@ -85,16 +85,11 @@ describe("GOAT Flow partner contract", () => {
     );
   });
 
-  it("opens only the low-level GOAT mainnet config after the exact global acknowledgement", () => {
+  it("preserves owner crypto-only GOAT hard block even after global acknowledgement", () => {
     configureGoat("mainnet");
     process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK = COMMERCIAL_LAUNCH_ACK;
 
-    expect(requireGoatFlowConfig()).toEqual(
-      expect.objectContaining({
-        environment: "mainnet",
-        api_url: GOAT_FLOW_ENVIRONMENTS.mainnet.api_url,
-      }),
-    );
+    expect(() => requireGoatFlowConfig()).toThrow("GOAT_X402_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE");
   });
 
   it("matches the documented GOAT HMAC delimiter algorithm for a fixed vector", () => {

@@ -4,16 +4,21 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("production launch safety contract", () => {
-  it("keeps the initial paid cohort coordinated and includes Circle explicitly", () => {
+  it("scopes new-sales cohort to Base/Polygon native USDC and keeps fiat/Arc providers offline", () => {
     const manifest = JSON.parse(read("config/commercial-launch-manifest.json"));
 
-    for (const provider of ["coinbase_x402", "circle_gateway_x402", "nevermined"]) {
+    for (const provider of ["coinbase_x402","xpay_x402","dexter_x402"]) {
       expect(manifest.providers[provider].launch_cohort).toBe(true);
       expect(manifest.providers[provider].production_enabled).toBe(false);
     }
-
-    expect(manifest.providers.goat_x402.launch_cohort).toBe(false);
-    expect(manifest.launch_rule.allow_partial_provider_launch).toBe(false);
+    for (const provider of ["circle_gateway_x402","nevermined","paypal","goat_x402"]) {
+      expect(manifest.providers[provider].launch_cohort).toBe(false);
+      expect(manifest.providers[provider].production_enabled).toBe(false);
+    }
+    expect(manifest.new_sale_rail_scope).toBe("CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC");
+    expect(manifest.paypal_new_sales_disabled).toBe(true);
+    expect(manifest.production_funds_authorized).toBe(false);
+    expect(manifest.launch_rule.allow_partial_provider_launch).toBe(true);
   });
 
   it("requires the lean initial pay-per-call gate and separates post-launch/scale evidence", () => {

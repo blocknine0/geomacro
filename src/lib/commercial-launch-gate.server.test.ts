@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   COMMERCIAL_LAUNCH_ACK,
   assertCommercialLaunchAuthorized,
-  getCommercialLaunchState,
+  getCommercialLaunchState, GEOMACRO_NEW_SALES_RAIL_SCOPE,
+  GEOMACRO_APPROVED_CRYPTO_PROVIDERS,
 } from "./commercial-launch-gate.server";
 
 afterEach(() => {
@@ -18,7 +19,7 @@ describe("coordinated commercial launch gate", () => {
       emergencyFrozen: false,
       authorized: false,
       mode: "prelaunch",
-      disabledProviders: [],
+      disabledProviders: ["circle_gateway_x402","goat_x402","nevermined","paypal"],
     });
     expect(() => assertCommercialLaunchAuthorized("coinbase_x402")).toThrow(
       "COINBASE_X402_PRODUCTION_LOCKED_UNTIL_COORDINATED_GEOMACRO_LAUNCH",
@@ -46,11 +47,15 @@ describe("coordinated commercial launch gate", () => {
       emergencyFrozen: false,
       authorized: true,
       mode: "launched",
-      disabledProviders: [],
+      disabledProviders: ["circle_gateway_x402","goat_x402","nevermined","paypal"],
     });
     expect(() => assertCommercialLaunchAuthorized("coinbase_x402")).not.toThrow();
-    expect(() => assertCommercialLaunchAuthorized("circle_gateway_x402")).not.toThrow();
-    expect(() => assertCommercialLaunchAuthorized("nevermined")).not.toThrow();
+    expect(() => assertCommercialLaunchAuthorized("xpay_x402")).not.toThrow();
+    expect(() => assertCommercialLaunchAuthorized("dexter_x402")).not.toThrow();
+    for(const provider of ["paypal","circle_gateway_x402","nevermined","goat_x402","stripe"]){
+      expect(() => assertCommercialLaunchAuthorized(provider))
+        .toThrow("_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE");
+    }
   });
 
   it("lets an emergency freeze stop all production providers without removing the owner acknowledgement", () => {
@@ -62,7 +67,7 @@ describe("coordinated commercial launch gate", () => {
       emergencyFrozen: true,
       authorized: false,
       mode: "frozen",
-      disabledProviders: [],
+      disabledProviders: ["circle_gateway_x402","goat_x402","nevermined","paypal"],
     });
     expect(() => assertCommercialLaunchAuthorized("coinbase_x402")).toThrow(
       "GEOMACRO_COMMERCE_EMERGENCY_FREEZE_ACTIVE",
@@ -81,15 +86,33 @@ describe("coordinated commercial launch gate", () => {
       " circle_gateway_x402 , nevermined ";
 
     expect(getCommercialLaunchState().disabledProviders).toEqual([
-      "circle_gateway_x402",
-      "nevermined",
+      "circle_gateway_x402","goat_x402","nevermined","paypal",
     ]);
     expect(() => assertCommercialLaunchAuthorized("coinbase_x402")).not.toThrow();
     expect(() => assertCommercialLaunchAuthorized("circle_gateway_x402")).toThrow(
-      "CIRCLE_GATEWAY_X402_PRODUCTION_QUARANTINED",
+      "CIRCLE_GATEWAY_X402_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE",
     );
     expect(() => assertCommercialLaunchAuthorized("nevermined")).toThrow(
-      "NEVERMINED_PRODUCTION_QUARANTINED",
+      "NEVERMINED_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE",
     );
+  });
+});
+
+
+describe("owner crypto-only permanent routing boundary",()=>{
+  it("never allows fiat or an unsupported network provider, regardless of approval ACK",()=>{
+    expect(GEOMACRO_NEW_SALES_RAIL_SCOPE).toBe("CRYPTO_ONLY_BASE_POLYGON_NATIVE_USDC");
+    expect(GEOMACRO_APPROVED_CRYPTO_PROVIDERS).toEqual([
+      "coinbase_x402","xpay_x402","dexter_x402",
+    ]);
+    process.env.GEOMACRO_COMMERCIAL_LAUNCH_ACK=COMMERCIAL_LAUNCH_ACK;
+    process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE="false";
+    process.env.GEOMACRO_COMMERCE_DISABLED_PROVIDERS="";
+    for(const p of ["paypal","stripe","nevermined","circle_gateway_x402","goat_x402"]){
+      expect(()=>assertCommercialLaunchAuthorized(p)).toThrow("NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE");
+    }
+    expect(()=>assertCommercialLaunchAuthorized("coinbase_x402")).not.toThrow();
+    expect(()=>assertCommercialLaunchAuthorized("xpay_x402")).not.toThrow();
+    expect(()=>assertCommercialLaunchAuthorized("dexter_x402")).not.toThrow();
   });
 });

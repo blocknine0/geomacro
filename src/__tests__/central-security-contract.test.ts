@@ -99,7 +99,7 @@ describe("Geomacro central security route boundary", () => {
   it("rejects a declared payment body larger than 8192 bytes before reading it", async () => {
     delete process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE;
     const decision = await enforceCentralRequestSecurity({
-      pathname: "/api/v1/payments/paypal/create-order",
+      pathname: "/api/v1/payments/crypto/quote",
       method: "POST",
       headers: new Headers({ "content-length": "8193" }),
     });
@@ -134,15 +134,22 @@ describe("Geomacro central security route boundary", () => {
     expect(commercialEmergencyDecision("/api/x402/intelligence", "POST")).toMatchObject({
       allowed: false, status: 423, code: "COINBASE_X402_PRODUCTION_QUARANTINED",
     });
-    expect(commercialEmergencyDecision("/api/x402/circle/intelligence", "POST")).toBeNull();
-    expect(commercialEmergencyDecision("/api/x402/nevermined/intelligence", "POST")).toBeNull();
+    expect(commercialEmergencyDecision("/api/x402/circle/intelligence", "POST")).toMatchObject({
+      allowed:false,status:423,code:"CIRCLE_GATEWAY_X402_PRODUCTION_QUARANTINED",
+    });
+    expect(commercialEmergencyDecision("/api/x402/nevermined/intelligence", "POST")).toMatchObject({
+      allowed:false,status:423,code:"NEVERMINED_PRODUCTION_QUARANTINED",
+    });
   });
 
   it("never trusts an unrecognized freeze value as an enabled switch", () => {
     process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "yes";
     expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")?.status).toBe(423);
     process.env.GEOMACRO_COMMERCE_EMERGENCY_FREEZE = "false";
-    expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")).toBeNull();
+    expect(commercialEmergencyDecision("/api/v1/payments/paypal/create-order", "POST")).toMatchObject({
+      allowed:false,status:423,code:"PAYPAL_PRODUCTION_QUARANTINED",
+    });
+    expect(commercialEmergencyDecision("/api/x402/intelligence", "POST")).toBeNull();
   });
 
   it("allows local degraded security only for Coinbase x402 testnet paths", () => {

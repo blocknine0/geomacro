@@ -82,10 +82,8 @@ describe("production x402 readiness", () => {
     process.env.GEOMACRO_API_CREDENTIAL_PEPPER = "c".repeat(32);
     process.env.CIRCLE_X402_MAINNET_ACK = CIRCLE_X402_PRODUCTION_ACK;
 
-    const config = getCircleGatewayProductionConfig();
-    expect(config?.environment).toBe("production");
-    expect(config?.networks).toEqual(["eip155:8453"]);
-    expect(config?.amountAtomic).toBe("50000");
+    expect(() => getCircleGatewayProductionConfig())
+      .toThrow("CIRCLE_GATEWAY_X402_NEW_SALES_OUTSIDE_CRYPTO_ONLY_SCOPE");
   });
 
   it("never advertises a production paid resource while launch flags are off", async () => {
@@ -113,7 +111,9 @@ describe("production x402 readiness", () => {
     expect(Object.keys(commerce.offers[0].providers).sort()).toEqual(["circle_gateway", "coinbase_x402", "nevermined"]);
     expect(openapi.paths["/api/x402/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
     expect(openapi.paths["/api/x402/circle/intelligence"].post["x-payment-info"].production_enabled).toBe(false);
-    expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(true);
+    expect(launch.providers.circle_gateway_x402.launch_cohort).toBe(false);
+    expect(launch.providers.xpay_x402.launch_cohort).toBe(true);
+    expect(launch.providers.dexter_x402.launch_cohort).toBe(true);
     expect(launch.providers.circle_gateway_x402.production_enabled).toBe(false);
     expect(middleware).toContain("providerRealFundsSecurityState");
     expect(circleRoute).toContain('provider: "circle_gateway_x402"');

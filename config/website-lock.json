@@ -1279,5 +1279,22 @@
     "pricing_and_payment_unchanged": true,
     "new_unreviewed_website_changes_not_authorized": true,
     "production_publish_requires_exact_sha_proof": true
+  },
+  "approved_crypto_only_store_20261108": {
+    "approval": "Owner explicitly requested on 8 November 2026 (Asia/Kolkata): 'sudhu crypto diye apatoto start kori.' Only native Circle USDC Base/Polygon payment method is to be shown; do not represent checkout as live without real on-chain merchant settlement and signed evidence.",
+    "purpose": "Remove PayPal/card new-sale offers from the Store, retain 6 unchanged SKUs and Base/Polygon native USDC contracts, keep transfer/wallet QR/credit issuance locked. Historical PayPal refund intake and Global Risk lock untouched.",
+    "approved_paths": [
+      "src/components/dual-rail-checkout.tsx",
+      "src/components/low-barrier-pricing.tsx",
+      "src/routes/pricing.tsx"
+    ],
+    "exact_blob_lock": true,
+    "approved_source_commit": "524873ddcdd28ede2f809a16ed5f638848798310",
+    "previous_baseline_sha": "c2bb76f4657f17db132b740e675a22bb42754fd7",
+    "global_risk_final_lock_unmodified": true,
+    "no_funds": true,
+    "no_payable_receiver_or_qr": true,
+    "no_public_launch_claim": true,
+    "pending_exact_sha_live_deployment_acceptance": true
   }
 }
