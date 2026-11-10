@@ -20,6 +20,8 @@ import {validPrivateRawNews}
  from "../../workers/control-plane/src/phase2h-private-raw-news.mjs";
 import {shadowR2ObjectUrl}
  from "../lib/d1-step3-shadow-pointer-seed.mjs";
+import {verifyPermanentRiskColdR2Lifecycle}
+ from "../lib/phase2h-risk-minimum-r2-lifecycle.mjs";
 import {
  PHASE2H_R2_BACKUP_PREFIX,PHASE2H_R2_CURSOR_KEY,phase2hBackupSourceRows,
  openPhase2hBackupCursor,sealPhase2hBackupCursor,
@@ -169,11 +171,16 @@ async function r2Call(method,key,env,fetchImpl,body){
 }
 export async function backupPhase2hPrivateOriginals({
  env=process.env,now=new Date(),fetchImpl=fetch,
- readExportImpl=readExport,storage=r2Call,validateBucket=privateBucket
+ readExportImpl=readExport,storage=r2Call,validateBucket=privateBucket,
+ validateLifecycle=verifyPermanentRiskColdR2Lifecycle
 }={}){
  admission(env,now);
  await exactMain(env,fetchImpl);
  await validateBucket(env,fetchImpl);
+ const lifecycle=await validateLifecycle({env,fetchImpl});
+ if(lifecycle?.status!=="PROVIDER_NO_COLD_PREFIX_AUTO_DELETE_RULES"||
+    lifecycle?.no_matching_auto_deletion!==true)
+  fail("COLD_R2_LIFECYCLE_NOT_PROVEN_PERMANENT");
  const secretB64=env.GEOMACRO_D1_RECOVERY_AES256_KEY_B64;
  const state=await storage("GET",PHASE2H_R2_CURSOR_KEY,env,fetchImpl);
  const cursor=state?openPhase2hBackupCursor({body:state,secretB64}):null;
@@ -261,6 +268,7 @@ export async function backupPhase2hPrivateOriginals({
   compression:"BROTLI_QUALITY_11",
   provider_private_r2_put_readback:true,
   hmac_cursor_readback:true,
+  provider_no_cold_prefix_auto_delete_verified:true,
   original_sha256_links_preserved:true,canonical_source_verified:true,
   independent_corroboration_verified:false,risk_gate_certified:false,
   d1_original_rows_mutated:0,raw_public_delivery:false,
