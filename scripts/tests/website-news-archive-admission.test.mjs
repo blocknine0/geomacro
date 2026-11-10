@@ -27,7 +27,14 @@ test("archive-only resumes after trusted deployed archive during D1 quota HELD",
 });
 test("quota-held archive may read at most one complete public journal bundle under snapshot headroom, never write D1",()=>{
  assert.ok(workflow.includes("snapshot_refresh: ${{ steps.budget.outputs.snapshot_refresh }}"));
- assert.ok(block.includes("GEOMACRO_CANONICAL_D1_CATCHUP: ${{ needs.quota-admission.outputs.snapshot_refresh == 'true' }}"));
+ // The old snapshot gate remains available. The read-only Paid catchup
+ // requires a second fresh monthly provider PASS before any canonical GET.
+ const catchupLine=block.split("\n").find(x=>x.includes("GEOMACRO_CANONICAL_D1_CATCHUP:"))??"";
+ assert.ok(catchupLine.includes("needs.quota-admission.outputs.snapshot_refresh == 'true'"));
+ assert.ok(catchupLine.includes("needs.quota-admission.outputs.canonical_archive_catchup_readonly == 'true'"));
+ assert.ok(catchupLine.includes("steps.canonical-readonly-monthly.outputs.admitted == 'true'"));
+ assert.ok(block.includes("id: canonical-readonly-monthly"));
+ assert.ok(block.includes("node scripts/ops/check-d1-paid-monthly-headroom.mjs --check"));
  assert.ok(block.includes("node scripts/ops/publish-permanent-derived-news-archive.mjs"));
  assert.ok(block.includes('GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}'));
  const onlyCollector=block.split('      - name: Collect once and publish only bounded Paid derived D1 rows when physically admitted')[1]?.split('      - name: Publish append-only permanent Finds archive')[0]??'';
