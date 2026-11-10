@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-09T19:52:15.526Z",
+  "checked_at": "2026-11-10T01:47:22.835Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -83,6 +83,23 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-23d62ed6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -495,44 +512,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-07T01:55:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-f794b82e",
-      "category": "macro",
-      "title": "Geomacro finds Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint",
-      "what_changed": "A monitored source feed reports: Gold extended Drop on Stronger-Than-Expected US Employment Data - Livemint. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T21:33:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-3b08e108",
-      "category": "rare_earth",
-      "title": "Geomacro finds Brazil approved 27 critical minerals for investment incentives - DatamarNews",
-      "what_changed": "A monitored source feed reports: Brazil approved 27 critical minerals for investment incentives - DatamarNews. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-06T21:12:26.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-09T19:52:15.526Z",
+  "updated_at": "2026-11-10T01:47:22.835Z",
   "signals": [
     {
       "id": "geopolitics-05a5a3c3",
@@ -19,6 +19,23 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-23d62ed6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null

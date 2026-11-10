@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-09T19:52:15.526Z",
+  "generated_at": "2026-11-10T01:47:22.835Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -26,6 +26,23 @@
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-23d62ed6",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: met in New York on Ukraine Monday · Ukraine",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council met in New York on Ukraine Monday. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-09T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
@@ -306,25 +323,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Federal Reserve Board"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-1c451683",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Russia's war against Ukraine is costing more and achieving less · United Kingdom",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "United Kingdom issued a statement to the FSC concerning Russia's war against Ukraine is costing more and achieving less. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "geopolitical security",
-      "published_at": "2026-10-28T13:28:52.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
