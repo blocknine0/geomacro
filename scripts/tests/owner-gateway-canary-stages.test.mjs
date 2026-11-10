@@ -17,6 +17,12 @@ const env=()=>({
  GITHUB_ACTOR:"blocknine0",GITHUB_SHA:SHA,GITHUB_RUN_ID:"42860000001"
 });
 const configs={
+ "registered-original-source-intake":{
+  authorization:"OWNER_AUTHORIZE_VERIFIED_ORIGINAL_SOURCE_B2_FIRST_NO_FUNDS",
+  verify_hot50:false,
+  target:"all-source-reusable-news-json.yml",
+  inputs:{approved_main_sha:SHA}
+ },
  "minimum-risk-facts-backup":{
   authorization:"OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
   verify_hot50:false,
@@ -52,7 +58,7 @@ function fixture(intent){
  const request={
   schema:OWNER_ISSUE_CANARY_SCHEMA,intent,source_sha:SHA,
   authorization:c.authorization,verify_hot50:c.verify_hot50,
-  ...(["candidate-upload","minimum-risk-facts-backup"].includes(intent)?{}:
+  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake"].includes(intent)?{}:
    {baseline_version_id:BASELINE,candidate_version_id:CANDIDATE,
     stage2_run_id:"42860000010"}),
   ...(intent==="canary-hold-review"?
@@ -85,6 +91,7 @@ test("only reviewed no-funds immutable canary and private derived backup operati
   assert.equal(x.no_funds,true);
   assert.equal(x.direct_prod_sql_authorized,false);
  }
+ assert.equal(plan("registered-original-source-intake").inputs.approved_main_sha,SHA);
  assert.equal(plan("candidate-upload").inputs.approval,
   "UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS");
  assert.equal(plan("canary-hold-review").inputs.operation,"release-hold");
@@ -174,6 +181,7 @@ test("canonical protected workflows keep external signed proof, SLO, no-funds an
  const rollout=readFileSync(".github/workflows/geomacro-protected-hot50-worker-rollout.yml","utf8");
  const review=readFileSync(".github/workflows/canary-promotion.yml","utf8");
  const gateway=readFileSync(".github/workflows/owner-issue-dispatch-gateway.yml","utf8");
+ const source=readFileSync(".github/workflows/all-source-reusable-news-json.yml","utf8");
  assert.match(candidate,/UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS/u);
  assert.match(candidate,/environment: production/u);
  assert.match(candidate,/prepare-optimized-worker-candidate\.mjs/u);
@@ -190,4 +198,8 @@ test("canonical protected workflows keep external signed proof, SLO, no-funds an
  assert.match(gateway,/github\.actor == 'blocknine0'/u);
  assert.match(gateway,/issues: write/u);
  assert.match(gateway,/actions: write/u);
+ assert.match(source,/approved_main_sha:/u);
+ assert.equal((source.match(/node scripts\/ops\/verify-owner-protected-source-main\.mjs/gu)??[]).length,2);
+ assert.match(source,/check-d1-paid-monthly-headroom\.mjs --hot50-source/u);
+ assert.match(source,/B2_ACCOUNT_QUOTA_WORKFLOW_ID: registered_original_archive/u);
 });
