@@ -12,13 +12,25 @@ test("isolated official sources and 195 canonical countries from the exact repo 
  const canonical=read("scripts/lib/phase2h-country-originals-195.mjs")
   .split("const ROWS=\`")[1].split("\`;")[0].trim().split("\n")
   .map(x=>x.split("|")[0]);
- assert.equal(src.length,8);
+ assert.equal(src.length,12);
+ assert.equal(new Set(src.map(x=>x.url)).size,12);
+ const supplements=[
+  "uk_ofsi_ogl_official_atom","uk_otsi_ogl_official_atom",
+  "uk_ukef_ogl_macro_atom","uk_ukri_ogl_minerals_atom"
+ ];
+ for(const id of supplements)assert.equal(src.filter(x=>x.id===id).length,1);
+ assert.deepEqual(
+  src.reduce((acc,s)=>(acc[s.category]=(acc[s.category]??0)+1,acc),{}),
+  {GEOPOLITICS:5,MACRO:3,CRITICAL_MINERALS:4});
  assert.equal(countries.length,195);
  assert.deepEqual(countries.map(x=>x.iso3),canonical);
  for(const s of src){
   const pin=inventory.sources.find(x=>x.source_id===s.id);
   assert.ok(pin);
   assert.equal(s.url,pin.feed_url);
+  assert.equal(pin.commercial_promotion_requires_separate_main_gates,true);
+  assert.equal(pin.telegram_content_license,false);
+  assert.equal(pin.owner_country_iso3,'GBR');
   assert.equal(pin.private_research_only,true);
   assert.equal(new URL(s.url).hostname,"www.gov.uk");
  }
