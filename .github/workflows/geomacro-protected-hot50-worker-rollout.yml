@@ -230,6 +230,16 @@ jobs:
           # Canonical observations: stage 0=15m, 1%=30m, 5/25/50/100%=15m.
           # Signed Stage2, per-version p95/p99, provider D1 monthly pace,
           # rollback and no-funds holds remain mandatory.
+      - name: Persist signed six-stage evidence for later independent HOLD review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-five-gate-provider-receipts
+          path: |
+            artifacts/release/canary-stage-*.json
+            artifacts/release/canary-promotion.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Persist non-secret, source-free provider receipts even on HOLD
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
