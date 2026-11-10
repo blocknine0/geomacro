@@ -1,0 +1,149 @@
+{
+  "schema": "geomacro.hot50-three-category-official-gap-priority.v1",
+  "scope": "PRIVATE_ORIGINAL_CANDIDATE_NO_FUNDS",
+  "priority_reason": "Official/publisher-origin feeds for unmet Hot50 geopolitical, macro/FX and critical-minerals evidence discovery; never issuer certification",
+  "pinned_existing": {
+    "config/private-osint-regional-corridor-additions.v1.json": [
+      "private_expansion_th_mdes_news",
+      "private_expansion_ru_cbr_en_press",
+      "private_expansion_ru_cbr_en_news",
+      "private_expansion_swe_riksbank_press",
+      "private_expansion_nor_norges_press",
+      "private_expansion_che_snb_press",
+      "private_expansion_che_snb_monetary",
+      "private_expansion_statcan_business_atom",
+      "private_expansion_statcan_trade_atom",
+      "private_expansion_nrcan_atom",
+      "private_expansion_za_sars_news",
+      "private_expansion_eurostat_trade_atom",
+      "private_expansion_eurostat_economy_atom",
+      "private_expansion_us_usgs_minerals_news",
+      "private_expansion_ungeneva_press_rss",
+      "private_expansion_uk_fcdo_atom"
+    ],
+    "config/private-osint-mineral-first-party-rss-expansion.v1.json": [
+      "private_mineral_chl_cochilco_news"
+    ]
+  },
+  "new_official_candidates": [
+    {
+      "id": "private_hot50_first_party_eu_sanctions_guidance",
+      "url": "https://finance.ec.europa.eu/node/1296/rss_en",
+      "discovery_reference_url": "https://finance.ec.europa.eu/eu-and-world/sanctions-restrictive-measures/sanctions-adopted-following-russias-military-aggression-against-ukraine/guidance-documents_en",
+      "publisher_country_iso3": null,
+      "continent": "global",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "rss",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_first_party_uk_home_office",
+      "url": "https://www.gov.uk/government/organisations/home-office.atom",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/home-office",
+      "publisher_country_iso3": "GBR",
+      "continent": "europe",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "atom",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_first_party_uk_cabinet_office",
+      "url": "https://www.gov.uk/government/organisations/cabinet-office.atom",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/cabinet-office",
+      "publisher_country_iso3": "GBR",
+      "continent": "europe",
+      "categories": [
+        "geopolitics"
+      ],
+      "type": "atom",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_first_party_uk_ons",
+      "url": "https://www.gov.uk/government/organisations/office-for-national-statistics.atom",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/office-for-national-statistics",
+      "publisher_country_iso3": "GBR",
+      "continent": "europe",
+      "categories": [
+        "macro"
+      ],
+      "type": "atom",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_first_party_uk_trade_remedies",
+      "url": "https://www.gov.uk/government/organisations/trade-remedies-authority.atom",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/trade-remedies-authority",
+      "publisher_country_iso3": "GBR",
+      "continent": "europe",
+      "categories": [
+        "macro",
+        "rare_earth"
+      ],
+      "type": "atom",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    },
+    {
+      "id": "private_hot50_first_party_uk_mining_remediation",
+      "url": "https://www.gov.uk/government/organisations/mining-remediation-authority.atom",
+      "discovery_reference_url": "https://www.gov.uk/government/organisations/mining-remediation-authority",
+      "publisher_country_iso3": "GBR",
+      "continent": "europe",
+      "categories": [
+        "rare_earth"
+      ],
+      "type": "atom",
+      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "publisher_native_dates_required": true,
+      "transport_verified_at_registration": false,
+      "original_article_verified": false,
+      "commercial_eligible": false,
+      "provider_rights_verified": false,
+      "publicly_deliverable": false
+    }
+  ],
+  "source_policy": {
+    "retired_source_ids_excluded": true,
+    "native_article_dates_required": true,
+    "independent_original_same_event_verification_required": true,
+    "commercial_rights_not_inferred": true,
+    "no_paid_promotion": true,
+    "no_provider_budget_increase": true,
+    "attribution_from_article_not_publisher_country": true,
+    "dynamic_http_and_parsing_proof_required": true
+  }
+}
