@@ -34,6 +34,9 @@ const NATIVE_OFFICIAL=Object.freeze([
  ["jpn_boj_press","https://www.boj.or.jp/en/rss/whatsnew.xml","JPN","macro"],
  ["us_usgs_minerals","https://www.usgs.gov/news/minerals/feed","USA","rare_earth"],
  ["can_bc_minerals","https://news.gov.bc.ca/ministries/mining-and-critical-minerals/feed","CAN","rare_earth"],
+ // Brazilian central bank issuer-owned RSS; discovery only until actual runtime
+ // native-clock, commercial-rights and original-page verification succeeds.
+ ["bra_bcb_focus","https://www.bcb.gov.br/api/feed/sitebcb/sitefeeds/focus","BRA","macro"],
 ]);
 
 export function macroMineralsContinuitySources(){
@@ -81,12 +84,12 @@ export function macroMineralsContinuitySources(){
  const official=NATIVE_OFFICIAL.map(([suffix,url,country,category])=>{
   const parsed=new URL(url);
   if(parsed.protocol!=="https:"||parsed.username||parsed.password||
-     parsed.port||parsed.hash||parsed.search||!["USA","CAN","JPN"].includes(country)||
+     parsed.port||parsed.hash||parsed.search||!["USA","CAN","JPN","BRA"].includes(country)||
      !["macro","rare_earth"].includes(category))
    throw Error("MACRO_MINERALS_NATIVE_OFFICIAL_SOURCE_INVALID");
   return Object.freeze({
    id:"private_macro_minerals_continuity_"+suffix,url,type:"rss",
-   continent:country==="JPN"?"asia":"north_america",
+   continent:country==="JPN"?"asia":country==="BRA"?"south_america":"north_america",
    publisher_country_iso3:country,publisher_kind:"official",
    categories:Object.freeze([category]),supported:true,
    private_macro_minerals_continuity:true,
