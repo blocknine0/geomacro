@@ -287,6 +287,8 @@ async function signedWrite(state,event,at,keys){
      encoder.encode(canonical)))throw Error("RESEARCH_DURABLE_SIGNED_READBACK_FAILED");
  return true;
 }
+// Keep global 195-country discovery independent of the owner-authorized Hot50 Risk Gate.
+const HOT50_RISK_GATE_SCOPE=new Set("USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AUS BRA MEX ITA ESP NLD CHE NOR SWE POL UKR TUR SAU ARE IRN ISR EGY QAT OMN IRQ ZAF NGA COD ZMB CHL PER ARG BOL IDN VNM THA MYS SGP PHL PAK BGD KAZ MNG MMR".split(" "));
 async function productionTick(){
  const keys=await ensureSigner();
  let healthy=0,found=0,verified=0,updated=0,signed=0,failed=0;
@@ -303,6 +305,7 @@ async function productionTick(){
  const seen=new Set();
  for(const candidates of sources){
   for(const e of candidates){
+   if(!HOT50_RISK_GATE_SCOPE.has(e.country))continue;
    if(categoryUsed[e.category]>=2||attempted[e.category]>=4)continue;
    const identity=e.category+"\n"+e.url+"\n"+(e.published||"unknown");
    if(seen.has(identity))continue;
