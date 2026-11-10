@@ -13,6 +13,9 @@ on:
       - "scripts/lib/d1-step3-production-final-acceptance.mjs"
       - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
       - "scripts/tests/d1-step3-real-shadow-proofs.test.mjs"
+      - "scripts/tests/step3-hot50-physical-parity-wiring.test.mjs"
+      - "scripts/ops/audit-hot50-b2-d1-parity.mjs"
+      - "scripts/ops/hot50-parity-proof.mjs"
       - "scripts/ops/check-d1-paid-monthly-headroom.mjs"
       - "scripts/tests/step3-orchestrator-dedicated-billing-read.test.mjs"
       - "scripts/ops/seed-step3-shadow-nonfact-index-fixture.mjs"
@@ -57,6 +60,7 @@ jobs:
           scripts/tests/d1-step3-dual-worker-expand-contract.test.mjs
           scripts/tests/d1-step3-real-shadow-proofs.test.mjs
           scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
+          scripts/tests/step3-hot50-physical-parity-wiring.test.mjs
           scripts/tests/step3-orchestrator-dedicated-billing-read.test.mjs
           scripts/tests/seed-step3-shadow-nonfact-index-fixture.test.mjs
           scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
@@ -241,13 +245,28 @@ jobs:
       inputs.verify_hot50 == true
     runs-on: ubuntu-24.04
     environment: production
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
+      GROQ_API_KEY_FOR_ASK_CACHE: ${{ secrets.GROQ_API_KEY }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_PEM }}
+      GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256: ${{ secrets.GEOMACRO_INDEPENDENT_REVIEW_PUBLIC_KEY_SHA256 }}
+      RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.RISK_OBJECT_SIGNING_PUBLIC_KEY_SPKI_B64 }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
+      B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_hot50_parity"
+      B2_REQUEST_BUDGET: "250"
+      PARITY_MAX_B2_READS: "240"
+      GEOMACRO_CONTROL_PLANE_URL: https://geomacro-control-plane.daspallab202391.workers.dev
+      B2_PARITY_VERIFIED_RECEIPT_JSON: /tmp/hot50-proof/parity.json
+      ACTIVATION_RUN_IDEMPOTENT_REDRIVE: "0"
       HOT50_TIER_FULL_CENSUS: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -257,14 +276,47 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node scripts/ops/verify-hot50-production-activation.mjs
+      # Use the exact existing owner-scoped HMAC derivation as the independent
+      # Hot50 production proof workflow. Never rotate or print the capability.
+      - name: Derive existing no-funds B2 audit capabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/hot50-proof
+          node --input-type=module <<'NODE'
+          import {createHmac} from "node:crypto";
+          import {appendFileSync} from "node:fs";
+          const root=process.env.ROOT_LEDGER_TOKEN??"";
+          if(root.length<32)throw Error("HOT50_EXISTING_ROOT_CAPABILITY_MISSING");
+          for(const [name,scope] of [
+            ["CONTROL_PLANE_TOKEN","geomacro-control-plane-v1"],
+            ["B2_SPOOL_ENCRYPTION_KEY","geomacro-p0b-private-spool-aes-gcm-v1"]
+          ]){
+            const value=createHmac("sha256",root).update(scope).digest("hex");
+            console.log("::add-mask::"+value);
+            appendFileSync(process.env.GITHUB_ENV,name+"="+value+"\n");
+          }
+          NODE
+      # This is a REAL provider B2 S3 GET/AES-GCM/D1 manifest comparison.
+      # A failed/partial/quota-limited audit stays FAIL: the next step still
+      # runs to report the missing independent evidence and cannot emit PASS.
+      - name: Produce same-run bounded genuine B2-D1 parity receipt
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ops/audit-hot50-b2-d1-parity.mjs > /tmp/hot50-proof/parity.json 2> /tmp/hot50-proof/parity-error.json
+      - name: Require all five genuine Hot50 production gates
+        run: node scripts/ops/verify-hot50-production-activation.mjs
       - name: Require all 150 live signed country-category cells across priced risk-gate tiers
         run: node scripts/ops/verify-hot50-risk-gate-tiers.mjs
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-step3-hot50-150-cell-proof
-          path: artifacts/hot50-risk-gate/latest.json
+          path: |
+            artifacts/hot50-risk-gate/latest.json
+            /tmp/hot50-proof/*.json
           if-no-files-found: warn
           retention-days: 14
 
