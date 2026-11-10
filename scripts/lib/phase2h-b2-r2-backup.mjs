@@ -52,10 +52,16 @@ export function phase2hBackupHour(now){
  if(!(now instanceof Date)||!Number.isFinite(now.getTime()))err("CLOCK_INVALID");
  return now.toISOString().slice(0,13)+":00:00.000Z";
 }
-export function phase2hBackupHourKey(now){
+export function phase2hBackupHourKey(now,batchDigest=null){
  const hour=phase2hBackupHour(now);
- return PREFIX+hour.slice(0,4)+"/"+hour.slice(5,7)+"/"+
-  hour.slice(8,10)+"/"+hour.slice(11,13)+".br11.enc";
+ const dir=PREFIX+hour.slice(0,4)+"/"+hour.slice(5,7)+"/"+
+  hour.slice(8,10)+"/"+hour.slice(11,13);
+ if(batchDigest!==null&&!HEX.test(batchDigest))
+  err("IMMUTABLE_BATCH_DIGEST_INVALID");
+ // Retain legacy zero-argument slot for restoring already committed hours.
+ // Every NEW batch is SHA256 content-addressed. Multiple exact batches in
+ // the same hour cannot overwrite one another, even with differing sources.
+ return batchDigest===null?dir+".br11.enc":dir+"/"+batchDigest+".br11.enc";
 }
 export function phase2hBackupSourceRows(rows,now){
  if(!Array.isArray(rows)||rows.length<1||rows.length>MAX_ROWS)
@@ -82,22 +88,32 @@ export function phase2hBackupSourceRows(rows,now){
  return sorted;
 }
 export function sealPhase2hR2Backup({
- rows,now=new Date(),sourceSha,secretB64,nonce=randomBytes(12)
+ rows,now=new Date(),sourceSha,secretB64,nonce=randomBytes(12),
+ previousObjectKey="",previousObjectSha=""
 }={}){
  const records=phase2hBackupSourceRows(rows,now);
  if(!SHA.test(sourceSha??"")||
     !Buffer.isBuffer(nonce)||nonce.length!==12)
   err("EXACT_SOURCE_OR_NONCE_INVALID");
- const h=phase2hBackupHour(now),key=phase2hBackupHourKey(now);
+ const h=phase2hBackupHour(now);
+ if(typeof previousObjectKey!=="string"||
+    typeof previousObjectSha!=="string"||
+    Boolean(previousObjectKey)!==Boolean(previousObjectSha)||
+    previousObjectKey!==""&&!previousObjectKey.startsWith(PREFIX)||
+    previousObjectSha!==""&&!HEX.test(previousObjectSha))
+  err("PREVIOUS_CHAIN_POINTER_INVALID");
  const facts=minimumRiskFactsFromOriginals(records);
  const plain=Buffer.from(canon({
   schema:DOC_SCHEMA,fact_schema:COMPACT_RISK_FACTS_SCHEMA,
   columns_sha256:COLUMN_SHA,source_sha:sourceSha,hour:h,
   record_count:facts.length,facts,
+  previous_object_key:previousObjectKey,
+  previous_object_sha256:previousObjectSha,
   independent_corroboration_verified:false,
   risk_gate_certified:false,full_private_originals_retained:false
  }),"utf8");
  if(plain.length>MAX_BYTES)err("PLAINTEXT_BATCH_OVER_CAP");
+ const key=phase2hBackupHourKey(now,hash(plain));
  // Brotli quality 11 + 22-bit window is the highest reviewed text
  // compression mode, followed by AES-256-GCM authenticated encryption.
  const compressed=brotliCompressSync(plain,{params:{
@@ -166,7 +182,18 @@ export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}
    Object.keys(payload).sort().join("|")!==
     ["schema","fact_schema","columns_sha256","source_sha","hour",
       "record_count","facts","independent_corroboration_verified",
-      "risk_gate_certified","full_private_originals_retained"].sort().join("|")||
+      "risk_gate_certified","full_private_originals_retained",
+      ...("previous_object_key" in payload?
+       ["previous_object_key","previous_object_sha256"]:[])].sort().join("|")||
+   (("previous_object_key" in payload)!==("previous_object_sha256" in payload))||
+   (payload.previous_object_key!==undefined&&
+    (typeof payload.previous_object_key!=="string"||
+     typeof payload.previous_object_sha256!=="string"||
+     Boolean(payload.previous_object_key)!==Boolean(payload.previous_object_sha256)||
+     payload.previous_object_key!==""&&
+      !payload.previous_object_key.startsWith(PREFIX)||
+     payload.previous_object_sha256!==""&&
+      !HEX.test(payload.previous_object_sha256)))||
    !Array.isArray(payload.facts)||
    payload.facts.length<1||payload.facts.length>MAX_ROWS||
    payload.record_count!==payload.facts.length)
@@ -183,6 +210,8 @@ export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}
   err("DERIVED_FACT_KEYSET_ORDER_DIVERGED");
  return Object.freeze({source_sha:payload.source_sha,
   hour:payload.hour,records:checked,
+  previous_object_key:payload.previous_object_key??"",
+  previous_object_sha256:payload.previous_object_sha256??"",
   full_private_originals_retained:false,
   independent_corroboration_verified:false,risk_gate_certified:false,
   body_sha256:hash(body),verified:true});
