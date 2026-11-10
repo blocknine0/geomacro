@@ -262,7 +262,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: geomacro-d1-control-plane-production
+  # PR offline regression must not occupy the shared protected production
+  # deploy/migration/canary mutex. The real main and dispatch workflows retain
+  # the exact same account-wide production mutex and every safety HOLD.
+  group: ${{ github.event_name == 'pull_request' && format('geomacro-d1-control-plane-pr-{0}', github.event.pull_request.number) || 'geomacro-d1-control-plane-production' }}
   cancel-in-progress: false
 
 jobs:
@@ -305,6 +308,7 @@ jobs:
         run: |
           node scripts/ops/audit-phase2h-raw-canonical-readers.mjs
           node --test scripts/tests/phase2h-raw-shadow-scope-review.test.mjs
+          node --test scripts/tests/deploy-d1-pr-concurrency-isolation.test.mjs
 
       - name: Verify unified event batch ingestion, query, quota slot and retention contracts
         run: |

@@ -95,34 +95,12 @@ function corroborationProof(gro){
  }
  return source_references.length?source_references:null;
 }
-function corroboratedObservationProof(snapshot){
- const facts=snapshot?.corroborated_risk_facts;
- if(!facts||typeof facts!=="object"||Array.isArray(facts))return null;
- const source_references=[];
- const categoryScores={};
- const factSheets=[];
- for(const category of CATEGORIES){
-  const fact=facts[category];
-  if(!fact||!Number.isFinite(fact.score_0_100)||fact.score_0_100<0||fact.score_0_100>100||
-    !Number.isSafeInteger(fact.event_count)||fact.event_count<1||!Array.isArray(fact.source_references))return null;
-  const valid=fact.source_references.filter(event=>typeof event?.event_id==="string"&&
-    HEX.test(event.event_id)&&Number.isSafeInteger(event.independent_source_count)&&
-    event.independent_source_count>=2&&Array.isArray(event.sources)&&
-    new Set(event.sources.map(x=>x?.source_host).filter(x=>typeof x==="string"&&x.length<=120)).size>=2);
-  if(valid.length<fact.event_count)return null;
-  categoryScores[category]=Number((fact.score_0_100/100).toFixed(6));
-  factSheets.push({category,verified_category_score_0_100:boundedScore(fact.score_0_100),
-   evidence_status:"VERIFIED_CORROBORATED",observed_count:Math.max(0,Number(snapshot?.categories?.[category]?.source_count)||0),
-   corroborated_event_count:fact.event_count});
-  for(const event of valid.slice(0,12))source_references.push({
-   event_reference:event.event_id,independent_source_count:event.independent_source_count,
-   source_ids:event.sources.map(x=>String(x.source_id??"")).filter(Boolean).slice(0,6),
-   source_hosts:event.sources.map(x=>String(x.source_host??"")).filter(Boolean).slice(0,6),
-   content_sha256:event.sources.map(x=>x.title_sha256).filter(x=>HEX.test(String(x))).slice(0,6),
-  });
- }
- return source_references.length?{categoryScores,factSheets,source_references}:null;
-}
+// The metadata-only risk_gap_enrichment table is NOT a machine-qualified
+// original evidence authority. Its "CORROBORATED" counter is discovered by
+// title hashes and does not prove rights, independent original authorship,
+// same-event identity or dual fact/rights attestation. Only the existing
+// reverified, commercial-qualified Ed25519 GRO may unlock Standard/Complex.
+// Research counts remain available in Basic; no automatic paid promotion.
 function sevenDays(rows,now,subject){
  const indexed=new Map();
  for(const row of rows??[]){
@@ -221,12 +199,11 @@ export function composeRiskGateThreeTierResponse({
  const calculated=calculateUnifiedRisk(Object.fromEntries(
   CATEGORIES.map(c=>[c,scores[c]??null])));
  const references=corroborationProof(verified_gro);
- const observedProof=corroboratedObservationProof(snapshot);
  const signedQualified=calculated.unifiedScore!==null&&references!==null;
- const observedQualified=observedProof!==null;
- const qualified=signedQualified||observedQualified;
- const standardScore=signedQualified?calculated.unifiedScore:
-  observedQualified?calculateUnifiedRisk(observedProof.categoryScores).unifiedScore:null;
+ // Genuine independent same-event and derived-use rights are verified by the
+ // pinned GRO authority, not by untrusted title/host counters in D1.
+ const qualified=signedQualified;
+ const standardScore=signedQualified?calculated.unifiedScore:null;
  const factsheets=CATEGORIES.map(category=>({
   category,verified_category_score_0_100:
    signedQualified&&Number.isFinite(scores[category])?
@@ -235,8 +212,8 @@ export function composeRiskGateThreeTierResponse({
   observed_count:categoryRows.find(r=>r.category===category)?.observed_count??0,
  }));
  if(tier==="standard"){
-  const standardFacts=observedQualified&&!signedQualified?observedProof.factSheets:factsheets;
-  const standardReferences=signedQualified?references:observedProof?.source_references??[];
+  const standardFacts=factsheets;
+  const standardReferences=signedQualified?references:[];
   const result={...base,status:qualified?"READY":"INSUFFICIENT_CORROBORATION",
    chargeable:qualified,
    confidence:qualified?{level:"MEDIUM",verification:"VERIFIED"}:null,
