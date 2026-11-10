@@ -16,6 +16,9 @@ on:
       - "config/official-ogl-atom-sources.json"
       - "scripts/tests/research-supabase-stream20m-security.test.mjs"
       - "scripts/tests/research-hot50-country-attribution.test.mjs"
+      - "config/research-hot50-supplemental-govuk-atoms.v1.json"
+      - "scripts/ops/probe-hot50-research-supplemental-atoms.mjs"
+      - "scripts/tests/research-supplemental-atom-probe.test.mjs"
       - "supabase/functions/gm-research-stream20m/index.ts"
       - "supabase/functions/gm-research-risk-gate/index.ts"
       - "supabase/migrations/20261104121000_research_stream20m_supabase_native_cron.sql"
@@ -29,6 +32,9 @@ on:
       - "src/lib/risk-gate/stream-ingest.ts"
       - "scripts/tests/research-supabase-stream20m-security.test.mjs"
       - "scripts/tests/research-hot50-country-attribution.test.mjs"
+      - "config/research-hot50-supplemental-govuk-atoms.v1.json"
+      - "scripts/ops/probe-hot50-research-supplemental-atoms.mjs"
+      - "scripts/tests/research-supplemental-atom-probe.test.mjs"
       - "supabase/functions/gm-research-stream20m/index.ts"
       - "supabase/functions/gm-research-risk-gate/index.ts"
       - "supabase/migrations/20261104121000_research_stream20m_supabase_native_cron.sql"
@@ -58,4 +64,15 @@ jobs:
           node --check scripts/lib/research-gate-official-20m.mjs
           bun test scripts/lib/research-gate-official-20m.test.mjs
           bun x vitest run src/__tests__/research-risk-state.test.ts
-          node --test scripts/tests/research-supabase-stream20m-security.test.mjs scripts/tests/research-hot50-country-attribution.test.mjs
+          node --test scripts/tests/research-supabase-stream20m-security.test.mjs scripts/tests/research-hot50-country-attribution.test.mjs scripts/tests/research-supplemental-atom-probe.test.mjs
+      - name: Verify real source HTTP 200 plus Atom parser for four noncommercial supplements (no secrets)
+        if: github.event_name == 'pull_request'
+        run: node scripts/ops/probe-hot50-research-supplemental-atoms.mjs
+      - name: Preserve read-only source transport metadata (no article payload)
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hot50-research-supplemental-source-probe-${{ github.run_id }}
+          path: ${{ runner.temp }}/hot50-research-supplemental-probe.json
+          if-no-files-found: warn
+          retention-days: 7

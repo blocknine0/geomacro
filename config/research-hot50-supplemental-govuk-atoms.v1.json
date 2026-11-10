@@ -1,0 +1,98 @@
+{
+  "schema": "geomacro.hot50.research-supplemental-govuk-atom.v1",
+  "scope": "HOT50_NONCOMMERCIAL_RESEARCH_ONLY",
+  "historical_global_source_registry_unchanged": true,
+  "license_or_transport_proven_by_registration": false,
+  "commercial_risk_gate_eligible": false,
+  "source_count": 4,
+  "sources": [
+    {
+      "source_id": "uk_ofsi_ogl_official_atom",
+      "category": "GEOPOLITICS",
+      "publisher": "UK Office of Financial Sanctions Implementation",
+      "publisher_page": "https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation",
+      "feed_url": "https://www.gov.uk/government/organisations/office-of-financial-sanctions-implementation.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_otsi_ogl_official_atom",
+      "category": "GEOPOLITICS",
+      "publisher": "UK Office of Trade Sanctions Implementation",
+      "publisher_page": "https://www.gov.uk/government/organisations/office-of-trade-sanctions-implementation",
+      "feed_url": "https://www.gov.uk/government/organisations/office-of-trade-sanctions-implementation.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_ukef_ogl_macro_atom",
+      "category": "MACRO",
+      "publisher": "UK Export Finance",
+      "publisher_page": "https://www.gov.uk/government/organisations/uk-export-finance",
+      "feed_url": "https://www.gov.uk/government/organisations/uk-export-finance.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    },
+    {
+      "source_id": "uk_ukri_ogl_minerals_atom",
+      "category": "CRITICAL_MINERALS",
+      "publisher": "UK Research and Innovation",
+      "publisher_page": "https://www.gov.uk/government/organisations/uk-research-and-innovation",
+      "feed_url": "https://www.gov.uk/government/organisations/uk-research-and-innovation.atom",
+      "rights": "UK_OPEN_GOVERNMENT_LICENCE_V3_EXCEPT_THIRD_PARTY",
+      "rights_reference": "https://www.gov.uk/help/terms-conditions",
+      "license": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      "ingest_transport": "DIRECT_OFFICIAL_ATOM",
+      "telegram_content_license": false,
+      "license_conditions": [
+        "attribution_to_original_publisher",
+        "link_to_source",
+        "mark_derived_content",
+        "exclude_credited_third_party_content"
+      ],
+      "uses_publisher_native_clock_only": true,
+      "owner_country_iso3": "GBR",
+      "private_research_only": true,
+      "commercial_promotion_requires_separate_main_gates": true
+    }
+  ]
+}
