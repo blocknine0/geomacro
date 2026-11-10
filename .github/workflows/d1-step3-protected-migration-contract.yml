@@ -6,12 +6,20 @@ on:
       - "scripts/ops/check-d1-headroom.mjs"
       - "scripts/ops/verify-d1-publisher-billable-shadow.mjs"
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
+      - ".github/workflows/production-rollout-orchestrator.yml"
+      - ".github/workflows/step3-existing-production-bearer-readonly.yml"
       - "scripts/lib/d1-step3-migration-contract.mjs"
       - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/lib/d1-step3-0211-counter-integrity.mjs"
       - "scripts/lib/d1-step3-0212-source-index-integrity.mjs"
       - "scripts/tests/d1-step3-0212-source-index-integrity.test.mjs"
       - "scripts/lib/d1-step3-0211-spool-integrity.mjs"
+      - "scripts/lib/d1-step3-large-index-set-proof.mjs"
+      - "scripts/lib/d1-step3-production-reference-only-off-proof.mjs"
+      - "scripts/lib/d1-step3-production-canary-admission.mjs"
+      - "scripts/tests/d1-step3-production-canary-admission.test.mjs"
+      - "scripts/tests/d1-step3-production-reference-only-off-proof.test.mjs"
+      - "scripts/tests/d1-step3-large-index-set-proof.test.mjs"
       - "scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs"
       - "scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs"
       - "scripts/tests/d1-step3-0211-spool-integrity.test.mjs"
@@ -59,6 +67,12 @@ jobs:
           node --check scripts/lib/d1-step3-supported-integrity.mjs
           node --check scripts/lib/d1-step3-0211-counter-integrity.mjs
           node --check scripts/lib/d1-step3-0211-spool-integrity.mjs
+          node --check scripts/lib/d1-step3-large-index-set-proof.mjs
+          node --check scripts/lib/d1-step3-production-reference-only-off-proof.mjs
+          node --test scripts/tests/d1-step3-large-index-set-proof.test.mjs
+          node --test scripts/tests/d1-step3-supported-integrity.test.mjs
+          node --test scripts/tests/d1-step3-production-reference-only-off-proof.test.mjs
+          node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --test scripts/tests/d1-step3-0211-spool-integrity.test.mjs
           node --check scripts/lib/d1-step3-0212-hourly-counter-integrity.mjs
           node --test scripts/tests/d1-step3-0212-hourly-counter-integrity.test.mjs

@@ -46,6 +46,23 @@ test("real reviewed 0212 migration seeds exact category/UTC-hour materialized co
   assert.equal(p.canary_promoted,false);
  }finally{d.close()}
 });
+test("hour-bin count is bounded independently of >3k canonical pending originals",()=>{
+ const d=makeDatabase({empty:true});
+ try{
+  const ins=d.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,?)");
+  d.exec("BEGIN");
+  for(let i=0;i<4001;i++)ins.run(i.toString(16).padStart(64,"0"),
+   "macro","2026-11-09T10:30:00.000Z",null);
+  d.exec("COMMIT");
+  const p=auditStep30212ExactHourlyCounter(reader(d));
+  assert.equal(p.status,"PASS_D1_0212_EXACT_HOURLY_COUNTER_AND_PK_INDEX_PARITY");
+  assert.equal(p.counter_buckets_verified,1);
+  assert.equal(p.active_counter_buckets_verified,1);
+  assert.equal(p.canonical_source_group_by_exact,true);
+  assert.equal(p.production_release_authorized,false);
+ }finally{d.close()}
+});
+
 test("ACK triggers retain legitimate ZERO history bins: exclude only from active parity, never key audit",()=>{
  const d=makeDatabase();
  try{

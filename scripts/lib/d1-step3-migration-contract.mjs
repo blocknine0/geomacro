@@ -72,6 +72,47 @@ export function step3SqlManifests({read=readFileSync}={}){
   return {...p,sql_sha256:hash(sql),filename:p.file.split("/").at(-1)};
  });
 }
+
+/** Native D1 history reports names and timestamps, NOT SQL checksums. */
+export function step3NativeHistorySQL(){
+ return "SELECT id,name,applied_at FROM d1_migrations WHERE "+
+  STEP3_MIGRATIONS.map(m=>"name LIKE '"+m.id+"%'").join(" OR ")+
+  " ORDER BY id";
+}
+export function classifyStep3NativeHistory(manifests,rows){
+ if(!Array.isArray(manifests)||manifests.length!==4||
+    manifests.map(m=>m.id).join(",")!=="0204,0211,0212,0213"||
+    manifests.some(m=>typeof m.filename!=="string"||
+      m.filename!==m.file.split("/").at(-1))||
+    !Array.isArray(rows)||rows.length>4)
+  fail("NATIVE_HISTORY_INPUT_INVALID");
+ const names=new Map(manifests.map(m=>[m.id,m.filename]));
+ const found=new Set();let lastId=0;
+ for(const row of rows){
+  const prefix=typeof row?.name==="string"?row.name.slice(0,4):"";
+  if(!Number.isSafeInteger(row?.id)||row.id<=lastId||
+     !names.has(prefix)||row.name!==names.get(prefix)||
+     found.has(prefix)||typeof row.applied_at!=="string"||
+     !/^20\d\d-\d\d-\d\d[ T]\d\d:\d\d:\d\d/.test(row.applied_at))
+   fail("NATIVE_HISTORY_AMBIGUOUS_OR_CHANGED");
+  found.add(prefix);lastId=row.id;
+ }
+ // This is an ordered-only migration family: a later applied migration
+ // with an earlier missing migration is inconsistent, not proof of PASS.
+ const firstMissing=manifests.findIndex(m=>!found.has(m.id));
+ if(firstMissing!==-1&&manifests.slice(firstMissing).some(m=>found.has(m.id)))
+  fail("NATIVE_HISTORY_GAPPED");
+ return Object.freeze({
+  status:"OBSERVED_NATIVE_NAMES_ONLY_NOT_SQL_CHECKSUM",
+  native_applied_ids:manifests.filter(m=>found.has(m.id)).map(m=>m.id),
+  pending_ids:manifests.filter(m=>!found.has(m.id)).map(m=>m.id),
+  native_history_rows:rows.length,
+  sql_checksum_verified:false,
+  full_index_or_counter_integrity_verified:false,
+  production_release_authorized:false
+ });
+}
+
 export function step3SizeProbeSQL(tables,cap=STEP3_MAX_EXISTING_ROWS_PER_TABLE){
  if(!Array.isArray(tables)||tables.length===0||
     tables.length>5||tables.some(x=>!safeName(x))||
@@ -92,6 +133,67 @@ export function validateStep3SizeProbe(tables,results,cap=STEP3_MAX_EXISTING_ROW
  return {status:"PASS",tables,maximum_existing_rows_per_table:cap,
   bounded_ddl_cost_proven_for_this_instant:true};
 }
+
+/**
+ * A one-time expansion of the reviewed pending 0212 migration budget,
+ * never a general override of the 3000-row ordinary DDL ceiling.
+ * Each subquery is physically bounded. The grouped UTC-hour preflight
+ * is needed because the 0212 counter auditor has a separate bin limit.
+ * Provider cost is measured and re-admitted by the protected caller.
+ */
+export const STEP3_0212_PENDING_SOURCE_CAP=24000;
+export function step30212PendingSourcePreflightSQL(){
+ const raw="phase2h_private_raw_news";
+ const limited=(table,cap,condition="")=>
+  "(SELECT COUNT(*) FROM (SELECT 1 FROM "+table+
+  condition+" LIMIT "+(cap+1)+"))";
+ return "SELECT "+
+  limited(raw,STEP3_0212_PENDING_SOURCE_CAP)+
+   " AS raw_rows,"+
+  limited(raw,STEP3_0212_PENDING_SOURCE_CAP,
+   " WHERE b2_object_sha256 IS NULL")+" AS pending_rows,"+
+  "(SELECT COUNT(*) FROM (SELECT 1 FROM "+raw+
+   " WHERE b2_object_sha256 IS NULL "+
+   "GROUP BY category,substr(first_ingested_at,1,13) LIMIT 3001)) AS hour_bins,"+
+  limited("private_osint_news_25h",3000)+" AS osint_rows,"+
+  limited("website_derived_intelligence",3000)+" AS website_rows";
+}
+export function validateStep30212PendingSourcePreflight(results){
+ if(!Array.isArray(results)||results.length!==1||
+    Object.keys(results[0]??{}).sort().join(",")!==
+    "hour_bins,osint_rows,pending_rows,raw_rows,website_rows")
+  fail("0212_PENDING_SOURCE_PROOF_MISSING");
+ const v=results[0];
+ if(Object.values(v).some(x=>!Number.isSafeInteger(x)||x<0)||
+    v.raw_rows>STEP3_0212_PENDING_SOURCE_CAP||
+    v.pending_rows>v.raw_rows||v.hour_bins>3000||
+    v.osint_rows>3000||v.website_rows>3000)
+  fail("0212_REVIEWED_LARGE_SOURCE_BUDGET_EXCEEDED");
+ if((v.pending_rows===0)!==(v.hour_bins===0))
+  fail("0212_PENDING_HOUR_BIN_CONTRADICTION");
+ // Conservatively budget source seed + two reviewed index builds; this
+ // estimate is an admission reservation, NOT a promise of physical billing.
+ const estimated_rows_read=100000+v.raw_rows*25+
+  v.pending_rows*10+(v.osint_rows+v.website_rows)*15;
+ const estimated_rows_written=10000+v.raw_rows*20+
+  v.pending_rows*8+(v.osint_rows+v.website_rows)*12;
+ if(estimated_rows_read>10000000||estimated_rows_written>500000)
+  fail("0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED");
+ return Object.freeze({
+  status:"PASS_READ_ONLY_BOUNDED_0212_COST_ENVELOPE_NOT_PRODUCTION_APPROVAL",
+  source_rows_verified:v.raw_rows,
+  original_pending_rows_observed:v.pending_rows,
+  canonical_hour_buckets_observed:v.hour_bins,
+  existing_osint_rows_verified:v.osint_rows,
+  existing_website_rows_verified:v.website_rows,
+  estimated_rows_read,estimated_rows_written,
+  no_guaranteed_account_wide_hard_cap:true,
+  source_index_integrity_verified:false,
+  no_sql_writes_performed:true,
+  production_release_authorized:false
+ });
+}
+
 export function step3SchemaSQL(objects){
  const names=Object.keys(objects);
  if(!names.length||names.length>30||names.some(x=>!safeName(x)))

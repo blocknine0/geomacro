@@ -28,6 +28,8 @@ import {admitSignedStep3ShadowReceipt}
  from "../lib/d1-step3-receipt-admission.mjs";
 import {assessStep3ProductionFinal}
  from "../lib/d1-step3-production-final-acceptance.mjs";
+import {verifyProductionRefOnlyOff}
+ from "../lib/d1-step3-production-reference-only-off-proof.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
@@ -39,7 +41,7 @@ import {
  verifyStep3LedgerRows,step3LedgerStartSQL,
  step3LedgerStatusSQL,sha256MigrationSet,decideResume
 } from "../lib/d1-step3-migration-ledger.mjs";
-import {auditStep3AllIndexes,admitStep30204SupportedIntegrity}
+import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,admitStep30204SupportedIntegrity}
  from "../lib/d1-step3-supported-integrity.mjs";
 import {auditStep30213EmptyRefStructure}
  from "../lib/d1-step3-0213-empty-reference-proof.mjs";
@@ -52,7 +54,9 @@ import {auditStep30211WithoutRowidCounter}
 import {auditStep30211SpoolSource}
  from "../lib/d1-step3-0211-spool-integrity.mjs";
 import {STEP3_MIGRATIONS,step3SqlManifests,
- step3SizeProbeSQL,validateStep3SizeProbe,step3SchemaSQL,
+ step3SizeProbeSQL,validateStep3SizeProbe,step3NativeHistorySQL,
+ classifyStep3NativeHistory,step30212PendingSourcePreflightSQL,
+ validateStep30212PendingSourcePreflight,step3SchemaSQL,
  verifyStep3Schema,verifyStep3Explain,
  compareImmutableBaseline} from "../lib/d1-step3-migration-contract.mjs";
 
@@ -135,6 +139,19 @@ function approved(env){
   .split("\n").filter(Boolean).filter(s=>
    !/^artifacts\/release\//u.test(s.slice(3)));
  if(dirty.length)fail("SOURCE_TREE_DIRTY_EXACT_SHA_UNVERIFIED");
+ // Existing production control bearer MUST authenticate before any DDL.
+ // Reference-only 0213 is opt-in and deliberately creates an EMPTY table:
+ // its independently reviewed final acceptance recognizes this structural-
+ // only mode. Never invent a real pointer HMAC for an empty opt-in table.
+ // A configured production HMAC MUST be 64 hex and NEVER a Shadow fallback.
+ if(typeof env.CONTROL_PLANE_TOKEN!=="string"||
+    env.CONTROL_PLANE_TOKEN.length<32)
+  fail("PRODUCTION_CONTROL_BEARER_MISSING");
+ const productionPointerHmac=env.PHASE2H_R2_REFERENCE_HMAC_KEY??"";
+ if(typeof productionPointerHmac!=="string"||
+    (productionPointerHmac!==""&&
+     !/^[a-f0-9]{64}$/iu.test(productionPointerHmac)))
+  fail("PRODUCTION_POINTER_HMAC_MALFORMED");
 }
 function runnerConfig(privateDir,dbId,migrationsDir){
  const config=join(privateDir,"wrangler-step3.jsonc");
@@ -195,7 +212,13 @@ function ensureLedger(config,manifests,report){
  return map;
 }
 async function refreshedGate(report,stage){
- const x=await checkD1PaidMonthlyHeadroom({lane:report.operation_kind==="shadow"?"shadow":"migration"});
+ const estimate=report.operation_kind==="production"?
+   report.large_0212_production_cost_envelope:null;
+ const x=await checkD1PaidMonthlyHeadroom({
+  lane:report.operation_kind==="shadow"?"shadow":"migration",
+  estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
+  estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0
+ });
  report.latest_headroom={stage,status:x.status,code:x.code,
   day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
@@ -267,11 +290,11 @@ function checkIndexAndSchema(config,step,report){
   for(const table of step.integrityTables){
    mark("D1_SUPPORTED_QUICK_FK_ALL_INDEX_AND_UNIQUE_PROOF",table);
    if(!readOnly(table))fail("INTEGRITY_TABLE_SCOPE_INVALID");
-   const p=auditStep3AllIndexes(table,(sql,maxRows)=>{
+   const p=auditStep3AllIndexesCurrentRows(table,(sql,maxRows)=>{
     const r=q(config,sql,{maxRows});
     report.composite_integrity_rows_read??=0;
     report.composite_integrity_rows_read+=r.readRows;
-    if(report.composite_integrity_rows_read>100000)
+    if(report.composite_integrity_rows_read>3000000)
      fail("SUPPORTED_0204_INDEX_AUDIT_READ_CAP_EXCEEDED");
     return r.rows;
    });
@@ -293,7 +316,10 @@ function checkIndexAndSchema(config,step,report){
    const r=q(config,sql,{maxRows});
    report.counter_0211_rows_read??=0;
    report.counter_0211_rows_read+=r.readRows;
-   if(report.counter_0211_rows_read>100000)
+   // Full-volume SQLite-side set parity may touch every source row
+   // for each of 7 indexes, but the backend's actual billed reads are
+   // metered and capped. An unexpectedly costly query fails Stage 2.
+   if(report.counter_0211_rows_read>3000000)
     fail("SUPPORTED_0211_COUNTER_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };
@@ -397,7 +423,9 @@ function checkIndexAndSchema(config,step,report){
    const r=q(config,sql,{maxRows});
    report.census_0212_rows_read??=0;
    report.census_0212_rows_read+=r.readRows;
-   if(report.census_0212_rows_read>100000)
+   // Exhaustive D1-side set equality may scan large source/index trees;
+   // never let an unbounded operation exhaust the monthly admission.
+   if(report.census_0212_rows_read>3000000)
     fail("SUPPORTED_0212_CENSUS_AUDIT_READ_CAP_EXCEEDED");
    return r.rows;
   };
@@ -428,7 +456,7 @@ function checkIndexAndSchema(config,step,report){
    "website_derived_intelligence"
   ];
   const lineageInputs=lineageTables.map(table=>
-   auditStep3AllIndexes(table,checked));
+   auditStep3AllIndexesCurrentRows(table,checked));
   const lineage=admitStep30204SupportedIntegrity(lineageInputs);
   if(lineage.status!==
       "PASS_D1_SUPPORTED_0204_PLUS_0212_FOURTEEN_INDEX_LOGICAL_INTEGRITY"||
@@ -589,7 +617,13 @@ async function verifyHmacNewPointers(config,env){
    code:"POINTER_PROOF_PAGE_EXCEEDS_BOUNDED_BUDGET",
    all_hmac_and_r2_bytes_verified:false};
  const empty=inspectPointerProofCount(result.rows);
- if(empty)return {...empty,all_hmac_and_r2_bytes_verified:false};
+ if(empty)return {...empty,all_hmac_and_r2_bytes_verified:false,
+  production_hmac_required_for_zero_rows:false,
+  structural_only_no_existing_pointers:true};
+ // A real pointer MUST have the *original* production HMAC. Never accept
+ // a shadow key, a rotated value, or fake cryptographic readback.
+ if(!/^[a-f0-9]{64}$/iu.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
+  fail("NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC");
  const proof=await verifyRealPhase2hPointerRows({rows:result.rows,env});
  return {...proof,
   all_hmac_and_r2_bytes_verified:
@@ -644,7 +678,74 @@ export async function applyStep3Migrations({env=process.env}={}){
   state.d1_backend_advertised_version=backend.version_label;
   state.native_time_travel_bookmark_still_required=true;
   save(state);
-  for(const manifest of manifests)boundedInputs(config,manifest,state);
+  const nativeHistory=q(config,step3NativeHistorySQL(),{maxRows:5});
+  state.native_history_preflight=classifyStep3NativeHistory(
+   manifests,nativeHistory.rows);
+  state.native_history_rows_read=nativeHistory.readRows;
+  state.native_history_schema_presence=[];
+  save(state);
+  for(const manifest of manifests){
+   if(state.native_history_preflight.native_applied_ids.includes(manifest.id)){
+    // Applied native D1 history bypasses only the cost estimate for PENDING
+    // DDL. It never bypasses later full index, counter, signer or B2 proofs.
+    const observed=q(config,step3SchemaSQL(manifest.objects),{maxRows:30});
+    verifyStep3Schema(manifest.objects,observed.rows);
+    state.native_history_schema_presence.push({
+     migration_id:manifest.id,
+     status:"SCHEMA_PRESENT_NOT_FULL_INTEGRITY_VERIFIED",
+     provider_rows_read:observed.readRows
+    });
+    save(state);
+   }else if(manifest.id==="0212"){
+    // The 0212 source is genuinely >3000 rows in production. Admit only a
+    // reviewed one-time bounded 24k-source envelope; the entire existing
+    // SQL hash, seven-index audit, pending-hour parity, and 30% Paid
+    // reserve are unchanged. If unverified, stop BEFORE checkpoint/DDL.
+    const source=q(config,step30212PendingSourcePreflightSQL(),{maxRows:1});
+    if(source.readRows>200000)
+     fail("0212_PREFLIGHT_PROVIDER_READ_COST_EXCEEDED");
+    state.large_0212_production_cost_envelope=
+     validateStep30212PendingSourcePreflight(source.rows);
+    state.large_0212_preflight_provider_rows_read=source.readRows;
+    save(state);
+    await refreshedGate(state,"LARGE_0212_ESTIMATED_COST_AFTER_SOURCE_PROBE");
+   }else{
+    // Any other pending migration retains the strict 3k bound.
+    boundedInputs(config,manifest,state);
+   }
+  }
+  // Missing production HMAC is admissible ONLY for an entirely new
+  // reference-only 0213 schema with no canonical pointer table at all.
+  // Native history and a fresh provider schema query must BOTH confirm
+  // that no existing pointers can be encountered by this migration.
+  // This is not an activation of the R2 reference writer/readers.
+  if(!(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"")){
+   // Match the actual deployed Cloudflare Worker's switches, not local flags.
+   // The schema-only 0213 path MUST NOT activate any reference-only reader
+   // or writer. Existing deployed HMAC/ambiguous version => strict HOLD.
+   state.production_ref_only_live_off_proof=
+    await verifyProductionRefOnlyOff({env});
+   save(state);
+   if(state.native_history_preflight.native_applied_ids.includes("0213"))
+    fail("UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC");
+   const prior=q(config,
+    "SELECT name,type FROM sqlite_schema WHERE name='phase2h_raw_object_refs_v1'",
+    {maxRows:1});
+   if(prior.rows.length!==0)
+    fail("UNSIGNED_0213_EXISTING_REFERENCE_SCHEMA_UNVERIFIED");
+   state.production_0213_hmac_mode={
+    status:"FRESH_PROVIDER_PRE_DDL_NO_REFERENCE_TABLE_STRUCTURAL_ONLY",
+    no_existing_d1_reference_schema_verified:true,
+    production_hmac_present:false,
+    actual_hmac_verified:false,
+    ref_only_writer_authorized:false,
+    ref_only_reader_cutover_authorized:false,
+    original_pointer_bytes_or_hmac_claimed:false,
+    canary_promoted:false
+   };
+   state.production_0213_hmac_preflight_provider_rows_read=prior.readRows;
+   save(state);
+  }
   state.original_immutable_sample_sha256=baseline(config);
   const migrationSha=sha256MigrationSet(manifests);
   const checkpoint=await captureDurableD1Checkpoint({
@@ -674,6 +775,19 @@ export async function applyStep3Migrations({env=process.env}={}){
   await refreshedGate(state,"AFTER_LEDGER_BEFORE_MIGRATIONS");
   for(const step of manifests){
    await refreshedGate(state,"BEFORE_"+step.id);
+   if(step.id==="0212"&&state.large_0212_production_cost_envelope){
+    // Re-observe a live source immediately before pending DDL. Concurrent
+    // ingestion is permitted, but any increased cost reservation must be
+    // re-admitted; no stale one-time quantity is treated as an atomic cap.
+    const latest=q(config,step30212PendingSourcePreflightSQL(),{maxRows:1});
+    if(latest.readRows>200000)
+     fail("0212_FRESH_PREFLIGHT_PROVIDER_COST_EXCEEDED");
+    state.large_0212_production_cost_envelope=
+     validateStep30212PendingSourcePreflight(latest.rows);
+    state.large_0212_refreshed_provider_rows_read=latest.readRows;
+    save(state);
+    await refreshedGate(state,"0212_FRESH_COST_BEFORE_DDL");
+   }
    migrateOne(base,config,step,state,env.D1_DATABASE_ID,ledger);
    compareImmutableBaseline(state.original_immutable_sample_sha256,
     baseline(config));

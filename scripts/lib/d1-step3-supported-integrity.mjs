@@ -7,6 +7,8 @@
  * Provider rows/private values remain in process memory; receipt is metadata.
  */
 import {createHash} from "node:crypto";
+import {auditStep3AllIndexesSet,STEP3_SET_MAX_SOURCE_ROWS}
+ from "./d1-step3-large-index-set-proof.mjs";
 
 export const STEP3_ALL_INDEX_MAX_ROWS=3000;
 export const STEP3_ALL_INDEX_MAX_PER_TABLE=48;
@@ -98,6 +100,27 @@ export function verifyStep3AllIndex({
  * success=true, rows_written=0 and nonnegative rows_read already verified.
  * Keep confidential results in process memory ONLY.
  */
+
+/**
+ * Current, provider-metered supported index audit. Small tables retain the
+ * original complete ordered row comparison. Larger ROWID sources use a
+ * SQLite-side exhaustive bidirectional EXCEPT proof, never a 3000-row sample.
+ * The caller is responsible for real rows_read accounting and monthly admission.
+ */
+export function auditStep3AllIndexesCurrentRows(table,query){
+ const named=ident(table);
+ if(typeof query!=="function")fail("PROVIDER_QUERY_MISSING");
+ const result=strictRows(query,
+  "SELECT COUNT(*) AS n FROM (SELECT 1 FROM "+named+
+  " NOT INDEXED LIMIT 3001)",1);
+ if(result.length!==1||Object.keys(result[0]??{}).join()!=="n"||
+    !Number.isSafeInteger(result[0].n)||result[0].n<0||
+    result[0].n>3001)fail("SOURCE_ROW_PROBE_UNVERIFIED");
+ return result[0].n>STEP3_ALL_INDEX_MAX_ROWS?
+   auditStep3AllIndexesSet(table,query):
+   auditStep3AllIndexes(table,query);
+}
+
 export function auditStep3AllIndexes(table,query){
  ident(table);
  if(typeof query!=="function")fail("PROVIDER_QUERY_MISSING");
@@ -207,7 +230,7 @@ export function admitStep30204SupportedIntegrity(proofs){
      p.index_proofs.some(x=>
       x.status!=="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"||
       !Number.isSafeInteger(x.rows_compared)||
-      x.rows_compared<1||x.rows_compared>STEP3_ALL_INDEX_MAX_ROWS||
+      x.rows_compared<1||x.rows_compared>STEP3_SET_MAX_SOURCE_ROWS||
       typeof x.unique_verified!=="boolean"))
    fail("0204_INDEX_REGISTRY_OR_ROW_PARITY_UNVERIFIED");
   if(!p.index_proofs.some(x=>x.unique_verified===true))

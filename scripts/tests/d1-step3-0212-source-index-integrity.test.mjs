@@ -57,6 +57,57 @@ test("real SQLite seven-index complete membership and two exact partial predicat
   assert.doesNotMatch(JSON.stringify(r),/2026-11-09T12|raw_sha256|__audit_rowid/);
  }finally{db.close()}
 });
+test("11,822-row source passes exact complete forced-index and both partial membership proof",()=>{
+ const db=sample();
+ try{
+  const insert=db.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,?,?,?)");
+  db.exec("BEGIN");
+  for(let i=2;i<11822;i++){
+   insert.run(i.toString(16).padStart(64,"0"),i%2?"macro":"geopolitics",
+    "2026-11-09T12:00:00Z","2026-11-09T12:03:00Z",
+    i%4===0?"f".repeat(64):null,i%3===0?"USA":null);
+  }
+  db.exec("COMMIT");
+  const largeReader=(sql,cap)=>{
+   assert.ok(Number.isSafeInteger(cap)&&cap>0&&cap<=3001);
+   const rows=db.prepare(sql).all();
+   assert(rows.length<=cap);
+   return rows;
+  };
+  const proof=auditStep30212AllRawSourceIndexes(largeReader);
+  assert.equal(proof.status,"PASS_0212_ALL_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_KEYS");
+  assert.equal(proof.full_index_proofs.length,5);
+  assert(proof.full_index_proofs.every(x=>x.compared_rows===11822));
+  assert(proof.partial_index_proof.qualified_rows_verified>3000);
+  assert.equal(proof.private_rows_or_digest_exposed,false);
+  assert.equal(proof.production_release_authorized,false);
+ }finally{db.close()}
+});
+
+test("large raw source still requires real D1 quick_check and foreign key proof",()=>{
+ const db=sample();
+ try{
+  const ins=db.prepare("INSERT INTO phase2h_private_raw_news VALUES(?,?,?,?,?,?)");
+  db.exec("BEGIN");
+  for(let i=2;i<3100;i++)
+   ins.run(i.toString(16).padStart(64,"0"),"macro",
+    "2026-11-09T12:00:00Z","2026-11-09T12:03:00Z",null,null);
+  db.exec("COMMIT");
+  for(const mutate of [
+   (sql,rows)=>sql.startsWith("PRAGMA quick_check(")?
+    [{quick_check:"corrupt"}]:rows,
+   (sql,rows)=>sql.startsWith("PRAGMA foreign_key_check(")?
+    [{table:"phase2h_private_raw_news",rowid:1}]:rows
+  ]){
+   assert.throws(()=>auditStep30212AllRawSourceIndexes((sql,cap)=>{
+    const rows=mutate(sql,db.prepare(sql).all());
+    assert(rows.length<=cap);
+    return rows;
+   }),/LARGE_D1_QUICK_CHECK_NOT_OK|LARGE_D1_FOREIGN_KEYS_UNVERIFIED/);
+  }
+ }finally{db.close()}
+});
+
 test("empty source has reviewed schema but cannot become nonvacuous signed evidence",()=>{
  const db=sample();
  try{

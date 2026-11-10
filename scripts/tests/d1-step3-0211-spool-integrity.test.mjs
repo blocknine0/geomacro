@@ -47,6 +47,31 @@ test("nonempty fake metadata pointer uses ALL seven forced index key/row parity"
   assert.equal(JSON.stringify(p).includes(id),false);
  }finally{d.close()}
 });
+test("real 3500-row spool is proven by full-volume forced-index EXCEPT, not a truncated 3k sample",()=>{
+ const d=db();
+ try{
+  d.prepare("INSERT INTO source_registry(source_id) VALUES(?)").run("test-source");
+  const ins=d.prepare("INSERT INTO ingestion_spool_queue "+
+   "(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,state,d1_committed_at) "+
+   "VALUES(?,?,?,?,?,?,?)");
+  d.exec("BEGIN");
+  for(let i=1;i<=3500;i++){
+   const hex=i.toString(16).padStart(32,"0");
+   const id=hex.slice(0,8)+"-"+hex.slice(8,12)+"-"+hex.slice(12,16)+
+    "-"+hex.slice(16,20)+"-"+hex.slice(20,32);
+   ins.run(id,i.toString(16).padStart(64,"0"),"test-source",
+    "b2://synthetic-only",401,"D1_COMMITTED","2026-11-09T00:00:00.000Z");
+  }
+  d.exec("COMMIT");
+  const p=auditStep30211SpoolSource(read(d));
+  assert.equal(p.status,"PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS");
+  assert.equal(p.source_rows_verified,3500);
+  assert.equal(p.index_count,7);
+  assert.equal(p.stage2_authorized,false);
+  assert.equal(p.canary_promoted,false);
+ }finally{d.close()}
+});
+
 test("an unexpected extra or removed source index fails closed for empty and populated",()=>{
  const d=db();
  try{

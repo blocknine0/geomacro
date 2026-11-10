@@ -214,6 +214,18 @@ jobs:
         with:
           name: geomacro-step3-real-shadow
           path: artifacts/release
+      - name: Authenticate existing live Control Plane bearer without rotation
+        if: github.event_name == 'workflow_dispatch' && inputs.execute_stage2 == true
+        shell: bash
+        env:
+          GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+        run: |
+          set -euo pipefail
+          # The existing ledger root is already protected in this environment.
+          # Only a matching live Worker admin GET exports the HMAC-derived
+          # bearer to subsequent steps via runner-local GITHUB_ENV.
+          # Never alter Cloudflare Worker secret, GitHub secret, D1, or HOLD.
+          node scripts/ops/prepare-five-gate-control-token.mjs
       - name: Check signed receipt before any D1 provider call
         run: |
           node --input-type=module <<'NODE'
