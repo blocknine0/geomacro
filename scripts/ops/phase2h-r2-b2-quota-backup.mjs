@@ -218,10 +218,22 @@ export async function backupPhase2hPrivateOriginals({
  markStage("CANONICAL_ORIGINAL_EXPORT");
  const answer=await readExportImpl(env,fetchImpl,cursor);
  if(answer.rows.length===0){
+  // A quiet interval is not a failed recovery when the previous encrypted
+  // R2 object and HMAC-bound cursor have just passed independent readback.
+  // Never claim NEW facts, B2 parity, Risk Gate certification or release.
+  markStage("COMPLETE");
   return Object.freeze({
-   status:"HOLD_NO_VERIFIED_ORIGINALS_AVAILABLE_FOR_BACKUP",
-   backed_up_originals:0,existing_cursor_verified:cursor!==null,
-   b2_ack_verified:false,b2_inventory_proven:false,canary_hold_removed:false
+   schema:"geomacro.phase2h.r2-minimum-risk-facts-brotli11-receipt.v2",
+   status:cursor?"IDLE_VERIFIED_EXISTING_R2_BACKUP_NO_NEW_ORIGINALS":
+    "HOLD_NO_VERIFIED_ORIGINALS_AVAILABLE_FOR_BACKUP",
+   backed_up_originals:0,new_derived_fact_rows_backed_up:0,
+   existing_cursor_verified:cursor!==null,
+   provider_private_r2_get_readback:cursor!==null,
+   provider_private_r2_put_readback:false,
+   pending_minimum_facts_unarchived:false,
+   b2_ack_verified:false,b2_inventory_proven:false,
+   risk_gate_certified:false,canary_hold_removed:false,
+   payments_authorized:false
   });
  }
  markStage("MINIMUM_FACT_PROJECTION");
@@ -240,8 +252,38 @@ export async function backupPhase2hPrivateOriginals({
   const old=openPhase2hR2Backup({
    body:found,secretB64,expectedHour:plan.hour
   });
-  if(JSON.stringify(old.records)!==JSON.stringify(expectedFacts))
-   fail("EXISTING_HOUR_MINIMUM_FACTS_CHANGED");
+  if(JSON.stringify(old.records)!==JSON.stringify(expectedFacts)){
+   // One immutable object per UTC hour is a strict cost/storage invariant.
+   // If the prior HMAC cursor points to this SAME genuine object, fresh
+   // keyset rows must wait for NEXT hour. Never overwrite ciphertext,
+   // advance a cursor to unarchived rows, or claim current-batch PASS.
+   const cursorLinksSameHour=cursor!==null&&
+    cursor.hour===plan.hour&&cursor.object_key===plan.key&&
+    cursor.object_sha256===sha(found)&&cursor.source_sha===old.source_sha;
+   const first=expectedFacts[0];
+   const clock=minimumFactClock(first),id=minimumFactId(first);
+   const strictlyAfterCursor=cursor!==null&&
+    (clock>cursor.last_clock||
+     clock===cursor.last_clock&&id>cursor.last_id);
+   if(!cursorLinksSameHour||!strictlyAfterCursor)
+    fail("EXISTING_HOUR_KEYSET_OR_CURSOR_DIVERGED");
+   markStage("COMPLETE");
+   return Object.freeze({
+    schema:"geomacro.phase2h.r2-minimum-risk-facts-brotli11-receipt.v2",
+    status:"DEFERRED_TO_NEXT_UTC_HOUR_VERIFIED_EXISTING_BACKUP",
+    utc_hour:plan.hour,existing_object_sha256:sha(found),
+    existing_derived_fact_rows:old.records.length,
+    new_derived_fact_rows_backed_up:0,pending_minimum_facts_unarchived:true,
+    immutable_hourly_object_reused:true,existing_cursor_verified:true,
+    provider_private_r2_get_readback:true,
+    provider_private_r2_put_readback:false,
+    hmac_cursor_readback:true,full_originals_stored_long_term:false,
+    b2_requests:0,b2_ack_verified:false,b2_inventory_proven:false,
+    independent_corroboration_verified:false,risk_gate_certified:false,
+    d1_original_rows_mutated:0,canary_hold_removed:false,
+    payments_authorized:false
+   });
+  }
   archivedSourceSha=old.source_sha;
  }else{
   // At most ONE bundle PUT per UTC-hour, after authenticated original export.
@@ -311,7 +353,16 @@ if(process.argv[1]&&import.meta.url===
   writeFileSync("artifacts/release/phase2h-r2-b2-quota-backup.json",
    JSON.stringify(receipt,null,2)+"\n",{mode:0o600});
   console.log(JSON.stringify(receipt));
-  if(!receipt.provider_private_r2_put_readback)process.exitCode=3;
+  // A verified idle/deferred interval is a valid scheduler outcome, NOT
+  // certification that new rows were archived. The existing object remains
+  // authenticated; the next UTC-hour run will resume from the same cursor.
+  const noNewRowsSafe=["IDLE_VERIFIED_EXISTING_R2_BACKUP_NO_NEW_ORIGINALS",
+   "DEFERRED_TO_NEXT_UTC_HOUR_VERIFIED_EXISTING_BACKUP"].includes(receipt.status)&&
+   receipt.provider_private_r2_get_readback===true&&
+   receipt.new_derived_fact_rows_backed_up===0&&
+   receipt.canary_hold_removed===false;
+  if(!receipt.provider_private_r2_put_readback&&!noNewRowsSafe)
+   process.exitCode=3;
  }catch(e){
   console.error(JSON.stringify({status:"HOLD",code:redacted(e),
    diagnostic_stage:backupPhase,
