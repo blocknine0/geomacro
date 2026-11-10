@@ -159,3 +159,21 @@ test("0204 Shadow-reviewed exact 12-index provider proof is mandatory before APP
  assert.match(runner,/step3LedgerStatusSQL\(manifest,"VERIFIED"/u);
  assert.doesNotMatch(runner,/unlinkSync\(HOLD_FILE\)/u);
 });
+
+test("real Cloudflare native Time Travel checkpoint replaces optional Wrangler backend-label assertion without relaxing DDL holds",()=>{
+ const runner=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ assert.match(runner,/summarizeD1BackendMetadata\(info\)/u);
+ assert.match(runner,/D1_TIME_TRAVEL_BACKEND_EXPLICITLY_UNSUPPORTED/u);
+ assert.match(runner,/backend.version_label==="alpha"/u);
+ assert.match(runner,/backend.version_label==="UNRECOGNIZED"/u);
+ assert.doesNotMatch(runner,/info\?\.version!=="production"/u);
+ assert.match(runner,/checkpoint\.real_provider_bookmark_observed!==true/u);
+ assert.match(runner,/checkpoint\.private_r2_encrypted_readback_verified!==true/u);
+ assert.match(runner,/checkpoint\.signed_manifest_readback_verified!==true/u);
+ assert.match(runner,/native_time_travel_provider_verified=true/u);
+ const actualBookmark=runner.indexOf("checkpoint.real_provider_bookmark_observed!==true");
+ const firstDdl=runner.indexOf("ensureLedger(config,manifests,state)");
+ assert(actualBookmark>0&&firstDdl>actualBookmark,
+  "actual native provider bookmark and immutable signed R2 recovery must precede DDL");
+ assert.match(runner,/if\(!existsSync\(HOLD_FILE\)\)fail\("HOLD_REMOVED_DURING_STAGE2"\)/u);
+});
