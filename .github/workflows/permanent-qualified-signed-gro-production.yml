@@ -3,6 +3,12 @@ name: Permanent Qualified Signed GRO Production
 # Event-driven signing plus a 20-minute durable-outbox recovery backstop.
 # Only independently qualified immutable inputs are signed; no funds.
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/permanent-qualified-signed-gro-production.yml"
+      - ".github/workflows/derived-risk-gate-discovery-20m.yml"
+      - "scripts/ops/verify-qualified-gro-source-wakeup.mjs"
+      - "scripts/tests/qualified-gro-source-wakeup.test.mjs"
   workflow_run:
     workflows: ["Deploy D1 Control Plane", "Machine Dual-Authority Intelligence Publication", "Hot-50 Direct Original News (20-Minute Cron)", "Global OSINT to Website Intelligence (15-Minute Discovery)"]
     types: [completed]
@@ -38,6 +44,19 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  source-wakeup-security-contract:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: node --test scripts/tests/qualified-gro-source-wakeup.test.mjs
+
   qualified-sign-archive-hot:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
