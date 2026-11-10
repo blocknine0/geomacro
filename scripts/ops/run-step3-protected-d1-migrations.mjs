@@ -487,16 +487,20 @@ function checkIndexAndSchema(config,step,report){
        "OBSERVED_EMPTY_HOURLY_COUNTER_AND_NO_PENDING_SOURCE"].includes(
        hourly.status)||hourly.canonical_source_group_by_exact!==true)
    fail("0212_HOURLY_COUNTER_OR_SOURCE_PARITY_UNVERIFIED");
-  mark("SUPPORTED_0212_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_PROOFS");
+  mark("SUPPORTED_0212_EXACT_REVIEWED_0117_SEVEN_OR_EIGHT_SOURCE_INDEX_PROOFS");
   const source=auditStep30212AllRawSourceIndexes(checked);
+  const indexProfileAdmitted=source.index_count===7||
+    (source.index_count===8&&source.reviewed_0117_present===true);
+  const fullCount=source.index_count-2;
   if(!["PASS_0212_ALL_SEVEN_SOURCE_FULL_AND_PARTIAL_INDEX_KEYS",
+       "PASS_0212_ALL_EIGHT_REVIEWED_SOURCE_INDEX_KEYS",
        "OBSERVED_0212_SOURCE_EMPTY_OR_PARTIAL_PREDICATE_UNPOPULATED"].includes(
        source.status)||
-     source.index_count!==7||source.full_index_count!==5||
+     !indexProfileAdmitted||source.full_index_count!==fullCount||
      source.reviewed_partial_index_count!==2||
      source.two_exact_partial_predicates_observed!==true||
      source.no_unknown_partial_indexes!==true)
-   fail("0212_SEVEN_SOURCE_INDEX_INTEGRITY_UNVERIFIED");
+   fail("0212_REVIEWED_SOURCE_INDEX_INTEGRITY_UNVERIFIED");
   if(hourly.original_pending_source_nonempty!==(
       source.partial_index_proof.qualified_rows_verified>0)||
      (hourly.original_pending_source_nonempty&&
