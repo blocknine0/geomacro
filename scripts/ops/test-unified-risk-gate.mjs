@@ -73,7 +73,12 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
     }
     return null;
    },
-   async all(){if(sql.includes("FROM phase2h_private_raw_news"))return {results:[]};return {results:[]}},
+   async all(){
+    if(sql.includes("ORDER BY day_utc ASC LIMIT 8"))
+     throw Error("UNQUALIFIED_COMPLEX_MUST_NOT_SCAN_D1_HISTORY");
+    if(sql.includes("FROM phase2h_private_raw_news"))return {results:[]};
+    return {results:[]};
+   },
    async run(){
     if(sql.startsWith("INSERT OR IGNORE INTO risk_observations"))categories.push(params[3]);
     if(sql.startsWith("INSERT OR IGNORE INTO unified_risk_snapshots")){
@@ -139,7 +144,15 @@ test("TWN country three-category D1-first daily snapshot and tamper-evident HMAC
      ...(product_tier?{product_tier}:{})})
    }),env,{now:clock,fetcher:async()=>{throw Error("UNEXPECTED_PUBLISHER_REFETCH")}});
    assert.equal(response.status,200,await response.clone().text());
-   assert.equal((await response.json()).execution_authorized,false);
+   const evaluated=await response.json();
+   assert.equal(evaluated.execution_authorized,false);
+   if(product_tier==="complex_full"){
+    assert.equal(evaluated.tiered_product.status,"SIGNED_GRO_OR_ARCHIVE_NOT_READY");
+    assert.equal(evaluated.tiered_product.chargeable,false);
+    assert.equal(evaluated.chargeable,false);
+    assert.equal(evaluated.tiered_product.complex_history_source_state,
+     "CURRENT_SIGNED_GRO_UNAVAILABLE");
+   }
   }
  }
  assert.equal(auditReceipts.size,9);
