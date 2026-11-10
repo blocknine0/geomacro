@@ -14,6 +14,7 @@ import {hot50Direct20mPublisherRegistry} from "./hot-50-direct-20m-sources.mjs";
 import {hot50RetiredBackupSources} from "./hot-50-retired-backup-sources.mjs";
 import {geopoliticsContinuitySources} from "./geopolitics-continuity-sources.mjs";
 import {macroMineralsContinuitySources} from "./macro-minerals-continuity-sources.mjs";
+import {hot50ThreeCategoryOfficialPrioritySources} from "./hot50-three-category-official-gap-priority.mjs";
 import {privateOsintRuntimeSources} from "./private-osint-country-rotation.mjs";
 import {privateOsintGlobalSources} from "./private-osint-global-sources.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
@@ -128,6 +129,18 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
    }
  }
 
+ // The existing first-party published-source manifests are checked afresh on
+ // each invocation. Keep exact URL dedupe and priority even under rotation.
+ const officialGap=hot50ThreeCategoryOfficialPrioritySources();
+ let officialGapNew=0;
+ for(const source of officialGap){
+  if(!merged.has(source.url))officialGapNew++;
+  add(source,true);
+  const found=merged.get(source.url);
+  if(found)merged.set(source.url,safeDirect({...found,
+   private_official_hot50_gap_priority:true,
+   categories:[...new Set([...found.categories,...source.categories])]}));
+ }
  const backed=new Set([...merged.values()].flatMap(source=>
   source.backup_for_retired_ids??[]));
  if(backed.size!==14||
@@ -151,6 +164,10 @@ export function threeDomainGlobal20mPublisherRegistry(now=new Date(),{
   hot50_distinct_direct_feeds_pinned:oldPinnedCount,
   hot50_priority_direct_feeds_including_backups:hot50PriorityWithBackups,
   all_priority_direct_feeds:priority.length,
+  first_party_gap_source_candidates_pinned:officialGap.length,
+  first_party_gap_priority_new_direct_urls:officialGapNew,
+  first_party_gap_verified_original_issuers:0,
+  first_party_gap_commercial_approval_inferred:false,
   geopolitics_continuity_sources_pinned:geoContinuity.length,
   geopolitics_new_direct_urls:geopoliticsNewDirectUrls,
   macro_minerals_continuity_sources_pinned:macroMineralsContinuity.length,

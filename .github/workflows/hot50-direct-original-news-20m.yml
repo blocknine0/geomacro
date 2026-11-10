@@ -30,6 +30,10 @@ on:
       - "scripts/lib/geopolitics-continuity-sources.test.mjs"
       - "scripts/lib/macro-minerals-continuity-sources.mjs"
       - "scripts/lib/macro-minerals-continuity-sources.test.mjs"
+      - "scripts/lib/hot50-three-category-official-gap-priority.mjs"
+      - "scripts/lib/hot50-three-category-official-gap-priority.test.mjs"
+      - "config/hot50-three-category-official-gap-priority.v1.json"
+      - "scripts/ops/probe-hot50-official-gap-source-health.mjs"
       - "scripts/ops/probe-macro-minerals-continuity-feeds.mjs"
       - "scripts/ops/probe-geopolitics-continuity-feeds.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
@@ -72,6 +76,10 @@ on:
       - "scripts/lib/geopolitics-continuity-sources.test.mjs"
       - "scripts/lib/macro-minerals-continuity-sources.mjs"
       - "scripts/lib/macro-minerals-continuity-sources.test.mjs"
+      - "scripts/lib/hot50-three-category-official-gap-priority.mjs"
+      - "scripts/lib/hot50-three-category-official-gap-priority.test.mjs"
+      - "config/hot50-three-category-official-gap-priority.v1.json"
+      - "scripts/ops/probe-hot50-official-gap-source-health.mjs"
       - "scripts/ops/probe-macro-minerals-continuity-feeds.mjs"
       - "scripts/ops/probe-geopolitics-continuity-feeds.mjs"
       - "scripts/lib/three-domain-global-direct-20m-sources.test.mjs"
@@ -114,9 +122,10 @@ jobs:
           node --check scripts/lib/hot-50-direct-20m-sources.mjs
           node --test scripts/lib/hot-50-direct-20m-sources.test.mjs
           node --test scripts/lib/three-domain-global-direct-20m-sources.test.mjs
-          node --test scripts/lib/geopolitics-continuity-sources.test.mjs scripts/lib/macro-minerals-continuity-sources.test.mjs
+          node --test scripts/lib/geopolitics-continuity-sources.test.mjs scripts/lib/macro-minerals-continuity-sources.test.mjs scripts/lib/hot50-three-category-official-gap-priority.test.mjs
           node --check scripts/ops/probe-macro-minerals-continuity-feeds.mjs
           node --check scripts/ops/probe-geopolitics-continuity-feeds.mjs
+          node --check scripts/ops/probe-hot50-official-gap-source-health.mjs
           node --test scripts/lib/hot-50-retired-backup-sources.test.mjs
           node --check scripts/ops/probe-hot50-retired-backup-transports.mjs
           node --test scripts/tests/hot50-fresh-priority-d1.test.mjs
@@ -131,6 +140,17 @@ jobs:
       - name: Read-only transport probe of 14 source-specific backup URLs
         if: github.event_name == 'pull_request'
         run: node scripts/ops/probe-hot50-retired-backup-transports.mjs
+      - name: Probe 23 prioritized official original candidates across all three categories (read-only)
+        if: github.event_name == 'pull_request'
+        run: node scripts/ops/probe-hot50-official-gap-source-health.mjs
+      - name: Save source-only first-party native-date/transport states
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-hot50-three-category-official-gap-health-${{ github.run_id }}
+          path: /tmp/geomacro-hot50-official-gap-source-health.json
+          retention-days: 7
+          if-no-files-found: warn
       - name: Probe Macro/FX and Critical Minerals official alternate publisher feeds (read-only)
         if: github.event_name == 'pull_request'
         run: node scripts/ops/probe-macro-minerals-continuity-feeds.mjs

@@ -144,3 +144,25 @@ Run 42878465451 on 10 Nov returned all 150 tier probes as
 result cannot assess original source coverage or real qualified delivery.
 This change fixes probe origin and classification, not issuer eligibility,
 production source rights, signing, canary holds or actual paid throughput.
+
+## First-party original-source expansion across all three categories (11 Nov)
+
+The protected 20-minute native-source collector now prioritizes **23 first-party
+candidate endpoints** selected from already reviewed repository manifests
+and six additional government/European Commission endpoints:
+
+- Geopolitics: European Commission sanctions guidance RSS, UK Home Office
+  and Cabinet Office GOV.UK Atom, plus existing Thailand/UN/UK official sources
+- Macro/FX: UK ONS GOV.UK Atom, central-bank/Eurostat/Statistics Canada
+  official source candidates, and the already merged Brazil BCB Focus RSS
+- Critical Minerals: UK Trade Remedies Authority and Mining Remediation
+  Authority Atom, plus the existing Chile Cochilco, USGS, and
+  Natural Resources Canada original publisher sources
+
+Manifest pinning excludes explicitly retired URLs/IDs. All entries are private
+**candidates** only, with native publication clocks and topic filtering
+required. Source selection never certifies independent same-event confirmation,
+original article bytes, commercial derivative rights, Ed25519 issuance or paid
+delivery. PR readonly source probes publish only status/count metadata. The
+existing 512-request per tick ceiling (504 GET + 8 retries), owner quotas,
+no-funds Predge contract, B2 policies and safety holds are unchanged.
