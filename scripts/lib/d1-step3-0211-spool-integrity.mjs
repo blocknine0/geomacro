@@ -17,6 +17,13 @@ export const STEP3_0211_REVIEWED_SPOOL_INDEXES=Object.freeze([
  "sqlite_autoindex_ingestion_spool_queue_1",
  "sqlite_autoindex_ingestion_spool_queue_2"
 ]);
+// 0206_d1_poll_index_write_relief.sql deliberately removes the redundant
+// non-UNIQUE candidate_sha256 index; 0114's UNIQUE autoindex still enforces
+// candidate identity. Shadow bootstrap (0114/0116) legitimately has seven.
+export const STEP3_0206_REVIEWED_SPOOL_INDEXES=Object.freeze(
+ STEP3_0211_REVIEWED_SPOOL_INDEXES.filter(
+  name=>name!=="idx_spool_candidate_sha")
+);
 const fail=x=>{throw Error("STEP3_0211_SPOOL_"+x)};
 function read(q,sql,cap){
  const r=q(sql,cap);
@@ -30,21 +37,44 @@ function isEmpty(query){
   fail("SOURCE_NONEMPTY_STATE_UNVERIFIED");
  return x[0].present===0;
 }
-function checkIndexNames(rows){
- if(rows.length!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
+function checkIndexNames(rows,query){
+ // Only the exact reviewed original 0114/0116 seven-index registry OR the
+ // exact 0206 post-DROP six-index registry is allowed. No missing UNIQUE key,
+ // unreviewed index, partial index, or disabled integrity test is admitted.
+ const expected=rows.length===STEP3_0211_REVIEWED_SPOOL_INDEXES.length?
+  STEP3_0211_REVIEWED_SPOOL_INDEXES:
+  STEP3_0206_REVIEWED_SPOOL_INDEXES;
+ if(rows.length!==expected.length||
     new Set(rows.map(x=>x?.name)).size!==rows.length||
-    STEP3_0211_REVIEWED_SPOOL_INDEXES.some(name=>
-     !rows.some(x=>x?.name===name))||
+    expected.some(name=>!rows.some(x=>x?.name===name))||
     rows.some(x=>x?.partial!==0||
      !["c","pk","u"].includes(x.origin)||
      x.unique!==(x.name.startsWith("sqlite_autoindex_")?1:0)))
-   fail("SEVEN_REVIEWED_INDEX_REGISTRY_DRIFT");
+  fail("REVIEWED_0114_0206_INDEX_REGISTRY_DRIFT");
+ const candidate=rows.find(x=>
+  x.name==="sqlite_autoindex_ingestion_spool_queue_2");
+ if(candidate?.origin!=="u"||candidate.unique!==1)
+  fail("CANDIDATE_SHA_UNIQUE_REGISTRY_UNVERIFIED");
+ const xinfo=read(query,
+  'PRAGMA index_xinfo("sqlite_autoindex_ingestion_spool_queue_2")',8);
+ const keys=xinfo.filter(x=>x?.key===1);
+ if(keys.length!==1||keys[0].seqno!==0||
+    !Number.isSafeInteger(keys[0].cid)||keys[0].cid<0||
+    keys[0].name!=="candidate_sha256"||
+    keys[0].coll!=="BINARY"||keys[0].desc!==0)
+  fail("CANDIDATE_SHA_UNIQUE_KEY_UNVERIFIED");
+ return Object.freeze({
+  index_names:expected,index_count:expected.length,
+  index_lineage:expected.length===6?
+   "0206_DROPPED_REDUNDANT_CANDIDATE_SHA_INDEX":
+   "0114_0116_BASELINE_SEVEN_INDEX"
+ });
 }
 export function auditStep30211SpoolSource(query){
  if(typeof query!=="function")fail("PROVIDER_READER_REQUIRED");
  const beforeEmpty=isEmpty(query);
  const indexList=read(query,'PRAGMA index_list("ingestion_spool_queue")',16);
- checkIndexNames(indexList);
+ const lineage=checkIndexNames(indexList,query);
  if(!beforeEmpty){
   // A nonempty source requires complete real key/row membership across ALL
   // seven existing indexes; do not substitute schema-only evidence for data.
@@ -60,16 +90,19 @@ export function auditStep30211SpoolSource(query){
    auditStep3AllIndexesSet(TABLE,query):
    auditStep3AllIndexes(TABLE,query);
   if(proof.status!=="PASS_D1_SUPPORTED_QUICK_FK_ALL_INDEX_LOGICAL_PROOF"||
-     proof.total_existing_indexes!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
-     proof.index_proofs.length!==STEP3_0211_REVIEWED_SPOOL_INDEXES.length||
-     STEP3_0211_REVIEWED_SPOOL_INDEXES.some(n=>
+     proof.total_existing_indexes!==lineage.index_count||
+     proof.index_proofs.length!==lineage.index_count||
+     lineage.index_names.some(n=>
       !proof.index_proofs.some(x=>x.index===n&&
        x.status==="PASS_BOUNDED_FULL_INDEX_KEY_AND_ROW_PARITY"&&
        x.rows_compared>0)))
    fail("NONEMPTY_SOURCE_ALL_INDEX_PARITY_UNVERIFIED");
   return Object.freeze({
-   status:"PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS",
-   index_count:7,nonempty_source:true,
+   status:lineage.index_count===7?
+    "PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS":
+    "PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS",
+   index_count:lineage.index_count,index_lineage:lineage.index_lineage,
+   nonempty_source:true,
    source_rows_verified:proof.index_proofs[0].rows_compared,
    sqlite_full_integrity_check_claimed:false,
    stage2_authorized:false,canary_promoted:false,
@@ -89,7 +122,7 @@ export function auditStep30211SpoolSource(query){
    fail("D1_QUICK_CHECK_FAILED");
  if(read(query,'PRAGMA foreign_key_check("ingestion_spool_queue")',1).length!==0)
    fail("SOURCE_FOREIGN_KEYS_UNVERIFIED");
- for(const name of STEP3_0211_REVIEWED_SPOOL_INDEXES){
+ for(const name of lineage.index_names){
   const xinfo=read(query,'PRAGMA index_xinfo("'+name+'")',20);
   const keys=xinfo.filter(x=>x.key===1);
   if(!keys.length||keys.length>8||
@@ -108,8 +141,11 @@ export function auditStep30211SpoolSource(query){
  }
  if(!isEmpty(query))fail("CONCURRENT_EMPTY_SOURCE_DRIFT");
  return Object.freeze({
-  status:"OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE",
-  index_count:7,nonempty_source:false,
+  status:lineage.index_count===7?
+   "OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE":
+   "OBSERVED_EMPTY_SOURCE_0206_SIX_INDEX_STRUCTURE",
+  index_count:lineage.index_count,index_lineage:lineage.index_lineage,
+  nonempty_source:false,
   source_rows_verified:0,nonvacuous_original_evidence:false,
   source_to_b2_physical_parity_verified:false,
   sqlite_full_integrity_check_claimed:false,
