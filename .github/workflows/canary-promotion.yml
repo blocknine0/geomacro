@@ -17,7 +17,7 @@ on:
         required: false
         type: string
       confirmation:
-        description: 'Must equal PROMOTE_HOT50_NO_FUNDS for a traffic change'
+        description: 'PROMOTE_HOT50_NO_FUNDS (traffic change) or REVIEW_HOT50_HOLD_NO_FUNDS (read-only review)'
         required: false
         type: string
       stage2_run_id:
