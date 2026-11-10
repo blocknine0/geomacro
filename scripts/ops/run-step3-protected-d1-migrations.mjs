@@ -28,6 +28,8 @@ import {admitSignedStep3ShadowReceipt}
  from "../lib/d1-step3-receipt-admission.mjs";
 import {assessStep3ProductionFinal}
  from "../lib/d1-step3-production-final-acceptance.mjs";
+import {verifyProductionRefOnlyOff}
+ from "../lib/d1-step3-production-reference-only-off-proof.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
@@ -718,6 +720,12 @@ export async function applyStep3Migrations({env=process.env}={}){
   // that no existing pointers can be encountered by this migration.
   // This is not an activation of the R2 reference writer/readers.
   if(!(env.PHASE2H_R2_REFERENCE_HMAC_KEY??"")){
+   // Match the actual deployed Cloudflare Worker's switches, not local flags.
+   // The schema-only 0213 path MUST NOT activate any reference-only reader
+   // or writer. Existing deployed HMAC/ambiguous version => strict HOLD.
+   state.production_ref_only_live_off_proof=
+    await verifyProductionRefOnlyOff({env});
+   save(state);
    if(state.native_history_preflight.native_applied_ids.includes("0213"))
     fail("UNSIGNED_0213_RESUME_FORBIDDEN_WITHOUT_ORIGINAL_HMAC");
    const prior=q(config,
