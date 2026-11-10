@@ -20,11 +20,15 @@ export async function runD1PaidMonthlyHeadroom({
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const argv=process.argv.slice(2);
- if(argv.length>1||argv.length===1&&argv[0]!=="--check"){
-  console.error("Usage: node scripts/ops/check-d1-paid-monthly-headroom.mjs [--check]");
+ if(argv.length>1||argv.length===1&&!["--check","--hot50-source"].includes(argv[0])){
+  console.error("Usage: node scripts/ops/check-d1-paid-monthly-headroom.mjs [--check|--hot50-source]");
   process.exitCode=2;
  }else{
-  const r=await runD1PaidMonthlyHeadroom().catch(()=>null);
+  // This is NOT a generic CLI lane parameter. Only exact reviewer-approved
+  // research original-source admission is added, with identical independent
+  // Cloudflare Paid account-wide month + 30% reserve verification.
+  const lane=argv[0]==="--hot50-source"?"hot50_source":"migration";
+  const r=await runD1PaidMonthlyHeadroom({lane}).catch(()=>null);
   if(!r||r.status!=="PASS"){
    // Preserve the exact fail-closed outcome while exposing only allowlisted
    // diagnostic enum codes (no provider body, credential or account identifier).
@@ -37,7 +41,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
    process.exitCode=3;
   }else{
    console.log(JSON.stringify({status:"PASS",code:r.code,
-    cycle_start_utc:r.cycle_start_utc,cycle_end_exclusive_utc:r.cycle_end_exclusive_utc,
+    lane:r.lane,cycle_start_utc:r.cycle_start_utc,cycle_end_exclusive_utc:r.cycle_end_exclusive_utc,
     observed_rows_read:r.observed_rows_read,observed_rows_written:r.observed_rows_written,
     remaining_rows_read:r.remaining_rows_read,remaining_rows_written:r.remaining_rows_written,
     report:PAID_D1_HEADROOM_REPORT,
