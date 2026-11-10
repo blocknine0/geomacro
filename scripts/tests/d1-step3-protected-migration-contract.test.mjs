@@ -105,6 +105,22 @@ test("0212 pending reviewed large-source envelope covers 11822 rows, no 3k bypas
  ])assert.throws(()=>validateStep30212PendingSourcePreflight([x]),
    /0212_REVIEWED_LARGE_SOURCE_BUDGET_EXCEEDED|0212_PENDING_HOUR_BIN_CONTRADICTION|0212_REVIEWED_MONTHLY_MIGRATION_ESTIMATE_EXCEEDED/);
 });
+test("Nov 10 live bounded provider source metrics fit reviewed 0212 estimate",()=>{
+ // Read-only owner-run production D1 receipts: total=11822 on earlier
+ // read; pending=7026, hourly bins=168, OSINT=2787 and website=44.
+ // Observation is not a signed production-readback or future hard cap.
+ const result=validateStep30212PendingSourcePreflight([{
+  raw_rows:11822,pending_rows:7026,hour_bins:168,
+  osint_rows:2787,website_rows:44
+ }]);
+ assert.equal(result.source_rows_verified,11822);
+ assert.equal(result.original_pending_rows_observed,7026);
+ assert.equal(result.canonical_hour_buckets_observed,168);
+ assert.equal(result.estimated_rows_read,508275);
+ assert.equal(result.estimated_rows_written,336620);
+ assert.equal(result.production_release_authorized,false);
+ assert.equal(result.no_sql_writes_performed,true);
+});
 test("production estimated cost is presented to live Paid admission before any DDL",()=>{
  const r=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
  assert.match(r,/estimatedMigrationRowsRead:estimate\?\.estimated_rows_read\?\?0/u);
