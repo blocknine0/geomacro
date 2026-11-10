@@ -347,6 +347,7 @@ export function admitCompletedCanaryForHoldReview({
   Array.isArray(promotion.stages)&&promotion.stages.length===STAGES.length&&
   Array.isArray(stageReceipts)&&stageReceipts.length===STAGES.length,
   'CANARY_HOLD_REVIEW_SIGNED_PROMOTION_INCOMPLETE');
+ let lastObservedAt=0;
  for(let i=0;i<STAGES.length;i++){
   const current=promotion.stages[i],proof=stageReceipts[i],pct=STAGES[i];
   const {schema,status,source_sha,baseline_version,candidate_version,
@@ -366,12 +367,16 @@ export function admitCompletedCanaryForHoldReview({
     current.p99_under_50ms===true&&
     current.observed_d1_hourly_pace?.status==='PASS_OBSERVED_PAID_MONTHLY_PACE'&&
     Number.isSafeInteger(current.latest_d1_provider_observation?.rows_read)&&
-    Number.isSafeInteger(current.latest_d1_provider_observation?.rows_written),
+    Number.isSafeInteger(current.latest_d1_provider_observation?.rows_written)&&
+    Number.isSafeInteger(current.latest_d1_provider_observation?.observed_at_ms)&&
+    current.latest_d1_provider_observation.observed_at_ms>lastObservedAt,
     'CANARY_HOLD_REVIEW_SIX_SIGNED_STAGES_UNVERIFIED');
+  lastObservedAt=current.latest_d1_provider_observation.observed_at_ms;
  }
  return Object.freeze({status:'PASS_SIGNED_PROMOTION_SHAPE',
   source_sha:headSha,approved_stage2_run:String(stage2RunId),
   candidate_version:candidate,fully_verified_stages:STAGES.length,
+  promotion_completed_at_ms:lastObservedAt,
   independent_provider_readback_and_signatures_required:true,
   no_funds:true,traffic_mutated:false,remote_hold_removed:false});
 }
@@ -429,8 +434,13 @@ async function main(){
     process.env.D1_24H_PROOF_PATH===dayPath,
     'CANARY_HOLD_RELEASE_D1_PROOF_PATH_MISMATCH');
   need(existsSync(dayPath),'CANARY_HOLD_RELEASE_24H_D1_PROOF_MISSING');
-  const daily=admitSignedClosedD1DayForCanary(
-    verifySignedEnvelopeFile(dayPath),now);
+  const signedDay=verifySignedEnvelopeFile(dayPath);
+  const daily=admitSignedClosedD1DayForCanary(signedDay,now);
+  // The closed day must cover a FULL UTC-day after actual 100% rollout.
+  // A pre-rollout calendar-day receipt is never a 24-hour canary proof.
+  need(Date.parse(String(signedDay.period_start_utc??''))>=
+    admitted.promotion_completed_at_ms,
+    'CANARY_HOLD_RELEASE_POST_PROMOTION_FULL_UTC_DAY_MISSING');
   need(daily.status==='PASS_CLOSED_UTC_DAY',
     'CANARY_HOLD_RELEASE_24H_D1_PROOF_INVALID');
   const freshPaid=await checkLiveD1Budget();
