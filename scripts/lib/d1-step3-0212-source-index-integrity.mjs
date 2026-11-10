@@ -54,6 +54,14 @@ function largeSourceAudit(query,oldIndexList){
     cap[0].n<=3000||cap[0].n>STEP3_SET_MAX_SOURCE_ROWS)
   fail("LARGE_RAW_SOURCE_SIZE_OR_BUDGET_UNVERIFIED");
  const sourceRows=cap[0].n,full=[],partial=[];
+ // Large-table admission must retain all the original structural/FK checks;
+ // a full-row membership EXCEPT is not a substitute for quick_check.
+ const quick=read(query,'PRAGMA quick_check("phase2h_private_raw_news")',2);
+ if(quick.length!==1||Object.values(quick[0]??{}).length!==1||
+    Object.values(quick[0])[0]!=="ok")
+  fail("LARGE_D1_QUICK_CHECK_NOT_OK");
+ if(read(query,'PRAGMA foreign_key_check("phase2h_private_raw_news")',1).length!==0)
+  fail("LARGE_D1_FOREIGN_KEYS_UNVERIFIED");
  const specs=Object.freeze({
   idx_phase2h_pending_recent_ingested_category:Object.freeze({
    predicate:'"b2_object_sha256" IS NULL',
