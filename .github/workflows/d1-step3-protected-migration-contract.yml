@@ -70,6 +70,7 @@ jobs:
           node --check scripts/lib/d1-step3-large-index-set-proof.mjs
           node --check scripts/lib/d1-step3-production-reference-only-off-proof.mjs
           node --test scripts/tests/d1-step3-large-index-set-proof.test.mjs
+          node --test scripts/tests/d1-step3-supported-integrity.test.mjs
           node --test scripts/tests/d1-step3-production-reference-only-off-proof.test.mjs
           node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --test scripts/tests/d1-step3-0211-spool-integrity.test.mjs
