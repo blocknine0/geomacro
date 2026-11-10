@@ -730,6 +730,10 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
       String(result.paid_derived_news_source_lane===true)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"paid_derived_news_max_rows="+
       String(result.paid_derived_news_max_rows??0)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_registered_original_source_lane="+
+      String(result.paid_registered_original_source_lane===true)+"\n");
+    appendFileSync(process.env.GITHUB_OUTPUT,"paid_registered_original_max_rows="+
+      String(result.paid_registered_original_max_rows??0)+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"state="+result.state+"\n");
     appendFileSync(process.env.GITHUB_OUTPUT,"retention_cleanup_max_rows="+String(result.retention_cleanup_max_rows??0)+"\n");
   }
