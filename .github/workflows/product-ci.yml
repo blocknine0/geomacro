@@ -155,6 +155,12 @@ jobs:
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
           node --test scripts/tests/d1-step3-0212-source-index-integrity.test.mjs
 
+      - name: Protected B2-limit private R2 AES quota-backup and cursor integrity (offline)
+        run: |
+          node --check scripts/lib/phase2h-b2-r2-backup.mjs
+          node --check scripts/ops/phase2h-r2-b2-quota-backup.mjs
+          node --test scripts/tests/phase2h-r2-b2-quota-backup.test.mjs
+
       - name: Predge research D1 503 recovery - exact one-row shared quota (offline)
         run: node --test scripts/tests/predge-research-one-row-d1.test.mjs
 
