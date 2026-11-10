@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {auditStep3AllIndexes,step3AllIndexDescriptor,verifyStep3AllIndex,
+import {auditStep3AllIndexes,auditStep3AllIndexesCurrentRows,
+ step3AllIndexDescriptor,verifyStep3AllIndex,
  STEP3_ALL_INDEX_MAX_ROWS} from "../lib/d1-step3-supported-integrity.mjs";
 const index={seq:0,name:"idx_sample_unique",unique:1,origin:"c",partial:0};
 const xinfo=[
@@ -53,6 +54,26 @@ test("D1-supported all-index proof includes strict every-index registry and UNIQ
  assert.match(descriptor.indexQuery,/INDEXED BY "idx_sample_unique" LIMIT 3001$/);
  assert.equal(STEP3_ALL_INDEX_MAX_ROWS,3000);
 });
+
+test("3k source scope routes to old exact audited baseline; large source routes to provider set proof",()=>{
+ const smallReader=(sql,maxRows)=>{
+  if(sql==="SELECT COUNT(*) AS n FROM (SELECT 1 FROM \"sample\" NOT INDEXED LIMIT 3001)")
+   return [{n:2}];
+  return mock()(sql,maxRows);
+ };
+ const small=auditStep3AllIndexesCurrentRows("sample",smallReader);
+ assert.equal(small.index_proofs[0].rows_compared,2);
+ const largerSql=[];
+ assert.throws(()=>auditStep3AllIndexesCurrentRows("sample",(sql,maxRows)=>{
+  largerSql.push(sql);
+  if(sql.includes('NOT INDEXED LIMIT 3001'))return [{n:3001}];
+  throw Error("EXPECTED_UNAVAILABLE_PROVIDER_LARGE_AUDIT");
+ }),/EXPECTED_UNAVAILABLE_PROVIDER_LARGE_AUDIT/);
+ assert(largerSql.some(x=>x.includes("LIMIT 100001")));
+ assert.throws(()=>auditStep3AllIndexesCurrentRows("sample;DROP TABLE x",()=>[]),
+  /IDENTIFIER_UNVERIFIED/);
+});
+
 test("fail closed on missing/unsupported index metadata and SQL injection",()=>{
  assert.throws(()=>step3AllIndexDescriptor("table; DROP TABLE x",index,xinfo),/IDENTIFIER_UNVERIFIED/);
  assert.throws(()=>step3AllIndexDescriptor("sample",{...index,partial:1},xinfo),/PARTIAL_OR_INDEX_METADATA_UNSUPPORTED/);
