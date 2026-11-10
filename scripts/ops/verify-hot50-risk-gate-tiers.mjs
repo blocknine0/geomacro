@@ -5,6 +5,7 @@ import {RISK_GATE_HOT50} from "../../workers/control-plane/src/risk-gate-hot50-s
 import {RISK_GATE_PRODUCT_TIERS} from "../../workers/control-plane/src/risk-gate-three-tier-product.mjs";
 import {inspectHot50TierResponse,HOT50_CATEGORY_KEYS} from "../lib/hot50-production-proof.mjs";
 import {summarizeHot50StandardSalesReadiness} from "../lib/hot50-standard-sales-readiness.mjs";
+import {planHot50StandardSourceRecovery} from "../lib/hot50-standard-source-recovery.mjs";
 const token=process.env.RISK_GATE_TIERED_TOKEN;
 if(!/^[a-f0-9]{64}$/.test(token??""))throw Error("HOT50_TIER_PROOF_SECRET_MISSING");
 const full=process.env.HOT50_TIER_FULL_CENSUS==="1";
@@ -56,16 +57,20 @@ const cells=ids.flatMap(id=>HOT50_CATEGORY_KEYS.map(category=>{
 }));
 const verifiedCells=cells.filter(x=>x.verified_current_signed_gro).length;
 const standardReadiness=summarizeHot50StandardSalesReadiness({ids,receipts,full});
+const standardSourceRecovery=planHot50StandardSourceRecovery(standardReadiness);
 const report={schema:"geomacro.hot50-three-price-production-acceptance.v2",generated_at:new Date().toISOString(),
  scope:"HOT50",full_census:full,countries_checked:ids.length,categories_per_country:3,
  expected_tiers:3,checked:receipts.length,ready:receipts.filter(x=>x.ready).length,
  country_category_cells_checked:cells.length,country_category_cells_verified:verifiedCells,
  complete:receipts.every(x=>x.ready)&&verifiedCells===ids.length*3&&(!full||(rollup?.ok===true&&rollup?.hmac_verified===true)),
- no_funds:true,rollup,standard_150day_readiness:standardReadiness,cells,receipts};
+ no_funds:true,rollup,standard_150day_readiness:standardReadiness,
+ standard_source_recovery:standardSourceRecovery,cells,receipts};
 mkdirSync("artifacts/hot50-risk-gate",{recursive:true});
 writeFileSync("artifacts/hot50-risk-gate/latest.json",JSON.stringify(report,null,2));
 console.log(JSON.stringify({schema:report.schema,countries_checked:report.countries_checked,checked:report.checked,ready:report.ready,verified_cells:report.country_category_cells_verified,
  standard_ready_countries:standardReadiness.standard_product_ready_countries,
+ source_repair_cells:standardSourceRecovery.missing_verified_signed_cells,
+ source_repair_priorities:standardSourceRecovery.priority_counts,
  standard_target_per_day:standardReadiness.target_successful_paid_standard_deliveries_per_utc_day,
  paid_target_verified:standardReadiness.paid_150_daily_target_verified,complete:report.complete}));
 if(!report.complete)process.exitCode=1;
