@@ -50,7 +50,7 @@ test("Stage2 recovers only an authenticated existing Worker bearer before D1 pro
  assert(stage>0&&auth>stage&&root>auth&&status>root&&receipt>status&&apply>receipt);
  assert.match(y.slice(auth,receipt),/if: github.event_name == 'workflow_dispatch' && inputs.execute_stage2 == true/u);
  assert.doesNotMatch(y.slice(auth,receipt),/wrangler.*secret put|gh secret set|continue-on-error/u);
- assert.match(y.slice(stage,auth),/PHASE2H_R2_REFERENCE_HMAC_KEY: \${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}/u);
+ assert(y.slice(stage,auth).includes("PHASE2H_R2_REFERENCE_HMAC_KEY: ${{ secrets.PHASE2H_R2_REFERENCE_HMAC_KEY }}"));
  const helper=readFileSync("scripts/ops/prepare-five-gate-control-token.mjs","utf8");
  assert.match(helper,/deriveControlPlaneRootToken\(root\)/u);
  assert.match(helper,/response\?\.status!==200/u);
