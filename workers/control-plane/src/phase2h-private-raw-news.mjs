@@ -762,8 +762,8 @@ export async function phase2hPrivateRawMarkArchived(env,body,now=Date.now()){
    if(b2FirstExact){
     if(Object.keys(item).sort().join(",")!=="raw_json,raw_sha256,record_id"||
        typeof item.raw_json!=="string"||
-       Buffer.byteLength(item.raw_json)<300||
-       Buffer.byteLength(item.raw_json)>12000)throw Error("INVALID_EXACT_BYTES");
+       new TextEncoder().encode(item.raw_json).byteLength<300||
+       new TextEncoder().encode(item.raw_json).byteLength>12000)throw Error("INVALID_EXACT_BYTES");
     const original=JSON.parse(item.raw_json);
     if(original.record_id!==item.record_id||
        original.raw_sha256!==item.raw_sha256||
