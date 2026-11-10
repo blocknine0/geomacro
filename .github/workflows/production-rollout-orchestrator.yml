@@ -1,7 +1,7 @@
 name: Step3 Protected Local Shadow and Stage2 Orchestrator
 # Distinct immutable owner issue is a separately verifiable one-shot review.
 # Legacy manual workflow_dispatch still requires protected reviewed SHA variable.
-run-name: Step3 owner issue #${{ inputs.owner_dispatch_issue || 'manual' }}
+run-name: "Step3 owner issue #${{ inputs.owner_dispatch_issue || 'manual' }}"
 on:
   pull_request:
     paths:
