@@ -6,6 +6,8 @@ const ingest=read("supabase/functions/gm-research-stream20m/index.ts");
 const gate=read("supabase/functions/gm-research-risk-gate/index.ts");
 const migration=read("supabase/migrations/20261104121000_research_stream20m_supabase_native_cron.sql");
 const inventory=JSON.parse(read("config/official-ogl-atom-sources.json"));
+const overlay=JSON.parse(read("config/research-risk-gate-official-atom-alternates.v1.json"));
+const registered=[...inventory.sources,...overlay.sources];
 test("isolated official sources and 195 canonical countries from the exact repo registry",()=>{
  const src=JSON.parse(ingest.match(/const SOURCES=(\[.*?\]);\nconst COUNTRIES=/u)?.[1]??"null");
  const countries=JSON.parse(ingest.match(/const COUNTRIES=(\[.*?\]);\nconst PROJECT=/u)?.[1]??"null");
@@ -15,11 +17,16 @@ test("isolated official sources and 195 canonical countries from the exact repo 
  assert.equal(src.length,12);
  assert.equal(new Set(src.map(x=>x.url)).size,12);
  assert.equal(new Set(src.map(x=>x.id)).size,12);
- assert.equal(inventory.sources.length,12);
+ assert.equal(inventory.sources.length,8);
+ assert.equal(overlay.sources.length,4);
+ assert.equal(overlay.schema,"geomacro.research-risk-gate-official-atom-alternates.v1");
+ assert.equal(overlay.scope,"ISOLATED_SUPABASE_NONCOMMERCIAL_RESEARCH_ONLY");
+ assert.equal(overlay.commercial_eligible,false);
+ assert.equal(overlay.execution_authorized,false);
  assert.equal(countries.length,195);
  assert.deepEqual(countries.map(x=>x.iso3),canonical);
  for(const s of src){
-  const pin=inventory.sources.find(x=>x.source_id===s.id);
+  const pin=registered.find(x=>x.source_id===s.id);
   assert.ok(pin);
   assert.equal(s.url,pin.feed_url);
   assert.equal(pin.private_research_only,true);
@@ -72,7 +79,7 @@ test("new source-specific alternatives remain private, unverified candidates",()
  };
  const src=JSON.parse(ingest.match(/const SOURCES=(\[.*?\]);\nconst COUNTRIES=/u)?.[1]??"null");
  for(const [id,cat] of Object.entries(expected)){
-  const registered=inventory.sources.find(s=>s.source_id===id);
+  const registered=overlay.sources.find(s=>s.source_id===id);
   assert.equal(registered?.category,cat);
   assert.equal(registered?.transport_verified_at_registration,false);
   assert.equal(registered?.original_article_verified_at_registration,false);
