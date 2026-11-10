@@ -112,7 +112,7 @@ test("Standard real three-category corroboration delivers verified fact sheets w
  assert.equal(r.auto_search_enrichment,"EXISTING_D1_FIRST_AND_BOUNDED_RSS_GAP_FILL");
  assert.equal(r.charged,false);
 });
-test("Standard accepts full-text independent-source corroboration from auto-enrichment",()=>{
+test("Standard rejects metadata-only fulltext flags, 3 fake category scores and independent publisher host counts without dual fact/rights signed GRO",()=>{
  const corroborated={...snapshot,corroborated_risk_facts:Object.fromEntries([
   ["GEOPOLITICS",60],["MACRO_FX",40],["CRITICAL_MINERALS",80],
  ].map(([category,score])=>[category,{score_0_100:score,event_count:1,source_count:2,
@@ -123,13 +123,19 @@ test("Standard accepts full-text independent-source corroboration from auto-enri
    ]}]}]))};
  const r=composeRiskGateThreeTierResponse({tier:"standard",snapshot:corroborated,
   observations,now:NOW});
- assert.equal(r.status,"READY");
- assert.equal(r.chargeable,true);
- assert.equal(r.risk_score_0_100,58);
- assert.equal(r.confidence.verification,"VERIFIED");
- assert.equal(r.category_fact_sheets.every(x=>x.evidence_status==="VERIFIED_CORROBORATED"),true);
- assert.equal(r.source_references.length,3);
- assert.deepEqual(r.source_references[0].source_ids,["source-one","source-two"]);
+ assert.equal(r.status,"INSUFFICIENT_CORROBORATION");
+ assert.equal(r.chargeable,false);
+ assert.equal(r.risk_score_0_100,null);
+ assert.equal(r.independent_corroboration_verified,false);
+ assert.equal(r.confidence,null);
+ assert.equal(r.category_fact_sheets.every(x=>x.evidence_status==="NOT_FULLY_VERIFIED"),true);
+ assert.equal(r.source_references.length,0);
+ assert.equal(r.activation_triggers.ready_now,false);
+ // A real 3-domain pinned and verified commercial GRO remains admissible.
+ const signed=composeRiskGateThreeTierResponse({tier:"standard",
+  snapshot:corroborated,observations,verified_gro:gro(),now:NOW});
+ assert.equal(signed.status,"READY");
+ assert.equal(signed.independent_corroboration_verified,true);
 });
 test("Complex requires signed GRO, exact B2 archive readback and complete history",()=>{
  const missing=render("complex_full",{verified_gro:gro()});

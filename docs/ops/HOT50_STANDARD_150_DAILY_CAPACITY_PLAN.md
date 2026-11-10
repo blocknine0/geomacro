@@ -166,3 +166,19 @@ original article bytes, commercial derivative rights, Ed25519 issuance or paid
 delivery. PR readonly source probes publish only status/count metadata. The
 existing 512-request per tick ceiling (504 GET + 8 retries), owner quotas,
 no-funds Predge contract, B2 policies and safety holds are unchanged.
+
+## Standard signing prerequisite hardening — 11 Nov 2026
+
+Protected Hot50 Standard now refuses any unverified `risk_gap_enrichment`
+`corroborated_risk_facts` assembled from title hashes / publisher host
+counts. Even 3 complete fake category scores or two repeated source-host
+claims cannot switch on billing without independently attested original
+same-event rights, a current pinned verified commercial Ed25519 GRO, and
+three complete category scores. The original metadata-based observations
+remain useful for research/Basic, **not** a commercial proof. The existing
+per-country 3-category real-qualified machine GRO auto-stager, full B2
+readback, D1 hot verifier and 20-minute signer remain the activation route.
+
+This correctness change does not pretend the missing 50 Standard
+evidence packages have been collected, licensed, independently attested
+or delivered; it prevents a future false paid-ready state.
