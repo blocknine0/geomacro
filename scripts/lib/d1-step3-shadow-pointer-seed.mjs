@@ -35,16 +35,29 @@ export async function shadowR2Request(url,env,method,fetchImpl,body){
  if(method==="PUT"&&(!Buffer.isBuffer(body)||body.length<1||
     body.length>600000))fail("R2_PUT_BODY_INVALID");
  if(method==="GET"&&body!==undefined)fail("R2_GET_BODY_INVALID");
+ // A verified existing Shadow pointer is immutable: retry ONLY a transient
+ // R2 GET transport failure (including fetch timeout), never an HTTP auth
+ // failure or a PUT whose provider acknowledgement is unknown.
+ // Every attempt re-GETs the same signed object key and still requires
+ // independent full-body SHA-256 + byte equality before any PASS.
  let res;
- try{
-  res=await fetchImpl(url,{
-   method,redirect:"error",cache:"no-store",
-   headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
-    "Cache-Control":"no-store",
-    ...(method==="PUT"?{"Content-Type":"application/octet-stream"}:{})},
-   ...(method==="PUT"?{body}:{}),signal:AbortSignal.timeout(20000)
-  });
- }catch{fail("R2_PROVIDER_UNAVAILABLE")}
+ for(let attempt=0;attempt<(method==="GET"?3:1);attempt++){
+  try{
+   res=await fetchImpl(url,{
+    method,redirect:"error",cache:"no-store",
+    headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
+     "Cache-Control":"no-store",
+     ...(method==="PUT"?{"Content-Type":"application/octet-stream"}:{})},
+    ...(method==="PUT"?{body}:{}),signal:AbortSignal.timeout(20000)
+   });
+   break;
+  }catch{
+   if(method!=="GET"||attempt===2)fail("R2_PROVIDER_UNAVAILABLE");
+   // Strict bounded backoff: at most 3 GETs, 0 GET response rewrites,
+   // no authorization bypass, no credential or response body in logs.
+   await new Promise(resolve=>setTimeout(resolve,300*(attempt+1)));
+  }
+ }
  if(!res||res.redirected)fail("R2_PROVIDER_UNAVAILABLE");
  if(!Number.isSafeInteger(res.status)||res.status<200||res.status>=300){
   let cloudflareCode="UNKNOWN";
