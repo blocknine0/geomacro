@@ -136,7 +136,7 @@ export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}
    payload.record_count!==payload.originals.length)
   err("RESTORED_ORIGINALS_METADATA_MISMATCH");
  const validated=phase2hBackupSourceRows(payload.originals,
-  new Date(expectedHour));
+  new Date(Date.parse(expectedHour)+60*60*1000+120000));
  if(validated.length!==payload.record_count||
     canon(validated)!==canon(payload.originals))
   err("RESTORED_ORIGINALS_ORDER_DIVERGED");
