@@ -1,16 +1,16 @@
 {
   "schema": "geomacro.phase2i.195x3-source-coverage.v1",
-  "generated_at": "2026-11-09T20:52:28.909Z",
+  "generated_at": "2026-11-10T04:12:31.011Z",
   "canonical_registry": "src/lib/canonical-country-registry-195.ts",
   "country_count": 195,
   "category_count": 3,
   "cell_count": 585,
   "registered_source_count": 453,
-  "verified_http_source_count": 287,
+  "verified_http_source_count": 292,
   "actual_source_requests_this_run": 18,
   "status_counts": {
-    "WORKING": 170,
-    "NO_NEW_EVENT": 29,
+    "WORKING": 167,
+    "NO_NEW_EVENT": 32,
     "SOURCE_UNAVAILABLE": 10,
     "UNSUPPORTED_FORMAT": 18,
     "RIGHTS_PENDING": 0,
@@ -10757,12 +10757,12 @@
     },
     {
       "source_id": "private_gap_prt_rtp",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-08T22:02:19.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:19 +0000",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T02:30:02.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:30:02 +0000",
       "observed_feed_items": 40,
       "recent_native_dated_items": 40,
       "country_event_verified": false,
@@ -10773,12 +10773,12 @@
     },
     {
       "source_id": "private_gap_pry_ultimahora",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-08T21:43:41.000Z",
-      "last_source_native_publication_time": "2026-11-08T21:43:41Z",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T02:26:57.000Z",
+      "last_source_native_publication_time": "2026-11-10T02:26:57Z",
       "observed_feed_items": 24,
       "recent_native_dated_items": 24,
       "country_event_verified": false,
@@ -10789,7 +10789,7 @@
     },
     {
       "source_id": "private_gap_qat_gulftimes",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "UNSUPPORTED_FORMAT",
       "http_status": null,
       "last_successful_http_fetch_at": "2026-11-04T00:43:09.311Z",
@@ -10805,12 +10805,12 @@
     },
     {
       "source_id": "private_gap_sau_arabnews",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-08T22:02:45.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:45 GMT",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T04:08:49.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 04:08:49 GMT",
       "observed_feed_items": 40,
       "recent_native_dated_items": 40,
       "country_event_verified": false,
@@ -10821,12 +10821,12 @@
     },
     {
       "source_id": "private_gap_srb_b92",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-08T22:15:00.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:15:00 +0000",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-09T21:02:00.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:02:00 +0000",
       "observed_feed_items": 20,
       "recent_native_dated_items": 20,
       "country_event_verified": false,
@@ -10837,28 +10837,28 @@
     },
     {
       "source_id": "private_gap_ukr_cabinet",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
-      "status": "WORKING",
-      "http_status": 200,
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "UNSUPPORTED_FORMAT",
+      "http_status": null,
       "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
       "last_source_native_publication_at": "2026-11-08T09:20:00.000Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 11:20:00 +0200",
-      "observed_feed_items": 20,
-      "recent_native_dated_items": 1,
+      "observed_feed_items": 0,
+      "recent_native_dated_items": 0,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
       "commercial_rights_verified": false,
-      "failure_reason": null
+      "failure_reason": "BODY_OVER_192KB"
     },
     {
       "source_id": "private_gap_ukr_pravda_en",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-08T17:26:00.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 19:26:00 +0200",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-09T19:34:00.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:34:00 +0200",
       "observed_feed_items": 20,
       "recent_native_dated_items": 20,
       "country_event_verified": false,
@@ -10869,14 +10869,14 @@
     },
     {
       "source_id": "private_kenya_bank",
-      "attempted_at": "2026-11-08T22:17:12.476Z",
-      "status": "NO_NEW_EVENT",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_at": "2026-11-03T12:09:21.000Z",
-      "last_source_native_publication_time": "Tue, 03 Nov 2026 12:09:21 +0000",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-09T05:08:22.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 05:08:22 +0000",
       "observed_feed_items": 10,
-      "recent_native_dated_items": 0,
+      "recent_native_dated_items": 1,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -10885,10 +10885,10 @@
     },
     {
       "source_id": "private_mesh_14ymedio",
-      "attempted_at": "2026-11-09T01:46:51.252Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "NO_NEW_EVENT",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_at": null,
       "last_source_native_publication_time": null,
       "observed_feed_items": 40,
@@ -10901,12 +10901,12 @@
     },
     {
       "source_id": "private_mesh_24_hu",
-      "attempted_at": "2026-11-09T01:46:51.252Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
-      "last_source_native_publication_at": "2026-11-08T23:00:42.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 23:00:42 +0000",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T02:33:40.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:33:40 +0000",
       "observed_feed_items": 10,
       "recent_native_dated_items": 10,
       "country_event_verified": false,
@@ -10917,12 +10917,12 @@
     },
     {
       "source_id": "private_mesh_444_hu",
-      "attempted_at": "2026-11-09T01:46:51.252Z",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
       "status": "WORKING",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
-      "last_source_native_publication_at": "2026-11-08T19:35:53.000Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 20:35:53 +0100",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-09T23:38:51.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 00:38:51 +0100",
       "observed_feed_items": 30,
       "recent_native_dated_items": 30,
       "country_event_verified": false,
@@ -10949,14 +10949,14 @@
     },
     {
       "source_id": "private_mesh_a_r_info",
-      "attempted_at": "2026-11-09T01:46:51.252Z",
-      "status": "WORKING",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "NO_NEW_EVENT",
       "http_status": 200,
-      "last_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_at": "2026-11-08T17:39:33.000Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 17:39:33 +0000",
       "observed_feed_items": 10,
-      "recent_native_dated_items": 1,
+      "recent_native_dated_items": 0,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -13725,6 +13725,102 @@
       "last_source_native_publication_time": "Tue, 03 Nov 2026 08:00:00 GMT",
       "observed_feed_items": 40,
       "recent_native_dated_items": 0,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_6df73f5fa1325082b00a",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T01:56:10.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 01:56:10 GMT",
+      "observed_feed_items": 30,
+      "recent_native_dated_items": 14,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_6ebfcc9d776d807b06b2",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T04:05:44.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 04:05:44 GMT",
+      "observed_feed_items": 24,
+      "recent_native_dated_items": 24,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_721cb94a49e3095c4db8",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T01:33:06.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 01:33:06 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 32,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_727b37fbe28d3a80b223",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "NO_NEW_EVENT",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-03T09:43:00.000Z",
+      "last_source_native_publication_time": "Tue, 3 Nov 2026 10:43:00 +0100",
+      "observed_feed_items": 20,
+      "recent_native_dated_items": 0,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_73df017f9a0f700d5e51",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-10T01:53:47.000Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 01:53:47 GMT",
+      "observed_feed_items": 40,
+      "recent_native_dated_items": 35,
+      "country_event_verified": false,
+      "eligible_raw_records": null,
+      "b2_archived_records": null,
+      "commercial_rights_verified": false,
+      "failure_reason": null
+    },
+    {
+      "source_id": "private_repo_745ee2a6ae71805cf4fb",
+      "attempted_at": "2026-11-10T04:12:31.011Z",
+      "status": "WORKING",
+      "http_status": 200,
+      "last_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_at": "2026-11-09T10:12:00.000Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 12:12:00 +0200",
+      "observed_feed_items": 20,
+      "recent_native_dated_items": 2,
       "country_event_verified": false,
       "eligible_raw_records": null,
       "b2_archived_records": null,
@@ -23832,7 +23928,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 01:00:37 +0000",
       "last_source_native_publication_at": "2026-11-08T01:00:37.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -23884,7 +23980,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 01:00:37 +0000",
       "last_source_native_publication_at": "2026-11-08T01:00:37.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -23936,7 +24032,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 01:00:37 +0000",
       "last_source_native_publication_at": "2026-11-08T01:00:37.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -30629,9 +30725,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 23:00:42 +0000",
-      "last_source_native_publication_at": "2026-11-08T23:00:42.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:33:40 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:33:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -30736,9 +30832,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 23:00:42 +0000",
-      "last_source_native_publication_at": "2026-11-08T23:00:42.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:33:40 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:33:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -30840,9 +30936,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 23:00:42 +0000",
-      "last_source_native_publication_at": "2026-11-08T23:00:42.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:33:40 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:33:40.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -34162,9 +34258,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sat, 07 Nov 2026 17:33:56 +0000",
-      "last_source_native_publication_at": "2026-11-07T17:33:56.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 05:08:22 +0000",
+      "last_source_native_publication_at": "2026-11-09T05:08:22.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -41979,7 +42075,7 @@
       "country_iso2": "NE",
       "country_name": "Niger",
       "category": "geopolitics",
-      "source_status": "WORKING",
+      "source_status": "NO_NEW_EVENT",
       "registered_source_ids": [
         "private_mesh_a_r_info"
       ],
@@ -42005,7 +42101,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 17:39:33 +0000",
       "last_source_native_publication_at": "2026-11-08T17:39:33.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -42018,8 +42114,8 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED",
-      "source_fetch_status": "WORKING",
+      "failure_reason": "NO_CURRENT_NATIVE_DATED_EVENT",
+      "source_fetch_status": "NO_NEW_EVENT",
       "country_original_event_observation_status": "NOT_YET_VERIFIED",
       "country_original_event_observation_count": null,
       "canonical_d1_raw_staging_status": "NOT_YET_VERIFIED",
@@ -42036,7 +42132,7 @@
       "country_iso2": "NE",
       "country_name": "Niger",
       "category": "macro",
-      "source_status": "WORKING",
+      "source_status": "NO_NEW_EVENT",
       "registered_source_ids": [
         "private_mesh_a_r_info"
       ],
@@ -42062,7 +42158,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 17:39:33 +0000",
       "last_source_native_publication_at": "2026-11-08T17:39:33.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -42075,8 +42171,8 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED",
-      "source_fetch_status": "WORKING",
+      "failure_reason": "NO_CURRENT_NATIVE_DATED_EVENT",
+      "source_fetch_status": "NO_NEW_EVENT",
       "country_original_event_observation_status": "NOT_YET_VERIFIED",
       "country_original_event_observation_count": null,
       "canonical_d1_raw_staging_status": "NOT_YET_VERIFIED",
@@ -42093,7 +42189,7 @@
       "country_iso2": "NE",
       "country_name": "Niger",
       "category": "rare_earth",
-      "source_status": "WORKING",
+      "source_status": "NO_NEW_EVENT",
       "registered_source_ids": [
         "private_mesh_a_r_info"
       ],
@@ -42119,7 +42215,7 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-09T01:46:51.252Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
       "last_source_native_publication_time": "Sun, 08 Nov 2026 17:39:33 +0000",
       "last_source_native_publication_at": "2026-11-08T17:39:33.000Z",
       "actual_country_attributed_news_candidates": null,
@@ -42132,8 +42228,8 @@
       "retention_restrictions": "PRIVATE_ONLY_UNTIL_RIGHTS_VERIFIED",
       "rights_status": "RIGHTS_PENDING",
       "workflow_owner": "private-global-osint-15m.yml",
-      "failure_reason": "COUNTRY_EVENT_NOT_INDEPENDENTLY_ATTRIBUTED",
-      "source_fetch_status": "WORKING",
+      "failure_reason": "NO_CURRENT_NATIVE_DATED_EVENT",
+      "source_fetch_status": "NO_NEW_EVENT",
       "country_original_event_observation_status": "NOT_YET_VERIFIED",
       "country_original_event_observation_count": null,
       "canonical_d1_raw_staging_status": "NOT_YET_VERIFIED",
@@ -45618,9 +45714,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:19 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:02:19.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:30:02 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:30:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -45717,9 +45813,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:19 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:02:19.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:30:02 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:30:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -45813,9 +45909,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:19 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:02:19.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 02:30:02 +0000",
+      "last_source_native_publication_at": "2026-11-10T02:30:02.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -45870,9 +45966,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "2026-11-08T21:43:41Z",
-      "last_source_native_publication_at": "2026-11-08T21:43:41.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "2026-11-10T02:26:57Z",
+      "last_source_native_publication_at": "2026-11-10T02:26:57.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -45927,9 +46023,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "2026-11-08T21:43:41Z",
-      "last_source_native_publication_at": "2026-11-08T21:43:41.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "2026-11-10T02:26:57Z",
+      "last_source_native_publication_at": "2026-11-10T02:26:57.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -45984,9 +46080,9 @@
       "endpoint_formats": [
         "atom"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "2026-11-08T21:43:41Z",
-      "last_source_native_publication_at": "2026-11-08T21:43:41.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "2026-11-10T02:26:57Z",
+      "last_source_native_publication_at": "2026-11-10T02:26:57.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -47320,9 +47416,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:45 GMT",
-      "last_source_native_publication_at": "2026-11-08T22:02:45.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 04:08:49 GMT",
+      "last_source_native_publication_at": "2026-11-10T04:08:49.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -47410,9 +47506,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:45 GMT",
-      "last_source_native_publication_at": "2026-11-08T22:02:45.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 04:08:49 GMT",
+      "last_source_native_publication_at": "2026-11-10T04:08:49.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -47500,9 +47596,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:02:45 GMT",
-      "last_source_native_publication_at": "2026-11-08T22:02:45.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Tue, 10 Nov 2026 04:08:49 GMT",
+      "last_source_native_publication_at": "2026-11-10T04:08:49.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -49044,9 +49140,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:15:00 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:02:00 +0000",
+      "last_source_native_publication_at": "2026-11-09T21:02:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -49143,9 +49239,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:15:00 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:02:00 +0000",
+      "last_source_native_publication_at": "2026-11-09T21:02:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -49239,9 +49335,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 22:15:00 +0000",
-      "last_source_native_publication_at": "2026-11-08T22:15:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:02:00 +0000",
+      "last_source_native_publication_at": "2026-11-09T21:02:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -53694,9 +53790,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 19:26:00 +0200",
-      "last_source_native_publication_at": "2026-11-08T17:26:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:34:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T19:34:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -53795,9 +53891,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 19:26:00 +0200",
-      "last_source_native_publication_at": "2026-11-08T17:26:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:34:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T19:34:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -53893,9 +53989,9 @@
       "endpoint_formats": [
         "rss"
       ],
-      "last_actual_successful_http_fetch_at": "2026-11-08T22:17:12.476Z",
-      "last_source_native_publication_time": "Sun, 08 Nov 2026 19:26:00 +0200",
-      "last_source_native_publication_at": "2026-11-08T17:26:00.000Z",
+      "last_actual_successful_http_fetch_at": "2026-11-10T04:12:31.011Z",
+      "last_source_native_publication_time": "Mon, 09 Nov 2026 21:34:00 +0200",
+      "last_source_native_publication_at": "2026-11-09T19:34:00.000Z",
       "actual_country_attributed_news_candidates": null,
       "eligible_raw_records": null,
       "b2_archived_raw_records": null,
@@ -56391,9 +56487,9 @@
   "country_event_to_d1_to_b2_to_analysis_verified": false,
   "raw_archive_cycle": {
     "schema": "geomacro.phase2ib.governed-raw-archive-cycle.v1",
-    "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
-    "github_run_id": "42576249551",
-    "checked_at": "2026-11-09T06:58:29.664Z",
+    "production_main_sha": "36db52e3ad05ec3c81ce61ed9ed8211846f0764a",
+    "github_run_id": "42713245805",
+    "checked_at": "2026-11-09T22:36:17.733Z",
     "provider_maintenance_admitted": true,
     "archive_schedule": "EVERY_SIX_HOURS_00_06_12_18_UTC",
     "archive_cycle_hours": 6,
@@ -56402,63 +56498,9 @@
     "automatic_d1_deletion_paused": true,
     "batch_maximum_unmodified": 300,
     "account_governor_unchanged": true,
-    "status": "VERIFIED_PARTIAL_ARCHIVE_BACKLOG",
-    "archive_job_result": "success",
-    "latest_verified_receipt": {
-      "verified_at": "2026-11-09T06:57:48.199Z",
-      "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
-      "object_sha256": [
-        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
-        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
-      ],
-      "newly_archived_object_sha256": [
-        "3b6bbfc2763c05822bb41212171460b87e4791517bef124cda4d8c5438dfecbd",
-        "c6f659c329691a58139be59ff7b114139d89c44e739002b79e0377dbfb6ef25b"
-      ],
-      "independently_restored_object_sha256": [],
-      "archived_records_this_run": 600,
-      "category_archive_counts_this_run": {
-        "geopolitics": 207,
-        "macro": 217,
-        "rare_earth": 176
-      },
-      "verified_five_part_by_category": {
-        "geopolitics": 207,
-        "macro": 217,
-        "rare_earth": 176
-      },
-      "canonical_d1_census": {
-        "geopolitics": {
-          "staged": 4194,
-          "archived": 1719,
-          "pending": 2475,
-          "pending_eligible_72h": 728,
-          "pending_expired_72h": 1747
-        },
-        "macro": {
-          "staged": 3316,
-          "archived": 1372,
-          "pending": 1944,
-          "pending_eligible_72h": 429,
-          "pending_expired_72h": 1515
-        },
-        "rare_earth": {
-          "staged": 2652,
-          "archived": 1105,
-          "pending": 1547,
-          "pending_eligible_72h": 115,
-          "pending_expired_72h": 1432
-        }
-      },
-      "canonical_d1_staged_total": 10162,
-      "canonical_d1_archived_total": 4196,
-      "canonical_d1_pending_total": 5966,
-      "b2_put_and_one_get_and_sha_verified_for_reported_batches": true,
-      "same_object_d1_id_hash_reconciled_for_reported_batches": true,
-      "deployed_exact_question_verified_for_reported_categories": true,
-      "all_backlog_clear": false,
-      "historical_objects_all_independently_rechecked": false
-    },
+    "status": "ARCHIVE_FAILED_NO_POSITIVE_RECEIPT",
+    "archive_job_result": "failure",
+    "latest_verified_receipt": null,
     "last_positive_receipt": {
       "verified_at": "2026-11-09T06:57:48.199Z",
       "production_main_sha": "a1ae8366389a82fd26f33c0e1eb58472e25737a3",
@@ -56514,29 +56556,7 @@
       "all_backlog_clear": false,
       "historical_objects_all_independently_rechecked": false
     },
-    "category_census_from_canonical_d1": {
-      "geopolitics": {
-        "staged": 4194,
-        "archived": 1719,
-        "pending": 2475,
-        "pending_eligible_72h": 728,
-        "pending_expired_72h": 1747
-      },
-      "macro": {
-        "staged": 3316,
-        "archived": 1372,
-        "pending": 1944,
-        "pending_eligible_72h": 429,
-        "pending_expired_72h": 1515
-      },
-      "rare_earth": {
-        "staged": 2652,
-        "archived": 1105,
-        "pending": 1547,
-        "pending_eligible_72h": 115,
-        "pending_expired_72h": 1432
-      }
-    },
+    "category_census_from_canonical_d1": null,
     "collected_by_category": {
       "geopolitics": null,
       "macro": null,
