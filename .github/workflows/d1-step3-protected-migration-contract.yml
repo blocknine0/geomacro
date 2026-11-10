@@ -8,6 +8,9 @@ on:
       - "scripts/ops/run-step3-protected-d1-migrations.mjs"
       - ".github/workflows/production-rollout-orchestrator.yml"
       - ".github/workflows/step3-existing-production-bearer-readonly.yml"
+      - ".github/workflows/step3-production-index-inventory-readonly.yml"
+      - "scripts/ops/step3-production-index-inventory-readonly.mjs"
+      - "scripts/tests/step3-production-index-inventory-readonly.test.mjs"
       - "scripts/lib/d1-step3-migration-contract.mjs"
       - "scripts/lib/d1-step3-supported-integrity.mjs"
       - "scripts/lib/d1-step3-0211-counter-integrity.mjs"
@@ -62,6 +65,8 @@ jobs:
         run: |
           node --check scripts/ops/check-d1-headroom.mjs
           node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --check scripts/ops/step3-production-index-inventory-readonly.mjs
+          node --test scripts/tests/step3-production-index-inventory-readonly.test.mjs
           node --check scripts/ops/verify-d1-publisher-billable-shadow.mjs
           node --check scripts/lib/d1-step3-migration-contract.mjs
           node --check scripts/lib/d1-step3-supported-integrity.mjs
