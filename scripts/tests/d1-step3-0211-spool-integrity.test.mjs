@@ -70,6 +70,66 @@ test("real 3500-row spool is proven by full-volume forced-index EXCEPT, not a tr
   assert.equal(p.index_count,7);
   assert.equal(p.stage2_authorized,false);
   assert.equal(p.canary_promoted,false);
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  d.exec(readFileSync("workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql","utf8"));
+  const optimized=auditStep30211SpoolSource(read(d));
+  assert.equal(optimized.index_count,6);
+  assert.equal(optimized.source_rows_verified,3500);
+  assert.equal(optimized.reviewed_index_profile,"0206_0210_SIX_INDEX_IMMUTABLE_SOURCE");
+  assert.equal(optimized.status,"PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS");
+ }finally{d.close()}
+});
+
+
+test("0210 immutable source-id FK DDL is exactly verified after 0206 without altering candidate UNIQUE",()=>{
+ const d=db();
+ try{
+  const relief=readFileSync("workers/control-plane/migrations/0206_d1_poll_index_write_relief.sql","utf8");
+  assert.match(relief,/DROP INDEX IF EXISTS idx_spool_candidate_sha;/u);
+  const next=readFileSync("workers/control-plane/migrations/0210_p0b_immutable_source_fk_index.sql","utf8");
+  assert.match(next,/DROP INDEX IF EXISTS idx_spool_source_id;/u);
+  assert.match(next,/CREATE INDEX idx_spool_source_id ON ingestion_spool_queue\(source_id\);/u);
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  d.exec(next);
+  const p=auditStep30211SpoolSource(read(d));
+  assert.equal(p.status,"OBSERVED_EMPTY_SOURCE_0206_SIX_INDEX_STRUCTURE");
+  assert.equal(p.index_count,6);
+  assert.equal(p.reviewed_index_profile,"0206_0210_SIX_INDEX_IMMUTABLE_SOURCE");
+  assert.equal(p.reviewed_exact_index_ddl_verified,true);
+  assert.equal(p.candidate_unique_autoindex_verified,true);
+  assert.equal(p.source_rows_verified,0);
+  assert.equal(p.stage2_authorized,false);
+  d.prepare("INSERT INTO source_registry(source_id) VALUES(?)").run("optimized-source");
+  d.prepare("INSERT INTO ingestion_spool_queue(id,candidate_sha256,source_id,b2_spool_uri,b2_byte_size,state,d1_committed_at) VALUES(?,?,?,?,?,?,?)")
+   .run("12345678-1234-1234-1234-123456789abc",
+    "f".repeat(64),"optimized-source","b2://nonfact-fixture",401,
+    "D1_COMMITTED","2026-11-09T00:00:00.000Z");
+  const actual=auditStep30211SpoolSource(read(d));
+  assert.equal(actual.status,"PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS");
+  assert.equal(actual.index_count,6);
+  assert.equal(actual.source_rows_verified,1);
+  assert.equal(actual.reviewed_index_profile,"0206_0210_SIX_INDEX_IMMUTABLE_SOURCE");
+  assert.equal(actual.candidate_unique_autoindex_verified,true);
+  assert.equal(actual.source_private_rows_logged,false);
+ }finally{d.close()}
+});
+test("named source FK index on wrong key, forged UNIQUE or out-of-order 0210 fail closed",()=>{
+ const d=db();
+ try{
+  d.exec("DROP INDEX idx_spool_candidate_sha");
+  d.exec("DROP INDEX idx_spool_source_id");
+  d.exec("CREATE INDEX idx_spool_source_id ON ingestion_spool_queue(state,source_id)");
+  assert.throws(()=>auditStep30211SpoolSource(read(d)),
+   /SOURCE_FK_INDEX_DDL_UNVERIFIED/u);
+  d.exec("DROP INDEX idx_spool_source_id");
+  d.exec("CREATE INDEX idx_spool_source_id ON ingestion_spool_queue(source_id)");
+  assert.throws(()=>auditStep30211SpoolSource(read(d,(sql,rows)=>
+   sql==='PRAGMA index_xinfo("sqlite_autoindex_ingestion_spool_queue_2")'?
+    rows.map(x=>x.key===1?{...x,name:"forged"}:x):rows)),
+   /(?:UNIQUE_KEY|AUTO_UNIQUE_KEYS)_UNVERIFIED/u);
+  d.exec("CREATE INDEX idx_spool_candidate_sha ON ingestion_spool_queue(candidate_sha256)");
+  assert.throws(()=>auditStep30211SpoolSource(read(d)),
+   /SOURCE_FK_NATIVE_INDEX_LINEAGE_UNVERIFIED/u);
  }finally{d.close()}
 });
 

@@ -7,6 +7,8 @@
 import {auditStep3AllIndexes} from "./d1-step3-supported-integrity.mjs";
 import {auditStep3AllIndexesSet}
  from "./d1-step3-large-index-set-proof.mjs";
+import {auditStep30211ReviewedSpoolIndexLineage}
+ from "./d1-step3-0211-spool-index-lineage.mjs";
 const TABLE="ingestion_spool_queue";
 export const STEP3_0211_REVIEWED_SPOOL_INDEXES=Object.freeze([
  "idx_p0b_bundle_items",
@@ -63,8 +65,18 @@ function checkIndexNames(rows,query){
     keys[0].name!=="candidate_sha256"||
     keys[0].coll!=="BINARY"||keys[0].desc!==0)
   fail("CANDIDATE_SHA_UNIQUE_KEY_UNVERIFIED");
+ // A matching index *name* cannot prove the hot-path source/FK key order.
+ // Re-read exact, canonical 0114/0116 vs 0206/0210 DDL from this same D1
+ // and verify BOTH autoindex keys rather than treating index_count as proof.
+ const reviewed=auditStep30211ReviewedSpoolIndexLineage(
+  query,rows,STEP3_0211_REVIEWED_SPOOL_INDEXES);
+ if(reviewed.index_count!==expected.length)
+  fail("REVIEWED_EXACT_DDL_INDEX_COUNT_DRIFT");
  return Object.freeze({
   index_names:expected,index_count:expected.length,
+  reviewed_index_profile:reviewed.profile,
+  reviewed_exact_index_ddl_verified:true,
+  candidate_unique_autoindex_verified:reviewed.candidate_unique_autoindex_verified,
   index_lineage:expected.length===6?
    "0206_DROPPED_REDUNDANT_CANDIDATE_SHA_INDEX":
    "0114_0116_BASELINE_SEVEN_INDEX"
@@ -102,6 +114,9 @@ export function auditStep30211SpoolSource(query){
     "PASS_0211_NONEMPTY_SPOOL_ALL_SEVEN_INDEX_KEYS":
     "PASS_0211_NONEMPTY_SPOOL_0206_SIX_INDEX_KEYS",
    index_count:lineage.index_count,index_lineage:lineage.index_lineage,
+   reviewed_index_profile:lineage.reviewed_index_profile,
+   reviewed_exact_index_ddl_verified:lineage.reviewed_exact_index_ddl_verified,
+   candidate_unique_autoindex_verified:lineage.candidate_unique_autoindex_verified,
    nonempty_source:true,
    source_rows_verified:proof.index_proofs[0].rows_compared,
    sqlite_full_integrity_check_claimed:false,
@@ -145,6 +160,9 @@ export function auditStep30211SpoolSource(query){
    "OBSERVED_EMPTY_SOURCE_ALL_SEVEN_INDEX_STRUCTURE":
    "OBSERVED_EMPTY_SOURCE_0206_SIX_INDEX_STRUCTURE",
   index_count:lineage.index_count,index_lineage:lineage.index_lineage,
+  reviewed_index_profile:lineage.reviewed_index_profile,
+  reviewed_exact_index_ddl_verified:lineage.reviewed_exact_index_ddl_verified,
+  candidate_unique_autoindex_verified:lineage.candidate_unique_autoindex_verified,
   nonempty_source:false,
   source_rows_verified:0,nonvacuous_original_evidence:false,
   source_to_b2_physical_parity_verified:false,
