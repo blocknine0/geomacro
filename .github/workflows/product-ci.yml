@@ -143,6 +143,13 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Step3 0212 full seven/eight historical index lineage and key parity (Node 24)
+        run: |
+          node --check scripts/lib/d1-step3-0212-reviewed-index-profile.mjs
+          node --check scripts/lib/d1-step3-0212-source-index-integrity.mjs
+          node --check scripts/ops/run-step3-protected-d1-migrations.mjs
+          node --test scripts/tests/d1-step3-0212-source-index-integrity.test.mjs
+
       - name: Predge research D1 503 recovery - exact one-row shared quota (offline)
         run: node --test scripts/tests/predge-research-one-row-d1.test.mjs
 
