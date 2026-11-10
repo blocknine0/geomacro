@@ -1,75 +1,92 @@
-# GeoMacro Phase2H private R2 backup for Backblaze B2 quota and availability
+# GeoMacro long-term Risk Gate minimum-facts storage: Brotli 11
 
-## Source of urgency
+## Locked owner requirement
 
-Real production Step3 run #42867331554 applied and independently verified
-migrations 0204, 0211, 0212, 0213. The final acceptance is still held by
-STEP3_PRODUCTION_B2_ACKNOWLEDGED_ORIGINAL_UNAVAILABLE. Neither successful
-Shadow B2 seeds nor a private R2 backup can be mislabelled as a live original
-B2 acknowledgement, complete inventory or authorization to remove Canary HOLD.
+Only keep source-derived facts needed for Risk Gate decision support in the
+long-term private backup, NOT full news source data. Do not keep full article
+text, publisher headlines, descriptions, original HTML, full Phase2H JSON
+or entire five-part GRO prose in the new cold store.
 
-## B2 independent continuity backup
+## Two retention zones
 
-Existing authenticated Phase2H canonical D1-only original export -> existing
-private Cloudflare R2 recovery bucket -> AES-256-GCM compressed bundle of
-the original record set -> physical provider R2 full-body GET -> AEAD decrypt
-and row equality -> independent HMAC-SHA256 cursor GET/readback.
+1. HOT/short-term: Existing canonical D1 and B2 source-evidence pipelines
+   continue to authenticate first-party original metadata, source-native
+   dates, independent corroboration and real archival ACK. Existing
+   72-hour raw-evidence/7-day Risk Gate policies and physical safety holds
+   are unchanged. This patch does NOT delete previous private copies.
+2. COLD/long-term: Private R2 stores compact sourced risk facts only:
+   identity hashes, original publication clock, ingest clock, category,
+   inferred ISO3 or ZZZ, canonical original citation URL, source identity
+   hash, GeoMacro-derived what (<=220 chars) and why (<=180 chars),
+   watch topic (<=96 chars), 4-channel mask, observation-only status and
+   one event grouping hint SHA256. No full source fields or body.
+   Candidate event grouping is NEVER evidence of independent corroboration.
 
-No B2 API or ListObjects calls, no new D1 SQL writes, no B2 fee, no paid
-delivery or automatic Worker traffic. Per-object raw and encrypted body are
-strictly bounded. No original publisher headlines or raw JSON are printed.
+A canonical URL is retained only for essential source provenance, not an
+article text. Unknown source evidence remains unverified; neither hashes
+nor HMAC prove source truth. Certified scores, rights, GRO signatures and
+7-day independent history are NOT manufactured by this backup.
 
-Existing protected workflow path:
-.github/workflows/phase2h-private-r2-b2-quota-backup.yml
+## Compression and security
 
-- Scheduled hourly at minute 43 UTC, or single owner-approved workflow_dispatch
-  with exact approval BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS.
-- Main-only protected environment, read-only authentic GitHub main SHA
-  comparison before each write, and production private R2 provider-domain
-  exposure audit before any private backup.
-- Reuse existing recovery AES-256 key, private bucket, authenticated internal
-  Worker original-export credential and scoped Cloudflare API. Key material is
-  HKDF domain-separated from D1 checkpoint recovery. Preserve key history
-  for durable restore after rotation.
-- At most 25 fully authenticated Phase2H originals and 500,000 bytes of
-  plaintext per hour. This is bounded incremental recovery, NOT an assurance
-  all historical originals are copied or adequate to keep up with intake.
-- Immutable, calendar-addressable encrypted hourly keys under
-  geomacro/private/phase2h-b2-quota-backup/v1/YYYY/MM/DD/HH.json.enc,
-  plus one HMAC-bound R2 keyset cursor. Restore uses exact known calendar
-  hours; no ListObjects dependency.
-- On rerun, an existing hourly object is independently decrypted and checked.
-  A divergent record never overwrites it. The prior cursor is verified
-  against the last encrypted object before any new write or keyset advance.
-- A crash between original object PUT and cursor commit leaves an object
-  discoverable from its hour; the next run must not fabricate progress.
-- A metadata-only GitHub artifact (7-day retention) records provider outcome,
-  object hash and count. The backup object lives in private R2 independently
-  of GitHub artifact retention.
-- The backup does NOT provide B2 archival ACK, B2 bucket orphan-free proof,
-  source rights, HMAC-signed certified Risk Indices or Canary release PASS.
-- Cloudflare R2 account-wide operations/storage are shared across GeoMacro.
-  This bounded backup does not prove remaining free headroom or a zero bill.
-  Increase its throughput only after independent monthly provider utilization
-  verification; do not confuse B2 quota with R2 quotas.
-- Genuine disaster recovery requires a separately protected, owner-reviewed
-  restore action with exact D1 target, fresh backup and readback checks.
-  The AES-GCM decryption function is available in
-  scripts/lib/phase2h-b2-r2-backup.mjs. No raw source auto-restore to D1.
+- Fixed-column JSON tuples, compact enum categories, bitmask market
+  channels, SHA256 identities as Base64URL (43 chars vs 64-character hex).
+- Strongest reviewed Brotli text compression, quality 11 with 22-bit
+  window, then domain-separated HKDF-derived AES-256-GCM authenticated
+  encryption and full-body provider R2 GET, AEAD-decrypt and exact
+  semantic tuple comparison.
+- Prefix, separate from older raw archives:
+  geomacro/private/phase2h-risk-minimum-br11/v2/YYYY/MM/DD/HH.br11.enc
+- Separate HMAC-protected R2 keyset cursor verifies prior actual encrypted
+  object and its last source ID+UTC clock on every run. Exact one
+  derived-only object per UTC hour; idempotent retry never overwrites
+  divergent content.
+- At most 25 input originals / 25 compact derived tuples per hourly
+  operation; plaintext cap 500 KB. This is incremental and must not be
+  misrepresented as a complete archive or sufficient throughput for all
+  live incoming sources.
+- Raw originals exist only transiently in this new backup runner memory.
+  The writer serializes only risk-derived fixed tuples, never originals.
+  This does not prove previous legacy B2/D1 raw copies have been removed.
+- No B2 calls or bucket enumeration, no D1 SQL mutations, no public raw
+  source publishing, no payment or Predge contract changes.
+- R2 account-wide monthly storage/operation headroom is a separate
+  capacity requirement and cannot be inferred from the bounded payload.
 
-## What still gates removal of canonical Canary HOLD
+## Production operation
 
-1. Real independent production B2 original, exact D1 B2 ACK and B2 readback.
-   The previous Step3 final proof was HOLD, despite all four migrations PASS.
-2. Genuine exact-current-main signed Step3 physical production PASS.
-3. Historical B2 orphan-free physical inventory reconciliation. D1-indexed
-   GET proves known items only; the B2 no-ListObjects policy stays in place.
-4. Immutable zero-traffic candidate ID, protected 0/1/5/25/50/100 live
-   promotion and SLO/rollback evidence for Hot50 three categories.
-5. Complete post-promotion UTC-day Cloudflare Paid quota and independent
-   provider evidence, signed previous promotion and read-only HOLD review.
-6. Only a separate reviewed acceptance PR with all PASS proofs can delete
-   config/d1-hotspot-v2-canary.hold. No synthetic PASS, disabled safety
-   checks, PayPal/commercial activation or source-rights workaround.
+Workflow .github/workflows/phase2h-private-r2-b2-quota-backup.yml runs
+hourly UTC at minute 43. Manual owner dispatch accepts only
+BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS. Requires verified exact current
+main, protected production environment and an independent real
+Cloudflare R2 domain-exposure audit for the recovery and shadow buckets.
+Uses previously configured private recovery R2 and AES key. Successful
+provider GET/decrypt/readback yields a metadata-only receipt without
+headline, body, source URL or private original IDs in GitHub artifacts.
 
-Predge research feed and all payment restrictions remain unchanged.
+Restore is a separate owner-reviewed action: fetch the known UTC-hour
+object by key and independently authenticate/decompress compact facts.
+These facts CANNOT be restored as original article JSON or promoted
+into a paid Standard/Complex result absent separate source corroboration
+and signed GRO/indices proofs. Preserve recovery-key history on rotation.
+
+## Still-open B2/CANARY requirements
+
+Production run #42867331554 applied and verified D1 0204,0211,0212,0213
+but signed physical Stage2 HOLDs with
+STEP3_PRODUCTION_B2_ACKNOWLEDGED_ORIGINAL_UNAVAILABLE.
+Private R2 compact facts are NOT a B2 original archive ACK, B2
+object census, hot/cold dual-copy proof, or independent orphan exclusion.
+
+The existing B2 namespace predates a complete write-time inventory and
+B2 listing is prohibited. Historical physical parity cannot be honestly
+certified from D1-indexed GET alone; provider-authorized independent
+inventory or separate proofable isolated namespace plus governed ledger
+must be accepted first. Old originals may require approved expiry policy
+and independently verified cleanup, never unexplained deletion.
+
+Only a real current-main signed physical Stage2 PASS, genuine B2 parity,
+immutable Worker candidate, protected 0-1-5-25-50-100% rollout and rollback,
+Hot50 three-category proof, full post-rollout UTC-day quota and read-only
+HOLD review permit a separate reviewed HOLD-removal PR. Until then
+config/d1-hotspot-v2-canary.hold remains untouched. Payments stay OFF.
