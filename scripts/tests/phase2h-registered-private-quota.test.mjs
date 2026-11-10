@@ -99,7 +99,9 @@ test("Free-budget HOLD continues discovery unless a separate real Paid-month ori
  const b2=wf.indexOf("id: b2-db");
  assert(paid>0&&b2>paid);
  const match=wf.matchAll(/steps\.quota\.outputs\.registered_private_max_new_rows != '0' \|\| steps\.paid-monthly-originals\.outputs\.admitted == 'true'/gu);
- assert.equal([...match].length,3);
+ // Canonical D1 identity, publish, artifact upload, and the second exact-main
+ // pre-publication check all retain the same immutable Paid-month admission.
+ assert.equal([...match].length,4);
  const zero=wf.matchAll(/steps\.quota\.outputs\.registered_private_max_new_rows == '0' && steps\.paid-monthly-originals\.outputs\.admitted != 'true'/gu);
  assert.equal([...zero].length,2);
  assert.match(wf,/node scripts\/ops\/check-d1-paid-monthly-headroom\.mjs --hot50-source/u);
