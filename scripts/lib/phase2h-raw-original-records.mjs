@@ -254,6 +254,10 @@ export async function postPhase2hCollisionIsolated({
     new Set(records.map(r=>r?.record_id)).size!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_ARGUMENTS_INVALID");
  let stored=0,duplicate=0,rejected=0,attempts=0;
+ // The per-group intake already proved each original's immutable D1 identity.
+ // Preserve EXACT verified IDs so one collision cannot suppress unrelated
+ // B2-first ACKs. Never infer verified IDs from an aggregate row count.
+ const verifiedIds=[],quarantinedIds=[];
  const rejectedByCategory={geopolitics:0,macro:0,rare_earth:0};
  const send=async group=>{
   if(++attempts>maxAttempts)
@@ -269,13 +273,15 @@ export async function postPhase2hCollisionIsolated({
       result.stored+result.duplicate!==group.length)
     throw Error("PHASE2H_PRIVATE_D1_READBACK_MISMATCH");
    stored+=result.stored;duplicate+=result.duplicate;
+   verifiedIds.push(...group.map(row=>row.record_id));
   }catch(error){
    if(error?.message!=="PHASE2H_PRIVATE_RAW_IDENTITY_COLLISION")throw error;
    if(group.length===1){
     const category=group[0]?.category;
     if(!Object.hasOwn(rejectedByCategory,category))
      throw Error("PHASE2H_PRIVATE_COLLISION_CATEGORY_INVALID");
-    rejected++;rejectedByCategory[category]++;return;
+    rejected++;rejectedByCategory[category]++;
+    quarantinedIds.push(group[0].record_id);return;
    }
    const middle=Math.floor(group.length/2);
    await send(group.slice(0,middle));
@@ -284,12 +290,17 @@ export async function postPhase2hCollisionIsolated({
  };
  for(let i=0;i<records.length;i+=50)
   await send(records.slice(i,i+50));
- if(stored+duplicate+rejected!==records.length)
+ if(stored+duplicate+rejected!==records.length||
+    verifiedIds.length!==stored+duplicate||
+    quarantinedIds.length!==rejected||
+    new Set([...verifiedIds,...quarantinedIds]).size!==records.length)
   throw Error("PHASE2H_PRIVATE_COLLISION_RECONCILIATION_FAILED");
  return Object.freeze({
   stored,duplicate,rejected_conflicts:rejected,
   rejected_conflicts_by_category:rejectedByCategory,
   verified_originals:stored+duplicate,
+  verified_record_ids:Object.freeze(verifiedIds),
+  quarantined_record_ids:Object.freeze(quarantinedIds),
   readback_verified:stored+duplicate>0,
   per_original_readback_verified:stored+duplicate>0,
   attempts,paid_eligible:false,commercial_rights_verified:false,
