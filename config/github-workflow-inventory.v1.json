@@ -368,6 +368,7 @@
     "step3-d1-native-backend-readonly.yml",
     "step3-existing-production-bearer-readonly.yml",
     "step3-legacy-only-canonical-completion.yml",
+    "step3-production-index-inventory-readonly.yml",
     "step3-protected-binding-readiness.yml",
     "step3-r2-private-exposure.yml",
     "step3-shadow-0204-nonfact-index-fixture.yml",
