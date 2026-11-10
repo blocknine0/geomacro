@@ -17,11 +17,14 @@ const EXT=/\.(?:mjs|cjs|js|ts|tsx)$/u;
 // This is not a production reference-only cutover or a true B2/R2 receipt.
 export const SHADOW_ONLY_REVIEWED_BLOBS=Object.freeze({
  "scripts/lib/d1-step3-real-shadow-proofs.mjs":Object.freeze({
-  blob:"9ddc619bbcdfdc221a1816e11321b4187fa66bed",
+  blob:"f0d7d77e0c5a24898e5b2cc442812f7a0070231a",
   classification:"PROTECTED_REAL_SHADOW_ONLY_B2_ORIGINAL_BYTE_PARITY_REVIEWED"}),
  "scripts/lib/d1-step3-shadow-pointer-seed.mjs":Object.freeze({
-  blob:"0e582c4e643319a418921e3eaab99a50b2737a7d",
+  blob:"75defeb8e4093d939dba83dda7abbb4526addec8",
   classification:"PROTECTED_SHADOW_ONLY_R2_HMAC_POINTER_SEED_REVIEWED"}),
+ "scripts/ops/seed-step3-shadow-archived-original.mjs":Object.freeze({
+  blob:"9b50142046703f4782919a2576415ecdf563fa4f",
+  classification:"PROTECTED_EXACT_MAIN_SHADOW_D1_ONLY_B2_ACK_READBACK_REVIEWED"}),
  "scripts/ops/run-step3-local-workerd-rehearsal.mjs":Object.freeze({
   blob:"58d8ebc16b7f48cd54884956ca118c10d8cd0d47",
   classification:"OFFLINE_MINIFLARE_SIMULATION_ONLY_NO_PRODUCTION_PROOF"})
