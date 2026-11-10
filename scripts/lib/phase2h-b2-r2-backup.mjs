@@ -8,17 +8,23 @@
  * key; there are no raw D1 writes or B2 API calls.
  *
  * One discoverable encrypted object per UTC hour, plus a separate HMAC-bound
- * keyset cursor. The complete calendar/hour index needs NO ListObjects.
+ * keyset cursor. Calendar-addressable keys require no bucket enumeration.
  */
 import {createCipheriv,createDecipheriv,createHash,createHmac,
  hkdfSync,randomBytes,timingSafeEqual} from "node:crypto";
-import {gzipSync,gunzipSync} from "node:zlib";
-const PREFIX="geomacro/private/phase2h-b2-quota-backup/v1/";
+import {brotliCompressSync,brotliDecompressSync,constants as Z} from "node:zlib";
+import {
+ COMPACT_RISK_FACTS_SCHEMA,MINIMUM_FACT_COLUMNS,
+ minimumRiskFactsFromOriginals,checkMinimumRiskFact,
+ minimumFactId,minimumFactClock
+} from "./phase2h-risk-gate-minimum-facts.mjs";
+const PREFIX="geomacro/private/phase2h-risk-minimum-br11/v2/";
 export const PHASE2H_R2_BACKUP_PREFIX=PREFIX;
 export const PHASE2H_R2_CURSOR_KEY=PREFIX+"cursor.json";
-const DOC_SCHEMA="geomacro.phase2h.private-b2-quota-r2-aesgcm.v1";
-const CURSOR_SCHEMA="geomacro.phase2h.private-b2-quota-r2-cursor.v1";
+const DOC_SCHEMA="geomacro.phase2h.risk-minimum-brotli11-aesgcm.v2";
+const CURSOR_SCHEMA="geomacro.phase2h.risk-minimum-cursor.v2";
 const HEX=/^[a-f0-9]{64}$/u, SHA=/^[a-f0-9]{40}$/u;
+const COLUMN_SHA=hash(JSON.stringify(MINIMUM_FACT_COLUMNS));
 const ISO=/^20\d{2}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/u;
 const MAX_ROWS=25,MAX_BYTES=500_000,MAX_CIPHER=600_000;
 const err=code=>{throw Error("PHASE2H_R2_BACKUP_"+code)};
@@ -30,12 +36,12 @@ function keys(secretB64){
  const source=Buffer.from(secretB64,"base64");
  if(source.length!==32||source.toString("base64")!==secretB64)
   err("EXACT_AES256_SECRET_REQUIRED");
- const salt=Buffer.from("geomacro|phase2h|b2-quota-r2-backup|v1","utf8");
+ const salt=Buffer.from("geomacro|phase2h|risk-minimum-brotli11|v2","utf8");
  return {
   aead:Buffer.from(hkdfSync("sha256",source,salt,
-   Buffer.from("aes256-gcm-originals-v1"),32)),
+   Buffer.from("aes256-gcm-risk-minimum-v2"),32)),
   mac:Buffer.from(hkdfSync("sha256",source,salt,
-   Buffer.from("hmac-sha256-cursor-v1"),32)),
+   Buffer.from("hmac-sha256-risk-minimum-cursor-v2"),32)),
  };
 }
 const mac=(key,value)=>createHmac("sha256",key).update(value).digest("hex");
@@ -48,7 +54,7 @@ export function phase2hBackupHour(now){
 export function phase2hBackupHourKey(now){
  const hour=phase2hBackupHour(now);
  return PREFIX+hour.slice(0,4)+"/"+hour.slice(5,7)+"/"+
-  hour.slice(8,10)+"/"+hour.slice(11,13)+".json.enc";
+  hour.slice(8,10)+"/"+hour.slice(11,13)+".br11.enc";
 }
 export function phase2hBackupSourceRows(rows,now){
  if(!Array.isArray(rows)||rows.length<1||rows.length>MAX_ROWS)
@@ -82,12 +88,20 @@ export function sealPhase2hR2Backup({
     !Buffer.isBuffer(nonce)||nonce.length!==12)
   err("EXACT_SOURCE_OR_NONCE_INVALID");
  const h=phase2hBackupHour(now),key=phase2hBackupHourKey(now);
+ const facts=minimumRiskFactsFromOriginals(records);
  const plain=Buffer.from(canon({
-  schema:DOC_SCHEMA,source_sha:sourceSha,hour:h,record_count:records.length,
-  originals:records
+  schema:DOC_SCHEMA,fact_schema:COMPACT_RISK_FACTS_SCHEMA,
+  columns_sha256:COLUMN_SHA,source_sha:sourceSha,hour:h,
+  record_count:facts.length,facts,
+  independent_corroboration_verified:false,
+  risk_gate_certified:false,full_private_originals_retained:false
  }),"utf8");
  if(plain.length>MAX_BYTES)err("PLAINTEXT_BATCH_OVER_CAP");
- const compressed=gzipSync(plain,{level:6,mtime:0});
+ // Brotli quality 11 + 22-bit window is the highest reviewed text
+ // compression mode, followed by AES-256-GCM authenticated encryption.
+ const compressed=brotliCompressSync(plain,{params:{
+  [Z.BROTLI_PARAM_QUALITY]:11,[Z.BROTLI_PARAM_LGWIN]:22
+ }});
  const cryptKey=keys(secretB64).aead;
  const c=createCipheriv("aes-256-gcm",cryptKey,nonce);
  c.setAAD(Buffer.from(DOC_SCHEMA+"|"+h+"|"+sourceSha));
@@ -96,12 +110,18 @@ export function sealPhase2hR2Backup({
   schema:DOC_SCHEMA,source_sha:sourceSha,hour:h,
   nonce:nonce.toString("base64"),tag:c.getAuthTag().toString("base64"),
   ciphertext:encrypted.toString("base64"),cipher:"AES-256-GCM",
+  compression:"BROTLI_Q11",full_private_originals_retained:false,
  };
  const body=Buffer.from(JSON.stringify(envelope),"utf8");
  if(body.length>MAX_CIPHER)err("CIPHERTEXT_OVER_CAP");
  return Object.freeze({key,hour:h,body,body_sha256:hash(body),
-  records_count:records.length,first_record:records[0],
-  last_record:records.at(-1),plaintext_bytes:plain.length});
+  records_count:facts.length,
+  first_record:{record_id:minimumFactId(facts[0]),ingested_at:minimumFactClock(facts[0])},
+  last_record:{record_id:minimumFactId(facts.at(-1)),
+   ingested_at:minimumFactClock(facts.at(-1))},
+  plaintext_bytes:plain.length,compressed_bytes:compressed.length,
+  full_private_originals_retained:false,
+  independent_corroboration_verified:false});
 }
 export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}){
  if(!Buffer.isBuffer(body)||body.length>MAX_CIPHER||body.length<128)
@@ -110,6 +130,11 @@ export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}
  try{envelope=JSON.parse(body.toString("utf8"))}
  catch{err("ENVELOPE_JSON_INVALID")}
  if(envelope?.schema!==DOC_SCHEMA||envelope.cipher!=="AES-256-GCM"||
+   envelope.compression!=="BROTLI_Q11"||
+   envelope.full_private_originals_retained!==false||
+   Object.keys(envelope).sort().join("|")!==
+    ["schema","source_sha","hour","nonce","tag","ciphertext","cipher",
+      "compression","full_private_originals_retained"].sort().join("|")||
    envelope.hour!==expectedHour||!SHA.test(envelope.source_sha??"")||
    (expectedSha!=null&&expectedSha!==envelope.source_sha))
   err("ENVELOPE_IDENTITY_MISMATCH");
@@ -124,24 +149,41 @@ export function openPhase2hR2Backup({body,secretB64,expectedHour,expectedSha}={}
   d.setAAD(Buffer.from(DOC_SCHEMA+"|"+expectedHour+"|"+envelope.source_sha));
   d.setAuthTag(tag);
   const compressed=Buffer.concat([d.update(encrypted),d.final()]);
-  plain=gunzipSync(compressed,{maxOutputLength:MAX_BYTES});
+  plain=brotliDecompressSync(compressed,{maxOutputLength:MAX_BYTES});
  }catch{err("AES_GCM_OR_GZIP_AUTHENTICATION_FAILED")}
  let payload;
  try{payload=JSON.parse(plain.toString("utf8"))}
  catch{err("RECOVERED_JSON_INVALID")}
  if(payload?.schema!==DOC_SCHEMA||
+   payload.fact_schema!==COMPACT_RISK_FACTS_SCHEMA||
+   payload.columns_sha256!==COLUMN_SHA||
    payload.hour!==expectedHour||
    payload.source_sha!==envelope.source_sha||
-   !Array.isArray(payload.originals)||
-   payload.record_count!==payload.originals.length)
-  err("RESTORED_ORIGINALS_METADATA_MISMATCH");
- const validated=phase2hBackupSourceRows(payload.originals,
-  new Date(Date.parse(expectedHour)+60*60*1000+120000));
- if(validated.length!==payload.record_count||
-    canon(validated)!==canon(payload.originals))
-  err("RESTORED_ORIGINALS_ORDER_DIVERGED");
+   payload.independent_corroboration_verified!==false||
+   payload.risk_gate_certified!==false||
+   payload.full_private_originals_retained!==false||
+   Object.keys(payload).sort().join("|")!==
+    ["schema","fact_schema","columns_sha256","source_sha","hour",
+      "record_count","facts","independent_corroboration_verified",
+      "risk_gate_certified","full_private_originals_retained"].sort().join("|")||
+   !Array.isArray(payload.facts)||
+   payload.facts.length<1||payload.facts.length>MAX_ROWS||
+   payload.record_count!==payload.facts.length)
+  err("RESTORED_DERIVED_FACTS_METADATA_MISMATCH");
+ const checked=payload.facts;
+ if(!checked.every(checkMinimumRiskFact)||
+    new Set(checked.map(minimumFactId)).size!==checked.length)
+  err("RESTORED_DERIVED_FACTS_INTEGRITY_FAILED");
+ const sorted=[...checked].sort((a,b)=>
+  minimumFactClock(a)===minimumFactClock(b)?
+   minimumFactId(a).localeCompare(minimumFactId(b)):
+   minimumFactClock(a).localeCompare(minimumFactClock(b)));
+ if(canon(sorted)!==canon(checked))
+  err("DERIVED_FACT_KEYSET_ORDER_DIVERGED");
  return Object.freeze({source_sha:payload.source_sha,
-  hour:payload.hour,records:validated,
+  hour:payload.hour,records:checked,
+  full_private_originals_retained:false,
+  independent_corroboration_verified:false,risk_gate_certified:false,
   body_sha256:hash(body),verified:true});
 }
 export function sealPhase2hBackupCursor({
