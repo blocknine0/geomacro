@@ -24,6 +24,8 @@ on:
     branches: [main]
     paths:
       - "scripts/ops/verify-hot50-risk-gate-tiers.mjs"
+      - "scripts/lib/hot50-standard-sales-readiness.mjs"
+      - "scripts/tests/hot50-standard-sales-readiness.test.mjs"
       - "workers/control-plane/src/risk-gap-enrichment.mjs"
       - "workers/control-plane/src/risk-gate-global-news-search.mjs"
       - "workers/control-plane/src/risk-gate-activation-triggers.mjs"
@@ -279,7 +281,7 @@ jobs:
       - name: Verify scoped scheduling, tamper rejection and one-read rollups
         run: |
           node --check scripts/ops/verify-hot50-risk-gate-tiers.mjs
-          node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gap-hot50-index-plans.test.mjs
+          node --test scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/risk-gate-hot50-low-quota.test.mjs scripts/tests/risk-gate-three-tier-product.test.mjs scripts/lib/hot50-production-proof.test.mjs scripts/tests/hot50-standard-sales-readiness.test.mjs scripts/tests/risk-gate-global-news-search.test.mjs scripts/tests/risk-gate-activation-triggers.test.mjs scripts/tests/risk-gate-evidence-trigger-integration.test.mjs scripts/tests/risk-gap-hot50-index-plans.test.mjs
       - name: Observe account quota before authenticated API proofs
         id: quota
         env:
