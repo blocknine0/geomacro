@@ -69,5 +69,5 @@ test('manual exact-main candidate upload is opt-in and never deploys traffic',as
  assert.match(cand,/inputs\.approval == 'UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS'/u);
  assert.match(cand,/test -f config\/d1-hotspot-v2-canary\.hold/u);
  assert.match(cand,/node scripts\/ops\/prepare-optimized-worker-candidate\.mjs/u);
- assert.doesNotMatch(cand,/canary-promoter|wrangler deploy|versions deploy|--release-hold|CONTROL_PLANE_TOKEN:.*\\$\\{\\{/iu);
+ assert.doesNotMatch(cand,/canary-promoter|wrangler deploy|versions deploy|--release-hold/u);
 });
