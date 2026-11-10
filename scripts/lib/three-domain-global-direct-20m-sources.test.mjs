@@ -24,7 +24,7 @@ test("true 20-minute production registry includes all Hot-50 native feeds plus n
  assert.ok(categories.every(x=>registry.some(s=>s.categories.includes(x))));
  assert.equal(summary.hot50_retired_backup_mapping_count,14);
  assert.equal(summary.hot50_retired_backup_unique_urls_in_current_tick,14);
- assert.equal(summary.macro_minerals_continuity_sources_pinned,16);
+ assert.equal(summary.macro_minerals_continuity_sources_pinned,17);
  assert.equal(summary.macro_minerals_continuity_transport_verified_by_registration,false);
  for(const candidate of macroMineralsContinuitySources()){
   const pinned=registry.find(s=>s.url===candidate.url);
