@@ -201,8 +201,6 @@ export async function backupPhase2hPrivateOriginals({
   rows:answer.rows,now,sourceSha:env.GITHUB_SHA,secretB64
  });
  const found=await storage("GET",plan.key,env,fetchImpl);
- if(found&&sha(found)!==plan.body_sha256)
-  fail("EXISTING_HOUR_SLOT_DIVERGED");
  if(found){
   const old=openPhase2hR2Backup({
    body:found,secretB64,expectedHour:plan.hour,
@@ -220,7 +218,10 @@ export async function backupPhase2hPrivateOriginals({
   await storage("PUT",plan.key,env,fetchImpl,plan.body);
  }
  const physical=await storage("GET",plan.key,env,fetchImpl);
- if(!physical||sha(physical)!==plan.body_sha256)
+ const trustedBytes=found??plan.body;
+ const trustedSha=sha(trustedBytes);
+ if(!physical||sha(physical)!==trustedSha||
+    !physical.equals(trustedBytes))
   fail("INDEPENDENT_PRIVATE_R2_READBACK_MISMATCH");
  const restored=openPhase2hR2Backup({
   body:physical,secretB64,expectedHour:plan.hour,
@@ -235,7 +236,7 @@ export async function backupPhase2hPrivateOriginals({
   fail("RESTORED_CANONICAL_ORIGINALS_MISMATCH");
  const next=sealPhase2hBackupCursor({
   sourceSha:env.GITHUB_SHA,hour:plan.hour,
-  objectKey:plan.key,objectSha:plan.body_sha256,
+  objectKey:plan.key,objectSha:trustedSha,
   lastClock:plan.last_record.ingested_at,
   lastId:plan.last_record.record_id,
   cycleComplete:answer.scan_complete,secretB64
@@ -246,14 +247,14 @@ export async function backupPhase2hPrivateOriginals({
  if(!verify||!verify.equals(next))
   fail("CURSOR_WRITE_READBACK_UNVERIFIED");
  const checked=openPhase2hBackupCursor({body:verify,secretB64});
- if(checked.object_sha256!==plan.body_sha256||
+ if(checked.object_sha256!==trustedSha||
     checked.object_key!==plan.key)
   fail("CURSOR_BACKUP_LINKAGE_INVALID");
  return Object.freeze({
   schema:"geomacro.phase2h.r2-b2-quota-private-backup-receipt.v1",
   status:"PASS_PRIVATE_R2_ENCRYPTED_B2_QUOTA_CONTINUITY_BACKUP",
   utc_hour:plan.hour,object_key:plan.key,
-  object_sha256:plan.body_sha256,compressed_cipher_bytes:plan.body.length,
+  object_sha256:trustedSha,compressed_cipher_bytes:physical.length,
   backed_up_originals:restored.records.length,
   provider_private_r2_put_readback:true,
   hmac_cursor_readback:true,
