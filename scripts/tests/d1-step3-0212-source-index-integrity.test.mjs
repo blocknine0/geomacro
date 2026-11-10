@@ -57,6 +57,66 @@ test("real SQLite seven-index complete membership and two exact partial predicat
   assert.doesNotMatch(JSON.stringify(r),/2026-11-09T12|raw_sha256|__audit_rowid/);
  }finally{db.close()}
 });
+test("real 0117 eighth index has exact DDL and full row/key parity, not a waived extra",()=>{
+ const db=sample();
+ try{
+  db.exec("CREATE INDEX IF NOT EXISTS idx_phase2h_derived_discovery_cursor "+
+   "ON phase2h_private_raw_news(first_ingested_at,record_id)");
+  const proof=auditStep30212AllRawSourceIndexes(query(db));
+  assert.equal(proof.status,"PASS_0212_ALL_EIGHT_REVIEWED_SOURCE_INDEX_KEYS");
+  assert.equal(proof.index_count,8);
+  assert.equal(proof.full_index_count,6);
+  assert.equal(proof.reviewed_0117_present,true);
+  assert.equal(proof.full_index_proofs.length,6);
+  assert.ok(proof.full_index_proofs.every(x=>x.compared_rows===2));
+  assert.equal(proof.reviewed_partial_index_count,2);
+  assert.equal(proof.fully_nonvacuous_data_memberships_proven,true);
+  assert.equal(proof.production_release_authorized,false);
+  assert.equal(proof.canary_promoted,false);
+ }finally{db.close()}
+});
+test("reviewed 0117 name cannot hide wrong DDL, key metadata or physical row parity",()=>{
+ for(const indexDDL of [
+   "CREATE INDEX idx_phase2h_derived_discovery_cursor ON "+
+    "phase2h_private_raw_news(category,record_id)",
+   "CREATE INDEX idx_phase2h_derived_discovery_cursor ON "+
+    "phase2h_private_raw_news(first_ingested_at,record_id) "+
+    "WHERE category='macro'"
+ ]){
+  const db=sample();
+  try{
+   db.exec(indexDDL);
+   assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db)),
+    /REVIEWED_0117_SOURCE_DDL_DRIFT|REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/u);
+  }finally{db.close()}
+ }
+ const db=sample();
+ try{
+  db.exec("CREATE INDEX idx_phase2h_derived_discovery_cursor ON "+
+   "phase2h_private_raw_news(first_ingested_at,record_id)");
+  assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db,(sql,rows)=>
+    sql.startsWith('PRAGMA index_xinfo("idx_phase2h_derived_discovery_cursor")')?
+     rows.map(x=>x.key===1?{...x,coll:"NOCASE"}:x):rows)),
+    /REVIEWED_0117_SOURCE_INDEX_KEYS_DRIFT/u);
+  assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db,(sql,rows)=>
+    sql.includes("INDEXED BY")&&sql.includes("idx_phase2h_derived_discovery_cursor")&&
+     sql.startsWith("SELECT rowid")?
+      rows.map((x,i)=>i===0?{...x,__audit_key_0:"tampered"}:x):rows)));
+ }finally{db.close()}
+});
+test("unreviewed eighth and ninth indexes still HOLD, even if full and non-partial",()=>{
+ const db=sample();
+ try{
+  db.exec("CREATE INDEX idx_fake_extra ON phase2h_private_raw_news(category)");
+  assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db)),
+   /REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/u);
+  db.exec("CREATE INDEX idx_phase2h_derived_discovery_cursor ON "+
+   "phase2h_private_raw_news(first_ingested_at,record_id)");
+  assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db)),
+   /REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/u);
+ }finally{db.close()}
+});
+
 test("11,822-row source passes exact complete forced-index and both partial membership proof",()=>{
  const db=sample();
  try{
@@ -125,13 +185,13 @@ test("refuse any of the exact seven index names missing or additional unknown pa
  try{
   db.exec("DROP INDEX idx_phase2h_unarchived");
   assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db)),
-   /SEVEN_REVIEWED_FULL_AND_PARTIAL_INDEX_REGISTRY_DRIFT/);
+   /REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/);
   db.exec("CREATE INDEX idx_phase2h_unarchived ON phase2h_private_raw_news"+
    "(b2_object_sha256,first_ingested_at,record_id)");
   db.exec("CREATE INDEX idx_fake_predicate ON phase2h_private_raw_news(category)"+
    " WHERE b2_object_sha256 IS NOT NULL");
   assert.throws(()=>auditStep30212AllRawSourceIndexes(query(db)),
-   /SEVEN_REVIEWED_FULL_AND_PARTIAL_INDEX_REGISTRY_DRIFT/);
+   /REVIEWED_SEVEN_OR_EIGHT_INDEX_REGISTRY_DRIFT/);
  }finally{db.close()}
 });
 test("tampered full source index membership or quick/FK metadata rejects",()=>{
