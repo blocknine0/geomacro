@@ -180,7 +180,16 @@ async function privateArchiveR2(items,env){
   original_page_sha256:e.original_page_sha256,source_id:e.source_id,
   raw_payload:e.raw_payload
  }))));
- const identity=await sha(plaintext),iv=crypto.getRandomValues(new Uint8Array(12));
+ const identity=await sha(plaintext);
+ // Keyed HKDF nonce prevents an interrupted retry from overwriting one
+ // immutable R2 key with different ciphertext. Same bytes => same nonce;
+ // different bytes => distinct unpredictable nonce with SHA-256 security.
+ const hkdf=await crypto.subtle.importKey("raw",keyBytes,"HKDF",false,["deriveBits"]);
+ const iv=new Uint8Array(await crypto.subtle.deriveBits({
+  name:"HKDF",hash:"SHA-256",
+  salt:encode("geomacro-risk-stream-archive-iv-v1"),
+  info:encode(identity)
+ },hkdf,96));
  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plaintext));
  const packed=JSON.stringify({v:1,alg:"AES-256-GCM",iv:archiveB64Encode(iv),
   ciphertext:archiveB64Encode(cipher),sha256:identity});
