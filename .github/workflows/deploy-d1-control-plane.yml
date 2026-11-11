@@ -602,7 +602,17 @@ jobs:
             config.vars.GEOMACRO_P1_FANOUT_ENABLED='1';
             config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='1';
           }else{
-            delete config.queues;
+            // Discovery is independent of P0-B. Never silently remove its
+            // producer binding just because private backlog is disabled.
+            // The dedicated no-route Worker owns the sole Queue consumer.
+            const discovery=config.queues?.producers?.filter(x=>
+              x.binding==='DERIVED_DISCOVERY_QUEUE'&&
+              x.queue==='geomacro-derived-discovery');
+            if(discovery?.length!==1||
+               config.queues?.consumers?.some(x=>
+                x.queue==='geomacro-derived-discovery'))
+              throw Error('DERIVED_DISCOVERY_ISOLATED_PRODUCER_CONFIG_INVALID');
+            config.queues={producers:discovery};
             config.vars.GEOMACRO_P0B_ADMISSION_ACTIVE='0';
             config.vars.GEOMACRO_P1_FANOUT_ENABLED='0';
             config.vars.GEOMACRO_P1_BUNDLED_LEASES_ENABLED='0';
