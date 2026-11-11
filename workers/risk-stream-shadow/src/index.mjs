@@ -5,6 +5,8 @@
  */
 import {enqueueRiskStreamEvents,processRiskStreamBatch}
   from "../../control-plane/src/risk-stream-pipeline.mjs";
+import {registerUntrustedShadowIndexSources}
+  from "./untrusted-index-source-registry.mjs";
 
 const encoder=new TextEncoder();
 const hex=async value=>Array.from(new Uint8Array(await crypto.subtle.digest(
@@ -117,6 +119,10 @@ export default {
   // Do NOT enqueue the internal delivery outbox: this Worker has NO delivery queue.
   // processRiskStreamBatch only creates internal signed candidates in isolated D1.
   try{
+   // Pre-admit INDEX_ONLY identity to satisfy the canonical D1 FK without
+   // granting source rights, enabling a source, or adding a fact attestation.
+   // Uses the instrumented D1 so 503s count even during source FK staging.
+   await registerUntrustedShadowIndexSources(db,items);
    const result=await processRiskStreamBatch(active,items);
    const verified=await verifyReadback(env.DB,items,env);
    if(verified<result.corroborated_and_signed)fail("SIGNED_READBACK_COUNT_DIVERGED");
