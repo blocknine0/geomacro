@@ -6,7 +6,7 @@ Authenticated GDELT/RSS/website_intelligence producers
 → independently signed machine original-page and rights attestations
 → Cloudflare Queues, 10 events or 2 seconds, 8 retries and a DLQ
 → one encrypted private R2 ten-original bundle, independent PUT/GET and AES-GCM decrypt
-→ one parameterized canonical D1 multi-row INSERT, with bounded 503 backoff and readback
+→ one atomic D1 transaction with at most 6 rows / 96 SQL binds per statement (10 Queue events as 6+4), bounded 503 backoff and readback
 → indexed same-event country/category corroboration and distinct-issuer quorum
 → Worker-memory Ed25519 signed stream GRO, immutable D1 transaction and delivery outbox
 → separate internal delivery Queue, verified signature, no-funds D1 ACK.
@@ -89,7 +89,7 @@ Run: node --test scripts/tests/risk-stream-b2-governor.test.mjs
 Run: node --test scripts/tests/risk-stream-delivery.test.mjs
 
 The 220-event integration simulation tests 110 signed stream GROs, synthetic
-recoverable D1 HTTP 503, a single multi-row INSERT per 10-item batch,
+recoverable D1 HTTP 503, two multi-row INSERT statements inside one D1 atomic batch for 10 items,
 Ed25519 verification, R2 readback/decrypt, no-funds delivery, retry replay,
 dynamic ISO3/category routing, rights denial and non-independent publishers.
 Synthetic zero unhandled 503 is NOT a promise of zero live provider errors.
@@ -98,3 +98,5 @@ Production still needs actual trusted source attesters, migration and queue
 provisioning, provider-backed B2 policy reconciliation, a live latency canary,
 per-category commercial evidence, existing reviewer certs, and explicitly
 authorized customer delivery. Keep config/d1-hotspot-v2-canary.hold intact.
+
+Cloudflare D1 caps bound parameters at 100 per individual SQL statement (as of 2026-10-30). Do not collapse ten events × 16 fields into one 160-parameter INSERT. The actual live Queue accepts ten events; `DB.batch()` atomically applies two parameterized multi-row INSERTs with 6+4 events while keeping the same idempotency/readback/retry policy.
