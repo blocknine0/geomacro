@@ -13,13 +13,6 @@ on:
       - 'scripts/tests/optimized-worker-candidate.test.mjs'
       - 'workers/control-plane/src/**'
       - 'src/workers/**'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/geomacro-optimized-worker-candidate.yml'
-      - 'scripts/ops/prepare-optimized-worker-candidate.mjs'
-      - 'workers/control-plane/src/**'
-      - 'src/workers/**'
 permissions:
   contents: read
 jobs:
@@ -38,9 +31,8 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' ||
-       (github.event_name == 'workflow_dispatch' &&
-        inputs.approval == 'UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS'))
+      github.event_name == 'workflow_dispatch' &&
+      inputs.approval == 'UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS'
     environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 10

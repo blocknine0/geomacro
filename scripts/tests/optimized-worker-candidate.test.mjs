@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {candidateConfig,verifyCandidateBindings,prepareCandidate} from '../ops/prepare-optimized-worker-candidate.mjs';
+import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents} from '../ops/prepare-optimized-worker-candidate.mjs';
 const sha='a'.repeat(40);
 const baseline={resources:{script_runtime:{compatibility_date:'2026-10-03',compatibility_flags:[]},bindings:[
  {name:'DB',type:'d1',id:'canonical-db'},
@@ -70,4 +70,37 @@ test('manual exact-main candidate upload is opt-in and never deploys traffic',as
  assert.match(cand,/test -f config\/d1-hotspot-v2-canary\.hold/u);
  assert.match(cand,/node scripts\/ops\/prepare-optimized-worker-candidate\.mjs/u);
  assert.doesNotMatch(cand,/canary-promoter|wrangler deploy|versions deploy|--release-hold/u);
+});
+
+test('fresh Wrangler structured version-upload event pins the immutable candidate UUID',()=>{
+ const id='12345678-1234-4123-8123-123456789abc';
+ const lines=[
+  {type:'wrangler-session',version:1,command_line_args:['versions','upload']},
+  {type:'version-upload',worker_name:'geomacro-control-plane',
+   version_id:id,timestamp:'2026-11-11T05:44:22Z'}
+ ].map(x=>JSON.stringify(x)).join('\n')+'\n';
+ assert.equal(uploadedVersionIdFromWranglerEvents(lines),id);
+});
+test('ambiguous, stale or cross-worker upload receipts are rejected',()=>{
+ const upload={type:'version-upload',worker_name:'geomacro-control-plane',
+  version_id:'12345678-1234-4123-8123-123456789abc'};
+ const run=events=>events.map(x=>JSON.stringify(x)).join('\n');
+ assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([upload,upload])),
+  /RECEIPT_MISSING_OR_AMBIGUOUS/);
+ assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([{type:'deploy'}])),
+  /RECEIPT_MISSING_OR_AMBIGUOUS/);
+ assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([{...upload,worker_name:'other-worker'}])),
+  /UPLOAD_IDENTITY_INVALID/);
+ assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([{...upload,version_id:'invalid'}])),
+  /UPLOAD_IDENTITY_INVALID/);
+ assert.throws(()=>uploadedVersionIdFromWranglerEvents('not-json'),
+  /RECEIPT_INVALID/);
+});
+test('candidate selection never guesses from previous versions sharing a SHA',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
+ assert.match(source,/WRANGLER_OUTPUT_FILE_PATH/u);
+ assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
+ assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
+ assert.doesNotMatch(source,/versions\?deployable=true/u);
 });
