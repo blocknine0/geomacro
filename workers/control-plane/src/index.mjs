@@ -38,6 +38,7 @@ import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
 import {enqueueRiskStreamEvents,consumeRiskStreamQueue} from "./risk-stream-pipeline.mjs";
+import {dispatchRiskStreamOutbox,consumeRiskStreamDelivery} from "./risk-stream-delivery.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1318,6 +1319,12 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 
 export default {
   async scheduled(controller,env,ctx){
+    // Durable internal stream delivery retry; does not block real-time queue
+    // evaluation and cannot issue payments or a certified risk index.
+    if(env?.RISK_STREAM_ACTIVE==="1"&&env?.DB?.prepare&&
+       new Date(controller?.scheduledTime??Date.now()).getUTCMinutes()%5===0)
+      ctx.waitUntil(dispatchRiskStreamOutbox(env).catch(()=>
+       console.error("RISK_STREAM_OUTBOX_RETRY_DEFERRED")));
     // At most one daily bounded TTL cleanup; never blocks the source ingest.
     const askTtlAt=new Date(controller?.scheduledTime??Date.now());
     if(env?.DB?.prepare&&askTtlAt.getUTCHours()===0&&askTtlAt.getUTCMinutes()===13)
@@ -1555,8 +1562,14 @@ export default {
     }
   },
   async queue(batch,env,ctx){
-    if(batch?.queue==='geomacro-risk-stream')
-      return consumeRiskStreamQueue(batch,env,ctx);
+    if(batch?.queue==='geomacro-risk-stream'){
+      const receipt=await consumeRiskStreamQueue(batch,env,ctx);
+      ctx.waitUntil(dispatchRiskStreamOutbox(env).catch(()=>
+       console.error("RISK_STREAM_OUTBOX_DISPATCH_DEFERRED")));
+      return receipt;
+    }
+    if(batch?.queue==='geomacro-risk-stream-delivery')
+      return consumeRiskStreamDelivery(batch,env);
     if(batch?.queue==='geomacro-source-poll')
       return consumeP1SourcePollBatch(batch,env);
     // Unknown future queue types never receive a P0B durable ACK.
