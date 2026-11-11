@@ -136,8 +136,9 @@ export async function deliverWebsiteViaDirectQueue(body,{
  if(receipt)return receipt; // Lost HTTP ACK after a durable commit.
  const {base,id,token}=await verifiedDiscoveryQueue({env,fetchImpl});
  const digest=websiteQueueDigest(body);
+ const queuedAtMs=clock();
  const packet={schema:SCHEMA,digest,body,
-  queued_at:new Date(clock()).toISOString(),commercialEligible:false,
+  queued_at:new Date(queuedAtMs).toISOString(),commercialEligible:false,
   paidDeliveryAuthorized:false};
  await cloudflareCall(base+"/"+id+"/messages",{
   method:"POST",token,fetchImpl,
@@ -145,8 +146,18 @@ export async function deliverWebsiteViaDirectQueue(body,{
  });
  // A successful REST API 200 proves queue acceptance only. Never return
  // an ACK until the separate Queue consumer's D1 transaction is read back.
- return pollWebsiteReceipt(body,{
+ const verified=await pollWebsiteReceipt(body,{
   getReceipt:()=>readCommittedWebsiteReceipt(body,{env,fetchImpl}),
   clock,sleepFn,timeoutMs:30000
  });
+ // Measured from the Queue submission clock until exact atomic D1 readback.
+ // This is a conservative readback latency, NOT an inferred D1 commit time.
+ const verifiedAtMs=clock();
+ const latencyMs=verifiedAtMs-queuedAtMs;
+ if(!Number.isFinite(latencyMs)||latencyMs<0)
+  fail("DIRECT_QUEUE_RECEIPT_CLOCK_INVALID");
+ return {...verified,
+  queue_to_d1_readback_latency_ms:latencyMs,
+  atomic_receipt_verified_at:new Date(verifiedAtMs).toISOString()};
+}
 }
