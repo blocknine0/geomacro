@@ -61,6 +61,9 @@ jobs:
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
       - name: Compare existing B2 account D1 governor against live Worker
+        # Shadow is private-R2-only; a missing public production hostname is
+        # a commercial B2 HOLD, not a reason to suppress no-B2 shadow D1 telemetry.
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +84,9 @@ jobs:
             expected_b2_network_ops_for_shadow:0,
             provider_b2_telemetry_verified:false}));
           NODE
+      - name: Read Cloudflare production D1 B2 ledger without modifying it
+        continue-on-error: true
+        run: node scripts/ops/verify-risk-stream-b2-d1-shadow-readonly.mjs
       - name: Submit 20-40 real GDELT discovery-only observations into shadow Queue
         shell: bash
         run: |
@@ -97,6 +103,7 @@ jobs:
           echo "SHADOW_PRODUCTION_D1_MUTATIONS=NONE"
           echo "SHADOW_SIGNED_GRO_ACCEPTANCE=NOT_PROVEN_UNTIL_REAL_ORIGINALS"
           echo "SHADOW_CANARY_HOLD=RETAINED"
+          echo "SHADOW_B2_WORKER_LIVE_PARITY=UNKNOWN_UNTIL_WORKER_HOSTNAME_RESOLVES"
           if test -f .shadow-audit/metadata.json; then
             node -e "const p=require('./.shadow-audit/metadata.json');console.log('PROVISIONED_ISOLATED_SHADOW_RESOURCES='+p.shadow_db+','+p.shadow_bucket+','+p.shadow_queue)"
           fi
