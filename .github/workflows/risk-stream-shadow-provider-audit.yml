@@ -87,7 +87,7 @@ jobs:
       - name: Read Cloudflare production D1 B2 ledger without modifying it
         continue-on-error: true
         run: node scripts/ops/verify-risk-stream-b2-d1-shadow-readonly.mjs
-      - name: Submit 20-40 real GDELT or news RSS discovery-only observations into shadow Queue
+      - name: Submit 20-40 real GDELT or news RSS hints with D1 100-bind-safe atomic microbatches
         shell: bash
         run: |
           set -euo pipefail
