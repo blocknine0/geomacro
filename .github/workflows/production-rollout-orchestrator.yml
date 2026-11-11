@@ -380,6 +380,30 @@ jobs:
           const matches=doc.result.filter(row=>row.name==="geomacro-control-plane");
           if(matches.length!==1||matches[0].uuid!==id)
             throw Error("HOT50_D1_CANONICAL_BINDING_MISMATCH");
+          // A newer local B2 quota policy must not silently outrun the
+          // deployed Control Plane's account-wide atomic reservation ceiling.
+          // No B2 calls are permitted until both governors agree.
+          const {B2_DAILY_LIMITS}=await import("./workers/control-plane/src/b2-account-quota.mjs");
+          const worker=String(process.env.GEOMACRO_CONTROL_PLANE_URL??"");
+          const bearer=String(process.env.CONTROL_PLANE_TOKEN??"");
+          if(!/^https:\/\/[a-z0-9.-]+\\.workers\\.dev$/i.test(worker)||
+             !/^[a-f0-9]{64}$/.test(bearer))
+            throw Error("HOT50_QUOTA_WORKER_AUTH_UNAVAILABLE");
+          const quotaResponse=await fetch(worker+"/v1/b2-quota/status",{
+            headers:{Authorization:"Bearer "+bearer,Accept:"application/json"},
+            redirect:"error",signal:AbortSignal.timeout(15000)});
+          if(quotaResponse.status!==200)throw Error("HOT50_LIVE_B2_GOVERNOR_UNAVAILABLE");
+          const quota=await quotaResponse.json();
+          const kinds=["total","GET","PUT","HEAD","NATIVE_AUTH"];
+          if(quota?.ok!==true||
+             quota.day_utc!==new Date().toISOString().slice(0,10)||
+             kinds.some(k=>quota.limits?.[k]!==B2_DAILY_LIMITS[k]||
+               !Number.isSafeInteger(quota.used?.[k])||quota.used[k]<0||
+               quota.used[k]>B2_DAILY_LIMITS[k]))
+            throw Error("HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT");
+          if(quota.used.GET>=B2_DAILY_LIMITS.GET||
+             quota.used.total>=B2_DAILY_LIMITS.total)
+            throw Error("HOT50_B2_LIVE_QUOTA_EXHAUSTED");
           console.log(JSON.stringify({status:"PASS",
             code:"HOT50_EXACT_MAIN_AND_CANONICAL_D1_LEDGER_MATCHED",
             head_sha:expected,quota_governor_required:true,no_funds:true}));
