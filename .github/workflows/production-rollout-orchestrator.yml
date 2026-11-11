@@ -293,6 +293,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       ROOT_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
@@ -340,6 +341,48 @@ jobs:
             console.log("::add-mask::"+value);
             appendFileSync(process.env.GITHUB_ENV,name+"="+value+"\n");
           }
+          NODE
+      # Do not reserve even one B2 operation against a missing, stale, or
+      # misbound D1 quota ledger. This is read-only and fail-closed.
+      - name: Verify exact main and canonical D1 quota ledger identity before B2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const id=String(process.env.D1_DATABASE_ID??"");
+          const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??"");
+          const cloudflare=String(process.env.CLOUDFLARE_API_TOKEN??"");
+          const gh=String(process.env.GITHUB_TOKEN??"");
+          const expected=String(process.env.GITHUB_SHA??"");
+          if(!/^[a-f0-9-]{36}$/i.test(id)||
+             !/^[a-f0-9]{32}$/i.test(account)||
+             cloudflare.length<20||gh.length<20||
+             !/^[a-f0-9]{40}$/.test(expected))
+            throw Error("HOT50_PROTECTED_D1_OR_SHA_BINDING_MISSING");
+          const auth=await fetch("https://api.github.com/repos/blocknine0/geomacro/branches/main",{
+            headers:{Authorization:"Bearer "+gh,Accept:"application/vnd.github+json"},
+            redirect:"error",signal:AbortSignal.timeout(15000)});
+          if(auth.status!==200)throw Error("HOT50_CURRENT_MAIN_SHA_UNAVAILABLE");
+          const main=await auth.json();
+          if(main.commit?.sha!==expected)throw Error("HOT50_EXACT_MAIN_CHANGED");
+          const endpoint="https://api.cloudflare.com/client/v4/accounts/"+account+
+            "/d1/database?per_page=100";
+          const provider=await fetch(endpoint,{redirect:"error",headers:{
+            Authorization:"Bearer "+cloudflare,Accept:"application/json"
+          },signal:AbortSignal.timeout(15000)});
+          if(provider.status!==200)throw Error("HOT50_CANONICAL_D1_INVENTORY_UNAVAILABLE");
+          const doc=await provider.json();
+          if(doc?.success!==true||!Array.isArray(doc.result)||
+             (doc.result_info?.total_pages??1)!==1)
+            throw Error("HOT50_CANONICAL_D1_INVENTORY_INCOMPLETE");
+          const matches=doc.result.filter(row=>row.name==="geomacro-control-plane");
+          if(matches.length!==1||matches[0].uuid!==id)
+            throw Error("HOT50_D1_CANONICAL_BINDING_MISMATCH");
+          console.log(JSON.stringify({status:"PASS",
+            code:"HOT50_EXACT_MAIN_AND_CANONICAL_D1_LEDGER_MATCHED",
+            head_sha:expected,quota_governor_required:true,no_funds:true}));
           NODE
       # This is a REAL provider B2 S3 GET/AES-GCM/D1 manifest comparison.
       # A failed/partial/quota-limited audit stays FAIL: the next step still
