@@ -386,7 +386,7 @@ jobs:
           const {B2_DAILY_LIMITS}=await import("./workers/control-plane/src/b2-account-quota.mjs");
           const worker=String(process.env.GEOMACRO_CONTROL_PLANE_URL??"");
           const bearer=String(process.env.CONTROL_PLANE_TOKEN??"");
-          if(!/^https:\/\/[a-z0-9.-]+\\.workers\\.dev$/i.test(worker)||
+          if(!/^https:\/\/[a-z0-9.-]+\.workers\.dev$/i.test(worker)||
              !/^[a-f0-9]{64}$/.test(bearer))
             throw Error("HOT50_QUOTA_WORKER_AUTH_UNAVAILABLE");
           const quotaResponse=await fetch(worker+"/v1/b2-quota/status",{
