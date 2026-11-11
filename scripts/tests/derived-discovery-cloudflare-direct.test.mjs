@@ -63,6 +63,8 @@ test("direct Cloudflare Queue acceptance is followed by real exact D1 receipt",a
  assert.equal(result.d1_atomic_readback_verified,true);
  assert.equal(result.cursor_advanced,true);
  assert.equal(result.admitted,1);
+ assert.equal(result.queue_to_d1_readback_latency_ms,0);
+ assert.equal(result.atomic_receipt_verified_at,body.checked_at);
  const push=fake.calls.find(x=>x.path.endsWith("/messages"));
  assert.equal(push.data.content_type,"json");
  assert.equal(push.data.body.schema,"geomacro.derived-discovery-queued-ack.v1");
