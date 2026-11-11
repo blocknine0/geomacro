@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GeoMacro verified original candidate — one JSONL line",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "kind",
+    "country_iso3",
+    "category",
+    "feed_origin",
+    "event_key",
+    "event_fingerprint",
+    "entities",
+    "source_id",
+    "source_url",
+    "publisher_root_domain",
+    "parent_media_entity",
+    "source_role",
+    "published_at",
+    "original_page_sha256",
+    "derived",
+    "raw_payload",
+    "proof",
+    "rights_verification"
+  ],
+  "properties": {
+    "schema": {
+      "const": "geomacro.risk-stream-candidate.v1"
+    },
+    "kind": {
+      "const": "VERIFIED_ORIGINAL"
+    },
+    "country_iso3": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "category": {
+      "enum": [
+        "GEOPOLITICS",
+        "MACRO_FX",
+        "CRITICAL_MINERALS"
+      ]
+    },
+    "feed_origin": {
+      "enum": [
+        "OFFICIAL_API",
+        "RSS",
+        "WEBSITE_INTELLIGENCE"
+      ]
+    },
+    "event_key": {
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9:_-]{6,119}$"
+    },
+    "event_fingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z0-9:_-]{2,64}$"
+      }
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_.:-]{2,119}$"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2048,
+      "pattern": "^https://"
+    },
+    "publisher_root_domain": {
+      "type": "string",
+      "pattern": "^[a-z0-9.-]{3,253}$"
+    },
+    "parent_media_entity": {
+      "type": "string",
+      "pattern": "^[a-z0-9_.:-]{1,100}$"
+    },
+    "source_role": {
+      "enum": [
+        "GOVERNMENT_WIRE",
+        "INDEPENDENT_REGIONAL",
+        "OFFICIAL_STATISTICS",
+        "MARKET_PRICE",
+        "TRADE_CUSTOMS",
+        "INDEPENDENT_INDUSTRY"
+      ]
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "original_page_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "derived": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "what",
+        "why",
+        "market",
+        "watch"
+      ],
+      "properties": {
+        "what": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 360
+        },
+        "why": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 360
+        },
+        "market": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 360
+        },
+        "watch": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 360
+        }
+      }
+    },
+    "raw_payload": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 8000
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "facts_signature_b64",
+        "rights_signature_b64"
+      ],
+      "properties": {
+        "facts_signature_b64": {
+          "type": "string",
+          "contentEncoding": "base64"
+        },
+        "rights_signature_b64": {
+          "type": "string",
+          "contentEncoding": "base64"
+        }
+      }
+    },
+    "rights_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "registry_source_id",
+        "registry_enabled",
+        "registry_commercial_rights_approved",
+        "authorization_reference",
+        "independent_reviewer_id",
+        "checked_at_utc",
+        "rights_expires_at_utc"
+      ],
+      "properties": {
+        "registry_source_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "registry_enabled": {
+          "const": true
+        },
+        "registry_commercial_rights_approved": {
+          "const": true
+        },
+        "authorization_reference": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 512
+        },
+        "independent_reviewer_id": {
+          "type": "string",
+          "minLength": 3
+        },
+        "checked_at_utc": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "rights_expires_at_utc": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

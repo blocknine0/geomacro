@@ -13,6 +13,8 @@ import {spawnSync} from "node:child_process";
 import {createPublicKey} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
+import {gzipSync} from "node:zlib";
+import {validateRealOriginalManifest} from "../lib/risk-stream-original-manifest.mjs";
 import {pathToFileURL} from "node:url";
 import {validateAttesterKeys,verifyIndependentAttestations}
  from "../lib/risk-stream-shadow-attesters.mjs";
@@ -76,22 +78,36 @@ export function provision({facts,rights,configFile=null}){
  }
 }
 async function main(argv){
- const apply=argv.includes("--apply");
+ const apply=argv.includes("--apply"),stage=argv.includes("--stage-originals");
  const w=argv.indexOf("--worker-config");
- assert(w===-1||w===3||w===4,"WORKER_CONFIG_FLAG_POSITION_INVALID");
- const filenames=argv.filter(x=>x!=="--apply"&&x!=="--worker-config");
- assert(argv.filter(x=>x==="--apply").length<=1,"DUPLICATE_APPLY");
+ assert(argv.filter(x=>x==="--apply").length<=1&&
+  argv.filter(x=>x==="--stage-originals").length<=1&&
+  argv.filter(x=>x==="--worker-config").length<=1,
+  "DUPLICATE_OPTION_INVALID");
  const configFile=w===-1?null:argv[w+1];
- if(configFile){
-  const i=filenames.indexOf(configFile);
-  if(i!==-1)filenames.splice(i,1);
- }
+ const filenames=argv.filter((x,i)=>x!=="--apply"&&
+  x!=="--stage-originals"&&x!=="--worker-config"&&(w===-1||i!==w+1));
+ assert(!stage||apply,"ORIGINALS_STAGING_REQUIRES_APPLY");
  assert(filenames.length===3&&
   (!configFile||apply),"USAGE_facts.spki_b64_rights.spki_b64_real-originals.jsonl_--apply_[--worker-config_file]");
  if(configFile)workerConfig(configFile);
  const p=preflight({factsFile:filenames[0],rightsFile:filenames[1],
   sampleFile:filenames[2]});
- if(apply)provision({...p,configFile});
+ let zipped=null,originals=null;
+ if(stage){
+  const text=readFileSync(filenames[2],"utf8");
+  const events=text.trim().split(/\r?\n/u).map(JSON.parse);
+  originals=validateRealOriginalManifest(events,{
+   factsPublicB64:p.facts,rightsPublicB64:p.rights});
+  zipped=gzipSync(Buffer.from(text,"utf8"),{level:9}).toString("base64");
+  assert(zipped.length>0&&zipped.length<=44000,
+   "PROTECTED_ORIGINALS_GITHUB_SECRET_LIMIT_44K");
+ }
+ if(apply){
+  provision({...p,configFile});
+  if(stage)command("gh",["secret","set","RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64",
+   "--repo",REPO,"--env",ENV],zipped+"\n");
+ }
  console.log(JSON.stringify({
   schema:"geomacro.shadow-public-attester-provision.v1",
   status:apply?"PUBLIC_KEYS_UPLOADED_REAL_ATTESTATION_SAMPLES_VERIFIED":
@@ -101,7 +117,11 @@ async function main(argv){
   github_environment:ENV,shadow_worker_binding_applied:!!(apply&&configFile),
   independent_operator_ownership_requires_external_governance_proof:true,
   public_keys_are_not_signing_or_rights_authority:true,
-  signed_gro_count_not_asserted:true,commercial_release_authorized:false
+  signed_gro_count_not_asserted:true,
+  protected_originals_staged:!!(apply&&stage),
+  verified_local_original_pairs:originals?.independent_pairs??0,
+  production_registry_rights_verified:false,
+  commercial_release_authorized:false
  }));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)

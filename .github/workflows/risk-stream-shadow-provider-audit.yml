@@ -8,9 +8,17 @@ on:
       - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
       - "scripts/lib/risk-stream-shadow-discovery.mjs"
       - "scripts/ops/provision-risk-stream-shadow-attester-keys.mjs"
+      - "scripts/lib/risk-stream-original-manifest.mjs"
+      - "docs/schemas/risk-stream-real-original-candidate.schema.json"
+      - "docs/examples/risk-stream-real-originals.UNVERIFIED.template.jsonl"
       - "scripts/ops/score-risk-stream-shadow-provider-audit.mjs"
       - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "scripts/tests/risk-stream-real-original-manifest.test.mjs"
+      - "scripts/ops/deploy-risk-stream-governor-candidate.mjs"
+      - "scripts/ops/ingest-risk-stream-shadow-originals.mjs"
+      - "scripts/ops/verify-risk-stream-governor-candidate.mjs"
+      - "workers/risk-stream-governor-candidate/**"
   workflow_dispatch:
     inputs:
       approval:
@@ -34,6 +42,7 @@ jobs:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
       RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+      RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64: ${{ secrets.RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -63,12 +72,17 @@ jobs:
           }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
           node --check scripts/ops/provision-risk-stream-shadow-attester-keys.mjs
+          node --check scripts/ops/deploy-risk-stream-governor-candidate.mjs
+          node --check scripts/ops/ingest-risk-stream-shadow-originals.mjs
           node --check scripts/ops/score-risk-stream-shadow-provider-audit.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check workers/risk-stream-shadow/src/index.mjs
-          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs scripts/tests/risk-stream-real-original-manifest.test.mjs
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
+      - name: Deploy isolated 0%-traffic candidate and verify source quota policy against shadow D1
+        continue-on-error: true
+        run: node scripts/ops/deploy-risk-stream-governor-candidate.mjs
       - name: Compare existing B2 account D1 governor against live Worker
         # Preserve governor HOLD but allow the isolated R2-only feeder and
         # D1 receipt observation to run. Final step fails if parity is missing.
@@ -108,6 +122,10 @@ jobs:
           GEOMACRO_SHADOW_WORKERS_DEV_URL="$(tr -d '\r\n' < .shadow-audit/worker-url.txt)"
           export GEOMACRO_SHADOW_WORKERS_DEV_URL
           node scripts/ops/run-risk-stream-shadow-provider-audit.mjs ingest
+      - name: Ingest ten genuinely independent signed original pairs using source registry authority
+        if: env.RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64 != ''
+        continue-on-error: true
+        run: node scripts/ops/ingest-risk-stream-shadow-originals.mjs
       - name: Read isolated Queue and D1 canonical/receipt census (diagnostic only)
         if: always()
         continue-on-error: true
@@ -133,6 +151,11 @@ jobs:
           echo "SHADOW_PRODUCTION_D1_MUTATIONS=NONE"
           echo "SHADOW_SIGNED_GRO_ACCEPTANCE=NOT_PROVEN_UNTIL_REAL_ORIGINALS"
           echo "SHADOW_CANARY_HOLD=RETAINED"
+          if test -s .shadow-audit/candidate-governor-parity.json; then
+            node -e "const p=require('./.shadow-audit/candidate-governor-parity.json');if(p.status!=='SHADOW_CANDIDATE_D1_POLICY_MATCH'||p.production_d1_ledger_verified!==false)process.exit(1);console.log('ISOLATED_SHADOW_GOVERNOR_POLICY_PARITY=PASS_LIVE_PRODUCTION_NOT_INFERRED')"
+          else
+            echo "ISOLATED_SHADOW_GOVERNOR_POLICY_PARITY=HOLD"
+          fi
           if test -s .shadow-audit/b2-governor-parity.json; then
             node -e "const p=require('./.shadow-audit/b2-governor-parity.json');if(p.status!=='D1_SHARED_GOVERNOR_MATCH')process.exit(1);console.log('SHADOW_B2_WORKER_LIVE_PARITY=PASS route='+p.verified_route)"
           else
@@ -149,7 +172,10 @@ jobs:
           score_status=0
           node scripts/ops/score-risk-stream-shadow-provider-audit.mjs || score_status=$?
           if ! test -s .shadow-audit/b2-governor-parity.json; then
-            echo "::error::SHADOW_GOVERNOR_PARITY_UNPROVEN_RELEASE_HOLD_RETAINED"
+            echo "::warning::PRODUCTION_LIVE_GOVERNOR_PARITY_UNPROVEN_HOLD_RETAINED"
+          fi
+          if ! test -s .shadow-audit/candidate-governor-parity.json; then
+            echo "::error::ISOLATED_GOVERNOR_CANDIDATE_PROOF_MISSING"
             exit 18
           fi
           exit "$score_status"
@@ -161,6 +187,7 @@ jobs:
           path: |
             .shadow-audit/metadata.json
             .shadow-audit/b2-governor-parity.json
+            .shadow-audit/candidate-governor-parity.json
             .shadow-audit/live-telemetry.json
             .shadow-audit/scorecard.json
           if-no-files-found: warn

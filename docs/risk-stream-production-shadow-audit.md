@@ -60,3 +60,15 @@ The script refuses a non-isolated Worker configuration or customer routes. It do
 **Terminal acceptance.** The protected workflow retains a structured redacted scorecard and checks: live production Worker governor parity; 20–30 actual index events acknowledged by shadow D1 receipts; zero observed 503 for completed microbatches; real independently supplied attester public keys; and at least ten signed GROs with ten Ed25519 verifications against D1-readback JSON. The current index-only feeder **cannot** satisfy that final signing gate, regardless of how many links it discovers. Separate real original-source pairs with independently validated rights and both machine attestations are required. Until provided and processed, the correct terminal result is HOLD_INCOMPLETE_SHADOW_PROOF. Zero B2 shadow operations, no commercial activation, and existing canary hold are invariant.
 
 Operator dispatch: In GitHub Actions, choose Risk Stream Isolated Shadow Provider Audit and set approval to RUN_ISOLATED_SHADOW_INDEX_ONLY_NO_FUNDS. The workflow also triggers when its reviewed shadow recovery code changes on main.
+
+## Isolated zero-traffic B2 governor candidate
+
+The protected shadow audit deploys only `geomacro-risk-stream-governor-candidate`
+with a read-only D1 binding to `geomacro-risk-stream-shadow`. It imports
+the exact `workers/control-plane/src/b2-account-quota.mjs` module; there is
+no quota override. Its sole authenticated endpoint returns the isolated D1
+policy and ledger, with verified 401 for unauthenticated access. The candidate
+does not have production routes, B2 credentials, queues, timers or commerce.
+The scorecard separates **isolated deployed policy parity** from **live
+production shared D1 governor parity**. A candidate PASS never removes
+`config/d1-hotspot-v2-canary.hold` or authorizes 1→100% production traffic.
