@@ -1,0 +1,105 @@
+name: Risk Stream Isolated Shadow Provider Audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-stream-shadow-provider-audit.yml"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type RUN_ISOLATED_SHADOW_INDEX_ONLY_NO_FUNDS"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-risk-stream-isolated-shadow-provider
+  cancel-in-progress: false
+jobs:
+  provider-shadow-audit:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
+      RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Strict scope and original requested SHA
+        shell: bash
+        env:
+          REQUEST_APPROVAL: ${{ inputs.approval }}
+          EVENT_KIND: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_KIND" == workflow_dispatch ]]; then
+            test "$REQUEST_APPROVAL" = "RUN_ISOLATED_SHADOW_INDEX_ONLY_NO_FUNDS" || exit 9
+          fi
+          git merge-base --is-ancestor 39bf93c5a48a187f0653cae9558a99ba71c58792 HEAD
+          test -f config/d1-hotspot-v2-canary.hold || {
+            echo "::error::EXISTING_CANARY_HOLD_INVARIANT_MISSING"
+            exit 10
+          }
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo "::error::SHADOW_CLOUDFLARE_API_TOKEN_MISSING"
+            exit 11
+          }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
+          node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
+          node --check workers/risk-stream-shadow/src/index.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs
+      - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
+        run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
+      - name: Compare existing B2 account D1 governor against live Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {createHmac} from "node:crypto";
+          import {spawnSync} from "node:child_process";
+          const root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN||"";
+          if(root.length<32)throw Error("B2_SHADOW_AUTH_UNAVAILABLE");
+          const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
+          const child=spawnSync("node",["scripts/ops/verify-risk-stream-b2-live-governor.mjs"],{
+            env:{...process.env,GEOMACRO_STREAM_ADMIN_BEARER:token},
+            encoding:"utf8",timeout:40000,maxBuffer:500000});
+          if(child.status!==0)throw Error("B2_SHADOW_LIVE_GOVERNOR_PARITY_HOLD: "+(child.stderr||"").slice(-230));
+          const report=JSON.parse((child.stdout||"").trim().split("\n").at(-1));
+          if(report.status!=="D1_SHARED_GOVERNOR_MATCH"||report.expected_b2_network_ops_for_shadow!==0)
+            throw Error("B2_SHADOW_QUOTA_POLICY_DRIFT");
+          console.log(JSON.stringify({status:report.status,mode:report.mode,
+            expected_b2_network_ops_for_shadow:0,
+            provider_b2_telemetry_verified:false}));
+          NODE
+      - name: Submit 20-40 real GDELT discovery-only observations into shadow Queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .shadow-audit/worker-url.txt || exit 14
+          GEOMACRO_SHADOW_WORKERS_DEV_URL="$(tr -d '\r\n' < .shadow-audit/worker-url.txt)"
+          export GEOMACRO_SHADOW_WORKERS_DEV_URL
+          node scripts/ops/run-risk-stream-shadow-provider-audit.mjs ingest
+      - name: Final scope receipt (never release canary)
+        if: always()
+        shell: bash
+        run: |
+          echo "SHADOW_RELEASE_SCOPE=NO_FUNDS_NO_CUSTOMER_DELIVERY"
+          echo "SHADOW_PRODUCTION_D1_MUTATIONS=NONE"
+          echo "SHADOW_SIGNED_GRO_ACCEPTANCE=NOT_PROVEN_UNTIL_REAL_ORIGINALS"
+          echo "SHADOW_CANARY_HOLD=RETAINED"
+          if test -f .shadow-audit/metadata.json; then
+            node -e "const p=require('./.shadow-audit/metadata.json');console.log('PROVISIONED_ISOLATED_SHADOW_RESOURCES='+p.shadow_db+','+p.shadow_bucket+','+p.shadow_queue)"
+          fi
+          if test -f .shadow-audit/live-telemetry.json; then
+            cat .shadow-audit/live-telemetry.json
+          fi
