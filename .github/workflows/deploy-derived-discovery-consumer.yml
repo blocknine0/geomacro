@@ -118,8 +118,18 @@ jobs:
           if(configured&&configured!==queues[0].queue_id)
             throw Error('DISCOVERY_QUEUE_ID_PROTECTED_VAR_MISMATCH');
           const consumers=await read(root+'/queues/'+queues[0].queue_id+'/consumers');
-          if(!Array.isArray(consumers)||consumers.some(x=>x.script_name!==c.name))
+          if(!Array.isArray(consumers)||consumers.some(x=>x?.type!=='worker'||x?.script_name!==c.name)) {
+            // Provider-only, no credentials or queue IDs. A genuine collision
+            // remains HOLD: never replace another producer or consumer.
+            console.error('DISCOVERY_QUEUE_CONSUMER_READBACK_DIAGNOSTIC',JSON.stringify({
+              count:Array.isArray(consumers)?consumers.length:null,
+              consumers:Array.isArray(consumers)?consumers.map(x=>({
+                type:x?.type??null,script_name:x?.script_name??null,
+                dead_letter_queue:x?.dead_letter_queue??null
+              })):null
+            }));
             throw Error('DISCOVERY_QUEUE_ALREADY_HAS_ANOTHER_CONSUMER_HOLD');
+          }
           c.d1_databases[0].database_id=id;
           writeFileSync('workers/derived-discovery-consumer/wrangler.runtime.jsonc',
              JSON.stringify(c,null,2)+'\n',{mode:0o600});
@@ -159,11 +169,33 @@ jobs:
           const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/queues';
           const queue= id||((await get(root+'?per_page=100')).find(x=>x.queue_name==='geomacro-derived-discovery')?.queue_id??'');
           if(!/^[a-f0-9]{32}$/i.test(queue))throw Error('DISCOVERY_CONSUMER_QUEUE_ID_MISSING');
-          const consumers=await get(root+'/'+queue+'/consumers');
-          if(!Array.isArray(consumers)||consumers.length!==1||
-             consumers[0].script_name!=='geomacro-derived-discovery-consumer'||
-             consumers[0].dead_letter_queue!=='geomacro-derived-discovery-dlq')
+          let consumers;
+          let bound=false;
+          // Queue bindings may take a few seconds to become readable after
+          // Wrangler activation. Only exact live provider readback can PASS.
+          for(let attempt=0;attempt<7;attempt++){
+            consumers=await get(root+'/'+queue+'/consumers');
+            bound=Array.isArray(consumers)&&consumers.length===1&&
+              consumers[0]?.type==='worker'&&
+              consumers[0]?.script_name==='geomacro-derived-discovery-consumer'&&
+              consumers[0]?.dead_letter_queue==='geomacro-derived-discovery-dlq'&&
+              consumers[0]?.settings?.batch_size===1&&
+              consumers[0]?.settings?.max_retries===3;
+            if(bound)break;
+            if(attempt<6)await new Promise(resolve=>setTimeout(resolve,5000));
+          }
+          if(!bound){
+            console.error('DISCOVERY_CONSUMER_POST_DEPLOY_DIAGNOSTIC',JSON.stringify({
+              count:Array.isArray(consumers)?consumers.length:null,
+              consumers:Array.isArray(consumers)?consumers.map(x=>({
+                type:x?.type??null,script_name:x?.script_name??null,
+                dead_letter_queue:x?.dead_letter_queue??null,
+                batch_size:x?.settings?.batch_size??null,
+                max_retries:x?.settings?.max_retries??null
+              })):null
+            }));
             throw Error('DISCOVERY_CONSUMER_PROVIDER_READBACK_HOLD');
+          }
           writeFileSync('artifacts/derived-discovery-consumer/readback.json',
             JSON.stringify({status:'PASS_PROVIDER_CONSUMER_BOUND',
               source_sha:process.env.GITHUB_SHA,no_http_traffic:true,
