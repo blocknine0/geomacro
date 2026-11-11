@@ -41,7 +41,7 @@ const signKey=async value=>{
  const b=b64bytes(value);
  return crypto.subtle.importKey("pkcs8",b,{name:"Ed25519"},false,["sign"]);
 };
-const digestClaims=e=>JSON.stringify({
+export const riskStreamOriginalClaims=e=>JSON.stringify({
  schema:"geomacro.risk-stream-original-claims.v1",country_iso3:e.country_iso3,
  category:e.category,event_fingerprint:e.event_fingerprint,entities:e.entities,
  source_id:e.source_id,source_url:e.source_url,publisher_root_domain:e.publisher_root_domain,
@@ -86,7 +86,7 @@ function validateCandidate(e,now){
 }
 async function checkMachineProof(e,env,factsKey,rightsKey){
  if(e.kind==="INDEX_ONLY")return false;
- const claim=encode(digestClaims(e));
+ const claim=encode(riskStreamOriginalClaims(e));
  const facts=await crypto.subtle.verify("Ed25519",factsKey,
   b64bytes(e.proof.facts_signature_b64),
   encode("geomacro.machine-original-facts.v1\n"+new TextDecoder().decode(claim)));
@@ -138,7 +138,7 @@ export async function inspectRiskStreamCandidates(items,now=Date.now()){
 async function sourceRegistry(db,items){
  const ids=[...new Set(items.map(x=>x.source_id))];
  const r=await db.prepare("SELECT source_id,publisher_root_domain,parent_media_entity,"+
-  "source_role,commercial_rights_approved,enabled FROM risk_stream_sources "+
+  "source_role,commercial_rights_approved,enabled,rights_expire_at FROM risk_stream_sources "+
   "WHERE source_id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all();
  const rows=r?.results??[];
  if(!Array.isArray(rows)||rows.length!==ids.length)fail("SOURCE_REGISTRY_INCOMPLETE");
@@ -147,7 +147,9 @@ async function sourceRegistry(db,items){
   const s=source.get(e.source_id);
   if(!s||s.enabled!==1||s.publisher_root_domain!==e.publisher_root_domain||
      s.parent_media_entity!==e.parent_media_entity||s.source_role!==e.source_role||
-     (e.kind==="VERIFIED_ORIGINAL"&&s.commercial_rights_approved!==1))
+     (e.kind==="VERIFIED_ORIGINAL"&&(s.commercial_rights_approved!==1||
+       (s.rights_expire_at!==null&&s.rights_expire_at!==undefined&&
+        Date.parse(s.rights_expire_at)<=Date.now()))))
    fail("SOURCE_TRUST_OR_RIGHTS_UNVERIFIED");
  }
  return source;
@@ -179,6 +181,11 @@ async function privateArchiveR2(items,env){
  const remoteBytes=new Uint8Array(await remote.arrayBuffer());
  if(remoteBytes.byteLength!==bytes.byteLength||await sha(remoteBytes)!==archiveSha)
   fail("ARCHIVE_R2_READBACK_MISMATCH");
+ // Verify the independently fetched ciphertext can actually be decrypted.
+ const restored=JSON.parse(new TextDecoder().decode(remoteBytes));
+ const decrypted=await crypto.subtle.decrypt(
+  {name:"AES-GCM",iv:b64bytes(restored.iv)},key,b64bytes(restored.ciphertext));
+ if(await sha(decrypted)!==identity)fail("ARCHIVE_DECRYPTED_READBACK_MISMATCH");
  return {objectKey,archiveSha};
 }
 async function appendCanonical(db,rows,archive,now,options){
@@ -277,6 +284,25 @@ async function signGro(pair,env,now){
 }
 async function persistSignedGro(db,gro,options){
  const at=gro.payload.generated_at;
+ const existing=await db.prepare("SELECT payload_json,payload_sha256,signature_b64,expires_at "+
+  "FROM risk_stream_signed_gro WHERE gro_id=? LIMIT 1").bind(gro.id).first();
+ if(existing){
+  // A retry reuses the immutable signed GRO; no duplicate invoice, delivery,
+  // state mutation, or a different issued-at timestamp for the same pair.
+  let previous;
+  try{previous=JSON.parse(existing.payload_json)}catch{fail("SIGNED_GRO_STORED_INVALID")}
+  if(await sha(existing.payload_json)!==existing.payload_sha256||
+     JSON.stringify(previous.source_originals)!==JSON.stringify(gro.payload.source_originals)||
+     previous.event_fingerprint!==gro.payload.event_fingerprint||
+     previous.category!==gro.payload.category||
+     previous.subject?.id!==gro.payload.subject.id)
+   fail("SIGNED_GRO_STORED_INVALID");
+  const verifier=await trustedKey(options.verifyKey);
+  if(!await crypto.subtle.verify("Ed25519",verifier,
+      b64bytes(existing.signature_b64),encode(existing.payload_json)))
+   fail("SIGNED_GRO_STORED_SIGNATURE_INVALID");
+  return;
+ }
  const stmt1=db.prepare("INSERT OR IGNORE INTO risk_stream_signed_gro "+
   "(gro_id,country_iso3,category,event_fingerprint,payload_json,payload_sha256,"+
   "signature_b64,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)")
@@ -315,11 +341,12 @@ export async function processRiskStreamBatch(env,items,{
  const rows=[];
  for(const e of candidates){
   const original_verified=await checkMachineProof(e,env,factsKey,rightsKey);
-  if(e.kind==="VERIFIED_ORIGINAL"&&!original_verified)
+  if(e.kind==="VERIFIED_ORIGINAL"&&
+     (!original_verified||await sha(e.raw_payload)!==e.original_page_sha256))
    fail("ORIGINAL_OR_RIGHTS_SIGNATURE_UNVERIFIED");
   rows.push({...e,original_verified,
    source_url_sha256:await sha(e.source_url),
-   observation_id:await sha(digestClaims(e))});
+   observation_id:await sha(riskStreamOriginalClaims(e))});
  }
  const distinct=[...new Map(rows.map(r=>[r.observation_id,r])).values()];
  const archive=await privateArchiveR2(distinct,env);
@@ -333,7 +360,7 @@ export async function processRiskStreamBatch(env,items,{
   const pair=originalSources(group,policy.get(category));
   if(!pair)continue;
   const gro=await signGro(pair,env,now);
-  await persistSignedGro(env.DB,gro,opts);
+  await persistSignedGro(env.DB,gro,{...opts,verifyKey:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});
   signed.push(gro.id);
  }
  return {status:"PASS",schema:"geomacro.risk-stream-consumer.v1",
