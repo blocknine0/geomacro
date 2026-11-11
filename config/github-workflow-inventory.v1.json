@@ -350,6 +350,7 @@
     "risk-stream-offline.yml",
     "risk-stream-shadow-provider-diagnostics.yml",
     "risk-stream-shadow-provider-audit.yml",
+    "risk-stream-shadow-recovery-offline.yml",
     "risk-indices-realtime-direct-postgres.yml",
     "risk-indices-verified-d1-parent.yml",
     "risk-indices-verified-parent-backstop.yml",
