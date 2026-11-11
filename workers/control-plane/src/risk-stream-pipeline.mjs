@@ -181,7 +181,11 @@ async function privateArchiveR2(items,env){
   {name:"AES-GCM"},false,["encrypt","decrypt"]);
  // No plaintext, original source prose or private object URL in D1/logs.
  const plaintext=encode(JSON.stringify(originals.map(e=>({
+  schema:"geomacro.risk-stream-archived-original-proof.v1",
   original_page_sha256:e.original_page_sha256,source_id:e.source_id,
+  original_claims:riskStreamOriginalClaims(e),
+  fact_attester_signature_b64:e.proof.facts_signature_b64,
+  rights_attester_signature_b64:e.proof.rights_signature_b64,
   raw_payload:e.raw_payload
  }))));
  const identity=await sha(plaintext);
