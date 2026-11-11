@@ -37,6 +37,7 @@ import {predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
+import {enqueueRiskStreamEvents,consumeRiskStreamQueue} from "./risk-stream-pipeline.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1554,6 +1555,8 @@ export default {
     }
   },
   async queue(batch,env,ctx){
+    if(batch?.queue==='geomacro-risk-stream')
+      return consumeRiskStreamQueue(batch,env,ctx);
     if(batch?.queue==='geomacro-source-poll')
       return consumeP1SourcePollBatch(batch,env);
     // Unknown future queue types never receive a P0B durable ACK.
@@ -1781,6 +1784,13 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    // Private event stream producer; root-admin authenticates BEFORE Queue
+    // send. Only the independently signed originals may reach GRO signing.
+    if(url.pathname==='/v1/internal/risk-stream/events'&&
+       request.method==='POST'&&!url.search){
+      const packet=await readJson(request,1024000);
+      return enqueueRiskStreamEvents(env,packet);
+    }
     // Canonical root-admin authorization applies before either P0-B route.
     // Keep this first among protected handlers for cold-start smoke contract.
     if(url.pathname==='/v1/internal/p0b/status'&&request.method==='GET'){
