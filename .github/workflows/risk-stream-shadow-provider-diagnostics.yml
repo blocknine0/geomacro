@@ -1,0 +1,48 @@
+name: Risk Stream Shadow Provider Diagnostics Read Only
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-stream-shadow-provider-diagnostics.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shadow-readonly:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify immutable shadow-only scope and source commit
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          node --check workers/risk-stream-shadow/src/index.mjs
+      - name: Read-only Cloudflare Queue consumer and DLQ inventory
+        run: |
+          set -euo pipefail
+          npx -y wrangler@4.136.3 queues info geomacro-risk-stream-shadow
+          npx -y wrangler@4.136.3 queues info geomacro-risk-stream-shadow-dlq
+      - name: Read-only remote shadow D1 event and receipt census
+        run: |
+          set -euo pipefail
+          npx -y wrangler@4.136.3 d1 execute geomacro-risk-stream-shadow --remote --json --command "SELECT (SELECT COUNT(*) FROM risk_stream_evidence) AS evidence_rows,(SELECT COUNT(*) FROM risk_stream_shadow_audit_receipts) AS audit_receipt_rows,(SELECT COUNT(*) FROM risk_stream_signed_gro) AS signed_gros,(SELECT COUNT(*) FROM risk_stream_delivery_outbox) AS internal_outbox_rows,(SELECT COUNT(*) FROM risk_stream_sources WHERE enabled=1) AS trusted_source_rows"
+          npx -y wrangler@4.136.3 d1 execute geomacro-risk-stream-shadow --remote --json --command "SELECT batch_id,event_count,corroborated_and_signed,d1_calls,d1_503_observed,d1_write_p95_ms,result_status FROM risk_stream_shadow_audit_receipts ORDER BY started_at DESC LIMIT 10"
+      - name: Emit explicit no-funds diagnostic boundary
+        if: always()
+        run: |
+          echo "SHADOW_DIAGNOSTIC_READ_ONLY=true"
+          echo "PRODUCTION_D1_MUTATIONS=0"
+          echo "COMMERCIAL_CANARY_RELEASE=HOLD"
