@@ -153,9 +153,12 @@ async function main(){
    coverage_nonempty_cells:census.coverage.observed_cells,
    coverage_total_cells:150,
    certified_indices_not_inferred:true,
-   status:indexedReadback?"PASS":"FAIL"};
+   // This scope is strictly D1-indexed. Never issue a complete parity PASS
+   // without authentic full namespace inventory plus bidirectional proof.
+   indexed_readback_status:indexedReadback?"PASS":"FAIL",
+   status:indexedReadback?"HOLD":"FAIL"};
  console.log(JSON.stringify(report));
- if(report.status!=="PASS")process.exitCode=2;
+ if(report.status!=="PASS")process.exitCode=indexedReadback?3:2;
 }
 main().catch(error=>{
  console.error(JSON.stringify({schema:"geomacro.hot50-storage-readback.v1",
