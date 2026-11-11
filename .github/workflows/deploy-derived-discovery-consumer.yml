@@ -9,6 +9,8 @@ on:
       - "workers/derived-discovery-consumer/**"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "scripts/tests/isolated-derived-discovery-consumer.test.mjs"
+      - "scripts/ops/probe-risk-indices-warm-http.mjs"
+      - "scripts/tests/probe-risk-indices-warm-http.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -34,6 +36,8 @@ jobs:
       - run: |
           node --check workers/derived-discovery-consumer/worker.mjs
           node --test scripts/tests/isolated-derived-discovery-consumer.test.mjs scripts/tests/derived-discovery-queue.test.mjs
+          node --check scripts/ops/probe-risk-indices-warm-http.mjs
+          node --test scripts/tests/probe-risk-indices-warm-http.test.mjs
 
   protected-consumer:
     needs: offline
@@ -167,6 +171,11 @@ jobs:
               d1_receipt_not_inferred:true,no_funds:true})+'\n');
           console.log('DISCOVERY_CONSUMER_AND_DLQ_BOUND_NO_WEB_TRAFFIC');
           NODE
+      - name: Record independent website and Control Plane Risk Indices HTTP scorecard
+        if: always()
+        # Read-only. Absence of a genuinely reviewed signed parent is a
+        # reported HOLD, never a synthetic cache PASS or a deploy blocker.
+        run: node scripts/ops/probe-risk-indices-warm-http.mjs
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
