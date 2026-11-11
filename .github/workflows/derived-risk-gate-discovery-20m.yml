@@ -12,6 +12,8 @@ on:
       - "scripts/tests/derived-discovery-queue.test.mjs"
       - "scripts/tests/derived-discovery-transient-retry.test.mjs"
       - "scripts/lib/derived-discovery-transient-retry.mjs"
+      - "scripts/lib/derived-discovery-cloudflare-direct.mjs"
+      - "scripts/tests/derived-discovery-cloudflare-direct.test.mjs"
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
@@ -23,6 +25,8 @@ on:
       - "scripts/tests/derived-discovery-queue.test.mjs"
       - "scripts/tests/derived-discovery-transient-retry.test.mjs"
       - "scripts/lib/derived-discovery-transient-retry.mjs"
+      - "scripts/lib/derived-discovery-cloudflare-direct.mjs"
+      - "scripts/tests/derived-discovery-cloudflare-direct.test.mjs"
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
@@ -49,10 +53,12 @@ jobs:
       - run: |
           node --check scripts/ops/ingest-derived-risk-gate-discovery.mjs
           node --check scripts/lib/derived-discovery-transient-retry.mjs
+          node --check scripts/lib/derived-discovery-cloudflare-direct.mjs
           node --check workers/control-plane/src/derived-discovery-queue.mjs
           node --check workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs
           node --test scripts/tests/derived-risk-gate-runner-isolation.test.mjs \
             scripts/tests/derived-discovery-transient-retry.test.mjs \
+            scripts/tests/derived-discovery-cloudflare-direct.test.mjs \
             scripts/tests/derived-discovery-queue.test.mjs \
             scripts/tests/derived-discovery-collector-integration.test.mjs
   protected-five-lane-intake:
@@ -79,11 +85,19 @@ jobs:
             scripts/tests/derived-risk-gate-discovery-bridge.test.mjs \
             scripts/tests/derived-risk-gate-website-raw.test.mjs \
             scripts/tests/derived-discovery-transient-retry.test.mjs \
+            scripts/tests/derived-discovery-cloudflare-direct.test.mjs \
             scripts/tests/derived-discovery-queue.test.mjs \
             scripts/tests/derived-discovery-collector-integration.test.mjs
       - name: Read existing D1 lanes, hold noncommercial signals, readback-ack
         env:
           GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+          GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID: ${{ vars.GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID }}
+          # Only when the genuine Worker POST returns 503: Queue REST +
+          # exact remote D1 receipt are protected, never unverified ACK.
+          GEOMACRO_DERIVED_DISCOVERY_REST_FALLBACK: "1"
           GEOMACRO_DERIVED_DISCOVERY_SUMMARY_PATH: artifacts/derived-risk-gate-discovery/latest.json
         run: node scripts/ops/ingest-derived-risk-gate-discovery.mjs
       - name: Upload aggregate metadata receipt only
