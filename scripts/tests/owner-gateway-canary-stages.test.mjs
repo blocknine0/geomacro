@@ -29,6 +29,12 @@ const configs={
   target:"phase2h-private-r2-b2-quota-backup.yml",
   inputs:{approval:"BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS"}
  },
+ "isolated-discovery-consumer-deploy":{
+  authorization:"OWNER_AUTHORIZE_ISOLATED_DISCOVERY_CONSUMER_NO_FUNDS",
+  verify_hot50:false,
+  target:"deploy-derived-discovery-consumer.yml",
+  inputs:{approval:"DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS"}
+ },
  "candidate-upload":{
   authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
   verify_hot50:false,
@@ -58,7 +64,7 @@ function fixture(intent){
  const request={
   schema:OWNER_ISSUE_CANARY_SCHEMA,intent,source_sha:SHA,
   authorization:c.authorization,verify_hot50:c.verify_hot50,
-  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake"].includes(intent)?{}:
+  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake","isolated-discovery-consumer-deploy"].includes(intent)?{}:
    {baseline_version_id:BASELINE,candidate_version_id:CANDIDATE,
     stage2_run_id:"42860000010"}),
   ...(intent==="canary-hold-review"?
