@@ -52,6 +52,23 @@ test("two publisher-native observations promote one event without duplicate writ
    assert.equal(matrix.complex.status,"LOCKED");
  }finally{sqlite.close()}
 });
+test("Complex cannot become active or billable without Standard, current signed GRO and verified seven-day history",()=>{
+ const facts={standard_ready:true,corroboration_sources_count:2};
+ for(const [standard,gro,history] of [
+  [false,true,true],[true,false,true],[true,true,false],[false,true,false]
+ ]){
+  const matrix=progressiveTierMatrix({...facts,standard_ready:standard},gro,history);
+  assert.equal(matrix.complex.active,false);
+  assert.equal(matrix.complex.status,"LOCKED");
+  assert.ok(matrix.complex.missing?.length>0);
+ }
+ const ready=progressiveTierMatrix(facts,true,true);
+ assert.equal(ready.standard.active,true);
+ assert.equal(ready.complex.active,true);
+ assert.equal(ready.complex.status,"ACTIVE");
+ assert.equal(Object.hasOwn(ready.complex,"missing"),false);
+});
+
 test("Google-index attribution never becomes verified source corroboration",async()=>{
  const {sqlite,env}=fixture();
  try{
