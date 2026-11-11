@@ -459,7 +459,9 @@ function summarizeSeries(values){
  const volatility=Math.sqrt(scores.reduce((n,x)=>n+(x-average)**2,0)/scores.length);
  return {average:Number(average.toFixed(2)),volatility:Number(volatility.toFixed(2)),count:scores.length};
 }
-async function signedSnapshotRows(env,whereSql,binds,quarantined=null){
+// Shared strictly read-only history verifier. The progressive Risk Gate may
+// call this for a seven-row exact-country/UTC-day proof, never for a rewrite.
+export async function signedSnapshotRows(env,whereSql,binds,quarantined=null){
  const out=await env.DB.prepare("SELECT entity_type,entity_id,day_utc,snapshot_json,"+
   "audit_proof_json,content_sha256,generated_at FROM unified_risk_snapshots WHERE "+whereSql+
   " ORDER BY day_utc ASC,entity_id ASC").bind(...binds).all();
