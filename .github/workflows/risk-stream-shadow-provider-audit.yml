@@ -14,6 +14,7 @@ on:
       - "scripts/ops/score-risk-stream-shadow-provider-audit.mjs"
       - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "scripts/tests/risk-stream-real-original-manifest.test.mjs"
       - "scripts/ops/deploy-risk-stream-governor-candidate.mjs"
       - "scripts/ops/ingest-risk-stream-shadow-originals.mjs"
       - "scripts/ops/verify-risk-stream-governor-candidate.mjs"
@@ -71,10 +72,12 @@ jobs:
           }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
           node --check scripts/ops/provision-risk-stream-shadow-attester-keys.mjs
+          node --check scripts/ops/deploy-risk-stream-governor-candidate.mjs
+          node --check scripts/ops/ingest-risk-stream-shadow-originals.mjs
           node --check scripts/ops/score-risk-stream-shadow-provider-audit.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check workers/risk-stream-shadow/src/index.mjs
-          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs scripts/tests/risk-stream-real-original-manifest.test.mjs
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
       - name: Deploy isolated 0%-traffic candidate and verify source quota policy against shadow D1

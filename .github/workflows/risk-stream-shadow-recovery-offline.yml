@@ -10,6 +10,13 @@ on:
       - "scripts/lib/risk-stream-shadow-discovery.mjs"
       - "scripts/lib/risk-stream-shadow-attesters.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "scripts/tests/risk-stream-real-original-manifest.test.mjs"
+      - "scripts/lib/risk-stream-original-manifest.mjs"
+      - "scripts/ops/provision-risk-stream-shadow-attester-keys.mjs"
+      - "scripts/ops/ingest-risk-stream-shadow-originals.mjs"
+      - "scripts/ops/deploy-risk-stream-governor-candidate.mjs"
+      - "scripts/ops/verify-risk-stream-governor-candidate.mjs"
+      - "workers/risk-stream-governor-candidate/**"
       - "workers/risk-stream-shadow/src/**"
       - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
   push:
@@ -41,15 +48,24 @@ jobs:
           node --check scripts/lib/risk-stream-shadow-attesters.mjs
           node --check scripts/ops/verify-risk-stream-b2-live-governor.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
+          node --check scripts/ops/verify-risk-stream-governor-candidate.mjs
+          node --check scripts/ops/deploy-risk-stream-governor-candidate.mjs
+          node --check scripts/ops/ingest-risk-stream-shadow-originals.mjs
+          node --check scripts/ops/provision-risk-stream-shadow-attester-keys.mjs
+          node --check scripts/lib/risk-stream-original-manifest.mjs
+          node --check workers/risk-stream-governor-candidate/src/index.mjs
           node --check workers/risk-stream-shadow/src/untrusted-index-source-registry.mjs
           bash -n scripts/ops/install-risk-stream-shadow-attesters.sh
           node --test scripts/tests/risk-stream-pipeline.test.mjs \
             scripts/tests/risk-stream-shadow-contract.test.mjs \
             scripts/tests/risk-stream-shadow-recovery.test.mjs \
-            scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
+            scripts/tests/risk-stream-shadow-index-source-fk.test.mjs \
+            scripts/tests/risk-stream-real-original-manifest.test.mjs
       - name: Ensure commercial and canary boundaries remain untouched
         run: |
           set -euo pipefail
           test -f config/d1-hotspot-v2-canary.hold
           grep -q '"RISK_STREAM_ACTIVE": "0"' workers/risk-stream-shadow/wrangler.shadow.example.jsonc
           grep -q '"STREAM_INGESTION_ENABLED": "false"' workers/risk-stream-shadow/wrangler.shadow.example.jsonc
+          test -f workers/risk-stream-governor-candidate/wrangler.example.jsonc
+          ! grep -Eiq '"routes"|"queues"|"r2_buckets"|RISK_STREAM_ACTIVE.*"1"' workers/risk-stream-governor-candidate/wrangler.example.jsonc
