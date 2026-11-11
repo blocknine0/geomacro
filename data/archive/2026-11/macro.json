@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-11T06:27:20.026Z",
+  "updated_at": "2026-11-11T09:15:49.926Z",
   "signals": [
+    {
+      "id": "macro-dc4e9653",
+      "category": "macro",
+      "title": "Geomacro finds Central Bank of Azerbaijan announced exchange rates for November 11 - Report.az",
+      "what_changed": "A monitored source feed reports: Central Bank of Azerbaijan announced exchange rates for November 11 - Report.az. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T05:48:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4f9f49e0",
+      "category": "macro",
+      "title": "Geomacro finds NBP issued foreign exchange rates - Mettis Global",
+      "what_changed": "A monitored source feed reports: NBP issued foreign exchange rates - Mettis Global. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "FX and external balances",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T04:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-ac97f6fd",
       "category": "macro",
