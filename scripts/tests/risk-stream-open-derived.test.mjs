@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {generateKeyPairSync,createHash} from "node:crypto";
+import {generateKeyPairSync,createHash,verify as verifyEd25519} from "node:crypto";
 import {
- OPEN_FACTS_TIER,OPEN_PUBLIC_FEED_MAPPINGS,openFactsRightsAssessment,
+ OPEN_FACTS_TIER,OPEN_DERIVED_REDISTRIBUTION_LICENSE_ID,
+ OPEN_PUBLIC_FEED_MAPPINGS,openFactsRightsAssessment,
  eventFactsFingerprint,inspectOpenFact,corroborateOpenFactPairs,
  openDerivedTierMatrix,signOpenDerivedAdvisory
 } from "../../workers/control-plane/src/risk-stream-open-derived.mjs";
@@ -137,6 +138,17 @@ test("advisory signature proves only issuer integrity, and 7-day Complex stays h
   privatePkcs8B64:key.privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   publicSpkiB64:key.publicKey.export({format:"der",type:"spki"}).toString("base64"),now:NOW});
  assert.equal(signed.payload_sha256,sha(JSON.stringify(signed.payload)));
+ assert.equal(signed.payload.redistribution_license.id,OPEN_DERIVED_REDISTRIBUTION_LICENSE_ID);
+ assert.equal(signed.payload.redistribution_license.commercial_redistribution_authorized,false);
+ assert.equal(signed.payload.redistribution_license.third_party_publisher_rights_granted,false);
+ assert.deepEqual(signed.payload.source_provenance.publisher_domains,pairs[0].source_domains);
+ const signedBytes=payload=>Buffer.from(
+  "geomacro.open-derived-osint.advisory.v1\\n"+JSON.stringify(payload),"utf8");
+ const sig=Buffer.from(signed.signature_b64,"base64");
+ assert.equal(verifyEd25519(null,signedBytes(signed.payload),key.publicKey,sig),true);
+ const tampered=structuredClone(signed.payload);
+ tampered.redistribution_license.commercial_redistribution_authorized=true;
+ assert.equal(verifyEd25519(null,signedBytes(tampered),key.publicKey,sig),false);
  assert.equal(signed.payload.customer_delivery_authorized,false);
  assert.equal(signed.payload.certified_risk_index,false);
  assert.equal(signed.signed_gro_originals_proof,false);
