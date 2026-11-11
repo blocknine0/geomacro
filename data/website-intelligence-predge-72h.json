@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-11T09:15:49.926Z",
+  "checked_at": "2026-11-11T17:03:26.218Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 43,
+  "item_count": 42,
   "counts": {
     "geopolitics": 4,
-    "macro": 24,
+    "macro": 23,
     "rare_earth": 15
   },
-  "source_native_ids_sha256": "40ecafdc220a53515fc7a9abb045b31f96d301a82b6334fbc5c9e5ed60c4ae06",
+  "source_native_ids_sha256": "42788a201605f2f2bb3f939a413ce6e597b0994090f88e22ab9a0ece7fc4905b",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -816,25 +816,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-08T23:07:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-94dfbed2",
-      "category": "macro",
-      "title": "Geomacro finds Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-08T15:51:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

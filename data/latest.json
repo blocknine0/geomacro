@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-11T09:15:49.926Z",
+  "checked_at": "2026-11-11T17:03:26.218Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -778,25 +778,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-08T23:07:15.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-94dfbed2",
-      "category": "macro",
-      "title": "Geomacro finds Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de",
-      "what_changed": "A monitored source feed reports: Gold's Central Bank Bid held the Floor as Rate Fears Weigh on the Tape - ad-hoc-news.de. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-08T15:51:50.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
