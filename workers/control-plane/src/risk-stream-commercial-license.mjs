@@ -69,7 +69,7 @@ export async function verifyCommercialSourceGro(record,groPublicSpkiB64,now=Date
  */
 export async function issueGeoMacroCommercialLicense({
  record,groPublicSpkiB64,licensePrivatePkcs8B64,licensePublicSpkiB64,
- eligibleDerivedScore,approval,now=Date.now()
+ eligibleDerivedScore,approval,releasePublicSpkiB64,now=Date.now()
 }={}){
  const gro=await verifyCommercialSourceGro(record,groPublicSpkiB64,now);
  const release=approval?.signature_b64;

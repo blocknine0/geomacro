@@ -26,7 +26,7 @@ test("Hot50 source metadata becomes untrusted index with no article body or righ
 });
 test("scoped 10-record stream registration is disabled and rights-unapproved, with durable Queue receipt",async()=>{
  const sends=[];const sources=new Map();
- const db={prepare(sql){return {
+ const db={prepare(sql){return {sql,
   bind(...args){this.args=args;return this},
   async all(){
    if(sql.includes("FROM risk_stream_sources")){
