@@ -35,6 +35,12 @@ const configs={
   target:"deploy-derived-discovery-consumer.yml",
   inputs:{approval:"DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS"}
  },
+ "derived-five-lane-discovery":{
+  authorization:"OWNER_AUTHORIZE_FIVE_LANE_DERIVED_DISCOVERY_NO_FUNDS",
+  verify_hot50:false,
+  target:"derived-risk-gate-discovery-20m.yml",
+  inputs:{}
+ },
  "candidate-upload":{
   authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
   verify_hot50:false,
@@ -64,7 +70,7 @@ function fixture(intent){
  const request={
   schema:OWNER_ISSUE_CANARY_SCHEMA,intent,source_sha:SHA,
   authorization:c.authorization,verify_hot50:c.verify_hot50,
-  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake","isolated-discovery-consumer-deploy"].includes(intent)?{}:
+  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake","isolated-discovery-consumer-deploy","derived-five-lane-discovery"].includes(intent)?{}:
    {baseline_version_id:BASELINE,candidate_version_id:CANDIDATE,
     stage2_run_id:"42860000010"}),
   ...(intent==="canary-hold-review"?
@@ -205,6 +211,10 @@ test("canonical protected workflows keep external signed proof, SLO, no-funds an
  assert.match(gateway,/issues: write/u);
  assert.match(gateway,/actions: write/u);
  assert.match(source,/approved_main_sha:/u);
+ const discovery=readFileSync(".github/workflows/derived-risk-gate-discovery-20m.yml","utf8");
+ assert.match(discovery,/workflow_dispatch:/u);
+ assert.match(discovery,/protected-five-lane-intake:/u);
+ assert.match(discovery,/environment: production/u);
  assert.equal((source.match(/node scripts\/ops\/verify-owner-protected-source-main\.mjs/gu)??[]).length,2);
  assert.match(source,/check-d1-paid-monthly-headroom\.mjs --hot50-source/u);
  assert.match(source,/B2_ACCOUNT_QUOTA_WORKFLOW_ID: registered_original_archive/u);
