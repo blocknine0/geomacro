@@ -61,9 +61,10 @@ jobs:
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
       - name: Compare existing B2 account D1 governor against live Worker
-        # An unresolvable vanity hostname MUST use the pinned production
-        # control-plane Worker with authenticated same-D1 schema parity.
-        # Never count an unavailable governor as PASS.
+        # Preserve governor HOLD but allow the isolated R2-only feeder and
+        # D1 receipt observation to run. Final step fails if parity is missing.
+        # This does NOT authorize B2 traffic or a commercial release.
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
@@ -77,7 +78,7 @@ jobs:
           const child=spawnSync("node",["scripts/ops/verify-risk-stream-b2-live-governor.mjs"],{
             env:{...process.env,GEOMACRO_STREAM_ADMIN_BEARER:token},
             encoding:"utf8",timeout:40000,maxBuffer:500000});
-          if(child.status!==0)throw Error("B2_SHADOW_LIVE_GOVERNOR_PARITY_HOLD: "+(child.stderr||"").slice(-230));
+          if(child.status!==0)throw Error("B2_SHADOW_LIVE_GOVERNOR_PARITY_HOLD: "+(child.stderr||"").slice(-2000));
           const report=JSON.parse((child.stdout||"").trim().split("\n").at(-1));
           if(report.status!=="D1_SHARED_GOVERNOR_MATCH"||report.expected_b2_network_ops_for_shadow!==0)
             throw Error("B2_SHADOW_QUOTA_POLICY_DRIFT");
@@ -116,4 +117,10 @@ jobs:
           fi
           if test -f .shadow-audit/live-telemetry.json; then
             cat .shadow-audit/live-telemetry.json
+          fi
+          # A read failure must NOT become an overall success merely because
+          # continue-on-error let the private shadow ingestion finish.
+          if ! test -s .shadow-audit/b2-governor-parity.json; then
+            echo "::error::SHADOW_GOVERNOR_PARITY_UNPROVEN_RELEASE_HOLD_RETAINED"
+            exit 18
           fi
