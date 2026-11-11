@@ -1,0 +1,35 @@
+{
+  // Dedicated Worker: NO custom domain, NO production D1/R2, NO customer delivery.
+  "name": "geomacro-risk-stream-shadow",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "vars": {
+    "STREAM_MODE": "SHADOW_AUDIT",
+    "STREAM_INGESTION_ENABLED": "false",
+    "RISK_STREAM_ACTIVE": "0"
+  },
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "geomacro-risk-stream-shadow",
+    "database_id": "REPLACE_WITH_ISOLATED_SHADOW_D1_ID"
+  }],
+  "r2_buckets": [{
+    "binding": "RISK_STREAM_PRIVATE_R2",
+    "bucket_name": "geomacro-risk-stream-shadow-private"
+  }],
+  "queues": {
+    "producers": [{
+      "binding": "RISK_STREAM_QUEUE",
+      "queue": "geomacro-risk-stream-shadow"
+    }],
+    "consumers": [{
+      "queue": "geomacro-risk-stream-shadow",
+      "max_batch_size": 10,
+      "max_batch_timeout": 2,
+      "max_retries": 8,
+      "dead_letter_queue": "geomacro-risk-stream-shadow-dlq",
+      "max_concurrency": 1
+    }]
+  }
+}

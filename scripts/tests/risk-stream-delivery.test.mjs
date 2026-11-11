@@ -37,7 +37,7 @@ function fixture(){
   for(const s of stmts)receipts.set(s.args[0],{payload_sha256:s.args[1]});
   return stmts.map(()=>({success:true}));
  }};
- const env={DB:db,RISK_STREAM_ACTIVE:"1",
+ const env={DB:db,RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
   RISK_STREAM_GRO_VERIFY_SPKI_B64:
    key.publicKey.export({type:"spki",format:"der"}).toString("base64"),
   RISK_STREAM_DELIVERY_QUEUE:{async sendBatch(batch){

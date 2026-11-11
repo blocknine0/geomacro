@@ -108,7 +108,7 @@ class FakeR2{
 }
 function ctx(){
  const facts=signing(),rights=signing(),gro=signing(),db=new FakeDB(),r2=new FakeR2();
- const env={DB:db,RISK_STREAM_ACTIVE:"1",RISK_STREAM_QUEUE:{
+ const env={DB:db,RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",RISK_STREAM_QUEUE:{
   async sendBatch(messages){env.messages.push(...messages)}
  },messages:[],RISK_STREAM_PRIVATE_R2:r2,
   RISK_STREAM_AES256_KEY_B64:randomBytes(32).toString("base64"),

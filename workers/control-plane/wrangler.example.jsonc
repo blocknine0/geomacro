@@ -14,7 +14,9 @@
     "GEOMACRO_P1_FANOUT_ENABLED": "1",
     "GEOMACRO_P1_BUNDLED_LEASES_ENABLED": "0",
     "RISK_GATE_COUNTRY_SCOPE": "HOT50",
-    "RISK_STREAM_ACTIVE": "0"
+    "RISK_STREAM_ACTIVE": "0",
+    "STREAM_INGESTION_ENABLED": "false",
+    "STREAM_MODE": "DISABLED"
   },
   "triggers": {
     "crons": [

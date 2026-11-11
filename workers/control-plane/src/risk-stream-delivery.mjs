@@ -14,7 +14,8 @@ function base64(value){
  return Uint8Array.from(atob(value),c=>c.charCodeAt(0));
 }
 export async function dispatchRiskStreamOutbox(env,{max=20}={}){
- if(env?.RISK_STREAM_ACTIVE!=="1"||!env?.DB?.prepare||
+ if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
+    !env?.DB?.prepare||
     !env?.RISK_STREAM_DELIVERY_QUEUE?.sendBatch)return {status:"HOLD_BINDING_UNAVAILABLE",count:0};
  if(!Number.isSafeInteger(max)||max<1||max>50)fail("DISPATCH_LIMIT_INVALID");
  const res=await env.DB.prepare("SELECT o.gro_id,g.payload_sha256 "+
@@ -41,7 +42,8 @@ export async function dispatchRiskStreamOutbox(env,{max=20}={}){
  return {status:"QUEUED_INTERNAL",count:rows.length,no_funds:true};
 }
 export async function consumeRiskStreamDelivery(batch,env,now=Date.now()){
- if(env?.RISK_STREAM_ACTIVE!=="1"||!env.DB?.prepare||!env.DB?.batch||
+ if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
+    !env.DB?.prepare||!env.DB?.batch||
     !Array.isArray(batch?.messages)||batch.messages.length<1||
     batch.messages.length>20)fail("CONSUMER_BINDING_UNAVAILABLE");
  const verifierBytes=base64(env.RISK_STREAM_GRO_VERIFY_SPKI_B64);
