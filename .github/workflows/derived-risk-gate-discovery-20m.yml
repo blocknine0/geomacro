@@ -10,6 +10,8 @@ on:
       - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
       - "scripts/tests/derived-risk-gate-runner-isolation.test.mjs"
       - "scripts/tests/derived-discovery-queue.test.mjs"
+      - "scripts/tests/derived-discovery-transient-retry.test.mjs"
+      - "scripts/lib/derived-discovery-transient-retry.mjs"
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
@@ -19,6 +21,8 @@ on:
       - "scripts/ops/ingest-derived-risk-gate-discovery.mjs"
       - "scripts/tests/derived-risk-gate-runner-isolation.test.mjs"
       - "scripts/tests/derived-discovery-queue.test.mjs"
+      - "scripts/tests/derived-discovery-transient-retry.test.mjs"
+      - "scripts/lib/derived-discovery-transient-retry.mjs"
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
@@ -44,9 +48,11 @@ jobs:
           node-version: "24"
       - run: |
           node --check scripts/ops/ingest-derived-risk-gate-discovery.mjs
+          node --check scripts/lib/derived-discovery-transient-retry.mjs
           node --check workers/control-plane/src/derived-discovery-queue.mjs
           node --check workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs
           node --test scripts/tests/derived-risk-gate-runner-isolation.test.mjs \
+            scripts/tests/derived-discovery-transient-retry.test.mjs \
             scripts/tests/derived-discovery-queue.test.mjs \
             scripts/tests/derived-discovery-collector-integration.test.mjs
   protected-five-lane-intake:
@@ -72,6 +78,7 @@ jobs:
             scripts/lib/facts-only-gri-v12-dual-attestation.test.mjs \
             scripts/tests/derived-risk-gate-discovery-bridge.test.mjs \
             scripts/tests/derived-risk-gate-website-raw.test.mjs \
+            scripts/tests/derived-discovery-transient-retry.test.mjs \
             scripts/tests/derived-discovery-queue.test.mjs \
             scripts/tests/derived-discovery-collector-integration.test.mjs
       - name: Read existing D1 lanes, hold noncommercial signals, readback-ack
