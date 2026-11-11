@@ -58,3 +58,23 @@ test('a validly signed zero-provider or falsified B2 receipt cannot pass',()=>{
  assert.throws(()=>audit(signStep3StatusReceipt(r,priv)),
   /SIGNED_RECEIPT_PHYSICAL_CLAIMS_OR_IDENTITY_INVALID/);
 });
+
+test('protected historical verifier accepts only a Hot50-only orchestration failure',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const flow=readFileSync(new URL('../../.github/workflows/step3-protected-binding-readiness.yml',import.meta.url),'utf8');
+ const block=flow.slice(flow.indexOf('  signature-proof:'));
+ assert.match(block,/run\.status!=='completed'/u);
+ assert.match(block,/\['success','failure'\]\.includes\(run\.conclusion\)/u);
+ assert.match(block,/jobs\.total_count!==rows\.length/u);
+ assert.match(block,/new Set\(rows\.map\(j=>j\.name\)\)\.size!==rows\.length/u);
+ assert.match(block,/\['local-workerd','shadow-physical','stage2-production'\]/u);
+ assert.match(block,/j\.conclusion==='success'/u);
+ assert.match(block,/if\(run\.conclusion==='failure'\)/u);
+ assert.match(block,/rows\.filter\(j=>j\.name==='hot50-readback'&&/u);
+ assert.match(block,/j\.conclusion==='failure'/u);
+ assert.match(block,/rows\.length!==expected\.size/u);
+ assert.match(block,/STAGE2_SIGNATURE_FAILURE_NOT_HOT50_ONLY/u);
+ assert.match(block,/STAGE2_SIGNATURE_SUCCESS_JOBS_INCONSISTENT/u);
+ assert.match(block,/node scripts\/ops\/verify-step3-production-signer-readonly\.mjs/u);
+ assert.doesNotMatch(block,/wrangler deploy|versions deploy|--release-hold/u);
+});
