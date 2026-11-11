@@ -6,6 +6,23 @@ const EDGE_AUTHORITY = "backblaze-b2-risk-indices-edge";
 const PROJECT_REF = "ldpwajisioljyjtojvfx";
 const METHODOLOGY = "gri-v1.2.0";
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+// Current reviewer-signed indices may be served from a short in-process
+// cache only while their ORIGINAL source and all three clocks are current.
+const CURRENT_MAX_AGE_MS = 60 * 60_000;
+const HOT_CACHE_MS = 15_000;
+let currentVerifiedCache: { data: PublicRiskIndices; loadedAt: number } | null = null;
+export function validatedRiskIndicesLastKnownGood(now = Date.now()): PublicRiskIndices | null {
+  const item = currentVerifiedCache;
+  if (!item || !validatePublicRiskIndices(item.data)) return null;
+  const source = sourceClock(item.data.snapshotAsOf, now);
+  if (source === null || now - source > CURRENT_MAX_AGE_MS) return null;
+  if (item.data.indices.some(index => {
+    const clock = sourceClock(index.readingAsOf, now);
+    return index.readingStatus !== "current" || clock === null ||
+      now - clock > CURRENT_MAX_AGE_MS;
+  })) return null;
+  return item.data;
+}
 type IndexReadMode = "current" | "historical";
 
 function sourceClock(value: unknown, now: number): number | null {
@@ -68,6 +85,9 @@ export function validatePublicRiskIndices(data: PublicRiskIndices | null | undef
 }
 
 export async function readRiskIndicesEdge(mode: IndexReadMode = "current"): Promise<PublicRiskIndices | null> {
+  const cached = mode === "current" ? validatedRiskIndicesLastKnownGood() : null;
+  if (cached && currentVerifiedCache && Date.now()-currentVerifiedCache.loadedAt < HOT_CACHE_MS)
+    return cached;
   try {
     const endpoint=mode==="historical"?EDGE_URL+"/history":EDGE_URL;
     const response = await fetch(endpoint, {
@@ -75,7 +95,8 @@ export async function readRiskIndicesEdge(mode: IndexReadMode = "current"): Prom
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(4_500),
     });
-    if (!response.ok || response.headers.get("x-geomacro-authority") !== EDGE_AUTHORITY) return null;
+    if (!response.ok || response.headers.get("x-geomacro-authority") !== EDGE_AUTHORITY)
+      return mode === "current" ? validatedRiskIndicesLastKnownGood() : null;
     if (mode === "historical" &&
         (response.headers.get("x-geomacro-display-status") !== "last_verified" ||
          !["deployment-b2-readback-verified",
@@ -96,10 +117,23 @@ export async function readRiskIndicesEdge(mode: IndexReadMode = "current"): Prom
       (mode === "historical"
         ? !validateHistoricalRiskIndices(payload.data, payload.generated_at)
         : !validatePublicRiskIndices(payload.data))
-    ) return null;
+    ) return mode === "current" ? validatedRiskIndicesLastKnownGood() : null;
 
+    if (mode === "current" && payload.data) {
+      // Contract-valid alone does not prove CURRENT freshness: the original
+      // 1-hour signed source limit is stricter than historical retention.
+      const now=Date.now();
+      const source=sourceClock(payload.data.snapshotAsOf,now);
+      if (source===null || now-source>CURRENT_MAX_AGE_MS ||
+          payload.data.indices.some(index => {
+            const at=sourceClock(index.readingAsOf,now);
+            return index.readingStatus!=="current" || at===null ||
+              now-at>CURRENT_MAX_AGE_MS;
+          })) return validatedRiskIndicesLastKnownGood();
+      currentVerifiedCache={data:payload.data,loadedAt:now};
+    }
     return payload.data ?? null;
   } catch {
-    return null;
+    return mode === "current" ? validatedRiskIndicesLastKnownGood() : null;
   }
 }

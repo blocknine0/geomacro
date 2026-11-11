@@ -8,7 +8,7 @@ import { readRiskIndicesEdge } from "../../../src/lib/risk-indices-edge.server";
 export default defineEventHandler(async (event) => {
   setResponseHeaders(event, {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "public, max-age=30, s-maxage=120, stale-while-revalidate=300",
+    "Cache-Control": "public, max-age=15, s-maxage=15, stale-while-revalidate=15",
     "X-Content-Type-Options": "nosniff",
     "X-Robots-Tag": "noindex, nofollow",
   });
