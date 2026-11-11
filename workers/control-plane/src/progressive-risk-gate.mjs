@@ -184,32 +184,81 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
   };
 }
 export async function sevenDayRollupIsReady(env, subject, now=Date.now(),fetcher=fetch) {
-  if(subject.type!=="country")return false;
+  if(subject?.type!=="country"||!ISO3.test(subject.id)||
+     !Number.isSafeInteger(now)||!env?.DB?.prepare)return false;
   const rawUrl=String(env?.RISK_GATE_SUPABASE_URL??"");
   const key=String(env?.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY??"");
   let url;try{url=new URL(rawUrl)}catch{return false}
   if(url.protocol!=="https:"||url.username||url.password||
-     !/^[a-z0-9-]+\.supabase\.co$/.test(url.hostname)||key.length<32)return false;
+     !/^[a-z0-9-]+\\.supabase\\.co$/.test(url.hostname)||key.length<32)return false;
+  const today=new Date(now).toISOString().slice(0,10);
+  const yesterday=new Date(now-DAY).toISOString().slice(0,10);
   const q=new URL("/rest/v1/geomacro_risk_signal_7d",url);
-  q.searchParams.set("select","domain,rollup_day,scored_days,verification_status,source_snapshot_sha256");
+  q.searchParams.set("select","domain,rollup_day,scored_days,verification_status,source_snapshot_sha256,verified_gro_sha256");
   q.searchParams.set("country_iso3","eq."+subject.id);
-  q.searchParams.set("rollup_day","gte."+new Date(now-DAY).toISOString().slice(0,10));
+  q.searchParams.set("rollup_day","gte."+yesterday);
   q.searchParams.set("limit","12");
   try {
     const resp=await fetcher(q.href,{
-      headers:{apikey:key,authorization:"Bearer "+key},
+      headers:{apikey:key,...(key.startsWith("sb_secret_")?{}:{authorization:"Bearer "+key})},
       redirect:"error",signal:AbortSignal.timeout(650)
     });
-    if(!resp.ok)return false;
+    if(!resp.ok||resp.redirected)return false;
     const value=await resp.json();
-    const ready=new Set();
-    if(!Array.isArray(value))return false;
+    if(!Array.isArray(value)||value.length>12)return false;
+    // The Supabase rollup is a *claim* about 7 days. It is not proof:
+    // scored_days may include Basic provisional values. Verify each real day.
+    const dayClaims=new Map();
+    const domains=new Set(["geopolitics","macro_fx","critical_minerals"]);
     for(const row of value){
-      if(row?.scored_days>=7 && row?.verification_status==="VERIFIED" &&
-        SHA.test(String(row?.source_snapshot_sha256??""))){
-        ready.add(row.domain);
-      }
+      const day=row?.rollup_day;
+      if(typeof day!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)||
+         day<yesterday||day>today||!domains.has(row?.domain)||
+         row.scored_days!==7||row.verification_status!=="VERIFIED"||
+         !SHA.test(String(row.source_snapshot_sha256??""))||
+         !SHA.test(String(row.verified_gro_sha256??"")))continue;
+      const group=dayClaims.get(day)??new Map();
+      if(group.has(row.domain))return false;
+      group.set(row.domain,row);
+      dayClaims.set(day,group);
     }
-    return ["geopolitics","macro_fx","critical_minerals"].every(x=>ready.has(x));
+    const {signedSnapshotRows}=await import("./unified-risk-gate.mjs");
+    for(const [day,claims] of [...dayClaims.entries()].sort(([a],[b])=>b.localeCompare(a))){
+      if(claims.size!==3)continue;
+      const claimed=[...claims.values()];
+      if(!claimed.every(row=>
+        row.source_snapshot_sha256===claimed[0].source_snapshot_sha256&&
+        row.verified_gro_sha256===claimed[0].verified_gro_sha256))continue;
+      const from=new Date(Date.parse(day+"T00:00:00.000Z")-6*DAY).toISOString().slice(0,10);
+      // This single bounded indexed D1 range read validates EVERY daily
+      // immutable snapshot's original HMAC and exact stored SHA, not one
+      // unverified aggregate counter or seven copies of a single day.
+      const rows=await signedSnapshotRows(env,
+        "entity_type='COUNTRY' AND entity_id=? AND day_utc>=? AND day_utc<=?",
+        [subject.id,from,day]);
+      if(rows.length!==7)continue;
+      const expected=Array.from({length:7},(_,i)=>
+        new Date(Date.parse(from+"T00:00:00.000Z")+i*DAY).toISOString().slice(0,10));
+      if(!rows.every((row,i)=>{
+        const snapshot=row.snapshot,score=snapshot?.verified_unified_risk_score;
+        return row.day_utc===expected[i]&&row.entity_id===subject.id&&
+          row.entity_type==="COUNTRY"&&
+          snapshot?.target_type==="COUNTRY"&&snapshot?.target_id===subject.id&&
+          snapshot?.generated_at===row.generated_at&&
+          row.proof?.timestamp_utc===row.generated_at&&
+          row.generated_at?.slice(0,10)===expected[i]&&
+          SHA.test(String(snapshot?.signed_gro_payload_sha256??""))&&
+          typeof score==="number"&&Number.isFinite(score)&&score>=0&&score<=1&&
+          ["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].every(category=>{
+            const n=snapshot?.categories?.[category]?.risk_score;
+            return typeof n==="number"&&Number.isFinite(n)&&n>=0&&n<=1;
+          });
+      }))continue;
+      const latest=rows[6];
+      if(latest.content_sha256===claimed[0].source_snapshot_sha256&&
+         latest.snapshot.signed_gro_payload_sha256===claimed[0].verified_gro_sha256)
+        return true;
+    }
+    return false;
   }catch{return false}
 }
