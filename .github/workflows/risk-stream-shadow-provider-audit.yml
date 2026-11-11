@@ -11,6 +11,9 @@ on:
       - "scripts/ops/score-risk-stream-shadow-provider-audit.mjs"
       - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "scripts/ops/deploy-risk-stream-governor-candidate.mjs"
+      - "scripts/ops/verify-risk-stream-governor-candidate.mjs"
+      - "workers/risk-stream-governor-candidate/**"
   workflow_dispatch:
     inputs:
       approval:
@@ -69,6 +72,9 @@ jobs:
           node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
+      - name: Deploy isolated 0%-traffic candidate and verify source quota policy against shadow D1
+        continue-on-error: true
+        run: node scripts/ops/deploy-risk-stream-governor-candidate.mjs
       - name: Compare existing B2 account D1 governor against live Worker
         # Preserve governor HOLD but allow the isolated R2-only feeder and
         # D1 receipt observation to run. Final step fails if parity is missing.
@@ -133,6 +139,11 @@ jobs:
           echo "SHADOW_PRODUCTION_D1_MUTATIONS=NONE"
           echo "SHADOW_SIGNED_GRO_ACCEPTANCE=NOT_PROVEN_UNTIL_REAL_ORIGINALS"
           echo "SHADOW_CANARY_HOLD=RETAINED"
+          if test -s .shadow-audit/candidate-governor-parity.json; then
+            node -e "const p=require('./.shadow-audit/candidate-governor-parity.json');if(p.status!=='SHADOW_CANDIDATE_D1_POLICY_MATCH'||p.production_d1_ledger_verified!==false)process.exit(1);console.log('ISOLATED_SHADOW_GOVERNOR_POLICY_PARITY=PASS_LIVE_PRODUCTION_NOT_INFERRED')"
+          else
+            echo "ISOLATED_SHADOW_GOVERNOR_POLICY_PARITY=HOLD"
+          fi
           if test -s .shadow-audit/b2-governor-parity.json; then
             node -e "const p=require('./.shadow-audit/b2-governor-parity.json');if(p.status!=='D1_SHARED_GOVERNOR_MATCH')process.exit(1);console.log('SHADOW_B2_WORKER_LIVE_PARITY=PASS route='+p.verified_route)"
           else
@@ -161,6 +172,7 @@ jobs:
           path: |
             .shadow-audit/metadata.json
             .shadow-audit/b2-governor-parity.json
+            .shadow-audit/candidate-governor-parity.json
             .shadow-audit/live-telemetry.json
             .shadow-audit/scorecard.json
           if-no-files-found: warn

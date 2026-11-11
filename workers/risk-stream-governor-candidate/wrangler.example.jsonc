@@ -1,0 +1,21 @@
+{
+  "name": "geomacro-risk-stream-governor-candidate",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": true,
+  "vars": {
+    "SHADOW_MODE": "ISOLATED_GOVERNOR_POLICY",
+    "SHADOW_NO_FUNDS": "1",
+    "RISK_STREAM_ACTIVE": "0",
+    "STREAM_INGESTION_ENABLED": "false",
+    "SHADOW_DB_NAME": "geomacro-risk-stream-shadow",
+    "SHADOW_REVIEWED_SHA": "REPLACE_WITH_CURRENT_MAIN_SHA"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "geomacro-risk-stream-shadow",
+      "database_id": "REPLACE_WITH_SHADOW_D1_ID"
+    }
+  ]
+}

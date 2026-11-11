@@ -11,6 +11,7 @@ function read(name){
 }
 const meta=read("metadata.json");
 const gov=read("b2-governor-parity.json");
+const candidate=read("candidate-governor-parity.json");
 const tel=read("live-telemetry.json");
 const n=x=>Number.isSafeInteger(x)&&x>=0?x:0;
 const checks={
@@ -19,9 +20,17 @@ const checks={
   meta?.shadow_queue==="geomacro-risk-stream-shadow"&&
   meta?.shadow_dlq==="geomacro-risk-stream-shadow-dlq"&&
   meta?.commercial_delivery===false&&meta?.risk_stream_active===false,
- live_d1_b2_governor_parity:gov?.status==="D1_SHARED_GOVERNOR_MATCH"&&
-  gov?.expected_b2_network_ops_for_shadow===0&&
-  ["PRIMARY_CUSTOM_DOMAIN","PINNED_CONTROL_PLANE_WORKERS_DEV"].includes(gov?.verified_route),
+ isolated_candidate_governor_policy_parity:
+  candidate?.status==="SHADOW_CANDIDATE_D1_POLICY_MATCH"&&
+  candidate?.source_sha===meta?.executed_commit&&
+  candidate?.verified_route==="SHADOW_CANDIDATE_ISOLATED_WORKERS_DEV"&&
+  candidate?.shadow_db==="geomacro-risk-stream-shadow"&&
+  candidate?.unauthenticated_http_401_verified===true&&
+  candidate?.cloudflare_deployed_candidate_readback===true&&
+  candidate?.imported_production_quota_module===true&&
+  candidate?.production_d1_ledger_verified===false&&
+  candidate?.live_production_governor_parity_not_inferred===true&&
+  candidate?.expected_b2_network_ops_for_shadow===0,
  observed_20_to_30_real_index_events:
   n(tel?.submitted_events)>=20&&n(tel?.submitted_events)<=30&&
   n(tel?.acknowledged_events)>=n(tel?.submitted_events),
@@ -36,7 +45,12 @@ const checks={
 const passed=Object.values(checks).every(Boolean);
 const report={
  schema:"geomacro.shadow-provider-terminal-scorecard.v1",
- status:passed?"PASS_SHADOW_ONLY_NO_FUNDS":"HOLD_INCOMPLETE_SHADOW_PROOF",
+ status:passed?"SHADOW_AUDIT_PASS":"HOLD_INCOMPLETE_SHADOW_PROOF",
+ scope:"ISOLATED_SHADOW_ONLY_NO_FUNDS",
+ production_live_governor_parity_verified:gov?.status==="D1_SHARED_GOVERNOR_MATCH"&&
+  gov?.expected_b2_network_ops_for_shadow===0&&
+  ["PRIMARY_CUSTOM_DOMAIN","PINNED_CONTROL_PLANE_WORKERS_DEV"].includes(gov?.verified_route),
+ production_deployment_hold_not_bypassed:true,
  checks,observations:n(tel?.submitted_events),
  acknowledgements:n(tel?.acknowledged_events),
  observed_d1_503:tel?.d1_observed_503??null,

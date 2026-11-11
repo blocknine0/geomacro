@@ -8,6 +8,7 @@ import {spawnSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {verifyLiveGovernor,PINNED_CONTROL_PLANE}
  from "../ops/verify-risk-stream-b2-live-governor.mjs";
+import {verifyCandidateGovernor} from "../ops/verify-risk-stream-governor-candidate.mjs";
 import {discoverShadowArticles,parseIndexRss,createGdeltLimiter}
  from "../lib/risk-stream-shadow-discovery.mjs";
 import {validateAttesterKeys,verifyIndependentAttestations}
@@ -180,9 +181,36 @@ test("terminal scorecard rejects 30 acknowledged RSS hints as 10 signed GROs",()
   assert.equal(result.status,1);
   const report=JSON.parse(readFileSync(join(dir,"scorecard.json"),"utf8"));
   assert.equal(report.status,"HOLD_INCOMPLETE_SHADOW_PROOF");
-  assert.equal(report.checks.live_d1_b2_governor_parity,true);
+  assert.equal(report.checks.isolated_candidate_governor_policy_parity,false);
+ assert.equal(report.production_live_governor_parity_verified,true);
   assert.equal(report.checks.zero_observed_d1_503,true);
   assert.equal(report.checks.ten_signed_gros_with_d1_ed25519_readback,false);
   assert.equal(report.canary_hold_retained,true);
  }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test("deployed zero-traffic candidate policy is strict and cannot claim live parity",async()=>{
+ const sha="b4f8de30c0c22530b92bf6e6791370235805b616";
+ const base="https://geomacro-risk-stream-governor-candidate.example.workers.dev";
+ const body={ok:true,schema:"geomacro.b2-account-quota-status.v1",
+  day_utc:new Date().toISOString().slice(0,10),
+  limits:B2_DAILY_LIMITS,used:{total:0,GET:0,PUT:0,HEAD:0,NATIVE_AUTH:0},
+  candidate:{schema:"geomacro.shadow-governor-candidate.v1",
+   scope:"ISOLATED_SHADOW_D1_ONLY",source_sha:sha,db_name:"geomacro-risk-stream-shadow",
+   production_d1_ledger_verified:false,provider_backblaze_telemetry_verified:false,
+   release_hold_removed:false,customer_delivery:false,no_funds:true}};
+ const serve=async (_,options)=>options.headers?
+  Response.json(body):new Response("",{status:401});
+ const proof=await verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,fetchImpl:serve});
+ assert.equal(proof.status,"SHADOW_CANDIDATE_D1_POLICY_MATCH");
+ assert.equal(proof.production_d1_ledger_verified,false);
+ await assert.rejects(verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,
+  fetchImpl:async (_,o)=>o.headers?Response.json({...body,limits:{...B2_DAILY_LIMITS,total:720}}):
+  new Response("",{status:401})}),/CANDIDATE_GOVERNOR_POLICY_DRIFT/);
+ await assert.rejects(verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,
+  fetchImpl:async (_,o)=>o.headers?Response.json({...body,candidate:{...body.candidate,
+   production_d1_ledger_verified:true}}):new Response("",{status:401})}),
+  /CANDIDATE_GOVERNOR_SCOPE_OR_SHA_INVALID/);
+ await assert.rejects(verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,
+  fetchImpl:async()=>Response.json(body)}),/CANDIDATE_GOVERNOR_UNAUTHENTICATED_ACCESS/);
 });
