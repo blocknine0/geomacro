@@ -6,6 +6,8 @@
  */
 import {mkdirSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
+import {verifyRiskIndicesLiveContinuity}
+ from "./verify-risk-indices-live-continuity.mjs";
 
 export const PROBES=Object.freeze([
  {name:"website_public_api",url:"https://geomacro.live/api/risk-indices"},
@@ -38,7 +40,16 @@ export function verifyLiveIndicesBody(body,now=Date.now()){
 }
 export async function probeWarmRiskIndices({
  fetchImpl=fetch,now=Date.now,clock=()=>performance.now(),runs=6,
+ verifyParent=verifyRiskIndicesLiveContinuity,
 }={}){
+ let signedParentContinuity=false;
+ try{
+  const parent=await verifyParent({fetchImpl,now:now()});
+  signedParentContinuity=parent?.ok===true&&
+   parent?.three_independent_indices_verified===true&&
+   parent?.b2_readback_verified===true&&
+   parent?.d1_readback_verified===true&&parent?.edge_readback_verified===true;
+ }catch{}
  const result=[];
  for(const p of PROBES){
   const samples=[];let statuses=[];let valid=true;
@@ -63,9 +74,10 @@ export async function probeWarmRiskIndices({
   }
   samples.sort((a,b)=>a-b);
   const p95=samples.length?samples[Math.ceil(samples.length*0.95)-1]:null;
-  result.push({endpoint:p.name,status:valid&&p95!==null&&p95<100?
-   "PASS_VERIFIED_CURRENT_UNDER_100MS":"HOLD_HTTP_OR_GRI_OR_LATENCY",
-   current_signed_three_categories_verified:valid,
+  result.push({endpoint:p.name,status:valid&&p95!==null&&p95<100&&signedParentContinuity?
+   "PASS_VERIFIED_PARENT_HTTP_AND_P95":"HOLD_UNVERIFIED_PARENT_OR_HTTP_OR_SLO",
+   http_current_three_domain_contract_verified:valid,
+   independent_b2_d1_edge_parent_continuity_verified:signedParentContinuity,
    http_codes:statuses,p95_ms:p95,measured_warm_count:samples.length,
    target_ms:100});
  }
