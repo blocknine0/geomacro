@@ -122,7 +122,9 @@ export default {
    if(verified<result.corroborated_and_signed)fail("SIGNED_READBACK_COUNT_DIVERGED");
    const batchId=await hex(JSON.stringify(items.map(x=>[x.event_fingerprint,x.source_id])));
    const elapsed=Math.round((performance.now()-started)*100)/100;
-   const resultStatus=metrics.d1_503_observed===0?"PASS_ZERO_503":"HOLD_503_OBSERVED";
+   const resultStatus=metrics.d1_503_observed>0?"HOLD_503_OBSERVED":
+    result.corroborated_and_signed>0?"PASS_ZERO_503_SIGNED_READBACK":
+    "PASS_ZERO_503_NO_SIGNING_PROOF";
    const writeP95=perc95(metrics.d1_write_latency_ms);
    await env.DB.prepare("INSERT INTO risk_stream_shadow_audit_receipts "+
     "(batch_id,started_at,event_count,corroborated_and_signed,"+
