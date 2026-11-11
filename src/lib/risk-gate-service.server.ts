@@ -324,7 +324,9 @@ evaluateCountryRiskGate(
   // This service cannot verify a complete historical seven-day rollup.
   // A valid GRO alone never promotes a Complex product or price.
   const tier:ProgressiveRiskGateTier=groValid
-    ? (input.progressive_facts?.standard_ready===true?"STANDARD_0_15":"BASIC_0_10")
+    ? (input.progressive_facts?.standard_ready===true &&
+       (input.progressive_facts?.corroboration_sources_count??0)>=2
+        ?"STANDARD_0_15":"BASIC_0_10")
     : provisional!.tier;
   const matrix:RiskGateTierActivationMatrix=groValid
     ? {basic:{active:true,status:"ACTIVE"},
