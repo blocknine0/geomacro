@@ -1,0 +1,49 @@
+name: Risk Stream Shadow Recovery Offline Safety
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/risk-stream-shadow-provider-audit.yml"
+      - ".github/workflows/risk-stream-shadow-recovery-offline.yml"
+      - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
+      - "scripts/ops/verify-risk-stream-b2-live-governor.mjs"
+      - "scripts/ops/install-risk-stream-shadow-attesters.sh"
+      - "scripts/lib/risk-stream-shadow-discovery.mjs"
+      - "scripts/lib/risk-stream-shadow-attesters.mjs"
+      - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/risk-stream-shadow-recovery-offline.yml"
+      - "scripts/lib/risk-stream-shadow-discovery.mjs"
+      - "scripts/lib/risk-stream-shadow-attesters.mjs"
+      - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+permissions:
+  contents: read
+jobs:
+  offline-recovery-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Syntax and pure offline tests; no cloud credentials
+        run: |
+          set -euo pipefail
+          node --check scripts/lib/risk-stream-shadow-discovery.mjs
+          node --check scripts/lib/risk-stream-shadow-attesters.mjs
+          node --check scripts/ops/verify-risk-stream-b2-live-governor.mjs
+          node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
+          bash -n scripts/ops/install-risk-stream-shadow-attesters.sh
+          node --test scripts/tests/risk-stream-pipeline.test.mjs \
+            scripts/tests/risk-stream-shadow-contract.test.mjs \
+            scripts/tests/risk-stream-shadow-recovery.test.mjs
+      - name: Ensure commercial and canary boundaries remain untouched
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          grep -q '"RISK_STREAM_ACTIVE": "0"' workers/risk-stream-shadow/wrangler.shadow.example.jsonc
+          grep -q '"STREAM_INGESTION_ENABLED": "false"' workers/risk-stream-shadow/wrangler.shadow.example.jsonc
