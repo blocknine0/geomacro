@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {createHash,generateKeyPairSync,randomBytes,sign} from "node:crypto";
-import {processRiskStreamBatch,enqueueRiskStreamEvents,
+import {processRiskStreamBatch,enqueueRiskStreamEvents,consumeRiskStreamQueue,
  inspectRiskStreamCandidates,riskStreamOriginalClaims}
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
 
@@ -270,4 +270,31 @@ test("GDELT index cannot claim original status even with two forged machine atte
  item.proof.rights_signature_b64=prove(claim,c.rights,"geomacro.machine-commercial-rights.v1");
  await assert.rejects(inspectRiskStreamCandidates([item],now),
   /RISK_STREAM_INDEX_ONLY_DISCOVERY_NOT_ORIGINAL/u);
+});
+
+test("true 220-event producer-to-Cloudflare-Queue-to-D1-to-GRO path ACKs all messages with no 503 responses",async()=>{
+ const c=ctx(),now=Date.now(),items=[],responses=[];
+ c.db.inject503=false;
+ for(let i=0;i<110;i++)items.push(candidate(c,i+300,"gov",now),
+  candidate(c,i+300,"region",now));
+ for(let i=0;i<items.length;i+=100){
+  const response=await enqueueRiskStreamEvents(c.env,{
+   schema:"geomacro.risk-stream-ingest-batch.v1",items:items.slice(i,i+100)
+  },now);
+  responses.push(response.status);
+ }
+ assert.deepEqual(responses,[202,202,202]);
+ assert.equal(c.env.messages.length,220);
+ let acked=0,retried=0;
+ for(let i=0;i<c.env.messages.length;i+=10){
+  const segment=c.env.messages.slice(i,i+10).map(item=>({
+   body:item.body,ack(){acked++},retry(){retried++}
+  }));
+  const result=await consumeRiskStreamQueue({messages:segment},c.env);
+  assert.equal(result.status,"PASS");
+ }
+ assert.equal(acked,220);assert.equal(retried,0);
+ assert.equal(c.db.evidence.size,220);assert.equal(c.db.gros.size,110);
+ assert.equal(c.db.outbox.size,110);
+ assert.equal(c.db.http503Faults,0);
 });
