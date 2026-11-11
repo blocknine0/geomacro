@@ -1,5 +1,7 @@
 import {websiteRiskRawPage,websiteRiskRawAck,websiteRiskRawRead,
  WEBSITE_RISK_RAW_LANE} from "./derived-risk-gate-website-raw.mjs";
+import {enqueueDerivedDiscoveryAck,readDerivedDiscoveryAckReceipt}
+ from "./derived-discovery-queue.mjs";
 /**
  * Restricted-source, ALL-INGESTED D1 discovery intake for GeoMacro Risk Gates.
  * Five existing ingestion lanes, no provider pulls and no original expression
@@ -220,6 +222,10 @@ async function pruneExpiredSignals(env,now){
   const websiteRemoved=await env.DB.prepare(
    "DELETE FROM derived_risk_gate_website_raw_signals WHERE first_seen_at<?"
   ).bind(cutoff).run();
+  const receiptsRemoved=await env.DB.prepare(
+   "DELETE FROM derived_discovery_ack_receipts WHERE committed_at<?"
+  ).bind(cutoff).run();
+  if(receiptsRemoved?.success===false)throw Error("DISCOVERY_RECEIPT_PRUNE_FAILED");
   if(websiteRemoved?.success===false)throw Error("DISCOVERY_WEBSITE_PRUNE_FAILED");
   const existing=await env.DB.prepare(
    "SELECT EXISTS(SELECT 1 FROM derived_risk_gate_all_discovery_signals "+
@@ -235,6 +241,9 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
  if(!env?.DB?.prepare||!Number.isFinite(now))
   return response({ok:false,error:"DISCOVERY_D1_UNAVAILABLE"},503);
  const url=new URL(request.url);
+ if(request.method==="GET"&&url.searchParams.get("view")==="ack_receipt"&&
+    url.searchParams.size===2&&url.searchParams.getAll("digest").length===1)
+   return readDerivedDiscoveryAckReceipt(env,url.searchParams.get("digest"));
  if(request.method==="GET"&&url.searchParams.get("view")==="pending")
   return pendingQueue(env,url.searchParams,now);
  // Root-admin-only raw GeoMacro-created Website Intelligence reference reader.
@@ -262,8 +271,12 @@ export async function handleDerivedRiskGateDiscovery(request,env,now=Date.now())
       body.schema===DERIVED_DISCOVERY_BRIDGE_SCHEMA&&
       body.operation==="PRUNE_DISCOVERY_72H")
      return pruneExpiredSignals(env,now);
-   if(body?.lane===WEBSITE_RISK_RAW_LANE)
+   if(body?.lane===WEBSITE_RISK_RAW_LANE){
+    // Cutover requires both protected migration and bound Queue; no fail-open.
+    if(env?.DERIVED_DISCOVERY_QUEUE_ENABLED==="1")
+      return enqueueDerivedDiscoveryAck(request,env,body,now);
     return websiteRiskRawAck(env,body,now);
+   }
    return commitPage(env,body,now);
   }catch{return response({ok:false,error:"DISCOVERY_ACK_INVALID"},400);}
  }

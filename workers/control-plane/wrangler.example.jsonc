@@ -16,7 +16,8 @@
     "RISK_GATE_COUNTRY_SCOPE": "HOT50",
     "RISK_STREAM_ACTIVE": "0",
     "STREAM_INGESTION_ENABLED": "false",
-    "STREAM_MODE": "DISABLED"
+    "STREAM_MODE": "DISABLED",
+    "DERIVED_DISCOVERY_QUEUE_ENABLED": "0"
   },
   "triggers": {
     "crons": [
@@ -50,6 +51,10 @@
   "queues": {
     "producers": [
       {
+        "binding": "DERIVED_DISCOVERY_QUEUE",
+        "queue": "geomacro-derived-discovery"
+      },
+      {
         "binding": "INGEST_QUEUE",
         "queue": "geomacro-ingestion-spool"
       },
@@ -67,6 +72,15 @@
       }
     ],
     "consumers": [
+      {
+        "queue": "geomacro-derived-discovery",
+        "max_batch_size": 1,
+        "max_batch_timeout": 2,
+        "max_retries": 3,
+        "retry_delay": 15,
+        "dead_letter_queue": "geomacro-derived-discovery-dlq",
+        "max_concurrency": 1
+      },
       {
         "queue": "geomacro-ingestion-spool",
         "max_batch_size": 25,
