@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-11T17:03:26.218Z",
+  "checked_at": "2026-11-11T17:21:22.201Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 42,
+  "item_count": 46,
   "counts": {
     "geopolitics": 4,
-    "macro": 23,
-    "rare_earth": 15
+    "macro": 26,
+    "rare_earth": 16
   },
-  "source_native_ids_sha256": "42788a201605f2f2bb3f939a413ce6e597b0994090f88e22ab9a0ece7fc4905b",
+  "source_native_ids_sha256": "0d6340016df24ed5a4df8c386c21729c1f8a7154006c1b3b0db8c9549436d9d1",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,82 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-4cb282db",
+      "category": "macro",
+      "title": "Geomacro finds Court of Audit raised Concerns Over Dutch Gold Reserves - Holland Gold",
+      "what_changed": "A monitored source feed reports: Court of Audit raised Concerns Over Dutch Gold Reserves - Holland Gold. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T16:15:32.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-93439b1e",
+      "category": "macro",
+      "title": "Geomacro finds Amul raised milk prices by up to 5.5%; check new rates of Taaza, Gold - The Statesman",
+      "what_changed": "A monitored source feed reports: Amul raised milk prices by up to 5.5%; check new rates of Taaza, Gold - The Statesman. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T14:24:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-04e791e8",
+      "category": "macro",
+      "title": "Geomacro finds Amul raised milk prices for second time in six months: Gold up by ₹4 per litre and Taaza by ₹2; new rates e... - Bhaskar English",
+      "what_changed": "A monitored source feed reports: Amul raised milk prices for second time in six months: Gold up by ₹4 per litre and Taaza by ₹2; new rates e... - Bhaskar English. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T13:49:54.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-bc0a4a34",
+      "category": "rare_earth",
+      "title": "Geomacro finds Lithium Americas raised Thacker Pass cost estimate by 31%",
+      "what_changed": "A monitored source feed reports: Lithium Americas raised Thacker Pass cost estimate by 31%. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T13:23:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-dc4e9653",
       "category": "macro",
