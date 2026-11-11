@@ -61,3 +61,79 @@ Require >10 unique native-clock private observations with D1 exact readback,
 zero acknowledged data drops and DLQ operational proof, verified signed
 reviewed GRI parent with dual-authority lineage, complete 3-category current
 indices, and measured warm cache latency. Do not bypass commercial hold.
+
+## 2026-11-12 permanent Web discovery transport failover
+
+The external Worker POST can return 503 when the canary-held 100% deployed
+Control Plane version lacks the discovery producer. Rather than declaring the
+entire cycle a success without D1 proof, the protected 20-minute workflow
+now has a **direct Cloudflare Queues REST fallback** for Website Intelligence:
+
+1. After the original Worker POST's bounded 2/5/10-second transient retry
+   returns HTTP 503, the runner uses its protected production Cloudflare
+   account/API token and canonical D1 database UUID. No credential is logged.
+2. Before pushing, read the exact indexed D1 `derived_discovery_ack_receipts`
+   row for the immutable payload SHA-256 digest. A confirmed previous commit
+   is idempotently accepted, with no new Queue message.
+3. Verify exactly one `geomacro-derived-discovery` queue and a provider-
+   listed trusted consumer pointing at `geomacro-derived-discovery-dlq`.
+   Any missing consumer or DLQ is HOLD, not a fake D1 commit.
+4. Publish the unchanged protected, rights-held envelope to Cloudflare's
+   `POST /accounts/{account_id}/queues/{queue_id}/messages` API with
+   `{content_type:"json",body:...}`. A successful Queue API response is
+   *transport acceptance only*.
+5. Poll the exact D1 receipt for at most 30 seconds, using `digest`
+   parameter binding and read-only SQL. Confirm matching lane, page hash,
+   and admitted count, plus original consumer's atomic cursor/readback gate.
+   If absent, leave the lane incomplete with a bounded HOLD. Never advance
+   an unacknowledged cursor, invent an index, or silently turn 503 into PASS.
+6. The separate no-public-route `geomacro-derived-discovery-consumer`
+   script may be deployed under the protected production workflow. It uses
+   the reviewed `websiteRiskRawAck` 3-statement atomic D1 batch and the
+   existing 3-retry/DLQ policy. Do **not** register two consumers for the
+   same queue. The main Worker keeps its discovery producer; the sidecar
+   owns its sole discovery consumer. The standard deploy workflow must not
+   erase discovery producer bindings when P0-B is OFF.
+
+### Protected cutover commands (owner GitHub authentication)
+
+    gh pr checks <recovery-pr> -R blocknine0/geomacro
+    gh pr merge <recovery-pr> -R blocknine0/geomacro --merge
+    gh workflow run deploy-derived-discovery-consumer.yml \
+      -R blocknine0/geomacro --ref main \
+      -f approval=DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS
+    gh workflow run derived-risk-gate-discovery-20m.yml \
+      -R blocknine0/geomacro --ref main
+
+The isolated-consumer run MUST prove exact current main, protected environment,
+monthly D1 headroom, the physical 0215 schema, queue/DLQ identity, absence of
+competing queue consumers and post-deploy provider consumer binding. It does
+not promote the held Control Plane Worker, enable commercial deliveries,
+modify D1 migrations, or remove the canary HOLD. A separately protected
+canonical Worker canary still must be completed before claiming its own
+`DERIVED_DISCOVERY_QUEUE` producer binding is live.
+
+### Event-driven Risk Gate and GRI boundary
+
+The existing stream supports 10-event Queue micro-batches and independent
+facts/rights Ed25519 attestations. It is not capped at 150 events/day in code;
+production is still gated by RISK_STREAM_ACTIVE and
+STREAM_INGESTION_ENABLED, source registry, independent originals, physical
+shadow proof, provider quotas, and the protected promotion workflow. Do not
+flip the flags from this discovery recovery.
+
+The existing GRI v1.2 signed parent -> verified D1 indices -> B2/Edge publisher
+is the ONLY path to certified numerical 7D/30D three-domain indices. These
+RIGHTS-UNVERIFIED discovery rows are research material and cannot be directly
+signed into a current certified GRI, regardless of an Ed25519 key's presence.
+The Website's /api/risk-indices endpoint is not the Control Plane's root
+/api/risk-indices path. Verify the signed parent first, then probe the
+Website route and the independent risk-indices edge; report HTTP status
+and measured warm latency, never synthetic 200 or cached expired scores.
+
+### Offline commands
+
+    node --check scripts/lib/derived-discovery-cloudflare-direct.mjs
+    node --test scripts/tests/derived-discovery-cloudflare-direct.test.mjs
+    node --test scripts/tests/isolated-derived-discovery-consumer.test.mjs
+    node --test scripts/tests/owner-gateway-canary-stages.test.mjs
