@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS risk_stream_shadow_audit_receipts (
  d1_write_p95_ms REAL,
  batch_elapsed_ms REAL NOT NULL,
  result_status TEXT NOT NULL CHECK(result_status IN
-  ('PASS_ZERO_503','HOLD_503_OBSERVED'))
+  ('PASS_ZERO_503_SIGNED_READBACK','PASS_ZERO_503_NO_SIGNING_PROOF','HOLD_503_OBSERVED'))
 );
 CREATE INDEX IF NOT EXISTS idx_shadow_audit_recent
   ON risk_stream_shadow_audit_receipts(started_at DESC);
