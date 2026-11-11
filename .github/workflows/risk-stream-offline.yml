@@ -25,9 +25,9 @@ jobs:
           node --check workers/control-plane/src/risk-stream-pipeline.mjs
           node --check scripts/tests/risk-stream-pipeline.test.mjs
           node --check workers/control-plane/src/risk-stream-b2-governor.mjs
-          node --check scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs
+          node --check scripts/tests/risk-stream-b2-governor.test.mjs
           node --check workers/control-plane/src/risk-stream-delivery.mjs
           node --check scripts/tests/risk-stream-delivery.test.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs
