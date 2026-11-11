@@ -6,8 +6,8 @@
   "new_http_requests": 18,
   "statuses": {
     "WORKING": 170,
-    "NO_NEW_EVENT": 29,
-    "SOURCE_UNAVAILABLE": 10,
+    "NO_NEW_EVENT": 28,
+    "SOURCE_UNAVAILABLE": 11,
     "UNSUPPORTED_FORMAT": 18,
     "RIGHTS_PENDING": 0,
     "QUOTA_HELD": 0,
@@ -26,7 +26,7 @@
       "cells": 195,
       "registered_local_source_cells": 85,
       "no_local_source_cells": 110,
-      "live_fetched_local_source_cells": 69,
+      "live_fetched_local_source_cells": 68,
       "verified_country_events": 0,
       "commercially_eligible_country_events": 0
     },
