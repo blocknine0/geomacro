@@ -32,6 +32,17 @@ const b64bytes=value=>{
  if(btoa(String.fromCharCode(...bytes))!==value)fail("SIGNATURE_ENCODING_INVALID");
  return bytes;
 };
+const archiveB64bytes=value=>{
+ if(typeof value!=="string"||value.length>280000||
+    !/^[A-Za-z0-9+/]+={0,2}$/u.test(value))fail("ARCHIVE_BASE64_INVALID");
+ return Uint8Array.from(atob(value),c=>c.charCodeAt(0));
+};
+const archiveB64Encode=bytes=>{
+ let result="";
+ for(let i=0;i<bytes.length;i+=8192)
+  result+=String.fromCharCode(...bytes.subarray(i,i+8192));
+ return btoa(result);
+};
 const trustedKey=async value=>{
  const b=b64bytes(value);
  if(b.byteLength!==44)fail("TRUST_KEY_INVALID");
@@ -171,8 +182,8 @@ async function privateArchiveR2(items,env){
  }))));
  const identity=await sha(plaintext),iv=crypto.getRandomValues(new Uint8Array(12));
  const cipher=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plaintext));
- const packed=JSON.stringify({v:1,alg:"AES-256-GCM",iv:btoa(String.fromCharCode(...iv)),
-  ciphertext:btoa(String.fromCharCode(...cipher)),sha256:identity});
+ const packed=JSON.stringify({v:1,alg:"AES-256-GCM",iv:archiveB64Encode(iv),
+  ciphertext:archiveB64Encode(cipher),sha256:identity});
  const bytes=encode(packed),archiveSha=await sha(bytes);
  const objectKey="risk-stream/private/v1/"+identity.slice(0,2)+"/"+identity+".json";
  await env.RISK_STREAM_PRIVATE_R2.put(objectKey,bytes);
@@ -184,7 +195,7 @@ async function privateArchiveR2(items,env){
  // Verify the independently fetched ciphertext can actually be decrypted.
  const restored=JSON.parse(new TextDecoder().decode(remoteBytes));
  const decrypted=await crypto.subtle.decrypt(
-  {name:"AES-GCM",iv:b64bytes(restored.iv)},key,b64bytes(restored.ciphertext));
+  {name:"AES-GCM",iv:archiveB64bytes(restored.iv)},key,archiveB64bytes(restored.ciphertext));
  if(await sha(decrypted)!==identity)fail("ARCHIVE_DECRYPTED_READBACK_MISMATCH");
  return {objectKey,archiveSha};
 }
@@ -221,9 +232,15 @@ async function loadCorroborated(db,items,now,options){
   "SELECT observation_id,country_iso3,category,event_fingerprint,source_id,"+
   "publisher_root_domain,parent_media_entity,source_role,published_at,entities_json,"+
   "derived_json,original_page_sha256,original_verified,private_r2_object_key "+
-  "FROM risk_stream_evidence WHERE event_fingerprint IN (SELECT value FROM json_each(?)) "+
-  "AND published_at>=? ORDER BY event_fingerprint,published_at LIMIT 501")
-  .bind(JSON.stringify(fingerprints),new Date(now-HOURS72).toISOString()).all(),options);
+  "FROM risk_stream_evidence e JOIN risk_stream_sources s "+
+  "ON s.source_id=e.source_id AND s.enabled=1 AND s.commercial_rights_approved=1 "+
+  "AND s.publisher_root_domain=e.publisher_root_domain "+
+  "AND s.parent_media_entity=e.parent_media_entity "+
+  "AND (s.rights_expire_at IS NULL OR s.rights_expire_at>?) "+
+  "WHERE e.event_fingerprint IN (SELECT value FROM json_each(?)) "+
+  "AND e.published_at>=? ORDER BY e.event_fingerprint,e.published_at LIMIT 501")
+  .bind(new Date(now).toISOString(),JSON.stringify(fingerprints),
+    new Date(now-HOURS72).toISOString()).all(),options);
  if(!Array.isArray(r?.results)||r.results.length>500)fail("CORROBORATION_READBACK_LIMIT");
  const grouped=new Map();
  for(const x of r.results){
