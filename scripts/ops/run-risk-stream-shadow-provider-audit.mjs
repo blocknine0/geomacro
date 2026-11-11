@@ -129,13 +129,16 @@ async function provision(){
   console.log("SHADOW_INDEPENDENT_ATTESTER_PUBLIC_KEYS_CONFIGURED");
  }else console.log("SHADOW_ORIGINAL_EVIDENCE_ATTESTER_KEYS_MISSING_HOLD");
  // Do not put any private key, AES material or admin bearer into logs/artifacts.
- wrangler(["deploy","--config",CONFIG]);
+ const deployReceipt=wrangler(["deploy","--config",CONFIG]);
+ const deployedUrl=deployReceipt.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/iu)?.[0];
+ ok(!!deployedUrl,"SHADOW_WORKERS_DEV_URL_NOT_VERIFIED");
  for(const [k,v] of [
   ["STREAM_SHADOW_ADMIN_BEARER",admin],["RISK_STREAM_AES256_KEY_B64",aes],
   ["RISK_STREAM_GRO_SIGN_PKCS8_B64",groPrivate],
   ["RISK_STREAM_GRO_VERIFY_SPKI_B64",groPublic]])secret(k,v);
  console.log("SHADOW_ONLY_WORKER_DEPLOYED_NO_CUSTOMER_ROUTES");
  mkdirSync(".shadow-audit",{recursive:true});
+ writeFileSync(".shadow-audit/worker-url.txt",deployedUrl+"\n");
  writeFileSync(".shadow-audit/metadata.json",JSON.stringify({
   schema:"geomacro.shadow-provider-provision.v1",source_commit:SHA,
   executed_commit:main,shadow_db:DB,shadow_bucket:BUCKET,shadow_queue:QUEUE,
