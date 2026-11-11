@@ -3,6 +3,14 @@
 export const RSS_FEEDS=Object.freeze([
  {id:"REUTERS_INDEX",url:"https://www.reutersagency.com/feed/?best-topics=top-news&post_type=best"},
  {id:"AP_INDEX",url:"https://apnews.com/hub/ap-top-news?output=rss"},
+ // Reuters/AP do not reliably operate direct public RSS endpoints. These
+ // Google News search feeds are INDEX ONLY, never publisher originals or
+ // rights/corroboration attestations. Store the Google link as an index hint.
+ {id:"REUTERS_VIA_GOOGLE_NEWS_INDEX",
+  url:"https://news.google.com/rss/search?q=site%3Areuters.com+when%3A24h&hl=en-US&gl=US&ceid=US%3Aen"},
+ {id:"AP_VIA_GOOGLE_NEWS_INDEX",
+  url:"https://news.google.com/rss/search?q=site%3Aapnews.com+when%3A24h&hl=en-US&gl=US&ceid=US%3Aen"},
+ {id:"BBC_TOP",url:"https://feeds.bbci.co.uk/news/rss.xml"},
  {id:"BBC_WORLD",url:"https://feeds.bbci.co.uk/news/world/rss.xml"},
  {id:"BBC_ASIA",url:"https://feeds.bbci.co.uk/news/world/asia/rss.xml"},
  {id:"BBC_BUSINESS",url:"https://feeds.bbci.co.uk/news/business/rss.xml"},
