@@ -78,13 +78,13 @@ test('fresh Wrangler structured version-upload event pins the immutable candidat
   {type:'wrangler-session',version:1,command_line_args:['versions','upload']},
   {type:'version-upload',worker_name:'geomacro-control-plane',
    version_id:id,timestamp:'2026-11-11T05:44:22Z'}
- ].map(x=>JSON.stringify(x)).join('\\n')+'\\n';
+ ].map(x=>JSON.stringify(x)).join('\n')+'\n';
  assert.equal(uploadedVersionIdFromWranglerEvents(lines),id);
 });
 test('ambiguous, stale or cross-worker upload receipts are rejected',()=>{
  const upload={type:'version-upload',worker_name:'geomacro-control-plane',
   version_id:'12345678-1234-4123-8123-123456789abc'};
- const run=events=>events.map(x=>JSON.stringify(x)).join('\\n');
+ const run=events=>events.map(x=>JSON.stringify(x)).join('\n');
  assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([upload,upload])),
   /RECEIPT_MISSING_OR_AMBIGUOUS/);
  assert.throws(()=>uploadedVersionIdFromWranglerEvents(run([{type:'deploy'}])),
@@ -101,6 +101,6 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  const source=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
  assert.match(source,/WRANGLER_OUTPUT_FILE_PATH/u);
  assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
- assert.match(source,/get\\('\/versions\/'\\+uploadedId\\)/u);
+ assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
  assert.doesNotMatch(source,/versions\\?deployable=true/u);
 });
