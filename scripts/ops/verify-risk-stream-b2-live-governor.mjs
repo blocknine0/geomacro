@@ -23,12 +23,26 @@ async function readEndpoint(base,{bearer,fetchImpl}){
  if(!r.ok)throw Error("B2_LIVE_QUOTA_HTTP_"+r.status);
  const live=await r.json();
  const day=new Date().toISOString().slice(0,10);
- if(live?.ok!==true||live.schema!=="geomacro.b2-account-quota-status.v1"||
-    live.day_utc!==day||!live.used||!live.limits||
-    required.some(k=>live.limits[k]!==B2_DAILY_LIMITS[k]||
-      !Number.isSafeInteger(live.used[k])||live.used[k]<0||
-      live.used[k]>B2_DAILY_LIMITS[k]))
-  throw Error("HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT");
+ // Keep a bounded, non-credential diagnostic: the policy/ledger counters
+ // are not secrets. A mismatch is never promoted to PASS by the fallback.
+ const reason=live?.ok!==true?"STATUS_NOT_OK":
+   live?.schema!=="geomacro.b2-account-quota-status.v1"?"SCHEMA":
+   live?.day_utc!==day?"UTC_DAY":
+   !live?.used||!live?.limits?"MISSING_FIELDS":
+   required.some(k=>live.limits[k]!==B2_DAILY_LIMITS[k])?"LIMITS":
+   required.some(k=>!Number.isSafeInteger(live.used[k])||live.used[k]<0||
+      live.used[k]>B2_DAILY_LIMITS[k])?"USAGE_COUNTS":null;
+ if(reason){
+  const bounded=Object.fromEntries(required.map(k=>[k,{
+   expected_limit:B2_DAILY_LIMITS[k],
+   received_limit:Number.isFinite(live?.limits?.[k])?live.limits[k]:null,
+   received_used:Number.isFinite(live?.used?.[k])?live.used[k]:null}]));
+  throw Error("HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT_"+reason+" "+
+   JSON.stringify({expected_day:day,
+    received_day:typeof live?.day_utc==="string"?live.day_utc.slice(0,16):null,
+    received_schema:typeof live?.schema==="string"?live.schema.slice(0,80):null,
+    counters:bounded}));
+ }
  return {schema:"geomacro.shadow-b2-governor-parity.v1",
    status:"D1_SHARED_GOVERNOR_MATCH",day_utc:day,
    limits:B2_DAILY_LIMITS,used:live.used,mode:"PRIVATE_R2_ONLY",
