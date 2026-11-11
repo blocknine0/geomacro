@@ -15,6 +15,7 @@ on:
       - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
       - "scripts/ops/deploy-risk-stream-governor-candidate.mjs"
+      - "scripts/ops/ingest-risk-stream-shadow-originals.mjs"
       - "scripts/ops/verify-risk-stream-governor-candidate.mjs"
       - "workers/risk-stream-governor-candidate/**"
   workflow_dispatch:
@@ -40,6 +41,7 @@ jobs:
       GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
       RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
       RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+      RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64: ${{ secrets.RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -117,6 +119,10 @@ jobs:
           GEOMACRO_SHADOW_WORKERS_DEV_URL="$(tr -d '\r\n' < .shadow-audit/worker-url.txt)"
           export GEOMACRO_SHADOW_WORKERS_DEV_URL
           node scripts/ops/run-risk-stream-shadow-provider-audit.mjs ingest
+      - name: Ingest ten genuinely independent signed original pairs using source registry authority
+        if: env.RISK_STREAM_SHADOW_ORIGINALS_GZIP_B64 != ''
+        continue-on-error: true
+        run: node scripts/ops/ingest-risk-stream-shadow-originals.mjs
       - name: Read isolated Queue and D1 canonical/receipt census (diagnostic only)
         if: always()
         continue-on-error: true

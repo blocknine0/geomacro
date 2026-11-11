@@ -86,7 +86,7 @@ async function main(argv){
   "DUPLICATE_OPTION_INVALID");
  const configFile=w===-1?null:argv[w+1];
  const filenames=argv.filter((x,i)=>x!=="--apply"&&
-  x!=="--stage-originals"&&x!=="--worker-config"&&i!==w+1);
+  x!=="--stage-originals"&&x!=="--worker-config"&&(w===-1||i!==w+1));
  assert(!stage||apply,"ORIGINALS_STAGING_REQUIRES_APPLY");
  assert(filenames.length===3&&
   (!configFile||apply),"USAGE_facts.spki_b64_rights.spki_b64_real-originals.jsonl_--apply_[--worker-config_file]");

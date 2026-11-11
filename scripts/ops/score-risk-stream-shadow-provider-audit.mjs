@@ -40,7 +40,12 @@ const checks={
  ten_signed_gros_with_d1_ed25519_readback:
   n(tel?.signed_gro_count)>=10&&
   n(tel?.verified_signature_readback_count)>=10&&
-  tel?.independent_signed_gro_acceptance===true
+  tel?.independent_signed_gro_acceptance===true&&
+  tel?.external_production_registry_readonly_proven===true&&
+  tel?.original_events_submitted===20&&
+  tel?.original_events_registry_approved===20&&
+  tel?.original_private_r2_pointer_count===20&&
+  tel?.original_d1_503_observed===0
 };
 const passed=Object.values(checks).every(Boolean);
 const report={
