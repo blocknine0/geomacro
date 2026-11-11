@@ -174,6 +174,8 @@ export async function websiteRiskRawAck(env,body,now=Date.now()){
     r.first_seen_at,r.source_sha]);
   }
   const created=new Date(now).toISOString();
+  // Queue delivery digest is persisted in the SAME atomic transaction.
+  const deliveryDigest=await hash(JSON.stringify(body));
   // On a completed pass restart next cycle from the first 72h record.
   // This checks amended website-owned story_json even though immutable
   // first_seen_at has not changed. No duplicate rows or invented timestamps.
@@ -200,10 +202,15 @@ export async function websiteRiskRawAck(env,body,now=Date.now()){
     "ON CONFLICT(single) DO UPDATE SET cursor_at=excluded.cursor_at,"+
     "cursor_story_id=excluded.cursor_story_id,updated_at=excluded.updated_at"
    ).bind(nextAt,nextId,created),
+   env.DB.prepare(
+    "INSERT INTO derived_discovery_ack_receipts "+
+    "(digest,lane,page_sha256,admitted,committed_at) VALUES (?,?,?,?,?) "+
+    "ON CONFLICT(digest) DO NOTHING"
+   ).bind(deliveryDigest,WEBSITE_RISK_RAW_LANE,body.page_sha256,payload.length,created),
   ]);
   if(!Array.isArray(batch)||batch.some(x=>x?.success===false))
    throw Error("WEBSITE_RISK_RAW_ATOMIC_ACK_FAILED");
-  const [verified,cursor]=await Promise.all([
+  const [verified,cursor,receipt]=await Promise.all([
    env.DB.prepare(
     "SELECT signal_id,website_story_id,category,source_clock_at,"+
     "first_seen_at,source_sha256,rights_state,review_status "+
@@ -213,10 +220,15 @@ export async function websiteRiskRawAck(env,body,now=Date.now()){
    env.DB.prepare(
     "SELECT cursor_at,cursor_story_id FROM derived_risk_gate_website_raw_cursor WHERE single=1"
    ).first(),
+   env.DB.prepare("SELECT digest,lane,page_sha256,admitted FROM derived_discovery_ack_receipts WHERE digest=?")
+     .bind(deliveryDigest).first(),
   ]);
   if(!Array.isArray(verified?.results)||
      verified.results.length!==payload.length||
      cursor?.cursor_at!==nextAt||cursor?.cursor_story_id!==nextId||
+     receipt?.digest!==deliveryDigest||receipt?.lane!==WEBSITE_RISK_RAW_LANE||
+     receipt?.page_sha256!==body.page_sha256||
+     receipt?.admitted!==payload.length||
      payload.some(x=>!verified.results.some(v=>
        v.signal_id===x[0]&&v.website_story_id===x[1]&&
        v.category===x[2]&&v.source_clock_at===x[3]&&

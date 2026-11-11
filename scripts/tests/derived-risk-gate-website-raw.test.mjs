@@ -38,13 +38,15 @@ function stored(s){
 class D1 {
  constructor(rows=[]){
   this.journal=new Map(rows.map(r=>[r.id,r]));
-  this.websiteSignals=new Map();this.cursor=null;this.queries=[];
+  this.websiteSignals=new Map();this.cursor=null;this.queries=[];this.receipts=new Map();
  }
  prepare(sql){
   const state={sql,args:[]},db=this;
   const bound={
    _state:state,
    async first(){
+    if(sql.includes("FROM derived_discovery_ack_receipts WHERE digest=?"))
+     return db.receipts.get(state.args[0])??null;
     if(sql.includes("FROM derived_risk_gate_website_raw_cursor"))
      return db.cursor;
     if(sql.includes("FROM derived_risk_gate_website_raw_signals WHERE signal_id=?"))
@@ -57,6 +59,11 @@ class D1 {
     throw Error("unexpected first "+sql);
    },
    async run(){
+    if(sql.includes("DELETE FROM derived_discovery_ack_receipts")){
+     for(const [digest,row] of db.receipts)
+      if(row.committed_at<state.args[0])db.receipts.delete(digest);
+     return {success:true};
+    }
     if(sql.includes("DELETE FROM derived_risk_gate_website_raw_signals")){
      for(const [id,row] of db.websiteSignals)
       if(row.first_seen_at<state.args[0])db.websiteSignals.delete(id);
@@ -119,6 +126,10 @@ class D1 {
     }
    }else if(sql.includes("INSERT INTO derived_risk_gate_website_raw_cursor")){
     this.cursor={cursor_at:args[0],cursor_story_id:args[1]};
+   }else if(sql.includes("INSERT INTO derived_discovery_ack_receipts")){
+    const [digest,lane,page_sha256,admitted,committed_at]=args;
+    if(!this.receipts.has(digest))this.receipts.set(digest,
+      {digest,lane,page_sha256,admitted,committed_at});
    }else throw Error("unexpected batch "+sql);
   }
   return statements.map(()=>({success:true}));

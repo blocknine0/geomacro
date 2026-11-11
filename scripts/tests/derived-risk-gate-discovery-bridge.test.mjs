@@ -31,6 +31,8 @@ class FakeD1 {
     return null;
    },
    async run(){
+    if(sql.includes("DELETE FROM derived_discovery_ack_receipts"))
+     return {success:true};
     if(sql.includes("DELETE FROM derived_risk_gate_website_raw_signals"))
      return {success:true};
     if(sql.includes("DELETE FROM derived_risk_gate_discovery_signals")){

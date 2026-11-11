@@ -55,6 +55,7 @@ import {readIncrementalWebsiteCategoryFeed} from "./website-incremental-feed.mjs
 import {putUnifiedEvents,readUnifiedEvents,exportUnifiedEvents,reserveUnifiedEventArchiveSlot,verifyUnifiedB2Archive,ackUnifiedEventsArchive,pruneUnifiedEvents} from "./unified-event-stream.mjs";
 import {pingUnifiedIngestorHealth} from "./unified-ingestor-keepalive.mjs";
 import {handleDerivedRiskGateDiscovery} from "./derived-risk-gate-discovery-bridge.mjs";
+import {consumeDerivedDiscoveryQueue} from "./derived-discovery-queue.mjs";
 import {getSourceRuntimeContext,getSourceRuntimeStatus} from "./source-runtime-status.mjs";
 import {pollP0aSources,handleP0aAdmin} from './p0a-source-registry.mjs';
 import {dispatchP1DueSources,consumeP1SourcePollBatch,p1SourceCoverageHealth,p1UpsertSourceCellMap}
@@ -1562,6 +1563,8 @@ export default {
     }
   },
   async queue(batch,env,ctx){
+    if(batch?.queue==='geomacro-derived-discovery')
+      return consumeDerivedDiscoveryQueue(batch,env);
     if(batch?.queue==='geomacro-risk-stream'){
       const receipt=await consumeRiskStreamQueue(batch,env,ctx);
       ctx.waitUntil(dispatchRiskStreamOutbox(env).catch(()=>
