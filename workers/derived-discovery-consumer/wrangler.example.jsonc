@@ -1,0 +1,29 @@
+{
+  "name": "geomacro-derived-discovery-consumer",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-10-03",
+  "workers_dev": false,
+  "vars": {
+    "DERIVED_DISCOVERY_SCOPE": "WEBSITE_UNVERIFIED_ONLY"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "geomacro-control-plane",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+  "queues": {
+    "consumers": [
+      {
+        "queue": "geomacro-derived-discovery",
+        "max_batch_size": 1,
+        "max_batch_timeout": 2,
+        "max_retries": 3,
+        "retry_delay": 15,
+        "dead_letter_queue": "geomacro-derived-discovery-dlq",
+        "max_concurrency": 1
+      }
+    ]
+  }
+}
