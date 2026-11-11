@@ -223,21 +223,37 @@ async function privateArchiveR2(items,env){
  return {objectKey,archiveSha};
 }
 async function appendCanonical(db,rows,archive,now,options){
- const placeholders=rows.map(()=>"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
- const values=rows.flatMap(e=>[
-  e.observation_id,e.country_iso3,e.category,e.event_fingerprint,
-  e.source_id,e.publisher_root_domain,e.parent_media_entity,e.source_role,
-  e.published_at,JSON.stringify(e.entities),JSON.stringify(e.derived),
-  e.original_page_sha256,e.original_verified?1:0,e.source_url_sha256,
-  e.kind==="VERIFIED_ORIGINAL"?archive?.objectKey:null,
-  new Date(now).toISOString()
- ]);
- await boundedD1(()=>db.prepare("INSERT OR IGNORE INTO risk_stream_evidence ("+
+ // Cloudflare D1 permits at most 100 bindings per SQL statement.
+ // 16 fields * 10 events = 160, so a naive single INSERT never works live.
+ // Keep the 10-event Queue micro-batch intact but split it into 6+4 rows
+ // inside ONE atomic D1 batch transaction (96 and 64 bindings).
+ const paramsPerRow=16,cloudflareD1BindCap=100;
+ const rowsPerStatement=Math.floor(cloudflareD1BindCap/paramsPerRow);
+ const sqlPrefix="INSERT OR IGNORE INTO risk_stream_evidence ("+
   "observation_id,country_iso3,category,event_fingerprint,source_id,"+
   "publisher_root_domain,parent_media_entity,source_role,published_at,"+
   "entities_json,derived_json,original_page_sha256,original_verified,"+
-  "source_url_sha256,private_r2_object_key,received_at) VALUES "+placeholders)
-  .bind(...values).run(),options);
+  "source_url_sha256,private_r2_object_key,received_at) VALUES ";
+ const stamp=new Date(now).toISOString();
+ const statementGroups=[];
+ for(let i=0;i<rows.length;i+=rowsPerStatement)statementGroups.push(rows.slice(i,i+rowsPerStatement));
+ await boundedD1(async()=>{
+  const statements=statementGroups.map(group=>{
+   const placeholders=group.map(()=>"(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").join(",");
+   const values=group.flatMap(e=>[
+    e.observation_id,e.country_iso3,e.category,e.event_fingerprint,
+    e.source_id,e.publisher_root_domain,e.parent_media_entity,e.source_role,
+    e.published_at,JSON.stringify(e.entities),JSON.stringify(e.derived),
+    e.original_page_sha256,e.original_verified?1:0,e.source_url_sha256,
+    e.kind==="VERIFIED_ORIGINAL"?archive?.objectKey:null,stamp
+   ]);
+   if(values.length>cloudflareD1BindCap)fail("D1_BIND_PARAMETER_LIMIT");
+   return db.prepare(sqlPrefix+placeholders).bind(...values);
+  });
+  const result=await db.batch(statements);
+  if(!Array.isArray(result)||result.length!==statements.length||
+     result.some(x=>x?.success===false))fail("CANONICAL_ATOMIC_BATCH_UNVERIFIED");
+ },options);
  const r=await boundedD1(()=>db.prepare(
   "SELECT observation_id,original_page_sha256,original_verified FROM risk_stream_evidence "+
   "WHERE observation_id IN (SELECT value FROM json_each(?))")
