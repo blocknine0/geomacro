@@ -34,3 +34,27 @@
 - Zero production customer traffic, customer debits, independent reviewer certificates or canary hold changes from this run.
 
 The shadow harness is a **preparation** for live provider-backed validation, not a claim that real source attesters, cloud resources or 20–50 live events have already run.
+
+## Shadow DNS, attester and RSS recovery (12 November 2026)
+
+**Governor DNS fallback.** The production B2 policy probe first looks up api.geomacro.live and falls back to the **pinned real control-plane Worker** at https://geomacro-control-plane.daspallab202391.workers.dev for a DNS/network/404/502/503/504 route failure. It never uses the isolated shadow D1 or an arbitrary caller-controlled hostname to assert live Worker parity. A 401/403, missing worker, stale UTC date or quota policy drift remains HOLD.
+
+**Real independent attester provisioning.** Obtain two separately operated external attesters' public Ed25519 SPKI files (original-facts and commercial-rights) and secure JSONL samples of actual source-originals signed by both services. Do NOT generate substitute key pairs in GeoMacro. The script checks exact original hashes and both domain-separated signatures before any secret mutation. Run a non-mutating proof preflight first:
+
+    node scripts/ops/provision-risk-stream-shadow-attester-keys.mjs /secure/facts.spki.b64 /secure/rights.spki.b64 /secure/real-originals.jsonl
+
+When the operators' independent ownership and rights approvals are established, an authorized GitHub CLI session can install **only their public keys** into GitHub's protected production environment:
+
+    node scripts/ops/provision-risk-stream-shadow-attester-keys.mjs /secure/facts.spki.b64 /secure/rights.spki.b64 /secure/real-originals.jsonl --apply
+
+The protected workflow reads RISK_STREAM_MACHINE_FACTS_SPKI_B64 and RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 and installs the same public keys as bindings on the dedicated shadow Worker during provisioning. If that Worker is already deployed, append the following after --apply to provision directly using an existing, operator-reviewed generated shadow configuration:
+
+    --worker-config workers/risk-stream-shadow/wrangler.shadow.runtime.jsonc
+
+The script refuses a non-isolated Worker configuration or customer routes. It does not upload private attester keys, raw originals, the shared commerce root, payment secrets, or key-generating fixtures. Two different public fingerprints do not by themselves prove independent organizational ownership; confirm that separately.
+
+**GDELT 429.** The discovery feeder paces GDELT at no more than one call/second, immediately tries Reuters/AP/BBC public RSS indexes after a 429, and uses at most three exponentially delayed retries. It honors a bounded Retry-After interval, deferring longer waits to another audit. A feed failure or fewer than 20 actual recent URL observations is HOLD, not generated sample data. RSS/GDELT articles are INDEX_ONLY and cannot produce signed GROs.
+
+**Terminal acceptance.** The protected workflow retains a structured redacted scorecard and checks: live production Worker governor parity; 20–30 actual index events acknowledged by shadow D1 receipts; zero observed 503 for completed microbatches; real independently supplied attester public keys; and at least ten signed GROs with ten Ed25519 verifications against D1-readback JSON. The current index-only feeder **cannot** satisfy that final signing gate, regardless of how many links it discovers. Separate real original-source pairs with independently validated rights and both machine attestations are required. Until provided and processed, the correct terminal result is HOLD_INCOMPLETE_SHADOW_PROOF. Zero B2 shadow operations, no commercial activation, and existing canary hold are invariant.
+
+Operator dispatch: In GitHub Actions, choose Risk Stream Isolated Shadow Provider Audit and set approval to RUN_ISOLATED_SHADOW_INDEX_ONLY_NO_FUNDS. The workflow also triggers when its reviewed shadow recovery code changes on main.

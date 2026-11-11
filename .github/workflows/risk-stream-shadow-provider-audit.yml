@@ -6,6 +6,11 @@ on:
       - ".github/workflows/risk-stream-shadow-provider-audit.yml"
       - "workers/risk-stream-shadow/src/**"
       - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
+      - "scripts/lib/risk-stream-shadow-discovery.mjs"
+      - "scripts/ops/provision-risk-stream-shadow-attester-keys.mjs"
+      - "scripts/ops/score-risk-stream-shadow-provider-audit.mjs"
+      - "scripts/ops/run-risk-stream-shadow-provider-audit.mjs"
+      - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -57,6 +62,8 @@ jobs:
             exit 11
           }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
+          node --check scripts/ops/provision-risk-stream-shadow-attester-keys.mjs
+          node --check scripts/ops/score-risk-stream-shadow-provider-audit.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check workers/risk-stream-shadow/src/index.mjs
           node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
@@ -137,9 +144,24 @@ jobs:
           if test -f .shadow-audit/live-telemetry.json; then
             cat .shadow-audit/live-telemetry.json
           fi
-          # A read failure must NOT become an overall success merely because
-          # continue-on-error let the private shadow ingestion finish.
+          # A queued index URL cannot be counted as a signed original GRO.
+          # Always emit the terminal scorecard, retaining HOLD on missing proof.
+          score_status=0
+          node scripts/ops/score-risk-stream-shadow-provider-audit.mjs || score_status=$?
           if ! test -s .shadow-audit/b2-governor-parity.json; then
             echo "::error::SHADOW_GOVERNOR_PARITY_UNPROVEN_RELEASE_HOLD_RETAINED"
             exit 18
           fi
+          exit "$score_status"
+      - name: Upload redacted terminal shadow audit scorecard
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: risk-stream-shadow-provider-scorecard
+          path: |
+            .shadow-audit/metadata.json
+            .shadow-audit/b2-governor-parity.json
+            .shadow-audit/live-telemetry.json
+            .shadow-audit/scorecard.json
+          if-no-files-found: warn
+          retention-days: 7

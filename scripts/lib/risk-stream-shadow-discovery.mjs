@@ -77,19 +77,27 @@ export function createGdeltLimiter({now=Date.now,sleep=realSleep}={}){
  };
 }
 export async function discoverShadowArticles({fetchImpl=fetch,sleep=realSleep,
-  now=Date.now,log=console.log}={}){
+  now=Date.now,log=console.log,random=Math.random}={}){
  const gdelt=new URL("https://api.gdeltproject.org/api/v2/doc/doc");
  for(const [k,v] of Object.entries({
   query:'"United States" (tariffs OR sanctions OR export controls)',
   mode:"artlist",format:"json",maxrecords:"50",timespan:"24h"
  }))gdelt.searchParams.set(k,v);
  const limiter=createGdeltLimiter({now,sleep}),articles=[];
+ let retryAfterMs=0;
  async function queryGdelt(){
   await limiter();
   try{
    const response=await fetchImpl(gdelt,{signal:AbortSignal.timeout(25000),
     headers:{Accept:"application/json"},redirect:"error"});
-   if(response.status===429){log("GDELT_429_RESPECT_RETRY_RSS_FALLBACK");return "RATE_LIMIT"}
+   if(response.status===429){
+    const hint=response.headers.get("Retry-After");
+    const seconds=hint&&/^\d{1,8}$/u.test(hint)?Number(hint)*1000:null;
+    const date=seconds===null&&hint?Date.parse(hint):NaN;
+    retryAfterMs=Math.max(0,seconds??(Number.isFinite(date)?date-now():0));
+    log("GDELT_429_RESPECT_RETRY_RSS_FALLBACK");
+    return "RATE_LIMIT";
+   }
    if(!response.ok){log("GDELT_HTTP_UNAVAILABLE",response.status);return "UNAVAILABLE"}
    const data=await response.json();
    if(!Array.isArray(data?.articles))return "UNAVAILABLE";
@@ -119,7 +127,13 @@ export async function discoverShadowArticles({fetchImpl=fetch,sleep=realSleep,
   // Bounded three-stage exponential backoff; never hammer provider or infer
   // successful retrieval from a 429. 1 request/s is a minimum spacing.
   for(let stage=0;stage<3&&articles.length<20;stage++){
-   await sleep(1000*2**stage);
+   // Respect provider Retry-After. If it exceeds this diagnostic run's
+   // bounded wait budget, rely on RSS and let a later audit retry GDELT.
+   if(retryAfterMs>15000){
+    log("GDELT_RETRY_AFTER_DEFERRED_TO_NEXT_AUDIT");break;
+   }
+   await sleep(Math.max(retryAfterMs,1000*2**stage)+Math.floor(random()*250));
+   retryAfterMs=0;
    const next=await queryGdelt();
    if(next==="OK")break;
    if(next!=="RATE_LIMIT")break;
