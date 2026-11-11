@@ -18,6 +18,15 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from core import canonicalize, score_candidate
+# Exact owner-selected Hot50 scope. This bridge must never submit a non-Hot50
+# lead to the independent commercial stream, even though discovery is global.
+HOT50_ISO3 = frozenset(
+    "USA CHN IND RUS GBR DEU FRA JPN KOR BEL CAN AUS BRA MEX ITA ESP NLD CHE "
+    "NOR SWE POL UKR TUR SAU ARE IRN ISR EGY QAT OMN IRQ ZAF NGA COD ZMB "
+    "CHL PER ARG BOL IDN VNM THA MYS SGP PHL PAK BGD KAZ MNG MMR".split()
+)
+assert len(HOT50_ISO3) == 50
+
 from dispatcher import dispatch_candidate
 from sources import (
     configured_json, poll_gazettes, poll_liveuamap, poll_rss,
@@ -107,6 +116,9 @@ class Runtime:
         if (not event.get("source_url") or not event.get("published_at")
                 or not event.get("event_type") or not event.get("country_iso3")):
             return {"status": "INDEX_BRIDGE_INSUFFICIENT_METADATA"}
+        hot50 = [c for c in event["country_iso3"] if c in HOT50_ISO3][:10]
+        if not hot50:
+            return {"status": "INDEX_BRIDGE_COUNTRY_OUT_OF_SCOPE"}
         source = event["source"]
         lane = ("RSS" if source in {"central_bank_rss", "imf_dispatches", "government_gazettes"}
                 else "GDELT_INDEX" if source == "gdelt" else "PRIVATE_OSINT")
@@ -115,7 +127,7 @@ class Runtime:
              "event_type": str(event["event_type"]).upper(),
              "source": lane, "source_record_id": event["source_record_id"],
              "published_at": event["published_at"], "source_url": event["source_url"]}
-            for country in event["country_iso3"][:10]
+            for country in hot50
         ]}
         # No raw headline, licensed provider article, API token or publisher
         # text is forwarded to this narrower scoped metadata-only endpoint.

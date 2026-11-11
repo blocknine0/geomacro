@@ -64,6 +64,20 @@ class ScopedIndexBridgeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "durable admission unavailable"):
                 asyncio.run(rt.forward_index_only(self.event()))
 
+    def test_non_hot50_leads_are_not_submitted(self):
+        rt = Runtime()
+        rt.index_forward_client = ForwardStub()
+        lead = self.event()
+        lead["country_iso3"] = ["NZL"]
+        with patch.dict(os.environ, {
+            "GEOMACRO_STREAM_INDEX_LEAD_URL":
+              "https://api.geomacro.live/v1/internal/risk-stream/index-leads",
+            "RISK_STREAM_INDEX_LEAD_BEARER": "K" * 64
+        }, clear=True):
+            result = asyncio.run(rt.forward_index_only(lead))
+        self.assertEqual(result["status"], "INDEX_BRIDGE_COUNTRY_OUT_OF_SCOPE")
+        self.assertIsNone(rt.index_forward_client.request)
+
     def test_untrusted_hosts_refuse_source_export(self):
         rt = Runtime()
         rt.index_forward_client = ForwardStub()
