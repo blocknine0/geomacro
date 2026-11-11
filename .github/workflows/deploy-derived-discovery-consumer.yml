@@ -1,0 +1,176 @@
+name: Deploy isolated Derived Discovery consumer (NO FUNDS)
+# This script has NO HTTP routes; it ONLY consumes the bounded discovery
+# Queue, applies the reviewed atomic D1 writer and produces an exact receipt.
+# It does not change canonical Control Plane traffic or the canary HOLD.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/deploy-derived-discovery-consumer.yml"
+      - "workers/derived-discovery-consumer/**"
+      - "workers/control-plane/src/derived-discovery-queue.mjs"
+      - "scripts/tests/isolated-derived-discovery-consumer.test.mjs"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('geomacro-derived-consumer-pr-{0}',github.event.pull_request.number) || 'geomacro-d1-control-plane-production' }}
+  cancel-in-progress: false
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - run: |
+          node --check workers/derived-discovery-consumer/worker.mjs
+          node --test scripts/tests/isolated-derived-discovery-consumer.test.mjs scripts/tests/derived-discovery-queue.test.mjs
+
+  protected-consumer:
+    needs: offline
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.approval == 'DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID: ${{ vars.GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Enforce exact current main and positive canary HOLD
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.approval }}" = "DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
+          test -f config/d1-hotspot-v2-canary.hold
+      - name: Require real Workers Paid monthly D1 reserve
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - name: Validate queue consumer uniqueness, exact production D1 receipt schema and no public routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+          const c=JSON.parse(readFileSync('workers/derived-discovery-consumer/wrangler.example.jsonc','utf8'));
+          const id=String(process.env.D1_DATABASE_ID??'');
+          const account=String(process.env.CLOUDFLARE_ACCOUNT_ID??'');
+          const token=String(process.env.CLOUDFLARE_API_TOKEN??'');
+          if(!/^[a-f0-9-]{36}$/i.test(id)||!/^[a-f0-9]{32}$/i.test(account)||token.length<20)
+            throw Error('DISCOVERY_PROTECTED_CREDENTIAL_OR_DB_ID_MISSING');
+          if(c.name!=='geomacro-derived-discovery-consumer'||c.workers_dev!==false||
+             c.routes||c.route||c.triggers||c.vars?.RISK_STREAM_ACTIVE||
+             c.queues?.consumers?.length!==1||
+             c.queues.consumers[0].queue!=='geomacro-derived-discovery'||
+             c.queues.consumers[0].dead_letter_queue!=='geomacro-derived-discovery-dlq'||
+             c.queues.consumers[0].max_retries!==3||
+             c.queues.consumers[0].max_batch_size!==1||
+             c.d1_databases?.length!==1||c.d1_databases[0].binding!=='DB')
+            throw Error('DISCOVERY_SIDE_CAR_CONFIG_NOT_ISOLATED');
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account;
+          async function read(url,opts={}){
+            const res=await fetch(url,{...opts,redirect:'error',signal:AbortSignal.timeout(12000),
+              headers:{Authorization:'Bearer '+token,Accept:'application/json',
+               ...(opts.body?{'Content-Type':'application/json'}:{})}});
+            const data=await res.json();
+            if(!res.ok||data.success!==true)throw Error('DISCOVERY_PROVIDER_READBACK_UNAVAILABLE');
+            return data.result;
+          }
+          const results=await read(root+'/d1/database/'+id+'/query',{
+            method:'POST',body:JSON.stringify({sql:"SELECT type,name FROM sqlite_schema WHERE name IN ('derived_discovery_ack_receipts','idx_derived_discovery_ack_receipts_clock')",params:[]})});
+          const rows=results?.[0]?.results;
+          if(!Array.isArray(rows)||rows.length!==2||
+             !rows.some(x=>x.name==='derived_discovery_ack_receipts'&&x.type==='table')||
+             !rows.some(x=>x.name==='idx_derived_discovery_ack_receipts_clock'&&x.type==='index')||
+             results[0]?.meta?.rows_written!==0)
+            throw Error('DISCOVERY_MIGRATION_0215_PHYSICAL_READBACK_UNVERIFIED');
+          const listing=await read(root+'/queues?per_page=100');
+          const queues=Array.isArray(listing)?listing.filter(x=>x.queue_name==='geomacro-derived-discovery'):[];
+          if(queues.length!==1||!/^[a-f0-9]{32}$/i.test(queues[0].queue_id))
+            throw Error('DISCOVERY_QUEUE_PROVIDER_ID_UNVERIFIED');
+          const configured=String(process.env.GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID??'');
+          if(configured&&configured!==queues[0].queue_id)
+            throw Error('DISCOVERY_QUEUE_ID_PROTECTED_VAR_MISMATCH');
+          const consumers=await read(root+'/queues/'+queues[0].queue_id+'/consumers');
+          if(!Array.isArray(consumers)||consumers.some(x=>x.script_name!==c.name))
+            throw Error('DISCOVERY_QUEUE_ALREADY_HAS_ANOTHER_CONSUMER_HOLD');
+          c.d1_databases[0].database_id=id;
+          writeFileSync('workers/derived-discovery-consumer/wrangler.runtime.jsonc',
+             JSON.stringify(c,null,2)+'\n',{mode:0o600});
+          mkdirSync('artifacts/derived-discovery-consumer',{recursive:true});
+          writeFileSync('artifacts/derived-discovery-consumer/preflight.json',
+            JSON.stringify({status:'PASS_PREDEPLOY',sha:process.env.GITHUB_SHA,
+              canonical_d1_0215_schema_verified:true,consumer_collision:false,
+              queue_id_verified:true,no_http_route:true,no_funds:true})+'\n');
+          console.log('DISCOVERY_ISOLATED_PROVIDER_PREFLIGHT_PASS');
+          NODE
+      - name: Build isolated Queue consumer before activation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y wrangler@4.136.3 deploy --dry-run             --config workers/derived-discovery-consumer/wrangler.runtime.jsonc
+      - name: Deploy only the no-HTTP Queue consumer (never Control Plane traffic)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y wrangler@4.136.3 deploy             --config workers/derived-discovery-consumer/wrangler.runtime.jsonc
+      - name: Verify provider consumer now points to isolated Worker and retains DLQ
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          const id=String(process.env.GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID??'');
+          const account=process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token=process.env.CLOUDFLARE_API_TOKEN;
+          async function get(url){
+            const response=await fetch(url,{headers:{Authorization:'Bearer '+token},
+              redirect:'error',signal:AbortSignal.timeout(15000)});
+            const doc=await response.json();
+            if(!response.ok||doc.success!==true)throw Error('DISCOVERY_CONSUMER_READBACK_PROVIDER_FAILURE');
+            return doc.result;
+          }
+          const root='https://api.cloudflare.com/client/v4/accounts/'+account+'/queues';
+          const queue= id||((await get(root+'?per_page=100')).find(x=>x.queue_name==='geomacro-derived-discovery')?.queue_id??'');
+          if(!/^[a-f0-9]{32}$/i.test(queue))throw Error('DISCOVERY_CONSUMER_QUEUE_ID_MISSING');
+          const consumers=await get(root+'/'+queue+'/consumers');
+          if(!Array.isArray(consumers)||consumers.length!==1||
+             consumers[0].script_name!=='geomacro-derived-discovery-consumer'||
+             consumers[0].dead_letter_queue!=='geomacro-derived-discovery-dlq')
+            throw Error('DISCOVERY_CONSUMER_PROVIDER_READBACK_HOLD');
+          writeFileSync('artifacts/derived-discovery-consumer/readback.json',
+            JSON.stringify({status:'PASS_PROVIDER_CONSUMER_BOUND',
+              source_sha:process.env.GITHUB_SHA,no_http_traffic:true,
+              queue_consumer_verified:true,dlq_verified:true,
+              d1_receipt_not_inferred:true,no_funds:true})+'\n');
+          console.log('DISCOVERY_CONSUMER_AND_DLQ_BOUND_NO_WEB_TRAFFIC');
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: isolated-derived-discovery-provider-proof
+          path: artifacts/derived-discovery-consumer/*.json
+          retention-days: 14
+          if-no-files-found: warn
