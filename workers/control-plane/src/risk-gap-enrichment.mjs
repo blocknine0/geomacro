@@ -4,6 +4,7 @@ import {CATEGORY_SPECS,CATEGORIES} from "./unified-risk-categories.mjs";
 import {DAILY_RG_CORRIDORS,parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {hot50RiskGateEnabled,isHot50RiskCountry} from "./risk-gate-hot50-scope.mjs";
 import {riskPublisherSearchPlan,isPublisherFullTextRestricted} from "./risk-gate-global-news-search.mjs";
+import {runSingleSourceOpenProbe} from "./risk-stream-open-search.mjs";
 
 const BATCH=12, SHA=/^[a-f0-9]{64}$/u;
 const TIER_ONE_HOSTS=["apnews.com","bbc.com","dw.com","aljazeera.com","france24.com","theguardian.com","reuters.com","aninews.in","euronews.com","npr.org","thehindu.com","scmp.com","abc.net.au","cbc.ca","channelnewsasia.com","mining.com","miningweekly.com"];
@@ -153,11 +154,28 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
     if(!host||!SHA.test(item.title_hash)||seen.has(host)||items.length>=2)continue;
     seen.add(host);items.push(item);
    }
+   // One genuine single-domain gap gets one targeted, bounded 48h search.
+   // Search-result metadata is INDEX_ONLY; it cannot sign a GRO or grant rights.
+   let targetedFollowupQueries=0;
+   if(items.length===1){
+    try{
+     const probe=await runSingleSourceOpenProbe({
+      category:target.category,target_name:target.name,
+      headline:items[0].title,publisher_root_domain:cleanHost(items[0].publisher_host)
+     },{fetcher,now,maxHits:3});
+     targetedFollowupQueries=probe.search_queries;
+     for(const lead of probe.leads){
+      const host=cleanHost(lead.publisher_host);
+      if(!host||seen.has(host)||!SHA.test(lead.title_hash))continue;
+      seen.add(host);items.push(lead);break;
+     }
+    }catch{/* provider unavailable: remain discovery-only */}
+   }
    // Exactly one approved public original-page attempt per cell. Never
    // fetch Reuters/ANI/AP/paywalled body from an index hint.
    const original=items.find(item=>!isPublisherFullTextRestricted(cleanHost(item.publisher_host)));
    const fullText=original?await fetchArticle(original,target,fetcher).catch(()=>null):null;
-   return {target,items,fullText,fullTextFor:fullText?original?.id:null};
+   return {target,items,fullText,fullTextFor:fullText?original?.id:null,targetedFollowupQueries};
   }));
   const rows=[];
   for(const {target,items,fullText,fullTextFor} of results)for(const item of items){
@@ -205,6 +223,8 @@ export async function riskGapEnrichmentTick(env,{now=Date.now(),fetcher=fetch}={
    searched_cells:page.length,observations:rows.length,
    fulltext_articles_fetched:results.filter(x=>x.fullText).length,
    publisher_focused_queries:Math.min(4,page.length),
+   single_source_targeted_queries:results.reduce((n,x)=>n+x.targetedFollowupQueries,0),
+   targeted_hits_are_discovery_only:true,
    global_index_queries:page.length,
    original_fulltext_stored:false,provisional_only:true,
    cursor_next:next,run_at:iso(now)};
