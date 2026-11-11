@@ -38,6 +38,7 @@ const headers={
 };
 const stats=Object.fromEntries(DERIVED_DISCOVERY_LANES.map(lane=>[lane,{
  scanned:0,admitted:0,pages:0,retention_gaps:0,complete:false,error:null,
+ atomic_receipt_verified_at:null,queue_to_d1_readback_latency_ms:null,
  categories:Object.fromEntries(CATS.map(c=>[c,0])),
 }]));
 async function call(method,url,body){
@@ -76,7 +77,8 @@ async function call(method,url,body){
    throw Error("DERIVED_DISCOVERY_QUEUE_RESPONSE_INVALID");
   // Queue admission is never D1 proof. The protected direct D1 REST
   // readback is a fallback if the old Worker receipt GET is unavailable.
-  return pollWebsiteReceipt(body,{getReceipt:async()=>{
+  const acceptedAtMs=Date.now();
+  const confirmed=await pollWebsiteReceipt(body,{getReceipt:async()=>{
    let status;
    try{
     status=await fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
@@ -100,7 +102,9 @@ async function call(method,url,body){
     throw Error("DERIVED_DISCOVERY_QUEUE_D1_READBACK_INVALID");
    return {...receipt,schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA};
   },timeoutMs:30000});
-
+  return {...confirmed,
+   atomic_receipt_verified_at:new Date().toISOString(),
+   queue_to_d1_readback_latency_ms:Date.now()-acceptedAtMs};
  }
  // Explicit protected REST fallback bypasses only the unavailable HTTP
  // transport, not the Queue consumer, source rights, or atomic D1 proof.
@@ -214,6 +218,14 @@ async function run(){
       ack.cursor_advanced!==true||ack.commercialEligible!==false||
       ack.paidDeliveryAuthorized!==false)
     throw Error("DERIVED_DISCOVERY_D1_ACK_MISMATCH");
+   if(lane==="website_intelligence"){
+    total.atomic_receipt_verified_at=
+      ack.atomic_receipt_verified_at??new Date().toISOString();
+    if(Number.isFinite(ack.queue_to_d1_readback_latency_ms)&&
+       ack.queue_to_d1_readback_latency_ms>=0)
+      total.queue_to_d1_readback_latency_ms=
+        ack.queue_to_d1_readback_latency_ms;
+   }
    total.scanned+=page.records.length;
    total.admitted+=ack.admitted;
    for(const x of page.records)total.categories[x.category]++;
