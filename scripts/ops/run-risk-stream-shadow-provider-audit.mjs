@@ -212,7 +212,8 @@ async function ingest(){
   if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
      !/^[a-z0-9.-]{3,253}$/u.test(u.hostname))continue;
   const dt=art.feed_origin==="RSS"?new Date(art.pubDate):parsedDate(art.seendate);
-  if(!dt||dt>start||start-dt>72*3600_000||seen.has(u.href))continue;
+  if(!dt||!Number.isFinite(dt.getTime())||dt>start||start-dt>72*3600_000||
+    u.href.length>2048||seen.has(u.href))continue;
   seen.add(u.href);
   const digest=hash(u.href),origin=art.feed_origin==="RSS"?"RSS":"GDELT",
    eventKey=origin+"_"+digest.slice(0,16).toUpperCase();
