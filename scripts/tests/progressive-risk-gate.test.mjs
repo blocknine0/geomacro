@@ -110,6 +110,35 @@ test("native original-page corroboration from the existing 20m collector auto-pr
    assert.equal(progressiveTierMatrix(observed,false,false).standard.active,true);
  }finally{sqlite.close()}
 });
+test("a single claimed two-publisher counter never promotes Standard without two true page rows for the same event",async()=>{
+ const {sqlite,env}=fixture();
+ try{
+  const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?)");
+  // One real original page with a forged or stale second-publisher count.
+  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
+  let r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  assert.equal(r.distinct_events,1);
+  assert.equal(r.standard_ready,false);
+  assert.equal(r.corroboration_sources_count,0);
+  // An index-only repost from another host is not an original-page proof.
+  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","SEARCH_TITLE_ONLY",0,2,"index.example");
+  r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  assert.equal(r.standard_ready,false);
+  // A real page from a different event still cannot corroborate this event.
+  add.run("other-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"bbc.com");
+  r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  assert.equal(r.standard_ready,false);
+  // Only a second genuine page FROM ANOTHER publisher for the SAME event.
+  add.run("shared-event","COUNTRY","IND",at,"CORROBORATED","ARTICLE_FULL_TEXT",1,2,"apnews.com");
+  r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  assert.equal(r.standard_ready,true);
+  assert.equal(r.corroboration_sources_count,2);
+  const matrix=progressiveTierMatrix(r,false,false);
+  assert.equal(matrix.standard.active,true);
+  assert.equal(matrix.complex.status,"LOCKED");
+ }finally{sqlite.close()}
+});
+
 test("zero news returns numeric no-data sentinel without granting execution",async()=>{
  const {sqlite,env}=fixture();
  try{

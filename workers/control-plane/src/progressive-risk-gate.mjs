@@ -86,21 +86,30 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
   // Those Google-index observations are NOT independent original proof.
   const [row,indexRow] = await Promise.all([
     db.prepare(query).bind(...ids,cutoff,ceiling).first(),
-    db.prepare(`SELECT COUNT(DISTINCT event_id) AS index_events,
-      MAX(event_at) AS latest_index_clock,
-      MAX(CASE WHEN status='CORROBORATED'
-        AND fact_basis='ARTICLE_FULL_TEXT' AND original_page_fetched=1
-        AND independent_source_count>=2 THEN independent_source_count ELSE 0 END)
-          AS native_corroborated_publisher_count
+    // A single row's independent_source_count is not proof of two originals.
+    // Count two ACTUAL independently fetched publisher pages for the SAME
+    // event_id; never let Google index copies or a forged counter grant Standard.
+    db.prepare(`WITH native_events AS (
+      SELECT event_id,MAX(event_at) AS latest_event_clock,
+        COUNT(DISTINCT CASE WHEN status='CORROBORATED'
+          AND fact_basis='ARTICLE_FULL_TEXT' AND original_page_fetched=1
+          THEN source_host END) AS native_original_hosts
       FROM unverified_observations
       WHERE entity_type='COUNTRY' AND entity_id IN (${whereIds})
-        AND event_at>=? AND event_at<=?`)
+        AND event_at>=? AND event_at<=?
+      GROUP BY event_id
+    )
+    SELECT COUNT(*) AS index_events,MAX(latest_event_clock) AS latest_index_clock,
+      COALESCE(MAX(CASE WHEN native_original_hosts>=2
+        THEN native_original_hosts ELSE 0 END),0) AS native_corroborated_publisher_count
+    FROM native_events`)
       .bind(...ids,cutoff,ceiling).first()
   ]);
   const events = Math.max(0,Number(row?.unique_events ?? 0),
     Number(indexRow?.index_events ?? 0));
-  // Existing global 20-minute collector already promotes ONLY same-event,
-  // native original-page corroboration. Its trusted D1 state gives Standard
+  // Existing global 20-minute collector can promote ONLY same-event,
+  // independently observed original-page corroboration after this count.
+  // Its trusted D1 state gives Standard
   // continuous autonomous promotion even before a new fact batch is admitted.
   // Google-index-only records remain Basic.
   const legacyNative=subject.type==="country"
