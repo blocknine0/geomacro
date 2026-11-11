@@ -8,7 +8,7 @@ export async function verifyCandidateGovernor({base,bearer,expectedSha,fetchImpl
  const uri=base+"/v1/b2-quota/status";
  const opts={cache:"no-store",redirect:"error",signal:AbortSignal.timeout(15000)};
  const noAuth=await fetchImpl(uri,opts);
- if(noAuth.status!==401)throw Error("CANDIDATE_GOVERNOR_UNAUTHENTICATED_ACCESS");
+ if(noAuth.status!==401)throw Error("CANDIDATE_GOVERNOR_UNAUTHENTICATED_HTTP_"+noAuth.status);
  const r=await fetchImpl(uri,{...opts,headers:{Authorization:"Bearer "+bearer}});
  if(r.status!==200)throw Error("CANDIDATE_GOVERNOR_READBACK_HTTP_"+r.status);
  const live=await r.json(),c=live?.candidate;

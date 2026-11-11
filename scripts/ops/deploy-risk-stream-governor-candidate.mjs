@@ -54,7 +54,22 @@ async function main(){
  const bearer=createHmac("sha256",root).update(
   "geomacro-shadow-risk-stream-20261111/governor-candidate-bearer").digest("hex");
  wrangler(["secret","put","SHADOW_GOVERNOR_ADMIN_BEARER","--config",CONFIG],bearer+"\n");
- const report=await verifyCandidateGovernor({base:url,bearer,expectedSha:sha});
+ let report=null;
+ for(let attempt=0;attempt<7;attempt++){
+  try{
+   report=await verifyCandidateGovernor({base:url,bearer,expectedSha:sha});
+   break;
+  }catch(e){
+   const cause=String(e?.message||"");
+   // Cloudflare deploy + secret put create distinct edge revisions. Recheck
+   // only transient not-yet-routed/edge errors, never open auth or bad policy.
+   if(attempt===6||!/^(?:CANDIDATE_GOVERNOR_UNAUTHENTICATED_HTTP_(?:404|425|429|500|502|503|504|520|522|523|524)|CANDIDATE_GOVERNOR_READBACK_HTTP_(?:404|425|429|500|502|503|504|520|522|523|524))$/.test(cause))
+    throw e;
+   await new Promise(resolve=>setTimeout(resolve,1500*(attempt+1)));
+  }
+ }
+ need(report?.status==="SHADOW_CANDIDATE_D1_POLICY_MATCH",
+  "DEPLOYED_POLICY_READBACK_UNVERIFIED");
  writeFileSync(".shadow-audit/candidate-governor-parity.json",JSON.stringify(report,null,2));
  console.log("ISOLATED_DEPLOYED_GOVERNOR_POLICY_PARITY_PASS "+
   JSON.stringify({source_sha:sha,limits:report.limits,shadow_db:DB,

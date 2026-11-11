@@ -136,7 +136,17 @@ export default {
     "(batch_id,started_at,event_count,corroborated_and_signed,"+
     "verified_signature_readbacks,d1_calls,d1_503_observed,d1_write_p95_ms,"+
     "batch_elapsed_ms,result_status) VALUES (?,?,?,?,?,?,?,?,?,?) "+
-    "ON CONFLICT(batch_id) DO UPDATE SET d1_503_observed=MAX("+
+    // Reprocessing the same source batch must create a fresh witnessed
+    // receipt timestamp. The old implementation kept the FIRST run time,
+    // so same-event reruns ACKed 30/30 yet the fresh-run receipt poll saw 0.
+    // Retain historical 503 evidence conservatively across upserts.
+    "ON CONFLICT(batch_id) DO UPDATE SET "+
+    "started_at=excluded.started_at,event_count=excluded.event_count,"+
+    "corroborated_and_signed=excluded.corroborated_and_signed,"+
+    "verified_signature_readbacks=excluded.verified_signature_readbacks,"+
+    "d1_calls=excluded.d1_calls,d1_write_p95_ms=excluded.d1_write_p95_ms,"+
+    "batch_elapsed_ms=excluded.batch_elapsed_ms,"+
+    "d1_503_observed=MAX("+
     "risk_stream_shadow_audit_receipts.d1_503_observed,excluded.d1_503_observed),"+
     "result_status=CASE WHEN risk_stream_shadow_audit_receipts.d1_503_observed>0 "+
     "OR excluded.d1_503_observed>0 THEN 'HOLD_503_OBSERVED' "+

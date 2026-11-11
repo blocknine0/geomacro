@@ -247,3 +247,13 @@ test("shadow scorecard rejects a manually altered candidate quota receipt",()=>{
   assert.equal(report.status,"HOLD_INCOMPLETE_SHADOW_PROOF");
  }finally{rmSync(temp,{recursive:true,force:true})}
 });
+
+test("shadow batch receipt conflict records fresh run without erasing historical 503 holds",()=>{
+ const worker=readFileSync(new URL("../../workers/risk-stream-shadow/src/index.mjs",import.meta.url),"utf8");
+ for(const word of ["started_at=excluded.started_at",
+  "event_count=excluded.event_count",
+  "verified_signature_readbacks=excluded.verified_signature_readbacks",
+  "d1_503_observed=MAX("]){
+  assert.ok(worker.includes(word),word);
+ }
+});
