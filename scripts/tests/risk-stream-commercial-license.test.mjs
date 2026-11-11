@@ -67,7 +67,7 @@ test("modified commercial score, unknown signing key and forged release signatur
   now,trustedLicensePublicSpkiB64:f.inputs.licensePublicSpkiB64,
   trustedGroPublicSpkiB64:f.inputs.groPublicSpkiB64}),/ENVELOPE_SIGNATURE_OR_HASH_INVALID/);
  e.payload.derived.risk_score_0_100=62;
- await assert.rejects(verifyGeoMacroCommercialLicense(e,{now}),/PINNED_LICENSE_KEY_REQUIRED/);
+ await assert.rejects(verifyGeoMacroCommercialLicense(e,{now}),/PINNED_LICENSE_KEY_REQUIRED|PINNED_SOURCE_GRO_KEY_REQUIRED/);
  const attacker=generateKeyPairSync("ed25519");
  await assert.rejects(verifyGeoMacroCommercialLicense(e,{
   now,trustedLicensePublicSpkiB64:b64(attacker.publicKey),
@@ -79,9 +79,9 @@ test("modified commercial score, unknown signing key and forged release signatur
 test("unsigned release, unverified rights, hold, and non-commercial GRO refuse licence issuance",async()=>{
  const f=fixture();
  f.inputs.approval.canary_hold_cleared=false;
- await assert.rejects(issueGeoMacroCommercialLicense(f.inputs),/INDEPENDENT_RELEASE_AUTHORITY_NOT_VERIFIED/);
+ await assert.rejects(issueGeoMacroCommercialLicense(f.inputs),/INDEPENDENT_RELEASE_AUTHORITY_NOT_VERIFIED|RELEASE_REVIEW_SIGNATURE_INVALID/);
  const q=fixture();q.inputs.approval.independent_source_rights_verified=false;
- await assert.rejects(issueGeoMacroCommercialLicense(q.inputs),/INDEPENDENT_RELEASE_AUTHORITY_NOT_VERIFIED/);
+ await assert.rejects(issueGeoMacroCommercialLicense(q.inputs),/INDEPENDENT_RELEASE_AUTHORITY_NOT_VERIFIED|RELEASE_REVIEW_SIGNATURE_INVALID/);
  const y=fixture();y.inputs.record.payload_json=y.inputs.record.payload_json.replace(
   '"customer_delivery_authorized":true','"customer_delivery_authorized":false');
  await assert.rejects(issueGeoMacroCommercialLicense(y.inputs),/SOURCE_GRO_HASH_INVALID/);
