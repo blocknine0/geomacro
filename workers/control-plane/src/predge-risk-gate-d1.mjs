@@ -243,8 +243,10 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    ]);
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
  const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(gro),sevenDayRollupReady);
- const tier=gro?"COMPLEX_0_25":facts.standard_ready?"STANDARD_0_15":"BASIC_0_10";
- const pricePerCallUsd=gro?0.25:facts.standard_ready?0.15:0.10;
+ const complexReady=tierActivationMatrix.complex.active===true;
+ const standardReady=tierActivationMatrix.standard.active===true;
+ const tier=complexReady?"COMPLEX_0_25":standardReady?"STANDARD_0_15":"BASIC_0_10";
+ const pricePerCallUsd=complexReady?0.25:standardReady?0.15:0.10;
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  const requestHash=await digest(canonical(body));
  const nowIso=new Date(now).toISOString();
@@ -280,7 +282,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;
-   if(gro){
+   if(complexReady){
      const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
      result=evaluateRiskGate(parsed,gro,new Date(now));
      const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
@@ -290,10 +292,10 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    }
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const context={
-      subject:parsed.subject,source:gro?"cloudflare-d1-verified-hot":"derived-fact-index",
-      verified_signed_gro:Boolean(gro),commercial_eligible:Boolean(gro),
+      subject:parsed.subject,source:complexReady?"cloudflare-d1-verified-hot":"derived-fact-index",
+      verified_signed_gro:complexReady,commercial_eligible:complexReady,
       payment_authorized:false,
-      risk_metric_semantics:gro?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
+      risk_metric_semantics:complexReady?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
       observation_count:facts.distinct_events,
       latest_observation_clock:facts.latest_event_clock
    };
