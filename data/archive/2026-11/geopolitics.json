@@ -2,8 +2,27 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-10T21:20:15.979Z",
+  "updated_at": "2026-11-11T02:02:42.601Z",
   "signals": [
+    {
+      "id": "geopolitics-d3376d8c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection · Ukraine",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Third Committee approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-10T23:21:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-ea497c95",
       "category": "geopolitics",

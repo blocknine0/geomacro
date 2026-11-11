@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-10T21:20:15.979Z",
+  "generated_at": "2026-11-11T02:02:42.601Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-d3376d8c",
+      "category": "geopolitics",
+      "title": "Geomacro finds Third Committee: approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection · Ukraine",
+      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
+      "what_changed": "Third Committee approved 13 Resolutions, Amends Anti-Nazism Text to Reject Moscow’s Justification for Ukraine War amid Divisions over Refugee Protection. Country or region mentioned: Ukraine.",
+      "geography": "Ukraine",
+      "development_type": "approval",
+      "topic": "geopolitical security",
+      "published_at": "2026-11-10T23:21:41.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-ea497c95",
       "category": "geopolitics",
@@ -262,25 +281,6 @@
       "development_type": "security",
       "topic": "security and diplomacy",
       "published_at": "2026-10-29T15:28:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7a5762d3",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Russia’s justifications for its war do not withstand scrutiny · United Kingdom",
-      "why_it_matters": "Potential implications include logistics access, operational continuity and regional exposure. Independent event confirmation remains necessary.",
-      "what_changed": "United Kingdom issued a statement to the OSCE concerning Russia’s justifications for its war do not withstand scrutiny. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "geopolitical security",
-      "published_at": "2026-10-29T13:21:38.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
