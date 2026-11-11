@@ -51,29 +51,38 @@ export async function stageLicensedCommercialDelivery(env,{client,groId,envelope
  now=Date.now()}={}){
  if(!commercialDeliveryIsEnabled(env)||!env.DB.batch)
   fail("PROTECTED_RELEASE_NOT_ENABLED");
- if(!HEX.test(groId??"")||!client||client.enabled!==1||
-    Date.parse(client.entitlement_expires_at)<=now||
-    client.release_receipt_sha256!==env.RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256)
+ if(!HEX.test(groId??"")||typeof client?.client_id!=="string"||
+    client.client_id.length<8||client.client_id.length>120)
+  fail("CLIENT_ID_OR_GRO_INVALID");
+ // Never trust caller-supplied endpoint/rights/expiry fields. Recheck the
+ // authoritative enrollment row under the production D1 binding.
+ const enrolled=await env.DB.prepare("SELECT client_id,endpoint_url,approved_host,"+
+  "enabled,entitlement_expires_at,release_receipt_sha256 "+
+  "FROM risk_stream_commercial_subscriptions WHERE client_id=? LIMIT 1")
+  .bind(client.client_id).first();
+ if(!enrolled||enrolled.enabled!==1||
+    Date.parse(enrolled.entitlement_expires_at)<=now||
+    enrolled.release_receipt_sha256!==env.RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256)
   fail("CLIENT_ENTITLEMENT_OR_RELEASE_UNVERIFIED");
- approvedEndpoint(client,env);
+ approvedEndpoint(enrolled,env);
  const verified=await verifyGeoMacroCommercialLicense(envelope,{
   now,trustedLicensePublicSpkiB64:env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64,
     trustedGroPublicSpkiB64:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});
- if(envelope.payload.release_receipt_sha256!==client.release_receipt_sha256)
+ if(envelope.payload.release_receipt_sha256!==enrolled.release_receipt_sha256)
   fail("SOURCE_GRO_RELEASE_BINDING_INVALID");
- const job=await licensedSha(client.client_id+"\n"+groId+"\n"+verified.payload_sha256);
+ const job=await licensedSha(enrolled.client_id+"\n"+groId+"\n"+verified.payload_sha256);
  const inserted=await writeRow(env.DB,
   "INSERT OR IGNORE INTO risk_stream_commercial_outbox "+
   "(job_id,client_id,gro_id,license_envelope_json,license_payload_sha256,"+
   "release_receipt_sha256,state,attempts,next_attempt_at,created_at) "+
   "VALUES (?,?,?,?,?,?,'PENDING',0,?,?)",
-  [job,client.client_id,groId,JSON.stringify(envelope),verified.payload_sha256,
-   client.release_receipt_sha256,iso(now),iso(now)]);
+  [job,enrolled.client_id,groId,JSON.stringify(envelope),verified.payload_sha256,
+   enrolled.release_receipt_sha256,iso(now),iso(now)]);
  const read=await env.DB.prepare("SELECT job_id,license_payload_sha256,release_receipt_sha256 "+
   "FROM risk_stream_commercial_outbox WHERE client_id=? AND gro_id=? LIMIT 1")
-  .bind(client.client_id,groId).first();
+  .bind(enrolled.client_id,groId).first();
  if(read?.job_id!==job||read.license_payload_sha256!==verified.payload_sha256||
-    read.release_receipt_sha256!==client.release_receipt_sha256)
+    read.release_receipt_sha256!==enrolled.release_receipt_sha256)
   fail("JOB_IDEMPOTENCY_OR_D1_READBACK_INVALID");
  return {status:inserted?"COMMERCIAL_JOB_STAGED":"COMMERCIAL_JOB_IDEMPOTENT",
   job_id:job,customer_delivery_performed:false};
