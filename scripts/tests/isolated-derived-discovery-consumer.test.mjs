@@ -34,3 +34,14 @@ test("malformed queue input never receives an ACK from isolated consumer",async(
  assert.deepEqual(retried,{delaySeconds:15});
  assert.equal(ack,false);
 });
+
+test("provider-redacted script identity requires exact protected Wrangler deploy and provider DLQ check",()=>{
+ const y=readFileSync(".github/workflows/deploy-derived-discovery-consumer.yml","utf8");
+ assert.match(y,/VERIFIED_WRANGLER_DEPLOY_SHA/u);
+ assert.match(y,/DISCOVERY_EXACT_MAIN_WRANGLER_DEPLOY_PROOF_REQUIRED/u);
+ assert.match(y,/script_name==null/u);
+ assert.match(y,/consumers\.length===1/u);
+ assert.match(y,/dead_letter_queue==='geomacro-derived-discovery-dlq'/u);
+ assert.match(y,/max_retries===3/u);
+ assert.match(y,/workers_dev!==false/u);
+});

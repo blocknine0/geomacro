@@ -118,7 +118,10 @@ jobs:
           if(configured&&configured!==queues[0].queue_id)
             throw Error('DISCOVERY_QUEUE_ID_PROTECTED_VAR_MISMATCH');
           const consumers=await read(root+'/queues/'+queues[0].queue_id+'/consumers');
-          if(!Array.isArray(consumers)||consumers.some(x=>x?.type!=='worker'||x?.script_name!==c.name)) {
+          if(!Array.isArray(consumers)||consumers.length>1||
+             consumers.some(x=>x?.type!=='worker'||
+               (x?.script_name!=null&&x.script_name!==c.name)||
+               x?.dead_letter_queue!=='geomacro-derived-discovery-dlq')) {
             // Provider-only, no credentials or queue IDs. A genuine collision
             // remains HOLD: never replace another producer or consumer.
             console.error('DISCOVERY_QUEUE_CONSUMER_READBACK_DIAGNOSTIC',JSON.stringify({
@@ -146,16 +149,24 @@ jobs:
           set -euo pipefail
           npx -y wrangler@4.136.3 deploy --dry-run             --config workers/derived-discovery-consumer/wrangler.runtime.jsonc
       - name: Deploy only the no-HTTP Queue consumer (never Control Plane traffic)
+        id: deploy_sidecar
         shell: bash
         run: |
           set -euo pipefail
-          npx -y wrangler@4.136.3 deploy             --config workers/derived-discovery-consumer/wrangler.runtime.jsonc
+          npx -y wrangler@4.136.3 deploy --config workers/derived-discovery-consumer/wrangler.runtime.jsonc
+          # The following step is only reached if this exact Wrangler deploy
+          # completed successfully. A redacted script_name cannot prove identity.
+          echo "deployed_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
       - name: Verify provider consumer now points to isolated Worker and retains DLQ
         shell: bash
+        env:
+          VERIFIED_WRANGLER_DEPLOY_SHA: ${{ steps.deploy_sidecar.outputs.deployed_sha }}
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import {readFileSync,writeFileSync} from 'node:fs';
+          if(process.env.VERIFIED_WRANGLER_DEPLOY_SHA!==process.env.GITHUB_SHA)
+            throw Error('DISCOVERY_EXACT_MAIN_WRANGLER_DEPLOY_PROOF_REQUIRED');
           const id=String(process.env.GEOMACRO_DERIVED_DISCOVERY_QUEUE_ID??'');
           const account=process.env.CLOUDFLARE_ACCOUNT_ID;
           const token=process.env.CLOUDFLARE_API_TOKEN;
@@ -177,7 +188,11 @@ jobs:
             consumers=await get(root+'/'+queue+'/consumers');
             bound=Array.isArray(consumers)&&consumers.length===1&&
               consumers[0]?.type==='worker'&&
-              consumers[0]?.script_name==='geomacro-derived-discovery-consumer'&&
+              // The provider may redact the optional script_name. In that
+              // case require successful same-run exact-main Wrangler deploy
+              // plus unique worker consumer, DLQ and retry settings.
+              (consumers[0]?.script_name==null||
+               consumers[0].script_name==='geomacro-derived-discovery-consumer')&&
               consumers[0]?.dead_letter_queue==='geomacro-derived-discovery-dlq'&&
               consumers[0]?.settings?.batch_size===1&&
               consumers[0]?.settings?.max_retries===3;
