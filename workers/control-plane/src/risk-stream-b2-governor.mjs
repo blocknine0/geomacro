@@ -24,8 +24,8 @@ export const B2_STREAM_PACING=Object.freeze({
 function validLive(live,now){
  const day=new Date(now).toISOString().slice(0,10);
  if(live?.ok!==true||live.schema!=="geomacro.b2-account-quota-status.v1"||
-    live.day_utc!==day||typeof live.limits!=="object"||
-    typeof live.used!=="object")fail("LIVE_QUOTA_TELEMETRY_UNAVAILABLE");
+    live.day_utc!==day||!live.limits||typeof live.limits!=="object"||
+    !live.used||typeof live.used!=="object")fail("LIVE_QUOTA_TELEMETRY_UNAVAILABLE");
  for(const key of ["total","GET","PUT","HEAD","NATIVE_AUTH"]){
   const limit=live.limits[key],used=live.used[key];
   if(!Number.isSafeInteger(limit)||!Number.isSafeInteger(used)||
