@@ -6,6 +6,8 @@ on:
       - 'workers/risk-stream-shadow/**'
       - 'scripts/ops/push-risk-stream-shadow-jsonl.mjs'
       - 'scripts/ops/verify-risk-stream-b2-live-governor.mjs'
+      - 'scripts/ops/run-risk-stream-shadow-provider-audit.mjs'
+      - '.github/workflows/risk-stream-shadow-provider-audit.yml'
       - 'workers/control-plane/migrations/0214_risk_stream_event_driven.sql'
       - 'scripts/tests/risk-stream-*.test.mjs'
       - '.github/workflows/risk-stream-offline.yml'
@@ -36,6 +38,7 @@ jobs:
           node --check workers/risk-stream-shadow/src/index.mjs
           node --check scripts/ops/push-risk-stream-shadow-jsonl.mjs
           node --check scripts/ops/verify-risk-stream-b2-live-governor.mjs
+          node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check scripts/tests/risk-stream-shadow-contract.test.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
