@@ -89,7 +89,7 @@ export default {
       !Array.isArray(body.items)||body.items.length<20||body.items.length>50)
     return json({ok:false,error:"SHADOW_EVENT_COUNT_MUST_BE_20_TO_50"},400);
    const response=await enqueueRiskStreamEvents(
-     {...env,RISK_STREAM_ACTIVE:"1"},body);
+     {...env,RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true"},body);
    return response;
   }
   if(request.method==="GET"&&url.pathname==="/v1/internal/shadow/receipts"&&!url.search){
@@ -112,7 +112,8 @@ export default {
     startedAt=new Date().toISOString(),metrics={
       d1_calls:0,d1_503_observed:0,d1_latency_ms:[],d1_write_latency_ms:[]};
   const db=instrument(env.DB,metrics);
-  const active={...env,DB:db,RISK_STREAM_ACTIVE:"1"};
+  const active={...env,DB:db,RISK_STREAM_ACTIVE:"1",
+   STREAM_INGESTION_ENABLED:"true"};
   // Do NOT enqueue the internal delivery outbox: this Worker has NO delivery queue.
   // processRiskStreamBatch only creates internal signed candidates in isolated D1.
   try{
