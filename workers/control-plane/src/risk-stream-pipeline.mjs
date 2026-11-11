@@ -154,14 +154,17 @@ export async function inspectRiskStreamCandidates(items,now=Date.now()){
  return out;
 }
 async function sourceRegistry(db,items){
- const ids=[...new Set(items.map(x=>x.source_id))];
+ // Index-only discovery hints cannot automatically become rights-approved sources.
+ const originals=items.filter(x=>x.kind==="VERIFIED_ORIGINAL");
+ if(!originals.length)return new Map();
+ const ids=[...new Set(originals.map(x=>x.source_id))];
  const r=await db.prepare("SELECT source_id,publisher_root_domain,parent_media_entity,"+
   "source_role,commercial_rights_approved,enabled,rights_expire_at FROM risk_stream_sources "+
   "WHERE source_id IN (SELECT value FROM json_each(?))").bind(JSON.stringify(ids)).all();
  const rows=r?.results??[];
  if(!Array.isArray(rows)||rows.length!==ids.length)fail("SOURCE_REGISTRY_INCOMPLETE");
  const source=new Map(rows.map(x=>[x.source_id,x]));
- for(const e of items){
+ for(const e of originals){
   const s=source.get(e.source_id);
   if(!s||s.enabled!==1||s.publisher_root_domain!==e.publisher_root_domain||
      s.parent_media_entity!==e.parent_media_entity||s.source_role!==e.source_role||
@@ -413,9 +416,11 @@ export async function processRiskStreamBatch(env,items,{
  const candidates=await inspectRiskStreamCandidates(items,now);
  await sourceRegistry(env.DB,candidates);
  const policy=await categoryPolicies(env.DB,candidates);
- const factsKey=await trustedKey(env.RISK_STREAM_MACHINE_FACTS_SPKI_B64);
- const rightsKey=await trustedKey(env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64);
- if(env.RISK_STREAM_MACHINE_FACTS_SPKI_B64===env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64)
+ const originalsPresent=candidates.some(x=>x.kind==="VERIFIED_ORIGINAL");
+ // GDELT INDEX_ONLY cannot claim attester/rights coverage or a signed GRO.
+ const factsKey=originalsPresent?await trustedKey(env.RISK_STREAM_MACHINE_FACTS_SPKI_B64):null;
+ const rightsKey=originalsPresent?await trustedKey(env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64):null;
+ if(originalsPresent&&env.RISK_STREAM_MACHINE_FACTS_SPKI_B64===env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64)
   fail("INDEPENDENT_ATTESTERS_REQUIRED");
  const opts={sleeper,random};
  const secondary=await cachedSecondaryHints(env.DB,candidates,now,opts);
