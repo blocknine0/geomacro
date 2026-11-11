@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/risk-stream-shadow-provider-audit.yml"
+      - "workers/risk-stream-shadow/src/**"
+      - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
   workflow_dispatch:
     inputs:
       approval:
@@ -57,7 +59,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check workers/risk-stream-shadow/src/index.mjs
-          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
       - name: Compare existing B2 account D1 governor against live Worker
@@ -99,6 +101,23 @@ jobs:
           GEOMACRO_SHADOW_WORKERS_DEV_URL="$(tr -d '\r\n' < .shadow-audit/worker-url.txt)"
           export GEOMACRO_SHADOW_WORKERS_DEV_URL
           node scripts/ops/run-risk-stream-shadow-provider-audit.mjs ingest
+      - name: Read isolated Queue and D1 canonical/receipt census (diagnostic only)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SHADOW_QUEUE_CONSUMER_INVENTORY_READONLY"
+          npx -y wrangler@4.136.3 queues info geomacro-risk-stream-shadow
+          echo "SHADOW_DLQ_INVENTORY_READONLY"
+          npx -y wrangler@4.136.3 queues info geomacro-risk-stream-shadow-dlq
+          echo "SHADOW_CANONICAL_AND_RECEIPT_COUNTS_READONLY"
+          npx -y wrangler@4.136.3 d1 execute geomacro-risk-stream-shadow \
+            --remote --json --command \
+            "SELECT (SELECT COUNT(*) FROM risk_stream_evidence) AS evidence_rows,(SELECT COUNT(*) FROM risk_stream_shadow_audit_receipts) AS audit_receipt_rows,(SELECT COUNT(*) FROM risk_stream_sources WHERE commercial_rights_approved=0 AND enabled=0) AS disabled_untrusted_index_sources,(SELECT COUNT(*) FROM risk_stream_signed_gro) AS signed_gros,(SELECT COUNT(*) FROM risk_stream_delivery_outbox) AS internal_outbox_rows"
+          npx -y wrangler@4.136.3 d1 execute geomacro-risk-stream-shadow \
+            --remote --json --command \
+            "SELECT batch_id,event_count,corroborated_and_signed,verified_signature_readbacks,d1_calls,d1_503_observed,d1_write_p95_ms,result_status FROM risk_stream_shadow_audit_receipts ORDER BY started_at DESC LIMIT 10"
       - name: Final scope receipt (never release canary)
         if: always()
         shell: bash

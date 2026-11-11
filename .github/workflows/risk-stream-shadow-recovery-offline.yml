@@ -10,6 +10,8 @@ on:
       - "scripts/lib/risk-stream-shadow-discovery.mjs"
       - "scripts/lib/risk-stream-shadow-attesters.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "workers/risk-stream-shadow/src/**"
+      - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
   push:
     branches: [main]
     paths:
@@ -17,6 +19,8 @@ on:
       - "scripts/lib/risk-stream-shadow-discovery.mjs"
       - "scripts/lib/risk-stream-shadow-attesters.mjs"
       - "scripts/tests/risk-stream-shadow-recovery.test.mjs"
+      - "workers/risk-stream-shadow/src/**"
+      - "scripts/tests/risk-stream-shadow-index-source-fk.test.mjs"
 permissions:
   contents: read
 jobs:
@@ -37,10 +41,12 @@ jobs:
           node --check scripts/lib/risk-stream-shadow-attesters.mjs
           node --check scripts/ops/verify-risk-stream-b2-live-governor.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
+          node --check workers/risk-stream-shadow/src/untrusted-index-source-registry.mjs
           bash -n scripts/ops/install-risk-stream-shadow-attesters.sh
           node --test scripts/tests/risk-stream-pipeline.test.mjs \
             scripts/tests/risk-stream-shadow-contract.test.mjs \
-            scripts/tests/risk-stream-shadow-recovery.test.mjs
+            scripts/tests/risk-stream-shadow-recovery.test.mjs \
+            scripts/tests/risk-stream-shadow-index-source-fk.test.mjs
       - name: Ensure commercial and canary boundaries remain untouched
         run: |
           set -euo pipefail
