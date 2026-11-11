@@ -31,7 +31,7 @@ test("401 does not fall back and does not mask invalid authorization",async()=>{
   fetchImpl:async()=>new Response("no",{status:401})}),/B2_LIVE_QUOTA_HTTP_401/);
 });
 test("fallback must not accept fabricated/stale policy or permissions",async()=>{
- const fake=live();fake.limits.total++;
+ const fake=live();fake.limits={...fake.limits,total:fake.limits.total+1};
  await assert.rejects(verifyLiveGovernor({bearer:"a".repeat(64),
   lookupImpl:async()=>{const e=Error("not found");e.code="ENOTFOUND";throw e},
   fetchImpl:async()=>Response.json(fake)}),/HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT/);
