@@ -79,9 +79,15 @@ export async function verifiedDiscoveryQueue({env=process.env,fetchImpl=fetch}={
  const id=matches[0].queue_id;
  // Never enqueue into an unconsumed queue while the live Worker is held.
  const consumers=await cloudflareCall(base+"/"+id+"/consumers",{token,fetchImpl});
- if(!Array.isArray(consumers)||!consumers.some(x=>
-    ALLOWED_CONSUMERS.has(x?.script_name)&&
-    x?.dead_letter_queue===DLQ_NAME))
+ // Cloudflare Queue API may redact the optional script_name field.
+ // Never accept an explicitly foreign named consumer, multiple consumers,
+ // missing worker type/DLQ, or an unconsumed queue. The exact atomic D1
+ // receipt remains mandatory after enqueue; queue transport is not proof.
+ if(!Array.isArray(consumers)||consumers.length!==1||
+    consumers[0]?.type!=="worker"||
+    consumers[0]?.dead_letter_queue!==DLQ_NAME||
+    (consumers[0]?.script_name!=null&&
+      !ALLOWED_CONSUMERS.has(consumers[0].script_name)))
   fail("DIRECT_QUEUE_CONSUMER_AND_DLQ_UNVERIFIED");
  return {base,id,token};
 }
