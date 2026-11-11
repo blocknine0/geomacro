@@ -9,6 +9,20 @@ const verified=["0204","0211","0212","0213"].map(id=>({
 const validState=()=>({
  stage1_admission:{status:"PASS_AUTHENTICATED_REAL_PROVIDER_SHADOW_ADMISSION"},
  recovery_checkpoint_verified:true,migration_ledger_verified:true,
+ final_schema_readback:{
+  status:"PASS_REAL_PRODUCTION_FOUR_MIGRATIONS_DIRECT_SCHEMA_READBACK",
+  migration_ids:["0204","0211","0212","0213"],
+  native_history_directly_observed:true,
+  ledger_four_checksums_and_verified_statuses:true,
+  production_schema_and_columns_directly_observed:true,
+  readback_queries:10,
+  tables:[
+   {table:"materialized_cache",columns_verified:3},
+   {table:"p0b_committed_day_totals",columns_verified:2},
+   {table:"phase2h_pending_hourly_v1",columns_verified:3},
+   {table:"phase2h_raw_object_refs_v1",columns_verified:15}
+  ]
+ },
  verified:verified.map(x=>({...x})),production_sql_mutated:false
 });
 const physicalB2=()=>({
@@ -55,6 +69,15 @@ test("synthetic HMAC, missing B2 bytes or an unrelated signed status never autho
   {state:{...validState(),recovery_checkpoint_verified:false},
    pointerProof:emptyPointer(),b2Proof:physicalB2()},
   {state:{...validState(),migration_ledger_verified:false},
+   pointerProof:realPointer(),b2Proof:physicalB2()},
+  {state:{...validState(),final_schema_readback:null},
+   pointerProof:emptyPointer(),b2Proof:physicalB2()},
+  {state:{...validState(),final_schema_readback:{
+   ...validState().final_schema_readback,readback_queries:9}},
+   pointerProof:realPointer(),b2Proof:physicalB2()},
+  {state:{...validState(),final_schema_readback:{
+   ...validState().final_schema_readback,
+   tables:validState().final_schema_readback.tables.slice(0,3)}},
    pointerProof:realPointer(),b2Proof:physicalB2()}
  ];
  for(const c of cases){
