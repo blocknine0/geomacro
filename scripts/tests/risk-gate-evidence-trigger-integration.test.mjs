@@ -75,7 +75,10 @@ test("real 20m gap tick scans global Reuters/ANI publisher index, caps writes, k
  assert.equal(one.provisional_only,true);
  assert.equal(one.original_fulltext_stored,false);
  assert.equal(m.queries.filter(x=>x.hostname==="news.google.com"&&
-  x.searchParams.get("q").includes("site:")).length,4);
+  x.searchParams.get("q").includes("(site:")).length,4);
+ assert.equal(m.queries.filter(x=>x.hostname==="news.google.com"&&
+  x.searchParams.get("q").includes("-site:")).length,one.single_source_targeted_queries);
+ assert.equal(one.targeted_hits_are_discovery_only,true);
  assert.equal([...m.inserted.values()].every(x=>x.status==="OBSERVED"&&
   x.original_page_fetched===0&&x.fact_basis==="SEARCH_TITLE_ONLY"),true);
  const two=await riskGapEnrichmentTick(env,{now:at+20*60000,fetcher:m.fetcher});

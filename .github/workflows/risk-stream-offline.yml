@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'workers/control-plane/src/risk-stream-*.mjs'
+      - 'workers/control-plane/src/risk-gap-enrichment.mjs'
+      - 'scripts/lib/phase2h-country-originals-195.mjs'
       - 'workers/risk-stream-shadow/**'
       - 'scripts/ops/push-risk-stream-shadow-jsonl.mjs'
       - 'scripts/ops/verify-risk-stream-b2-live-governor.mjs'
@@ -28,6 +30,10 @@ jobs:
       - name: Parse Worker modules, migration and offline test harness
         run: |
           node --check workers/control-plane/src/risk-stream-pipeline.mjs
+          node --check workers/control-plane/src/risk-stream-open-derived.mjs
+          node --check workers/control-plane/src/risk-stream-open-search.mjs
+          node --check workers/control-plane/src/risk-gap-enrichment.mjs
+          node --check scripts/tests/risk-stream-open-derived.test.mjs
           node --check scripts/tests/risk-stream-pipeline.test.mjs
           node --check workers/control-plane/src/risk-stream-b2-governor.mjs
           node --check scripts/tests/risk-stream-b2-governor.test.mjs
@@ -40,7 +46,7 @@ jobs:
           node --check scripts/ops/verify-risk-stream-b2-live-governor.mjs
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check scripts/ops/verify-risk-stream-b2-d1-shadow-readonly.mjs
-          node --check scripts/tests/risk-stream-shadow-contract.test.mjs
+          node --check scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs
