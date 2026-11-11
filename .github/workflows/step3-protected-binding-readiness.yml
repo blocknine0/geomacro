@@ -13,8 +13,14 @@ on:
       - "scripts/ops/step3-protected-binding-readiness.mjs"
       - "scripts/tests/step3-protected-binding-readiness.test.mjs"
   workflow_dispatch:
+    inputs:
+      stage2_run_id:
+        description: 'Optional completed Stage2 run for independent read-only Ed25519 signature proof'
+        type: string
+        required: false
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: geomacro-step3-readonly-binding-audit-${{ github.ref }}
   cancel-in-progress: false
@@ -81,5 +87,75 @@ jobs:
         with:
           name: geomacro-step3-bindings-readonly-${{ github.run_id }}
           path: artifacts/release/step3-bindings-readiness.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  signature-proof:
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.stage2_run_id != ''
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 8
+    env:
+      GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      STEP3_PROOF_RUN_ID: ${{ inputs.stage2_run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Authenticate GitHub source run and provider jobs (read-only)
+        id: stage2_run
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROOF_RUN_ID: ${{ inputs.stage2_run_id }}
+        with:
+          script: |
+            const id=String(process.env.PROOF_RUN_ID??'');
+            if(!/^[1-9][0-9]{5,20}$/.test(id)) {
+              core.setFailed('STAGE2_SIGNATURE_RUN_ID_INVALID');return;
+            }
+            const {owner,repo}=context.repo;
+            const {data:run}=await github.rest.actions.getWorkflowRun({owner,repo,run_id:Number(id)});
+            if(run.path!=='.github/workflows/production-rollout-orchestrator.yml' ||
+               run.event!=='workflow_dispatch' || run.head_branch!=='main' ||
+               run.head_repository?.full_name!=='blocknine0/geomacro' ||
+               run.status!=='completed' || run.conclusion!=='success' ||
+               !/^[a-f0-9]{40}$/.test(run.head_sha)) {
+              core.setFailed('STAGE2_SIGNATURE_RUN_SOURCE_UNVERIFIED');return;
+            }
+            const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
+              owner,repo,run_id:Number(id),per_page:100
+            });
+            if(jobs.jobs.filter(j=>j.name==='stage2-production'&&j.conclusion==='success').length!==1 ||
+               jobs.jobs.filter(j=>j.name==='shadow-physical'&&j.conclusion==='success').length!==1) {
+              core.setFailed('STAGE2_SIGNATURE_PHYSICAL_JOBS_UNVERIFIED');return;
+            }
+            core.setOutput('sha',run.head_sha);
+      - name: Download exact-run production signed receipt (no provider mutation)
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-step3-production
+          path: artifacts/release
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.stage2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Verify trusted Ed25519 receipt signature (historical only)
+        env:
+          STEP3_PROOF_SOURCE_SHA: ${{ steps.stage2_run.outputs.sha }}
+        run: node scripts/ops/verify-step3-production-signer-readonly.mjs
+      - name: Preserve sanitized signed-source audit proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-stage2-signature-independent
+          path: artifacts/release/step3-production-independent-signature.json
           if-no-files-found: warn
           retention-days: 14
