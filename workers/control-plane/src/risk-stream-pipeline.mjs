@@ -9,6 +9,7 @@
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
+const FEEDS=new Set(["GDELT_INDEX","RSS","WEBSITE_INTELLIGENCE","OFFICIAL_API"]);
 const ROLES=new Set(["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL",
  "OFFICIAL_STATISTICS","MARKET_PRICE","TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]);
 const POLICIES=Object.freeze({
@@ -54,7 +55,7 @@ const signKey=async value=>{
 };
 export const riskStreamOriginalClaims=e=>JSON.stringify({
  schema:"geomacro.risk-stream-original-claims.v1",country_iso3:e.country_iso3,
- category:e.category,event_fingerprint:e.event_fingerprint,entities:e.entities,
+ category:e.category,feed_origin:e.feed_origin,event_fingerprint:e.event_fingerprint,entities:e.entities,
  source_id:e.source_id,source_url:e.source_url,publisher_root_domain:e.publisher_root_domain,
  parent_media_entity:e.parent_media_entity,source_role:e.source_role,
  published_at:e.published_at,original_page_sha256:e.original_page_sha256,
@@ -63,6 +64,7 @@ export const riskStreamOriginalClaims=e=>JSON.stringify({
 function validateCandidate(e,now){
  if(!e||e.schema!=="geomacro.risk-stream-candidate.v1"||
   !ISO3.test(e.country_iso3??"")||!NAME.test(e.category??"")||
+  !FEEDS.has(e.feed_origin)||
   !HEX.test(e.event_fingerprint??"")||!SOURCE.test(e.source_id??"")||
   !DOMAIN.test(e.publisher_root_domain??"")||
   typeof e.parent_media_entity!=="string"||e.parent_media_entity.length>100||
@@ -86,6 +88,8 @@ function validateCandidate(e,now){
   fail("ORIGINAL_CLOCK_INVALID");
  if(e.kind!=="INDEX_ONLY"&&e.kind!=="VERIFIED_ORIGINAL")
   fail("CANDIDATE_KIND_INVALID");
+ if(e.feed_origin==="GDELT_INDEX"&&e.kind!=="INDEX_ONLY")
+  fail("INDEX_ONLY_DISCOVERY_NOT_ORIGINAL");
  if(e.kind==="VERIFIED_ORIGINAL"){
   if(!exact(e.proof,["facts_signature_b64","rights_signature_b64"])||
      typeof e.raw_payload!=="string"||e.raw_payload.length<16||
