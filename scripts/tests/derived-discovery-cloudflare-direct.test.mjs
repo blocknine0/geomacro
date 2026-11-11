@@ -22,8 +22,8 @@ const body={
  reviewed:[{original_ref:SHA("c"),
   status:"HOLD_SOURCE_ACCESS_OR_EXPRESSION",commercialEligible:false}]
 };
-function harness({consumer=true,receiptAfterPush=true,receiptRow,
-  success=true}={}){
+function harness({consumer=true,redactedName=false,foreignName=false,
+  receiptAfterPush=true,receiptRow,success=true}={}){
  const calls=[];let sent=0;
  const response=(value,status=200)=>Response.json(value,{status});
  const fetchImpl=async(url,opts)=>{
@@ -34,7 +34,8 @@ function harness({consumer=true,receiptAfterPush=true,receiptRow,
     queue_id:QUEUE_ID}]});
   if(u.pathname.endsWith("/consumers")&&opts.method==="GET")
    return response({success:true,result:consumer?[{
-    script_name:"geomacro-derived-discovery-consumer",
+    type:"worker",
+    script_name:redactedName?null:foreignName?"foreign-worker":"geomacro-derived-discovery-consumer",
     dead_letter_queue:"geomacro-derived-discovery-dlq"
    }]:[]});
   if(u.pathname.endsWith("/messages")&&opts.method==="POST"){
@@ -130,4 +131,29 @@ test("cannot accept unverified commercial flags or untrusted page",async()=>{
   ...body,reviewed:[{...body.reviewed[0],commercialEligible:true}]},
   {env,fetchImpl:fake.fetchImpl}),/DIRECT_QUEUE_UNVERIFIED_BODY/);
  assert.equal(fake.calls.length,0);
+});
+
+test("provider-redacted single worker consumer still requires exact D1 atomic readback",async()=>{
+ const fake=harness({redactedName:true});
+ const result=await deliverWebsiteViaDirectQueue(body,{env,fetchImpl:fake.fetchImpl,
+  clock:()=>Date.parse(body.checked_at),sleepFn:async()=>{}});
+ assert.equal(fake.sent,1);
+ assert.equal(result.d1_atomic_readback_verified,true);
+ assert.equal(result.atomic_receipt_verified_at,body.checked_at);
+});
+test("explicit foreign named worker never receives unverified discovery messages",async()=>{
+ const fake=harness({foreignName:true});
+ await assert.rejects(()=>deliverWebsiteViaDirectQueue(body,{
+  env,fetchImpl:fake.fetchImpl}),/DIRECT_QUEUE_CONSUMER_AND_DLQ_UNVERIFIED/);
+ assert.equal(fake.sent,0);
+});
+test("provider-redacted single worker without committed D1 receipt remains HOLD",async()=>{
+ const fake=harness({redactedName:true,receiptAfterPush:false});
+ let elapsed=0;
+ await assert.rejects(()=>deliverWebsiteViaDirectQueue(body,{
+  env,fetchImpl:fake.fetchImpl,clock:()=>elapsed,
+  sleepFn:async ms=>{elapsed+=ms}}),
+  /DIRECT_QUEUE_ACK_PENDING_NOT_D1_COMMITTED/);
+ assert.equal(fake.sent,1);
+ assert.equal(elapsed,30000);
 });
