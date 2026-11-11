@@ -190,7 +190,7 @@ export async function sevenDayRollupIsReady(env, subject, now=Date.now(),fetcher
   const key=String(env?.RISK_GATE_SUPABASE_SERVICE_ROLE_KEY??"");
   let url;try{url=new URL(rawUrl)}catch{return false}
   if(url.protocol!=="https:"||url.username||url.password||
-     !/^[a-z0-9-]+\\.supabase\\.co$/.test(url.hostname)||key.length<32)return false;
+     !/^[a-z0-9-]+\.supabase\.co$/.test(url.hostname)||key.length<32)return false;
   const today=new Date(now).toISOString().slice(0,10);
   const yesterday=new Date(now-DAY).toISOString().slice(0,10);
   const q=new URL("/rest/v1/geomacro_risk_signal_7d",url);
@@ -212,7 +212,7 @@ export async function sevenDayRollupIsReady(env, subject, now=Date.now(),fetcher
     const domains=new Set(["geopolitics","macro_fx","critical_minerals"]);
     for(const row of value){
       const day=row?.rollup_day;
-      if(typeof day!=="string"||!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)||
+      if(typeof day!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(day)||
          day<yesterday||day>today||!domains.has(row?.domain)||
          row.scored_days!==7||row.verification_status!=="VERIFIED"||
          !SHA.test(String(row.source_snapshot_sha256??""))||
