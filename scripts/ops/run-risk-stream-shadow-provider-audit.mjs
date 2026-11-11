@@ -166,34 +166,70 @@ async function ingest(){
  for(const [key,value] of Object.entries({query:'"United States" (tariffs OR sanctions OR export controls)',
    mode:"artlist",format:"json",maxrecords:"50",timespan:"24h"}))
   gdelt.searchParams.set(key,value);
- const response=await fetch(gdelt,{signal:AbortSignal.timeout(25000),
-  headers:{Accept:"application/json"},redirect:"error"});
- ok(response.ok,"GDELT_LIVE_HTTP_"+response.status);
- const data=await response.json();
- ok(Array.isArray(data.articles),"GDELT_REAL_RESPONSE_INVALID");
+ const articles=[];
+ try{
+  const response=await fetch(gdelt,{signal:AbortSignal.timeout(25000),
+   headers:{Accept:"application/json"},redirect:"error"});
+  if(response.ok){
+   const data=await response.json();
+   if(Array.isArray(data.articles))articles.push(...data.articles.map(x=>({...x,feed_origin:"GDELT_INDEX"})));
+  }else if(response.status===429)console.log("GDELT_RATE_LIMITED_RESPECT_RETRY_NO_REPEAT");
+  else console.log("GDELT_HTTP_NONOK_FALLBACK_TO_RSS",response.status);
+ }catch{console.log("GDELT_TEMPORARILY_UNAVAILABLE_RSS_FALLBACK")}
+ // Actual RSS metadata is also INDEX_ONLY, not original commercial evidence.
+ // GDELT can rate-limit shared CI IPs; never retry aggressively or invent rows.
+ if(articles.length<20){
+  const feeds=[
+   "https://news.google.com/rss/search?q=United+States+tariffs+sanctions+when%3A2d&hl=en-US&gl=US&ceid=US%3Aen",
+   "https://feeds.bbci.co.uk/news/world/rss.xml",
+   "https://www.theguardian.com/world/rss"
+  ];
+  for(const feed of feeds){
+   if(articles.length>=50)break;
+   try{
+    const response=await fetch(feed,{signal:AbortSignal.timeout(18000),
+     headers:{Accept:"application/rss+xml,application/xml,text/xml"},redirect:"error"});
+    if(!response.ok){console.log("REAL_RSS_HTTP_UNAVAILABLE",response.status);continue}
+    const xml=await response.text();
+    if(xml.length>900000)continue;
+    const sections=[...xml.matchAll(/<item\b[^>]*>([\s\S]*?)<\/item>/giu)];
+    for(const block of sections){
+     const text=block[1];
+     const link=text.match(/<link>([\s\S]*?)<\/link>/iu)?.[1];
+     const pubDate=text.match(/<pubDate>([\s\S]*?)<\/pubDate>/iu)?.[1];
+     if(!link||!pubDate)continue;
+     articles.push({url:link.trim().replaceAll("&amp;","&"),
+       pubDate:pubDate.trim(),feed_origin:"RSS"});
+    }
+    console.log("REAL_RSS_ITEMS_OBSERVED",sections.length);
+   }catch{console.log("REAL_RSS_TEMPORARILY_UNAVAILABLE")}
+  }
+ }
  const seen=new Set(),items=[];
- for(const art of data.articles){
+ for(const art of articles){
   if(items.length>=40)break;
   let u;try{u=new URL(art.url)}catch{continue}
   if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
      !/^[a-z0-9.-]{3,253}$/u.test(u.hostname))continue;
-  const dt=parsedDate(art.seendate);
-  if(!dt||dt>start||start-dt>72*3600_000||seen.has(u.href))continue;
+  const dt=art.feed_origin==="RSS"?new Date(art.pubDate):parsedDate(art.seendate);
+  if(!dt||!Number.isFinite(dt.getTime())||dt>start||start-dt>72*3600_000||
+    u.href.length>2048||seen.has(u.href))continue;
   seen.add(u.href);
-  const digest=hash(u.href),eventKey="GDELT_"+digest.slice(0,16).toUpperCase();
+  const digest=hash(u.href),origin=art.feed_origin==="RSS"?"RSS":"GDELT",
+   eventKey=origin+"_"+digest.slice(0,16).toUpperCase();
   const entities=["COUNTRY:USA","EVENT:"+digest.slice(0,12).toUpperCase()].sort();
-  const sourceId="gdelt_"+hash(u.hostname).slice(0,16);
+  const sourceId=origin.toLowerCase()+"_"+hash(u.hostname).slice(0,16);
   const fingerprint=hash(JSON.stringify(["USA","GEOPOLITICS",eventKey,entities]));
   items.push({schema:"geomacro.risk-stream-candidate.v1",
    kind:"INDEX_ONLY",country_iso3:"USA",category:"GEOPOLITICS",
-   feed_origin:"GDELT_INDEX",event_key:eventKey,entities,
+   feed_origin:art.feed_origin==="RSS"?"RSS":"GDELT_INDEX",event_key:eventKey,entities,
    event_fingerprint:fingerprint,source_id:sourceId,source_url:u.href,
-   publisher_root_domain:u.hostname,parent_media_entity:"gdelt_"+hash(u.hostname).slice(0,16),
+   publisher_root_domain:u.hostname,parent_media_entity:sourceId,
    source_role:"INDEPENDENT_REGIONAL",published_at:dt.toISOString(),
    // Index-only observation identity hash; NOT original-page hash proof.
-   original_page_sha256:hash("GDELT_INDEX_ONLY:"+u.href),
+   original_page_sha256:hash("INDEX_ONLY_URL_IDENTITY:"+u.href),
    derived:{
-    what:"GDELT discovered a news URL matching the United States search topic",
+    what:"An external news index discovered a URL associated with a United States search topic",
     why:"This index item has not passed independent publisher or facts verification",
     market:"No validated market consequence can be inferred from this index hint",
     watch:"Seek independent original publications before creating any risk verdict"},
@@ -224,7 +260,7 @@ async function ingest(){
  const submitted=items.length,signed=rows.reduce((n,x)=>n+x.corroborated_and_signed,0);
  const latency=rows.map(x=>x.d1_write_p95_ms).filter(Number.isFinite);
  const report={schema:"geomacro.shadow-live-observation-audit.v1",source_commit:SHA,
-  event_source:"REAL_GDELT_INDEX_ONLY",submitted_events:submitted,
+  event_source:"REAL_GDELT_OR_RSS_INDEX_ONLY",submitted_events:submitted,
   canonical_batch_receipts:rows.length,acknowledged_events:
    rows.reduce((n,x)=>n+x.event_count,0),
   signed_gro_count:signed,d1_observed_503:observed503,
