@@ -124,11 +124,12 @@ async function provision(){
  const groPublic=createPublicKey(pkcs8).export({type:"spki",format:"der"}).toString("base64");
  const attesters=["RISK_STREAM_MACHINE_FACTS_SPKI_B64","RISK_STREAM_MACHINE_RIGHTS_SPKI_B64"];
  let attesterReady=attesters.every(k=>typeof process.env[k]==="string"&&
-  Buffer.from(process.env[k],"base64").length===44);
- if(attesterReady)attesterReady=process.env[attesters[0]]!==process.env[attesters[1]];
+  process.env[k].length>0);
  if(attesterReady){
+  const result=validateAttesterKeys(process.env[attesters[0]],process.env[attesters[1]]);
+  ok(result.fingerprints.facts!==result.fingerprints.rights,"ATTESTER_KEY_INDEPENDENCE_INVALID");
   for(const key of attesters)secret(key,process.env[key]);
-  console.log("SHADOW_INDEPENDENT_ATTESTER_PUBLIC_KEYS_CONFIGURED");
+  console.log("SHADOW_DISTINCT_ATTESTER_PUBLIC_KEYS_INSTALLED_PROOF_STILL_REQUIRED");
  }else console.log("SHADOW_ORIGINAL_EVIDENCE_ATTESTER_KEYS_MISSING_HOLD");
  // Do not put any private key, AES material or admin bearer into logs/artifacts.
  const deployReceipt=wrangler(["deploy","--config",CONFIG]);
