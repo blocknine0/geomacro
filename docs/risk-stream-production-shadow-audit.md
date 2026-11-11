@@ -63,12 +63,12 @@ Operator dispatch: In GitHub Actions, choose Risk Stream Isolated Shadow Provide
 
 ## Isolated zero-traffic B2 governor candidate
 
-The protected shadow audit deploys only \`geomacro-risk-stream-governor-candidate\`
-with a read-only D1 binding to \`geomacro-risk-stream-shadow\`. It imports
-the exact \`workers/control-plane/src/b2-account-quota.mjs\` module; there is
+The protected shadow audit deploys only `geomacro-risk-stream-governor-candidate`
+with a read-only D1 binding to `geomacro-risk-stream-shadow`. It imports
+the exact `workers/control-plane/src/b2-account-quota.mjs` module; there is
 no quota override. Its sole authenticated endpoint returns the isolated D1
 policy and ledger, with verified 401 for unauthenticated access. The candidate
 does not have production routes, B2 credentials, queues, timers or commerce.
 The scorecard separates **isolated deployed policy parity** from **live
 production shared D1 governor parity**. A candidate PASS never removes
-\`config/d1-hotspot-v2-canary.hold\` or authorizes 1→100% production traffic.
+`config/d1-hotspot-v2-canary.hold` or authorizes 1→100% production traffic.
