@@ -10,7 +10,7 @@ test("D1 manifest commitment is order-independent and content-sensitive",()=>{
  assert.equal(digestManifest([a,{...a,batch_id:"b"}]),digestManifest([{...a,batch_id:"b"},a]));
 });
 
-test("current indexed readback accepts no-list proof but never claims physical parity",()=>{
+test("current full parity excludes D1-indexed no-list receipts and requires physical inventory",()=>{
  const opts={census:{backlog:{outbox:0,archived_outboxes:1,exact_bundle_journal_mismatch:0}},
   origin:"https://x.workers.dev",head:"a".repeat(40),run:"123",now:1000000};
  const receipt={schema:"geomacro.hot50-storage-readback.v1",status:"PASS",
@@ -20,8 +20,16 @@ test("current indexed readback accepts no-list proof but never claims physical p
   independent_s3_get_sha256_aes_gcm_restoration:true,d1_indexed_b2_readback_verified:true,
   physical_bucket_list_complete:false,bidirectional_parity_pass:false,
   checked_archived_bundles:1,pending_outbox_batches:0,d1_archived:1};
- assert.equal(currentParityReceipt(receipt,opts),true);
- assert.equal(currentParityReceipt({...receipt,physical_bucket_list_complete:true},opts),false);
+ assert.equal(currentParityReceipt(receipt,opts),false);
+ const complete={...receipt,
+  physical_bucket_list_complete:true,bidirectional_parity_pass:true,
+  namespace_set_equality_verified:true,unindexed_b2_objects_enumerated:true,
+  stable_b2_manifest_verified:true,b2_manifest_sha256:"c".repeat(64)};
+ assert.equal(currentParityReceipt(complete,opts),true);
+ assert.equal(currentParityReceipt({...complete,namespace_set_equality_verified:false},opts),false);
+ assert.equal(currentParityReceipt({...complete,bidirectional_parity_pass:false},opts),false);
+ assert.equal(currentParityReceipt({...complete,stable_b2_manifest_verified:false},opts),false);
+ assert.equal(currentParityReceipt({...complete,b2_manifest_sha256:null},opts),false);
  assert.equal(currentParityReceipt({...receipt,d1_indexed_b2_readback_verified:false},opts),false);
  assert.equal(currentParityReceipt({...receipt,checked_at:new Date(0).toISOString()},opts),false);
 });

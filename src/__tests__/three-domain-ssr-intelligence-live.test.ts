@@ -7,7 +7,13 @@ import type {StatelessCategory,StatelessIntelligenceSignal} from "@/lib/stateles
 import {intelligenceActorHeadline} from "@/lib/public-intelligence-actor-copy";
 import type {StatelessIntelligenceResult} from "@/lib/stateless-public-intelligence.server";
 
-const now="2026-10-13T10:00:00.000Z";
+// Keep only the synthetic SSR fixture's dates relative to test execution.
+// Production freshness filters must remain strict; never move their clocks.
+const fixtureNow=Date.now();
+const now=new Date(fixtureNow).toISOString();
+const publishedAt=new Date(fixtureNow-25*60*60_000).toISOString();
+const releaseCutoff=new Date(fixtureNow-15*60_000).toISOString();
+const earliestOriginal=new Date(fixtureNow-30*24*60*60_000).toISOString();
 const headline:Record<StatelessCategory,string>={
   geopolitics:"Geomacro finds United Nations announced new sanctions on cross-border trade",
   macro:"Geomacro finds Federal Reserve announced new monetary policy measures",
@@ -19,14 +25,14 @@ const signal=(category:StatelessCategory):StatelessIntelligenceSignal=>({
   topic:category==="geopolitics"?"sanctions and trade restrictions":
     category==="macro"?"monetary policy":"critical-mineral inputs",
   what_changed:headline[category].replace(/^Geomacro finds /u,"")+". The action was announced in the dated original release.",
-  geography:null,development_type:"official update",published_at:"2026-10-12T09:00:00.000Z",
+  geography:null,development_type:"official update",published_at:publishedAt,
   date_precision:"exact",observed_release_count:1,sources_credited:[],
   status:"official_release_observed_unscored",same_event_corrob_verified:false,severity:null,
 });
 const state=(category:StatelessCategory):StatelessIntelligenceResult=>({
   schema:"geomacro.website-stateless-intelligence.v1",category,checked_at:now,
-  website_release_cutoff:"2026-10-13T09:45:00.000Z",
-  earliest_original:"2026-09-13T10:00:00.000Z",
+  website_release_cutoff:releaseCutoff,
+  earliest_original:earliestOriginal,
   releases_examined:1,feed_count:2,healthy_feed_count:2,
   current_24h_count:0,last_7d_count:1,last_30d_count:1,
   status:"official_observations_available",signals:[signal(category)],

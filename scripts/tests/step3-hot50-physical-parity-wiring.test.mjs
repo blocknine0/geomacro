@@ -9,6 +9,18 @@ test("Step3 Hot50 acceptance requires same-run physical B2/D1 parity before five
  assert.match(section,/needs:\s*stage2-production/u);
  assert.match(section,/needs\.stage2-production\.result == 'success'/u);
  assert.match(section,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/u);
+ assert.ok(section.includes("D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}"));
+ assert.match(section,/Verify exact main and canonical D1 quota ledger identity before B2/u);
+ assert.match(section,/HOT50_EXACT_MAIN_CHANGED/u);
+ assert.match(section,/HOT50_D1_CANONICAL_BINDING_MISMATCH/u);
+ assert.match(section,/HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT/u);
+ assert.match(section,/HOT50_B2_LIVE_QUOTA_EXHAUSTED/u);
+ assert.match(section,/B2_DAILY_LIMITS/u);
+ assert.ok(section.indexOf("HOT50_B2_LIVE_GOVERNOR_POLICY_DRIFT")<
+   section.indexOf("audit-hot50-b2-d1-parity.mjs"));
+ assert.ok(section.indexOf("HOT50_D1_CANONICAL_BINDING_MISMATCH")<
+   section.indexOf("audit-hot50-b2-d1-parity.mjs"));
+
  assert.match(section,/B2_REQUEST_BUDGET: "250"/u);
  assert.match(section,/PARITY_MAX_B2_READS: "240"/u);
  assert.match(section,/B2_PARITY_VERIFIED_RECEIPT_JSON: \/tmp\/hot50-proof\/parity\.json/u);
