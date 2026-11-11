@@ -127,7 +127,7 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
  };
  const item={
   schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
-  country_iso3:"USA",category,entities,
+  country_iso3:"USA",category,feed_origin:original?"OFFICIAL_API":"RSS",entities,
   event_fingerprint:digest(JSON.stringify(["USA",category,entities,derived.what])),
   source_id:source,source_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
   publisher_root_domain:original?"official.example":"regional.example",
@@ -189,7 +189,7 @@ test("idempotent redrive reuses same signed GRO and outbox despite later clock",
 test("unverified GDELT indexed hints never corroborate commercial originals",async()=>{
  const c=ctx(),now=Date.now();
  const a=candidate(c,1,"gov",now),b=candidate(c,1,"region",now);
- b.kind="INDEX_ONLY";b.proof=null;b.raw_payload=null;
+ b.kind="INDEX_ONLY";b.feed_origin="GDELT_INDEX";b.proof=null;b.raw_payload=null;
  const result=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
  assert.equal(result.index_only,1);
  assert.equal(result.corroborated_and_signed,0);
