@@ -6,6 +6,9 @@ import {phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195
  * or satisfy the independent original/rights attestations in migration 0214.
  */
 export const OPEN_FACTS_TIER="DERIVED_FACTS_OPEN_INTELLIGENCE";
+// Identifier is integrity-bound to GeoMacro's own derived claims only.
+// This is NOT evidence of upstream content rights or a paid-use entitlement.
+export const OPEN_DERIVED_REDISTRIBUTION_LICENSE_ID="GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1";
 export const OPEN_FACTS_ROLES=Object.freeze({
  GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"],
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
@@ -172,7 +175,16 @@ export function openDerivedTierMatrix({observations=0,pairs=[],history=[],now=Da
 }
 export async function signOpenDerivedAdvisory(pair,{privatePkcs8B64,publicSpkiB64,now=Date.now()}={}){
  if(!pair||pair.source_originals_verified!==2||pair.rights_tier!==OPEN_FACTS_TIER||
-   pair.original_text_stored!==false||pair.commercial_eligible!==false)
+   pair.original_text_stored!==false||pair.commercial_eligible!==false||
+   !HEX.test(pair.event_fingerprint??"")||
+   !Array.isArray(pair.source_ids)||pair.source_ids.length!==2||
+   !Array.isArray(pair.source_domains)||pair.source_domains.length!==2||
+   !Array.isArray(pair.parent_media_entities)||pair.parent_media_entities.length!==2||
+   !Array.isArray(pair.source_published_at)||pair.source_published_at.length!==2||
+   pair.source_domains[0]===pair.source_domains[1]||
+   pair.parent_media_entities[0]===pair.parent_media_entities[1]||
+   pair.source_published_at.some(x=>!Number.isFinite(Date.parse(x)))||
+   Math.abs(Date.parse(pair.source_published_at[0])-Date.parse(pair.source_published_at[1]))>PAIR_WINDOW)
   deny("ADVISORY_EVIDENCE_NOT_ADMITTED");
  const privateKey=await crypto.subtle.importKey("pkcs8",Uint8Array.from(atob(privatePkcs8B64),x=>x.charCodeAt(0)),{name:"Ed25519"},false,["sign"]);
  const publicKey=await crypto.subtle.importKey("spki",Uint8Array.from(atob(publicSpkiB64),x=>x.charCodeAt(0)),{name:"Ed25519"},false,["verify"]);
@@ -180,6 +192,20 @@ export async function signOpenDerivedAdvisory(pair,{privatePkcs8B64,publicSpkiB6
   event_fingerprint:pair.event_fingerprint,country_iso3:pair.country_iso3,
   category:pair.category,event_key:pair.event_key,facts:pair.facts,
   source_ids:pair.source_ids,source_domains:pair.source_domains,
+  source_provenance:{
+   publisher_domains:pair.source_domains,
+   parent_media_entities:pair.parent_media_entities,
+   published_at:pair.source_published_at,
+   canonical_event_fingerprint:pair.event_fingerprint,
+   original_publisher_prose_embedded:false
+  },
+  redistribution_license:{
+   id:OPEN_DERIVED_REDISTRIBUTION_LICENSE_ID,
+   covered_material:"GEOMACRO_AUTHORED_DERIVED_FACT_CLAIMS_ONLY",
+   registration_status:"IDENTIFIER_BOUND_PENDING_REVIEWED_TERMS",
+   third_party_publisher_rights_granted:false,
+   commercial_redistribution_authorized:false
+  },
   what:"Independent original publishers reported the specified event facts",
   why:"Corroborated original observations warrant further expert risk assessment",
   market:"No quantified market impact is inferred without a separate verified price observation",
