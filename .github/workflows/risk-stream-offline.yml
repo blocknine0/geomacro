@@ -1,0 +1,29 @@
+name: Risk Stream Evidence-to-GRO Offline Contract
+on:
+  pull_request:
+    paths:
+      - 'workers/control-plane/src/risk-stream-*.mjs'
+      - 'workers/control-plane/migrations/0214_risk_stream_event_driven.sql'
+      - 'scripts/tests/risk-stream-*.test.mjs'
+      - '.github/workflows/risk-stream-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  proof-gated-risk-stream:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Parse Worker modules, migration and offline test harness
+        run: |
+          node --check workers/control-plane/src/risk-stream-pipeline.mjs
+          node --check scripts/tests/risk-stream-pipeline.test.mjs
+          grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
+      - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs
