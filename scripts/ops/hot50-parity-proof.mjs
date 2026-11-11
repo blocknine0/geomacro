@@ -12,7 +12,12 @@ export function currentParityReceipt(b,{census,origin,head,run,now=Date.now()}){
  b.stable_d1_manifest_verified===true&&/^[a-f0-9]{64}$/.test(b.d1_manifest_sha256??"")&&
  b.independent_s3_get_sha256_aes_gcm_restoration===true&&
  b.d1_indexed_b2_readback_verified===true&&
- b.physical_bucket_list_complete===false&&b.bidirectional_parity_pass===false&&
+ // A D1-indexed GET verifies only objects known to D1; it cannot prove
+ // absence of unindexed B2 objects or full bidirectional parity.
+ b.physical_bucket_list_complete===true&&b.bidirectional_parity_pass===true&&
+ b.namespace_set_equality_verified===true&&b.unindexed_b2_objects_enumerated===true&&
+ b.stable_b2_manifest_verified===true&&
+ /^[a-f0-9]{64}$/.test(b.b2_manifest_sha256??"")&&
  b.checked_archived_bundles>0&&b.pending_outbox_batches===0&&
  census?.backlog?.outbox===0&&b.checked_archived_bundles===b.d1_archived&&
  b.d1_archived===census?.backlog?.archived_outboxes&&
