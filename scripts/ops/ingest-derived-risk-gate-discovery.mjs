@@ -8,6 +8,9 @@
 import {writeFileSync,mkdirSync} from "node:fs";
 import {createHash,createHmac} from "node:crypto";
 import {dirname,resolve} from "node:path";
+import {retryTransientDiscoveryRequest,isTransientDiscoveryNetworkError,
+ pauseDiscoveryRequest,DISCOVERY_LANE_PACE_MS}
+ from "../lib/derived-discovery-transient-retry.mjs";
 import {deriveControlPlaneRootToken}
  from "./derive-control-plane-root-token.mjs";
 import {DERIVED_DISCOVERY_BRIDGE_SCHEMA,DERIVED_DISCOVERY_LANES}
@@ -38,17 +41,28 @@ const stats=Object.fromEntries(DERIVED_DISCOVERY_LANES.map(lane=>[lane,{
 async function call(method,url,body){
  const encoded=body?JSON.stringify(body):null;
  const queuePost=method==="POST"&&body?.lane==="website_intelligence";
- const timestamp=String(Date.now());
+ // The exact body/digest stays stable across attempts; each attempt signs
+ // a fresh clock to satisfy the protected Worker attestation window.
  const digest=queuePost?createHash("sha256").update(encoded).digest("hex"):null;
- const signature=queuePost?createHmac("sha256",token)
-   .update(timestamp+"."+digest).digest("hex"):null;
- const r=await fetch(url,{method,redirect:"error",cache:"no-store",
-  headers:method==="POST"?{...headers,"Content-Type":"application/json",
-    ...(queuePost?{"x-geomacro-request-at":timestamp,
-      "x-geomacro-payload-sha256":digest,
-      "x-geomacro-request-mac":signature}:{})}:headers,
-  ...(encoded?{body:encoded}:{}),
-  signal:AbortSignal.timeout(20000)});
+ let r;
+ try{
+  r=await retryTransientDiscoveryRequest(()=>{
+   const timestamp=String(Date.now());
+   const signature=queuePost?createHmac("sha256",token)
+     .update(timestamp+"."+digest).digest("hex"):null;
+   return fetch(url,{method,redirect:"error",cache:"no-store",
+    headers:method==="POST"?{...headers,"Content-Type":"application/json",
+      ...(queuePost?{"x-geomacro-request-at":timestamp,
+        "x-geomacro-payload-sha256":digest,
+        "x-geomacro-request-mac":signature}:{})}:headers,
+    ...(encoded?{body:encoded}:{}),
+    signal:AbortSignal.timeout(20000)});
+  });
+ }catch(error){
+  if(isTransientDiscoveryNetworkError(error))
+   throw Error("DERIVED_DISCOVERY_PROTECTED_"+method+"_NETWORK_RETRY_EXHAUSTED");
+  throw error;
+ }
  if(queuePost&&r.status===202){
   let accepted;try{accepted=await r.json()}catch{
    throw Error("DERIVED_DISCOVERY_QUEUE_RESPONSE_INVALID");
@@ -61,9 +75,17 @@ async function call(method,url,body){
   // Queue admission is never evidence of successful D1 persistence.
   for(let poll=0;poll<30;poll++){
    await new Promise(resolve=>setTimeout(resolve,5000));
-   const status=await fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
-    method:"GET",redirect:"error",cache:"no-store",headers,
-    signal:AbortSignal.timeout(12000)});
+   let status;
+   try{
+    status=await retryTransientDiscoveryRequest(()=>
+     fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
+      method:"GET",redirect:"error",cache:"no-store",headers,
+      signal:AbortSignal.timeout(12000)}));
+   }catch(error){
+    if(isTransientDiscoveryNetworkError(error))
+     throw Error("DERIVED_DISCOVERY_QUEUE_RECEIPT_NETWORK_RETRY_EXHAUSTED");
+    throw error;
+   }
    if(status.status===202)continue;
    if(status.status!==200)
     throw Error("DERIVED_DISCOVERY_QUEUE_RECEIPT_HTTP_"+status.status);
@@ -163,7 +185,10 @@ function emitSummary(ok,error=null,retentionVerified=false){
  console.log(JSON.stringify(summary));
 }
 async function run(){
- for(const lane of DERIVED_DISCOVERY_LANES){
+ // One shared protected Worker/D1 binding: never overlap lanes. The
+ // inter-lane pause applies even if the preceding lane failed.
+ for(const [laneIndex,lane] of DERIVED_DISCOVERY_LANES.entries()){
+  if(laneIndex>0)await pauseDiscoveryRequest(DISCOVERY_LANE_PACE_MS);
   try{
   let finished=false;
   for(let pageNo=0;pageNo<PAGE_CAP;pageNo++){
