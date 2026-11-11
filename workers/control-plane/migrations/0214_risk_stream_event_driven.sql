@@ -83,3 +83,14 @@ CREATE TABLE IF NOT EXISTS risk_stream_delivery_outbox (
 );
 CREATE INDEX IF NOT EXISTS idx_risk_stream_delivery_due
  ON risk_stream_delivery_outbox(state,created_at);
+
+-- Per-kind refill ledger is a pacing gate ONLY. Every actual B2 operation
+-- must still obtain the unchanged shared atomic account-wide quota ticket.
+-- A token does not authorize billable B2 bytes, provider spend or free tier upgrades.
+CREATE TABLE IF NOT EXISTS risk_stream_b2_token_bucket (
+ day_utc TEXT NOT NULL,
+ kind TEXT NOT NULL CHECK(kind IN ('GET','PUT','HEAD','NATIVE_AUTH')),
+ tokens_milli INTEGER NOT NULL CHECK(tokens_milli>=0),
+ updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=0),
+ PRIMARY KEY(day_utc,kind)
+);
