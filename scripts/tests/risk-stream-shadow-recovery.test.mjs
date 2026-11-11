@@ -212,7 +212,7 @@ test("deployed zero-traffic candidate policy is strict and cannot claim live par
    production_d1_ledger_verified:true}}):new Response("",{status:401})}),
   /CANDIDATE_GOVERNOR_SCOPE_OR_SHA_INVALID/);
  await assert.rejects(verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,
-  fetchImpl:async()=>Response.json(body)}),/CANDIDATE_GOVERNOR_UNAUTHENTICATED_ACCESS/);
+  fetchImpl:async()=>Response.json(body)}),/CANDIDATE_GOVERNOR_UNAUTHENTICATED_HTTP_200/);
 });
 
 test("shadow scorecard rejects a manually altered candidate quota receipt",()=>{
