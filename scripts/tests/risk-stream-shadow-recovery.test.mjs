@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,sign,createHash} from "node:crypto";
-import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {spawnSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {verifyLiveGovernor,PINNED_CONTROL_PLANE}
  from "../ops/verify-risk-stream-b2-live-governor.mjs";
 import {discoverShadowArticles,parseIndexRss,createGdeltLimiter}
@@ -154,5 +156,33 @@ test("attester provisioning preflight rejects invalid facts signatures before an
   writeFileSync(sampleFile,JSON.stringify(e)+"\n");
   assert.throws(()=>preflight({factsFile,rightsFile,sampleFile}),
    /SHADOW_ATTESTATION_INVALID_rights/);
+ }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test("terminal scorecard rejects 30 acknowledged RSS hints as 10 signed GROs",()=>{
+ const temp=mkdtempSync(join(tmpdir(),"geomacro-shadow-scorecard-"));
+ try{
+  const dir=join(temp,".shadow-audit");mkdirSync(dir);
+  const json=(name,value)=>writeFileSync(join(dir,name),JSON.stringify(value));
+  json("metadata.json",{shadow_db:"geomacro-risk-stream-shadow",
+   shadow_bucket:"geomacro-risk-stream-shadow-private",
+   shadow_queue:"geomacro-risk-stream-shadow",shadow_dlq:"geomacro-risk-stream-shadow-dlq",
+   commercial_delivery:false,risk_stream_active:false,independent_attester_keys:false});
+  json("b2-governor-parity.json",{status:"D1_SHARED_GOVERNOR_MATCH",
+   expected_b2_network_ops_for_shadow:0,verified_route:"PINNED_CONTROL_PLANE_WORKERS_DEV"});
+  json("live-telemetry.json",{submitted_events:30,acknowledged_events:30,
+   canonical_batch_receipts:3,d1_observed_503:0,
+   signed_gro_count:0,verified_signature_readback_count:0,
+   independent_signed_gro_acceptance:false});
+  const result=spawnSync(process.execPath,
+   [fileURLToPath(new URL("../ops/score-risk-stream-shadow-provider-audit.mjs",import.meta.url))],
+   {cwd:temp,encoding:"utf8"});
+  assert.equal(result.status,1);
+  const report=JSON.parse(readFileSync(join(dir,"scorecard.json"),"utf8"));
+  assert.equal(report.status,"HOLD_INCOMPLETE_SHADOW_PROOF");
+  assert.equal(report.checks.live_d1_b2_governor_parity,true);
+  assert.equal(report.checks.zero_observed_d1_503,true);
+  assert.equal(report.checks.ten_signed_gros_with_d1_ed25519_readback,false);
+  assert.equal(report.canary_hold_retained,true);
  }finally{rmSync(temp,{recursive:true,force:true})}
 });
