@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "24"
-      - run: node --test scripts/tests/step3-protected-binding-readiness.test.mjs
+      - run: node --test scripts/tests/step3-protected-binding-readiness.test.mjs scripts/tests/step3-independent-signature-readonly.test.mjs
       - run: node --check scripts/ops/step3-protected-binding-readiness.mjs
 
   protected-readiness:
