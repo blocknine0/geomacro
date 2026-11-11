@@ -29,7 +29,7 @@
       "max_batch_timeout": 2,
       "max_retries": 8,
       "dead_letter_queue": "geomacro-risk-stream-shadow-dlq",
-      "max_concurrency": 2
+      "max_concurrency": 1
     }]
   }
 }
