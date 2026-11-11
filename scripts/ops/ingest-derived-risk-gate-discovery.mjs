@@ -17,6 +17,8 @@ import {DERIVED_DISCOVERY_BRIDGE_SCHEMA,DERIVED_DISCOVERY_LANES}
  from "../../workers/control-plane/src/derived-risk-gate-discovery-bridge.mjs";
 import {reviewDerivedRiskGateBatch}
  from "../lib/official-original-issuer-rights.mjs";
+import {deliverWebsiteViaDirectQueue,readCommittedWebsiteReceipt,pollWebsiteReceipt}
+ from "../lib/derived-discovery-cloudflare-direct.mjs";
 
 const ROOT="https://geomacro-control-plane.daspallab202391.workers.dev";
 const PATH="/v1/internal/risk-gate/derived-discovery";
@@ -72,21 +74,20 @@ async function call(method,url,body){
      accepted?.digest!==digest||accepted?.ack_pending!==true||
      accepted?.d1_atomic_readback_verified!==false)
    throw Error("DERIVED_DISCOVERY_QUEUE_RESPONSE_INVALID");
-  // Queue admission is never evidence of successful D1 persistence.
-  for(let poll=0;poll<30;poll++){
-   await new Promise(resolve=>setTimeout(resolve,5000));
+  // Queue admission is never D1 proof. The protected direct D1 REST
+  // readback is a fallback if the old Worker receipt GET is unavailable.
+  return pollWebsiteReceipt(body,{getReceipt:async()=>{
    let status;
    try{
-    status=await retryTransientDiscoveryRequest(()=>
-     fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
-      method:"GET",redirect:"error",cache:"no-store",headers,
-      signal:AbortSignal.timeout(12000)}));
+    status=await fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
+     method:"GET",redirect:"error",cache:"no-store",headers,
+     signal:AbortSignal.timeout(3500)});
    }catch(error){
-    if(isTransientDiscoveryNetworkError(error))
-     throw Error("DERIVED_DISCOVERY_QUEUE_RECEIPT_NETWORK_RETRY_EXHAUSTED");
-    throw error;
+    if(!isTransientDiscoveryNetworkError(error))throw error;
+    return readCommittedWebsiteReceipt(body);
    }
-   if(status.status===202)continue;
+   if(status.status===202)return null;
+   if(status.status===503)return readCommittedWebsiteReceipt(body);
    if(status.status!==200)
     throw Error("DERIVED_DISCOVERY_QUEUE_RECEIPT_HTTP_"+status.status);
    const receipt=await status.json();
@@ -98,9 +99,13 @@ async function call(method,url,body){
       receipt.cursor_advanced!==true)
     throw Error("DERIVED_DISCOVERY_QUEUE_D1_READBACK_INVALID");
    return {...receipt,schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA};
-  }
-  throw Error("DERIVED_DISCOVERY_QUEUE_ACK_PENDING");
+  },timeoutMs:30000});
+
  }
+ // Explicit protected REST fallback bypasses only the unavailable HTTP
+ // transport, not the Queue consumer, source rights, or atomic D1 proof.
+ if(queuePost&&r.status===503)
+  return deliverWebsiteViaDirectQueue(body);
  if(r.status!==200)throw Error("DERIVED_DISCOVERY_PROTECTED_"+method+"_HTTP_"+r.status);
  const raw=await r.text();
  if(raw.length>60000)throw Error("DERIVED_DISCOVERY_OVERSIZE_RECEIPT");
