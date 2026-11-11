@@ -73,15 +73,6 @@
     ],
     "consumers": [
       {
-        "queue": "geomacro-derived-discovery",
-        "max_batch_size": 1,
-        "max_batch_timeout": 2,
-        "max_retries": 3,
-        "retry_delay": 15,
-        "dead_letter_queue": "geomacro-derived-discovery-dlq",
-        "max_concurrency": 1
-      },
-      {
         "queue": "geomacro-ingestion-spool",
         "max_batch_size": 25,
         "max_batch_timeout": 15,
