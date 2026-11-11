@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-11T02:02:42.601Z",
+  "checked_at": "2026-11-11T06:27:20.026Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 39,
+  "item_count": 40,
   "counts": {
     "geopolitics": 4,
     "macro": 22,
-    "rare_earth": 13
+    "rare_earth": 14
   },
-  "source_native_ids_sha256": "504280227ab210057c823badc15279901464a903c92713e3ce1031b1e478c5f3",
+  "source_native_ids_sha256": "6aff627b3fce781d3e6006146a909a742872ef5af8f4d4032c85669c5c2b4e2e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-f0dcccb5",
+      "category": "rare_earth",
+      "title": "Geomacro finds Rio Tinto cut jobs at Québec lithium project - Mining.com.au",
+      "what_changed": "A monitored source feed reports: Rio Tinto cut jobs at Québec lithium project - Mining.com.au. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T01:48:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-d3376d8c",
       "category": "geopolitics",
