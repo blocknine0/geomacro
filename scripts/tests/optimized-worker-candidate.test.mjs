@@ -102,5 +102,5 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  assert.match(source,/WRANGLER_OUTPUT_FILE_PATH/u);
  assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
  assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
- assert.doesNotMatch(source,/versions\\?deployable=true/u);
+ assert.doesNotMatch(source,/versions\?deployable=true/u);
 });
