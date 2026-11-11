@@ -2,7 +2,7 @@
 /** Build an immutable exact-main candidate, inheriting every production binding.
  * Never deploy traffic, change secrets/routes/consumers, issue D1 SQL or activate funds.
  */
-import {mkdirSync,writeFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
@@ -50,6 +50,26 @@ export function verifyCandidateBindings(baseline,candidate,sha){
  if(canonical(baseline.resources.script_runtime)!==canonical(candidate.resources.script_runtime))
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
  return true;
+}
+/**
+ * Wrangler's structured machine output identifies the ONE version created
+ * by THIS upload. A historical SHA match or "latest" page is never enough:
+ * those are ambiguous across retries and concurrent CI workflows.
+ */
+export function uploadedVersionIdFromWranglerEvents(ndjson){
+ if(typeof ndjson!=='string'||ndjson.length>100000)
+  throw Error('CANDIDATE_WRANGLER_UPLOAD_RECEIPT_INVALID');
+ let entries;
+ try{
+  entries=ndjson.trim().split('\\n').map(line=>JSON.parse(line));
+ }catch{throw Error('CANDIDATE_WRANGLER_UPLOAD_RECEIPT_INVALID')}
+ const uploads=entries.filter(x=>x?.type==='version-upload');
+ if(uploads.length!==1)
+  throw Error('CANDIDATE_WRANGLER_UPLOAD_RECEIPT_MISSING_OR_AMBIGUOUS');
+ const uploaded=uploads[0];
+ if(uploaded.worker_name!==NAME||!UUID.test(uploaded.version_id??''))
+  throw Error('CANDIDATE_WRANGLER_UPLOAD_IDENTITY_INVALID');
+ return uploaded.version_id;
 }
 export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=execFileSync}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
@@ -102,31 +122,28 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  const config=candidateConfig(baseline,env.GITHUB_SHA);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
- // on Cloudflare; verify provider-returned resource identities after upload.
- try{run('npx',['-y','wrangler@4.136.3','versions','upload','--config',
-  'workers/control-plane/wrangler.optimized-candidate.jsonc','--message','geomacro-main:'+env.GITHUB_SHA],
-  {encoding:'utf8',stdio:'pipe',timeout:240000});}
- catch(error){
+ // on Cloudflare. Wrangler's NDJSON receipt pins the version this invocation
+ // just uploaded, even if older versions share the same source SHA.
+ const wranglerOutput=resolve('artifacts/protected-canary/.wrangler-upload.ndjson');
+ rmSync(wranglerOutput,{force:true});
+ try{
+  run('npx',['-y','wrangler@4.136.3','versions','upload','--config',
+   'workers/control-plane/wrangler.optimized-candidate.jsonc','--message',
+   'geomacro-main:'+env.GITHUB_SHA],
+   {encoding:'utf8',stdio:'pipe',timeout:240000,
+    env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
+ }catch(error){
   const output=String(error?.stdout??'')+String(error?.stderr??'');
-  const codes=[...output.matchAll(/\[code:\s*(\d+)\]/g)].map(x=>x[1]);
+  const codes=[...output.matchAll(/\\[code:\\s*(\\d+)\\]/g)].map(x=>x[1]);
   throw Error('CANDIDATE_UPLOAD_FAILED'+(codes.length?'_PROVIDER_'+codes.join('_'):''));
  }
- const list=await get('/versions?deployable=true');
- const matches=(list.items??[]).filter(x=>
-  (x.annotations?.['workers/message']??x.metadata?.annotations?.['workers/message']??'')===
-   'geomacro-main:'+env.GITHUB_SHA);
- // Some API list responses omit annotations; resolve a bounded recent page
- // and require the immutable SHA binding, never pick "latest" blindly.
- const recent=(list.items??[]).slice(0,10);
- const found=[];
- for(const item of (matches.length?matches:recent)){
-  if(!UUID.test(item.id??'')||item.id===baselineId)continue;
-  const detail=await get('/versions/'+item.id);
-  if(detail.resources?.bindings?.some(x=>x.name==='GEOMACRO_SOURCE_SHA'&&x.text===env.GITHUB_SHA))
-   found.push(detail);
- }
- if(found.length!==1)throw Error('CANDIDATE_VERSION_IDENTITY_AMBIGUOUS');
- const candidate=found[0];
+ let uploadedId;
+ try{uploadedId=uploadedVersionIdFromWranglerEvents(
+  readFileSync(wranglerOutput,'utf8'));}
+ finally{rmSync(wranglerOutput,{force:true});}
+ const candidate=await get('/versions/'+uploadedId);
+ if(candidate.id!==uploadedId)
+  throw Error('CANDIDATE_PROVIDER_VERSION_ID_MISMATCH');
  // Preserve a safe provider receipt even when parity rejects a version.
  // Runtime metadata contains execution settings, never binding credentials.
  const runtimeFields=['compatibility_date','compatibility_flags','usage_model','limits','cache_options'];
