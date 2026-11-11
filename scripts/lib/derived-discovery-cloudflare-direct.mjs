@@ -160,4 +160,3 @@ export async function deliverWebsiteViaDirectQueue(body,{
   queue_to_d1_readback_latency_ms:latencyMs,
   atomic_receipt_verified_at:new Date(verifiedAtMs).toISOString()};
 }
-}
