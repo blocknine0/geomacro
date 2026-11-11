@@ -29,7 +29,7 @@ const COUNTRIES=Object.freeze([
 ]);
 export function countryHints(title){
  const identified=COUNTRIES.filter(([,re])=>re.test(title)).map(([code])=>code);
- if(/\\bUS\\b/u.test(title)&&!identified.includes("USA"))identified.unshift("USA");
+ if(/\bUS\b/u.test(title)&&!identified.includes("USA"))identified.unshift("USA");
  return identified;
 }
 function decodeXml(s){
