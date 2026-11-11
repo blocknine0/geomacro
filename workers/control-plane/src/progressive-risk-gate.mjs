@@ -118,7 +118,10 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
   };
 }
 export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady) {
-  const standard = facts.standard_ready;
+  const standard = facts.standard_ready === true;
+  // Progressive delivery is monotone in verified authority, not in the
+  // presence of a signed object alone. An absent 7-day history is HOLD.
+  const complex = standard && signedGroReady === true && sevenDayRollupReady === true;
   return {
     basic:{active:true,status:"ACTIVE"},
     standard:{
@@ -127,10 +130,11 @@ export function progressiveTierMatrix(facts, signedGroReady, sevenDayRollupReady
       ...(!standard?{missing:["TWO_DISTINCT_PUBLISHERS_SAME_EVENT_WITHIN_72H"]}:{})
     },
     complex:{
-      active:Boolean(signedGroReady),status:signedGroReady?"ACTIVE":"LOCKED",
+      active:complex,status:complex?"ACTIVE":"LOCKED",
       signed_gro_ready:Boolean(signedGroReady),
       seven_day_rollup_ready:Boolean(sevenDayRollupReady),
-      ...(!signedGroReady || !sevenDayRollupReady ? {missing:[
+      ...(!complex ? {missing:[
+        ...(!standard?["TWO_DISTINCT_PUBLISHERS_SAME_EVENT_WITHIN_72H"]:[]),
         ...(!signedGroReady?["CURRENT_VERIFIED_SIGNED_GRO"]:[]),
         ...(!sevenDayRollupReady?["VERIFIED_SEVEN_DAY_ROLLUP"]:[])
       ]}:{})
