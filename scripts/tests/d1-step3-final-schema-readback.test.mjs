@@ -24,7 +24,7 @@ const schema=new Map(manifests.map(m=>[
   name,type,sql:"CREATE "+type.toUpperCase()+" "+name+" CHECK (1=1)"
  }))
 ]));
-function reader(tamper=()=>{}){
+function reader(tamper=(sql,rows)=>rows){
  const queries=[];
  const query=(sql,{maxRows})=>{
   queries.push(sql);
