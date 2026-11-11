@@ -407,7 +407,8 @@ async function persistSignedGro(db,gro,options){
 export async function processRiskStreamBatch(env,items,{
  now=Date.now(),sleeper=sleep,random=Math.random
 }={}){
- if(env?.RISK_STREAM_ACTIVE!=="1"||!env?.DB?.prepare||!env?.DB?.batch)
+ if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
+    !env?.DB?.prepare||!env?.DB?.batch)
   fail("NOT_DEPLOYED_OR_DB_UNAVAILABLE");
  const candidates=await inspectRiskStreamCandidates(items,now);
  await sourceRegistry(env.DB,candidates);
@@ -454,7 +455,8 @@ export async function processRiskStreamBatch(env,items,{
   country_scope_hardcoded:false};
 }
 export async function enqueueRiskStreamEvents(env,body,now=Date.now()){
- if(env?.RISK_STREAM_ACTIVE!=="1"||!env?.RISK_STREAM_QUEUE?.sendBatch)
+ if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
+    !env?.RISK_STREAM_QUEUE?.sendBatch)
   return Response.json({ok:false,error:"RISK_STREAM_DISABLED"},{status:503});
  if(body?.schema!=="geomacro.risk-stream-ingest-batch.v1"||
     !Array.isArray(body.items)||body.items.length<1||body.items.length>100)
