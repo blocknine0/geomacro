@@ -347,3 +347,18 @@ test("bounded secondary news index is queried, matched by entities, but cannot c
  assert.equal(result.corroborated_and_signed,0);
  assert.equal(c.db.gros.size,0);
 });
+
+test("real GDELT index-only shadow path cannot require or mint independent rights signatures",async()=>{
+ const c=ctx(),now=Date.now(),e=candidate(c,801,"gov",now);
+ e.kind="INDEX_ONLY";e.feed_origin="GDELT_INDEX";e.proof=null;e.raw_payload=null;
+ e.source_id="gdelt_untrusted_index_source";
+ c.db.sources.delete("gov");
+ delete c.env.RISK_STREAM_MACHINE_FACTS_SPKI_B64;
+ delete c.env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64;
+ const r=await processRiskStreamBatch(c.env,[e],{now,sleeper:async()=>{},random:()=>0});
+ assert.equal(r.accepted,1);
+ assert.equal(r.index_only,1);
+ assert.equal(r.corroborated_and_signed,0);
+ assert.equal(c.db.evidence.size,1);
+ assert.equal(c.db.gros.size,0);
+});
