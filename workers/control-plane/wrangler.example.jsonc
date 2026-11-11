@@ -58,6 +58,10 @@
       {
         "binding": "RISK_STREAM_QUEUE",
         "queue": "geomacro-risk-stream"
+      },
+      {
+        "binding": "RISK_STREAM_DELIVERY_QUEUE",
+        "queue": "geomacro-risk-stream-delivery"
       }
     ],
     "consumers": [
@@ -75,6 +79,14 @@
         "max_batch_timeout": 2,
         "max_retries": 8,
         "dead_letter_queue": "geomacro-risk-stream-dlq",
+        "max_concurrency": 4
+      },
+      {
+        "queue": "geomacro-risk-stream-delivery",
+        "max_batch_size": 20,
+        "max_batch_timeout": 2,
+        "max_retries": 8,
+        "dead_letter_queue": "geomacro-risk-stream-delivery-dlq",
         "max_concurrency": 4
       },
       {
