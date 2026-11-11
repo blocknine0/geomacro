@@ -42,7 +42,7 @@ test("RSS parser emits only explicit country-associated index metadata",()=>{
  '<pubDate>Wed, 11 Nov 2026 12:00:00 GMT</pubDate></item>'+
  '<item><title>Anonymous topic</title><link>https://www.bbc.com/news/456</link>'+
  '<pubDate>Wed, 11 Nov 2026 12:00:00 GMT</pubDate></item></channel></rss>';
- const items=parseIndexRss(xml);
+ const items=parseIndexRss(xml,{now:()=>Date.parse('2026-11-11T18:00:00Z')});
  assert.equal(items.length,1);
  assert.deepEqual(items[0].countries,["USA"]);
  assert.equal(items[0].feed_origin,"RSS");
@@ -58,7 +58,7 @@ test("after GDELT 429 RSS fallback happens before any GDELT reattempt",async()=>
    const str=String(url);requests.push(str);
    if(str.includes("gdeltproject.org")){gdeltCalls++;return new Response("",{status:429})}
    return new Response(xml,{status:200});
-  },sleep:async()=>{},log:()=>{}});
+  },sleep:async()=>{},now:()=>Date.parse('2026-11-11T18:00:00Z'),log:()=>{}});
  assert.equal(gdeltCalls,1);
  assert.equal(requests[0].includes("gdeltproject.org"),true);
  assert.equal(requests[1].includes("reutersagency.com"),true);
