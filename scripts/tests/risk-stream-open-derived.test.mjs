@@ -143,7 +143,7 @@ test("advisory signature proves only issuer integrity, and 7-day Complex stays h
  assert.equal(signed.payload.redistribution_license.third_party_publisher_rights_granted,false);
  assert.deepEqual(signed.payload.source_provenance.publisher_domains,pairs[0].source_domains);
  const signedBytes=payload=>Buffer.from(
-  "geomacro.open-derived-osint.advisory.v1\\n"+JSON.stringify(payload),"utf8");
+  "geomacro.open-derived-osint.advisory.v1\n"+JSON.stringify(payload),"utf8");
  const sig=Buffer.from(signed.signature_b64,"base64");
  assert.equal(verifyEd25519(null,signedBytes(signed.payload),key.publicKey,sig),true);
  const tampered=structuredClone(signed.payload);
