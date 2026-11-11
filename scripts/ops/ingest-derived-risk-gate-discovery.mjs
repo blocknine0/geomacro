@@ -6,6 +6,7 @@
  * Each page is rechecked and atomically committed by the protected Worker.
  */
 import {writeFileSync,mkdirSync} from "node:fs";
+import {createHash,createHmac} from "node:crypto";
 import {dirname,resolve} from "node:path";
 import {deriveControlPlaneRootToken}
  from "./derive-control-plane-root-token.mjs";
@@ -35,10 +36,49 @@ const stats=Object.fromEntries(DERIVED_DISCOVERY_LANES.map(lane=>[lane,{
  categories:Object.fromEntries(CATS.map(c=>[c,0])),
 }]));
 async function call(method,url,body){
+ const encoded=body?JSON.stringify(body):null;
+ const queuePost=method==="POST"&&body?.lane==="website_intelligence";
+ const timestamp=String(Date.now());
+ const digest=queuePost?createHash("sha256").update(encoded).digest("hex"):null;
+ const signature=queuePost?createHmac("sha256",token)
+   .update(timestamp+"."+digest).digest("hex"):null;
  const r=await fetch(url,{method,redirect:"error",cache:"no-store",
-  headers:method==="POST"?{...headers,"Content-Type":"application/json"}:headers,
-  ...(body?{body:JSON.stringify(body)}:{}),
+  headers:method==="POST"?{...headers,"Content-Type":"application/json",
+    ...(queuePost?{"x-geomacro-request-at":timestamp,
+      "x-geomacro-payload-sha256":digest,
+      "x-geomacro-request-mac":signature}:{})}:headers,
+  ...(encoded?{body:encoded}:{}),
   signal:AbortSignal.timeout(20000)});
+ if(queuePost&&r.status===202){
+  let accepted;try{accepted=await r.json()}catch{
+   throw Error("DERIVED_DISCOVERY_QUEUE_RESPONSE_INVALID");
+  }
+  if(accepted?.ok!==true||accepted?.queue_accepted!==true||
+     accepted?.schema!=="geomacro.derived-discovery-queued-ack.v1"||
+     accepted?.digest!==digest||accepted?.ack_pending!==true||
+     accepted?.d1_atomic_readback_verified!==false)
+   throw Error("DERIVED_DISCOVERY_QUEUE_RESPONSE_INVALID");
+  // Queue admission is never evidence of successful D1 persistence.
+  for(let poll=0;poll<30;poll++){
+   await new Promise(resolve=>setTimeout(resolve,5000));
+   const status=await fetch(ROOT+PATH+"?view=ack_receipt&digest="+digest,{
+    method:"GET",redirect:"error",cache:"no-store",headers,
+    signal:AbortSignal.timeout(12000)});
+   if(status.status===202)continue;
+   if(status.status!==200)
+    throw Error("DERIVED_DISCOVERY_QUEUE_RECEIPT_HTTP_"+status.status);
+   const receipt=await status.json();
+   if(receipt?.ok!==true||receipt.digest!==digest||
+      receipt.schema!=="geomacro.derived-discovery-queued-ack.v1"||
+      receipt.lane!=="website_intelligence"||
+      receipt.admitted!==body.reviewed.length||
+      receipt.d1_atomic_readback_verified!==true||
+      receipt.cursor_advanced!==true)
+    throw Error("DERIVED_DISCOVERY_QUEUE_D1_READBACK_INVALID");
+   return {...receipt,schema:DERIVED_DISCOVERY_BRIDGE_SCHEMA};
+  }
+  throw Error("DERIVED_DISCOVERY_QUEUE_ACK_PENDING");
+ }
  if(r.status!==200)throw Error("DERIVED_DISCOVERY_PROTECTED_"+method+"_HTTP_"+r.status);
  const raw=await r.text();
  if(raw.length>60000)throw Error("DERIVED_DISCOVERY_OVERSIZE_RECEIPT");
