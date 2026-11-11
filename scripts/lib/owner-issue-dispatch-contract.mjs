@@ -20,12 +20,14 @@ export const OWNER_ISSUE_HOLD_REVIEW_TARGET="canary-promotion.yml";
 export const OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET="phase2h-private-r2-b2-quota-backup.yml";
 export const OWNER_ISSUE_REGISTERED_SOURCE_TARGET="all-source-reusable-news-json.yml";
 export const OWNER_ISSUE_CANARY_SCHEMA="geomacro.owner-issue-dispatch.v2";
+export const OWNER_ISSUE_DISCOVERY_CONSUMER_TARGET="deploy-derived-discovery-consumer.yml";
 const SHA=/^[a-f0-9]{40}$/u;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 const RUN_ID=/^[1-9][0-9]{5,20}$/u;
 const ISSUE_KEYS=["authorization","intent","schema","source_sha","verify_hot50"];
 const CANARY_KEYS=Object.freeze({
  "candidate-upload":ISSUE_KEYS,
+ "isolated-discovery-consumer-deploy":ISSUE_KEYS,
  "minimum-risk-facts-backup":ISSUE_KEYS,
  "registered-original-source-intake":ISSUE_KEYS,
  "canary-rollout":[...ISSUE_KEYS,
@@ -118,6 +120,11 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
    authorization:"OWNER_AUTHORIZE_BROTLI11_RISK_MINIMUM_PRIVATE_R2_NO_B2_NO_FUNDS",
    verify_hot50:false,target:OWNER_ISSUE_MINIMUM_RISK_BACKUP_TARGET,
    inputs:{approval:"BACKUP_PHASE2H_PRIVATE_R2_NO_B2_OR_FUNDS"}
+  },
+  "isolated-discovery-consumer-deploy":{
+   authorization:"OWNER_AUTHORIZE_ISOLATED_DISCOVERY_CONSUMER_NO_FUNDS",
+   verify_hot50:false,target:OWNER_ISSUE_DISCOVERY_CONSUMER_TARGET,
+   inputs:{approval:"DEPLOY_ISOLATED_DERIVED_DISCOVERY_NO_FUNDS"}
   },
   "candidate-upload":{
    authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
