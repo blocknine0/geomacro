@@ -128,16 +128,40 @@ jobs:
             if(run.path!=='.github/workflows/production-rollout-orchestrator.yml' ||
                run.event!=='workflow_dispatch' || run.head_branch!=='main' ||
                run.head_repository?.full_name!=='blocknine0/geomacro' ||
-               run.status!=='completed' || run.conclusion!=='success' ||
+               run.status!=='completed' ||
+               !['success','failure'].includes(run.conclusion) ||
                !/^[a-f0-9]{40}$/.test(run.head_sha)) {
               core.setFailed('STAGE2_SIGNATURE_RUN_SOURCE_UNVERIFIED');return;
             }
             const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({
               owner,repo,run_id:Number(id),per_page:100
             });
-            if(jobs.jobs.filter(j=>j.name==='stage2-production'&&j.conclusion==='success').length!==1 ||
-               jobs.jobs.filter(j=>j.name==='shadow-physical'&&j.conclusion==='success').length!==1) {
+            const rows=jobs.jobs;
+            // Never infer a missing failed job from a truncated or duplicate list.
+            if(!Array.isArray(rows) || !Number.isInteger(jobs.total_count) ||
+               jobs.total_count!==rows.length ||
+               rows.length<3 ||
+               rows.some(j=>j.status!=='completed') ||
+               new Set(rows.map(j=>j.name)).size!==rows.length ||
+               ['local-workerd','shadow-physical','stage2-production'].some(
+                name=>rows.filter(j=>j.name===name&&j.conclusion==='success').length!==1)) {
               core.setFailed('STAGE2_SIGNATURE_PHYSICAL_JOBS_UNVERIFIED');return;
+            }
+            if(run.conclusion==='failure') {
+              // The historical *production* receipt may be authentic even if
+              // the separate Hot50 acceptance fails. Refuse EVERY other
+              // failure mode, unexpected job or incomplete job inventory.
+              const expected=new Set([
+                'local-workerd','shadow-physical','stage2-production','hot50-readback'
+              ]);
+              if(rows.length!==expected.size ||
+                 rows.some(j=>!expected.has(j.name)) ||
+                 rows.filter(j=>j.name==='hot50-readback'&&
+                  j.conclusion==='failure').length!==1) {
+                core.setFailed('STAGE2_SIGNATURE_FAILURE_NOT_HOT50_ONLY');return;
+              }
+            } else if(rows.some(j=>j.conclusion!=='success')) {
+              core.setFailed('STAGE2_SIGNATURE_SUCCESS_JOBS_INCONSISTENT');return;
             }
             core.setOutput('sha',run.head_sha);
       - name: Download exact-run production signed receipt (no provider mutation)
