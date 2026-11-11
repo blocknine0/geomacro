@@ -9,7 +9,7 @@ export const RSS_FEEDS=Object.freeze([
  {id:"BBC_TECH",url:"https://feeds.bbci.co.uk/news/technology/rss.xml"}
 ]);
 const COUNTRIES=Object.freeze([
- ["USA",/\b(?:US|U\.S\.|United States|American|Trump|White House|Washington)\b/iu],
+ ["USA",/\b(?:U\.S\.|United States|American|Trump|White House|Washington)\b/iu],
  ["CHN",/\b(?:China|Chinese|Beijing|Xi Jinping)\b/iu],
  ["IND",/\b(?:India|Indian|Modi|New Delhi)\b/iu],
  ["RUS",/\b(?:Russia|Russian|Moscow|Putin)\b/iu],
@@ -28,7 +28,9 @@ const COUNTRIES=Object.freeze([
  ["PAK",/\b(?:Pakistan|Pakistani|Islamabad)\b/iu]
 ]);
 export function countryHints(title){
- return COUNTRIES.filter(([,re])=>re.test(title)).map(([code])=>code);
+ const identified=COUNTRIES.filter(([,re])=>re.test(title)).map(([code])=>code);
+ if(/\\bUS\\b/u.test(title)&&!identified.includes("USA"))identified.unshift("USA");
+ return identified;
 }
 function decodeXml(s){
  return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu,"$1")
@@ -40,7 +42,7 @@ const tag=(body,name)=>{
  const m=body.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+name+">","iu"));
  return m?decodeXml(m[1]):"";
 };
-export function parseIndexRss(xml,{feedId="RSS"}={}){
+export function parseIndexRss(xml,{feedId="RSS",now=Date.now}={}){
  if(typeof xml!=="string"||xml.length>900000||
    /<!DOCTYPE\b|<!ENTITY\b/iu.test(xml))return [];
  const result=[];
@@ -57,6 +59,8 @@ export function parseIndexRss(xml,{feedId="RSS"}={}){
   let url;try{url=new URL(link)}catch{continue}
   if(url.protocol!=="https:"||url.username||url.password||url.port||
      !title||!pubDate||!Number.isFinite(Date.parse(pubDate)))continue;
+  const published=Date.parse(pubDate);
+  if(published>now()+60000||now()-published>72*3600_000)continue;
   const countries=countryHints(title);
   if(!countries.length)continue; // no unsupported country attribution
   result.push({url:url.href, pubDate, title, countries,
@@ -105,7 +109,7 @@ export async function discoverShadowArticles({fetchImpl=fetch,sleep=realSleep,
      redirect:"error"});
     if(!response.ok){log("RSS_FEED_UNAVAILABLE",feed.id,response.status);continue}
     const body=await response.text();
-    const items=parseIndexRss(body,{feedId:feed.id});
+    const items=parseIndexRss(body,{feedId:feed.id,now});
     articles.push(...items);
     log("RSS_INDEX_COUNTRY_HINTS",feed.id,items.length);
    }catch{log("RSS_FEED_TEMPORARILY_UNAVAILABLE",feed.id)}
