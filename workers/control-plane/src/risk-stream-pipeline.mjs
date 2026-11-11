@@ -174,7 +174,7 @@ async function privateArchiveR2(items,env){
  const keyBytes=b64bytes(env.RISK_STREAM_AES256_KEY_B64);
  if(keyBytes.length!==32)fail("ARCHIVE_AES_KEY_INVALID");
  const key=await crypto.subtle.importKey("raw",keyBytes,
-  {name:"AES-GCM"},false,["encrypt"]);
+  {name:"AES-GCM"},false,["encrypt","decrypt"]);
  // No plaintext, original source prose or private object URL in D1/logs.
  const plaintext=encode(JSON.stringify(originals.map(e=>({
   original_page_sha256:e.original_page_sha256,source_id:e.source_id,
