@@ -57,19 +57,20 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || exit 11
           node --check scripts/ops/run-risk-stream-shadow-provider-audit.mjs
           node --check workers/risk-stream-shadow/src/index.mjs
-          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-shadow-recovery.test.mjs
       - name: Provision dedicated D1, private R2 and Queue/DLQ; audit schema
         run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
       - name: Compare existing B2 account D1 governor against live Worker
-        # Shadow is private-R2-only; a missing public production hostname is
-        # a commercial B2 HOLD, not a reason to suppress no-B2 shadow D1 telemetry.
-        continue-on-error: true
+        # An unresolvable vanity hostname MUST use the pinned production
+        # control-plane Worker with authenticated same-D1 schema parity.
+        # Never count an unavailable governor as PASS.
         shell: bash
         run: |
           set -euo pipefail
           node --input-type=module <<'NODE'
           import {createHmac} from "node:crypto";
           import {spawnSync} from "node:child_process";
+          import {writeFileSync} from "node:fs";
           const root=process.env.GEOMACRO_COMMERCE_LEDGER_TOKEN||"";
           if(root.length<32)throw Error("B2_SHADOW_AUTH_UNAVAILABLE");
           const token=createHmac("sha256",root).update("geomacro-control-plane-v1").digest("hex");
@@ -80,14 +81,16 @@ jobs:
           const report=JSON.parse((child.stdout||"").trim().split("\n").at(-1));
           if(report.status!=="D1_SHARED_GOVERNOR_MATCH"||report.expected_b2_network_ops_for_shadow!==0)
             throw Error("B2_SHADOW_QUOTA_POLICY_DRIFT");
+          writeFileSync(".shadow-audit/b2-governor-parity.json",JSON.stringify(report,null,2));
           console.log(JSON.stringify({status:report.status,mode:report.mode,
+            verified_route:report.verified_route,dns_fallback_used:report.dns_fallback_used,
             expected_b2_network_ops_for_shadow:0,
             provider_b2_telemetry_verified:false}));
           NODE
       - name: Read Cloudflare production D1 B2 ledger without modifying it
         continue-on-error: true
         run: node scripts/ops/verify-risk-stream-b2-d1-shadow-readonly.mjs
-      - name: Submit 20-40 real GDELT or news RSS hints with D1 100-bind-safe atomic microbatches
+      - name: Submit 20-30 real GDELT or news RSS hints with D1 100-bind-safe atomic microbatches
         shell: bash
         run: |
           set -euo pipefail
@@ -103,7 +106,11 @@ jobs:
           echo "SHADOW_PRODUCTION_D1_MUTATIONS=NONE"
           echo "SHADOW_SIGNED_GRO_ACCEPTANCE=NOT_PROVEN_UNTIL_REAL_ORIGINALS"
           echo "SHADOW_CANARY_HOLD=RETAINED"
-          echo "SHADOW_B2_WORKER_LIVE_PARITY=UNKNOWN_UNTIL_WORKER_HOSTNAME_RESOLVES"
+          if test -s .shadow-audit/b2-governor-parity.json; then
+            node -e "const p=require('./.shadow-audit/b2-governor-parity.json');if(p.status!=='D1_SHARED_GOVERNOR_MATCH')process.exit(1);console.log('SHADOW_B2_WORKER_LIVE_PARITY=PASS route='+p.verified_route)"
+          else
+            echo "SHADOW_B2_WORKER_LIVE_PARITY=HOLD_NO_AUTHENTICATED_D1_READBACK"
+          fi
           if test -f .shadow-audit/metadata.json; then
             node -e "const p=require('./.shadow-audit/metadata.json');console.log('PROVISIONED_ISOLATED_SHADOW_RESOURCES='+p.shadow_db+','+p.shadow_bucket+','+p.shadow_queue)"
           fi
