@@ -256,6 +256,7 @@ async function loadCorroborated(db,items,now,options){
   "ON s.source_id=e.source_id AND s.enabled=1 AND s.commercial_rights_approved=1 "+
   "AND s.publisher_root_domain=e.publisher_root_domain "+
   "AND s.parent_media_entity=e.parent_media_entity "+
+  "AND s.source_role=e.source_role "+
   "AND (s.rights_expire_at IS NULL OR s.rights_expire_at>?) "+
   "WHERE e.event_fingerprint IN (SELECT value FROM json_each(?)) "+
   "AND e.published_at>=? ORDER BY e.event_fingerprint,e.published_at LIMIT 501")
@@ -273,6 +274,47 @@ async function loadCorroborated(db,items,now,options){
   grouped.get(k).push(row);
  }
  return grouped;
+}
+// Read the EXISTING cached secondary news discovery index in one bounded
+// batch query. Its publisher and CLOCK_BASIS metadata remain unverified;
+// neither GDELT nor indexed syndicated copies may satisfy the signing quorum.
+async function cachedSecondaryHints(db,items,now,options){
+ const legacy=Object.freeze({
+  GEOPOLITICS:"geopolitics",MACRO_FX:"macro",
+  CRITICAL_MINERALS:"rare_earth"
+ });
+ const eligible=items.filter(x=>Object.hasOwn(legacy,x.category));
+ if(!eligible.length)return {same_entity_hints:0,distinct_domains_hint_only:0,
+  inspected:0,truncated:false};
+ const countries=[...new Set(eligible.map(x=>x.country_iso3))];
+ const resp=await boundedD1(()=>db.prepare(
+  "SELECT country_iso3,category,event_fingerprint,publisher_domain,"+
+  "clock_basis,extracted_entities_json FROM progressive_risk_gate_facts "+
+  "WHERE country_iso3 IN (SELECT value FROM json_each(?)) "+
+  "AND event_clock>=? AND event_clock<=? "+
+  "ORDER BY event_clock DESC LIMIT 121")
+  .bind(JSON.stringify(countries),new Date(now-HOURS48).toISOString(),
+   new Date(now).toISOString()).all(),options);
+ const rows=resp?.results;
+ if(!Array.isArray(rows)||rows.length>121)fail("SECONDARY_INDEX_INVALID");
+ const matchedDomains=new Set();let hints=0;
+ for(const row of rows.slice(0,120)){
+  if(!Object.values(legacy).includes(row.category))continue;
+  let entities;try{entities=JSON.parse(row.extracted_entities_json)}
+  catch{continue}
+  if(!Array.isArray(entities))continue;
+  for(const item of eligible){
+   if(item.country_iso3!==row.country_iso3||
+      legacy[item.category]!==row.category||
+      !item.entities.some(id=>entities.includes(id)))continue;
+   hints++;if(DOMAIN.test(row.publisher_domain??""))
+    matchedDomains.add(row.publisher_domain);
+   break;
+  }
+ }
+ return {same_entity_hints:hints,
+  distinct_domains_hint_only:matchedDomains.size,
+  inspected:Math.min(rows.length,120),truncated:rows.length>120};
 }
 async function categoryPolicies(db,items){
  const keys=[...new Set(items.map(x=>x.category))];
@@ -375,6 +417,7 @@ export async function processRiskStreamBatch(env,items,{
  if(env.RISK_STREAM_MACHINE_FACTS_SPKI_B64===env.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64)
   fail("INDEPENDENT_ATTESTERS_REQUIRED");
  const opts={sleeper,random};
+ const secondary=await cachedSecondaryHints(env.DB,candidates,now,opts);
  const rows=[];
  for(const e of candidates){
   const original_verified=await checkMachineProof(e,env,factsKey,rightsKey);
@@ -405,6 +448,9 @@ export async function processRiskStreamBatch(env,items,{
   corroborated_and_signed:[...new Set(signed)].length,
   archived_private_originals:distinct.filter(x=>x.original_verified).length,
   delivery_outbox_durable:true,client_debit_enabled:false,
+  secondary_index_same_entity_hint_count:secondary.same_entity_hints,
+  secondary_index_publisher_hints_never_certification:true,
+  secondary_index_truncated:secondary.truncated,
   country_scope_hardcoded:false};
 }
 export async function enqueueRiskStreamEvents(env,body,now=Date.now()){
