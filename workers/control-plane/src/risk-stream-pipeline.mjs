@@ -229,9 +229,9 @@ async function appendCanonical(db,rows,archive,now,options){
 async function loadCorroborated(db,items,now,options){
  const fingerprints=[...new Set(items.map(x=>x.event_fingerprint))];
  const r=await boundedD1(()=>db.prepare(
-  "SELECT observation_id,country_iso3,category,event_fingerprint,source_id,"+
-  "publisher_root_domain,parent_media_entity,source_role,published_at,entities_json,"+
-  "derived_json,original_page_sha256,original_verified,private_r2_object_key "+
+  "SELECT e.observation_id,e.country_iso3,e.category,e.event_fingerprint,e.source_id,"+
+  "e.publisher_root_domain,e.parent_media_entity,e.source_role,e.published_at,e.entities_json,"+
+  "e.derived_json,e.original_page_sha256,e.original_verified,e.private_r2_object_key "+
   "FROM risk_stream_evidence e JOIN risk_stream_sources s "+
   "ON s.source_id=e.source_id AND s.enabled=1 AND s.commercial_rights_approved=1 "+
   "AND s.publisher_root_domain=e.publisher_root_domain "+
