@@ -59,6 +59,17 @@ async function main(){
       data.decision_signature_scope!=="geomacro.progressive-risk-gate-decision.v1")
       throw Error("SIGNED_PROGRESSIVE_RISK_GATE_INVALID");
    const complex=data.tier==="COMPLEX_0_25";
+   const matrix=data.tier_activation_matrix;
+   const standard=matrix?.standard?.active===true;
+   const complexProof=standard && matrix?.complex?.signed_gro_ready===true &&
+     matrix?.complex?.seven_day_rollup_ready===true;
+   if(matrix?.standard?.status!==(standard?"ACTIVE":"PENDING")||
+      matrix?.complex?.active!==complexProof||
+      matrix?.complex?.status!==(complexProof?"ACTIVE":"LOCKED")||
+      complex!==complexProof||
+      (data.tier==="STANDARD_0_15")!==(standard&&!complexProof)||
+      (data.tier==="BASIC_0_10")!==(!standard))
+     throw Error("RISK_GATE_TIER_ROLLUP_TRUTH_MISMATCH");
    if(complex ? (
      risk.risk.verification_status!=="VERIFIED"||
      risk.risk.commercial_eligibility_status!=="VERIFIED"||

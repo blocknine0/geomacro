@@ -321,13 +321,19 @@ evaluateCountryRiskGate(
   const response:RiskGateResponse=groValid && riskObject
     ? evaluateRiskGate(request,riskObject,evaluatedAt)
     : provisional!.response;
-  const tier:ProgressiveRiskGateTier=groValid?"COMPLEX_0_25":provisional!.tier;
+  // This service cannot verify a complete historical seven-day rollup.
+  // A valid GRO alone never promotes a Complex product or price.
+  const tier:ProgressiveRiskGateTier=groValid
+    ? (input.progressive_facts?.standard_ready===true &&
+       (input.progressive_facts?.corroboration_sources_count??0)>=2
+        ?"STANDARD_0_15":"BASIC_0_10")
+    : provisional!.tier;
   const matrix:RiskGateTierActivationMatrix=groValid
     ? {basic:{active:true,status:"ACTIVE"},
        standard:{active:input.progressive_facts?.standard_ready===true,
          status:input.progressive_facts?.standard_ready?"ACTIVE":"PENDING",
          corroboration_sources_count:input.progressive_facts?.corroboration_sources_count??0},
-       complex:{active:true,status:"ACTIVE",signed_gro_ready:true,
+       complex:{active:false,status:"LOCKED",signed_gro_ready:true,
          seven_day_rollup_ready:false,missing:["VERIFIED_SEVEN_DAY_ROLLUP"]}}
     : provisional!.matrix;
   response.tier_activation_matrix=matrix;

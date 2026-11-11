@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync} from "node:sqlite";
 import {readFileSync} from "node:fs";
-import {generateKeyPairSync,webcrypto,verify as verifyEd25519,createHash} from "node:crypto";
+import {generateKeyPairSync,webcrypto,verify as verifyEd25519,createHash,createHmac} from "node:crypto";
 import {admitProgressiveRiskFacts} from "../../workers/control-plane/src/news-intake-policy.mjs";
 import {
   readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,
-  signProgressiveDecision,canonicalProgressiveJson,
+  signProgressiveDecision,canonicalProgressiveJson,sevenDayRollupIsReady,
 } from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 
 if(!globalThis.crypto)Object.defineProperty(globalThis,"crypto",{value:webcrypto});
@@ -52,6 +52,23 @@ test("two publisher-native observations promote one event without duplicate writ
    assert.equal(matrix.complex.status,"LOCKED");
  }finally{sqlite.close()}
 });
+test("Complex cannot become active or billable without Standard, current signed GRO and verified seven-day history",()=>{
+ const facts={standard_ready:true,corroboration_sources_count:2};
+ for(const [standard,gro,history] of [
+  [false,true,true],[true,false,true],[true,true,false],[false,true,false]
+ ]){
+  const matrix=progressiveTierMatrix({...facts,standard_ready:standard},gro,history);
+  assert.equal(matrix.complex.active,false);
+  assert.equal(matrix.complex.status,"LOCKED");
+  assert.ok(matrix.complex.missing?.length>0);
+ }
+ const ready=progressiveTierMatrix(facts,true,true);
+ assert.equal(ready.standard.active,true);
+ assert.equal(ready.complex.active,true);
+ assert.equal(ready.complex.status,"ACTIVE");
+ assert.equal(Object.hasOwn(ready.complex,"missing"),false);
+});
+
 test("Google-index attribution never becomes verified source corroboration",async()=>{
  const {sqlite,env}=fixture();
  try{
@@ -104,6 +121,68 @@ test("zero news returns numeric no-data sentinel without granting execution",asy
    assert.equal(result.risk_metric_semantics,"NO_DATA_POLICY_SENTINEL");
  }finally{sqlite.close()}
 });
+test("Supabase 7-count alone cannot authorize Complex without seven separately HMAC-signed 3-domain originals",async()=>{
+ const now=Date.parse("2026-11-11T12:00:00.000Z");
+ const secret="test-observation-hmac-secret-".padEnd(64,"q");
+ const gro="c".repeat(64);
+ const days=Array.from({length:7},(_,i)=>
+  new Date(Date.parse("2026-11-05T00:00:00.000Z")+i*86400000).toISOString().slice(0,10));
+ const mk=(day,verified=true)=>{
+  const generated_at=day+"T01:00:00.000Z";
+  const snapshot={schema:"geomacro.unified-risk-gate.v1",schema_epoch:"v2",
+   target_type:"COUNTRY",target_id:"IND",day_utc:day,generated_at,
+   signed_gro_payload_sha256:verified?gro:null,
+   verified_unified_risk_score:verified?0.52:null,
+   categories:Object.fromEntries(["GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"].map(c=>[
+     c,{risk_score:verified?0.52:null}]))};
+  const content_sha256=createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
+  const proof={schema_epoch:"v2",key_id:"obs-hmac-v2",content_sha256,
+   timestamp_utc:generated_at,signature_scope:"SNAPSHOT_INTEGRITY_NOT_EVENT_VERIFICATION",
+   signature:"hmac_sha256:"+createHmac("sha256",secret).update(JSON.stringify({
+     schema:"geomacro.unified-risk-gate.v1",schema_epoch:"v2",
+     key_id:"obs-hmac-v2",content_sha256,timestamp_utc:generated_at
+   })).digest("hex")};
+  return {entity_type:"COUNTRY",entity_id:"IND",day_utc:day,
+   snapshot_json:JSON.stringify(snapshot),audit_proof_json:JSON.stringify(proof),
+   content_sha256,generated_at};
+ };
+ const genuine=days.map(day=>mk(day));
+ const latest=genuine.at(-1);
+ const rolls=["geopolitics","macro_fx","critical_minerals"].map(domain=>({
+  domain,rollup_day:days.at(-1),scored_days:7,verification_status:"VERIFIED",
+  source_snapshot_sha256:latest.content_sha256,verified_gro_sha256:gro
+ }));
+ const subject={type:"country",id:"IND"};
+ const fetcher=async(url,opts)=>{
+  assert.match(String(url),/geomacro_risk_signal_7d/);
+  assert.match(String(url),/verified_gro_sha256/);
+  assert.equal(opts.headers.apikey,"test-service-role-secret-".padEnd(40,"a"));
+  return Response.json(rolls);
+ };
+ const envFor=history=>({RISK_GATE_SUPABASE_URL:"https://test.supabase.co",
+  RISK_GATE_SUPABASE_SERVICE_ROLE_KEY:"test-service-role-secret-".padEnd(40,"a"),
+  RISK_GATE_OBSERVATION_HMAC_KEY:secret,
+  DB:{prepare(sql){
+   assert.match(sql,/FROM unified_risk_snapshots/u);
+   return {bind(country,from,through){
+    assert.equal(country,"IND");assert.equal(from,days[0]);assert.equal(through,days.at(-1));
+    return {all:async()=>({results:history})};
+   }};
+  }}});
+ assert.equal(await sevenDayRollupIsReady(envFor(genuine),subject,now,fetcher),true);
+ assert.equal(await sevenDayRollupIsReady(envFor(genuine.slice(1)),subject,now,fetcher),false);
+ assert.equal(await sevenDayRollupIsReady(envFor(
+  genuine.map((x,i)=>i===3?{...x,content_sha256:"f".repeat(64)}:x)
+ ),subject,now,fetcher),false);
+ assert.equal(await sevenDayRollupIsReady(envFor(
+  genuine.map((x,i)=>i===3?mk(days[i],false):x)
+ ),subject,now,fetcher),false);
+ assert.equal(await sevenDayRollupIsReady(envFor(genuine),subject,now,
+  async()=>Response.json(rolls.map(x=>({...x,source_snapshot_sha256:"f".repeat(64)})))),false);
+ assert.equal(await sevenDayRollupIsReady(envFor(genuine),subject,now,
+  async()=>Response.json(rolls.map(x=>({...x,verification_status:"OBSERVED_UNVERIFIED"})))),false);
+});
+
 test("Ed25519 signature binds complete canonical progressive decision payload",async()=>{
  const {privateKey,publicKey}=generateKeyPairSync("ed25519");
  const env={
