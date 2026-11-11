@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-11T23:08:07.543Z",
+  "checked_at": "2026-11-11T23:34:57.201Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 45,
+  "item_count": 48,
   "counts": {
-    "geopolitics": 4,
-    "macro": 26,
+    "geopolitics": 5,
+    "macro": 28,
     "rare_earth": 15
   },
-  "source_native_ids_sha256": "86695fed734d4adaa6b6512fbc93020894af61c27392619a5c91806807302692",
+  "source_native_ids_sha256": "42c07e678b268dab441723e6949a75cdb50cfa7e6f2505ca7ce66758a4132d47",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-4b62d86e",
+      "category": "macro",
+      "title": "Geomacro finds Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider",
+      "what_changed": "A monitored source feed reports: Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T23:01:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-07f157f3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Second Committee: approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Second Committee approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-11T22:57:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d8e2bf71",
+      "category": "macro",
+      "title": "Geomacro finds BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco",
+      "what_changed": "A monitored source feed reports: BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T20:10:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-4cb282db",
       "category": "macro",

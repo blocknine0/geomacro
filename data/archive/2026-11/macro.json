@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-11T17:21:22.201Z",
+  "updated_at": "2026-11-11T23:34:57.201Z",
   "signals": [
+    {
+      "id": "macro-4b62d86e",
+      "category": "macro",
+      "title": "Geomacro finds Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider",
+      "what_changed": "A monitored source feed reports: Integra Resources cut 2026 gold output guidance on slow leach rates - StreetInsider. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T23:01:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d8e2bf71",
+      "category": "macro",
+      "title": "Geomacro finds BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco",
+      "what_changed": "A monitored source feed reports: BMO said silver’s solar boom is fading, investment demand unlikely to compensate - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "silver industrial demand and supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T20:10:34.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-4cb282db",
       "category": "macro",

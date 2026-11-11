@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-11T23:08:07.543Z",
+  "generated_at": "2026-11-11T23:34:57.201Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-07f157f3",
+      "category": "geopolitics",
+      "title": "Geomacro finds Second Committee: approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Second Committee approved Five Texts, Including One Demanding Israel Halt Exploitation of Palestinian Natural Resources. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "approval",
+      "topic": "foreign policy",
+      "published_at": "2026-11-11T22:57:56.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-d3376d8c",
       "category": "geopolitics",
@@ -266,25 +285,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Statistics Canada"
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-46923510",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning The UK is ready to work across the wider UN membership to ensure emerging technologies help deliver safer seas · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The UK is ready to work across the wider UN membership to ensure emerging technologies help deliver safer seas. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-29T15:28:29.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
