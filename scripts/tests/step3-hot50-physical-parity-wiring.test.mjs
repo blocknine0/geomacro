@@ -9,7 +9,7 @@ test("Step3 Hot50 acceptance requires same-run physical B2/D1 parity before five
  assert.match(section,/needs:\s*stage2-production/u);
  assert.match(section,/needs\.stage2-production\.result == 'success'/u);
  assert.match(section,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/u);
- assert.match(section,/D1_DATABASE_ID: \\\$\\\{\\\{ vars\\\.D1_DATABASE_ID \\\|\\\| secrets\\\.D1_DATABASE_ID \\\}\\\}/u);
+ assert.ok(section.includes("D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}"));
  assert.match(section,/Verify exact main and canonical D1 quota ledger identity before B2/u);
  assert.match(section,/HOT50_EXACT_MAIN_CHANGED/u);
  assert.match(section,/HOT50_D1_CANONICAL_BINDING_MISMATCH/u);
