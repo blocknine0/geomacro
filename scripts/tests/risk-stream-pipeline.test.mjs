@@ -127,8 +127,9 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
  };
  const item={
   schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
-  country_iso3:"USA",category,feed_origin:original?"OFFICIAL_API":"RSS",entities,
-  event_fingerprint:digest(JSON.stringify(["USA",category,entities,derived.what])),
+  country_iso3:"USA",category,feed_origin:original?"OFFICIAL_API":"RSS",
+  event_key:"EVENT_"+String(i).padStart(6,"0"),entities,
+  event_fingerprint:digest(JSON.stringify(["USA",category,"EVENT_"+String(i).padStart(6,"0"),entities])),
   source_id:source,source_url:"https://"+(original?"official.example":"regional.example")+"/events/"+i,
   publisher_root_domain:original?"official.example":"regional.example",
   parent_media_entity:original?"government_official":"regional_newspaper",
@@ -252,7 +253,7 @@ test("arbitrary three-letter country can route genuine original corroboration",a
   item.country_iso3="KEN";
   item.entities[0]="COUNTRY:KEN";
   item.event_fingerprint=digest(JSON.stringify([
-   "KEN",item.category,item.entities,item.derived.what
+   "KEN",item.category,item.event_key,item.entities
   ]));
   const claim=riskStreamOriginalClaims(item);
   item.proof.facts_signature_b64=prove(claim,c.facts,"geomacro.machine-original-facts.v1");
