@@ -299,3 +299,36 @@ test("true 220-event producer-to-Cloudflare-Queue-to-D1-to-GRO path ACKs all mes
  assert.equal(c.db.outbox.size,110);
  assert.equal(c.db.http503Faults,0);
 });
+
+test("distinct original wording corroborates the same attested event key without syndication",async()=>{
+ const c=ctx(),now=Date.now();
+ const a=candidate(c,501,"gov",now),b=candidate(c,501,"region",now);
+ b.derived.why="Independent regional reporting explains the local consequence differently";
+ b.derived.watch="Watch direct regulatory filings and formal regional updates";
+ const claims=riskStreamOriginalClaims(b);
+ b.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
+ b.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
+ assert.notEqual(a.derived.why,b.derived.why);
+ assert.equal(a.event_fingerprint,b.event_fingerprint);
+ const result=await processRiskStreamBatch(c.env,[a,b],{
+  now,sleeper:async()=>{},random:()=>0
+ });
+ assert.equal(result.corroborated_and_signed,1);
+ assert.equal(c.db.gros.size,1);
+});
+test("matching entities but different attested event keys never corroborate",async()=>{
+ const c=ctx(),now=Date.now();
+ const a=candidate(c,502,"gov",now),b=candidate(c,502,"region",now);
+ b.event_key="EVENT_DIFFERENT_0502";
+ b.event_fingerprint=digest(JSON.stringify([
+  b.country_iso3,b.category,b.event_key,b.entities
+ ]));
+ const claims=riskStreamOriginalClaims(b);
+ b.proof.facts_signature_b64=prove(claims,c.facts,"geomacro.machine-original-facts.v1");
+ b.proof.rights_signature_b64=prove(claims,c.rights,"geomacro.machine-commercial-rights.v1");
+ const result=await processRiskStreamBatch(c.env,[a,b],{
+  now,sleeper:async()=>{},random:()=>0
+ });
+ assert.equal(result.corroborated_and_signed,0);
+ assert.equal(c.db.gros.size,0);
+});
