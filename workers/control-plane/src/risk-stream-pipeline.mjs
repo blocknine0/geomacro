@@ -55,7 +55,8 @@ const signKey=async value=>{
 };
 export const riskStreamOriginalClaims=e=>JSON.stringify({
  schema:"geomacro.risk-stream-original-claims.v1",country_iso3:e.country_iso3,
- category:e.category,feed_origin:e.feed_origin,event_fingerprint:e.event_fingerprint,entities:e.entities,
+ category:e.category,feed_origin:e.feed_origin,event_key:e.event_key,
+ event_fingerprint:e.event_fingerprint,entities:e.entities,
  source_id:e.source_id,source_url:e.source_url,publisher_root_domain:e.publisher_root_domain,
  parent_media_entity:e.parent_media_entity,source_role:e.source_role,
  published_at:e.published_at,original_page_sha256:e.original_page_sha256,
@@ -65,6 +66,8 @@ function validateCandidate(e,now){
  if(!e||e.schema!=="geomacro.risk-stream-candidate.v1"||
   !ISO3.test(e.country_iso3??"")||!NAME.test(e.category??"")||
   !FEEDS.has(e.feed_origin)||
+  typeof e.event_key!=="string"||
+  !/^[A-Z0-9][A-Z0-9:_-]{6,119}$/u.test(e.event_key)||
   !HEX.test(e.event_fingerprint??"")||!SOURCE.test(e.source_id??"")||
   !DOMAIN.test(e.publisher_root_domain??"")||
   typeof e.parent_media_entity!=="string"||e.parent_media_entity.length>100||
@@ -93,7 +96,7 @@ function validateCandidate(e,now){
  if(e.kind==="VERIFIED_ORIGINAL"){
   if(!exact(e.proof,["facts_signature_b64","rights_signature_b64"])||
      typeof e.raw_payload!=="string"||e.raw_payload.length<16||
-     e.raw_payload.length>8000)
+     e.raw_payload.length>8000||encode(e.raw_payload).byteLength>8000)
    fail("ORIGINAL_PROOF_OR_ARCHIVE_MISSING");
  }else if(e.proof!==null||e.raw_payload!==null)
   fail("INDEX_CANNOT_CLAIM_ORIGINAL");
@@ -144,7 +147,7 @@ export async function inspectRiskStreamCandidates(items,now=Date.now()){
   const e=validateCandidate(item,now);
   // The fingerprint is a canonical entity+event identity, not merely the
   // headline/GDELT article ID. Attesters sign this identity independently.
-  if(await sha(JSON.stringify([e.country_iso3,e.category,e.entities,e.derived.what]))!==
+  if(await sha(JSON.stringify([e.country_iso3,e.category,e.event_key,e.entities]))!==
      e.event_fingerprint)fail("EVENT_FINGERPRINT_MISMATCH");
   out.push(e);
  }
