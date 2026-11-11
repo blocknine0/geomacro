@@ -43,7 +43,8 @@ jobs:
     if: >-
       github.repository == 'blocknine0/geomacro' &&
       github.ref == 'refs/heads/main' &&
-      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'push' ||
+       (github.event_name == 'workflow_dispatch' && inputs.stage2_run_id == ''))
     environment: production
     runs-on: ubuntu-24.04
     timeout-minutes: 10
