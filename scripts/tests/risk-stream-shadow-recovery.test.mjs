@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,sign,createHash} from "node:crypto";
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {spawnSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {verifyLiveGovernor,PINNED_CONTROL_PLANE}
  from "../ops/verify-risk-stream-b2-live-governor.mjs";
 import {discoverShadowArticles,parseIndexRss,createGdeltLimiter}
@@ -9,6 +14,7 @@ import {validateAttesterKeys,verifyIndependentAttestations}
  from "../lib/risk-stream-shadow-attesters.mjs";
 import {riskStreamOriginalClaims}
  from "../../workers/control-plane/src/risk-stream-pipeline.mjs";
+import {preflight} from "../ops/provision-risk-stream-shadow-attester-keys.mjs";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 
 const live=()=>({ok:true,schema:"geomacro.b2-account-quota-status.v1",
@@ -100,4 +106,83 @@ test("two distinct Ed25519 attesters validate signed original claims, not mismat
  assert.equal(verifyIndependentAttestations(e,keys),true);
  assert.throws(()=>verifyIndependentAttestations({...e,source_url:"https://changed.example.org"},keys),
   /SHADOW_ATTESTATION_INVALID_/);
+});
+
+test("provider Retry-After beyond diagnostic budget defers GDELT, does not hammer provider",async()=>{
+ let calls=0,logLines=[];
+ const observations=await discoverShadowArticles({
+  fetchImpl:async url=>{
+   if(String(url).includes("gdeltproject.org")){
+    calls++;return new Response("",{status:429,headers:{"Retry-After":"35"}});
+   }
+   return new Response("",{status:503});
+  },sleep:async()=>{throw Error("DID_NOT_EXPECT_RETRY_SLEEP")},
+  now:()=>Date.parse("2026-11-11T18:00:00Z"),
+  log:(...args)=>logLines.push(args.join(" "))});
+ assert.equal(calls,1);
+ assert.equal(observations.length,0);
+ assert.ok(logLines.includes("GDELT_RETRY_AFTER_DEFERRED_TO_NEXT_AUDIT"));
+});
+test("attester provisioning preflight rejects invalid facts signatures before any secrets write",()=>{
+ const facts=generateKeyPairSync("ed25519"),rights=generateKeyPairSync("ed25519");
+ const b64=key=>key.export({format:"der",type:"spki"}).toString("base64");
+ const temp=mkdtempSync(join(tmpdir(),"geomacro-shadow-attester-"));
+ try{
+  const factsFile=join(temp,"facts.txt"),rightsFile=join(temp,"rights.txt");
+  const sampleFile=join(temp,"attested.jsonl");
+  writeFileSync(factsFile,b64(facts.publicKey));
+  writeFileSync(rightsFile,b64(rights.publicKey));
+  const raw_payload="TEST_ONLY_NOT_ORIGINAL_PRODUCTION_EVIDENCE";
+  const e={schema:"geomacro.risk-stream-candidate.v1",kind:"VERIFIED_ORIGINAL",
+   country_iso3:"USA",category:"GEOPOLITICS",feed_origin:"OFFICIAL_API",
+   event_key:"TEST_EVENT_001",event_fingerprint:"a".repeat(64),
+   entities:["COUNTRY:USA","EVENT:TEST"],source_id:"test_official",
+   source_url:"https://example.org/test",publisher_root_domain:"example.org",
+   parent_media_entity:"test_parent",source_role:"GOVERNMENT_WIRE",
+   published_at:"2026-11-11T12:00:00.000Z",
+   original_page_sha256:createHash("sha256").update(raw_payload).digest("hex"),
+   derived:{what:"Unit test",why:"Unit test",market:"None",watch:"None"},
+   raw_payload,proof:{}};
+  const claim=riskStreamOriginalClaims(e);
+  e.proof.facts_signature_b64=sign(null,Buffer.from(
+   "geomacro.machine-original-facts.v1\n"+claim),facts.privateKey).toString("base64");
+  e.proof.rights_signature_b64=sign(null,Buffer.from(
+   "geomacro.machine-commercial-rights.v1\n"+claim),rights.privateKey).toString("base64");
+  writeFileSync(sampleFile,JSON.stringify(e)+"\n");
+  const valid=preflight({factsFile,rightsFile,sampleFile});
+  assert.equal(valid.checked,1);
+  assert.notEqual(valid.fingerprints.facts,valid.fingerprints.rights);
+  e.proof.rights_signature_b64=e.proof.facts_signature_b64;
+  writeFileSync(sampleFile,JSON.stringify(e)+"\n");
+  assert.throws(()=>preflight({factsFile,rightsFile,sampleFile}),
+   /SHADOW_ATTESTATION_INVALID_rights/);
+ }finally{rmSync(temp,{recursive:true,force:true})}
+});
+
+test("terminal scorecard rejects 30 acknowledged RSS hints as 10 signed GROs",()=>{
+ const temp=mkdtempSync(join(tmpdir(),"geomacro-shadow-scorecard-"));
+ try{
+  const dir=join(temp,".shadow-audit");mkdirSync(dir);
+  const json=(name,value)=>writeFileSync(join(dir,name),JSON.stringify(value));
+  json("metadata.json",{shadow_db:"geomacro-risk-stream-shadow",
+   shadow_bucket:"geomacro-risk-stream-shadow-private",
+   shadow_queue:"geomacro-risk-stream-shadow",shadow_dlq:"geomacro-risk-stream-shadow-dlq",
+   commercial_delivery:false,risk_stream_active:false,independent_attester_keys:false});
+  json("b2-governor-parity.json",{status:"D1_SHARED_GOVERNOR_MATCH",
+   expected_b2_network_ops_for_shadow:0,verified_route:"PINNED_CONTROL_PLANE_WORKERS_DEV"});
+  json("live-telemetry.json",{submitted_events:30,acknowledged_events:30,
+   canonical_batch_receipts:3,d1_observed_503:0,
+   signed_gro_count:0,verified_signature_readback_count:0,
+   independent_signed_gro_acceptance:false});
+  const result=spawnSync(process.execPath,
+   [fileURLToPath(new URL("../ops/score-risk-stream-shadow-provider-audit.mjs",import.meta.url))],
+   {cwd:temp,encoding:"utf8"});
+  assert.equal(result.status,1);
+  const report=JSON.parse(readFileSync(join(dir,"scorecard.json"),"utf8"));
+  assert.equal(report.status,"HOLD_INCOMPLETE_SHADOW_PROOF");
+  assert.equal(report.checks.live_d1_b2_governor_parity,true);
+  assert.equal(report.checks.zero_observed_d1_503,true);
+  assert.equal(report.checks.ten_signed_gros_with_d1_ed25519_readback,false);
+  assert.equal(report.canary_hold_retained,true);
+ }finally{rmSync(temp,{recursive:true,force:true})}
 });

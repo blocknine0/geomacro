@@ -221,12 +221,17 @@ async function ingest(){
  ok(complete,"SHADOW_QUEUE_D1_RECEIPTS_INCOMPLETE");
  const observed503=rows.reduce((n,x)=>n+x.d1_503_observed,0);
  const submitted=items.length,signed=rows.reduce((n,x)=>n+x.corroborated_and_signed,0);
+ const verifiedReadbacks=rows.reduce((n,x)=>n+x.verified_signature_readbacks,0);
+ // This feeder submits URL/index hints only. Any signature count is evidence
+ // of a broken provenance boundary, not an acceptance that can be waved through.
+ ok(signed===0&&verifiedReadbacks===0,"INDEX_ONLY_UNEXPECTED_SIGNED_GRO");
  const latency=rows.map(x=>x.d1_write_p95_ms).filter(Number.isFinite);
  const report={schema:"geomacro.shadow-live-observation-audit.v1",source_commit:SHA,
   event_source:"REAL_GDELT_OR_RSS_INDEX_ONLY",submitted_events:submitted,
   canonical_batch_receipts:rows.length,acknowledged_events:
    rows.reduce((n,x)=>n+x.event_count,0),
-  signed_gro_count:signed,d1_observed_503:observed503,
+  signed_gro_count:signed,verified_signature_readback_count:verifiedReadbacks,
+  d1_observed_503:observed503,
   max_observed_batch_d1_write_p95_ms:latency.length?Math.max(...latency):null,
   global_d1_write_p95_ms:null,
   zero_503_global_provider_logs_verified:false,
