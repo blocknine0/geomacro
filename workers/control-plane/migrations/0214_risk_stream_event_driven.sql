@@ -94,3 +94,11 @@ CREATE TABLE IF NOT EXISTS risk_stream_b2_token_bucket (
  updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms>=0),
  PRIMARY KEY(day_utc,kind)
 );
+
+-- Independent internal no-funds consumer ACK. Customer webhooks and settlement
+-- require their existing release/entitlement gates, not this table.
+CREATE TABLE IF NOT EXISTS risk_stream_internal_delivery_receipts (
+ gro_id TEXT PRIMARY KEY NOT NULL REFERENCES risk_stream_signed_gro(gro_id),
+ payload_sha256 TEXT NOT NULL CHECK(length(payload_sha256)=64),
+ received_at TEXT NOT NULL
+);
