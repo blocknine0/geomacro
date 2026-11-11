@@ -5,6 +5,7 @@
  * Never removes canary hold, authorizes customer traffic or raises B2 quotas.
  */
 import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
+import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 function read(name){
  try{return JSON.parse(readFileSync(".shadow-audit/"+name,"utf8"))}
  catch{return null}
@@ -30,7 +31,13 @@ const checks={
   candidate?.imported_production_quota_module===true&&
   candidate?.production_d1_ledger_verified===false&&
   candidate?.live_production_governor_parity_not_inferred===true&&
-  candidate?.expected_b2_network_ops_for_shadow===0,
+  candidate?.expected_b2_network_ops_for_shadow===0&&
+  Object.entries(B2_DAILY_LIMITS).every(([kind,value])=>
+   candidate?.limits?.[kind]===value&&
+   Number.isSafeInteger(candidate?.used?.[kind])&&
+   candidate.used[kind]>=0&&candidate.used[kind]<=value)&&
+  candidate?.used?.total===candidate?.used?.GET+candidate?.used?.PUT+
+   candidate?.used?.HEAD+candidate?.used?.NATIVE_AUTH,
  observed_20_to_30_real_index_events:
   n(tel?.submitted_events)>=20&&n(tel?.submitted_events)<=30&&
   n(tel?.acknowledged_events)>=n(tel?.submitted_events),

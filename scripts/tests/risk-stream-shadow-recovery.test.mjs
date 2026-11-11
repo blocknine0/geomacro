@@ -214,3 +214,36 @@ test("deployed zero-traffic candidate policy is strict and cannot claim live par
  await assert.rejects(verifyCandidateGovernor({base,bearer:"a".repeat(64),expectedSha:sha,
   fetchImpl:async()=>Response.json(body)}),/CANDIDATE_GOVERNOR_UNAUTHENTICATED_ACCESS/);
 });
+
+test("shadow scorecard rejects a manually altered candidate quota receipt",()=>{
+ const temp=mkdtempSync(join(tmpdir(),"geomacro-shadow-candidate-quota-"));
+ try{
+  const dir=join(temp,".shadow-audit");mkdirSync(dir);
+  const write=(name,value)=>writeFileSync(join(dir,name),JSON.stringify(value));
+  const sha="b4f8de30c0c22530b92bf6e6791370235805b616";
+  write("metadata.json",{shadow_db:"geomacro-risk-stream-shadow",
+   shadow_bucket:"geomacro-risk-stream-shadow-private",
+   shadow_queue:"geomacro-risk-stream-shadow",
+   shadow_dlq:"geomacro-risk-stream-shadow-dlq",commercial_delivery:false,
+   risk_stream_active:false,independent_attester_keys:false,executed_commit:sha});
+  write("candidate-governor-parity.json",{
+   status:"SHADOW_CANDIDATE_D1_POLICY_MATCH",source_sha:sha,
+   verified_route:"SHADOW_CANDIDATE_ISOLATED_WORKERS_DEV",
+   shadow_db:"geomacro-risk-stream-shadow",
+   unauthenticated_http_401_verified:true,cloudflare_deployed_candidate_readback:true,
+   imported_production_quota_module:true,production_d1_ledger_verified:false,
+   live_production_governor_parity_not_inferred:true,expected_b2_network_ops_for_shadow:0,
+   limits:{...B2_DAILY_LIMITS,total:720},
+   used:{total:0,GET:0,PUT:0,HEAD:0,NATIVE_AUTH:0}});
+  write("live-telemetry.json",{submitted_events:30,acknowledged_events:30,
+   canonical_batch_receipts:3,d1_observed_503:0,signed_gro_count:0,
+   verified_signature_readback_count:0,independent_signed_gro_acceptance:false});
+  const p=spawnSync(process.execPath,
+    [fileURLToPath(new URL("../ops/score-risk-stream-shadow-provider-audit.mjs",import.meta.url))],
+    {cwd:temp,encoding:"utf8"});
+  assert.equal(p.status,1);
+  const report=JSON.parse(readFileSync(join(dir,"scorecard.json"),"utf8"));
+  assert.equal(report.checks.isolated_candidate_governor_policy_parity,false);
+  assert.equal(report.status,"HOLD_INCOMPLETE_SHADOW_PROOF");
+ }finally{rmSync(temp,{recursive:true,force:true})}
+});

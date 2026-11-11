@@ -172,7 +172,10 @@ jobs:
           score_status=0
           node scripts/ops/score-risk-stream-shadow-provider-audit.mjs || score_status=$?
           if ! test -s .shadow-audit/b2-governor-parity.json; then
-            echo "::error::SHADOW_GOVERNOR_PARITY_UNPROVEN_RELEASE_HOLD_RETAINED"
+            echo "::warning::PRODUCTION_LIVE_GOVERNOR_PARITY_UNPROVEN_HOLD_RETAINED"
+          fi
+          if ! test -s .shadow-audit/candidate-governor-parity.json; then
+            echo "::error::ISOLATED_GOVERNOR_CANDIDATE_PROOF_MISSING"
             exit 18
           fi
           exit "$score_status"
