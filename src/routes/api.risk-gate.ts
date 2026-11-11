@@ -11,7 +11,7 @@ import {fetchWithoutRedirect} from "../lib/fetch-without-redirect";
 const FALLBACK="https://geomacro-control-plane.daspallab202391.workers.dev";
 const MAX_BYTES=64*1024;
 const headers={"Cache-Control":"no-store","X-Content-Type-Options":"nosniff"};
-function validateSignedProgressiveResponse(json:Record<string,unknown>,trustedKey:string,keyId:string|null):boolean{
+export function validateSignedProgressiveResponse(json:Record<string,unknown>,trustedKey:string,keyId:string|null):boolean{
  const payload=json.decision_signed_payload;
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||
     json.decision_signature_scheme!=="Ed25519"||
@@ -34,7 +34,23 @@ function validateSignedProgressiveResponse(json:Record<string,unknown>,trustedKe
     !["ACTIVE","LOCKED"].includes(String(matrix.complex?.status))||
     !Number.isSafeInteger(matrix.standard?.corroboration_sources_count)||
     typeof matrix.complex?.signed_gro_ready!=="boolean"||
-    typeof matrix.complex?.seven_day_rollup_ready!=="boolean")return false;
+    typeof matrix.complex?.seven_day_rollup_ready!=="boolean"||
+    typeof matrix.complex?.active!=="boolean"||
+    typeof matrix.standard?.active!=="boolean")return false;
+ const standardActive=matrix.standard.active===true;
+ const complexReady=standardActive &&
+   matrix.complex.signed_gro_ready===true &&
+   matrix.complex.seven_day_rollup_ready===true;
+ if(matrix.standard.status!==(standardActive?"ACTIVE":"PENDING")||
+    matrix.complex.active!==complexReady||
+    matrix.complex.status!==(complexReady?"ACTIVE":"LOCKED")||
+    (obj.tier==="COMPLEX_0_25")!==complexReady||
+    (obj.tier==="STANDARD_0_15")!==(standardActive&&!complexReady)||
+    (obj.tier==="BASIC_0_10")!==( !standardActive )||
+    obj.price_per_call_usd!==({
+      BASIC_0_10:0.10,STANDARD_0_15:0.15,COMPLEX_0_25:0.25
+    } as Record<string,number>)[String(obj.tier)])
+    return false;
  // Never publish a proxy-modified decision outside the signed bytes.
  for(const field of ["risk_gate","context","tier_activation_matrix"]){
    if(canonicalRiskObjectJson(obj[field])!==canonicalRiskObjectJson(json[field]))return false;
