@@ -61,7 +61,7 @@ export function uploadedVersionIdFromWranglerEvents(ndjson){
   throw Error('CANDIDATE_WRANGLER_UPLOAD_RECEIPT_INVALID');
  let entries;
  try{
-  entries=ndjson.trim().split('\\n').map(line=>JSON.parse(line));
+  entries=ndjson.trim().split('\n').map(line=>JSON.parse(line));
  }catch{throw Error('CANDIDATE_WRANGLER_UPLOAD_RECEIPT_INVALID')}
  const uploads=entries.filter(x=>x?.type==='version-upload');
  if(uploads.length!==1)
@@ -134,7 +134,7 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
     env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
  }catch(error){
   const output=String(error?.stdout??'')+String(error?.stderr??'');
-  const codes=[...output.matchAll(/\\[code:\\s*(\\d+)\\]/g)].map(x=>x[1]);
+  const codes=[...output.matchAll(/\[code:\s*(\d+)\]/g)].map(x=>x[1]);
   throw Error('CANDIDATE_UPLOAD_FAILED'+(codes.length?'_PROVIDER_'+codes.join('_'):''));
  }
  let uploadedId;
