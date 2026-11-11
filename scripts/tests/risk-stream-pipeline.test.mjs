@@ -244,3 +244,30 @@ test("candidate without exact original payload hash is never signed",async()=>{
  await assert.rejects(processRiskStreamBatch(c.env,[a],{now}),
   /RISK_STREAM_ORIGINAL_OR_RIGHTS_SIGNATURE_UNVERIFIED/u);
 });
+
+test("arbitrary three-letter country can route genuine original corroboration",async()=>{
+ const c=ctx(),now=Date.now();
+ const a=candidate(c,8,"gov",now),b=candidate(c,8,"region",now);
+ for(const item of [a,b]){
+  item.country_iso3="KEN";
+  item.entities[0]="COUNTRY:KEN";
+  item.event_fingerprint=digest(JSON.stringify([
+   "KEN",item.category,item.entities,item.derived.what
+  ]));
+  const claim=riskStreamOriginalClaims(item);
+  item.proof.facts_signature_b64=prove(claim,c.facts,"geomacro.machine-original-facts.v1");
+  item.proof.rights_signature_b64=prove(claim,c.rights,"geomacro.machine-commercial-rights.v1");
+ }
+ const r=await processRiskStreamBatch(c.env,[a,b],{now,sleeper:async()=>{},random:()=>0});
+ assert.equal(r.corroborated_and_signed,1);
+ assert.equal([...c.db.gros.values()][0].country_iso3,"KEN");
+});
+test("GDELT index cannot claim original status even with two forged machine attestations",async()=>{
+ const c=ctx(),now=Date.now(),item=candidate(c,9,"gov",now);
+ item.feed_origin="GDELT_INDEX";
+ const claim=riskStreamOriginalClaims(item);
+ item.proof.facts_signature_b64=prove(claim,c.facts,"geomacro.machine-original-facts.v1");
+ item.proof.rights_signature_b64=prove(claim,c.rights,"geomacro.machine-commercial-rights.v1");
+ await assert.rejects(inspectRiskStreamCandidates([item],now),
+  /RISK_STREAM_INDEX_ONLY_DISCOVERY_NOT_ORIGINAL/u);
+});
