@@ -22,6 +22,7 @@ export function auditStage2Signature({signed,publicJwk,runId,runSha,dbId}={}){
  let r;
  try{r=verifyStep3StatusReceipt(signed,publicJwk)}
  catch{fail('ED25519_SIGNATURE_OR_SIGNER_INVALID')}
+ if(signed?.attestation?.algorithm!=='Ed25519')fail('ED25519_ALGORITHM_REQUIRED');
  const refs=r?.production_reference_table;
  const referenceOk=refs?.mode==='EMPTY_OPT_IN_TABLE_SCHEMA_VERIFIED'&&
   refs.real_production_pointer_hmac_verified===false&&
