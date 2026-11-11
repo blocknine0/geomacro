@@ -85,6 +85,22 @@ class FakeDB {
   };
  }
  async batch(stmts){
+  if(stmts[0]?.sql?.startsWith("INSERT OR IGNORE INTO risk_stream_evidence")){
+   // Provider D1 limit: <=100 bound parameters PER statement. One Queue
+   // batch of 10 originals must be 6+4 rows inside this atomic DB batch.
+   assert(stmts.length>=1&&stmts.length<=2);
+   assert(stmts.every(x=>x.args.length<=100&&x.args.length%16===0));
+   const first=stmts[0].args[0];
+   if(this.inject503&&!this.faultedBatches.has(first)){
+    this.faultedBatches.add(first);this.http503Faults++;
+    throw Error("D1_ERROR_HTTP_503_SYNTHETIC");
+   }
+   const wasInjected=this.inject503;
+   this.inject503=false;
+   try{for(const stmt of stmts)await stmt.run()}
+   finally{this.inject503=wasInjected}
+   return stmts.map(()=>({success:true}));
+  }
   assert.equal(stmts.length,2);
   const a=stmts[0].args,b=stmts[1].args;
   if(!this.gros.has(a[0]))
@@ -147,7 +163,7 @@ function candidate(c,i,source,now=Date.now(),category="GEOPOLITICS",clockOffsetM
  };
  return item;
 }
-test("220 independent original events: 110 genuine signed GROs, one D1 multi-row INSERT per 10, simulated 503 recovered",async()=>{
+test("220 independent original events: 110 genuine signed GROs, one atomic D1 6+4 multi-row batch at <=100 binds/SQL, simulated 503 recovered",async()=>{
  const c=ctx(),now=Date.now(),items=[];
  for(let i=0;i<110;i++)items.push(candidate(c,i,"gov",now),candidate(c,i,"region",now));
  const http=await enqueueRiskStreamEvents(c.env,{schema:"geomacro.risk-stream-ingest-batch.v1",
