@@ -28,10 +28,25 @@ export function assessStep3ProductionFinal({
   zero_pointer_table_vacuous_proof:empty,
   stage1_shadow_hmac_attestation_required:true
  };
+ const fresh=state.final_schema_readback;
+ const schemaReadback=fresh?.status===
+  "PASS_REAL_PRODUCTION_FOUR_MIGRATIONS_DIRECT_SCHEMA_READBACK"&&
+  same(fresh.migration_ids,IDS)&&
+  fresh.native_history_directly_observed===true&&
+  fresh.ledger_four_checksums_and_verified_statuses===true&&
+  fresh.production_schema_and_columns_directly_observed===true&&
+  fresh.readback_queries===10&&
+  same(fresh.tables?.map(x=>x.table),[
+   "materialized_cache","p0b_committed_day_totals",
+   "phase2h_pending_hourly_v1","phase2h_raw_object_refs_v1"
+  ])&&
+  fresh.tables.every(x=>Number.isSafeInteger(x.columns_verified)&&
+   x.columns_verified>0);
  const certified=state.stage1_admission?.status===
   "PASS_AUTHENTICATED_REAL_PROVIDER_SHADOW_ADMISSION"&&
   state.recovery_checkpoint_verified===true&&
   state.migration_ledger_verified===true&&
+  schemaReadback===true&&
   same(state.verified?.map(x=>x.id),IDS)&&
   state.verified.every(x=>x.migration_history_and_schema_valid===true&&
    x.ledger_status==="VERIFIED")&&

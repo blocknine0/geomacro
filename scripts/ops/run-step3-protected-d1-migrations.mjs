@@ -28,6 +28,8 @@ import {admitSignedStep3ShadowReceipt}
  from "../lib/d1-step3-receipt-admission.mjs";
 import {assessStep3ProductionFinal}
  from "../lib/d1-step3-production-final-acceptance.mjs";
+import {verifyStep3FinalProductionReadback}
+ from "../lib/d1-step3-final-schema-readback.mjs";
 import {verifyProductionRefOnlyOff}
  from "../lib/d1-step3-production-reference-only-off-proof.mjs";
 import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
@@ -219,13 +221,25 @@ function ensureLedger(config,manifests,report){
 async function refreshedGate(report,stage){
  const estimate=report.operation_kind==="production"?
    report.large_0212_production_cost_envelope:null;
- const x=await checkD1PaidMonthlyHeadroom({
-  lane:report.operation_kind==="shadow"?"shadow":"migration",
-  estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
-  estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0
- });
+ let x,attempts=0;
+ // Retry network and service errors only; never admit missing provider
+ // measurements, truncated groups, stale readings or insufficient headroom.
+ for(let i=0;i<3;i++){
+  attempts++;
+  x=await checkD1PaidMonthlyHeadroom({
+   lane:report.operation_kind==="shadow"?"shadow":"migration",
+   estimatedMigrationRowsRead:estimate?.estimated_rows_read??0,
+   estimatedMigrationRowsWritten:estimate?.estimated_rows_written??0
+  });
+  if(x.status==="PASS")break;
+  const transient=/^(?:D1_PAID_MONTHLY_GRAPHQL_NETWORK_UNAVAILABLE|D1_PAID_MONTHLY_GRAPHQL_PROVIDER_HTTP_NOT_OK|WORKERS_PAID_.*(?:NETWORK|HTTP|UNAVAILABLE))$/u
+   .test(x.provider_error??"");
+  if(!transient||i===2)break;
+  await new Promise(resolve=>setTimeout(resolve,1000*(i+1)));
+ }
  report.latest_headroom={stage,status:x.status,code:x.code,
-  day:x.day_utc,rows_read:x.observed_rows_read,
+  reason:x.reason??null,provider_error:x.provider_error??null,
+  attempts,day:x.day_utc,rows_read:x.observed_rows_read,
   rows_written:x.observed_rows_written,
   read_remaining:x.remaining_rows_read,
   write_remaining:x.remaining_rows_written};
@@ -849,7 +863,9 @@ export async function applyStep3Migrations({env=process.env}={}){
      checkpoint.real_provider_bookmark_observed!==true||
      !/^[a-f0-9]{64}$/u.test(checkpoint.bookmark_sha256??"")||
      checkpoint.private_r2_encrypted_readback_verified!==true||
-     checkpoint.signed_manifest_readback_verified!==true)
+     checkpoint.signed_manifest_readback_verified!==true||
+     checkpoint.migration_sha256!==migrationSha||
+     checkpoint.database_uuid_sha256!==state.production_database_uuid_sha256)
    fail("RECOVERY_CHECKPOINT_NOT_DURABLE");
   state.native_time_travel_provider_verified=true;
   state.recovery_checkpoint_verified=true;
@@ -886,6 +902,12 @@ export async function applyStep3Migrations({env=process.env}={}){
     baseline(config));
    await refreshedGate(state,"AFTER_"+step.id);
   }
+  // Fresh same-target production D1 schema, exact columns and all four
+  // SHA-pinned VERIFIED ledger rows. Per-step receipts are insufficient.
+  state.final_schema_readback=verifyStep3FinalProductionReadback({
+   manifests,query:(sql,options)=>q(config,sql,options)
+  });
+  save(state);
   // Production B2 physical GET must be independent of the signed
   // Stage 1 shadow B2 proof. Use one bounded canonical B2-ACK source.
   await refreshedGate(state,"PRODUCTION_BEFORE_INDEPENDENT_B2_READBACK");
@@ -920,7 +942,7 @@ export async function applyStep3Migrations({env=process.env}={}){
   save(state);
   return state;
  }catch(e){
-  state.status="NOT_YET_VERIFIED";state.code=/^(?:STEP3_|MIGRATION_)[A-Z0-9_]+$/u.test(e?.message??"")?
+  state.status="NOT_YET_VERIFIED";state.code=/^(?:STEP3_|MIGRATION_|D1_PAID_MONTHLY_)[A-Z0-9_]+$/u.test(e?.message??"")?
    e.message:"STEP3_PROVIDER_EXECUTION_UNVERIFIED";
   state.hold_file_untouched=existsSync(HOLD_FILE);
   state.post_migration_readback_explicit_PASS=false;
@@ -1109,8 +1131,9 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
  }else if(flags.length===1&&flags[0]==="--apply"){
   const result=await applyStep3Migrations();
   console.log(JSON.stringify({status:result.status,code:result.code,
-   verified_migrations:result.verified.length,
+   verified_migrations:result.verified.map(x=>x.id),
    applied_migrations:result.applied.map(x=>x.id),
+   native_migrations_already_applied:result.native_history_preflight?.native_applied_ids??[],
    shadow_test_proven:result.shadow_test_proven,
    backup_bookmark_sha256:result.backup_bookmark_sha256,
    post_migration_readback_explicit_PASS:

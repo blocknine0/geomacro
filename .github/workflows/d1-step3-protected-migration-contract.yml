@@ -33,6 +33,10 @@ on:
       - "scripts/lib/d1-step3-recovery-checkpoint.mjs"
       - "scripts/lib/d1-step3-crypto-proof.mjs"
       - "scripts/lib/d1-step3-migration-ledger.mjs"
+      - "scripts/lib/d1-step3-final-schema-readback.mjs"
+      - "scripts/lib/d1-step3-production-final-acceptance.mjs"
+      - "scripts/tests/d1-step3-final-schema-readback.test.mjs"
+      - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
       - "scripts/lib/d1-step3-shadow-pointer-seed.mjs"
       - "scripts/tests/d1-step3-shadow-pointer-seed.test.mjs"
       - "scripts/tests/d1-step3-durable-recovery.test.mjs"
@@ -91,6 +95,9 @@ jobs:
           node --check scripts/lib/d1-step3-recovery-checkpoint.mjs
           node --check scripts/lib/d1-step3-crypto-proof.mjs
           node --check scripts/lib/d1-step3-migration-ledger.mjs
+          node --check scripts/lib/d1-step3-final-schema-readback.mjs
+          node --check scripts/lib/d1-step3-production-final-acceptance.mjs
+          node --test scripts/tests/d1-step3-final-schema-readback.test.mjs scripts/tests/d1-step3-production-final-acceptance.test.mjs
           node --check scripts/lib/d1-step3-shadow-pointer-seed.mjs
           node --test scripts/tests/d1-publisher-shadow-billable.test.mjs
       - name: Prove current UTC headroom strictness and all protected migration contracts

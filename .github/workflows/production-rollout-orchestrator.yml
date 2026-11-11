@@ -16,6 +16,8 @@ on:
       - "scripts/tests/d1-step3-0213-safe-resume.test.mjs"
       - "scripts/tests/d1-step3-shadow-pointer-seed.test.mjs"
       - "scripts/lib/d1-step3-production-final-acceptance.mjs"
+      - "scripts/lib/d1-step3-final-schema-readback.mjs"
+      - "scripts/tests/d1-step3-final-schema-readback.test.mjs"
       - "scripts/tests/d1-step3-production-final-acceptance.test.mjs"
       - "scripts/ops/verify-owner-dispatch-reviewed-sha.mjs"
       - "scripts/tests/owner-dispatch-reviewed-sha.test.mjs"
@@ -84,6 +86,7 @@ jobs:
           scripts/tests/d1-step3-shadow-pointer-seed.test.mjs
           scripts/tests/d1-step3-durable-recovery.test.mjs
           scripts/tests/d1-step3-0213-safe-resume.test.mjs
+          scripts/tests/d1-step3-final-schema-readback.test.mjs
           scripts/tests/d1-step3-production-final-acceptance.test.mjs
           scripts/tests/step3-protected-binding-readiness.test.mjs
           scripts/tests/owner-dispatch-reviewed-sha.test.mjs
