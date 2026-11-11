@@ -15,6 +15,7 @@ class FakeDB {
  constructor(){
   this.evidence=new Map();this.gros=new Map();this.outbox=new Map();
   this.inject503=true;this.faultedBatches=new Set();this.http503Faults=0;
+  this.secondaryIndex=[];
   this.sources=new Map([
    ["gov",{source_id:"gov",publisher_root_domain:"official.example",
     parent_media_entity:"government_official",source_role:"GOVERNMENT_WIRE",
@@ -36,6 +37,8 @@ class FakeDB {
    sql,args:[],
    bind(...args){this.args=args;return this},
    async all(){
+    if(sql.includes("FROM progressive_risk_gate_facts"))
+     return {results:db.secondaryIndex};
     if(sql.includes("FROM risk_stream_sources")&&!sql.includes("JOIN"))
      return {results:JSON.parse(this.args[0]).map(x=>db.sources.get(x)).filter(Boolean)};
     if(sql.includes("FROM risk_stream_category_policy"))
@@ -329,6 +332,18 @@ test("matching entities but different attested event keys never corroborate",asy
  const result=await processRiskStreamBatch(c.env,[a,b],{
   now,sleeper:async()=>{},random:()=>0
  });
+ assert.equal(result.corroborated_and_signed,0);
+ assert.equal(c.db.gros.size,0);
+});
+
+test("bounded secondary news index is queried, matched by entities, but cannot certify unsigned originals",async()=>{
+ const c=ctx(),now=Date.now(),a=candidate(c,503,"gov",now);
+ c.db.secondaryIndex=[{country_iso3:"USA",category:"geopolitics",
+  event_fingerprint:"f".repeat(64),publisher_domain:"regional.example",
+  clock_basis:"INDEX_OBSERVED",extracted_entities_json:JSON.stringify(a.entities)}];
+ const result=await processRiskStreamBatch(c.env,[a],{now,sleeper:async()=>{},random:()=>0});
+ assert.equal(result.secondary_index_same_entity_hint_count,1);
+ assert.equal(result.secondary_index_publisher_hints_never_certification,true);
  assert.equal(result.corroborated_and_signed,0);
  assert.equal(c.db.gros.size,0);
 });
