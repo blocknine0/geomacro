@@ -62,6 +62,23 @@ commercial launch:
 - https://www.bls.gov/bls/linksite.htm
 - https://www.usgs.gov/information-policies-and-instructions/copyrights-and-credits
 
+## Cryptographically bound GeoMacro license designation
+
+The research-only Ed25519 advisory binds
+`GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1` and the source publisher domains,
+parent media ownership, source publication timestamps and event fingerprint
+inside the signed payload. Tampering with the license metadata or source
+provenance invalidates the signature. The signing key is imported into a
+non-extractable in-memory WebCrypto Ed25519 key.
+
+**This identifier is a reserved metadata designation, not a legal grant.**
+It covers only original GeoMacro-authored derived factual claims and
+**does not** license original publisher expression, overcome a source
+contract, confirm a legally reviewed license document, authorize paid
+redistribution, replace the dual independent commercial attesters or
+release the canary hold. Until reviewed terms and original publisher rights
+are independently verified, the signed advisory remains research-only.
+
 ## Test versus production proofs
 
 `node --test scripts/tests/risk-stream-open-derived.test.mjs` uses
