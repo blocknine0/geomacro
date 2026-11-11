@@ -17,7 +17,7 @@
     "RISK_STREAM_ACTIVE": "0",
     "STREAM_INGESTION_ENABLED": "false",
     "STREAM_MODE": "DISABLED",
-    "DERIVED_DISCOVERY_QUEUE_ENABLED": "0"
+    "DERIVED_DISCOVERY_QUEUE_ENABLED": "1"
   },
   "triggers": {
     "crons": [
