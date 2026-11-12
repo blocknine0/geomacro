@@ -49,7 +49,8 @@ export function inspectPointerProofCount(rows){
  }):null;
 }
 export async function verifyRealPhase2hPointerRows({
- rows,env=process.env,fetchImpl=fetch
+ rows,env=process.env,fetchImpl=fetch,
+ sleepImpl=ms=>new Promise(resolve=>setTimeout(resolve,ms))
 }={}){
  const absent=inspectPointerProofCount(rows);
  if(absent)return absent;
@@ -63,15 +64,31 @@ export async function verifyRealPhase2hPointerRows({
  for(const row of rows){
   assertRealPointerMac(row,env.PHASE2H_R2_REFERENCE_HMAC_KEY);
   const url="https://"+host+"/v1/internal/phase2h-raw-object-ref?record_id="+row.record_id;
+  // Only idempotent, authenticated GET retries for transient provider
+  // errors. 4xx auth/identity/retention failures remain immediate HOLD.
+  // Never retry a redirect or log its Location, response body or bearer.
   let response;
-  try{response=await fetchImpl(url,{
-   method:"GET",redirect:"error",cache:"no-store",
-   headers:{"Authorization":"Bearer "+env.CONTROL_PLANE_TOKEN,
-    "Cache-Control":"no-store"},
-   signal:AbortSignal.timeout(12000)
-  })}catch{fail("WORKER_RETRIEVAL_UNAVAILABLE")}
-  if(response?.status!==200||response.redirected)
-   fail("AUTHENTICATED_WORKER_RETRIEVAL_REJECTED");
+  for(let attempt=0;attempt<3;attempt++){
+   try{response=await fetchImpl(url,{
+    method:"GET",redirect:"error",cache:"no-store",
+    headers:{"Authorization":"Bearer "+env.CONTROL_PLANE_TOKEN,
+     "Cache-Control":"no-store"},
+    signal:AbortSignal.timeout(12000)
+   })}catch{
+    if(attempt===2)fail("WORKER_RETRIEVAL_UNAVAILABLE_AFTER_BOUNDED_RETRIES");
+    await sleepImpl(250*(attempt+1));
+    continue;
+   }
+   if(response?.status===200&&!response.redirected)break;
+   if(response?.redirected)
+    fail("AUTHENTICATED_WORKER_RETRIEVAL_REJECTED_REDIRECT");
+   const status=Number.isSafeInteger(response?.status)&&
+    response.status>=100&&response.status<=599?
+     response.status:"UNKNOWN";
+   if(attempt===2||![429,500,502,503,504].includes(status))
+    fail("AUTHENTICATED_WORKER_RETRIEVAL_REJECTED_HTTP_"+status);
+   await sleepImpl(250*(attempt+1));
+  }
   let data;try{data=await response.json()}catch{fail("WORKER_RESPONSE_INVALID")}
   if(data?.ok!==true||
      data.schema!=="geomacro.phase2h.private-r2-reference-readback.v1"||

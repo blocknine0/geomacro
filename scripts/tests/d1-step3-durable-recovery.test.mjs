@@ -167,3 +167,76 @@ function generateFromTestSignKey(jwk){
  return JSON.stringify(testPublicKey(testPrivateKey({key:jwk,format:"jwk"}))
   .export({format:"jwk"}));
 }
+
+
+test("real pointer GET retries transient 429/503 only and preserves full HMAC, R2 and record-byte assertions",async()=>{
+ const crypto=await import("node:crypto");
+ const original={record_id:"a".repeat(64),raw_sha256:"b".repeat(64),
+  category:"macro",ingested_at:"2026-11-12T15:00:00.000Z",
+  original:{original_published_at:"2026-11-12T14:58:00.000Z"}};
+ const raw=JSON.stringify(original),digest=x=>crypto.createHash("sha256").update(x).digest("hex");
+ const key="f".repeat(64);
+ const pointer={record_id:original.record_id,category:"macro",
+  original_published_at:original.original.original_published_at,
+  first_ingested_at:original.ingested_at,raw_sha256:original.raw_sha256,
+  object_sha256:"c".repeat(64),
+  object_key:"geomacro/private/phase2h/ref-only/v1/"+"c".repeat(64)+".json",
+  bundle_bytes:2048,record_sha256:digest(raw),record_bytes:Buffer.byteLength(raw),
+  bundle_index:0,signed_at:"2026-11-12T15:05:00.000Z",
+  pointer_hmac_sha256:"0".repeat(64),risk_country_iso3:"USA",
+  storage_backend:"private_r2"};
+ pointer.pointer_hmac_sha256=crypto.createHmac("sha256",Buffer.from(key,"hex"))
+  .update(pointerEnvelope(pointer)).digest("hex");
+ const verifierEnv={GEOMACRO_STEP3_VERIFIED_WORKER_HOST:
+  "geomacro-step3-shadow.daspallab202391.workers.dev",
+  CONTROL_PLANE_TOKEN:"e".repeat(64),PHASE2H_R2_REFERENCE_HMAC_KEY:key};
+ const ok=()=>new Response(JSON.stringify({
+  ok:true,schema:"geomacro.phase2h.private-r2-reference-readback.v1",
+  record:original,pointer_and_object_verified:true,legacy_fallback:false,
+  paid_eligible:false,b2_archive_verified:false
+ }),{status:200});
+ const run=async statuses=>{
+  let calls=0;const sleeps=[];
+  const fetchImpl=async(url,init)=>{
+   assert.equal(init.method,"GET");assert.equal(init.redirect,"error");
+   assert.equal(init.headers.Authorization,"Bearer "+verifierEnv.CONTROL_PLANE_TOKEN);
+   assert.match(url,/\/v1\/internal\/phase2h-raw-object-ref\?record_id=a{64}$/);
+   const next=statuses[Math.min(calls++,statuses.length-1)];
+   if(next==="THROW")throw Error("PRIVATE_PROVIDER_RESPONSE_MUST_NOT_LEAK");
+   return next===200?ok():new Response(null,{status:next});
+  };
+  const args={rows:[pointer],env:verifierEnv,fetchImpl,
+   sleepImpl:async ms=>{sleeps.push(ms)}};
+  return {args,calls:()=>calls,sleeps};
+ };
+ for(const statuses of [[503,429,200],[200]]){
+  const x=await run(statuses),p=await verifyRealPhase2hPointerRows(x.args);
+  assert.equal(p.cryptographic_readback_verified,true);
+  assert.equal(p.verified_count,1);
+  assert.equal(p.paid_delivery_authorized,false);
+  assert.equal(x.calls(),statuses.length);
+  assert.deepEqual(x.sleeps,statuses.length===3?[250,500]:[]);
+ }
+ for(const status of [401,403,404,410]){
+  const x=await run([status]);
+  await assert.rejects(verifyRealPhase2hPointerRows(x.args),
+   new RegExp("STEP3_POINTER_AUTHENTICATED_WORKER_RETRIEVAL_REJECTED_HTTP_"+status));
+  assert.equal(x.calls(),1,"no retry for authentication or expired pointer");
+  assert.deepEqual(x.sleeps,[]);
+ }
+ for(const statuses of [[503,503,503],["THROW","THROW","THROW"]]){
+  const x=await run(statuses);
+  await assert.rejects(verifyRealPhase2hPointerRows(x.args),error=>{
+   assert.match(error.message,/^STEP3_POINTER_(?:WORKER_RETRIEVAL_UNAVAILABLE_AFTER_BOUNDED_RETRIES|AUTHENTICATED_WORKER_RETRIEVAL_REJECTED_HTTP_503)$/);
+   assert.doesNotMatch(error.message,/PRIVATE_PROVIDER|Bearer|daspallab/);
+   return true;
+  });
+  assert.equal(x.calls(),3);
+  assert.deepEqual(x.sleeps,[250,500]);
+ }
+ const tampered={...pointer,pointer_hmac_sha256:"0".repeat(64)};
+ const invalid=await run([200]);
+ await assert.rejects(verifyRealPhase2hPointerRows({...invalid.args,rows:[tampered]}),
+  /STEP3_POINTER_HMAC_SHA256_REJECTED/);
+ assert.equal(invalid.calls(),0,"bad HMAC is rejected before an authenticated fetch");
+});
