@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {generateKeyPairSync} from "node:crypto";
 import {runIsolatedCommercialE2E,sanitizedShadowCommercialError}
  from "../../workers/risk-stream-shadow/src/commercial-e2e.mjs";
+import ackWorker from "../../workers/risk-stream-shadow-ack/src/index.mjs";
 
 const ackUrl="https://geomacro-risk-stream-shadow-ack.example-team.workers.dev/v1/internal/mock-commercial-ack";
 const keyPair=generateKeyPairSync("ed25519");
@@ -88,20 +89,21 @@ test("isolated shadow uses actually pinned license key + D1 outbox + HTTPS ACK",
   GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey,
   SHADOW_REVIEWED_SHA:"f".repeat(40),DB:db};
  let calls=0;
+ env.SHADOW_COMMERCIAL_ACK={fetch:async(url,req)=>{
+  calls++;
+  assert.equal(url,ackUrl);
+  assert.equal(req.headers["X-GeoMacro-Shadow-ACK"],env.STREAM_SHADOW_ACK_TOKEN);
+  assert.equal(Object.hasOwn(req,"cache"),false);
+  assert.equal(req.headers["Idempotency-Key"],state.outbox.job_id);
+  // Pass an actual Request to the ACK worker's production handler, not a
+  // mocked canned Response. Test all headers, body fields and auth together.
+  return ackWorker.fetch(new Request(url,req),{
+   STREAM_SHADOW_ACK_TOKEN:env.STREAM_SHADOW_ACK_TOKEN
+  });
+ }};
  const receipt=await runIsolatedCommercialE2E(env,{
   ackUrl,now:Date.parse("2026-11-12T03:00:00Z"),
-  runId:"shadow-regression-20261112",
-  fetcher:async(url,req)=>{
-   calls++;
-   assert.equal(url,ackUrl);
-   assert.equal(req.headers["X-GeoMacro-Shadow-ACK"],env.STREAM_SHADOW_ACK_TOKEN);
-   assert.equal(Object.hasOwn(req,"cache"),false);
-   assert.equal(req.headers["Idempotency-Key"],state.outbox.job_id);
-   const payload=JSON.parse(req.body);
-   return Response.json({schema:"geomacro.commercial-webhook-ack.v1",
-    job_id:state.outbox.job_id,
-    payload_sha256:payload.license_proof.payload_sha256,status:"ACCEPTED"});
-  }
+  runId:"shadow-regression-20261112"
  });
  assert.equal(receipt.status,"PASS");
  assert.equal(receipt.license_id,"GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1");
@@ -139,13 +141,13 @@ test("shadow E2E exposes sanitized dispatch code without leaking upstream fetch 
   GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey,
   GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey,
   SHADOW_REVIEWED_SHA:"f".repeat(40),DB:db};
+ env.SHADOW_COMMERCIAL_ACK={fetch:async(_target,request)=>{
+  assert.equal(Object.hasOwn(request,"cache"),false);
+  throw Error("token=secret_12345 and https://realcustomer.test/webhook");
+ }};
  await assert.rejects(runIsolatedCommercialE2E(env,{
   ackUrl,now:Date.parse("2026-11-12T03:00:00Z"),
-  runId:"shadow-regression-retry-20261112",
-  fetcher:async(_target,request)=>{
-   assert.equal(Object.hasOwn(request,"cache"),false);
-   throw Error("token=secret_12345 and https://realcustomer.test/webhook");
-  }
+  runId:"shadow-regression-retry-20261112"
  }),error=>{
   const kind=String(error?.message??"");
   assert.equal(
