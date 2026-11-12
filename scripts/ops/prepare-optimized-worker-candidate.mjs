@@ -187,7 +187,8 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   throw Error('CANDIDATE_PRODUCTION_DEPLOYMENT_CHANGED');
  const promotion=assessWorkerPromotion({deployment:final,baselineVersion:baseline,
   candidateVersion:candidate,baselineId,candidateId:candidate.id,targetPercent:0,
-  sourceSha:env.GITHUB_SHA,quota,now:new Date()});
+  sourceSha:env.GITHUB_SHA,quota,now:new Date(),
+  reviewedAdditiveSecretNames:reviewedSecrets});
  writeFileSync('artifacts/protected-canary/worker-promotion-preflight.json',JSON.stringify(promotion,null,2)+'\n');
  const knownFlags=['GEOMACRO_D1_READ_HOTSPOT_V2' ,'GEOMACRO_P1_FANOUT_ENABLED',
   'GEOMACRO_P1_BUNDLED_LEASES_ENABLED','GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'];
