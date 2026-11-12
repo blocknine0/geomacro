@@ -10,8 +10,9 @@ import {parseAustraliaCriticalMineralsHtml} from '../../global-intelligence/adap
 import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochilco-minerals.mjs';
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
-import {parseIccNewsHtml} from '../../global-intelligence/adapters/icc-news.mjs';
-import {ICC_OFFICIAL_NEWS_RSS,parseIccOfficialNewsRss}
+import {parseIccArticleHtml,parseIccNewsHtml} from '../../global-intelligence/adapters/icc-news.mjs';
+import {parseUnctadPublisherReleaseMetadata} from '../../global-intelligence/adapters/unctadstat.mjs';
+import {ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss}
  from '../lib/icc-official-news-rss.mjs';
 import {MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,
  parseMofcomMinistryMineralAnnouncementIndex}
@@ -86,13 +87,22 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
          if(bytes.length<100||bytes[0]!==0x50||bytes[1]!==0x4b)throw Error('FORMAT_NOT_VERIFIED');
          // ZIP signature is transport only, never parsed commodity data.
          row.status='DATASET_TRANSPORT_ONLY';
+         row.reason='WORLD_BANK_XLSX_TRANSPORT_ONLY_NO_NATIVE_RELEASE_CLOCK';
        }else{
          const xml=source.id==='uk_sanctions_list'||source.id==='eu_sanctions_consolidated';
-         if(!(xml?/xml/iu:/html/iu).test(type))throw Error('FORMAT_NOT_VERIFIED');
+         const unctad=source.id==='unctadstat_global';
+         if(!(xml?/xml/iu:(unctad?/html|json/iu:/html/iu)).test(type))throw Error('FORMAT_NOT_VERIFIED');
          const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
-         if(source.id==='unctadstat_global'){
-           if(!/<(?:html|!doctype)/iu.test(text))throw Error('FORMAT_NOT_VERIFIED');
-           row.status='HTML_CONTEXT_ONLY';
+         if(unctad){
+           if(/json/iu.test(type)){
+             let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
+             const clock=parseUnctadPublisherReleaseMetadata(payload);
+             row.status='MACHINE_DATA_METADATA_PARSED';row.native_release_clock_verified=true;
+             row.publisher_release_at_utc=clock.published_at;row.reason=null;
+           }else if(/<(?:html|!doctype)/iu.test(text)){
+             row.status='HTML_CONTEXT_ONLY';
+             row.reason='UNCTAD_HTML_CONTEXT_NO_MACHINE_RELEASE_METADATA';
+           }else throw Error('FORMAT_NOT_VERIFIED');
          }else{
            if(xml&&/<!DOCTYPE|<!ENTITY/iu.test(text))throw Error('FORMAT_NOT_VERIFIED');
            let parsed;
@@ -102,7 +112,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
              // the SAME court explicitly publishes a separate RSS feed.
              // Do not let format, denial or unrelated parser failures retry.
              mayUseCourtRss=source.id==='icc_news';
-             throw Error('PARSER_NOT_VERIFIED');
+             throw Error(source.id==='icc_news'?'ICC_NEWS_LISTING_PARSE_FAILED':'PARSER_NOT_VERIFIED');
            }
            const count=Array.isArray(parsed)?parsed.length:Number(parsed?.value_numeric);
            if(!Number.isSafeInteger(count)||count<1)throw Error('PARSER_NOT_VERIFIED');
@@ -111,15 +121,18 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        }
      }
    }catch(error){
-     const allowed=['BODY_SIZE_LIMIT','BODY_EMPTY','FORMAT_NOT_VERIFIED','PARSER_NOT_VERIFIED'];
-     row.reason=allowed.includes(error?.message)?error.message:'NETWORK_OR_REDIRECT_UNAVAILABLE';
+     const allowed=['BODY_SIZE_LIMIT','BODY_EMPTY','FORMAT_NOT_VERIFIED','PARSER_NOT_VERIFIED','ICC_NEWS_LISTING_PARSE_FAILED'];
+     row.reason=allowed.includes(error?.message)?error.message:
+       (/^ICC_(?:ARTICLE|OFFICIAL_RSS)_[A-Z0-9_]+$/u.test(error?.message??'')?error.message:
+       (error?.name==='TimeoutError'?'UPSTREAM_TIMEOUT':
+       (error?.name==='TypeError'?'UPSTREAM_NETWORK_ERROR':'NETWORK_OR_REDIRECT_UNAVAILABLE')));
      // Only a transport-level failure may trigger a second, *different*
      // first-party MOFCOM surface, never denied/quota or malformed content.
      mayUseRelatedMinistryIndex=error?.name==='AbortError' ||
        error?.name==='TimeoutError' || error?.name==='TypeError';
    }
    if(source.id==='icc_news'&&row.status==='UNAVAILABLE'&&
-      row.reason==='PARSER_NOT_VERIFIED'&&mayUseCourtRss){
+      ['PARSER_NOT_VERIFIED','ICC_NEWS_LISTING_PARSE_FAILED'].includes(row.reason)&&mayUseCourtRss){
      totalHttpRequests++;
      row.official_rss_alternate_attempted=true;
      row.primary_news_html_parser_still_unverified=true;
@@ -139,15 +152,34 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        const bytes=await boundedBody(alt,P0_MAX_BYTES);
        const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
        const receipt=parseIccOfficialNewsRss(text);
-       row.status='ICC_OFFICIAL_RSS_REFERENCE_ONLY';
-       row.reason=null;
+       const [articleUrl]=extractIccOfficialNewsLinks(text,{limit:1});
+       totalHttpRequests++;
+       const article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
+         headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0','accept':'text/html'} });
+       if(!article.ok||article.redirected===true||new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
+         try{await article.body?.cancel();}catch{}
+         row.reason=`ICC_ARTICLE_HTTP_${Number.isInteger(article.status)?article.status:0}`;
+         throw Error('ICC_ARTICLE_HTTP_UNAVAILABLE');
+       }
+       if(!/html/iu.test(article.headers.get('content-type')??'')){
+         try{await article.body?.cancel();}catch{}
+         row.reason='ICC_ARTICLE_MIME_INVALID';throw Error('ICC_ARTICLE_MIME_INVALID');
+       }
+       const articleBytes=await boundedBody(article,P0_MAX_BYTES);
+       const articleHtml=new TextDecoder('utf-8',{fatal:true}).decode(articleBytes);
+       const parsedArticle=parseIccArticleHtml(articleHtml,{url:articleUrl,retrievedAt:now.toISOString()});
+       row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=1;
+       row.reason=null;row.original_article_html_readback_verified=true;
+       row.primary_news_html_parser_still_unverified=false;
+       row.current_original_publication_verified=parsedArticle.published_at!==null;
+       row.native_publication_at_utc=parsedArticle.published_at;
        row.official_first_party_rss_leads=receipt.first_party_original_link_leads;
-       row.original_article_html_readback_verified=false;
-       row.current_original_publication_verified=false;
        row.commercial_eligible=false;
-     }catch{
+     }catch(error){
        row.official_rss_alternate_unavailable=true;
-       // Preserve the primary failure; no leaked publisher bytes/errors.
+       row.icc_fallback_reason=/^ICC_(?:OFFICIAL_RSS|ARTICLE)_[A-Z0-9_]+$/u.test(error?.message??'')?error.message:
+         (typeof row.reason==='string'?row.reason:'ICC_FALLBACK_UNAVAILABLE');
+       // Preserve sanitized source-native failure codes; no publisher content.
      }
    }
    if(source.id==='china_mofcom_trade_controls'&&

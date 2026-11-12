@@ -22,10 +22,26 @@ export function pinnedIccOriginalNewsLink(value){
  if(u.protocol!=="https:"||u.hostname!=="www.icc-cpi.int"||
     u.port||u.username||u.password||u.search||u.hash||
     u.href.length>600||
-    !/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(u.pathname)||
-    /\/(?:rss|subscribe|filter|search|node)(?:\/|$)/iu.test(u.pathname))
+    !(/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(u.pathname)||
+      /^\/node\/[1-9][0-9]{2,8}\/?$/u.test(u.pathname))||
+    /\/(?:rss|subscribe|filter|search)(?:\/|$)/iu.test(u.pathname))
     return null;
  return u.href;
+}
+// Internal bounded fetch input: only validated first-party article URLs leave
+// the RSS parser. The public diagnostic receipt intentionally omits the URLs.
+export function extractIccOfficialNewsLinks(xml,{limit=5}={}){
+ const receipt=parseIccOfficialNewsRss(xml);
+ if(!Number.isInteger(limit)||limit<1||limit>10)throw Error("ICC_OFFICIAL_RSS_LINK_LIMIT_INVALID");
+ const items=[...xml.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)],seen=new Set(),links=[];
+ for(const [,item] of items){
+  const link=pinnedIccOriginalNewsLink(xmlValue(item,"link"));
+  const title=xmlValue(item,"title").replace(/<[^>]*>/gu," ").trim();
+  if(link&&title.length>=10&&title.length<=360&&!seen.has(link)){seen.add(link);links.push(link);}
+  if(links.length>=limit)break;
+ }
+ if(!receipt.first_party_original_link_leads||!links.length)throw Error("ICC_OFFICIAL_RSS_NO_APPROVED_ORIGINAL_LINKS");
+ return Object.freeze(links);
 }
 export function parseIccOfficialNewsRss(xml){
  if(typeof xml!=="string"||Buffer.byteLength(xml)>MAX_BYTES ||

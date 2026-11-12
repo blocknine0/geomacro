@@ -18,17 +18,20 @@ function probeUrl(source) {
   return source.machine_endpoint ?? source.discovery_url;
 }
 
-function validateResponse(source, response, body, bytes) {
+function validateResponse(sourceId, source, response, body, bytes) {
+  if (!response.ok) return `HTTP_${response.status}`;
   const url = probeUrl(source);
   const ct = String(response.headers.get("content-type") ?? "").toLowerCase();
+  if (sourceId === "icc_news" && !/html/iu.test(ct)) return "ICC_LISTING_MIME_MISMATCH";
+  if (sourceId === "world_bank_commodity_prices" && !/spreadsheet|excel|officedocument/iu.test(ct)) return "WORLD_BANK_DATASET_MIME_MISMATCH";
   const looksXml = /xml/i.test(ct) || /\.xml(?:$|[?#])/i.test(url);
   const looksCsv = /csv/i.test(ct) || /\.csv(?:$|[?#])/i.test(url);
   const looksXlsx = /spreadsheet|excel|officedocument/i.test(ct) || /\.xlsx(?:$|[?#])/i.test(url);
-  if (looksXml && !/^\s*</.test(body)) return "expected XML-like payload";
-  if (looksCsv && body.split(/\r?\n/).find(Boolean)?.split(/[,;\t]/).length < 2) return "expected delimited payload";
+  if (looksXml && !/^\s*</.test(body)) return "XML_PAYLOAD_INVALID";
+  if (looksCsv && body.split(/\r?\n/).find(Boolean)?.split(/[,;\t]/).length < 2) return "DELIMITED_PAYLOAD_INVALID";
   if (looksXlsx) {
-    if (bytes.length < 100) return "expected XLSX payload";
-    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return "expected XLSX ZIP signature";
+    if (bytes.length < 100) return "XLSX_PAYLOAD_TOO_SMALL";
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) return "XLSX_ZIP_SIGNATURE_INVALID";
   }
   return null;
 }
@@ -52,7 +55,7 @@ async function probe(sourceId, source) {
       bytes: bytes.byteLength,
       latency_ms: Date.now() - started,
       observed_at: new Date().toISOString(),
-      error: validateResponse(source, response, body, bytes),
+      error: validateResponse(sourceId, source, response, body, bytes),
     };
   } catch (error) {
     return {
@@ -64,7 +67,9 @@ async function probe(sourceId, source) {
       bytes: 0,
       latency_ms: Date.now() - started,
       observed_at: new Date().toISOString(),
-      error: error instanceof Error ? error.message : String(error),
+      error: error?.name === "TimeoutError" || error?.name === "AbortError"
+        ? "UPSTREAM_TIMEOUT"
+        : error?.name === "TypeError" ? "UPSTREAM_NETWORK_ERROR" : "UPSTREAM_REQUEST_FAILED",
     };
   }
 }
