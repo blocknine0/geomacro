@@ -21,7 +21,9 @@ function safeOutboxFailure(error,stage){
  const prefix="RISK_STREAM_COMMERCIAL_OUTBOX_";
  if(msg.startsWith(prefix)){
   const candidate=msg.slice(prefix.length);
-  if(SAFE_OUTBOX_FAILURES.has(candidate))return candidate;
+  if(SAFE_OUTBOX_FAILURES.has(candidate)||
+     /^WEBHOOK_ACK_HTTP_[1-5][0-9]{2}(?:_REDIRECT)?$/u.test(candidate))
+   return candidate;
  }
  if(stage==="WEBHOOK_FETCH"){
   if(error?.name==="TimeoutError"||error?.name==="AbortError")
@@ -181,7 +183,11 @@ export async function dispatchLicensedCommercialOutbox(env,{
      "X-GeoMacro-Delivery-ID":row.job_id,"Idempotency-Key":row.job_id},
     body:JSON.stringify(envelope),signal:AbortSignal.timeout(12000)});
    stage="WEBHOOK_ACK_HTTP";
-   if(response.status!==200||response.redirected)fail("WEBHOOK_ACK_HTTP_INVALID");
+   if(response.status!==200||response.redirected){
+    const status=Number.isInteger(response.status)&&response.status>=100&&
+      response.status<=599?String(response.status):"INVALID";
+    fail("WEBHOOK_ACK_HTTP_"+status+(response.redirected?"_REDIRECT":""));
+   }
    stage="WEBHOOK_ACK_PARSE";
    let ack;try{ack=await response.json()}catch{fail("WEBHOOK_ACK_JSON_INVALID")}
    stage="WEBHOOK_ACK_IDENTITY";
