@@ -11,7 +11,7 @@ test("default-off issuer never writes D1 or calls review service",async()=>{
   GEOMACRO_RELEASE_REVIEWER:{fetch(){calls++;throw Error("WRONG_REVIEW")}}};
  assert.equal(commercialIssuerEnabled(env),false);
  assert.equal((await enqueueCommercialIssuerCandidate(env,id)).status,
-  "HOLD_REVIEWER_OR_RELEASE_UNAVAILABLE");
+  "HOLD_RELEASE_UNAVAILABLE");
  assert.equal((await runCommercialIssuerTick(env)).issued,0);
  await assert.rejects(issueReviewedCommercialCandidate(env,id),
   /PROTECTED_RELEASE_OR_REVIEWER_MISSING/);
