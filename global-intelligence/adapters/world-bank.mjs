@@ -11,6 +11,18 @@ function normalizeRows(data) {
   return data[1].filter(r=>r && r.value !== null && r.value !== undefined);
 }
 
+/** Parse only World Bank API envelope update metadata, never row.date/stat periods. */
+export function parseWorldBankPublisherUpdateMetadata(data){
+ const raw=Array.isArray(data)?data[0]?.lastupdated:data?.metadata?.lastupdated??data?.lastupdated;
+ if(typeof raw!=="string"||!/^20\d{2}-[01]\d-[0-3]\d$/u.test(raw))
+  throw Error("WORLD_BANK_NATIVE_UPDATE_DATE_MISSING");
+ const d=new Date(raw+"T00:00:00.000Z");
+ if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==raw)
+  throw Error("WORLD_BANK_NATIVE_UPDATE_DATE_INVALID");
+ return Object.freeze({publisher_update_date:raw,observed_at_utc:d.toISOString(),
+  clock_source:"WORLD_BANK_API_ENVELOPE_LASTUPDATED",native_dataset_update_time_verified:true});
+}
+
 export async function fetchWorldBank(countryIso3, {
   indicators = ["NY.GDP.MKTP.CD"],
   mrv = 5,
@@ -37,6 +49,8 @@ export async function fetchWorldBank(countryIso3, {
 
   const url = `https://api.worldbank.org/v2/country/${countryIso3.toLowerCase()}/indicator/${codes.join(";")}?${params.toString()}`;
   const data = await getJson(url);
+  let publisherUpdate=null;
+  try{publisherUpdate=parseWorldBankPublisherUpdateMetadata(data);}catch{}
   // Require identity to come from the official row, not from the request.
   const rows = normalizeRows(data).filter(r=>
     r.countryiso3code===requestedIso3 &&
@@ -61,7 +75,8 @@ export async function fetchWorldBank(countryIso3, {
       native_original_publication_proven: false,
       historical_reference_only: true,
       observation_status: r.obs_status || null,
-      source_last_updated: data?.[0]?.lastupdated || null
+      source_last_updated: data?.[0]?.lastupdated || null,
+      publisher_update_metadata_verified:publisherUpdate?.native_dataset_update_time_verified??false
     }),
     url
   }));

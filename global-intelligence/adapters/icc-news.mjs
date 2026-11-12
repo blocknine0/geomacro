@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const ICC_NEWS_URL = "https://www.icc-cpi.int/news";
+const ICC_HOST = "www.icc-cpi.int";
 
 function clean(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
@@ -34,6 +35,49 @@ function dateFromText(value) {
   const normalized = m[0].replace(/[./]/g, "-");
   const parsed = new Date(normalized + "T00:00:00.000Z");
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function attr(tag,name){
+ const escaped=name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
+ return new RegExp("\\b"+escaped+"\\s*=\\s*(['\"])(.*?)\\1","iu").exec(tag)?.[2]??null;
+}
+function nativeDate(html){
+ const candidates=[];
+ for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
+  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??"").toLowerCase();
+  if(["article:published_time","datepublished","date"].includes(key))candidates.push(attr(tag,"content"));
+ }
+ for(const m of String(html).matchAll(/<time\b[^>]*>/giu)){
+  const tag=m[0],raw=attr(tag,"datetime");
+  if(raw)candidates.push(raw);
+ }
+ for(const m of String(html).matchAll(/"datePublished"\s*:\s*"([^"]{1,80})"/giu))candidates.push(m[1]);
+ for(const raw of candidates){
+  if(!raw||!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
+  const d=new Date(raw);if(Number.isFinite(d.getTime()))return d.toISOString();
+ }
+ return null;
+}
+
+/** Parse only an ICC article page's original issuer metadata; no RSS/fetch clock fallback. */
+export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString()}={}){
+ const input=String(html??"");
+ let article;
+ try{article=new URL(url)}catch{throw Error("ICC_ARTICLE_URL_INVALID")}
+ if(article.protocol!=="https:"||article.hostname!==ICC_HOST||article.port||
+    (!/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(article.pathname)&&
+     !/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(article.pathname)))
+  throw Error("ICC_ARTICLE_URL_NOT_FIRST_PARTY");
+ if(!/International Criminal Court|\bICC\b/iu.test(input))throw Error("ICC_ARTICLE_MARKER_MISSING");
+ const title=attr(/<meta\b[^>]*(?:property=["']og:title["'][^>]*)>/iu.exec(input)?.[0]??"","content")||
+   extractTextFragment(/<title\b[^>]*>([\s\S]{1,500}?)<\/title>/iu.exec(input)?.[1]??"");
+ const publishedAt=nativeDate(input);
+ if(title.length<8||!publishedAt)throw Error(title.length<8?"ICC_ARTICLE_TITLE_MISSING":"ICC_NATIVE_PUBLICATION_TIME_MISSING");
+ const canonical=/<link\b[^>]*rel=["']canonical["'][^>]*>/iu.exec(input)?.[0];
+ if(canonical){const href=absoluteUrl(attr(canonical,"href"),url);let c;try{c=new URL(href)}catch{}
+  if(!c||c.hostname!==ICC_HOST||c.pathname!==article.pathname)throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");}
+ return normalizeIccNews({id:article.pathname.split("/").filter(Boolean).at(-1),title,publishedAt,url:article.href,retrievedAt,
+  summary:"ICC first-party article metadata verified.",raw:{source:"ICC_ARTICLE_NATIVE_METADATA",url:article.href,publishedAt}});
 }
 
 export function parseIccNewsHtml(html, { retrievedAt = new Date().toISOString(), baseUrl = ICC_NEWS_URL } = {}) {

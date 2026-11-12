@@ -4,6 +4,7 @@ import {
  ICC_OFFICIAL_NEWS_RSS,pinnedIccOriginalNewsLink,parseIccOfficialNewsRss
 } from "../lib/icc-official-news-rss.mjs";
 import {observeExistingPrivateP0Sources} from "../ops/observe-p0-private-source-runtime.mjs";
+import {parseIccArticleHtml} from "../../global-intelligence/adapters/icc-news.mjs";
 const now=new Date("2026-10-24T12:20:00Z");
 const url="https://www.icc-cpi.int/news/high-representative/vice-president-kaja-kallas-visits-international-criminal-court";
 const item='<item><title><![CDATA[High Representative visits the International Criminal Court]]></title>'+
@@ -38,6 +39,13 @@ test("RSS feed dates never verify original publication or grant licensing",()=>{
  assert.equal(x.payments,0);
  assert.doesNotMatch(JSON.stringify(x),/kaja-kallas|icc-cpi\.int|High Representative/);
 });
+test("ICC native publication clock comes from article metadata, not retrieval or RSS time",()=>{
+ const page='<html><head><title>ICC official announcement</title><meta property="article:published_time" content="2026-11-12T15:17:17+01:00"></head><body>International Criminal Court</body></html>';
+ const row=parseIccArticleHtml(page,{url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
+ assert.equal(row.published_at,"2026-11-12T14:17:17.000Z");
+ assert.equal(row.observed_at,"2026-11-12T17:00:00Z");
+ assert.throws(()=>parseIccArticleHtml('<html>International Criminal Court</html>',{url:"https://www.icc-cpi.int/node/241777"}),/ICC_ARTICLE_TITLE_MISSING/);
+});
 test("DTD, shape spoofing, off-issuer, empty and oversized feeds fail closed",()=>{
  for(const x of [
   "<html>International Criminal Court News</html>",
@@ -57,15 +65,17 @@ test("one court RSS fallback occurs after genuinely unparseable news HTML, not e
      {headers:{"content-type":"text/html"}});
   if(url===ICC_OFFICIAL_NEWS_RSS)
    return new Response(rss(),{headers:{"content-type":"application/rss+xml"}});
+  if(url==="https://www.icc-cpi.int/news/high-representative/vice-president-kaja-kallas-visits-international-criminal-court")
+   return new Response('<html><head><title>High Representative visits the International Criminal Court</title><meta property="article:published_time" content="2026-10-23T08:00:00Z"></head><body>International Criminal Court</body></html>',{headers:{"content-type":"text/html"}});
   return new Response("Denied",{status:403});
  }});
  const row=x.results.find(z=>z.source_id==="icc_news");
- assert.equal(requests.length,11);assert.equal(x.http_requests,11);
+ assert.equal(requests.length,12);assert.equal(x.http_requests,12);
  assert.equal(requests.filter(z=>z===ICC_OFFICIAL_NEWS_RSS).length,1);
- assert.equal(row.status,"ICC_OFFICIAL_RSS_REFERENCE_ONLY");
+ assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
  assert.equal(row.official_first_party_rss_leads,1);
- assert.equal(row.primary_news_html_parser_still_unverified,true);
- assert.equal(row.current_original_publication_verified,false);
+ assert.equal(row.primary_news_html_parser_still_unverified,false);
+ assert.equal(row.current_original_publication_verified,true);
  assert.equal(row.commercial_eligible,false);
  assert.equal(x.signed_intelligence_published,false);
  assert.equal(x.payments,0);
@@ -93,7 +103,7 @@ test("invalid ICC RSS response remains failed without a third retry or entitleme
  assert.equal(n,11);
  const row=y.results.find(z=>z.source_id==="icc_news");
  assert.equal(row.status,"UNAVAILABLE");
- assert.equal(row.reason,"PARSER_NOT_VERIFIED");
+ assert.equal(row.reason,"ICC_NEWS_LISTING_PARSE_FAILED");
  assert.equal(row.official_rss_alternate_unavailable,true);
  assert.equal(y.commercial_eligible,false);
 });

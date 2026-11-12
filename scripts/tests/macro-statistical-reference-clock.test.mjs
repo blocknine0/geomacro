@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeCommodityRow} from "../../global-intelligence/adapters/world-bank-commodity-prices.mjs";
-import {normalizeUnctadStatObservation} from "../../global-intelligence/adapters/unctadstat.mjs";
+import {normalizeUnctadStatObservation,parseUnctadPublisherReleaseMetadata} from "../../global-intelligence/adapters/unctadstat.mjs";
+import {parseWorldBankPublisherUpdateMetadata} from "../../global-intelligence/adapters/world-bank.mjs";
 const now="2026-10-20T08:00:00.000Z";
 test("monthly World Bank Pink Sheet observation never invents a published day",()=>{
  const r=normalizeCommodityRow({commodity:"Copper",period:"2026-08",
@@ -47,4 +48,16 @@ test("same historical reference does not acquire current publication merely on l
  assert.equal(a.source_record_id,b.source_record_id);
  assert.equal(a.published_at,b.published_at);
  assert.equal(a.observation_period,b.observation_period);
+});
+test("UNCTAD release clock accepts publisher metadata and rejects statistical periods",()=>{
+ const clock=parseUnctadPublisherReleaseMetadata({metadata:{release_date:"2026-11-05T09:30:00Z",observation_period:"2026-10"}});
+ assert.equal(clock.published_at,"2026-11-05T09:30:00.000Z");
+ assert.throws(()=>parseUnctadPublisherReleaseMetadata({metadata:{observation_period:"2026-10"}}),/UNCTAD_NATIVE_RELEASE_CLOCK_MISSING/);
+ assert.throws(()=>parseUnctadPublisherReleaseMetadata({metadata:{release_date:"2026-11-05"}}),/UNCTAD_NATIVE_RELEASE_CLOCK_MISSING/);
+});
+test("World Bank publisher update date comes from API envelope only",()=>{
+ const clock=parseWorldBankPublisherUpdateMetadata([{lastupdated:"2026-11-03"},[{date:"2025"}]]);
+ assert.equal(clock.publisher_update_date,"2026-11-03");
+ assert.equal(clock.clock_source,"WORLD_BANK_API_ENVELOPE_LASTUPDATED");
+ assert.throws(()=>parseWorldBankPublisherUpdateMetadata([{page:1},[{date:"2026"}]]),/WORLD_BANK_NATIVE_UPDATE_DATE_MISSING/);
 });
