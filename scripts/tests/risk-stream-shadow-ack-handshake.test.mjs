@@ -32,7 +32,7 @@ test("authenticated ACK handler accepts the same exact envelope and headers used
 test("ACK does not accept missing/wrong bearer, delivery identity, license or wrong payload",async()=>{
  for(const [change,status] of [
   [{hdr:{...headers,"X-GeoMacro-Shadow-ACK":"b".repeat(64)}},401],
-  [{hdr:{...headers,"X-GeoMacro-Shadow-ACK":token+"\n"}},401],
+  [{hdr:{...headers,"X-GeoMacro-Shadow-ACK":token.slice(0,-1)}},401],
   [{hdr:{...headers,"Idempotency-Key":"f".repeat(64)}},400],
   [{hdr:{...headers,"X-GeoMacro-Delivery-ID":"abc"}},400],
   [{hdr:{...headers,"X-GeoMacro-License-ID":"WRONG_LICENSE"}},400],
