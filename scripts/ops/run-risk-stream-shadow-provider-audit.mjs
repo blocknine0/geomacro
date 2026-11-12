@@ -10,7 +10,13 @@ import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {createHash,createHmac,createPrivateKey,createPublicKey} from "node:crypto";
 import {discoverShadowArticles} from "../lib/risk-stream-shadow-discovery.mjs";
 import {validateAttesterKeys} from "../lib/risk-stream-shadow-attesters.mjs";
-const SHA="39bf93c5a48a187f0653cae9558a99ba71c58792";
+const BASE_ANCESTOR="39bf93c5a48a187f0653cae9558a99ba71c58792";
+const executingSha=()=>{
+ const local=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const provided=String(process.env.GITHUB_SHA||"");
+ ok(/^[a-f0-9]{40}$/u.test(provided)&&local===provided,"EXECUTING_SOURCE_SHA_MISMATCH");
+ return local;
+};
 const DB="geomacro-risk-stream-shadow",BUCKET="geomacro-risk-stream-shadow-private";
 const QUEUE="geomacro-risk-stream-shadow",DLQ="geomacro-risk-stream-shadow-dlq";
 const CONFIG="workers/risk-stream-shadow/wrangler.shadow.runtime.jsonc";
@@ -73,7 +79,7 @@ async function provision(){
  wrangler(["--version"]);
  const main=execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim();
  ok(/^[a-f0-9]{40}$/u.test(main),"GITHUB_HEAD_INVALID");
- execFileSync("git",["merge-base","--is-ancestor",SHA,"HEAD"]);
+ execFileSync("git",["merge-base","--is-ancestor",BASE_ANCESTOR,"HEAD"]);
  const ids=JSON.parse(wrangler(["d1","list","--json"]));
  ok(Array.isArray(ids),"SHADOW_D1_LIST_INVALID");
  let row=ids.find(x=>x.name===DB);
@@ -143,7 +149,7 @@ async function provision(){
  mkdirSync(".shadow-audit",{recursive:true});
  writeFileSync(".shadow-audit/worker-url.txt",deployedUrl+"\n");
  writeFileSync(".shadow-audit/metadata.json",JSON.stringify({
-  schema:"geomacro.shadow-provider-provision.v1",source_commit:SHA,
+  schema:"geomacro.shadow-provider-provision.v1",source_commit:executingSha(),
   executed_commit:main,shadow_db:DB,shadow_bucket:BUCKET,shadow_queue:QUEUE,
   shadow_dlq:DLQ,mode:"SHADOW_AUDIT",risk_stream_active:false,
   stream_ingestion_enabled:false,commercial_delivery:false,
