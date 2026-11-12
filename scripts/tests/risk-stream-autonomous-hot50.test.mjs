@@ -82,6 +82,7 @@ test("Google global search saves only hashes, publisher domains and clocks; neve
  const r=await probeHot50GlobalSearch(target,{now,fetcher:async(_url,opts)=>{
   assert.equal(Object.hasOwn(opts,"cache"),false);
   assert.equal(opts.redirect,"manual");
+  assert(new URL(_url).searchParams.get("q").includes("when:2d"));
   return new Response(xml,{status:200,headers:{"content-type":"application/rss+xml"}});
  }});
  assert.equal(r.status,"SEARCH_INDEX_LEADS_FOUND");
@@ -107,12 +108,13 @@ test("rate-limited search holds, protected defaults cannot query D1",async()=>{
 });
 test("full tick batches metadata-only discoveries and independently readbacks Basic",async()=>{
  const cell=planHot50StreamCells(now,1)[0];
- const state=new Map(),seen=[];
+ const state=new Map(),seen=[];let transientReads=0,transientWrites=0;
  const empty={results:[]};
  const db={prepare(sql){return {sql,bind(...args){this.args=args;return this},
-  async all(){return empty},
+  async all(){if(transientReads++===0)throw Error("D1 503 transient");return empty},
   async first(){return state.get(cell.country_iso3+"|"+cell.category)||null}
  }} ,async batch(statements){
+  if(transientWrites++===0)throw Error("D1 503 transient");
   for(const statement of statements){
    seen.push(statement.sql);
    if(statement.sql.includes("risk_stream_hot50_cell_snapshots(")){
@@ -137,4 +139,6 @@ test("full tick batches metadata-only discoveries and independently readbacks Ba
  assert.equal(state.get(cell.country_iso3+"|"+cell.category).last_search_status,
   "SEARCH_RATE_LIMITED");
  assert.equal(receipt.commercial_release_unchanged,true);
+ assert.equal(transientWrites,2);
+ assert(transientReads>=2);
 });
