@@ -18,6 +18,7 @@ function fixture(intent="gateway-handshake"){
  const auth={
   "gateway-handshake":"OWNER_AUTHORIZE_NO_FUNDS_GATEWAY_HANDSHAKE",
   "shadow-rehearsal":"OWNER_AUTHORIZE_SHADOW_ONLY_NO_PRODUCTION_SQL",
+  "shadow-b2-ack-seed":"OWNER_AUTHORIZE_GENUINE_SHADOW_B2_ACK_NO_FUNDS",
   "stage2-production":"OWNER_AUTHORIZE_REAL_PRODUCTION_D1_0204_0211_0212_0213_NO_FUNDS"
  };
  return {
@@ -45,6 +46,12 @@ test("strict one-shot fixed targets and explicit OWNER-approved production autho
  assert.equal(handshake.target,"owner-dispatch-handshake.yml");
  assert.deepEqual(handshake.inputs,{approved_main_sha:SHA,request_issue:"4611"});
  assert.equal(handshake.no_funds,true);
+ const ack=prep("shadow-b2-ack-seed");
+ assert.equal(ack.target,"step3-shadow-real-original-b2-ack.yml");
+ assert.deepEqual(ack.inputs,{approval:"SEED_REAL_SHADOW_B2_ACK_ONLY"});
+ assert.equal(ack.target_protected_admission_required,true);
+ assert.equal(ack.no_funds,true);
+ assert.equal(ack.direct_prod_sql_authorized,false);
  const shadow=prep("shadow-rehearsal");
  assert.equal(shadow.target,"production-rollout-orchestrator.yml");
  assert.equal(shadow.inputs.execute_stage2,"false");
@@ -199,4 +206,46 @@ test("workflow is event-only, owner-only, strictly permissioned, and handshake h
  assert.match(ack,/workflow_dispatch:/u);
  assert.match(ack,/test -f config\/d1-hotspot-v2-canary\.hold/u);
  assert.doesNotMatch(ack,/CLOUDFLARE_API_TOKEN|wrangler|d1 execute|payment.*activate/iu);
+});
+
+test("shadow B2-ACK owner dispatch cannot choose a different provider job or bypass its quota and original checks",async()=>{
+ const expected=prep("shadow-b2-ack-seed");
+ assert.equal(expected.target,"step3-shadow-real-original-b2-ack.yml");
+ const workflow=readFileSync(".github/workflows/step3-shadow-real-original-b2-ack.yml","utf8");
+ const code=readFileSync("scripts/ops/seed-step3-shadow-archived-original.mjs","utf8");
+ for(const required of [
+  /environment: production/,/SEED_REAL_SHADOW_B2_ACK_ONLY/,
+  /check-d1-paid-monthly-headroom.mjs --check/,
+  /B2_ACCOUNT_QUOTA_REQUIRED: "1"/,/B2_REQUEST_BUDGET: "12"/,
+  /github.ref == 'refs\/heads\/main'/,/config\/d1-hotspot-v2-canary\.hold/
+ ])assert.match(workflow,required);
+ for(const required of [
+  /collectRegisteredReusableNews/,/assertLiveShadowIngress/,
+  /stageB2FirstPrivateOriginals/,/verifyRealShadowB2Parity/,
+  /production_original_table_mutated:false/,/merchant_funds_authorized:false/
+ ])assert.match(code,required);
+ assert.doesNotMatch(workflow,/continue-on-error: true|--apply|wrangler d1 migrations apply/);
+ const bad=fixture("shadow-b2-ack-seed");
+ const changes=[
+  r=>{r.authorization="OWNER_AUTHORIZE_REAL_PRODUCTION_D1_0204_0211_0212_0213_NO_FUNDS"},
+  r=>{r.target="arbitrary.yml"},
+  r=>{r.verify_hot50=true},
+  r=>{r.source_sha=OTHER},
+  r=>{r.extra="enable-funds"}
+ ];
+ for(const mutate of changes){
+  const clone=structuredClone(bad);
+  const body=JSON.parse(clone.issue.body);mutate(body);
+  clone.issue.body=JSON.stringify(body);
+  assert.throws(()=>planOwnerIssueDispatch({event:clone,env:env(),now:NOW}),/OWNER_DISPATCH_/);
+ }
+ const f=fakeApi(bad);
+ const dispatched=await executeOwnerIssueDispatch({event:bad,env:env(),now:NOW,request:f.api});
+ assert.equal(dispatched.status,"DISPATCH_ACCEPTED_NOT_WORKFLOW_SUCCESS");
+ assert.equal(f.calls[3].path,
+  "/repos/blocknine0/geomacro/actions/workflows/step3-shadow-real-original-b2-ack.yml/dispatches");
+ assert.deepEqual(f.calls[3].body,{ref:"main",
+  inputs:{approval:"SEED_REAL_SHADOW_B2_ACK_ONLY"}});
+ assert.equal(f.calls[2].method,"PATCH");
+ assert.equal(dispatched.payments,0);
 });

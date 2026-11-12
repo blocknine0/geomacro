@@ -13,6 +13,7 @@ export const OWNER_ISSUE_DISPATCH_LOGIN="blocknine0";
 export const OWNER_ISSUE_DISPATCH_TITLE="GeoMacro Owner Dispatch Request";
 export const OWNER_ISSUE_DISPATCH_SCHEMA="geomacro.owner-issue-dispatch.v1";
 export const OWNER_ISSUE_DISPATCH_TARGET="production-rollout-orchestrator.yml";
+export const OWNER_ISSUE_SHADOW_ORIGINAL_SEED_TARGET="step3-shadow-real-original-b2-ack.yml";
 export const OWNER_ISSUE_HANDSHAKE_TARGET="owner-dispatch-handshake.yml";
 export const OWNER_ISSUE_CANARY_CANDIDATE_TARGET="geomacro-optimized-worker-candidate.yml";
 export const OWNER_ISSUE_CANARY_ROLLOUT_TARGET="geomacro-protected-hot50-worker-rollout.yml";
@@ -99,6 +100,11 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
    verify_hot50:false,target:OWNER_ISSUE_HANDSHAKE_TARGET,
    inputs:{approved_main_sha:request.source_sha,request_issue:String(issue.number)}
   },
+  "shadow-b2-ack-seed":{
+   authorization:"OWNER_AUTHORIZE_GENUINE_SHADOW_B2_ACK_NO_FUNDS",
+   verify_hot50:false,target:OWNER_ISSUE_SHADOW_ORIGINAL_SEED_TARGET,
+   inputs:{approval:"SEED_REAL_SHADOW_B2_ACK_ONLY"}
+  },
   "shadow-rehearsal":{
    authorization:"OWNER_AUTHORIZE_SHADOW_ONLY_NO_PRODUCTION_SQL",
    verify_hot50:false,target:OWNER_ISSUE_DISPATCH_TARGET,
@@ -172,7 +178,8 @@ export function planOwnerIssueDispatch({event,env,now=new Date()}={}){
   ref:"main",inputs:Object.freeze({...selected.inputs}),
   no_funds:true,
   direct_prod_sql_authorized:false,
-  target_protected_admission_required:request.intent==="stage2-production"||isCanary,
+  target_protected_admission_required:
+   ["stage2-production","shadow-b2-ack-seed"].includes(request.intent)||isCanary,
  });
 }
 export function assertLiveOwnerIssue({current,plan}={}){
