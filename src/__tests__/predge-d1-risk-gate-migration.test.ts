@@ -80,9 +80,14 @@ describe("Supabase-free Predge Risk Gate v1 migration",()=>{
  });
  it("missing GRO no longer triggers the legacy GRO-specific 503 branch",async()=>{
    const d=db(),e=env(d);
+   // This is the legacy free/pilot contract. The shared integration fixture is
+   // now explicitly Addendum v2 and must be rejected by the v1 endpoint before
+   // evidence lookup; give this test the legacy policy so it reaches the GRO
+   // infrastructure path it is intended to exercise.
+   const legacyPayload={...base,policy:{...base.policy,policy_id:"predge-free-pilot-review-only"}};
    // Fixture has no decision Ed25519 signer or HMAC audit secret, so its
    // protected runtime must fail for infrastructure, not missing GRO.
-   const response=await predgeRiskGateD1(req(),e,NOW);
+   const response=await predgeRiskGateD1(req(legacyPayload),e,NOW);
    const body=await response.json();
    expect(response.status).toBe(503);
    expect(body.error).not.toBe("CURRENT_SIGNED_GRO_UNAVAILABLE");

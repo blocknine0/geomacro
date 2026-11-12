@@ -102,6 +102,10 @@ jobs:
       # The proof fixes the bucket/prefix internally; no writer key is needed.
       B2_ARCHIVE_READ_KEY_ID: ${{ secrets.B2_ARCHIVE_READ_KEY_ID }}
       B2_ARCHIVE_READ_APPLICATION_KEY: ${{ secrets.B2_ARCHIVE_READ_APPLICATION_KEY }}
+      # Explicit repository B2 bindings retained for the physical proof runner.
+      # verifyRealShadowB2Parity uses the read-only pair above for all B2 I/O.
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_ACCOUNT_QUOTA_REQUIRED: "1"
       B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_shadow_rehearsal"
       B2_REQUEST_BUDGET: "12"
