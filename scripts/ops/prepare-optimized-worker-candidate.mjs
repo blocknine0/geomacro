@@ -132,8 +132,8 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   [name,env[name]]));
  if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
   throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
- const reviewedSecrets=REVIEWABLE_ADDITIVE_SECRETS.filter(name=>
-  !baseline.resources.bindings.some(b=>b.name===name));
+ // Every uploaded/rotated secret is owner-reviewed, not only newly added names.
+ const reviewedSecrets=[...REVIEWABLE_ADDITIVE_SECRETS];
  const config=candidateConfig(baseline,env.GITHUB_SHA);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
