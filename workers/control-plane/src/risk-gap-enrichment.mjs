@@ -53,7 +53,7 @@ async function fetchArticle(item,target,fetcher){
     isPublisherFullTextRestricted(expected))return null;
  let current=item.url;
  for(let hop=0;hop<4;hop++){
-  const response=await fetcher(current,{redirect:"manual",cache:"no-store",
+  const response=await fetcher(current,{redirect:"manual",
    signal:AbortSignal.timeout(7000),headers:{Accept:"text/html,application/xhtml+xml;q=0.9"}});
   if(response.status>=300&&response.status<400){
    const location=response.headers.get("location");if(!location)return null;
@@ -87,7 +87,7 @@ async function search(target,now,fetcher,{publisherFocused=false,index=0}={}){
  const q='"'+target.name+'" ('+spec.keywords.map(x=>'"'+x+'"').join(" OR ")+") when:24h";
  const url=publisherFocused?riskPublisherSearchPlan(target,now,index).url:
   "https://news.google.com/rss/search?q="+encodeURIComponent(q)+"&hl=en-US&gl=US&ceid=US:en";
- const response=await fetcher(url,{redirect:"manual",cache:"no-store",
+ const response=await fetcher(url,{redirect:"manual",
   signal:AbortSignal.timeout(7000),headers:{Accept:"application/rss+xml, application/xml;q=0.9"}});
  if(response.status!==200||response.url&&hostOf(response.url)!=="news.google.com")return [];
  const size=Number(response.headers.get("content-length")||0);
