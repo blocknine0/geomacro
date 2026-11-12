@@ -14,6 +14,7 @@ on:
       - 'workers/control-plane/migrations/0216_risk_stream_commercial_derived_outbox.sql'
       - 'workers/control-plane/migrations/0217_risk_stream_commercial_issuer_jobs.sql'
       - 'workers/risk-stream-shadow-ack/**'
+      - 'scripts/tests/risk-stream-shadow-ack-handshake.test.mjs'
       - 'scripts/tests/risk-stream-*.test.mjs'
       - '.github/workflows/risk-stream-offline.yml'
   workflow_dispatch:
@@ -63,4 +64,4 @@ jobs:
           node --check scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs
           grep -q "CREATE TABLE IF NOT EXISTS risk_stream_signed_gro" workers/control-plane/migrations/0214_risk_stream_event_driven.sql
       - name: Simulate 220 original events, R2 readback, D1 503 and cryptographic signing
-        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs
+        run: node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-b2-governor.test.mjs scripts/tests/risk-stream-delivery.test.mjs scripts/tests/risk-stream-migration.test.mjs scripts/tests/risk-stream-shadow-contract.test.mjs scripts/tests/risk-stream-open-derived.test.mjs scripts/tests/risk-stream-commercial-license.test.mjs scripts/tests/risk-stream-index-listener.test.mjs scripts/tests/risk-stream-seven-day-chain.test.mjs scripts/tests/risk-stream-commercial-migration.test.mjs scripts/tests/risk-stream-commercial-issuer.test.mjs scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs scripts/tests/risk-stream-shadow-ack-handshake.test.mjs
