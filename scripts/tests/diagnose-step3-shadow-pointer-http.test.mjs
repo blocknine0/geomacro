@@ -71,7 +71,7 @@ test("indexed fresh-only sampling does not claim expired 79h pointer as a failed
  assert.equal(r.b2_requests,0);
  assert.equal(r.stage2_authorized,false);
  assert.equal(r.full_hmac_r2_b2_proof_claimed,false);
- assert.doesNotMatch(JSON.stringify(r),/fake-shadow-auth|fake-provider-read|a{64}|b{64}|https:\\/\\/geomacro-step3/);
+ assert.doesNotMatch(JSON.stringify(r),/fake-shadow-auth|fake-provider-read|a{64}|b{64}|https:\/\/geomacro-step3/);
 });
 test("an expired row unexpectedly returned by D1 is a HOLD before any Worker GET",async()=>{
  const p=provider({rows:[expired],honorSql:false});
