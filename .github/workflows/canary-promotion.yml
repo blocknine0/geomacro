@@ -20,6 +20,10 @@ on:
         description: 'PROMOTE_HOT50_NO_FUNDS (traffic change) or REVIEW_HOT50_HOLD_NO_FUNDS (read-only review)'
         required: false
         type: string
+      reviewed_additive_secret_names:
+        description: "Exact comma-separated additive secret names, owner-reviewed for this candidate"
+        required: false
+        type: string
       stage2_run_id:
         description: 'Successful exact-main Step3 protected physical Stage2 run ID, required for promote/release-hold'
         required: false
@@ -76,6 +80,7 @@ jobs:
           node --test scripts/tests/d1-step3-production-canary-admission.test.mjs
           node --experimental-strip-types --test scripts/tests/canary-closed-d1-proof.test.mjs scripts/tests/canary-hold-review-no-repromotion.test.mjs
           node --experimental-strip-types --test scripts/tests/verify-d1-existing-credentials.test.mjs scripts/tests/canary-preflight-baseline.test.mjs
+          node --test scripts/tests/canary-additive-binding-parity.test.mjs
   protected-release:
     needs: static-contract
     if: >-
@@ -98,6 +103,7 @@ jobs:
       BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS: ${{ inputs.reviewed_additive_secret_names }}
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -249,6 +255,7 @@ jobs:
             promote)
               test "$EVENT_NAME" = workflow_dispatch
               node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
+              node --experimental-strip-types scripts/ops/attest-canary-additive-secrets.mjs
               node --experimental-strip-types scripts/canary-promoter.ts --promote ;;
             release-hold)
               test "$EVENT_NAME" = workflow_dispatch
