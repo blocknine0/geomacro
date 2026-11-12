@@ -7,6 +7,7 @@ import {enqueueRiskStreamEvents,processRiskStreamBatch}
   from "../../control-plane/src/risk-stream-pipeline.mjs";
 import {registerUntrustedShadowIndexSources}
   from "./untrusted-index-source-registry.mjs";
+import {runIsolatedCommercialE2E} from "./commercial-e2e.mjs";
 
 const encoder=new TextEncoder();
 const hex=async value=>Array.from(new Uint8Array(await crypto.subtle.digest(
@@ -85,6 +86,20 @@ export default {
   if(!safe(env))return json({ok:false,error:"SHADOW_MODE_OR_BINDING_HOLD"},503);
   if(!await isAdmin(request,env))return json({ok:false,error:"UNAUTHORIZED"},401);
   const url=new URL(request.url);
+  if(request.method==="POST"&&url.pathname==="/v1/internal/shadow/commercial-e2e"&&!url.search){
+   let body;try{body=await request.json()}catch{return json({ok:false,error:"JSON_INVALID"},400)}
+   if(body?.schema!=="geomacro.shadow-commercial-staging-request.v1"||
+      typeof body.ack_url!=="string"||typeof body.run_id!=="string")
+    return json({ok:false,error:"STAGING_REQUEST_INVALID"},400);
+   try{
+    const receipt=await runIsolatedCommercialE2E(env,{
+     ackUrl:body.ack_url,runId:body.run_id});
+    return json(receipt);
+   }catch(e){
+    console.error("SHADOW_COMMERCIAL_E2E_HELD");
+    return json({ok:false,error:String(e?.message??"E2E_HOLD").slice(0,120)},503);
+   }
+  }
   if(request.method==="POST"&&url.pathname==="/v1/internal/shadow/events"&&!url.search){
    let body;try{body=await request.json()}catch{return json({ok:false,error:"JSON_INVALID"},400)}
    if(body?.schema!=="geomacro.risk-stream-ingest-batch.v1"||
