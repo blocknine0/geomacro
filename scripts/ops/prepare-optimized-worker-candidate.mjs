@@ -143,23 +143,49 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   monthly_read_headroom:quota.remaining_rows_read,
   monthly_write_headroom:quota.remaining_rows_written,
   normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
- const config=candidateConfig(baseline,env.GITHUB_SHA);
+ const profile=env.CANDIDATE_REVIEWED_FLAG_PROFILE??"";
+ const reviewedSecrets=parseReviewedAdditiveSecretNames(
+  env.CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES??"");
+ const config=candidateConfig(baseline,env.GITHUB_SHA,{
+  reviewedFlagProfile:profile,reviewedSecretNames:reviewedSecrets});
+ const baselineNames=new Set(baseline.resources.bindings.map(x=>x.name));
+ const missing=REVIEWABLE_ADDITIVE_SECRETS.filter(x=>!baselineNames.has(x)).sort();
+ // Review is exact, never a wildcard; Hot50 must carry ALL missing four names.
+ if(profile===HOT50_INTAKE_PROFILE&&canonical(missing)!==canonical(reviewedSecrets))
+  throw Error('CANDIDATE_MISSING_SECRET_REVIEW_REQUIRED');
+ const secretValues={};
+ for(const name of reviewedSecrets){
+  if(typeof env[name]!=='string'||!env[name].trim())
+   throw Error('CANDIDATE_REVIEWED_SECRET_VALUE_MISSING');
+  secretValues[name]=env[name];
+ }
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
  // on Cloudflare. Wrangler's NDJSON receipt pins the version this invocation
  // just uploaded, even if older versions share the same source SHA.
  const wranglerOutput=resolve('artifacts/protected-canary/.wrangler-upload.ndjson');
  rmSync(wranglerOutput,{force:true});
+ let secretDir=null;
  try{
-  run('npx',['-y','wrangler@4.136.3','versions','upload','--config',
+  const args=['-y','wrangler@4.136.3','versions','upload','--config',
    'workers/control-plane/wrangler.optimized-candidate.jsonc','--message',
-   'geomacro-main:'+env.GITHUB_SHA],
-   {encoding:'utf8',stdio:'pipe',timeout:240000,
-    env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
+   'geomacro-main:'+env.GITHUB_SHA];
+  if(reviewedSecrets.length){
+   // Cloudflare --secrets-file uploads code and secret additions as ONE version.
+   // Never check in, upload as artifact, or log this temporary 0600 JSON.
+   secretDir=mkdtempSync(join(tmpdir(),'geomacro-reviewed-version-'));
+   const file=join(secretDir,'additive-secrets.json');
+   writeFileSync(file,JSON.stringify(secretValues),{mode:0o600,flag:'wx'});
+   args.push('--secrets-file',file);
+  }
+  run('npx',args,{encoding:'utf8',stdio:'pipe',timeout:240000,
+   env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
  }catch(error){
   const output=String(error?.stdout??'')+String(error?.stderr??'');
   const codes=[...output.matchAll(/\[code:\s*(\d+)\]/g)].map(x=>x[1]);
   throw Error('CANDIDATE_UPLOAD_FAILED'+(codes.length?'_PROVIDER_'+codes.join('_'):''));
+ }finally{
+  if(secretDir)rmSync(secretDir,{recursive:true,force:true});
  }
  let uploadedId;
  try{uploadedId=uploadedVersionIdFromWranglerEvents(
@@ -181,28 +207,31 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
  writeFileSync('artifacts/protected-canary/optimized-worker-candidate.json',JSON.stringify({
   schema:'geomacro.optimized-worker-candidate.v1',status:'PARITY_VERIFICATION_PENDING',
   source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
+  reviewed_flag_profile:profile,reviewed_additive_secret_names:reviewedSecrets,
   baseline_runtime:runtimeSummary(baseline),candidate_runtime:runtimeSummary(candidate),
   owner_quota:quotaSummary,runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>
    ['GEOMACRO_D1_READ_HOTSPOT_V2','GEOMACRO_P1_FANOUT_ENABLED','GEOMACRO_P1_BUNDLED_LEASES_ENABLED',
     'GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'].includes(x.name)).map(x=>[x.name,x.text??null])),
   changed_runtime_keys:changedRuntimeKeys,d1_sql_queries:0,traffic_promoted:false,payments:0
  },null,2)+'\n');
- verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA);
+ verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA,{reviewedFlagProfile:profile,reviewedSecretNames:reviewedSecrets});
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))
   throw Error('CANDIDATE_PRODUCTION_DEPLOYMENT_CHANGED');
  const promotion=assessWorkerPromotion({deployment:final,baselineVersion:baseline,
   candidateVersion:candidate,baselineId,candidateId:candidate.id,targetPercent:0,
-  sourceSha:env.GITHUB_SHA,quota,now:new Date()});
+  sourceSha:env.GITHUB_SHA,quota,now:new Date(),reviewedFlagProfile:profile,
+  reviewedAdditiveSecretNames:reviewedSecrets});
  writeFileSync('artifacts/protected-canary/worker-promotion-preflight.json',JSON.stringify(promotion,null,2)+'\n');
  const knownFlags=['GEOMACRO_D1_READ_HOTSPOT_V2' ,'GEOMACRO_P1_FANOUT_ENABLED',
   'GEOMACRO_P1_BUNDLED_LEASES_ENABLED','GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'];
  const result={schema:'geomacro.optimized-worker-candidate.v1',status:'CANDIDATE_UPLOADED_NOT_DEPLOYED',
   source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
+  reviewed_flag_profile:profile,reviewed_additive_secret_names:reviewedSecrets,
   binding_resource_and_value_parity_verified:true,runtime_parity_verified:true,
   promotion_eligible:promotion.eligible,promotion_reason:promotion.reason,
-  runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>knownFlags.includes(x.name))
-   .map(x=>[x.name,x.text??null])),
+  runtime_flags:Object.fromEntries(candidate.resources.bindings.filter(x=>knownFlags.includes(x.name)||Object.hasOwn(HOT50_INTAKE_VARS,x.name)||Object.hasOwn(FAIL_CLOSED_RELEASE_VARS,x.name))
+   .map(x=>[x.name,plainTextValue(x)])),
   production_split_unchanged:true,owner_quota:quotaSummary,d1_sql_queries:0,traffic_promoted:false,payments:0};
  mkdirSync('artifacts/protected-canary',{recursive:true});
  writeFileSync('artifacts/protected-canary/optimized-worker-candidate.json',JSON.stringify(result,null,2)+'\n');
