@@ -36,3 +36,8 @@ CREATE TABLE IF NOT EXISTS risk_stream_hot50_cell_snapshots (
 );
 CREATE INDEX IF NOT EXISTS idx_risk_stream_hot50_search_due
  ON risk_stream_hot50_cell_snapshots(next_search_at,category);
+
+-- New 1-minute two-cell census must use a selective index, not a repeated
+-- full scan of the 72-hour five-lane discovery bridge.
+CREATE INDEX IF NOT EXISTS idx_risk_stream_hot50_discovery_cell
+ ON derived_risk_gate_discovery_signals(country_iso3,category,source_clock_at DESC);
