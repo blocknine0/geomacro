@@ -217,3 +217,28 @@ test("Complex cell never passes from a seven-day count without signed R2 readbac
  assert.equal(await verifyHot50ComplexCell(enabled,target,{
   currentGroId:digest("gro"),now}),"HOLD_SEVEN_DAY_PROVIDER_PROOF");
 });
+
+
+test("when multiple valid same-event pairs exist, select the exact independently signed pair",()=>{
+ const category="GEOPOLITICS",target={country_iso3:"USA",category};
+ const [a,b]=roles[category];
+ const first=[
+  sample(category,"a-old",a,"first.example.org"),
+  sample(category,"b-old",b,"second.example.net")
+ ];
+ const newer=[
+  {...sample(category,"c-new",a,"third.example.org"),
+   event_fingerprint:digest("new authorized event")},
+  {...sample(category,"d-new",b,"fourth.example.net"),
+   event_fingerprint:digest("new authorized event")}
+ ];
+ const signed=[{gro_id:digest("new signed gro"),country_iso3:"USA",category,
+  signature_verified:true,
+  source_originals:newer.map(x=>x.observation_id).sort(),
+  event_fingerprint:newer[0].event_fingerprint,
+  expires_at:new Date(now+3600000).toISOString()}];
+ const value=projectHot50StreamCell(target,{evidence:[...first,...newer],
+  signed},now);
+ assert.equal(value.source_gro_id,signed[0].gro_id);
+ assert.equal(value.standard_status,"SIGNED_INTERNAL_GRO_AVAILABLE");
+});
