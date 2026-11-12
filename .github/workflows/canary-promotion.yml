@@ -20,6 +20,10 @@ on:
         description: 'PROMOTE_HOT50_NO_FUNDS (traffic change) or REVIEW_HOT50_HOLD_NO_FUNDS (read-only review)'
         required: false
         type: string
+      reviewed_hot50_runtime:
+        description: 'Type ENABLE_HOT50_RESEARCH_NO_FUNDS to review candidate Hot50 flags'
+        required: false
+        type: string
       reviewed_additive_secret_names:
         description: "Exact comma-separated additive secret names, owner-reviewed for this candidate"
         required: false
@@ -39,6 +43,9 @@ on:
       - '.github/workflows/canary-promotion.yml'
       - 'scripts/apply-d1-migrations.ts'
       - 'scripts/canary-promoter.ts'
+      - 'scripts/ops/attest-canary-additive-secrets.mjs'
+      - 'scripts/lib/canary-additive-binding-parity.mjs'
+      - 'scripts/tests/canary-additive-binding-parity.test.mjs'
       - 'scripts/tests/canary-preflight-baseline.test.mjs'
       - 'scripts/verify-d1-quota-proof.ts'
       - 'scripts/tests/canary-closed-d1-proof.test.mjs'
@@ -104,6 +111,7 @@ jobs:
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
       CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS: ${{ inputs.reviewed_additive_secret_names }}
+      CANARY_OWNER_REVIEWED_HOT50_RUNTIME: ${{ inputs.reviewed_hot50_runtime }}
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
@@ -254,6 +262,7 @@ jobs:
               node --experimental-strip-types scripts/apply-d1-migrations.ts --apply ;;
             promote)
               test "$EVENT_NAME" = workflow_dispatch
+              test "$CANARY_OWNER_REVIEWED_HOT50_RUNTIME" = ENABLE_HOT50_RESEARCH_NO_FUNDS
               node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
               node --experimental-strip-types scripts/ops/attest-canary-additive-secrets.mjs
               node --experimental-strip-types scripts/canary-promoter.ts --promote ;;
