@@ -56,6 +56,29 @@ test("D1 usage ledger rejects charges on insufficient, undelivered, and refunded
  db.close();
 });
 
+test("D1 refund transition zeroes all fees and cannot be reopened",()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
+  (ledger_id,verdict_id,request_id,channel,tier,structure_type,
+   customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
+   geomacro_fee_usdc_cents,predge_share_usdc_cents,billable,entry_status,
+   request_hash,response_sha256,created_at,usage_month,usage_report_due_date,settlement_due_date)
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run("a".repeat(64),
+   "123e4567-e89b-52d3-a456-426614174002","req-refund","predge_b2b","standard",
+   "STANDARD_DUAL_ORIGINAL_GRO_V1",20,15,15,5,1,"DELIVERED","b".repeat(64),
+   "c".repeat(64),"2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10");
+ db.prepare(`UPDATE predge_paid_risk_gate_usage_ledger SET entry_status='REFUNDED',
+  billable=0,geomacro_fee_usdc_cents=0,predge_share_usdc_cents=0,
+  settlement_status='REFUNDED' WHERE request_id='req-refund'`).run();
+ const row=db.prepare("SELECT billable,geomacro_fee_usdc_cents,predge_share_usdc_cents FROM predge_paid_risk_gate_usage_ledger WHERE request_id='req-refund'").get();
+ assert.deepEqual({...row},{billable:0,geomacro_fee_usdc_cents:0,predge_share_usdc_cents:0});
+ assert.throws(()=>db.prepare(`UPDATE predge_paid_risk_gate_usage_ledger SET entry_status='DELIVERED',
+   billable=1,geomacro_fee_usdc_cents=15,predge_share_usdc_cents=5,
+   settlement_status='AWAITING_COLLECTION_REPORT' WHERE request_id='req-refund'`).run());
+ db.close();
+});
+
 test("paid partner terms do not replace direct Store / Intelligence API pricing or pilot continuity",()=>{
  const contract=JSON.parse(readFileSync("config/decision-intelligence-commercial-contract.json","utf8"));
  const manifest=JSON.parse(readFileSync("config/commercial-launch-manifest.json","utf8"));
