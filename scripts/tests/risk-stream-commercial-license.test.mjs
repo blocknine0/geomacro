@@ -128,6 +128,11 @@ test("one real cryptographic licence passes durable leased delivery with matchin
  env.DB=db;let posts=0;
  const result=await dispatchLicensedCommercialOutbox(env,{now,fetcher:async(url,request)=>{
   posts++;assert.equal(url,row.endpoint_url);
+  // Regression: workerd variants can throw on RequestInit.cache.
+  assert.equal(Object.hasOwn(request,"cache"),false);
+  assert.equal(request.redirect,"manual");
+  assert.equal(request.method,"POST");
+  assert.equal(typeof request.signal?.aborted,"boolean");
   assert.equal(request.headers["Idempotency-Key"],job);
   assert.equal(JSON.parse(request.body).license_proof.payload_sha256,row.license_payload_sha256);
   return Response.json({schema:"geomacro.commercial-webhook-ack.v1",
@@ -161,4 +166,95 @@ test("webhook URL not explicitly pinned cannot leak signed payload",async()=>{
   fetcher:async()=>{network++;return Response.json({})}});
  assert.equal(claimed,true);assert.equal(network,0);
  assert.equal(result.retry,1);
+});
+
+
+function dispatchFailureFixture(){
+ const f=fixture(),clientId="client_retry_safe_01",jobId=sha("safe-retry-job");
+ const groId=sha("gro-id");
+ const outbox={job_id:jobId,client_id:clientId,gro_id:groId,
+  license_envelope_json:null,
+  license_payload_sha256:null,
+  release_receipt_sha256:f.release.signed_release_receipt_sha256,
+  attempts:0,endpoint_url:"https://risk.customer.example.org/hooks/geomacro",
+  approved_host:"risk.customer.example.org",
+  entitlement_expires_at:new Date(now+86400000).toISOString()};
+ const env={RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
+  GEOMACRO_COMMERCIAL_STREAM_RELEASE:"1",RISK_STREAM_CANARY_HOLD_CLEARED:"1",
+  RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256:f.release.signed_release_receipt_sha256,
+  GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:f.inputs.licensePublicSpkiB64,
+  RISK_STREAM_GRO_VERIFY_SPKI_B64:f.inputs.groPublicSpkiB64,
+  GEOMACRO_LICENSED_WEBHOOK_DOMAINS:"risk.customer.example.org"};
+ let state="PENDING",leaseCount=0,requeued=0;
+ const db={prepare(sql){return {bind(...args){this.args=args;return this},
+  async all(){return {results:state==="PENDING"?[outbox]:[]}},
+  async run(){
+   if(sql.includes("SET state='LEASED'")){
+    leaseCount++;state="LEASED";return {success:true,meta:{changes:1}};
+   }
+   if(sql.includes("SET state='PENDING'")){
+    requeued++;state="PENDING";return {success:true,meta:{changes:1}};
+   }
+   throw Error("UNEXPECTED_WRITE_SQL");
+  }}},async batch(){throw Error("UNEXPECTED_ACK_COMMIT")}};
+ env.DB=db;
+ const setEnvelope=async()=>{
+  const e=await issueGeoMacroCommercialLicense(f.inputs);
+  outbox.license_envelope_json=JSON.stringify(e);
+  outbox.license_payload_sha256=e.license_proof.payload_sha256;
+ };
+ return {env,outbox,setEnvelope,stats:()=>({state,leaseCount,requeued})};
+}
+test("workerd-style transport exception returns only sanitized code and keeps durable retry",async()=>{
+ const f=dispatchFailureFixture();await f.setEnvelope();
+ let invoked=0;
+ const result=await dispatchLicensedCommercialOutbox(f.env,{
+  now,jobId:f.outbox.job_id,max:1,fetcher:async(_url,request)=>{
+   invoked++;
+   assert.equal(Object.hasOwn(request,"cache"),false);
+   throw Error("The cache field on RequestInitializerDict is not implemented; secret=deadbeef; https://customer.private/");
+  }
+ });
+ assert.equal(invoked,1);
+ assert.equal(result.status,"RETRY_SCHEDULED");
+ assert.equal(result.retry,1);assert.equal(result.sent,0);
+ assert.deepEqual(result.failure_codes,["WEBHOOK_FETCH_EXCEPTION"]);
+ assert.equal(result.last_failure_stage,"WEBHOOK_FETCH");
+ assert.equal(result.last_failure_code,"WEBHOOK_FETCH_EXCEPTION");
+ assert.equal(f.stats().state,"PENDING");
+ assert.equal(f.stats().leaseCount,1);
+ assert.equal(f.stats().requeued,1);
+ assert.doesNotMatch(JSON.stringify(result),/deadbeef|customer\.private|RequestInitializerDict/);
+});
+test("invalid ACK and invalid license emit different allowlisted diagnostic codes",async()=>{
+ const x=dispatchFailureFixture();await x.setEnvelope();
+ const badAck=await dispatchLicensedCommercialOutbox(x.env,{
+  now,max:1,jobId:x.outbox.job_id,fetcher:async()=>Response.json({
+   schema:"geomacro.commercial-webhook-ack.v1",
+   job_id:x.outbox.job_id,payload_sha256:sha("wrong"),status:"ACCEPTED"
+  })
+ });
+ assert.deepEqual(badAck.failure_codes,["WEBHOOK_ACK_IDENTITY_INVALID"]);
+ assert.equal(badAck.last_failure_stage,"WEBHOOK_ACK_IDENTITY");
+ const y=dispatchFailureFixture();await y.setEnvelope();
+ // Corrupt stored signed proof after staging: verification must fail BEFORE HTTP.
+ y.outbox.license_envelope_json=y.outbox.license_envelope_json
+  .replace('"risk_score_0_100":62','"risk_score_0_100":99');
+ let calls=0;
+ const license=await dispatchLicensedCommercialOutbox(y.env,{
+  now,jobId:y.outbox.job_id,max:1,fetcher:async()=>{calls++;throw Error("UNEXPECTED_FETCH")}
+ });
+ assert.equal(calls,0);
+ assert.deepEqual(license.failure_codes,["LICENSE_VERIFICATION_EXCEPTION"]);
+ assert.equal(license.last_failure_stage,"LICENSE_VERIFY");
+});
+test("timeout is classified, but native timeout details cannot be returned",async()=>{
+ const f=dispatchFailureFixture();await f.setEnvelope();
+ const r=await dispatchLicensedCommercialOutbox(f.env,{now,max:1,
+  fetcher:async()=>{
+   const e=new Error("sensitive timeout URL https://private.example/a");
+   e.name="TimeoutError";throw e;
+  }});
+ assert.deepEqual(r.failure_codes,["WEBHOOK_FETCH_TIMEOUT"]);
+ assert.doesNotMatch(JSON.stringify(r),/private\.example|sensitive/);
 });
