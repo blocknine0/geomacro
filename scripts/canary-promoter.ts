@@ -82,27 +82,33 @@ async function checkSource(candidate:string,expectedSha:string){
 async function checkVersionParity(base:string,candidate:string,headSha:string){
  const [a,b]=await Promise.all([api(info(base)),api(info(candidate))]);
  need(a.id===base&&b.id===candidate,'CANARY_VERSIONS_NOT_VERIFIED');
- // With no differences, no additional owner review is needed.
- let reviewed:string[]=[];
+ // Source SHA transition is permitted only to the EXACT protected main.
+ // The three release/HOLD gates remain zero even in an opt-in intake candidate.
  let result;
  try{
-  result=assessReviewedAdditiveBindingParity(a,b,[]);
- }catch(e){
+  result=assessReviewedAdditiveBindingParity(a,b,{sourceSha:headSha});
+ }catch{
   const file='artifacts/release/canary-reviewed-additive-bindings.json';
-  need(existsSync(file),'CANARY_ADDITIVE_SECRET_SIGNED_REVIEW_MISSING');
+  need(existsSync(file),'CANARY_REVIEWED_BINDING_SIGNED_REVIEW_MISSING');
   const review=verifySignedEnvelopeFile(file);
+  const expectedProfile=process.env.CANARY_OWNER_REVIEWED_FLAG_PROFILE??"";
   need(review.schema==='geomacro.canary.additive-secret-review.v1'&&
    review.status==='PASS'&&review.source_sha===headSha&&
    review.baseline_version===base&&review.candidate_version===candidate&&
-   review.no_funds===true&&
+   review.no_funds===true&&review.commercial_release_authorized===false&&
+   review.hold_cleared===false&&
+   review.owner_workflow_confirmation==='PROMOTE_HOT50_NO_FUNDS'&&
+   review.reviewed_flag_profile===expectedProfile&&
+   (expectedProfile===""||expectedProfile==="HOT50_INTAKE_REVIEWED")&&
    Array.isArray(review.reviewed_secret_names)&&
-   review.reviewed_secret_names.length>0&&
+   (review.reviewed_secret_names.length>0||expectedProfile==="HOT50_INTAKE_REVIEWED")&&
    Number.isFinite(Date.parse(String(review.reviewed_at)))&&
    Date.now()-Date.parse(String(review.reviewed_at))<3_600_000&&
    Date.now()>=Date.parse(String(review.reviewed_at)),
-   'CANARY_ADDITIVE_SECRET_REVIEW_NOT_EXACT_OR_FRESH');
-  reviewed=review.reviewed_secret_names;
-  result=assessReviewedAdditiveBindingParity(a,b,reviewed);
+   'CANARY_REVIEWED_BINDING_REVIEW_NOT_EXACT_OR_FRESH');
+  result=assessReviewedAdditiveBindingParity(a,b,{
+   sourceSha:headSha,reviewedFlagProfile:expectedProfile,
+   reviewedSecretNames:review.reviewed_secret_names});
  }
  return result;
 }
