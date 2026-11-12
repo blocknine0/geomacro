@@ -6,7 +6,7 @@
  */
 import {spawnSync} from "node:child_process";
 import {createHmac} from "node:crypto";
-import {existsSync,writeFileSync,mkdirSync} from "node:fs";
+import {existsSync,readFileSync,writeFileSync,mkdirSync} from "node:fs";
 import {assertOfficialMain,signedReport} from "../release-common.ts";
 
 const SHA=assertOfficialMain();
@@ -31,9 +31,20 @@ const wrangler=(args,input)=>{
 };
 // The already protected issuer is disabled in shadow; only this test-specific
 // ACK token is shared with the mock Worker, never with a customer.
+// Isolated ACK service must exist before the caller's Service Binding.
 wrangler(["deploy","--config",ackCfg]);
-wrangler(["secret","put","STREAM_SHADOW_ACK_TOKEN","--config",ackCfg],ackToken);
-wrangler(["secret","put","STREAM_SHADOW_ACK_TOKEN","--config",adminCfg],ackToken);
+wrangler(["secret","put","STREAM_SHADOW_ACK_TOKEN","--config",ackCfg],ackToken+"\n");
+const cfg=JSON.parse(readFileSync(adminCfg,"utf8"));
+if(cfg.name!=="geomacro-risk-stream-shadow"||
+ !Array.isArray(cfg.d1_databases)||cfg.d1_databases.length!==1||
+ cfg.d1_databases[0].database_name!=="geomacro-risk-stream-shadow"||
+ cfg.vars?.STREAM_MODE!=="SHADOW_AUDIT"||
+ cfg.vars?.RISK_STREAM_ACTIVE!=="0"||
+ cfg.vars?.STREAM_INGESTION_ENABLED!=="false")deny("SHADOW_CONFIG_NOT_ISOLATED");
+cfg.services=[{binding:"SHADOW_COMMERCIAL_ACK",service:"geomacro-risk-stream-shadow-ack"}];
+writeFileSync(adminCfg,JSON.stringify(cfg,null,2),{mode:0o600});
+wrangler(["deploy","--config",adminCfg]);
+wrangler(["secret","put","STREAM_SHADOW_ACK_TOKEN","--config",adminCfg],ackToken+"\n");
 const subRes=await fetch("https://api.cloudflare.com/client/v4/accounts/"+
   account+"/workers/subdomain",{
  headers:{Authorization:"Bearer "+token},redirect:"error",
@@ -52,6 +63,32 @@ const health=await fetch("https://geomacro-risk-stream-shadow-ack."+
 const healthBody=await health.json().catch(()=>null);
 if(health.status!==200||healthBody?.service!=="SHADOW_COMMERCIAL_ACK_ONLY")
  deny("ACK_MOCK_HTTPS_NOT_LIVE");
+// This synthetic transport probe exercises the real receiver's POST contract:
+// authentication, identity headers and the no-funds payload structure.
+const probeId=createHmac("sha256",ackToken).update("shadow-ack-probe-"+SHA).digest("hex");
+const probeHash=createHmac("sha256",ackToken).update("shadow-ack-payload-"+SHA).digest("hex");
+const probe=await fetch(ackUrl,{
+ method:"POST",redirect:"manual",signal:AbortSignal.timeout(15000),
+ headers:{"Content-Type":"application/json",
+  "X-GeoMacro-Shadow-ACK":ackToken,
+  "X-GeoMacro-Delivery-ID":probeId,
+  "Idempotency-Key":probeId,
+  "X-GeoMacro-License-ID":"GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1"},
+ body:JSON.stringify({
+  payload:{license_id:"GEOMACRO_COMMERCIAL_REDISTRIBUTION_v1",
+   charged:false,execution_authorized:false},
+  license_proof:{payload_sha256:probeHash}
+ })
+});
+const probeAck=probe.status===200&&!probe.redirected?
+ await probe.json().catch(()=>null):null;
+if(probe.status!==200||probe.redirected||
+   probeAck?.schema!=="geomacro.commercial-webhook-ack.v1"||
+   probeAck.job_id!==probeId||probeAck.payload_sha256!==probeHash||
+   probeAck.status!=="ACCEPTED")
+ deny("ACK_PROTECTED_POST_PREFLIGHT_HTTP_"+
+  (Number.isInteger(probe.status)&&probe.status>=100&&probe.status<=599
+   ?probe.status:"UNKNOWN")+(probe.redirected?"_REDIRECT":""));
 const raw=wrangler(["d1","execute","geomacro-risk-stream-shadow",
  "--remote","--json","--config",adminCfg,"--command",
  "SELECT type,name FROM sqlite_schema WHERE name IN ("+
