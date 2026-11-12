@@ -65,8 +65,32 @@ function normalizeNativeDate(raw){
  }
  return null;
 }
+function nativeDateCandidates(html){
+ const candidates=[],keys=[];
+ for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
+  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??attr(tag,"itemprop")??"").toLowerCase();
+  if(/published|publication|date|modified/iu.test(key)){
+   keys.push(key.slice(0,64));
+   const value=attr(tag,"content");if(value)candidates.push(value);
+  }
+ }
+ for(const m of String(html).matchAll(/<time\b[^>]*>([\s\S]{0,240}?)<\/time>/giu)){
+  const tag=m[0],raw=attr(tag,"datetime");
+  keys.push(raw?"time[datetime]":"time[text]");
+  candidates.push(raw??extractTextFragment(m[1]));
+ }
+ for(const m of String(html).matchAll(/"(datePublished|dateCreated|dateModified)"\s*:\s*"([^"]{1,100})"/giu)){
+  keys.push("jsonld:"+m[1]);candidates.push(m[2]);
+ }
+ return {candidates,keys:[...new Set(keys)]};
+}
+export function inspectIccArticleNativeClock(html){
+ const {candidates,keys}=nativeDateCandidates(html);
+ const safe=candidates.map(clean).filter(v=>v.length<=80&&/\d/u.test(v)&&/^[0-9A-Za-z ,:+./TZ-]+$/u.test(v));
+ return Object.freeze({metadata_keys:keys,date_candidate_values:[...new Set(safe)].slice(0,8)});
+}
 function nativeDate(html){
- const candidates=[];
+ const candidates=nativeDateCandidates(html).candidates;
  for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
   const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??attr(tag,"itemprop")??"").toLowerCase();
   if(["article:published_time","article:published","datepublished","date","dc.date","dcterms.date",

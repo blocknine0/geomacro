@@ -12,7 +12,7 @@ import { parseAustraliaCriticalMineralsHtml } from "../global-intelligence/adapt
 import { parseCochilcoAnuarioHtml } from "../global-intelligence/adapters/cochilco-minerals.mjs";
 import { parseOpcwNewsHtml } from "../global-intelligence/adapters/opcw-news.mjs";
 import { parseIcjCasesHtml } from "../global-intelligence/adapters/icj-cases.mjs";
-import { discoverIccArticleUrls,parseIccArticleHtml } from "../global-intelligence/adapters/icc-news.mjs";
+import { discoverIccArticleUrls,parseIccArticleHtml,inspectIccArticleNativeClock } from "../global-intelligence/adapters/icc-news.mjs";
 import { parseUnctadPublisherReleaseCalendarHtml } from "../global-intelligence/adapters/unctadstat.mjs";
 import { parseWorldBankPinkSheetReleaseMetadata } from "../global-intelligence/adapters/world-bank-commodity-prices.mjs";
 
@@ -86,7 +86,8 @@ async function run(id,source){
     articleUrls=extractIccOfficialNewsLinks(feedText,{limit:5});
    }
    if(!articleUrls.length)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
-   let lastArticleError="ICC_NATIVE_PUBLICATION_TIME_MISSING",parsed=null;
+   let lastArticleError="ICC_NATIVE_PUBLICATION_TIME_MISSING",parsed=null,lastNativeMetadata=null;
+   result.first_party_article_candidates_checked=articleUrls.length;
    for(const articleUrl of articleUrls){
     const article=await get(articleUrl,"text/html");
     if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int"){
@@ -96,10 +97,18 @@ async function run(id,source){
     if(!/html/iu.test(articleType)){lastArticleError="ICC_ARTICLE_MIME_INVALID";continue}
     const articleBytes=new Uint8Array(await article.arrayBuffer());
     if(articleBytes.length>2*1024*1024){lastArticleError="ICC_ARTICLE_TOO_LARGE";continue}
-    try{parsed=parseIccArticleHtml(new TextDecoder().decode(articleBytes),{url:articleUrl,retrievedAt:observedAt});break}
-    catch(error){lastArticleError=error.message.startsWith("ICC_")?error.message:"ICC_ARTICLE_PARSE_FAILED"}
+    const articleHtml=new TextDecoder().decode(articleBytes);
+    try{parsed=parseIccArticleHtml(articleHtml,{url:articleUrl,retrievedAt:observedAt});break}
+    catch(error){
+     lastNativeMetadata=inspectIccArticleNativeClock(articleHtml);
+     lastArticleError=error.message.startsWith("ICC_")?error.message:"ICC_ARTICLE_PARSE_FAILED"
+    }
    }
-   if(!parsed)throw Error(lastArticleError);
+   if(!parsed){
+    result.native_date_metadata_diagnostic=lastNativeMetadata??{metadata_keys:[],date_candidate_values:[]};
+    throw Error(lastArticleError);
+   }
+   result.native_date_metadata_diagnostic={metadata_keys:["article-native-publication"],date_candidate_values:[parsed.published_at]};
    result.extraction_count=1;result.native_publication_time_verified=parsed.published_at!==null;
    result.publisher_release_at_utc=parsed.published_at;
    schemaPass=parsed.published_at!==null&&requiredPass;
