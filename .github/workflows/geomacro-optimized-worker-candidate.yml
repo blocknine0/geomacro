@@ -6,10 +6,22 @@ on:
         description: 'Exact UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS; never deploy traffic'
         required: true
         type: string
+      reviewed_flag_profile:
+        description: 'Owner-reviewed fixed HOT50_INTAKE_REVIEWED profile; no custom flags'
+        required: true
+        type: choice
+        options: [BASELINE_ONLY, HOT50_INTAKE_REVIEWED]
+        default: BASELINE_ONLY
+      reviewed_additive_secret_names:
+        description: 'Exact comma-separated secret additions absent from live 100% baseline'
+        required: false
+        type: string
   pull_request:
     paths:
       - '.github/workflows/geomacro-optimized-worker-candidate.yml'
       - 'scripts/ops/prepare-optimized-worker-candidate.mjs'
+      - 'scripts/lib/canary-additive-binding-parity.mjs'
+      - 'scripts/tests/canary-additive-binding-parity.test.mjs'
       - 'scripts/tests/optimized-worker-candidate.test.mjs'
       - 'workers/control-plane/src/**'
       - 'src/workers/**'
@@ -25,7 +37,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
-      - run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/p1-source-fanout.test.mjs
+      - run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/p1-source-fanout.test.mjs scripts/tests/canary-additive-binding-parity.test.mjs
   candidate:
     needs: contract
     if: >-
@@ -45,6 +57,12 @@ jobs:
       # The paid-plan proof reader requires this separate existing token.
       # Read-only /accounts/{id}/subscriptions; no billing mutation.
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      CANDIDATE_REVIEWED_FLAG_PROFILE: ${{ inputs.reviewed_flag_profile == 'HOT50_INTAKE_REVIEWED' && 'HOT50_INTAKE_REVIEWED' || '' }}
+      CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES: ${{ inputs.reviewed_additive_secret_names }}
+      GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
+      GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64 }}
+      RISK_STREAM_INDEX_LEAD_BEARER: ${{ secrets.RISK_STREAM_INDEX_LEAD_BEARER }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -61,7 +79,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold
-      - name: Upload exact-main version with inherited production bindings and zero traffic
+      - name: Upload one exact-main version with reviewed intake flags and additive secrets, zero traffic
         run: node scripts/ops/prepare-optimized-worker-candidate.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
