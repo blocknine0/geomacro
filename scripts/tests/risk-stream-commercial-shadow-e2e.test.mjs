@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync} from "node:crypto";
-import {runIsolatedCommercialE2E}
+import {runIsolatedCommercialE2E,sanitizedShadowCommercialError}
  from "../../workers/risk-stream-shadow/src/commercial-e2e.mjs";
 
 const ackUrl="https://geomacro-risk-stream-shadow-ack.example-team.workers.dev/v1/internal/mock-commercial-ack";
@@ -92,6 +92,7 @@ test("isolated shadow uses actually pinned license key + D1 outbox + HTTPS ACK",
    calls++;
    assert.equal(url,ackUrl);
    assert.equal(req.headers["X-GeoMacro-Shadow-ACK"],env.STREAM_SHADOW_ACK_TOKEN);
+   assert.equal(Object.hasOwn(req,"cache"),false);
    assert.equal(req.headers["Idempotency-Key"],state.outbox.job_id);
    const payload=JSON.parse(req.body);
    return Response.json({schema:"geomacro.commercial-webhook-ack.v1",
@@ -124,4 +125,36 @@ test("shadow test cannot run against non-shadow or a customer endpoint",async()=
   ackUrl:"https://actual-customer.example.org/hooks",
   runId:"shadow-regression-20261112"}),
   /NON_CUSTOMER_ACK_HOST_REQUIRED/);
+});
+
+
+test("shadow E2E exposes sanitized dispatch code without leaking upstream fetch exception",async()=>{
+ const {db,state}=mockDatabase();
+ const env={STREAM_MODE:"SHADOW_AUDIT",RISK_STREAM_ACTIVE:"0",
+  STREAM_INGESTION_ENABLED:"false",GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
+  RISK_STREAM_CANARY_HOLD_CLEARED:"0",STREAM_SHADOW_ACK_TOKEN:"z".repeat(64),
+  GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey,
+  GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey,
+  SHADOW_REVIEWED_SHA:"f".repeat(40),DB:db};
+ await assert.rejects(runIsolatedCommercialE2E(env,{
+  ackUrl,now:Date.parse("2026-11-12T03:00:00Z"),
+  runId:"shadow-regression-retry-20261112",
+  fetcher:async(_target,request)=>{
+   assert.equal(Object.hasOwn(request,"cache"),false);
+   throw Error("token=secret_12345 and https://realcustomer.test/webhook");
+  }
+ }),error=>{
+  assert.equal(
+   sanitizedShadowCommercialError(error),
+   "SHADOW_COMMERCIAL_E2E_SHADOW_HTTPS_ACK_NOT_ACCEPTED_WEBHOOK_FETCH_EXCEPTION");
+  assert.doesNotMatch(String(error.message),/secret_12345|realcustomer/);
+  return true;
+ });
+ assert.equal(state.outbox.state,"PENDING");
+});
+test("untrusted errors at shadow boundary are replaced with a fixed code",()=>{
+ const payload=new Error("fetch https://customer.example/token=abc");
+ assert.equal(sanitizedShadowCommercialError(payload),
+  "SHADOW_COMMERCIAL_E2E_UNCLASSIFIED_FAILURE");
+ assert.doesNotMatch(sanitizedShadowCommercialError(payload),/abc|customer/);
 });
