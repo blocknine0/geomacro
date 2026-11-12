@@ -13,6 +13,7 @@
     "all-source-reusable-news-json.yml",
     "api-custom-domain-production-acceptance.yml",
     "apply-multi-source-registry-production.yml",
+    "apply-predge-addendum-v2-migration-0131.yml",
     "apply-production-migrations.yml",
     "apply-risk-gate-production-migrations.yml",
     "apply-source-network-staging-migrations.yml",
@@ -449,6 +450,7 @@
     "x402-pilot-product-lane-zero-fund.yml"
   ],
   "criticalWorkflowFiles": [
+    "apply-predge-addendum-v2-migration-0131.yml",
     "auto-ingest-news.yml",
     "b2-raw-storage-maintenance.yml",
     "canary-promotion.yml",
@@ -540,9 +542,10 @@
     "canary-promotion.yml": "GeoMacro Protected Five-Gate Remediation and Canary (NO FUNDS)",
     "d1-analytics-credential-proof.yml": "GeoMacro Protected D1 Analytics Credential Proof (READ ONLY)",
     "production-rollout-orchestrator.yml": "Step3 Protected Local Shadow and Stage2 Orchestrator",
-    "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory — Read Only No Funds",
+    "step3-protected-binding-readiness.yml": "Step3 Protected Binding Inventory \u2014 Read Only No Funds",
     "step3-d1-native-backend-readonly.yml": "Step3 Native D1 Backend Read-Only Diagnosis (NO FUNDS)",
-    "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)"
+    "phase2h-private-r2-b2-quota-backup.yml": "Phase2H Minimum Risk Gate Facts Brotli11 Private R2 (No Funds)",
+    "apply-predge-addendum-v2-migration-0131.yml": "Apply Predge Addendum v2 D1 migration 0131 (single file)"
   },
   "lockedTriggerStrings": {
     "owner-issue-dispatch-gateway.yml": [
@@ -682,6 +685,13 @@
       "audit-step3-r2-private-exposure.mjs",
       "phase2h-r2-b2-quota-backup.mjs",
       "GEOMACRO_D1_RECOVERY_AES256_KEY_B64"
+    ],
+    "apply-predge-addendum-v2-migration-0131.yml": [
+      "workflow_dispatch:",
+      "options: [preflight, apply]",
+      "environment: production",
+      "0131_predge_paid_risk_gate_addendum_v2.sql",
+      "d1 execute"
     ]
   },
   "predgeBlobSha1": {
