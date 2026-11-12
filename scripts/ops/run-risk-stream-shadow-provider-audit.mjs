@@ -71,6 +71,7 @@ function runtime(dbId){
   cfg.queues.consumers[0].dead_letter_queue===DLQ&&
   !cfg.routes,"CONFIG_NOT_ISOLATED");
  cfg.d1_databases[0].database_id=dbId;
+ cfg.vars.SHADOW_REVIEWED_SHA=executingSha();
  writeFileSync(CONFIG,JSON.stringify(cfg,null,2),{mode:0o600});
 }
 async function provision(){
