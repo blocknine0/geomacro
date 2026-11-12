@@ -118,6 +118,8 @@ export async function verifyShadowRetentionBoundPointers({
     current.verified_count!==active.length)
   fail("ACTIVE_WORKER_HMAC_R2_PROOF_MISSING");
  for(const row of expired){
+  // Validate the actual signed pointer BEFORE any external request.
+  assertRealPointerMac(row,env.PHASE2H_R2_REFERENCE_HMAC_KEY);
   // A 410 is expected ONLY beyond the immutable 72h first-ingested clock;
   // 401/403/404/500/redirect are HOLD, never accepted as expiry.
   await requireExpiredWorker410(row,env,fetchImpl,sleepImpl);
