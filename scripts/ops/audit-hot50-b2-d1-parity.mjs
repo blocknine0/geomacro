@@ -8,6 +8,7 @@ import {createHash,createDecipheriv} from "node:crypto";
 import {gunzipSync} from "node:zlib";
 import {digestManifest} from "./hot50-parity-proof.mjs";
 import {createB2Client} from "./b2-s3-client.mjs";
+import {admitHot50IndexedB2Readback} from "../lib/hot50-b2-parity-preflight.mjs";
 
 const sha=x=>createHash("sha256").update(x).digest("hex");
 const HEX=/^[a-f0-9]{64}$/u;
@@ -75,13 +76,19 @@ async function main(){
   !/^(?:[A-Za-z0-9_-]+\/)*spool\/$/u.test(configured))fail("LIVE_SPOOL_SCOPE_UNAVAILABLE");
  if(process.env.B2_SPOOL_PREFIX&&ALLOWED!==configured)fail("LIVE_SPOOL_SCOPE_MISMATCH");
  ALLOWED=configured;
- const b2=createB2Client({endpointUrl:ENDPOINT,bucket:BUCKET,
- accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
- allowedKeyPrefixes:[ALLOWED]});
-
+ // Admission before the FIRST physical B2 GET. A nonzero D1 backlog,
+ // incomplete audit read window, open storage circuit, stale quota ledger or
+ // insufficient account GET budget cannot produce a valid parity receipt.
+ // Do not waste B2 daily operations on a scan that MUST end partial.
  const census=await admin("/v1/internal/activation/hot50-census");
  if(census.schema!=="geomacro.hot50-production-activation-census.v1")
   fail("CENSUS_SCHEMA_MISMATCH");
+ const quota=await admin("/v1/b2-quota/status");
+ admitHot50IndexedB2Readback({census,quota,
+  storageGuard:status.b2_storage_guard,limit:LIMIT});
+ const b2=createB2Client({endpointUrl:ENDPOINT,bucket:BUCKET,
+ accessKey:process.env.B2_KEY_ID,secretKey:process.env.B2_APPLICATION_KEY,
+ allowedKeyPrefixes:[ALLOWED]});
  let cursor="",checked=0,seen=new Set(),completed=false;
  const verifiedRows=[];
  while(!completed){
