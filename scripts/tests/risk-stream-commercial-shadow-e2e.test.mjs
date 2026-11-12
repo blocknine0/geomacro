@@ -144,9 +144,14 @@ test("shadow E2E exposes sanitized dispatch code without leaking upstream fetch 
    throw Error("token=secret_12345 and https://realcustomer.test/webhook");
   }
  }),error=>{
+  const kind=String(error?.message??"");
   assert.equal(
    sanitizedShadowCommercialError(error),
-   "SHADOW_COMMERCIAL_E2E_SHADOW_HTTPS_ACK_NOT_ACCEPTED_WEBHOOK_FETCH_EXCEPTION");
+   "SHADOW_COMMERCIAL_E2E_SHADOW_HTTPS_ACK_NOT_ACCEPTED_WEBHOOK_FETCH_EXCEPTION",
+   JSON.stringify({name:error?.name,has_shadow_prefix:kind.startsWith("SHADOW_COMMERCIAL_E2E_"),
+    has_accepted_marker:kind.includes("SHADOW_HTTPS_ACK_NOT_ACCEPTED_"),
+    has_fetch_marker:kind.includes("WEBHOOK_FETCH_EXCEPTION"),
+    mock_state:state.outbox?.state??"NO_OUTBOX"}));
   assert.doesNotMatch(String(error.message),/secret_12345|realcustomer/);
   return true;
  });
