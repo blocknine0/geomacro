@@ -137,6 +137,24 @@ export async function authorizeCanonicalCustomerPaid(db,env,apiKey,capability,no
     contract_version:grant.contract_version,period_ends_at:grant.expires_at,
     credits_remaining:grant.remaining,credit_cost:CUSTOMER_ENTITLEMENT_UNITS[capability]};
 }
+/** Evidence-delivery authorization: active identity/scope/grant, WITHOUT
+ * requiring fresh balance on immutable same-window replays. Fresh delivery
+ * inserts still pass the existing atomic usage/debit trigger and balance gate.
+ * No new capability, price, or funding authority is introduced here.
+ */
+export async function authorizeCanonicalCustomerEvidenceKey(db,env,apiKey,capability,now=nowIso()){
+ capability=validCapability(capability);
+ const key=await scopedKey(db,env,apiKey,now);
+ if(!key.scopes.includes(scopeFor(capability)))
+  fail(403,'CUSTOMER_PAID_SCOPE_DENIED');
+ const grants=(await queryGrants(db,key.user_id,now)).results??[];
+ const eligible=grants.filter(g=>customerPaidCapabilityPolicy(g.tier,capability));
+ if(!eligible.length)fail(403,'CUSTOMER_PAID_ACTIVE_GRANT_REQUIRED');
+ return {principal_id:key.user_id,key_id:key.key_id,
+  grants:eligible.map(g=>({grant_id:g.grant_id,remaining:g.remaining})),
+  credit_cost:CUSTOMER_ENTITLEMENT_UNITS[capability],contract_version:CUSTOMER_CREDIT_CONTRACT};
+}
+
 /** Single-statement mutation. SQLite AFTER INSERT trigger appends debit and
  * fails atomically if any of the grant/active-key/credit checks fails.
  * Never trust client-supplied price, tier, grant, user ID or remaining balance.

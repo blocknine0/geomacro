@@ -1,6 +1,7 @@
 import {serveReviewedSignedRiskIndices} from "./reviewed-risk-indices-delivery.mjs";
 import {readHot50ActivationCensus,readP0bParityManifest} from "./hot50-production-activation-census.mjs";
 import {handleCustomerRuntime} from './customer-runtime.mjs';
+import {handleEvidenceRuntime,recoverDueEvidence} from './evidence-qualification-runtime.mjs';
 import {handleAskPublicModelCache,purgeExpiredAskPublicModelCache} from "./ask-public-model-cache.mjs";
 import {handleCustomerPayPalRefundRuntime} from './customer-paypal-refund.mjs';
 import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
@@ -1384,6 +1385,12 @@ export default {
           console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD",r.error);
         }
       }).catch(()=>console.error("UNIFIED_INGESTOR_HEALTH_PING_HELD")));
+    // Private, at-most-five-item evidence proof recovery every 20 minutes.
+    // Off until protected schema/R2 bindings and D1 budget prove readiness.
+    if(env?.GEOMACRO_EQE_RECOVERY_ACCEPTANCE==='ACCEPTED_PROTECTED_EQE_RECOVERY'&&
+       utc.getUTCMinutes()%20===7&&env?.EVIDENCE_PRIVATE_R2&&env?.DB?.prepare)
+      ctx.waitUntil(recoverDueEvidence(env,{limit:5}).catch(()=>
+        console.error('EQE_PRIVATE_RECOVERY_UNVERIFIED')));
     // Feature-gated CQRS publisher on existing cron; a quiet source revision
     // avoids rescanning canonical D1 and news ingestion never waits for it.
     if(env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"&&env?.DB?.prepare&&
@@ -1617,6 +1624,8 @@ export default {
       return acceptScopedUntrustedRiskStreamLeads(request,env);
     if(url.pathname==="/api/webhooks/telegram-flash")
       return relayTelegramFlashWebhook(request,env);
+    if(url.pathname==='/v1/evidence/deliver'||url.pathname==='/v1/evidence/keys'||url.pathname.startsWith('/v1/internal/evidence/'))
+      return handleEvidenceRuntime(request,env);
     // Independent customer authentication boundary; no inherited operator auth.
     if(url.pathname.startsWith('/v1/internal/customer/'))return handleCustomerRuntime(request,env);
     if(url.pathname==='/v1/internal/paypal-reversal')return handleCustomerPayPalRefundRuntime(request,env);

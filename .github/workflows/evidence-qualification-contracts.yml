@@ -1,0 +1,48 @@
+name: Evidence Qualification Engine Contracts (No Funds)
+
+on:
+  pull_request:
+    paths:
+      - 'workers/control-plane/src/evidence-qualification-*.mjs'
+      - 'workers/control-plane/src/customer-paid-ledger.mjs'
+      - 'workers/control-plane/src/index.mjs'
+      - 'workers/control-plane/migrations/0212_evidence_qualification_hot_pointers.sql'
+      - 'scripts/tests/evidence-qualification-engine.test.mjs'
+      - '.github/workflows/evidence-qualification-contracts.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'workers/control-plane/src/evidence-qualification-*.mjs'
+      - 'workers/control-plane/src/customer-paid-ledger.mjs'
+      - 'workers/control-plane/migrations/0212_evidence_qualification_hot_pointers.sql'
+      - 'scripts/tests/evidence-qualification-engine.test.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eqe-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evidence-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Parse production ESM
+        run: |
+          node --check workers/control-plane/src/evidence-qualification-core.mjs
+          node --check workers/control-plane/src/evidence-qualification-runtime.mjs
+          node --check workers/control-plane/src/customer-paid-ledger.mjs
+          node --check workers/control-plane/src/index.mjs
+      - name: Qualification, signing, archival, idempotency and D1 contract tests
+        run: node --test scripts/tests/evidence-qualification-engine.test.mjs
+      - name: Existing canonical credit ledger regression
+        run: node --test scripts/tests/customer-paid-ledger.test.mjs
