@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createHash} from "node:crypto";
+import {createHash,generateKeyPairSync,sign} from "node:crypto";
 import {HOT50_STREAM_TARGETS,HOT50_STREAM_CATEGORIES,planHot50StreamCells,
- projectHot50StreamCell,probeHot50GlobalSearch,runHot50AutonomousStreamTick}
+ projectHot50StreamCell,probeHot50GlobalSearch,runHot50AutonomousStreamTick,
+ verifyHot50SignedGroReadbacks,verifyHot50ComplexCell}
  from "../../workers/control-plane/src/risk-stream-autonomous-hot50.mjs";
 const now=Date.parse("2026-11-12T12:01:00Z"),at=new Date(now-1800000).toISOString();
 const digest=s=>createHash("sha256").update(s).digest("hex");
@@ -52,6 +53,8 @@ for(const category of categories)test(category+" pairing rejects independent dom
  const left=sample(category,"official-"+category,a,"official.example.org");
  const right=sample(category,"regional-"+category,b,"regional.example.net");
  const signed=[{gro_id:digest("gro"+category),country_iso3:"USA",category,
+  signature_verified:true,
+  source_originals:[left.observation_id,right.observation_id].sort(),
   event_fingerprint:left.event_fingerprint,expires_at:new Date(now+3600000).toISOString()}];
  const positive=projectHot50StreamCell(t,{evidence:[left,right],signed},now);
  assert.equal(positive.original_same_event_pair,true);
@@ -141,4 +144,101 @@ test("full tick batches metadata-only discoveries and independently readbacks Ba
  assert.equal(receipt.commercial_release_unchanged,true);
  assert.equal(transientWrites,2);
  assert(transientReads>=2);
+});
+
+for(const category of categories)test(category+" actual Ed25519 GRO readback is pinned to the two independently attested source IDs",async()=>{
+ const [a,b]=roles[category];
+ const x=sample(category,"source-a-"+category,a,"one.example.org");
+ const y=sample(category,"source-b-"+category,b,"two.example.net");
+ const ids=[x.observation_id,y.observation_id].sort();
+ const keys=generateKeyPairSync("ed25519");
+ const payload={
+  schema:"geomacro.event-stream-gro.v1",
+  subject:{type:"COUNTRY",id:"USA"},category,
+  event_fingerprint:x.event_fingerprint,source_originals:ids,
+  what_happened:"Two independently attested primary sources reported the same occurrence",
+  why_it_matters:"Derived assessment remains independent of original publisher expression",
+  market_relevance:"Market relevance is an advisory, not a measured outcome",
+  what_to_watch:"Watch authoritative changes in the directly observed event",
+  evidence_and_confidence:{corroborated_originals:2,independent_parent_entities:2,
+   source_rights_and_origins:"DUAL_MACHINE_ATTESTED",raw_sources_not_republished:true},
+  generated_at:new Date(now).toISOString(),
+  expires_at:new Date(now+3600000).toISOString(),
+  execution_authorized:false,charged:false,certified_risk_index:false,
+  customer_delivery_authorized:false
+ };
+ const payload_json=JSON.stringify(payload);
+ const entry={gro_id:digest(JSON.stringify(ids)),country_iso3:"USA",
+  category,event_fingerprint:x.event_fingerprint,
+  expires_at:payload.expires_at,payload_json,
+  payload_sha256:digest(payload_json),
+  signature_b64:sign(null,Buffer.from(payload_json),keys.privateKey).toString("base64")};
+ const env={RISK_STREAM_GRO_VERIFY_SPKI_B64:keys.publicKey.export({
+  format:"der",type:"spki"}).toString("base64")};
+ const validated=await verifyHot50SignedGroReadbacks([entry],env,now);
+ assert.equal(validated.length,1);
+ assert.equal(validated[0].signature_verified,true);
+ const projected=projectHot50StreamCell({country_iso3:"USA",category},
+  {evidence:[x,y],signed:validated},now);
+ assert.equal(projected.source_gro_id,entry.gro_id);
+ assert.equal(projected.standard_status,"SIGNED_INTERNAL_GRO_AVAILABLE");
+ assert.equal(projected.needs_search,false);
+ assert.equal(projected.qualified_for_automatic_commercial_release,false);
+ const badSig={...entry,signature_b64:sign(null,Buffer.from("forged"),keys.privateKey).toString("base64")};
+ assert.equal((await verifyHot50SignedGroReadbacks([badSig],env,now)).length,0);
+ const tampered={...entry,payload_json:entry.payload_json.replace("COUNTRY","CORRIDOR")};
+ assert.equal((await verifyHot50SignedGroReadbacks([tampered],env,now)).length,0);
+ const unpinned=await verifyHot50SignedGroReadbacks([entry],{},now);
+ assert.equal(unpinned.length,0);
+ // A correctly signed GRO for a different pair is not proof of these observations.
+ const wrongPair={...validated[0],source_originals:[digest("wrong-a"),digest("wrong-b")].sort()};
+ const mismatch=projectHot50StreamCell({country_iso3:"USA",category},
+  {evidence:[x,y],signed:[wrongPair]},now);
+ assert.match(mismatch.standard_status,/^HOLD_/);
+ const expiredRights=projectHot50StreamCell({country_iso3:"USA",category},
+  {evidence:[x,{...y,rights_expire_at:null}],signed:validated},now);
+ assert.equal(expiredRights.original_same_event_pair,false);
+ assert.equal(expiredRights.original_domains,1);
+});
+test("Complex cell never passes from a seven-day count without signed R2 readbacks",async()=>{
+ const target={country_iso3:"USA",category:"GEOPOLITICS"};
+ let d1=0;
+ const base={DB:{prepare(){d1++;throw Error("UNEXPECTED_D1_ACCESS")}}};
+ assert.equal(await verifyHot50ComplexCell(base,target,{
+  currentGroId:digest("gro"),now}),"HOLD_SEVEN_DAY_PROVIDER_PROOF");
+ assert.equal(d1,0);
+ const enabled={...base,GEOMACRO_COMMERCIAL_STREAM_RELEASE:"1",
+  RISK_STREAM_CANARY_HOLD_CLEARED:"1",
+  RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"1",
+  DB:{prepare(sql){return {bind(){return {
+    async first(){assert.match(sql,/COUNT\(DISTINCT day_utc\)/);return {days:7}}
+  }}}}}
+ };
+ assert.equal(await verifyHot50ComplexCell(enabled,target,{
+  currentGroId:digest("gro"),now}),"HOLD_SEVEN_DAY_PROVIDER_PROOF");
+});
+
+
+test("when multiple valid same-event pairs exist, select the exact independently signed pair",()=>{
+ const category="GEOPOLITICS",target={country_iso3:"USA",category};
+ const [a,b]=roles[category];
+ const first=[
+  sample(category,"a-old",a,"first.example.org"),
+  sample(category,"b-old",b,"second.example.net")
+ ];
+ const newer=[
+  {...sample(category,"c-new",a,"third.example.org"),
+   event_fingerprint:digest("new authorized event")},
+  {...sample(category,"d-new",b,"fourth.example.net"),
+   event_fingerprint:digest("new authorized event")}
+ ];
+ const signed=[{gro_id:digest("new signed gro"),country_iso3:"USA",category,
+  signature_verified:true,
+  source_originals:newer.map(x=>x.observation_id).sort(),
+  event_fingerprint:newer[0].event_fingerprint,
+  expires_at:new Date(now+3600000).toISOString()}];
+ const value=projectHot50StreamCell(target,{evidence:[...first,...newer],
+  signed},now);
+ assert.equal(value.source_gro_id,signed[0].gro_id);
+ assert.equal(value.standard_status,"SIGNED_INTERNAL_GRO_AVAILABLE");
 });

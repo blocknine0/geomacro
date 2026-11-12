@@ -9,6 +9,7 @@ import {RISK_GATE_HOT50,hot50RiskGateEnabled} from "./risk-gate-hot50-scope.mjs"
 import {phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {riskPublisherSearchPlan} from "./risk-gate-global-news-search.mjs";
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
+import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
 
 export const HOT50_STREAM_CATEGORIES=Object.freeze([
  "GEOPOLITICS","MACRO_FX","CRITICAL_MINERALS"]);
@@ -32,6 +33,68 @@ const encode=s=>new TextEncoder().encode(s);
 const hash=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",encode(s)))]
  .map(b=>b.toString(16).padStart(2,"0")).join("");
 const iso=n=>new Date(n).toISOString();
+const HEX64=/^[a-f0-9]{64}$/u;
+const decodeB64=s=>{
+ if(typeof s!=="string"||!/^[A-Za-z0-9+/]+={0,2}$/u.test(s))return null;
+ try{
+  const result=Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+  return btoa(String.fromCharCode(...result))===s?result:null;
+ }catch{return null}
+};
+/**
+ * Independent projection readback: the existence of a D1 GRO row is not a
+ * cryptographic signature proof. Never give a Standard-ready reference to a
+ * tampered/mismatched/unpinned/expired GRO.
+ */
+export async function verifyHot50SignedGroReadbacks(rows,env,now=Date.now()){
+ if(!Array.isArray(rows)||rows.length>MAX_ROWS||!Number.isFinite(now))
+  fail("SIGNED_ROWS_INVALID");
+ if(!rows.length)return [];
+ const keyBytes=decodeB64(env?.RISK_STREAM_GRO_VERIFY_SPKI_B64);
+ if(keyBytes?.length!==44)return [];
+ let publicKey;
+ try{
+  publicKey=await crypto.subtle.importKey("spki",keyBytes,
+    {name:"Ed25519"},false,["verify"]);
+ }catch{return []}
+ const results=[];
+ for(const row of rows){
+  if(!HEX64.test(row?.gro_id??"")||!HEX64.test(row?.payload_sha256??"")||
+     !HEX64.test(row?.event_fingerprint??"")||
+     typeof row?.payload_json!=="string"||row.payload_json.length>18000)
+    continue;
+  if(await hash(row.payload_json)!==row.payload_sha256)continue;
+  let p;
+  try{p=JSON.parse(row.payload_json)}catch{continue}
+  const originalIds=p.source_originals;
+  if(p.schema!=="geomacro.event-stream-gro.v1"||
+     p.subject?.type!=="COUNTRY"||p.subject.id!==row.country_iso3||
+     p.category!==row.category||p.event_fingerprint!==row.event_fingerprint||
+     p.expires_at!==row.expires_at||
+     !Array.isArray(originalIds)||originalIds.length!==2||
+     originalIds.some(x=>!HEX64.test(x))||
+     originalIds[0]>=originalIds[1]||
+     await hash(JSON.stringify(originalIds))!==row.gro_id||
+     p.customer_delivery_authorized!==false||p.charged!==false||
+     p.execution_authorized!==false||p.certified_risk_index!==false||
+     p.evidence_and_confidence?.corroborated_originals!==2||
+     p.evidence_and_confidence?.independent_parent_entities!==2||
+     p.evidence_and_confidence?.source_rights_and_origins!=="DUAL_MACHINE_ATTESTED"||
+     p.evidence_and_confidence?.raw_sources_not_republished!==true||
+     !Number.isFinite(Date.parse(p.generated_at))||
+     Date.parse(p.generated_at)>now+60000||
+     !Number.isFinite(Date.parse(p.expires_at))||Date.parse(p.expires_at)<=now)
+    continue;
+  const signature=decodeB64(row.signature_b64);
+  if(signature?.length!==64)continue;
+  let verified=false;
+  try{verified=await crypto.subtle.verify("Ed25519",
+    publicKey,signature,encode(row.payload_json))}catch{/* HOLD */}
+  if(verified)results.push({...row,source_originals:originalIds,
+    signature_verified:true});
+ }
+ return results;
+}
 const fail=code=>{throw Error("RISK_STREAM_HOT50_"+code)};
 const key=x=>x.country_iso3+"|"+x.category;
 const validRoot=h=>typeof h==="string"&&/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/u.test(h);
@@ -52,13 +115,14 @@ export function planHot50StreamCells(now=Date.now(),perTick=2){
  const start=((Math.floor(now/60000)*perTick)%150+150)%150;
  return Array.from({length:perTick},(_,i)=>HOT50_STREAM_TARGETS[(start+i)%150]);
 }
-function sameEventOriginalPair(rows,category,now){
+function sameEventOriginalPair(rows,category,now,signed=[]){
  const trusted=rows.filter(r=>r.category===category&&r.original_verified===1&&
    r.enabled===1&&r.commercial_rights_approved===1&&
    recent(r.published_at,now)&&
-   (r.rights_expire_at===null||r.rights_expire_at===undefined||
+   (Number.isFinite(Date.parse(r.rights_expire_at))&&
     Date.parse(r.rights_expire_at)>now));
  trusted.sort((a,b)=>Date.parse(a.published_at)-Date.parse(b.published_at));
+ let first=null;
  for(let i=0;i<trusted.length;i++)for(let j=i+1;j<trusted.length;j++){
   const a=trusted[i],b=trusted[j];
   if(Date.parse(b.published_at)-Date.parse(a.published_at)>WINDOW)break;
@@ -68,9 +132,18 @@ function sameEventOriginalPair(rows,category,now){
      !validRoot(a.publisher_root_domain)||!validRoot(b.publisher_root_domain)||
      !ROLES[category].every(role=>[a.source_role,b.source_role].includes(role)))
     continue;
-  return {event_fingerprint:a.event_fingerprint,domains:2};
+  const candidate={event_fingerprint:a.event_fingerprint,domains:2,
+   observation_ids:[a.observation_id,b.observation_id].sort()};
+  if(!first)first=candidate;
+  // A cell may contain several valid events. Choose the pair for which an
+  // independently verified signed GRO actually exists, rather than the
+  // oldest pair that may not yet have completed the signing queue.
+  if(signed.some(g=>g.signature_verified===true&&
+    g.event_fingerprint===candidate.event_fingerprint&&
+    JSON.stringify(g.source_originals)===JSON.stringify(candidate.observation_ids)))
+   return candidate;
  }
- return null;
+ return first;
 }
 /** An unverified lead counts toward Basic research, NEVER paid Standard.
  * Search publisher domains are hints even if distinct; two search hits do
@@ -90,11 +163,14 @@ export function projectHot50StreamCell(target,{
   ...e.map(x=>"stream:"+x.observation_id),
   ...s.map(x=>"search:"+x.lead_id)
  ]);
- const pair=sameEventOriginalPair(e,target.category,now);
- const gro=signed.find(x=>match(x)&&pair&&
-  x.event_fingerprint===pair.event_fingerprint&&Date.parse(x.expires_at)>now);
+ const pair=sameEventOriginalPair(e,target.category,now,signed.filter(match));
+ const gro=signed.find(x=>match(x)&&pair&&x.signature_verified===true&&
+  x.event_fingerprint===pair.event_fingerprint&&
+  JSON.stringify(x.source_originals)===JSON.stringify(pair.observation_ids)&&
+  Date.parse(x.expires_at)>now);
  const domains=new Set(e.filter(x=>x.original_verified===1&&
-   x.enabled===1&&x.commercial_rights_approved===1&&recent(x.published_at,now))
+   x.enabled===1&&x.commercial_rights_approved===1&&recent(x.published_at,now)&&
+   Number.isFinite(Date.parse(x.rights_expire_at))&&Date.parse(x.rights_expire_at)>now)
    .map(x=>x.publisher_root_domain)).size;
  const lanes=[...new Set([
   ...d.map(x=>x.lane),
@@ -110,7 +186,7 @@ export function projectHot50StreamCell(target,{
   source_gro_id:gro?.gro_id??null,
   // Recheck signed GRO and source rights in the independent commercial issuer.
   qualified_for_automatic_commercial_release:false,
-  needs_search:!gro,original_publisher_text_included:false
+  needs_search:!pair,original_publisher_text_included:false
  };
 }
 async function boundedRead(db,sql,args){
@@ -139,7 +215,8 @@ async function loadPulse(db,targets,now){
    "publisher_root_domain FROM risk_stream_global_search_leads WHERE "+
    "country_iso3 IN (SELECT value FROM json_each(?)) "+
    "AND published_at>=? AND published_at<=? LIMIT 401",[countries,cutoff,until]),
-  boundedRead(db,"SELECT gro_id,country_iso3,category,event_fingerprint,expires_at "+
+  boundedRead(db,"SELECT gro_id,country_iso3,category,event_fingerprint,expires_at,"+
+   "payload_json,payload_sha256,signature_b64 "+
    "FROM risk_stream_signed_gro WHERE country_iso3 IN "+
    "(SELECT value FROM json_each(?)) AND expires_at>? LIMIT 401",[countries,iso(now)]),
   boundedRead(db,"SELECT country_iso3,category,next_search_at "+
@@ -246,6 +323,31 @@ async function persistCell(db,target,projection,probe,now){
   fail("D1_CELL_READBACK_INVALID");
  return count;
 }
+/**
+ * Complex status is granted only after the existing actual 7-day Ed25519 +
+ * private R2 verifier passes. Cheap day census prevents seven R2 GETs on
+ * cells that cannot possibly qualify.
+ */
+export async function verifyHot50ComplexCell(env,target,{currentGroId,now=Date.now()}={}){
+ if(!currentGroId||env?.GEOMACRO_COMMERCIAL_STREAM_RELEASE!=="1"||
+   env?.RISK_STREAM_CANARY_HOLD_CLEARED!=="1"||
+   env?.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED!=="1")
+  return "HOLD_SEVEN_DAY_PROVIDER_PROOF";
+ const day=iso(now-7*86400000),end=iso(now);
+ const count=await retryD1(()=>env.DB.prepare(
+  "SELECT COUNT(DISTINCT day_utc) AS days FROM risk_stream_commercial_risk_chain "+
+  "WHERE country_iso3=? AND category=? AND observed_at>=? AND observed_at<=?"
+ ).bind(target.country_iso3,target.category,day,end).first());
+ if(!Number.isSafeInteger(Number(count?.days))||Number(count?.days)<7)
+  return "HOLD_SEVEN_DAY_PROVIDER_PROOF";
+ try{
+  const proof=await verifyGeoMacroSevenDayHistory(env,{
+   country_iso3:target.country_iso3,category:target.category,now});
+  return proof.status==="PROVIDER_BACKED_SEVEN_DAY_SIGNED_CHAIN_PASS"&&
+   proof.verified_days===7&&proof.private_r2_readback_verified===true?
+   proof.status:"HOLD_SEVEN_DAY_PROVIDER_PROOF";
+ }catch{return "HOLD_SEVEN_DAY_PROVIDER_PROOF"}
+}
 export async function runHot50AutonomousStreamTick(env,{
  now=Date.now(),fetcher=fetch,perTick=2
 }={}){
@@ -254,7 +356,9 @@ export async function runHot50AutonomousStreamTick(env,{
    !hot50RiskGateEnabled(env)||!env.DB?.prepare||!env.DB?.batch)
   return {status:"HOLD_AUTONOMOUS_STREAM_DISABLED",cells_checked:0};
  const targets=planHot50StreamCells(now,perTick),pool=await loadPulse(env.DB,targets,now);
- let basic=0,internalStandard=0,searches=0,leads=0,held=0;
+ const storedGroRows=pool.signed.length;
+ pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
+ let basic=0,internalStandard=0,searches=0,leads=0,held=0,complexReady=0;
  for(const target of targets){
   const projection=projectHot50StreamCell(target,pool,now);
   const earlier=pool.prior.get(key(target));
@@ -264,9 +368,12 @@ export async function runHot50AutonomousStreamTick(env,{
    {status:projection.needs_search?"SEARCH_COOLDOWN":"ATTESTED_INTERNAL_GRO",leads:[]};
   searches+=Number(due);
   leads+=probe.leads.length;
+  const complex=await verifyHot50ComplexCell(env,target,{
+   currentGroId:projection.source_gro_id,now});
   const signalCount=await persistCell(env.DB,target,{
-   ...projection,existing_search_ids:pool.search.map(x=>x.lead_id)
+   ...projection,complex_status:complex,existing_search_ids:pool.search.map(x=>x.lead_id)
   },probe,now);
+  complexReady+=Number(complex==="PROVIDER_BACKED_SEVEN_DAY_SIGNED_CHAIN_PASS");
   basic+=Number(signalCount>0);
   internalStandard+=Number(projection.source_gro_id!==null);
   held+=Number(projection.standard_status.startsWith("HOLD_"));
@@ -274,7 +381,9 @@ export async function runHot50AutonomousStreamTick(env,{
  return {status:"HOT50_RESEARCH_TICK_D1_READBACK_PASS",
   cells_checked:targets.length,total_cells:150,categories:HOT50_STREAM_CATEGORIES,
   basic_research_cells:basic,internal_signed_standard_cells:internalStandard,
-  standard_hold_cells:held,global_search_probes:searches,index_leads_saved:leads,
+  standard_hold_cells:held,complex_verified_cells:complexReady,
+  rejected_unsigned_or_tampered_gro_rows:storedGroRows-pool.signed.length,
+  global_search_probes:searches,index_leads_saved:leads,
   licensed_deliveries_performed:0,commercial_release_unchanged:true,
   certification_from_index_hits:false,raw_publisher_text_stored:false};
 }
