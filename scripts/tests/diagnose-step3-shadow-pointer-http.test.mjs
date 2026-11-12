@@ -45,6 +45,15 @@ function provider({rows=[fresh,expired],statuses=[200,410],rowsRead=3,rowsWritte
  };
  return {fetchImpl,calls};
 }
+test("bounded 70h newest-first D1 index sample cannot census or scan expired rows",()=>{
+ const q=recentShadowPointerQuery(NOW);
+ assert.match(q,/INDEXED BY idx_phase2h_ref_ingest_clock_v1/);
+ assert.match(q,/ORDER BY first_ingested_at DESC,record_id DESC LIMIT 10$/);
+ assert.ok(q.includes(new Date(NOW-70*3600000).toISOString()));
+ assert.doesNotMatch(q,/ORDER BY record_id ASC/);
+ assert.doesNotMatch(q,/SELECT \*/);
+});
+
 test("genuine exact-main shadow scope rejects prod target, unknown worker and non-owner ref",()=>{
  assert.equal(shadowPointerDiagnosticScope(base),true);
  for(const env of [
