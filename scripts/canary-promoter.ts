@@ -9,7 +9,7 @@ import {
 } from './lib/d1-workers-paid-monthly-governor.mjs';
 import {admitSignedStep3ProductionFile}
   from './lib/d1-step3-production-canary-admission.mjs';
-import {assessReviewedAdditiveBindingParity} from './lib/canary-additive-binding-parity.mjs';
+import {assessReviewedHot50BindingParity} from './lib/canary-additive-binding-parity.mjs';
 const HOLD='config/d1-hotspot-v2-canary.hold';
 const STAGES=[0,1,5,25,50,100] as const;
 const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
@@ -86,7 +86,7 @@ async function checkVersionParity(base:string,candidate:string,headSha:string){
  let reviewed:string[]=[];
  let result;
  try{
-  result=assessReviewedAdditiveBindingParity(a,b,[]);
+  result=assessReviewedHot50BindingParity(a,b,headSha,[]);
  }catch(e){
   const file='artifacts/release/canary-reviewed-additive-bindings.json';
   need(existsSync(file),'CANARY_ADDITIVE_SECRET_SIGNED_REVIEW_MISSING');
@@ -102,7 +102,7 @@ async function checkVersionParity(base:string,candidate:string,headSha:string){
    Date.now()>=Date.parse(String(review.reviewed_at)),
    'CANARY_ADDITIVE_SECRET_REVIEW_NOT_EXACT_OR_FRESH');
   reviewed=review.reviewed_secret_names;
-  result=assessReviewedAdditiveBindingParity(a,b,reviewed);
+  result=assessReviewedHot50BindingParity(a,b,headSha,reviewed);
  }
  return result;
 }
