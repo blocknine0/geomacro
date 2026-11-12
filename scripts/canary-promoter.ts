@@ -9,6 +9,7 @@ import {
 } from './lib/d1-workers-paid-monthly-governor.mjs';
 import {admitSignedStep3ProductionFile}
   from './lib/d1-step3-production-canary-admission.mjs';
+import {assessReviewedAdditiveBindingParity} from './lib/canary-additive-binding-parity.mjs';
 const HOLD='config/d1-hotspot-v2-canary.hold';
 const STAGES=[0,1,5,25,50,100] as const;
 const stageWindowMs=(percent:number)=>percent===1?30*60*1000:15*60*1000;
@@ -78,17 +79,34 @@ async function checkSource(candidate:string,expectedSha:string){
  const b=await response.json().catch(()=>null);
  need(response.status===200&&b?.ok===true&&b?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
 }
-async function checkVersionParity(base:string,candidate:string){
+async function checkVersionParity(base:string,candidate:string,headSha:string){
  const [a,b]=await Promise.all([api(info(base)),api(info(candidate))]);
- const bindingList=(x:any)=>{
-  const bindings=x?.resources?.bindings;
-  need(bindings!=null,'CANARY_VERSION_BINDINGS_MISSING');
-  const values=Array.isArray(bindings)?bindings:Object.entries(bindings).flatMap(([type,items]:any)=>
-   Array.isArray(items)?items.map((v:any)=>({...v,type:v.type??type})):[]);
-  return values.map((x:any)=>`${x.type}:${x.name}`).sort().join('|');
- };
- need(a.id===base&&b.id===candidate&&bindingList(a)===bindingList(b),'CANARY_BINDINGS_PARITY_FAILURE');
+ need(a.id===base&&b.id===candidate,'CANARY_VERSIONS_NOT_VERIFIED');
+ // With no differences, no additional owner review is needed.
+ let reviewed:string[]=[];
+ let result;
+ try{
+  result=assessReviewedAdditiveBindingParity(a,b,[]);
+ }catch(e){
+  const file='artifacts/release/canary-reviewed-additive-bindings.json';
+  need(existsSync(file),'CANARY_ADDITIVE_SECRET_SIGNED_REVIEW_MISSING');
+  const review=verifySignedEnvelopeFile(file);
+  need(review.schema==='geomacro.canary.additive-secret-review.v1'&&
+   review.status==='PASS'&&review.source_sha===headSha&&
+   review.baseline_version===base&&review.candidate_version===candidate&&
+   review.no_funds===true&&
+   Array.isArray(review.reviewed_secret_names)&&
+   review.reviewed_secret_names.length>0&&
+   Number.isFinite(Date.parse(String(review.reviewed_at)))&&
+   Date.now()-Date.parse(String(review.reviewed_at))<3_600_000&&
+   Date.now()>=Date.parse(String(review.reviewed_at)),
+   'CANARY_ADDITIVE_SECRET_REVIEW_NOT_EXACT_OR_FRESH');
+  reviewed=review.reviewed_secret_names;
+  result=assessReviewedAdditiveBindingParity(a,b,reviewed);
+ }
+ return result;
 }
+
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
  const account=envString('CLOUDFLARE_ACCOUNT_ID',32),zone=envString('CLOUDFLARE_ZONE_ID',32);
  const graph=await graphql(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
@@ -408,7 +426,7 @@ async function main(){
    baseline:base,candidate,stage2RunId:run});
   const active=await liveCurrent();
   verifyDistribution(active,[{version_id:candidate,percentage:100}]);
-  await checkVersionParity(base,candidate);
+  await checkVersionParity(base,candidate,mainSha);
   await checkSource(candidate,mainSha);
   const response=await fetch(ORIGIN+'/health',{
    redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
@@ -485,7 +503,7 @@ async function main(){
  need(envString('RELEASE_CONFIRMATION')==='PROMOTE_HOT50_NO_FUNDS','CANARY_OWNER_CONFIRMATION_REQUIRED');
  const initial=await liveCurrent();
  verifyDistribution(initial,[{version_id:base,percentage:100}]);
- await checkVersionParity(base,candidate);
+ await checkVersionParity(base,candidate,mainSha);
  const records:any[]=[];let mutated=false;
  let baselineP95Ms:number|null=null;
  try{

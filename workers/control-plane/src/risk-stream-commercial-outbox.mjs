@@ -93,11 +93,12 @@ export async function stageLicensedCommercialDelivery(env,{client,groId,envelope
  * A 2xx without a verified matching structured ACK is NOT delivery.
  */
 export async function dispatchLicensedCommercialOutbox(env,{
- now=Date.now(),fetcher=fetch,max=10
+ now=Date.now(),fetcher=fetch,max=10,jobId=null
 }={}){
  if(!commercialDeliveryIsEnabled(env))
   return {status:"HOLD_COMMERCIAL_RELEASE_NOT_VERIFIED",sent:0};
  if(!Number.isSafeInteger(max)||max<1||max>10)fail("INVALID_BATCH_SIZE");
+ if(jobId!==null&&!HEX.test(jobId))fail("INVALID_SCOPED_JOB_ID");
  const db=env.DB,nowIso=iso(now);
  const q=await db.prepare("SELECT o.job_id,o.client_id,o.gro_id,o.license_envelope_json,"+
   "o.license_payload_sha256,o.release_receipt_sha256,o.attempts,"+
@@ -107,8 +108,10 @@ export async function dispatchLicensedCommercialOutbox(env,{
   "WHERE (o.state='PENDING' AND o.next_attempt_at<=? OR "+
   "o.state='LEASED' AND o.lease_expires_at<=?) AND o.attempts<16 "+
   "AND s.enabled=1 AND s.entitlement_expires_at>? "+
+  (jobId===null?"":"AND o.job_id=? ")+
   "ORDER BY o.created_at,o.job_id LIMIT ?")
-  .bind(nowIso,nowIso,nowIso,max).all();
+  .bind(...(jobId===null?[nowIso,nowIso,nowIso,max]:
+    [nowIso,nowIso,nowIso,jobId,max])).all();
  if(!Array.isArray(q?.results)||q.results.length>max)
   fail("D1_DUE_ROWS_INVALID");
  let sent=0,held=0,retry=0;

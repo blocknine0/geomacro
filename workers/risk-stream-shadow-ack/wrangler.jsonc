@@ -1,0 +1,9 @@
+{
+  "name": "geomacro-risk-stream-shadow-ack",
+  "main": "src/index.mjs",
+  "compatibility_date": "2026-11-11",
+  "workers_dev": true,
+  "vars": {
+    "STREAM_MODE": "SHADOW_ACK_ONLY"
+  }
+}

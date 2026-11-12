@@ -6,6 +6,7 @@
  * Signed stream GROs are internal delivery candidates, NOT certified GRIs
  * and NOT authority to charge a customer or to remove a release hold.
  */
+import {enqueueCommercialIssuerCandidate} from "./risk-stream-commercial-issuer.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -463,6 +464,13 @@ export async function processRiskStreamBatch(env,items,{
   if(!pair)continue;
   const gro=await signGro(pair,env,now);
   await persistSignedGro(env.DB,gro,{...opts,verifyKey:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});
+  // Original GRO stays customer_delivery_authorized=false. A distinct GRO
+  // can be licensed only after independent reviewer signature and D1 rights.
+  // Commercial review cannot delay or invalidate the real-time Risk Gate.
+  if(env.GEOMACRO_COMMERCIAL_STREAM_RELEASE==="1"){
+   try{await enqueueCommercialIssuerCandidate(env,gro.id,{now})}
+   catch{console.error("RISK_STREAM_COMMERCIAL_REVIEW_WORKLIST_HELD")}
+  }
   signed.push(gro.id);
  }
  return {status:"PASS",schema:"geomacro.risk-stream-consumer.v1",

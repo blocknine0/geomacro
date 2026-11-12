@@ -353,6 +353,7 @@
     "risk-indices-verified-parent-backstop.yml",
     "risk-key-registry-ci.yml",
     "risk-object-key-lifecycle-ci.yml",
+    "risk-stream-commercial-staging.yml",
     "risk-stream-offline.yml",
     "risk-stream-shadow-provider-audit.yml",
     "risk-stream-shadow-provider-diagnostics.yml",
