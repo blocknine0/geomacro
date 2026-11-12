@@ -41,7 +41,11 @@ export function commercialIssuerEnabled(env){
   typeof env.GEOMACRO_RELEASE_REVIEWER?.fetch==="function";
 }
 export async function enqueueCommercialIssuerCandidate(env,groId,{now=Date.now()}={}){
- if(!commercialIssuerEnabled(env))return {status:"HOLD_REVIEWER_OR_RELEASE_UNAVAILABLE"};
+ if(env?.GEOMACRO_COMMERCIAL_STREAM_RELEASE!=="1"||
+    env?.RISK_STREAM_CANARY_HOLD_CLEARED!=="1"||!env?.DB?.prepare)
+  return {status:"HOLD_RELEASE_UNAVAILABLE"};
+ // Persist due work even while the independent reviewer is temporarily down.
+ // Cron cannot issue or dispatch without its pinned reviewer and real proofs.
  if(!HEX.test(groId??""))deny("SOURCE_GRO_ID_INVALID");
  const result=await env.DB.prepare(
   "INSERT OR IGNORE INTO risk_stream_commercial_issuer_jobs "+
