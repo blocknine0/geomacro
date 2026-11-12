@@ -41,12 +41,37 @@ function attr(tag,name){
  const escaped=name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
  return new RegExp("\\b"+escaped+"\\s*=\\s*(['\"])(.*?)\\1","iu").exec(tag)?.[2]??null;
 }
+function normalizeNativeDate(raw){
+ const value=clean(raw);
+ if(/^20\d{2}-\d{2}-\d{2}$/u.test(value)){
+  const d=new Date(value+"T00:00:00.000Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?d.toISOString():null;
+ }
+ if(/^20\d{2}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?$/u.test(value)){
+  const day=value.slice(0,10),d=new Date(day+"T00:00:00.000Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===day?d.toISOString():null;
+ }
+ if(/(?:Z|[+-]\d{2}:?\d{2}|\bGMT|\bUTC)$/iu.test(value)){
+  const d=new Date(value);if(Number.isFinite(d.getTime()))return d.toISOString();
+ }
+ const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+ let match=value.match(/^(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})$/iu);
+ if(!match)match=value.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})$/iu);
+ if(match){
+  const day=Number(match[1]??match[2]),month=months[(match[2]??match[1]).toLowerCase()],year=Number(match[3]);
+  const iso=year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+  const d=new Date(iso+"T00:00:00.000Z");
+  if(Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso)return d.toISOString();
+ }
+ return null;
+}
 function nativeDate(html){
  const candidates=[];
  for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
-  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??"").toLowerCase();
+  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??attr(tag,"itemprop")??"").toLowerCase();
   if(["article:published_time","article:published","datepublished","date","dc.date","dcterms.date",
-      "dc.date.issued","datecreated","publish_date","pubdate"].includes(key))
+      "dc.date.issued","datecreated","publish_date","pubdate"].includes(key)||
+     /published|publication|datecreated|date\.issued/iu.test(key))
    candidates.push(attr(tag,"content"));
  }
  for(const m of String(html).matchAll(/<time\b[^>]*>([\s\S]{0,240}?)<\/time>/giu)){
@@ -54,17 +79,8 @@ function nativeDate(html){
   if(raw)candidates.push(raw);
   else candidates.push(extractTextFragment(m[1]));
  }
- for(const m of String(html).matchAll(/"(?:datePublished|dateCreated)"\s*:\s*"([^"]{1,80})"/giu))candidates.push(m[1]);
- for(const raw of candidates){
-  if(!raw)continue;
-  if(/^20\d{2}-\d{2}-\d{2}$/u.test(raw)){
-   const d=new Date(raw+"T00:00:00.000Z");
-   if(Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===raw)return d.toISOString();
-   continue;
-  }
-  if(!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
-  const d=new Date(raw);if(Number.isFinite(d.getTime()))return d.toISOString();
- }
+ for(const m of String(html).matchAll(/"(?:datePublished|dateCreated)"\s*:\s*"([^"]{1,100})"/giu))candidates.push(m[1]);
+ for(const raw of candidates){const parsed=normalizeNativeDate(raw);if(parsed)return parsed;}
  return null;
 }
 

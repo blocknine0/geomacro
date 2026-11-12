@@ -73,9 +73,9 @@ async function run(id,source){
   let schemaPass=false;
   if(res.ok&&id==="icc_news"){
    if(!/html/iu.test(ct))throw Error("ICC_NEWS_LISTING_MIME_INVALID");
-   let articleUrl=null;
-   try{articleUrl=discoverIccArticleUrls(text,{limit:1})[0]??null}catch{}
-   if(!articleUrl){
+   let articleUrls=[];
+   try{articleUrls=discoverIccArticleUrls(text,{limit:5})}catch{}
+   if(!articleUrls.length){
     const rss=await get(ICC_OFFICIAL_NEWS_RSS,"application/rss+xml,application/xml,text/xml");
     if(!rss.ok)throw Error("ICC_OFFICIAL_RSS_HTTP_"+rss.status);
     if(!/xml|rss/iu.test(rss.headers.get("content-type")??""))throw Error("ICC_OFFICIAL_RSS_MIME_INVALID");
@@ -83,16 +83,23 @@ async function run(id,source){
     if(feedBytes.length>2*1024*1024)throw Error("ICC_OFFICIAL_RSS_TOO_LARGE");
     const feedText=new TextDecoder().decode(feedBytes);
     parseIccOfficialNewsRss(feedText);
-    articleUrl=extractIccOfficialNewsLinks(feedText,{limit:1})[0]??null;
+    articleUrls=extractIccOfficialNewsLinks(feedText,{limit:5});
    }
-   if(!articleUrl)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
-   const article=await get(articleUrl,"text/html");
-   if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int")throw Error("ICC_ARTICLE_HTTP_"+article.status);
-   const articleType=article.headers.get("content-type")??"";
-   if(!/html/iu.test(articleType))throw Error("ICC_ARTICLE_MIME_INVALID");
-   const articleBytes=new Uint8Array(await article.arrayBuffer());
-   if(articleBytes.length>2*1024*1024)throw Error("ICC_ARTICLE_TOO_LARGE");
-   const parsed=parseIccArticleHtml(new TextDecoder().decode(articleBytes),{url:articleUrl,retrievedAt:observedAt});
+   if(!articleUrls.length)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
+   let lastArticleError="ICC_NATIVE_PUBLICATION_TIME_MISSING",parsed=null;
+   for(const articleUrl of articleUrls){
+    const article=await get(articleUrl,"text/html");
+    if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int"){
+     lastArticleError="ICC_ARTICLE_HTTP_"+article.status;continue;
+    }
+    const articleType=article.headers.get("content-type")??"";
+    if(!/html/iu.test(articleType)){lastArticleError="ICC_ARTICLE_MIME_INVALID";continue}
+    const articleBytes=new Uint8Array(await article.arrayBuffer());
+    if(articleBytes.length>2*1024*1024){lastArticleError="ICC_ARTICLE_TOO_LARGE";continue}
+    try{parsed=parseIccArticleHtml(new TextDecoder().decode(articleBytes),{url:articleUrl,retrievedAt:observedAt});break}
+    catch(error){lastArticleError=error.message.startsWith("ICC_")?error.message:"ICC_ARTICLE_PARSE_FAILED"}
+   }
+   if(!parsed)throw Error(lastArticleError);
    result.extraction_count=1;result.native_publication_time_verified=parsed.published_at!==null;
    result.publisher_release_at_utc=parsed.published_at;
    schemaPass=parsed.published_at!==null&&requiredPass;
