@@ -79,6 +79,12 @@ function nativeDateCandidates(html){
   keys.push(raw?"time[datetime]":"time[text]");
   candidates.push(raw??extractTextFragment(m[1]));
  }
+ for(const m of String(html).matchAll(/<(div|span|p|li)\b([^>]*)>([\s\S]{0,500}?)<\/\1>/giu)){
+  const attrs=m[2],descriptor=(attr(attrs,"class")??"")+" "+(attr(attrs,"id")??"")+" "+(attr(attrs,"itemprop")??"");
+  if(!/published|publication|date|timestamp/iu.test(descriptor)||/modified/iu.test(descriptor))continue;
+  keys.push(clean(descriptor).slice(0,64)||"date-field");
+  candidates.push(extractTextFragment(m[3]));
+ }
  for(const m of String(html).matchAll(/"(datePublished|dateCreated|dateModified)"\s*:\s*"([^"]{1,100})"/giu)){
   keys.push("jsonld:"+m[1]);candidates.push(m[2]);
  }

@@ -88,6 +88,7 @@ async function run(id,source){
    if(!articleUrls.length)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
    let lastArticleError="ICC_NATIVE_PUBLICATION_TIME_MISSING",parsed=null,lastNativeMetadata=null;
    result.first_party_article_candidates_checked=articleUrls.length;
+   result.first_party_article_paths=articleUrls.map(value=>new URL(value).pathname).slice(0,5);
    for(const articleUrl of articleUrls){
     const article=await get(articleUrl,"text/html");
     if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int"){
