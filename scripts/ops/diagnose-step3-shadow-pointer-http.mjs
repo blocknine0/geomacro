@@ -12,8 +12,15 @@ const SHADOW="c4add153-229d-412a-b1bd-489526b7e02f";
 const PROD="db057ca9-9f6e-4957-ac28-144f3b798f9b";
 const HOST="geomacro-step3-shadow.daspallab202391.workers.dev";
 const HEX=/^[a-f0-9]{64}$/u;
-const Q="SELECT record_id,first_ingested_at FROM phase2h_raw_object_refs_v1 "+
- "ORDER BY record_id ASC LIMIT 11";
+const SAMPLE_MAX_AGE_HOURS=70; // Leave two hours before the 72h retention edge.
+export function recentShadowPointerQuery(now=Date.now()){
+ if(!Number.isFinite(now)||now<0)fail("QUERY_CLOCK_INVALID");
+ const cutoff=new Date(now-SAMPLE_MAX_AGE_HOURS*3600000).toISOString();
+ return "SELECT record_id,first_ingested_at FROM phase2h_raw_object_refs_v1 "+
+  "INDEXED BY idx_phase2h_ref_ingest_clock_v1 "+
+  "WHERE first_ingested_at >= '"+cutoff+"' "+
+  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 10";
+}
 const fail=x=>{throw Error("STEP3_POINTER_DIAGNOSTIC_"+x)};
 export function shadowPointerDiagnosticScope(env){
  if(env.GITHUB_ACTIONS!=="true"||env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
@@ -47,7 +54,10 @@ export async function inspectShadowPointerWorker({
   shadow_only:true,production_d1_mutations:0,shadow_d1_mutations:0,
   b2_requests:0,r2_rest_requests:0,payments:0,
   full_hmac_r2_b2_proof_claimed:false,stage2_authorized:false,
-  source_ids_logged:false,requests:[],worker_gets:0,d1_rows_read:null};
+  source_ids_logged:false,requests:[],worker_gets:0,d1_rows_read:null,
+  sample_window_hours:SAMPLE_MAX_AGE_HOURS,
+  expired_historical_references_not_claimed_verified:true,
+  old_pointer_retention_or_401_403_404_503_not_overridden:true};
  try{
   shadowPointerDiagnosticScope(env);
   if(!Number.isFinite(now)||now<0)fail("NOW_INVALID");
@@ -55,7 +65,7 @@ export async function inspectShadowPointerWorker({
    "/d1/database/"+SHADOW+"/query";
   const r=await fetchImpl(url,{method:"POST",redirect:"error",
    cache:"no-store",headers:{Authorization:"Bearer "+env.CLOUDFLARE_API_TOKEN,
-    "Content-Type":"application/json"},body:JSON.stringify({sql:Q,params:[]}),
+    "Content-Type":"application/json"},body:JSON.stringify({sql:recentShadowPointerQuery(now),params:[]}),
    signal:AbortSignal.timeout(15000)});
   if(r.status!==200||r.redirected)fail("CLOUDFLARE_QUERY_HTTP_UNVERIFIED");
   let d;try{d=await r.json()}catch{fail("CLOUDFLARE_QUERY_JSON_INVALID")}
@@ -68,10 +78,13 @@ export async function inspectShadowPointerWorker({
   const rows=d.result[0].results;
   if(rows.length>10)fail("MORE_THAN_TEN_POINTERS_NOT_PROVEN");
   report.d1_rows_read=d.result[0].meta.rows_read;
-  if(rows.length===0)fail("NO_REAL_POINTER_ROWS");
+  if(rows.length===0)fail("NO_FRESH_POINTER_IN_70H_INDEXED_WINDOW");
   for(const row of rows){
    if(!HEX.test(row.record_id??""))fail("POINTER_ID_INVALID");
    const age=classification(row.first_ingested_at,now);
+   if(age.age_hours>=SAMPLE_MAX_AGE_HOURS||
+      now-Date.parse(row.first_ingested_at)>SAMPLE_MAX_AGE_HOURS*3600000)
+     fail("POINTER_OUTSIDE_FRESH_INDEXED_WINDOW");
    const workerUrl="https://"+HOST+
     "/v1/internal/phase2h-raw-object-ref?record_id="+row.record_id;
    let status="TRANSPORT_UNAVAILABLE";
