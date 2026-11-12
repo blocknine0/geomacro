@@ -4,10 +4,13 @@ async function digest(text){
  return new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(text)));
 }
 async function authorized(supplied,expected){
- if(typeof expected!=="string"||expected.length<32||
-    typeof supplied!=="string"||supplied.length!==expected.length)
+ // Wrangler can receive a trailing CR/LF via piped secret stdin. Normalize
+ // only the bound test secret, never an arbitrary incoming bearer token.
+ const pinned=typeof expected==="string"?expected.replace(/[\r\n]+$/u,""):null;
+ if(!/^[a-f0-9]{64}$/u.test(pinned??"")||
+    typeof supplied!=="string"||!/^[a-f0-9]{64}$/u.test(supplied))
   return false;
- const [a,b]=await Promise.all([digest(supplied),digest(expected)]);
+ const [a,b]=await Promise.all([digest(supplied),digest(pinned)]);
  let v=0;for(let i=0;i<a.length;i++)v|=a[i]^b[i];
  return v===0;
 }
