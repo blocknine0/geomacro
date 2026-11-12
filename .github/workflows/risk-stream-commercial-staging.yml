@@ -4,6 +4,10 @@ on:
     paths:
       - "workers/control-plane/src/risk-stream-commercial-issuer.mjs"
       - "workers/control-plane/src/risk-stream-commercial-outbox.mjs"
+      - "workers/control-plane/src/risk-stream-autonomous-hot50.mjs"
+      - "workers/control-plane/src/risk-stream-seven-day-chain.mjs"
+      - "workers/control-plane/migrations/0218_hot50_autonomous_search_cell_snapshots.sql"
+      - "scripts/tests/risk-stream-autonomous-hot50.test.mjs"
       - "workers/control-plane/migrations/0217_risk_stream_commercial_issuer_jobs.sql"
       - "workers/risk-stream-shadow/**"
       - "workers/risk-stream-shadow-ack/**"
@@ -39,6 +43,8 @@ jobs:
       - name: Syntax and zero-funds staging contracts
         run: |
           set -euo pipefail
+          node --check workers/control-plane/src/risk-stream-autonomous-hot50.mjs
+          node --check workers/control-plane/src/risk-stream-seven-day-chain.mjs
           node --check workers/control-plane/src/risk-stream-commercial-issuer.mjs
           node --check workers/control-plane/src/risk-stream-commercial-outbox.mjs
           node --check workers/risk-stream-shadow/src/commercial-e2e.mjs
@@ -47,7 +53,8 @@ jobs:
           node --test scripts/tests/risk-stream-commercial-issuer.test.mjs \
             scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs \
             scripts/tests/risk-stream-commercial-license.test.mjs \
-            scripts/tests/risk-stream-shadow-ack-handshake.test.mjs
+            scripts/tests/risk-stream-shadow-ack-handshake.test.mjs \
+            scripts/tests/risk-stream-autonomous-hot50.test.mjs
   remote-shadow:
     needs: static-contract
     if: >-

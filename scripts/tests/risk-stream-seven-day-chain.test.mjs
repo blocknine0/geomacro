@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {generateKeyPairSync,sign,createHash} from "node:crypto";
-import {verifyGeoMacroSevenDayHistory}
+import {verifyGeoMacroSevenDayHistory,runCommercialRiskHistoryAppendTick}
  from "../../workers/control-plane/src/risk-stream-seven-day-chain.mjs";
 import {canonicalLicensedJson} from "../../workers/control-plane/src/risk-stream-commercial-license.mjs";
 const now=Date.parse("2026-11-12T01:00:00Z"),digest=s=>createHash("sha256").update(s).digest("hex");
@@ -74,4 +74,37 @@ test("no protected release means history cannot be served",async()=>{
  env.RISK_STREAM_CANARY_HOLD_CLEARED="0";
  const r=await verifyGeoMacroSevenDayHistory(env,{country_iso3:"USA",category:"GEOPOLITICS",now});
  assert.equal(r.status,"HOLD_HISTORY_BINDINGS_UNAVAILABLE");
+});
+
+test("continuous chain append fails closed and cannot read D1 with release disabled",async()=>{
+ let reads=0;
+ const env={GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
+  DB:{prepare(){reads++;throw Error("UNAUTHORIZED_READ")}}};
+ const receipt=await runCommercialRiskHistoryAppendTick(env);
+ assert.equal(receipt.status,"HOLD_HISTORY_BINDINGS_UNAVAILABLE");
+ assert.equal(receipt.appended,0);
+ assert.equal(reads,0);
+});
+test("history append is bounded, optional and inert for an empty licensed worklist",async()=>{
+ let calls=0;
+ const env={RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
+  GEOMACRO_COMMERCIAL_STREAM_RELEASE:"1",
+  RISK_STREAM_CANARY_HOLD_CLEARED:"1",
+  RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"1",
+  GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:spki,
+  RISK_STREAM_GRO_VERIFY_SPKI_B64:spki,
+  GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:"fixture-key-never-used",
+  RISK_STREAM_PRIVATE_R2:{put:async()=>{},get:async()=>null},
+  DB:{prepare(sql){
+   assert(sql.includes("risk_stream_commercial_outbox"));
+   return {bind(){return this},async all(){calls++;return {results:[]}}};
+  }}
+ };
+ const receipt=await runCommercialRiskHistoryAppendTick(env,{now,max:5});
+ assert.equal(receipt.status,"HISTORY_APPEND_TICK_PASS");
+ assert.equal(receipt.appended,0);
+ assert.equal(receipt.forged_history_days,0);
+ assert.equal(calls,1);
+ await assert.rejects(runCommercialRiskHistoryAppendTick(env,{now,max:11}),
+  /INVALID_APPEND_BATCH/);
 });
