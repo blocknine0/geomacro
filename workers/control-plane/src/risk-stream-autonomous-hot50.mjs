@@ -18,6 +18,16 @@ const ROLES=Object.freeze({GEOPOLITICS:["GOVERNMENT_WIRE","INDEPENDENT_REGIONAL"
  MACRO_FX:["OFFICIAL_STATISTICS","MARKET_PRICE"],
  CRITICAL_MINERALS:["TRADE_CUSTOMS","INDEPENDENT_INDUSTRY"]});
 const WINDOW=48*3600000,MAX_ROWS=400;
+const RETRYABLE_D1=/(?:\b503\b|\b429\b|SQLITE_BUSY|D1_ERROR|OVERLOADED|TIMEOUT|UNAVAILABLE)/iu;
+async function retryD1(operation){
+ for(let attempt=0;attempt<4;attempt++){
+  try{return await operation()}catch(error){
+   if(attempt===3||!RETRYABLE_D1.test(String(error?.message??"")))throw error;
+   await new Promise(resolve=>setTimeout(resolve,100*2**attempt));
+  }
+ }
+ fail("D1_RETRY_EXHAUSTED");
+}
 const encode=s=>new TextEncoder().encode(s);
 const hash=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",encode(s)))]
  .map(b=>b.toString(16).padStart(2,"0")).join("");
@@ -104,7 +114,7 @@ export function projectHot50StreamCell(target,{
  };
 }
 async function boundedRead(db,sql,args){
- const response=await db.prepare(sql).bind(...args).all();
+ const response=await retryD1(()=>db.prepare(sql).bind(...args).all());
  if(!Array.isArray(response?.results)||response.results.length>MAX_ROWS)
   fail("PROVIDER_D1_READBACK_LIMIT");
  return response.results;
@@ -142,9 +152,12 @@ async function loadPulse(db,targets,now){
  * full-text fetch, no unlicensed text copying and no synthetic event claims. */
 export async function probeHot50GlobalSearch(target,{now=Date.now(),fetcher=fetch}={}){
  const plan=riskPublisherSearchPlan({name:target.name,category:target.category},now);
+ const url=new URL(plan.url);
+ // Two-day discovery is the maximum event-corroboration window.
+ url.searchParams.set("q",url.searchParams.get("q").replace(/when:24h$/u,"when:2d"));
  let response;
  try{
-  response=await fetcher(plan.url,{method:"GET",redirect:"manual",
+  response=await fetcher(url.href,{method:"GET",redirect:"manual",
    headers:{"Accept":"application/rss+xml,application/xml;q=0.9"},
    signal:AbortSignal.timeout(8000)});
  }catch{return {status:"SEARCH_NETWORK_UNAVAILABLE",leads:[]};}
@@ -217,14 +230,14 @@ async function persistCell(db,target,projection,probe,now){
    ...(probe.leads.length?["global_search"]:[])])].sort()),
   count?"BASIC_RESEARCH_AUTOPUBLISHED":"NO_SIGNALS",projection.standard_status,
   projection.complex_status,projection.source_gro_id,probe.status,next));
- const applied=await db.batch(statements);
+ const applied=await retryD1(()=>db.batch(statements));
  if(!Array.isArray(applied)||applied.length!==statements.length||
    applied.some(r=>r?.success!==true))fail("D1_ATOMIC_WRITE_UNVERIFIED");
- const saved=await db.prepare(
+ const saved=await retryD1(()=>db.prepare(
   "SELECT signal_count,last_search_status,basic_status,standard_status,"+
   "commercial_release_authorized,original_publisher_text_included "+
   "FROM risk_stream_hot50_cell_snapshots WHERE country_iso3=? AND category=?"
- ).bind(target.country_iso3,target.category).first();
+ ).bind(target.country_iso3,target.category).first());
  if(saved?.signal_count!==count||saved.last_search_status!==probe.status||
    saved.basic_status!==(count?"BASIC_RESEARCH_AUTOPUBLISHED":"NO_SIGNALS")||
    saved.standard_status!==projection.standard_status||
