@@ -59,6 +59,29 @@ function nativeDate(html){
  return null;
 }
 
+/** Discover first-party ICC story URLs from its current server-rendered press/news listing. */
+export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
+ const input=String(html??"");
+ if(input.length>2*1024*1024)throw Error("ICC_NEWS_LISTING_TOO_LARGE");
+ if(!/International Criminal Court|\bICC\b/iu.test(input))
+  throw Error("ICC_NEWS_LISTING_MARKER_MISSING");
+ if(!Number.isInteger(limit)||limit<1||limit>10)
+  throw Error("ICC_NEWS_ARTICLE_LINK_LIMIT_INVALID");
+ const links=[],seen=new Set();
+ for(const match of input.matchAll(/<a\b[^>]*>/giu)){
+  const href=attr(match[0],"href");if(!href)continue;
+  const resolved=absoluteUrl(href,baseUrl);if(!resolved)continue;
+  let url;try{url=new URL(resolved)}catch{continue}
+  if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
+     url.password||url.search||url.hash||
+     !/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||
+     /\/(?:subscribe|rss|search|filter)(?:\/|$)/iu.test(url.pathname))continue;
+  const canonicalHref=url.href;if(seen.has(canonicalHref))continue;
+  seen.add(canonicalHref);links.push(canonicalHref);if(links.length>=limit)break;
+ }
+ return Object.freeze(links);
+}
+
 /** Parse only an ICC article page's original issuer metadata; no RSS/fetch clock fallback. */
 export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString()}={}){
  const input=String(html??"");

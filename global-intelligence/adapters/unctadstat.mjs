@@ -1,16 +1,44 @@
 import { createHash } from "node:crypto";
 
-export const UNCTADSTAT_URL = "https://unctadstat.unctad.org/datacentre/";
+export const UNCTADSTAT_URL = "https://unctadstat.unctad.org/datacentre/reportInfo/US.UCPI_M";
+export const UNCTADSTAT_METADATA_URL = "https://unctadstat-api.unctad.org/api/reportMetadata/US.UCPI_M/en";
 
-/** Publisher clock extractor for machine payloads; periods never count as release clocks. */
+/** Parse publisher date keys from UNCTAD's reportMetadata machine endpoint.
+ * Reference-period keys such as year/month/quarter are deliberately ignored.
+ */
 export function parseUnctadPublisherReleaseMetadata(payload){
- const root=payload?.metadata??payload?.meta??payload;
- if(!root||typeof root!=="object"||Array.isArray(root))throw Error("UNCTAD_RELEASE_METADATA_SHAPE_INVALID");
- const raw=root.publisher_release_date??root.release_date??root.last_updated??root.lastUpdated??root.updated_at??null;
- if(typeof raw!=="string"||raw.length>80||!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))
-  throw Error("UNCTAD_NATIVE_RELEASE_CLOCK_MISSING");
- const date=new Date(raw);if(!Number.isFinite(date.getTime()))throw Error("UNCTAD_NATIVE_RELEASE_CLOCK_INVALID");
- return Object.freeze({published_at:date.toISOString(),clock_source:"PUBLISHER_MACHINE_METADATA",native_publication_time_verified:true});
+ if(!payload||typeof payload!=="object"||Array.isArray(payload))
+  throw Error("UNCTAD_RELEASE_METADATA_SHAPE_INVALID");
+ const allowed=new Set([
+  "publisher_release_date","release_date","releaseDate","release_date_utc","releaseDateUtc",
+  "publication_date","publicationDate","date_published","datePublished","published_at","publishedAt",
+  "last_updated","lastUpdated","last_update","lastUpdate","last_update_date","lastUpdateDate",
+  "updated_at","updatedAt","updated_on","updatedOn","last_modified","lastModified"
+ ]);
+ const values=[];
+ const walk=(value,depth=0)=>{
+  if(depth>8||!value||typeof value!=="object")return;
+  if(Array.isArray(value)){for(const child of value.slice(0,100))walk(child,depth+1);return}
+  for(const [key,child] of Object.entries(value)){
+   if(allowed.has(key)&&typeof child==="string")values.push(child.trim());
+   else if(child&&typeof child==="object")walk(child,depth+1);
+  }
+ };
+ walk(payload);
+ for(const raw of values){
+  if(raw.length>80)continue;
+  let date;
+  if(/^20\d{2}-\d{2}-\d{2}$/u.test(raw)){
+   date=new Date(raw+"T00:00:00.000Z");
+   if(!Number.isFinite(date.getTime())||date.toISOString().slice(0,10)!==raw)continue;
+  }else{
+   if(!/^20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
+   date=new Date(raw);if(!Number.isFinite(date.getTime()))continue;
+  }
+  return Object.freeze({published_at:date.toISOString(),publisher_release_date:raw,
+   clock_source:"UNCTAD_REPORT_METADATA_API",native_publication_time_verified:true});
+ }
+ throw Error("UNCTAD_NATIVE_RELEASE_CLOCK_MISSING");
 }
 
 export function normalizeUnctadStatObservation({ dataset, series, period, value, unit = null, countryIso3 = null, retrievedAt = new Date().toISOString(), publisherMetadata = null, raw = null }) {

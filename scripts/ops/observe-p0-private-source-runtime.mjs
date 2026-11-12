@@ -10,7 +10,8 @@ import {parseAustraliaCriticalMineralsHtml} from '../../global-intelligence/adap
 import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochilco-minerals.mjs';
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
-import {parseIccArticleHtml,parseIccNewsHtml} from '../../global-intelligence/adapters/icc-news.mjs';
+import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls} from '../../global-intelligence/adapters/icc-news.mjs';
+import {parseWorldBankPinkSheetReleaseMetadata} from '../../global-intelligence/adapters/world-bank-commodity-prices.mjs';
 import {parseUnctadPublisherReleaseMetadata} from '../../global-intelligence/adapters/unctadstat.mjs';
 import {ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss}
  from '../lib/icc-official-news-rss.mjs';
@@ -40,7 +41,11 @@ export function existingPrivateP0Sources(){
  return sources.map(([id,s])=>{
    const url=new URL(s.machine_endpoint??s.dataset_surface??s.discovery_url);
    if(url.protocol!=='https:'||url.username||url.password||url.port)throw Error('P0_PRIVATE_ENDPOINT_INVALID');
-   return {id,category:s.category,url:url.href};
+   const metadataUrl=s.publisher_metadata_endpoint?new URL(s.publisher_metadata_endpoint):null;
+   if(metadataUrl&&(metadataUrl.protocol!=='https:'||metadataUrl.hostname!=='www.worldbank.org'||
+      metadataUrl.username||metadataUrl.password||metadataUrl.port))
+     throw Error('P0_PRIVATE_METADATA_ENDPOINT_INVALID');
+   return {id,category:s.category,url:url.href,publisherMetadataUrl:metadataUrl?.href??null};
  });
 }
 async function boundedBody(response,maxBytes=P0_MAX_BYTES){
@@ -84,46 +89,86 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
          isEuDataset?EU_SANCTIONS_MAX_BYTES:P0_MAX_BYTES);
        const type=response.headers.get('content-type')??'';
        if(source.id==='world_bank_commodity_prices'){
-         if(bytes.length<100||bytes[0]!==0x50||bytes[1]!==0x4b)throw Error('FORMAT_NOT_VERIFIED');
-         // ZIP signature is transport only, never parsed commodity data.
-         row.status='DATASET_TRANSPORT_ONLY';
-         row.reason='WORLD_BANK_XLSX_TRANSPORT_ONLY_NO_NATIVE_RELEASE_CLOCK';
+         if(bytes.length<100||bytes[0]!==0x50||bytes[1]!==0x4b)throw Error('WORLD_BANK_XLSX_SIGNATURE_INVALID');
+         if(!/spreadsheet|excel|octet-stream/iu.test(type))throw Error('WORLD_BANK_XLSX_MIME_INVALID');
+         if(!source.publisherMetadataUrl)throw Error('WORLD_BANK_PUBLISHER_METADATA_ENDPOINT_NOT_CONFIGURED');
+         totalHttpRequests++;
+         let metadataResponse;
+         try{metadataResponse=await fetchImpl(source.publisherMetadataUrl,{method:'GET',redirect:'error',
+           signal:AbortSignal.timeout(12000),headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0','accept':'text/html'}});}
+         catch{throw Error('WORLD_BANK_PUBLISHER_METADATA_NETWORK_FAILED')}
+         if(!metadataResponse.ok||metadataResponse.redirected===true||
+            (metadataResponse.url&&metadataResponse.url!==source.publisherMetadataUrl)){
+           try{await metadataResponse.body?.cancel();}catch{}
+           throw Error('WORLD_BANK_PUBLISHER_METADATA_HTTP_'+(Number.isInteger(metadataResponse.status)?metadataResponse.status:0));
+         }
+         if(!/html/iu.test(metadataResponse.headers.get('content-type')??'')){
+           try{await metadataResponse.body?.cancel();}catch{}
+           throw Error('WORLD_BANK_PUBLISHER_METADATA_MIME_INVALID');
+         }
+         const metadataBytes=await boundedBody(metadataResponse,P0_MAX_BYTES);
+         const metadataText=new TextDecoder('utf-8',{fatal:true}).decode(metadataBytes);
+         const clock=parseWorldBankPinkSheetReleaseMetadata(metadataText);
+         row.status='MACHINE_DATA_METADATA_PARSED';row.parsed_candidate_count=1;
+         row.dataset_transport_verified=true;row.native_release_clock_verified=true;
+         row.publisher_release_at_utc=clock.published_at;row.reason=null;
        }else{
          const xml=source.id==='uk_sanctions_list'||source.id==='eu_sanctions_consolidated';
          const unctad=source.id==='unctadstat_global';
-         if(!(xml?/xml/iu:(unctad?/html|json/iu:/html/iu)).test(type))throw Error('FORMAT_NOT_VERIFIED');
+         const icc=source.id==='icc_news';
+         if(unctad&&!/json/iu.test(type))throw Error('UNCTAD_MACHINE_JSON_MIME_INVALID');
+         if(icc&&!/html/iu.test(type))throw Error('ICC_NEWS_LISTING_MIME_INVALID');
+         if(xml&&!/xml/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
+         if(!xml&&!unctad&&!icc&&!/html/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
          const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
          if(unctad){
-           if(/json/iu.test(type)){
-             let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
-             const clock=parseUnctadPublisherReleaseMetadata(payload);
-             row.status='MACHINE_DATA_METADATA_PARSED';row.native_release_clock_verified=true;
-             row.publisher_release_at_utc=clock.published_at;row.reason=null;
-           }else if(/<(?:html|!doctype)/iu.test(text)){
-             row.status='HTML_CONTEXT_ONLY';
-             row.reason='UNCTAD_HTML_CONTEXT_NO_MACHINE_RELEASE_METADATA';
-           }else throw Error('FORMAT_NOT_VERIFIED');
+           let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
+           const clock=parseUnctadPublisherReleaseMetadata(payload);
+           row.status='MACHINE_DATA_METADATA_PARSED';row.parsed_candidate_count=1;
+           row.native_release_clock_verified=true;row.publisher_release_at_utc=clock.published_at;
+           row.reason=null;
+         }else if(icc){
+           let links=[];
+           try{links=discoverIccArticleUrls(text,{limit:1})}
+           catch{mayUseCourtRss=true;throw Error('ICC_NEWS_LISTING_PARSE_FAILED')}
+           if(!links.length){mayUseCourtRss=true;throw Error('ICC_NEWS_LISTING_PARSE_FAILED')}
+           const articleUrl=links[0];totalHttpRequests++;
+           let article;
+           try{article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',
+             signal:AbortSignal.timeout(12000),headers:{'user-agent':'Geomacro-Private-P0-Discovery/1.0','accept':'text/html'}});}
+           catch{throw Error('ICC_ARTICLE_NETWORK_FAILED')}
+           if(!article.ok||article.redirected===true||
+              new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
+             try{await article.body?.cancel();}catch{}
+             throw Error('ICC_ARTICLE_HTTP_'+(Number.isInteger(article.status)?article.status:0));
+           }
+           if(!/html/iu.test(article.headers.get('content-type')??'')){
+             try{await article.body?.cancel();}catch{}
+             throw Error('ICC_ARTICLE_MIME_INVALID');
+           }
+           const articleBytes=await boundedBody(article,P0_MAX_BYTES);
+           const articleHtml=new TextDecoder('utf-8',{fatal:true}).decode(articleBytes);
+           const parsedArticle=parseIccArticleHtml(articleHtml,{url:articleUrl,retrievedAt:now.toISOString()});
+           row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=1;
+           row.reason=null;row.first_party_article_fetch_verified=true;
+           row.current_original_publication_verified=parsedArticle.published_at!==null;
+           row.native_publication_at_utc=parsedArticle.published_at;
          }else{
            if(xml&&/<!DOCTYPE|<!ENTITY/iu.test(text))throw Error('FORMAT_NOT_VERIFIED');
            let parsed;
            try{parsed=PARSERS[source.id](text,{retrievedAt:now.toISOString(),observedAt:now.toISOString()});}
-           catch{
-             // A changed news landing-page DOM may hide the ICC news anchors;
-             // the SAME court explicitly publishes a separate RSS feed.
-             // Do not let format, denial or unrelated parser failures retry.
-             mayUseCourtRss=source.id==='icc_news';
-             throw Error(source.id==='icc_news'?'ICC_NEWS_LISTING_PARSE_FAILED':'PARSER_NOT_VERIFIED');
-           }
+           catch{throw Error('PARSER_NOT_VERIFIED')}
            const count=Array.isArray(parsed)?parsed.length:Number(parsed?.value_numeric);
            if(!Number.isSafeInteger(count)||count<1)throw Error('PARSER_NOT_VERIFIED');
            row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=count;
          }
        }
-     }
+      }
    }catch(error){
      const allowed=['BODY_SIZE_LIMIT','BODY_EMPTY','FORMAT_NOT_VERIFIED','PARSER_NOT_VERIFIED','ICC_NEWS_LISTING_PARSE_FAILED'];
-     row.reason=allowed.includes(error?.message)?error.message:
-       (/^ICC_(?:ARTICLE|OFFICIAL_RSS)_[A-Z0-9_]+$/u.test(error?.message??'')?error.message:
+     const failure=error?.message??'';
+     row.reason=allowed.includes(failure)?failure:
+       (/^(?:ICC_(?:ARTICLE|OFFICIAL_RSS|NEWS)_[A-Z0-9_]+|UNCTAD_[A-Z0-9_]+|WORLD_BANK_[A-Z0-9_]+)$/u.test(failure)?failure:
        (error?.name==='TimeoutError'?'UPSTREAM_TIMEOUT':
        (error?.name==='TypeError'?'UPSTREAM_NETWORK_ERROR':'NETWORK_OR_REDIRECT_UNAVAILABLE')));
      // Only a transport-level failure may trigger a second, *different*
@@ -222,7 +267,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
    status:unavailable?'PRIVATE_DISCOVERY_PARTIALLY_DEGRADED':'PRIVATE_DISCOVERY_OBSERVED',
    source_count:results.length,http_requests:totalHttpRequests,unavailable,
    related_index_reference_is_not_primary_source_restoration:true,
-   parsed_sources:results.filter(r=>r.status==='PRIVATE_CANDIDATES_PARSED').length,
+   parsed_sources:results.filter(r=>r.status==='PRIVATE_CANDIDATES_PARSED'||r.status==='MACHINE_DATA_METADATA_PARSED').length,
    per_domain:Object.fromEntries(DOMAINS.map(d=>[d,{
      attempted:results.filter(r=>r.category===d).length,
      available:results.filter(r=>r.category===d&&r.status!=='UNAVAILABLE').length}])),
