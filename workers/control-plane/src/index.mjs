@@ -40,6 +40,7 @@ import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
 import {enqueueRiskStreamEvents,consumeRiskStreamQueue} from "./risk-stream-pipeline.mjs";
 import {dispatchRiskStreamOutbox,consumeRiskStreamDelivery} from "./risk-stream-delivery.mjs";
 import {dispatchLicensedCommercialOutbox} from "./risk-stream-commercial-outbox.mjs";
+import {runCommercialIssuerTick} from "./risk-stream-commercial-issuer.mjs";
 import {acceptScopedUntrustedRiskStreamLeads} from "./risk-stream-index-listener.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
@@ -1326,10 +1327,11 @@ export default {
     // certificate, verified client entitlement and GeoMacro signing key are
     // REQUIRED. No cron flag or index hit alone grants redistribution rights.
     if(env?.GEOMACRO_COMMERCIAL_STREAM_RELEASE==="1"&&env?.DB?.prepare)
-      ctx.waitUntil(dispatchLicensedCommercialOutbox(env).then(receipt=>{
-        if(receipt.retry||receipt.held)
-          console.warn("GEOMACRO_COMMERCIAL_LICENSED_OUTBOX_HOLD",receipt.status);
-      }).catch(()=>console.error("GEOMACRO_COMMERCIAL_OUTBOX_HELD")));
+      ctx.waitUntil(runCommercialIssuerTick(env).then(()=>
+        dispatchLicensedCommercialOutbox(env)).then(receipt=>{
+          if(receipt.retry||receipt.held)
+            console.warn("GEOMACRO_COMMERCIAL_LICENSED_OUTBOX_HOLD",receipt.status);
+        }).catch(()=>console.error("GEOMACRO_COMMERCIAL_ISSUER_OR_OUTBOX_HELD")));
     // Durable internal stream delivery retry; does not block real-time queue
     // evaluation and cannot issue payments or a certified risk index.
     if(env?.RISK_STREAM_ACTIVE==="1"&&env?.DB?.prepare&&
