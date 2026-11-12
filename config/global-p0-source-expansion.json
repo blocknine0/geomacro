@@ -76,8 +76,11 @@
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
         "dataset_surface": "https://unctadstat.unctad.org/datacentre/reportInfo/US.UCPI_M",
-        "machine_endpoint": "https://unctadstat-api.unctad.org/api/reportMetadata/US.UCPI_M/en",
-        "publisher_metadata": "publisher_report_release_date"
+        "machine_endpoint": "https://unctadstat.unctad.org/release-calendar",
+        "publisher_metadata": "UNCTAD official release calendar record date",
+        "machine_formats": [
+          "HTML_RELEASE_CALENDAR"
+        ]
       },
       "world_bank_commodity_prices": {
         "provider": "World Bank",

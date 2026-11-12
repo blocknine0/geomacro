@@ -12,7 +12,7 @@ import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mj
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
 import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls} from '../../global-intelligence/adapters/icc-news.mjs';
 import {parseWorldBankPinkSheetReleaseMetadata} from '../../global-intelligence/adapters/world-bank-commodity-prices.mjs';
-import {parseUnctadPublisherReleaseMetadata} from '../../global-intelligence/adapters/unctadstat.mjs';
+import {parseUnctadPublisherReleaseMetadata,parseUnctadPublisherReleaseCalendarHtml} from '../../global-intelligence/adapters/unctadstat.mjs';
 import {ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss}
  from '../lib/icc-official-news-rss.mjs';
 import {MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,
@@ -116,14 +116,17 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
          const xml=source.id==='uk_sanctions_list'||source.id==='eu_sanctions_consolidated';
          const unctad=source.id==='unctadstat_global';
          const icc=source.id==='icc_news';
-         if(unctad&&!/json/iu.test(type))throw Error('UNCTAD_MACHINE_JSON_MIME_INVALID');
+         if(unctad&&!/json|html/iu.test(type))throw Error('UNCTAD_MACHINE_METADATA_MIME_INVALID');
          if(icc&&!/html/iu.test(type))throw Error('ICC_NEWS_LISTING_MIME_INVALID');
          if(xml&&!/xml/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
          if(!xml&&!unctad&&!icc&&!/html/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
          const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
          if(unctad){
-           let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
-           const clock=parseUnctadPublisherReleaseMetadata(payload);
+           let clock;
+           if(/json/iu.test(type)){
+             let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
+             clock=parseUnctadPublisherReleaseMetadata(payload);
+           }else clock=parseUnctadPublisherReleaseCalendarHtml(text);
            row.status='MACHINE_DATA_METADATA_PARSED';row.parsed_candidate_count=1;
            row.native_release_clock_verified=true;row.publisher_release_at_utc=clock.published_at;
            row.reason=null;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {normalizeCommodityRow,parseWorldBankPinkSheetReleaseMetadata} from "../../global-intelligence/adapters/world-bank-commodity-prices.mjs";
-import {normalizeUnctadStatObservation,parseUnctadPublisherReleaseMetadata} from "../../global-intelligence/adapters/unctadstat.mjs";
+import {normalizeUnctadStatObservation,parseUnctadPublisherReleaseMetadata,parseUnctadPublisherReleaseCalendarHtml} from "../../global-intelligence/adapters/unctadstat.mjs";
 import {parseWorldBankPublisherUpdateMetadata} from "../../global-intelligence/adapters/world-bank.mjs";
 const now="2026-10-20T08:00:00.000Z";
 test("monthly World Bank Pink Sheet observation never invents a published day",()=>{
@@ -78,4 +78,21 @@ test("World Bank publisher update date comes from API envelope only",()=>{
  assert.equal(clock.publisher_update_date,"2026-11-03");
  assert.equal(clock.clock_source,"WORLD_BANK_API_ENVELOPE_LASTUPDATED");
  assert.throws(()=>parseWorldBankPublisherUpdateMetadata([{page:1},[{date:"2026"}]]),/WORLD_BANK_NATIVE_UPDATE_DATE_MISSING/);
+});
+
+test("UNCTAD release calendar binds the exact release date to the commodity index record",()=>{
+ const page='<html><body><h1>UNCTAD Data Hub</h1><h2>November 2026</h2>'+
+  '<h3>9 November 2026</h3><p>Commodity prices: UNCTAD Commodity Price Index - Monthly</p>'+
+  '<p>Jan 1995 - Sep 2026 Published</p><h3>16 November 2026</h3><p>Other dataset</p></body></html>';
+ const clock=parseUnctadPublisherReleaseCalendarHtml(page);
+ assert.equal(clock.publisher_release_date,"2026-11-09");
+ const normalized=normalizeUnctadStatObservation({dataset:"commodity prices",series:"index",period:"2026-09",
+  value:100,retrievedAt:now,publisherMetadata:page});
+ assert.equal(normalized.published_at,clock.published_at);
+ assert.equal(normalized.native_publication_time_verified,true);
+ assert.equal(clock.published_at,"2026-11-09T00:00:00.000Z");
+ assert.equal(clock.clock_source,"UNCTAD_OFFICIAL_RELEASE_CALENDAR");
+ assert.throws(()=>parseUnctadPublisherReleaseCalendarHtml(
+  '<html><body>UNCTAD Data Hub Jan 1995 - Sep 2026 published</body></html>'),
+  /UNCTAD_RELEASE_CALENDAR_RECORD_OR_DATE_MISSING/);
 });
