@@ -115,13 +115,14 @@ export function planHot50StreamCells(now=Date.now(),perTick=2){
  const start=((Math.floor(now/60000)*perTick)%150+150)%150;
  return Array.from({length:perTick},(_,i)=>HOT50_STREAM_TARGETS[(start+i)%150]);
 }
-function sameEventOriginalPair(rows,category,now){
+function sameEventOriginalPair(rows,category,now,signed=[]){
  const trusted=rows.filter(r=>r.category===category&&r.original_verified===1&&
    r.enabled===1&&r.commercial_rights_approved===1&&
    recent(r.published_at,now)&&
    (Number.isFinite(Date.parse(r.rights_expire_at))&&
     Date.parse(r.rights_expire_at)>now));
  trusted.sort((a,b)=>Date.parse(a.published_at)-Date.parse(b.published_at));
+ let first=null;
  for(let i=0;i<trusted.length;i++)for(let j=i+1;j<trusted.length;j++){
   const a=trusted[i],b=trusted[j];
   if(Date.parse(b.published_at)-Date.parse(a.published_at)>WINDOW)break;
@@ -131,10 +132,18 @@ function sameEventOriginalPair(rows,category,now){
      !validRoot(a.publisher_root_domain)||!validRoot(b.publisher_root_domain)||
      !ROLES[category].every(role=>[a.source_role,b.source_role].includes(role)))
     continue;
-  return {event_fingerprint:a.event_fingerprint,domains:2,
+  const candidate={event_fingerprint:a.event_fingerprint,domains:2,
    observation_ids:[a.observation_id,b.observation_id].sort()};
+  if(!first)first=candidate;
+  // A cell may contain several valid events. Choose the pair for which an
+  // independently verified signed GRO actually exists, rather than the
+  // oldest pair that may not yet have completed the signing queue.
+  if(signed.some(g=>g.signature_verified===true&&
+    g.event_fingerprint===candidate.event_fingerprint&&
+    JSON.stringify(g.source_originals)===JSON.stringify(candidate.observation_ids)))
+   return candidate;
  }
- return null;
+ return first;
 }
 /** An unverified lead counts toward Basic research, NEVER paid Standard.
  * Search publisher domains are hints even if distinct; two search hits do
@@ -154,7 +163,7 @@ export function projectHot50StreamCell(target,{
   ...e.map(x=>"stream:"+x.observation_id),
   ...s.map(x=>"search:"+x.lead_id)
  ]);
- const pair=sameEventOriginalPair(e,target.category,now);
+ const pair=sameEventOriginalPair(e,target.category,now,signed.filter(match));
  const gro=signed.find(x=>match(x)&&pair&&x.signature_verified===true&&
   x.event_fingerprint===pair.event_fingerprint&&
   JSON.stringify(x.source_originals)===JSON.stringify(pair.observation_ids)&&
