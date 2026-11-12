@@ -14,7 +14,7 @@ import {REVIEWABLE_ADDITIVE_SECRETS,reviewedHot50CandidateVars,
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
-export function candidateConfig(version,sha){
+export function candidateConfig(version,sha,reviewedSecretNames=[]){
  const bindings=version?.resources?.bindings,runtime=version?.resources?.script_runtime;
  if(!SHA.test(sha)||!Array.isArray(bindings)||!bindings.length||
     !/^\d{4}-\d{2}-\d{2}$/.test(runtime?.compatibility_date??''))
@@ -27,6 +27,11 @@ export function candidateConfig(version,sha){
  }
  if(!names.has('DB')||!names.has('CONTROL_PLANE_TOKEN'))
   throw Error('CANDIDATE_PROTECTED_BINDING_MISSING');
+ if(!Array.isArray(reviewedSecretNames)||
+    new Set(reviewedSecretNames).size!==reviewedSecretNames.length||
+    reviewedSecretNames.some(name=>!REVIEWABLE_ADDITIVE_SECRETS.includes(name)||
+     names.has(name)))
+  throw Error('CANDIDATE_REVIEWED_SECRET_NOT_ADDITIVE');
  if(runtime.containers?.length)throw Error('CANDIDATE_CONTAINER_REVIEW_REQUIRED');
  const vars=reviewedHot50CandidateVars(sha);
  for(const name of ['GEOMACRO_COMMERCIAL_STREAM_RELEASE',
@@ -42,9 +47,10 @@ export function candidateConfig(version,sha){
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
   vars,
-  // The secrets-file owns these four keys; do not create duplicate inherits.
+  // Carry existing secret versions intact. Newly reviewed secret names
+  // have no baseline to inherit and belong in this SAME code-version upload.
   unsafe:{bindings:bindings.filter(x=>
-   !Object.hasOwn(vars,x.name)&&!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name))
+   !Object.hasOwn(vars,x.name)&&!reviewedSecretNames.includes(x.name))
    .map(x=>({name:x.name,type:'inherit'}))}};
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
@@ -130,13 +136,17 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   monthly_read_headroom:quota.remaining_rows_read,
   monthly_write_headroom:quota.remaining_rows_written,
   normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
- const secretValues=Object.fromEntries(REVIEWABLE_ADDITIVE_SECRETS.map(name=>
-  [name,env[name]]));
+ const missing=REVIEWABLE_ADDITIVE_SECRETS.filter(name=>
+  !baseline.resources.bindings.some(row=>row.name===name)).sort();
+ const requested=String(env.CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES??"");
+ const reviewedSecrets=requested===""?[]:requested.split(",");
+ if(reviewedSecrets.some(name=>name!==name.trim())||
+    canonical([...reviewedSecrets].sort())!==canonical(missing))
+  throw Error('CANDIDATE_EXACT_ADDITIVE_SECRET_REVIEW_REQUIRED');
+ const secretValues=Object.fromEntries(reviewedSecrets.map(name=>[name,env[name]]));
  if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
   throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
- // Every uploaded/rotated secret is owner-reviewed, not only newly added names.
- const reviewedSecrets=[...REVIEWABLE_ADDITIVE_SECRETS];
- const config=candidateConfig(baseline,env.GITHUB_SHA);
+ const config=candidateConfig(baseline,env.GITHUB_SHA,reviewedSecrets);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
  // on Cloudflare. Wrangler's NDJSON receipt pins the version this invocation
@@ -146,12 +156,15 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   '.geomacro-reviewed-hot50-secrets-'+env.GITHUB_RUN_ID+'.json');
  rmSync(wranglerOutput,{force:true});
  try{
-  writeFileSync(secretFile,JSON.stringify(secretValues),{mode:0o600,flag:'wx'});
-  run('npx',['-y','wrangler@4.136.3','versions','upload','--config',
-   'workers/control-plane/wrangler.optimized-candidate.jsonc',
-   '--secrets-file',secretFile,'--message','geomacro-main:'+env.GITHUB_SHA],
-   {encoding:'utf8',stdio:'pipe',timeout:240000,
-    env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
+  const args=['-y','wrangler@4.136.3','versions','upload','--config',
+   'workers/control-plane/wrangler.optimized-candidate.jsonc'];
+  if(reviewedSecrets.length){
+   writeFileSync(secretFile,JSON.stringify(secretValues),{mode:0o600,flag:'wx'});
+   args.push('--secrets-file',secretFile);
+  }
+  args.push('--message','geomacro-main:'+env.GITHUB_SHA);
+  run('npx',args,{encoding:'utf8',stdio:'pipe',timeout:240000,
+   env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
  }catch(error){
   const output=String(error?.stdout??'')+String(error?.stderr??'');
   const codes=[...output.matchAll(/\[code:\s*(\d+)\]/g)].map(x=>x[1]);
