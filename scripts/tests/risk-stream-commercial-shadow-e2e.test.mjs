@@ -84,7 +84,7 @@ test("isolated shadow uses actually pinned license key + D1 outbox + HTTPS ACK",
  const {db,state}=mockDatabase();
  const env={STREAM_MODE:"SHADOW_AUDIT",RISK_STREAM_ACTIVE:"0",
   STREAM_INGESTION_ENABLED:"false",GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
-  RISK_STREAM_CANARY_HOLD_CLEARED:"0",STREAM_SHADOW_ACK_TOKEN:"z".repeat(64),
+  RISK_STREAM_CANARY_HOLD_CLEARED:"0",STREAM_SHADOW_ACK_TOKEN:"a".repeat(64),
   GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey,
   GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey,
   SHADOW_REVIEWED_SHA:"f".repeat(40),DB:db};
@@ -123,7 +123,7 @@ test("shadow test cannot run against non-shadow or a customer endpoint",async()=
   ackUrl,runId:"shadow-regression-20261112"}),
   /ISOLATION_OR_BINDINGS_INVALID/);
  const valid={...env,STREAM_MODE:"SHADOW_AUDIT",
-  STREAM_SHADOW_ACK_TOKEN:"z".repeat(64),
+  STREAM_SHADOW_ACK_TOKEN:"a".repeat(64),
   GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey,
   GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey};
  await assert.rejects(runIsolatedCommercialE2E(valid,{
@@ -137,7 +137,7 @@ test("shadow E2E exposes sanitized dispatch code without leaking upstream fetch 
  const {db,state}=mockDatabase();
  const env={STREAM_MODE:"SHADOW_AUDIT",RISK_STREAM_ACTIVE:"0",
   STREAM_INGESTION_ENABLED:"false",GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
-  RISK_STREAM_CANARY_HOLD_CLEARED:"0",STREAM_SHADOW_ACK_TOKEN:"z".repeat(64),
+  RISK_STREAM_CANARY_HOLD_CLEARED:"0",STREAM_SHADOW_ACK_TOKEN:"a".repeat(64),
   GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey,
   GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64:publicKey,
   SHADOW_REVIEWED_SHA:"f".repeat(40),DB:db};
