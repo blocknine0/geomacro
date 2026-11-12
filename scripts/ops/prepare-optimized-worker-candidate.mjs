@@ -42,7 +42,9 @@ export function candidateConfig(version,sha){
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
   vars,
-  unsafe:{bindings:bindings.filter(x=>!Object.hasOwn(vars,x.name))
+  // The secrets-file owns these four keys; do not create duplicate inherits.
+  unsafe:{bindings:bindings.filter(x=>
+   !Object.hasOwn(vars,x.name)&&!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name))
    .map(x=>({name:x.name,type:'inherit'}))}};
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
