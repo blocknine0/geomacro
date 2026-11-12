@@ -8,6 +8,33 @@ import {verifyGeoMacroCommercialLicense,licensedSha}
 const HEX=/^[a-f0-9]{64}$/u;
 const fail=x=>{throw Error("RISK_STREAM_COMMERCIAL_OUTBOX_"+x)};
 const iso=v=>new Date(v).toISOString();
+// Return only finite, reviewed diagnostic symbols. Never emit native exception
+// messages: Workers fetch failures may include URLs, credentials or response data.
+const SAFE_OUTBOX_FAILURES=new Set([
+ "WEBHOOK_ENDPOINT_NOT_PINN","STORED_LICENSE_JSON_INVALID",
+ "PROTECTED_LICENSE_MISMATCH","WEBHOOK_TIMEOUT_API_UNAVAILABLE",
+ "WEBHOOK_ACK_HTTP_INVALID","WEBHOOK_ACK_JSON_INVALID",
+ "WEBHOOK_ACK_IDENTITY_INVALID","WEBHOOK_ACK_D1_ATOMIC_COMMIT_FAILED"
+]);
+function safeOutboxFailure(error,stage){
+ const msg=typeof error?.message==="string"?error.message:"";
+ const prefix="RISK_STREAM_COMMERCIAL_OUTBOX_";
+ if(msg.startsWith(prefix)){
+  const candidate=msg.slice(prefix.length);
+  if(SAFE_OUTBOX_FAILURES.has(candidate))return candidate;
+ }
+ if(stage==="WEBHOOK_FETCH"){
+  if(error?.name==="TimeoutError"||error?.name==="AbortError")
+   return "WEBHOOK_FETCH_TIMEOUT";
+  return "WEBHOOK_FETCH_EXCEPTION";
+ }
+ if(stage==="LICENSE_VERIFY")return "LICENSE_VERIFICATION_EXCEPTION";
+ if(stage==="WEBHOOK_ACK_PARSE")return "WEBHOOK_ACK_PARSE_EXCEPTION";
+ if(stage==="D1_ACK_COMMIT")return "WEBHOOK_D1_COMMIT_EXCEPTION";
+ if(stage==="ENDPOINT_VERIFY")return "WEBHOOK_ENDPOINT_EXCEPTION";
+ return "WEBHOOK_DISPATCH_EXCEPTION";
+}
+
 const parseHost=url=>{
  let u;try{u=new URL(url)}catch{return null}
  if(u.protocol!=="https:"||u.username||u.password||u.port||u.hash||
@@ -115,6 +142,8 @@ export async function dispatchLicensedCommercialOutbox(env,{
  if(!Array.isArray(q?.results)||q.results.length>max)
   fail("D1_DUE_ROWS_INVALID");
  let sent=0,held=0,retry=0;
+ const failureCodes=new Set();
+ let lastFailureCode=null,lastFailureStage=null;
  for(const row of q.results){
   if(!HEX.test(row.job_id??"")||!HEX.test(row.license_payload_sha256??"")||
     row.release_receipt_sha256!==env.RISK_STREAM_COMMERCIAL_RELEASE_RECEIPT_SHA256)
@@ -128,28 +157,40 @@ export async function dispatchLicensedCommercialOutbox(env,{
    "(state='LEASED' AND lease_expires_at<=?))",
    [leaseUntil,row.job_id,nowIso,nowIso]);
   if(claimed!==1)continue;
+  let stage="ENDPOINT_VERIFY";
   try{
    const url=approvedEndpoint(row,env);
    let envelope;try{envelope=JSON.parse(row.license_envelope_json)}
    catch{fail("STORED_LICENSE_JSON_INVALID")}
+   stage="LICENSE_VERIFY";
    const verified=await verifyGeoMacroCommercialLicense(envelope,{
     now,trustedLicensePublicSpkiB64:env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64,
     trustedGroPublicSpkiB64:env.RISK_STREAM_GRO_VERIFY_SPKI_B64});
    if(verified.payload_sha256!==row.license_payload_sha256||
       envelope.payload.release_receipt_sha256!==row.release_receipt_sha256)
     fail("PROTECTED_LICENSE_MISMATCH");
+   stage="WEBHOOK_FETCH";
+   // POST is not cacheable by normal HTTP rules. Avoid RequestInit.cache:
+   // older workerd compatibility modes may reject this field entirely.
+   // A bounded timeout is mandatory; never silently fall back to unbounded I/O.
+   if(typeof AbortSignal?.timeout!=="function")
+    fail("WEBHOOK_TIMEOUT_API_UNAVAILABLE");
    const response=await fetcher(url,{
-    method:"POST",redirect:"manual",cache:"no-store",
+    method:"POST",redirect:"manual",
     headers:{"Content-Type":"application/json","X-GeoMacro-License-ID":envelope.payload.license_id,
      "X-GeoMacro-Delivery-ID":row.job_id,"Idempotency-Key":row.job_id},
     body:JSON.stringify(envelope),signal:AbortSignal.timeout(12000)});
+   stage="WEBHOOK_ACK_HTTP";
    if(response.status!==200||response.redirected)fail("WEBHOOK_ACK_HTTP_INVALID");
+   stage="WEBHOOK_ACK_PARSE";
    let ack;try{ack=await response.json()}catch{fail("WEBHOOK_ACK_JSON_INVALID")}
+   stage="WEBHOOK_ACK_IDENTITY";
    if(ack?.schema!=="geomacro.commercial-webhook-ack.v1"||
       ack.job_id!==row.job_id||ack.payload_sha256!==row.license_payload_sha256||
       !["ACCEPTED","DUPLICATE"].includes(ack.status))
     fail("WEBHOOK_ACK_IDENTITY_INVALID");
    const ackSha=await licensedSha(JSON.stringify(ack));
+   stage="D1_ACK_COMMIT";
    // Transactionally record one receipt and state transition after customer ACK.
    const out=await db.batch([
     db.prepare("INSERT OR IGNORE INTO risk_stream_commercial_delivery_receipts "+
@@ -164,6 +205,8 @@ export async function dispatchLicensedCommercialOutbox(env,{
     fail("WEBHOOK_ACK_D1_ATOMIC_COMMIT_FAILED");
    sent++;
   }catch(error){
+   const code=safeOutboxFailure(error,stage);
+   failureCodes.add(code);lastFailureCode=code;lastFailureStage=stage;
    const next=iso(now+Math.min(3600000,10000*Math.pow(2,Math.min(8,row.attempts||0))));
    await writeRow(db,"UPDATE risk_stream_commercial_outbox SET "+
     "state='PENDING',next_attempt_at=?,lease_expires_at=NULL "+
@@ -173,5 +216,7 @@ export async function dispatchLicensedCommercialOutbox(env,{
   }
  }
  return {status:retry?"RETRY_SCHEDULED":sent?"CUSTOMER_ACK_VERIFIED":"IDLE",
-  sent,retry,held,attempted:q.results.length,commercial_delivery_enabled:true};
+  sent,retry,held,attempted:q.results.length,commercial_delivery_enabled:true,
+  failure_codes:[...failureCodes].sort(),last_failure_code:lastFailureCode,
+  last_failure_stage:lastFailureStage};
 }

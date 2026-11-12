@@ -9,6 +9,25 @@ import {stageLicensedCommercialDelivery,dispatchLicensedCommercialOutbox}
  from "../../control-plane/src/risk-stream-commercial-outbox.mjs";
 
 const deny=x=>{throw Error("SHADOW_COMMERCIAL_E2E_"+x)};
+const SAFE_SHADOW_ERRORS=new Set([
+ "ISOLATION_OR_BINDINGS_INVALID","ACK_URL_INVALID","NON_CUSTOMER_ACK_HOST_REQUIRED",
+ "RUN_ID_INVALID","SHADOW_GRO_INSERT_FAILED","SHADOW_SUBSCRIPTION_INSERT_FAILED",
+ "SHADOW_OUTBOX_INSERT_FAILED","SHADOW_D1_ACK_READBACK_MISMATCH",
+ "DESTINATION_CHANGED"
+]);
+/** Stable non-sensitive errors only; never serialize arbitrary Error.message. */
+export function sanitizedShadowCommercialError(error){
+ const value=typeof error?.message==="string"?error.message:"";
+ const prefix="SHADOW_COMMERCIAL_E2E_";
+ if(value.startsWith(prefix)){
+  const code=value.slice(prefix.length);
+  if(SAFE_SHADOW_ERRORS.has(code))return value;
+  if(/^SHADOW_HTTPS_ACK_NOT_ACCEPTED_(?:WEBHOOK_[A-Z0-9_]{4,64}|LICENSE_VERIFICATION_EXCEPTION)$/u.test(code))
+   return value;
+ }
+ return "SHADOW_COMMERCIAL_E2E_UNCLASSIFIED_FAILURE";
+}
+
 const enc=new TextEncoder();
 const b64=arr=>btoa(String.fromCharCode(...new Uint8Array(arr)));
 const spki=async k=>b64(await crypto.subtle.exportKey("spki",k));
@@ -134,8 +153,14 @@ export async function runIsolatedCommercialE2E(env,{
    }});
   }
  });
- if(sent.sent!==1||sent.retry!==0||sent.held!==0)
-  deny("SHADOW_HTTPS_ACK_NOT_ACCEPTED");
+ if(sent.sent!==1||sent.retry!==0||sent.held!==0){
+  // Include only the dispatcher's fixed enum, not native exception messages,
+  // target URLs, response bodies, webhook tokens or raw ACK headers.
+  const code=typeof sent.last_failure_code==="string"&&
+   /^(?:WEBHOOK_[A-Z0-9_]{4,64}|LICENSE_VERIFICATION_EXCEPTION)$/u.test(sent.last_failure_code)
+   ?sent.last_failure_code:"WEBHOOK_DISPATCH_UNCLASSIFIED";
+  deny("SHADOW_HTTPS_ACK_NOT_ACCEPTED_"+code);
+ }
  const row=await db.prepare(
   "SELECT o.job_id,o.state,o.license_payload_sha256,r.provider_ack_sha256,"+
   "r.received_at FROM risk_stream_commercial_outbox o "+
