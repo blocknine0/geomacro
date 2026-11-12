@@ -48,16 +48,22 @@
       "contract_id": "predge-paid-customer-traffic-addendum-v2",
       "signed_date": "2026-11-11",
       "channel": "predge_b2b",
+      "worker_endpoint_path": "/v2/partner/predge/paid-risk-gate",
+      "credential_binding": "PREDGE_PAID_RISK_GATE_TOKEN",
+      "separate_from_noncommercial_pilot": true,
       "configuration_scope": "PREDGE_B2B_RISK_GATE_ONLY",
       "term": "INDEFINITE_UNTIL_TERMINATED",
       "expires_at": null,
       "settlement": {
         "rail": "circle_arc",
         "network": "arc",
+        "alternate_network_requires_mutual_email_agreement": true,
         "asset": "USDC",
         "usage_report_due_day": 5,
+        "usage_report_due_month": "FOLLOWING_MONTH",
         "usage_report_line_item": "ONE_LINE_PER_DELIVERED_PAID_CHECK_WITH_VERDICT_ID",
         "payment_due_day": 10,
+        "payment_due_month": "FOLLOWING_MONTH",
         "basis": "COLLECTED_REVENUE_ONLY",
         "prepayments": false,
         "minimums": false,
@@ -92,8 +98,7 @@
         "REFUNDED"
       ],
       "traffic_start_requires_confirmed_go_live_email": true,
-      "paid_start_crosscheck_hours": 72,
-      "paid_traffic_enabled": false
+      "paid_start_crosscheck_hours": 72
     },
     "direct_store_intelligence": {
       "channel": "direct_store",

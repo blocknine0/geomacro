@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS predge_paid_risk_gate_usage_ledger (
   geomacro_fee_usdc_cents INTEGER NOT NULL CHECK(geomacro_fee_usdc_cents IN (0,10,15,25)),
   predge_share_usdc_cents INTEGER NOT NULL CHECK(predge_share_usdc_cents IN (0,5)),
   billable INTEGER NOT NULL CHECK(billable IN (0,1)),
-  billing_mode TEXT NOT NULL CHECK(billing_mode IN ('PILOT_FREE','PAID_ADDENDUM_V2')),
+  billing_mode TEXT NOT NULL CHECK(billing_mode='PAID_ADDENDUM_V2'),
   entry_status TEXT NOT NULL CHECK(entry_status IN (
-    'DELIVERED','PILOT_FREE','INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED'
+    'DELIVERED','INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED'
   )),
   request_hash TEXT NOT NULL CHECK(length(request_hash)=64),
   response_sha256 TEXT NOT NULL CHECK(length(response_sha256)=64),
@@ -52,8 +52,7 @@ CREATE TABLE IF NOT EXISTS predge_paid_risk_gate_usage_ledger (
     (tier='complex_full' AND structure_type='COMPLEX_7D_CORRIDOR_SYNTHESIS_V1' AND customer_price_usdc_cents=30 AND contract_geomacro_fee_usdc_cents=25)
   ),
   CHECK(
-    (entry_status='DELIVERED' AND billing_mode='PAID_ADDENDUM_V2' AND billable=1 AND geomacro_fee_usdc_cents=contract_geomacro_fee_usdc_cents AND predge_share_usdc_cents=contract_predge_share_usdc_cents) OR
-    (entry_status='PILOT_FREE' AND billing_mode='PILOT_FREE' AND billable=0 AND geomacro_fee_usdc_cents=0 AND predge_share_usdc_cents=0) OR
+    (entry_status='DELIVERED' AND billable=1 AND geomacro_fee_usdc_cents=contract_geomacro_fee_usdc_cents AND predge_share_usdc_cents=contract_predge_share_usdc_cents) OR
     (entry_status IN ('INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED') AND billable=0 AND geomacro_fee_usdc_cents=0 AND predge_share_usdc_cents=0)
   ),
   CHECK((collection_status IN ('UNREPORTED','NO_COLLECTION') AND collected_revenue_usdc_cents=0) OR collection_status IN ('PARTIAL','COLLECTED')),

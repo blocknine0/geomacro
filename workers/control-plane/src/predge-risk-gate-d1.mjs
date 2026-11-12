@@ -31,7 +31,7 @@ const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
 function fail(error,status=503,extra={}){
  return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
   tier:null,structure_type:null,customer_price_usdc:"0.00",
-  geomacro_fee_usdc:"0.00",billable:false,billing_mode:"PILOT_FREE",
+  geomacro_fee_usdc:"0.00",billable:false,
   entry_status:"UNDELIVERED",
   advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
 }
@@ -248,10 +248,11 @@ async function hotRow(db,subject,now){
  return db.prepare("SELECT * FROM corridor_gro_verified_hot WHERE corridor_id=? AND generated_at<=? AND expires_at>? LIMIT 1")
    .bind(subject.id,new Date(now).toISOString(),new Date(now).toISOString()).first();
 }
-function serviceCredential(request,env){
- const expected=String(env?.PREDGE_RISK_GATE_TOKEN??"");
+function serviceCredential(request,env,paidEndpoint=false){
+ const expected=String((paidEndpoint?env?.PREDGE_PAID_RISK_GATE_TOKEN:env?.PREDGE_RISK_GATE_TOKEN)??"");
  if(!HASH.test(expected)||constantEqual(expected,env?.CONTROL_PLANE_TOKEN)||
-    constantEqual(expected,env?.PREDGE_RESEARCH_NEWS_TOKEN))
+    constantEqual(expected,env?.PREDGE_RESEARCH_NEWS_TOKEN)||
+    (paidEndpoint&&constantEqual(expected,env?.PREDGE_RISK_GATE_TOKEN)))
    return {error:"RISK_GATE_CREDENTIAL_NOT_CONFIGURED",status:503};
  const token=request.headers.get("authorization");
  if(typeof token!=="string"||!/^Bearer [a-f0-9]{64}$/.test(token)||
@@ -260,9 +261,9 @@ function serviceCredential(request,env){
 }
 // Production entry passes only request/env/time; HTTP and env cannot choose this pin.
 // The optional code-level authority permits isolated signed staging fixtures.
-export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
+async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  if(!Number.isSafeInteger(now)||now<0)return fail("RISK_GATE_CLOCK_UNAVAILABLE");
- const auth=serviceCredential(request,env);
+ const auth=serviceCredential(request,env,paidEndpoint);
  if(auth)return fail(auth.error,auth.status);
  if(request.method!=="POST")return fail("METHOD_NOT_ALLOWED",405);
  if(!env?.DB?.prepare)return fail("RISK_GATE_D1_UNAVAILABLE");
@@ -290,12 +291,17 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
+ if(paidEndpoint&&parsed.policy.policy_id!=="predge-paid-traffic-addendum-v2")
+   return fail("PAID_ADDENDUM_POLICY_REQUIRED",400);
+ if(!paidEndpoint&&parsed.policy.policy_id==="predge-paid-traffic-addendum-v2")
+   return fail("PAID_ADDENDUM_REQUIRES_VERSIONED_ENDPOINT",409);
  // Lock the requested commercial tier before any evidence reads. Evidence
  // determines billability; it may never change the requested tier.
  const lockedTier=parsed.tier;
  const lockedTerms=predgePaidRiskGateTerms(lockedTier);
- const paidTrafficEnabled=predgePaidTrafficEnabled(env,parsed.policy);
- const billingMode=paidTrafficEnabled?"PAID_ADDENDUM_V2":"PILOT_FREE";
+ const paidTrafficEnabled=paidEndpoint&&predgePaidTrafficEnabled(env,parsed.policy);
+ if(paidEndpoint&&!paidTrafficEnabled)return fail("PAID_TRAFFIC_NOT_ENABLED",403);
+ const billingMode=paidEndpoint?"PAID_ADDENDUM_V2":"PILOT_FREE";
  // Three independent read-only probes. No waiting on a GRO-producing queue,
  // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
  // D1 schema or transport failure is an infrastructure error, not missing proof.
@@ -322,7 +328,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  const requestHash=await digest(canonical(body));
  const verdictId=await deterministicVerdictId(requestHash);
  const nowIso=new Date(now).toISOString();
- const client="predge-risk-gate-v1",day=nowIso.slice(0,10);
+ const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
  try{
    await env.DB.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
      (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
@@ -407,7 +413,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    response.audit_receipt_signature_key_id=receipt.signature_key_id;
    response.audit_receipt_signature_scheme=receipt.signature_scheme;
    response.audit_receipt_signature_scope=receipt.signature_scope;
-   if(!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
+   if(paidEndpoint&&!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
       response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso}))
      return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
@@ -419,6 +425,17 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    if(!audit)return fail("RISK_GATE_AUDIT_UNAVAILABLE");
    return Response.json(response,{status:200,headers});
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+}
+
+// The existing v1 route remains the non-commercial pilot/interoperability lane.
+// It never opts into Addendum pricing or writes rows into the paid usage ledger.
+export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
+ return runPredgeRiskGateD1(request,env,now,authority,false);
+}
+
+// Addendum v2 has its own versioned, fail-closed paid endpoint and billing lane.
+export async function predgePaidRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
+ return runPredgeRiskGateD1(request,env,now,authority,true);
 }
 
 /** Coarse source-safe operational readiness, never a paid-launch verdict. */
