@@ -19,7 +19,7 @@ export function recentShadowPointerQuery(now=Date.now()){
  return "SELECT record_id,first_ingested_at FROM phase2h_raw_object_refs_v1 "+
   "INDEXED BY idx_phase2h_ref_ingest_clock_v1 "+
   "WHERE first_ingested_at >= '"+cutoff+"' "+
-  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 11";
+  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 10";
 }
 const fail=x=>{throw Error("STEP3_POINTER_DIAGNOSTIC_"+x)};
 export function shadowPointerDiagnosticScope(env){
