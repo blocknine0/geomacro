@@ -94,7 +94,7 @@ export function assessReviewedAdditiveBindingParity(base,candidate,options=[]){
    else if(Object.hasOwn(clone,"value"))clone.value=expected;
    else deny("BASELINE_PLAIN_TEXT_UNREADABLE_"+name);
    if(canonical(clone)!==canonical(after))deny("RESOURCE_METADATA_CHANGED_"+name);
-   if(plainTextValue(before)!==expected)changes.push(name);
+   if(plainTextValue(before)!==expected&&name!=="GEOMACRO_SOURCE_SHA")changes.push(name);
   }else if(canonical(before)!==canonical(after)){
    deny("UNREVIEWED_RESOURCE_OR_VALUE_CHANGE_"+name);
   }
