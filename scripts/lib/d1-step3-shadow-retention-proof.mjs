@@ -4,7 +4,9 @@
  * the deployed Worker intentionally returns 410 after expiry. For each expired
  * pointer, require authenticated HTTP 410 AND full HMAC/private R2 byte proof.
  * Every in-retention pointer still requires the unchanged Worker 200 +
- * exact authenticated HMAC + SHA256 record-byte verification.
+ * exact authenticated HMAC + SHA256 record-byte verification AND an
+ * independent direct private-R2 GET of the same signed object bytes.
+ * No source, pointer, or signed digest may be substituted or skipped.
  *
  * No row skipped/deleted, no production DB write, no B2 listing or receipt,
  * no commercial signing or hold-clearance. Caller separately proves a fresh
@@ -69,7 +71,9 @@ async function requireExpiredWorker410(row,env,fetchImpl,sleepImpl){
  }
  fail("EXPIRED_WORKER_410_NOT_VERIFIED");
 }
-async function verifyExpiredShadowR2(row,env,fetchImpl){
+async function verifyPhysicalShadowR2(row,env,fetchImpl,scope){
+ if(scope!=="ACTIVE"&&scope!=="EXPIRED")fail("R2_SCOPE_INVALID");
+ const failPhysical=code=>fail(scope+"_"+code);
  // A non-live row is not a bypass: it must still have a genuine pointer
  // signature and an exact immutable object/record byte readback.
  assertRealPointerMac(row,env.PHASE2H_R2_REFERENCE_HMAC_KEY);
@@ -78,25 +82,25 @@ async function verifyExpiredShadowR2(row,env,fetchImpl){
  const bytes=Buffer.from(await response.arrayBuffer());
  if(bytes.length<300||bytes.length>600000||
     bytes.length!==row.bundle_bytes||sha(bytes)!==row.object_sha256)
-  fail("EXPIRED_R2_BUNDLE_BYTES_OR_SHA_INVALID");
+  failPhysical("R2_BUNDLE_BYTES_OR_SHA_INVALID");
  let bundle;try{bundle=JSON.parse(bytes.toString("utf8"))}
- catch{fail("EXPIRED_R2_BUNDLE_JSON_INVALID")}
+ catch{failPhysical("R2_BUNDLE_JSON_INVALID")}
  if(bundle?.schema!=="geomacro.phase2h.r2-private-reference-bundle.v1"||
     !Array.isArray(bundle.records)||bundle.records.length<1||
     bundle.records.length>50||bundle.records.some(x=>typeof x!=="string")||
     row.bundle_index>=bundle.records.length)
-  fail("EXPIRED_R2_MANIFEST_INVALID");
+  failPhysical("R2_MANIFEST_INVALID");
  const raw=bundle.records[row.bundle_index];
  if(Buffer.byteLength(raw)!==row.record_bytes||sha(raw)!==row.record_sha256)
-  fail("EXPIRED_R2_EXACT_RECORD_SHA_INVALID");
- let record;try{record=JSON.parse(raw)}catch{fail("EXPIRED_RECORD_JSON_INVALID")}
+  failPhysical("R2_EXACT_RECORD_SHA_INVALID");
+ let record;try{record=JSON.parse(raw)}catch{failPhysical("RECORD_JSON_INVALID")}
  if(record?.schema!=="geomacro.phase2h.private-raw-observation.v1"||
     record.record_id!==row.record_id||
     record.category!==row.category||
     record.raw_sha256!==row.raw_sha256||
     record.ingested_at!==row.first_ingested_at||
     record.original?.original_published_at!==row.original_published_at)
-  fail("EXPIRED_R2_CANONICAL_IDENTITY_INVALID");
+  failPhysical("R2_CANONICAL_IDENTITY_INVALID");
  return true;
 }
 export async function verifyShadowRetentionBoundPointers({
@@ -117,19 +121,28 @@ export async function verifyShadowRetentionBoundPointers({
  if(current.cryptographic_readback_verified!==true||
     current.verified_count!==active.length)
   fail("ACTIVE_WORKER_HMAC_R2_PROOF_MISSING");
+ // Worker attestations are necessary, but a separate provider R2 GET
+ // is required as well for every CURRENT pointer (not only expired ones).
+ // Fail closed on wrong object bytes, missing object, or invalid identity.
+ for(const row of active){
+  await verifyPhysicalShadowR2(row,env,fetchImpl,"ACTIVE");
+ }
  for(const row of expired){
   // Validate the actual signed pointer BEFORE any external request.
   assertRealPointerMac(row,env.PHASE2H_R2_REFERENCE_HMAC_KEY);
   // A 410 is expected ONLY beyond the immutable 72h first-ingested clock;
   // 401/403/404/500/redirect are HOLD, never accepted as expiry.
   await requireExpiredWorker410(row,env,fetchImpl,sleepImpl);
-  await verifyExpiredShadowR2(row,env,fetchImpl);
+  await verifyPhysicalShadowR2(row,env,fetchImpl,"EXPIRED");
  }
  return Object.freeze({
   status:"PASS_REAL_SHADOW_ACTIVE_200_EXPIRED_410_R2_HMAC_READBACK",
   verified_count:rows.length,active_worker_200_verified:active.length,
   expired_worker_410_and_physical_r2_verified:expired.length,
+  authenticated_active_r2_gets:active.length,
   authenticated_expired_r2_gets:expired.length,
+  independent_full_object_r2_gets:rows.length,
+  all_pointers_independent_full_r2_byte_readback_verified:true,
   cryptographic_readback_verified:true,
   all_hmac_and_r2_bytes_verified:true,
   historical_original_rights_not_inferred:true,
