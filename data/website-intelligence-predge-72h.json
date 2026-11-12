@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-12T13:01:17.862Z",
+  "checked_at": "2026-11-12T19:57:31.931Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 46,
+  "item_count": 48,
   "counts": {
     "geopolitics": 5,
     "macro": 27,
-    "rare_earth": 14
+    "rare_earth": 16
   },
-  "source_native_ids_sha256": "74a7915d704aaa245f074dc2bd1de459c7b7c8f4114e0ddb9d5753329d6e3eb1",
+  "source_native_ids_sha256": "37efca7077fb69137c1adae92f57d908f26dea0af780c8134e91e64737dccedc",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,82 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "rare_earth-8b707965",
+      "category": "rare_earth",
+      "title": "Geomacro finds Arctic Minerals raised $14M to advance Sweden copper project - Dealroom",
+      "what_changed": "A monitored source feed reports: Arctic Minerals raised $14M to advance Sweden copper project - Dealroom. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T15:57:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-143f2bbe",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper held near $13,800 as supply constraints and electrification demand dominate the outlook - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Copper held near $13,800 as supply constraints and electrification demand dominate the outlook - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T14:19:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-db22323f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Red Metal reported Mine Sampling at Farellon, Including 6.8% Copper on Level 7 and 6.05% Copper on Level 9 - Investing News Network",
+      "what_changed": "A monitored source feed reports: Red Metal reported Mine Sampling at Farellon, Including 6.8% Copper on Level 7 and 6.05% Copper on Level 9 - Investing News Network. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T13:51:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-82b745c8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cordoba Minerals announced Revisions to the Exploration Program at the Perseverance Copper Project in Arizona - TradingView",
+      "what_changed": "A monitored source feed reports: Cordoba Minerals announced Revisions to the Exploration Program at the Perseverance Copper Project in Arizona - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-886d2cd1",
       "category": "geopolitics",
@@ -809,6 +885,25 @@
       "severity": null
     },
     {
+      "id": "geopolitics-2fde2d37",
+      "category": "geopolitics",
+      "title": "Geomacro finds Members: welcomed the progress achieved while noting that further work is needed before the accession process can be concluded · Ethiopia",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Members welcomed the progress achieved while noting that further work is needed before the accession process can be concluded. Country or region mentioned: Ethiopia.",
+      "geography": "Ethiopia",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-10T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "World Trade Organization; attribution required; no article-text redistribution approval."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-cb981acd",
       "category": "rare_earth",
       "title": "Geomacro finds Army launched critical minerals consortium - Metal Tech News",
@@ -841,63 +936,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-05a5a3c3",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning Along with our partners we will stand with Ukraine for as long as it takes · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning Along with our partners we will stand with Ukraine for as long as it takes. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "security",
-      "topic": "security and diplomacy",
-      "published_at": "2026-11-09T16:27:31.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-28d0b11c",
-      "category": "rare_earth",
-      "title": "Geomacro finds Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review",
-      "what_changed": "A monitored source feed reports: Rio Tinto approved US$144 million investment to advance Resolution Copper project - Global Mining Review. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T15:08:21.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-6b1093c0",
-      "category": "rare_earth",
-      "title": "Geomacro finds MC Mining maintained suspension of mining, production at Makhado",
-      "what_changed": "A monitored source feed reports: MC Mining maintained suspension of mining, production at Makhado. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T14:20:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,

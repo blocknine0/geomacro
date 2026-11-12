@@ -2,7 +2,7 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-12T11:17:55.019Z",
+  "updated_at": "2026-11-12T19:57:31.931Z",
   "signals": [
     {
       "id": "geopolitics-886d2cd1",
@@ -75,6 +75,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "geopolitics-2fde2d37",
+      "category": "geopolitics",
+      "title": "Geomacro finds Members: welcomed the progress achieved while noting that further work is needed before the accession process can be concluded · Ethiopia",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Members welcomed the progress achieved while noting that further work is needed before the accession process can be concluded. Country or region mentioned: Ethiopia.",
+      "geography": "Ethiopia",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-10T00:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "World Trade Organization; attribution required; no article-text redistribution approval."
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,

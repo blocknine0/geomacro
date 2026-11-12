@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-12T11:17:55.019Z",
+  "updated_at": "2026-11-12T19:57:31.931Z",
   "signals": [
+    {
+      "id": "rare_earth-8b707965",
+      "category": "rare_earth",
+      "title": "Geomacro finds Arctic Minerals raised $14M to advance Sweden copper project - Dealroom",
+      "what_changed": "A monitored source feed reports: Arctic Minerals raised $14M to advance Sweden copper project - Dealroom. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T15:57:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-143f2bbe",
+      "category": "rare_earth",
+      "title": "Geomacro finds Copper held near $13,800 as supply constraints and electrification demand dominate the outlook - kalkine.ca",
+      "what_changed": "A monitored source feed reports: Copper held near $13,800 as supply constraints and electrification demand dominate the outlook - kalkine.ca. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T14:19:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-db22323f",
+      "category": "rare_earth",
+      "title": "Geomacro finds Red Metal reported Mine Sampling at Farellon, Including 6.8% Copper on Level 7 and 6.05% Copper on Level 9 - Investing News Network",
+      "what_changed": "A monitored source feed reports: Red Metal reported Mine Sampling at Farellon, Including 6.8% Copper on Level 7 and 6.05% Copper on Level 9 - Investing News Network. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T13:51:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-82b745c8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Cordoba Minerals announced Revisions to the Exploration Program at the Perseverance Copper Project in Arizona - TradingView",
+      "what_changed": "A monitored source feed reports: Cordoba Minerals announced Revisions to the Exploration Program at the Perseverance Copper Project in Arizona - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-8990266b",
       "category": "rare_earth",
