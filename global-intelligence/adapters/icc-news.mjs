@@ -45,15 +45,24 @@ function nativeDate(html){
  const candidates=[];
  for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
   const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??"").toLowerCase();
-  if(["article:published_time","datepublished","date"].includes(key))candidates.push(attr(tag,"content"));
+  if(["article:published_time","article:published","datepublished","date","dc.date","dcterms.date",
+      "dc.date.issued","datecreated","publish_date","pubdate"].includes(key))
+   candidates.push(attr(tag,"content"));
  }
- for(const m of String(html).matchAll(/<time\b[^>]*>/giu)){
+ for(const m of String(html).matchAll(/<time\b[^>]*>([\s\S]{0,240}?)<\/time>/giu)){
   const tag=m[0],raw=attr(tag,"datetime");
   if(raw)candidates.push(raw);
+  else candidates.push(extractTextFragment(m[1]));
  }
- for(const m of String(html).matchAll(/"datePublished"\s*:\s*"([^"]{1,80})"/giu))candidates.push(m[1]);
+ for(const m of String(html).matchAll(/"(?:datePublished|dateCreated)"\s*:\s*"([^"]{1,80})"/giu))candidates.push(m[1]);
  for(const raw of candidates){
-  if(!raw||!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
+  if(!raw)continue;
+  if(/^20\d{2}-\d{2}-\d{2}$/u.test(raw)){
+   const d=new Date(raw+"T00:00:00.000Z");
+   if(Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===raw)return d.toISOString();
+   continue;
+  }
+  if(!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
   const d=new Date(raw);if(Number.isFinite(d.getTime()))return d.toISOString();
  }
  return null;

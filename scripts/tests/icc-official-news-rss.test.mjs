@@ -52,6 +52,9 @@ test("ICC native publication clock comes from article metadata, not retrieval or
  const row=parseIccArticleHtml(page,{url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
  assert.equal(row.published_at,"2026-11-12T14:17:17.000Z");
  assert.equal(row.observed_at,"2026-11-12T17:00:00Z");
+ const dateOnly=parseIccArticleHtml('<html><head><title>ICC official announcement</title></head><body>International Criminal Court <time datetime="2026-11-12">12 November 2026</time></body></html>',
+  {url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
+ assert.equal(dateOnly.published_at,"2026-11-12T00:00:00.000Z");
  assert.throws(()=>parseIccArticleHtml('<html>International Criminal Court</html>',{url:"https://www.icc-cpi.int/node/241777"}),/ICC_ARTICLE_TITLE_MISSING/);
 });
 test("DTD, shape spoofing, off-issuer, empty and oversized feeds fail closed",()=>{
