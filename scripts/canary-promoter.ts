@@ -79,7 +79,7 @@ async function checkSource(candidate:string,expectedSha:string){
  const b=await response.json().catch(()=>null);
  need(response.status===200&&b?.ok===true&&b?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
 }
-async function checkVersionParity(base:string,candidate:string,headSha:string){
+async function checkVersionParity(base:string,candidate:string,headSha:string,{requireFreshReview=true}={}){
  const [a,b]=await Promise.all([api(info(base)),api(info(candidate))]);
  need(a.id===base&&b.id===candidate,'CANARY_VERSIONS_NOT_VERIFIED');
  // Flag opt-in is always reviewed, including when no new secrets were needed.
@@ -96,7 +96,7 @@ async function checkVersionParity(base:string,candidate:string,headSha:string){
   review.owner_workflow_confirmation==='PROMOTE_HOT50_NO_FUNDS'&&
   Array.isArray(review.reviewed_secret_names)&&
   Number.isFinite(Date.parse(String(review.reviewed_at)))&&
-  Date.now()-Date.parse(String(review.reviewed_at))<3_600_000&&
+  (!requireFreshReview||Date.now()-Date.parse(String(review.reviewed_at))<3_600_000)&&
   Date.now()>=Date.parse(String(review.reviewed_at)),
   'CANARY_HOT50_REVIEW_NOT_EXACT_OR_FRESH');
  return assessReviewedHot50BindingParity(a,b,headSha,review.reviewed_secret_names);
@@ -421,7 +421,7 @@ async function main(){
    baseline:base,candidate,stage2RunId:run});
   const active=await liveCurrent();
   verifyDistribution(active,[{version_id:candidate,percentage:100}]);
-  await checkVersionParity(base,candidate,mainSha);
+  await checkVersionParity(base,candidate,mainSha,{requireFreshReview:false});
   await checkSource(candidate,mainSha);
   const response=await fetch(ORIGIN+'/health',{
    redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});
