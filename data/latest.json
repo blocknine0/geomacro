@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-12T04:20:54.105Z",
+  "checked_at": "2026-11-12T10:01:16.182Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,139 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-8990266b",
+      "category": "rare_earth",
+      "title": "Geomacro finds TACC signed MoU for supply of 40,000 tonnes of graphite anode material - Manufacturing Today India",
+      "what_changed": "A monitored source feed reports: TACC signed MoU for supply of 40,000 tonnes of graphite anode material - Manufacturing Today India. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T09:24:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-9e596d67",
+      "category": "macro",
+      "title": "Geomacro finds Goldman cut Gold Forecasts as Hawkish Fed Talk Tests Central Bank Demand - ad-hoc-news.de",
+      "what_changed": "A monitored source feed reports: Goldman cut Gold Forecasts as Hawkish Fed Talk Tests Central Bank Demand - ad-hoc-news.de. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T07:01:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3d3c1b30",
+      "category": "rare_earth",
+      "title": "Geomacro finds Adani's Kutch Copper and Codelco signed MoU to explore Kaburkaala copper project in Chile - MLQ.ai",
+      "what_changed": "A monitored source feed reports: Adani's Kutch Copper and Codelco signed MoU to explore Kaburkaala copper project in Chile - MLQ.ai. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T05:06:01.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-c74a820b",
+      "category": "rare_earth",
+      "title": "Geomacro finds HEG Advanced Unit TACC signed Agreement For 40,000 Tonnes Synthetic Graphite Supply - Sahi",
+      "what_changed": "A monitored source feed reports: HEG Advanced Unit TACC signed Agreement For 40,000 Tonnes Synthetic Graphite Supply - Sahi. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T04:39:09.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-3aca9aec",
+      "category": "rare_earth",
+      "title": "Geomacro finds USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T00:25:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-65678a15",
+      "category": "rare_earth",
+      "title": "Geomacro finds USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - The Motley Fool",
+      "what_changed": "A monitored source feed reports: USA Rare Earth Earnings reported Left Me With 1 Big Unanswered Question - The Motley Fool. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T00:05:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-2ad99f49",
+      "category": "rare_earth",
+      "title": "Geomacro finds USA Rare Earth launched Commercial Rare Earth Shipments From Brazil to US Government-Backed Entity - NAI500",
+      "what_changed": "A monitored source feed reports: USA Rare Earth launched Commercial Rare Earth Shipments From Brazil to US Government-Backed Entity - NAI500. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-11T23:55:17.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-4b62d86e",
       "category": "macro",
@@ -820,44 +953,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-80486eff",
-      "category": "rare_earth",
-      "title": "Geomacro finds France's Eramet announced plans to sell stakes in lithium, nickel mines - Mining Weekly",
-      "what_changed": "A monitored source feed reports: France's Eramet announced plans to sell stakes in lithium, nickel mines - Mining Weekly. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T08:07:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-f6b92502",
-      "category": "rare_earth",
-      "title": "Geomacro finds Sojitz signed agreement to acquire 5% of Vietnam tungsten supplier Masan High-Tech Materials",
-      "what_changed": "A monitored source feed reports: Sojitz signed agreement to acquire 5% of Vietnam tungsten supplier Masan High-Tech Materials. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T06:21:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.miningweekly.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
