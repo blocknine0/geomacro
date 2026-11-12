@@ -13,7 +13,7 @@ const SAFE_SHADOW_ERRORS=new Set([
  "ISOLATION_OR_BINDINGS_INVALID","ACK_URL_INVALID","NON_CUSTOMER_ACK_HOST_REQUIRED",
  "RUN_ID_INVALID","SHADOW_GRO_INSERT_FAILED","SHADOW_SUBSCRIPTION_INSERT_FAILED",
  "SHADOW_OUTBOX_INSERT_FAILED","SHADOW_D1_ACK_READBACK_MISMATCH",
- "DESTINATION_CHANGED"
+ "DESTINATION_CHANGED","ACK_SERVICE_BINDING_REQUIRED"
 ]);
 /** Stable non-sensitive errors only; never serialize arbitrary Error.message. */
 export function sanitizedShadowCommercialError(error){
@@ -56,9 +56,14 @@ async function pair(){
  return crypto.subtle.generateKey({name:"Ed25519"},true,["sign","verify"]);
 }
 export async function runIsolatedCommercialE2E(env,{
- ackUrl,now=Date.now(),fetcher=fetch,runId
+ ackUrl,now=Date.now(),runId
 }={}){
  const url=requireShadow(env,ackUrl);
+ // The control-plane shadow and ACK Worker share a Cloudflare account/zone.
+ // Public workers.dev-to-workers.dev fetch can return 1042 before ACK code
+ // executes. Require an explicit, isolated Service Binding instead.
+ if(typeof env.SHADOW_COMMERCIAL_ACK?.fetch!=="function")
+  deny("ACK_SERVICE_BINDING_REQUIRED");
  if(typeof runId!=="string"||!/^[a-z0-9-]{12,80}$/u.test(runId))
   deny("RUN_ID_INVALID");
  const id=await licensedSha("shadow-commercial-e2e-v1\n"+runId);
@@ -147,9 +152,9 @@ export async function runIsolatedCommercialE2E(env,{
   now,max:1,jobId,
   fetcher:async(destination,options)=>{
    if(destination!==url.toString())deny("DESTINATION_CHANGED");
-   return fetcher(destination,{...options,headers:{
+   return env.SHADOW_COMMERCIAL_ACK.fetch(destination,{...options,headers:{
     ...options.headers,
-    "X-GeoMacro-Shadow-ACK":env.STREAM_SHADOW_ACK_TOKEN
+    "X-GeoMacro-Shadow-ACK":env.STREAM_SHADOW_ACK_TOKEN.replace(/[\r\n]+$/u,"")
    }});
   }
  });

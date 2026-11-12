@@ -10,6 +10,8 @@ on:
       - "scripts/ops/run-risk-stream-commercial-staging.mjs"
       - "scripts/tests/risk-stream-commercial-issuer.test.mjs"
       - "scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs"
+      - "scripts/tests/risk-stream-commercial-license.test.mjs"
+      - "scripts/tests/risk-stream-shadow-ack-handshake.test.mjs"
       - ".github/workflows/risk-stream-commercial-staging.yml"
   workflow_dispatch:
     inputs:
@@ -43,7 +45,9 @@ jobs:
           node --check workers/risk-stream-shadow-ack/src/index.mjs
           node --check scripts/ops/run-risk-stream-commercial-staging.mjs
           node --test scripts/tests/risk-stream-commercial-issuer.test.mjs \
-            scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs
+            scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs \
+            scripts/tests/risk-stream-commercial-license.test.mjs \
+            scripts/tests/risk-stream-shadow-ack-handshake.test.mjs
   remote-shadow:
     needs: static-contract
     if: >-
