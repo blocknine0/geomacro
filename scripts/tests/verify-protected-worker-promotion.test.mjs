@@ -20,7 +20,10 @@ const bindings=[
  {name:"GEOMACRO_SOURCE_SHA",type:"plain_text",text:SHA},
  {name:"RISK_GATE_COUNTRY_SCOPE",type:"plain_text",text:"HOT50"},
  {name:"GEOMACRO_P0B_ADMISSION_ACTIVE",type:"plain_text",text:"1"},
- {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"}
+ {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"},
+ {name:"GEOMACRO_COMMERCIAL_STREAM_RELEASE",type:"plain_text",text:"0"},
+ {name:"RISK_STREAM_CANARY_HOLD_CLEARED",type:"plain_text",text:"0"},
+ {name:"RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED",type:"plain_text",text:"0"}
 ];
 const version=(id,message="")=>({
  id,annotations:{"workers/message":message},resources:{bindings}
@@ -91,7 +94,7 @@ test("untrusted SHA, annotations and Worker bindings never authorize promotion",
   {...x,text:"b".repeat(40)}:x);
  assert.equal(check(1,0,{candidateVersion:{
   ...version(B),resources:{bindings:wrong}
- }}).reason,"CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+ }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
 });
 test("stale, wrong-cycle and unverified provider Paid receipts HOLD",()=>{
  const altered=[
@@ -142,7 +145,7 @@ test("remote split cannot be skipped and Hot50 runtime flags require physical re
   {...x,text:"0"}:x);
  assert.equal(check(1,0,{candidateVersion:{
   ...version(B),resources:{bindings:bad}
- }}).reason,"CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+ }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
 });
 test("only provider Paid monthly governor can admit both optimized candidate and protected promotion",()=>{
  const verifier=readFileSync(
@@ -159,4 +162,31 @@ test("only provider Paid monthly governor can admit both optimized candidate and
  assert.doesNotMatch(candidate,/checkD1BundledWork/u);
  assert.match(promoted,/admitSignedStep3ProductionFile\(\)/u);
  assert.match(promoted,/config\/d1-hotspot-v2-canary\.hold/u);
+});
+
+test("protected preflight admits only explicit reviewed Hot50+secret delta, still no funds",()=>{
+ const intake={RISK_GATE_COUNTRY_SCOPE:"HOT50",RISK_STREAM_ACTIVE:"1",
+  STREAM_INGESTION_ENABLED:"true",RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1"};
+ const base=bindings.map(x=>x.name==="RISK_GATE_COUNTRY_SCOPE"?
+  {...x,text:"GLOBAL"}:x).concat([
+   {name:"RISK_STREAM_ACTIVE",type:"plain_text",text:"0"},
+   {name:"STREAM_INGESTION_ENABLED",type:"plain_text",text:"false"},
+   {name:"RISK_STREAM_HOT50_AUTONOMOUS_ENABLED",type:"plain_text",text:"0"}]);
+ const add={name:"GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",type:"secret_text"};
+ const candidate=base.map(x=>Object.hasOwn(intake,x.name)?{...x,text:intake[x.name]}:x).concat([add]);
+ const opts={baselineVersion:{id:A,resources:{bindings:base}},
+  candidateVersion:{id:B,resources:{bindings:candidate}},
+  reviewedFlagProfile:"HOT50_INTAKE_REVIEWED",
+  reviewedAdditiveSecretNames:[add.name]};
+ const yes=check(1,0,opts);
+ assert.equal(yes.eligible,true,JSON.stringify(yes));
+ assert.equal(yes.no_funds,true);
+ assert.equal(check(1,0,{...opts,reviewedFlagProfile:""}).reason,
+  "VERSION_BINDING_PARITY_MISMATCH");
+ assert.equal(check(1,0,{...opts,reviewedAdditiveSecretNames:[]}).reason,
+  "VERSION_BINDING_PARITY_MISMATCH");
+ const hostile=candidate.map(x=>x.name==="GEOMACRO_COMMERCIAL_STREAM_RELEASE"?
+  {...x,text:"1"}:x);
+ assert.equal(check(1,0,{...opts,candidateVersion:{id:B,resources:{bindings:hostile}}}).reason,
+  "VERSION_BINDING_PARITY_MISMATCH");
 });
