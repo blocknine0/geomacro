@@ -26,6 +26,10 @@ on:
         description: "Real signed exact-main Stage2 production run ID required before any traffic mutation"
         required: true
         type: string
+      reviewed_additive_secret_names:
+        description: "Exact owner-reviewed comma-separated additive secrets, no wildcard"
+        required: false
+        type: string
 permissions:
   contents: read
   actions: read
@@ -58,6 +62,7 @@ jobs:
       BASELINE_VERSION_ID: ${{ inputs.baseline_version_id }}
       CANDIDATE_VERSION_ID: ${{ inputs.candidate_version_id }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS: ${{ inputs.reviewed_additive_secret_names }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
       D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
       GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
@@ -226,6 +231,7 @@ jobs:
           # Cloudflare "versions deploy" traffic mutations happen only inside
           # the canonical verified canary-promoter.ts, not this workflow.
           node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
+          node --experimental-strip-types scripts/ops/attest-canary-additive-secrets.mjs
           node --experimental-strip-types scripts/canary-promoter.ts --promote
           # Canonical observations: stage 0=15m, 1%=30m, 5/25/50/100%=15m.
           # Signed Stage2, per-version p95/p99, provider D1 monthly pace,

@@ -20,10 +20,21 @@ const bindings=[
  {name:"GEOMACRO_SOURCE_SHA",type:"plain_text",text:SHA},
  {name:"RISK_GATE_COUNTRY_SCOPE",type:"plain_text",text:"HOT50"},
  {name:"GEOMACRO_P0B_ADMISSION_ACTIVE",type:"plain_text",text:"1"},
- {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"}
+ {name:"GEOMACRO_P1_BUNDLED_LEASES_ENABLED",type:"plain_text",text:"1"},
+ {name:"RISK_STREAM_ACTIVE",type:"plain_text",text:"0"},
+ {name:"STREAM_INGESTION_ENABLED",type:"plain_text",text:"false"},
+ {name:"RISK_STREAM_HOT50_AUTONOMOUS_ENABLED",type:"plain_text",text:"0"},
+ {name:"GEOMACRO_COMMERCIAL_STREAM_RELEASE",type:"plain_text",text:"0"},
+ {name:"RISK_STREAM_CANARY_HOLD_CLEARED",type:"plain_text",text:"0"},
+ {name:"RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED",type:"plain_text",text:"0"}
 ];
-const version=(id,message="")=>({
- id,annotations:{"workers/message":message},resources:{bindings}
+const enabledBindings=[...bindings.map(b=>
+ ["RISK_STREAM_ACTIVE","STREAM_INGESTION_ENABLED",
+  "RISK_STREAM_HOT50_AUTONOMOUS_ENABLED"].includes(b.name)?
+  {...b,text:b.name==="STREAM_INGESTION_ENABLED"?"true":"1"}:{...b})];
+const version=(id,message="",extra=[])=>({
+ id,annotations:{"workers/message":message},
+ resources:{bindings:[...(id===A?bindings:enabledBindings),...extra]}
 });
 const paidProof=(now=NOW)=>({
  schema:"geomacro.cloudflare-workers-paid-provider-proof.v1",
@@ -87,11 +98,11 @@ test("untrusted SHA, annotations and Worker bindings never authorize promotion",
   ...version(B),resources:{bindings:[{name:"DB",type:"d1"}]}
  }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
  assert.throws(()=>readBindings({resources:{bindings:[]}}),/UNREADABLE/);
- const wrong=bindings.map(x=>x.name==="GEOMACRO_SOURCE_SHA"?
+ const wrong=enabledBindings.map(x=>x.name==="GEOMACRO_SOURCE_SHA"?
   {...x,text:"b".repeat(40)}:x);
  assert.equal(check(1,0,{candidateVersion:{
   ...version(B),resources:{bindings:wrong}
- }}).reason,"CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+ }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
 });
 test("stale, wrong-cycle and unverified provider Paid receipts HOLD",()=>{
  const altered=[
@@ -138,11 +149,11 @@ test("remote split cannot be skipped and Hot50 runtime flags require physical re
  assert.equal(check(0,1).reason,"BASELINE_NOT_100_PERCENT");
  assert.equal(check(5,0).reason,"CURRENT_SPLIT_NOT_PREVIOUS_STAGE");
  assert.equal(check(1,0,{deployment:at(0,false)}).eligible,false);
- const bad=bindings.map(x=>x.name==="GEOMACRO_P1_BUNDLED_LEASES_ENABLED"?
+ const bad=enabledBindings.map(x=>x.name==="GEOMACRO_P1_BUNDLED_LEASES_ENABLED"?
   {...x,text:"0"}:x);
  assert.equal(check(1,0,{candidateVersion:{
   ...version(B),resources:{bindings:bad}
- }}).reason,"CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
+ }}).reason,"VERSION_BINDING_PARITY_MISMATCH");
 });
 test("only provider Paid monthly governor can admit both optimized candidate and protected promotion",()=>{
  const verifier=readFileSync(
@@ -159,4 +170,33 @@ test("only provider Paid monthly governor can admit both optimized candidate and
  assert.doesNotMatch(candidate,/checkD1BundledWork/u);
  assert.match(promoted,/admitSignedStep3ProductionFile\(\)/u);
  assert.match(promoted,/config\/d1-hotspot-v2-canary\.hold/u);
+});
+
+// A candidate may change ONLY the reviewed Hot50 flags, source SHA, and
+// four explicitly reviewed secret bindings. No fund flag is mutable.
+test("provider canary preflight accepts reviewed additions and rejects unreviewed ones",()=>{
+ const names=[
+  "GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64",
+  "GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64",
+  "GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64",
+  "RISK_STREAM_INDEX_LEAD_BEARER"
+ ];
+ const extras=names.map(name=>({name,type:"secret_text"}));
+ const cand=version(B,"geomacro-main:"+SHA,extras);
+ assert.equal(check(1,0,{candidateVersion:cand,
+  reviewedAdditiveSecretNames:names}).eligible,true);
+ assert.equal(check(1,0,{candidateVersion:cand}).reason,
+  "VERSION_BINDING_PARITY_MISMATCH");
+ const bad=structuredClone(cand);
+ bad.resources.bindings.push({name:"FUNDS_RELEASE_OVERRIDE",type:"secret_text"});
+ assert.equal(check(1,0,{candidateVersion:bad,
+  reviewedAdditiveSecretNames:names}).eligible,false);
+ for(const [name,value] of [["RISK_STREAM_ACTIVE","0"],
+  ["STREAM_INGESTION_ENABLED","false"],
+  ["GEOMACRO_COMMERCIAL_STREAM_RELEASE","1"]]){
+  const modified=structuredClone(cand);
+  modified.resources.bindings.find(b=>b.name===name).text=value;
+  assert.equal(check(1,0,{candidateVersion:modified,
+   reviewedAdditiveSecretNames:names}).reason,"VERSION_BINDING_PARITY_MISMATCH");
+ }
 });

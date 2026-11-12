@@ -6,6 +6,10 @@ on:
         description: 'Exact UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS; never deploy traffic'
         required: true
         type: string
+      reviewed_hot50_runtime:
+        description: 'Type ENABLE_HOT50_RESEARCH_NO_FUNDS for reviewed Hot50 noncommercial flags'
+        required: true
+        type: string
   pull_request:
     paths:
       - '.github/workflows/geomacro-optimized-worker-candidate.yml'
@@ -45,6 +49,11 @@ jobs:
       # The paid-plan proof reader requires this separate existing token.
       # Read-only /accounts/{id}/subscriptions; no billing mutation.
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      GEOMACRO_HOT50_CANDIDATE_REVIEWED: ${{ inputs.reviewed_hot50_runtime }}
+      GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
+      RISK_STREAM_INDEX_LEAD_BEARER: ${{ secrets.RISK_STREAM_INDEX_LEAD_BEARER }}
+      GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -58,6 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           test "${{ inputs.approval }}" = UPLOAD_EXACT_MAIN_ZERO_TRAFFIC_NO_FUNDS
+          test "${{ inputs.reviewed_hot50_runtime }}" = ENABLE_HOT50_RESEARCH_NO_FUNDS
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git ls-remote https://github.com/blocknine0/geomacro.git refs/heads/main | cut -f1)" = "$GITHUB_SHA"
           test -f config/d1-hotspot-v2-canary.hold

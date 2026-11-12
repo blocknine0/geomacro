@@ -8,6 +8,9 @@ import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {checkD1PaidMonthlyHeadroom}
  from '../lib/d1-workers-paid-monthly-governor.mjs';
+import {REVIEWABLE_ADDITIVE_SECRETS,reviewedHot50CandidateVars,
+ assessReviewedHot50BindingParity}
+ from '../lib/canary-additive-binding-parity.mjs';
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
@@ -25,28 +28,35 @@ export function candidateConfig(version,sha){
  if(!names.has('DB')||!names.has('CONTROL_PLANE_TOKEN'))
   throw Error('CANDIDATE_PROTECTED_BINDING_MISSING');
  if(runtime.containers?.length)throw Error('CANDIDATE_CONTAINER_REVIEW_REQUIRED');
+ const vars=reviewedHot50CandidateVars(sha);
+ for(const name of ['GEOMACRO_COMMERCIAL_STREAM_RELEASE',
+  'RISK_STREAM_CANARY_HOLD_CLEARED','RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED']){
+  const old=bindings.find(x=>x.name===name);
+  if(old&&old.type!=='plain_text')throw Error('CANDIDATE_RELEASE_FLAG_TYPE_INVALID');
+  if(old&&old.text!=='0'&&old.value!=='0')
+   throw Error('CANDIDATE_BASELINE_RELEASE_HOLD_UNVERIFIED');
+ }
  return {name:NAME,main:'src/index.mjs',
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
-  vars:{GEOMACRO_SOURCE_SHA:sha},
-  unsafe:{bindings:bindings.filter(x=>x.name!=='GEOMACRO_SOURCE_SHA')
+  vars,
+  // The secrets-file owns these four keys; do not create duplicate inherits.
+  unsafe:{bindings:bindings.filter(x=>
+   !Object.hasOwn(vars,x.name)&&!REVIEWABLE_ADDITIVE_SECRETS.includes(x.name))
    .map(x=>({name:x.name,type:'inherit'}))}};
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-export function verifyCandidateBindings(baseline,candidate,sha){
+export function verifyCandidateBindings(baseline,candidate,sha,reviewedSecrets=[]){
  const before=baseline?.resources?.bindings,after=candidate?.resources?.bindings;
- if(!Array.isArray(before)||!Array.isArray(after))throw Error('CANDIDATE_BINDINGS_UNREADABLE');
- const expected=new Map(before.map(x=>[x.name,x]));
- expected.set('GEOMACRO_SOURCE_SHA',{name:'GEOMACRO_SOURCE_SHA',type:'plain_text',text:sha});
- if(after.length!==expected.size||new Set(after.map(x=>x.name)).size!==after.length)
+ if(!Array.isArray(before)||!Array.isArray(after))
+  throw Error('CANDIDATE_BINDINGS_UNREADABLE');
+ if(after.length!==new Set(after.map(x=>x.name)).size)
   throw Error('CANDIDATE_BINDING_COUNT_CHANGED');
- for(const actual of after){
-  if(canonical(actual)!==canonical(expected.get(actual.name)))
-   throw Error('CANDIDATE_BINDING_RESOURCE_OR_VALUE_CHANGED');
- }
+ try{assessReviewedHot50BindingParity(baseline,candidate,sha,reviewedSecrets);}
+ catch(error){throw Error('CANDIDATE_BINDING_RESOURCE_OR_VALUE_CHANGED_'+error.message);}
  if(canonical(baseline.resources.script_runtime)!==canonical(candidate.resources.script_runtime))
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
  return true;
@@ -74,6 +84,7 @@ export function uploadedVersionIdFromWranglerEvents(ndjson){
 export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=execFileSync}={}){
  if(env.GITHUB_ACTIONS!=='true'||env.GITHUB_REPOSITORY!=='blocknine0/geomacro'||
     env.GITHUB_REF!=='refs/heads/main'||!SHA.test(env.GITHUB_SHA??'')||
+    env.GEOMACRO_HOT50_CANDIDATE_REVIEWED!=='ENABLE_HOT50_RESEARCH_NO_FUNDS'||
     !/^[a-f0-9]{32}$/.test(env.CLOUDFLARE_ACCOUNT_ID??'')||
     (env.CLOUDFLARE_API_TOKEN??'').length<20)
   throw Error('CANDIDATE_PROTECTED_MAIN_REQUIRED');
@@ -119,24 +130,33 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
   monthly_read_headroom:quota.remaining_rows_read,
   monthly_write_headroom:quota.remaining_rows_written,
   normal_budget_held:quota.status!=='PASS',provider_metrics_delayed:true};
+ const secretValues=Object.fromEntries(REVIEWABLE_ADDITIVE_SECRETS.map(name=>
+  [name,env[name]]));
+ if(Object.values(secretValues).some(v=>typeof v!=='string'||!v.trim()))
+  throw Error('CANDIDATE_REVIEWED_SECRET_VALUES_REQUIRED');
+ // Every uploaded/rotated secret is owner-reviewed, not only newly added names.
+ const reviewedSecrets=[...REVIEWABLE_ADDITIVE_SECRETS];
  const config=candidateConfig(baseline,env.GITHUB_SHA);
  writeFileSync('workers/control-plane/wrangler.optimized-candidate.jsonc',JSON.stringify(config),{mode:0o600});
  // No inherited binding values are copied to disk or printed. Inherit strictly
  // on Cloudflare. Wrangler's NDJSON receipt pins the version this invocation
  // just uploaded, even if older versions share the same source SHA.
  const wranglerOutput=resolve('artifacts/protected-canary/.wrangler-upload.ndjson');
+ const secretFile=resolve(env.RUNNER_TEMP||'artifacts/protected-canary',
+  '.geomacro-reviewed-hot50-secrets-'+env.GITHUB_RUN_ID+'.json');
  rmSync(wranglerOutput,{force:true});
  try{
+  writeFileSync(secretFile,JSON.stringify(secretValues),{mode:0o600,flag:'wx'});
   run('npx',['-y','wrangler@4.136.3','versions','upload','--config',
-   'workers/control-plane/wrangler.optimized-candidate.jsonc','--message',
-   'geomacro-main:'+env.GITHUB_SHA],
+   'workers/control-plane/wrangler.optimized-candidate.jsonc',
+   '--secrets-file',secretFile,'--message','geomacro-main:'+env.GITHUB_SHA],
    {encoding:'utf8',stdio:'pipe',timeout:240000,
     env:{...env,WRANGLER_OUTPUT_FILE_PATH:wranglerOutput}});
  }catch(error){
   const output=String(error?.stdout??'')+String(error?.stderr??'');
   const codes=[...output.matchAll(/\[code:\s*(\d+)\]/g)].map(x=>x[1]);
   throw Error('CANDIDATE_UPLOAD_FAILED'+(codes.length?'_PROVIDER_'+codes.join('_'):''));
- }
+ }finally{rmSync(secretFile,{force:true});}
  let uploadedId;
  try{uploadedId=uploadedVersionIdFromWranglerEvents(
   readFileSync(wranglerOutput,'utf8'));}
@@ -163,18 +183,21 @@ export async function prepareCandidate({env=process.env,fetchImpl=fetch,run=exec
     'GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'].includes(x.name)).map(x=>[x.name,x.text??null])),
   changed_runtime_keys:changedRuntimeKeys,d1_sql_queries:0,traffic_promoted:false,payments:0
  },null,2)+'\n');
- verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA);
+ verifyCandidateBindings(baseline,candidate,env.GITHUB_SHA,reviewedSecrets);
  const final=await get('/deployments?per_page=1');
  if(canonical(final.deployments?.[0]?.versions)!==canonical(versions))
   throw Error('CANDIDATE_PRODUCTION_DEPLOYMENT_CHANGED');
  const promotion=assessWorkerPromotion({deployment:final,baselineVersion:baseline,
   candidateVersion:candidate,baselineId,candidateId:candidate.id,targetPercent:0,
-  sourceSha:env.GITHUB_SHA,quota,now:new Date()});
+  sourceSha:env.GITHUB_SHA,quota,now:new Date(),
+  reviewedAdditiveSecretNames:reviewedSecrets});
  writeFileSync('artifacts/protected-canary/worker-promotion-preflight.json',JSON.stringify(promotion,null,2)+'\n');
  const knownFlags=['GEOMACRO_D1_READ_HOTSPOT_V2' ,'GEOMACRO_P1_FANOUT_ENABLED',
   'GEOMACRO_P1_BUNDLED_LEASES_ENABLED','GEOMACRO_P0B_ADMISSION_ACTIVE','RISK_GATE_COUNTRY_SCOPE'];
  const result={schema:'geomacro.optimized-worker-candidate.v1',status:'CANDIDATE_UPLOADED_NOT_DEPLOYED',
   source_sha:env.GITHUB_SHA,baseline_id:baselineId,candidate_id:candidate.id,
+  reviewed_additive_secret_names:reviewedSecrets,
+  reviewed_hot50_runtime_vars:reviewedHot50CandidateVars(env.GITHUB_SHA),
   binding_resource_and_value_parity_verified:true,runtime_parity_verified:true,
   promotion_eligible:promotion.eligible,promotion_reason:promotion.reason,
   runtime_flags:Object.fromEntries(baseline.resources.bindings.filter(x=>knownFlags.includes(x.name))

@@ -10,6 +10,8 @@ import {resolve} from "node:path";
 import {checkD1PaidMonthlyHeadroom,paidD1BillingCycle,
  D1_PAID_MONTHLY_POLICY} from "../lib/d1-workers-paid-monthly-governor.mjs";
 import {SPEND_POLICY_VERIFICATION_ENFORCED} from "../lib/cloudflare-five-usd-spend-guard.mjs";
+import {assessReviewedHot50BindingParity}
+ from "../lib/canary-additive-binding-parity.mjs";
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SHA=/^[0-9a-f]{40}$/;
@@ -101,7 +103,8 @@ function annotation(version){
 }
 export function assessWorkerPromotion({
  deployment,baselineVersion,candidateVersion,baselineId,candidateId,
- targetPercent,sourceSha,quota,now=new Date(),spendPolicyEnforced=SPEND_POLICY_VERIFICATION_ENFORCED
+ targetPercent,sourceSha,quota,reviewedAdditiveSecretNames=[],
+ now=new Date(),spendPolicyEnforced=SPEND_POLICY_VERIFICATION_ENFORCED
 }){
  const refuse=(reason,detail={})=>Object.freeze({
   schema:"geomacro.hot50.protected-worker-promotion.v1",
@@ -132,10 +135,13 @@ export function assessWorkerPromotion({
   // and version-directed /health are the authoritative checks.
   if(note&&!note.includes("geomacro-main:"+sourceSha))
    return refuse("CANDIDATE_MAIN_SHA_ANNOTATION_MISMATCH");
-  const oldBindings=readBindings(baselineVersion);
   const newBindings=readBindings(candidateVersion);
-  if(JSON.stringify(oldBindings)!==JSON.stringify(newBindings))
+  try{
+   assessReviewedHot50BindingParity(baselineVersion,candidateVersion,
+    sourceSha,reviewedAdditiveSecretNames);
+  }catch{
    return refuse("VERSION_BINDING_PARITY_MISMATCH");
+  }
   for(const required of ["DB","INGEST_QUEUE","SOURCE_POLL_QUEUE",
    "CONTROL_PLANE_TOKEN","RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64",
    "RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64",
@@ -154,6 +160,12 @@ export function assessWorkerPromotion({
   };
   if(findVar("GEOMACRO_SOURCE_SHA")!==sourceSha||
      findVar("RISK_GATE_COUNTRY_SCOPE")!=="HOT50"||
+     findVar("RISK_STREAM_ACTIVE")!=="1"||
+     findVar("STREAM_INGESTION_ENABLED")!=="true"||
+     findVar("RISK_STREAM_HOT50_AUTONOMOUS_ENABLED")!=="1"||
+     findVar("GEOMACRO_COMMERCIAL_STREAM_RELEASE")!=="0"||
+     findVar("RISK_STREAM_CANARY_HOLD_CLEARED")!=="0"||
+     findVar("RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED")!=="0"||
      findVar("GEOMACRO_P0B_ADMISSION_ACTIVE")!=="1"||
      findVar("GEOMACRO_P1_BUNDLED_LEASES_ENABLED")!=="1")
    return refuse("CANDIDATE_HOT50_P1_RUNTIME_BINDING_UNVERIFIED");
@@ -214,9 +226,13 @@ export async function inspectPromotion({
   providerGet(env,"/workers/scripts/"+name+"/versions/"+candidateId,fetchImpl),
   plan({env,fetchImpl,now,lane:"canary"})
  ]);
+ const reviewedAdditiveSecretNames=String(
+  env.CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS||"").trim();
  const result=assessWorkerPromotion({
   deployment,baselineVersion,candidateVersion,baselineId,candidateId,
-  targetPercent,sourceSha:env.GITHUB_SHA,quota,now
+  targetPercent,sourceSha:env.GITHUB_SHA,quota,now,
+  reviewedAdditiveSecretNames:reviewedAdditiveSecretNames?
+   reviewedAdditiveSecretNames.split(",").map(x=>x.trim()):[]
  });
  mkdirSync("artifacts/protected-canary",{recursive:true});
  writeFileSync("artifacts/protected-canary/worker-promotion-preflight.json",

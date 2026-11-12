@@ -1,19 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {candidateConfig,verifyCandidateBindings,prepareCandidate,uploadedVersionIdFromWranglerEvents} from '../ops/prepare-optimized-worker-candidate.mjs';
+import {reviewedHot50CandidateVars,REVIEWABLE_ADDITIVE_SECRETS}
+ from '../lib/canary-additive-binding-parity.mjs';
 const sha='a'.repeat(40);
 const baseline={resources:{script_runtime:{compatibility_date:'2026-10-03',compatibility_flags:[]},bindings:[
  {name:'DB',type:'d1',id:'canonical-db'},
  {name:'CONTROL_PLANE_TOKEN',type:'secret_text'},
  {name:'PAYMENT_ENABLED',type:'plain_text',text:'0'},
  {name:'GEOMACRO_SOURCE_SHA',type:'plain_text',text:'b'.repeat(40)}]}};
-const candidate=()=>{const v=structuredClone(baseline);v.resources.bindings.at(-1).text=sha;return v};
+const candidate=()=>{const v=structuredClone(baseline);
+ for(const [name,text] of Object.entries(reviewedHot50CandidateVars(sha))){
+  const row=v.resources.bindings.find(x=>x.name===name);
+  if(row)row.text=text;
+  else v.resources.bindings.push({name,type:'plain_text',text});
+ }
+ return v;
+};
 test('candidate inherits all production secrets/resources/flags without copying values',()=>{
  const config=candidateConfig(baseline,sha);
- assert.deepEqual(config.vars,{GEOMACRO_SOURCE_SHA:sha});
+ assert.deepEqual(config.vars,reviewedHot50CandidateVars(sha));
  assert.deepEqual(config.unsafe.bindings,[{name:'DB',type:'inherit'},
   {name:'CONTROL_PLANE_TOKEN',type:'inherit'},{name:'PAYMENT_ENABLED',type:'inherit'}]);
  assert.doesNotMatch(JSON.stringify(config),/canonical-db|secret_text/);
+ assert.equal(config.vars.RISK_STREAM_ACTIVE,'1');
+ assert.equal(config.vars.STREAM_INGESTION_ENABLED,'true');
+ assert.equal(config.vars.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED,'1');
+ assert.equal(config.vars.GEOMACRO_COMMERCIAL_STREAM_RELEASE,'0');
+ assert.equal(config.vars.RISK_STREAM_CANARY_HOLD_CLEARED,'0');
+ assert.equal(config.vars.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED,'0');
  assert.equal(verifyCandidateBindings(baseline,candidate(),sha),true);
 });
 test('same binding names cannot conceal resource changes or payment activation',()=>{
@@ -103,4 +118,47 @@ test('candidate selection never guesses from previous versions sharing a SHA',as
  assert.match(source,/uploadedVersionIdFromWranglerEvents/u);
  assert.ok(source.includes("const candidate=await get('/versions/'+uploadedId);"));
  assert.doesNotMatch(source,/versions\?deployable=true/u);
+});
+
+// The new version must carry real new secrets in the SAME immutable code upload.
+test('reviewed additive secret set is exact and no unauthorized binding can appear',()=>{
+ const enabled=candidate();
+ for(const name of REVIEWABLE_ADDITIVE_SECRETS)
+  enabled.resources.bindings.push({name,type:'secret_text'});
+ assert.equal(verifyCandidateBindings(baseline,enabled,sha,
+  REVIEWABLE_ADDITIVE_SECRETS),true);
+ assert.throws(()=>verifyCandidateBindings(baseline,enabled,sha,[]),
+  /UNREVIEWED_ADDITION/);
+ const bad=structuredClone(enabled);
+ bad.resources.bindings.push({name:'PAYMENT_OVERRIDE',type:'plain_text',text:'1'});
+ assert.throws(()=>verifyCandidateBindings(baseline,bad,sha,
+  REVIEWABLE_ADDITIVE_SECRETS),/UNREVIEWED_ADDITION/);
+ for(const [name,value] of [['RISK_STREAM_ACTIVE','0'],
+  ['STREAM_INGESTION_ENABLED','false'],
+  ['GEOMACRO_COMMERCIAL_STREAM_RELEASE','1']]){
+  const mutated=structuredClone(enabled);
+  mutated.resources.bindings.find(b=>b.name===name).text=value;
+  assert.throws(()=>verifyCandidateBindings(baseline,mutated,sha,
+   REVIEWABLE_ADDITIVE_SECRETS),/REVIEWED_FLAG_NOT_VERIFIED/);
+ }
+});
+test('zero-traffic candidate requires explicit separate Hot50 review and secrets-file upload',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
+ const flow=readFileSync(new URL('../../.github/workflows/geomacro-optimized-worker-candidate.yml',import.meta.url),'utf8');
+ assert.match(src,/ENABLE_HOT50_RESEARCH_NO_FUNDS/);
+ assert.match(src,/--secrets-file/);
+ assert.match(src,/rmSync\(secretFile,\{force:true\}\)/);
+ assert.match(flow,/reviewed_hot50_runtime:/);
+ assert.match(flow,/GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64/);
+ assert.match(flow,/RISK_STREAM_INDEX_LEAD_BEARER/);
+});
+
+test('reviewed secrets-file replaces baseline secret binding without unsafe duplication',()=>{
+ const live=structuredClone(baseline);
+ live.resources.bindings.push({name:REVIEWABLE_ADDITIVE_SECRETS[0],type:'secret_text'});
+ const config=candidateConfig(live,sha);
+ assert.equal(config.unsafe.bindings.some(x=>
+  x.name===REVIEWABLE_ADDITIVE_SECRETS[0]),false);
+ assert.equal(config.unsafe.bindings.some(x=>x.name==='DB'),true);
 });
