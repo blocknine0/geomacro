@@ -42,6 +42,7 @@ function bindings(w,{wrongDb=false}={}){
  ];
 }
 function mock({wrongDb=false,staleLatest=false,validBefore=false,
+ activeVersion=null,
  failSecond=false,invalidAfter=false,badCandidateUrl=false}={}){
  const calls=[],writes=[],latest=new Map(W.map(w=>[w.name,w.staged]));
  const runtime={compatibility_date:"2026-10-03",compatibility_flags:["nodejs_compat"]};
@@ -66,7 +67,7 @@ function mock({wrongDb=false,staleLatest=false,validBefore=false,
     ]}});
    }
    if(p.endsWith("/deployments"))return Response.json({success:true,result:{
-    deployments:[{versions:[{version_id:w.old,percentage:100}]}]}});
+    deployments:[{versions:[{version_id:activeVersion??w.old,percentage:100}]}]}});
    if(p.endsWith("/versions/"+w.staged)||p.endsWith("/versions/"+w.next)){
     const id=p.split("/").at(-1);
     const resource={id,resources:{bindings:bindings(w,{wrongDb}),
@@ -152,13 +153,21 @@ test("two secret-aligned immutable versions preserve all bindings and old traffi
  assert(!JSON.stringify(r).includes(TOKEN));
  assert(!JSON.stringify(r).includes(e().CLOUDFLARE_API_TOKEN));
 });
-test("no mutation if original staged candidate is NOT latest uploaded",async()=>{
+test("bearer-sync deployment UUID is accepted as the captured unchanged live baseline",async()=>{
+ const activeVersion="f1e97688-0201-4cb3-8455-4bb7b582a819";
+ const m=mock({activeVersion});
+ const r=await alignShadowCandidateSecrets({env:e(),fetchImpl:m.fetchImpl,
+  run:m.run,headCheck:()=>e().GITHUB_SHA,holdPresent:true});
+ assert.equal(r.status,"PASS_TWO_SECRET_ALIGNED_CANONICAL_CANDIDATES_ZERO_TRAFFIC");
+ assert(m.writes.length===2);
+});
+test("post-upload candidate must be resolvable from provider version listing",async()=>{
  const m=mock({staleLatest:true});
  const r=await alignShadowCandidateSecrets({env:e(),fetchImpl:m.fetchImpl,
   run:m.run,headCheck:()=>e().GITHUB_SHA,holdPresent:true});
  assert.equal(r.status,"HOLD");
- assert.match(r.code,/LATEST_UPLOADED_NOT_PINNED_CANONICAL_CANDIDATE/);
- assert.equal(m.writes.length,0);
+ assert.match(r.code,/PROVIDER_NETWORK_UNAVAILABLE/);
+ assert.equal(m.writes.length,1);
 });
 test("wrong D1 ID is blocked before any secret write",async()=>{
  const m=mock({wrongDb:true});

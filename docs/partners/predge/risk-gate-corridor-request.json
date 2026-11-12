@@ -1,5 +1,6 @@
 {
   "request_id": "predge-pilot-corridor-fixture-001",
+  "tier": "standard",
   "subject": {
     "type": "corridor",
     "origin_country_iso3": "IND",

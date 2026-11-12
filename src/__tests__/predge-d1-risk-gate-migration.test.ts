@@ -64,6 +64,7 @@ describe("Supabase-free Predge Risk Gate v1 migration",()=>{
    expect(parseRequest({...base,subject:{type:"country",id:"USA"}},NOW)).toBeNull();
    expect(parseRequest({...base,content_hash:"a".repeat(64)},NOW)).toBeNull();
    expect(parseRequest({...base,context_sha256:"a".repeat(64)},NOW)).toBeNull();
+   expect(parseRequest(({tier:undefined,...base} as unknown) as typeof base,NOW)).toBeNull();
    expect(parseRequest({...base,policy:{...base.policy,continue_max_score:80}},NOW)).toBeNull();
  });
  it("rejects absent/reused/exposed/wrong tokens before any DB access",async()=>{

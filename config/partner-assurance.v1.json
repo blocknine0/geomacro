@@ -45,6 +45,60 @@
       "independent_proof_verification_required": false,
       "live_review_allowance_per_run": 0,
       "note": "Second-partner mapping reuses the same cryptographic, freshness, tamper and commercial-eligibility gates. Activation requires a separate reviewed provider/proof contract; core thresholds may not be lowered."
+    },
+    "predge": {
+      "status": "SIGNED_PAID_TRAFFIC_ADDENDUM_V2_PENDING_GO_LIVE",
+      "contract_id": "predge-paid-customer-traffic-addendum-v2",
+      "channel": "predge_b2b",
+      "delivery_profile": "PREDGE_PAID_RISK_GATE_V2",
+      "commercial_assurance_required": true,
+      "tier_must_be_locked_before_processing": true,
+      "signed_verdict_required_fields": [
+        "verdict_id",
+        "channel",
+        "tier",
+        "structure_type",
+        "customer_price_usdc",
+        "geomacro_fee_usdc"
+      ],
+      "settlement_rail": "circle_arc",
+      "settlement_network": "arc",
+      "settlement_asset": "USDC",
+      "usage_report_due_day": 5,
+      "usage_report_line_item": "ONE_LINE_PER_DELIVERED_PAID_CHECK_WITH_VERDICT_ID",
+      "payment_due_day": 10,
+      "termination_notice_days": 30,
+      "collected_revenue_only": true,
+      "paid_traffic_enabled": false,
+      "go_live_email_confirmation_required": true,
+      "expires_at": null,
+      "tiers": {
+        "basic_focused": {
+          "customer_price_usdc": "0.15",
+          "geomacro_fee_usdc": "0.10",
+          "predge_share_usdc": "0.05",
+          "structure_type": "BASIC_FOCUSED_FACTS_DERIVED_V1"
+        },
+        "standard": {
+          "customer_price_usdc": "0.20",
+          "geomacro_fee_usdc": "0.15",
+          "predge_share_usdc": "0.05",
+          "structure_type": "STANDARD_DUAL_ORIGINAL_GRO_V1"
+        },
+        "complex_full": {
+          "customer_price_usdc": "0.30",
+          "geomacro_fee_usdc": "0.25",
+          "predge_share_usdc": "0.05",
+          "structure_type": "COMPLEX_7D_CORRIDOR_SYNTHESIS_V1"
+        }
+      },
+      "zero_fee_statuses": [
+        "INSUFFICIENT_EVIDENCE",
+        "UNDELIVERED",
+        "REFUNDED"
+      ],
+      "execution_authorized": false,
+      "note": "Paid Risk Gate contract only; non-commercial research continuity retains its existing pilot expiry and rules."
     }
   }
 }
