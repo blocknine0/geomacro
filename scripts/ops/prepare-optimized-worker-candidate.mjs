@@ -2,20 +2,35 @@
 /** Build an immutable exact-main candidate, inheriting every production binding.
  * Never deploy traffic, change secrets/routes/consumers, issue D1 SQL or activate funds.
  */
-import {mkdirSync,writeFileSync,readFileSync,rmSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,rmSync,mkdtempSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 import {checkD1PaidMonthlyHeadroom}
  from '../lib/d1-workers-paid-monthly-governor.mjs';
 import {assessWorkerPromotion} from './verify-protected-worker-promotion.mjs';
+import {assessReviewedAdditiveBindingParity,parseReviewedAdditiveSecretNames,
+ REVIEWABLE_ADDITIVE_SECRETS,HOT50_INTAKE_PROFILE,HOT50_INTAKE_VARS,
+ FAIL_CLOSED_RELEASE_VARS,plainTextValue}
+ from '../lib/canary-additive-binding-parity.mjs';
 const UUID=/^[a-f0-9-]{36}$/i,SHA=/^[a-f0-9]{40}$/;
 const NAME='geomacro-control-plane';
-export function candidateConfig(version,sha){
+/** Only the fixed, named Hot50 intake flag profile can be owner-reviewed. */
+export function candidateConfig(version,sha,{
+ reviewedFlagProfile="",reviewedSecretNames=[]
+}={}){
  const bindings=version?.resources?.bindings,runtime=version?.resources?.script_runtime;
  if(!SHA.test(sha)||!Array.isArray(bindings)||!bindings.length||
     !/^\d{4}-\d{2}-\d{2}$/.test(runtime?.compatibility_date??''))
   throw Error('CANDIDATE_BASELINE_UNREADABLE');
+ if(reviewedFlagProfile!==""&&reviewedFlagProfile!==HOT50_INTAKE_PROFILE)
+  throw Error('CANDIDATE_UNREVIEWED_FLAG_PROFILE');
+ if(!Array.isArray(reviewedSecretNames)||
+    new Set(reviewedSecretNames).size!==reviewedSecretNames.length||
+    reviewedSecretNames.some(x=>!REVIEWABLE_ADDITIVE_SECRETS.includes(x)))
+  throw Error('CANDIDATE_UNREVIEWED_SECRET_NAME');
  const names=new Set();
  for(const binding of bindings){
   if(typeof binding.name!=='string'||!binding.name||!binding.type||names.has(binding.name))
@@ -24,32 +39,41 @@ export function candidateConfig(version,sha){
  }
  if(!names.has('DB')||!names.has('CONTROL_PLANE_TOKEN'))
   throw Error('CANDIDATE_PROTECTED_BINDING_MISSING');
+ for(const name of ['GEOMACRO_P0B_ADMISSION_ACTIVE','GEOMACRO_P1_BUNDLED_LEASES_ENABLED'])
+  if(plainTextValue(bindings.find(x=>x.name===name))!=='1')
+   throw Error('CANDIDATE_PROTECTED_RUNTIME_NOT_ENABLED');
+ for(const name of Object.keys(FAIL_CLOSED_RELEASE_VARS)){
+  const old=bindings.find(x=>x.name===name);
+  if(old&&plainTextValue(old)!=='0')
+   throw Error('CANDIDATE_BASELINE_RELEASE_GATE_UNSAFE');
+ }
+ if(reviewedSecretNames.some(name=>names.has(name)))
+  throw Error('CANDIDATE_REVIEWED_SECRET_NOT_ADDITIVE');
  if(runtime.containers?.length)throw Error('CANDIDATE_CONTAINER_REVIEW_REQUIRED');
+ const vars={GEOMACRO_SOURCE_SHA:sha,...FAIL_CLOSED_RELEASE_VARS,
+  ...(reviewedFlagProfile===HOT50_INTAKE_PROFILE?HOT50_INTAKE_VARS:{})};
  return {name:NAME,main:'src/index.mjs',
   compatibility_date:runtime.compatibility_date,
   compatibility_flags:runtime.compatibility_flags??[],
   ...(runtime.limits?{limits:runtime.limits}:{}),
   ...(runtime.cache_options?{cache:runtime.cache_options}:{}),
-  vars:{GEOMACRO_SOURCE_SHA:sha},
-  unsafe:{bindings:bindings.filter(x=>x.name!=='GEOMACRO_SOURCE_SHA')
+  vars,
+  unsafe:{bindings:bindings.filter(x=>!Object.hasOwn(vars,x.name))
    .map(x=>({name:x.name,type:'inherit'}))}};
 }
 const canonical=value=>JSON.stringify(value,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?
  Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
-export function verifyCandidateBindings(baseline,candidate,sha){
- const before=baseline?.resources?.bindings,after=candidate?.resources?.bindings;
- if(!Array.isArray(before)||!Array.isArray(after))throw Error('CANDIDATE_BINDINGS_UNREADABLE');
- const expected=new Map(before.map(x=>[x.name,x]));
- expected.set('GEOMACRO_SOURCE_SHA',{name:'GEOMACRO_SOURCE_SHA',type:'plain_text',text:sha});
- if(after.length!==expected.size||new Set(after.map(x=>x.name)).size!==after.length)
-  throw Error('CANDIDATE_BINDING_COUNT_CHANGED');
- for(const actual of after){
-  if(canonical(actual)!==canonical(expected.get(actual.name)))
-   throw Error('CANDIDATE_BINDING_RESOURCE_OR_VALUE_CHANGED');
- }
+export function verifyCandidateBindings(baseline,candidate,sha,opts={}){
+ let result;
+ try{
+  result=assessReviewedAdditiveBindingParity(baseline,candidate,{
+   sourceSha:sha,reviewedFlagProfile:opts.reviewedFlagProfile??"",
+   reviewedSecretNames:opts.reviewedSecretNames??[]
+  });
+ }catch(e){throw Error('CANDIDATE_BINDING_RESOURCE_OR_VALUE_CHANGED_'+e.message)}
  if(canonical(baseline.resources.script_runtime)!==canonical(candidate.resources.script_runtime))
   throw Error('CANDIDATE_SCRIPT_RUNTIME_CHANGED');
- return true;
+ return result.status==='PASS_BINDING_PARITY';
 }
 /**
  * Wrangler's structured machine output identifies the ONE version created
