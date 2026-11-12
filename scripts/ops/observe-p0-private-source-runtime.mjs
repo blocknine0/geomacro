@@ -126,7 +126,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
            if(/json/iu.test(type)){
              let payload;try{payload=JSON.parse(text)}catch{throw Error('UNCTAD_MACHINE_JSON_INVALID')}
              clock=parseUnctadPublisherReleaseMetadata(payload);
-           }else clock=parseUnctadPublisherReleaseCalendarHtml(text);
+           }else clock=parseUnctadPublisherReleaseCalendarHtml(text,{asOf:now});
            row.status='MACHINE_DATA_METADATA_PARSED';row.parsed_candidate_count=1;
            row.native_release_clock_verified=true;row.publisher_release_at_utc=clock.published_at;
            row.reason=null;

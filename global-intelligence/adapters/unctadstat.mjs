@@ -46,9 +46,10 @@ const UNCTAD_MONTHS=Object.freeze({january:1,february:2,march:3,april:4,may:5,ju
  * heading attached to the exact monthly commodity-index record. Observation
  * periods are never considered for this clock.
  */
-export function parseUnctadPublisherReleaseCalendarHtml(html,{reportLabel="Commodity prices: UNCTAD Commodity Price Index - Monthly"}={}){
+export function parseUnctadPublisherReleaseCalendarHtml(html,{reportLabel="Commodity prices: UNCTAD Commodity Price Index - Monthly",asOf=new Date()}={}){
  const input=String(html??"");
  if(input.length>2*1024*1024)throw Error("UNCTAD_RELEASE_CALENDAR_TOO_LARGE");
+ if(!(asOf instanceof Date)||!Number.isFinite(asOf.getTime()))throw Error("UNCTAD_RELEASE_CALENDAR_CLOCK_INVALID");
  if(!/UNCTADstat|UNCTAD Data Hub/iu.test(input))throw Error("UNCTAD_RELEASE_CALENDAR_MARKER_MISSING");
  const text=input.replace(/<script\b[\s\S]*?<\/script>/giu," ")
   .replace(/<style\b[\s\S]*?<\/style>/giu," ")
@@ -61,11 +62,12 @@ export function parseUnctadPublisherReleaseCalendarHtml(html,{reportLabel="Commo
   const start=dates[i].index+dates[i][0].length;
   const end=i+1<dates.length?dates[i+1].index:Math.min(text.length,start+1200);
   const context=text.slice(start,Math.min(end,start+1200));
-  if(!context.toLowerCase().includes(reportLabel.toLowerCase()))continue;
+  if(!context.toLowerCase().includes(reportLabel.toLowerCase())||! /\bPublished\b/iu.test(context)||
+     /\b(?:Cancelled|Postponed)\b/iu.test(context))continue;
   const month=UNCTAD_MONTHS[dates[i][2].toLowerCase()],day=Number(dates[i][1]),year=Number(dates[i][3]);
   const iso=year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
   const date=new Date(iso+"T00:00:00.000Z");
-  if(Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===iso)matches.push(date);
+  if(Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===iso&&date<=asOf)matches.push(date);
  }
  if(!matches.length)throw Error("UNCTAD_RELEASE_CALENDAR_RECORD_OR_DATE_MISSING");
  matches.sort((a,b)=>b-a);

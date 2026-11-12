@@ -83,8 +83,9 @@ test("World Bank publisher update date comes from API envelope only",()=>{
 test("UNCTAD release calendar binds the exact release date to the commodity index record",()=>{
  const page='<html><body><h1>UNCTAD Data Hub</h1><h2>November 2026</h2>'+
   '<h3>9 November 2026</h3><p>Commodity prices: UNCTAD Commodity Price Index - Monthly</p>'+
-  '<p>Jan 1995 - Sep 2026 Published</p><h3>16 November 2026</h3><p>Other dataset</p></body></html>';
- const clock=parseUnctadPublisherReleaseCalendarHtml(page);
+  '<p>Jan 1995 - Sep 2026 Published</p><h3>9 December 2026</h3><p>Commodity prices: UNCTAD Commodity Price Index - Monthly Jan 1995 - Oct 2026 Published</p>'+
+  '<h3>16 November 2026</h3><p>Other dataset</p></body></html>';
+ const clock=parseUnctadPublisherReleaseCalendarHtml(page,{asOf:new Date("2026-11-12T23:59:59Z")});
  assert.equal(clock.publisher_release_date,"2026-11-09");
  const normalized=normalizeUnctadStatObservation({dataset:"commodity prices",series:"index",period:"2026-09",
   value:100,retrievedAt:now,publisherMetadata:page});

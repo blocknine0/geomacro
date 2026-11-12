@@ -4,6 +4,9 @@
  * Read-only. Never enables a source or persists publisher prose.
  */
 import fs from "node:fs/promises";
+import { parseUkSanctionsXml } from "../global-intelligence/adapters/uk-sanctions-list.mjs";
+import { parseEuSanctionsXml } from "../global-intelligence/adapters/eu-sanctions.mjs";
+import { ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss } from "./lib/icc-official-news-rss.mjs";
 import { parseMofcomExportControlHtml } from "../global-intelligence/adapters/china-mofcom.mjs";
 import { parseAustraliaCriticalMineralsHtml } from "../global-intelligence/adapters/australia-critical-minerals.mjs";
 import { parseCochilcoAnuarioHtml } from "../global-intelligence/adapters/cochilco-minerals.mjs";
@@ -16,8 +19,8 @@ import { parseWorldBankPinkSheetReleaseMetadata } from "../global-intelligence/a
 const registry = JSON.parse(await fs.readFile(new URL("../config/global-p0-source-expansion.json", import.meta.url), "utf8"));
 const timeoutMs = Number(process.env.P0_SOURCE_LIVE_TIMEOUT_MS ?? 20000);
 const checks = {
-  uk_sanctions_list: { type:"xml", required:["UniqueID","PrimaryName"] },
-  eu_sanctions_consolidated: { type:"any-structured", required:[] },
+  uk_sanctions_list: { type:"xml", required:[] },
+  eu_sanctions_consolidated: { type:"xml", required:[] },
   world_bank_commodity_prices: { type:"xlsx", required:[] },
   unctadstat_global: { type:"html", required:["UNCTAD"] },
   china_mofcom_trade_controls: { type:"html", required:["exportcontrol.mofcom.gov.cn"] },
@@ -25,9 +28,11 @@ const checks = {
   cochilco_minerals: { type:"html", required:["Anuario de Estadísticas del Cobre y Otros Minerales"] },
   opcw_news: { type:"html", required:["News","OPCW"] },
   icj_cases: { type:"html", required:["Cases","International Court of Justice"] },
-  icc_news: { type:"html", required:["International Criminal Court"] }
+  icc_news: { type:"html", required:[] }
 };
 const runtimeExtractors = {
+  uk_sanctions_list:(text,retrievedAt)=>parseUkSanctionsXml(text,{retrievedAt}).length,
+  eu_sanctions_consolidated:(text,retrievedAt)=>parseEuSanctionsXml(text,{retrievedAt}).length,
   china_mofcom_trade_controls: (text, retrievedAt) => parseMofcomExportControlHtml(text, { observedAt:retrievedAt }).length,
   australia_critical_minerals: (text, retrievedAt) => parseAustraliaCriticalMineralsHtml(text, { retrievedAt }).length,
   cochilco_minerals: (text, retrievedAt) => parseCochilcoAnuarioHtml(text, { retrievedAt }).value_numeric,
@@ -68,21 +73,32 @@ async function run(id,source){
   let schemaPass=false;
   if(res.ok&&id==="icc_news"){
    if(!/html/iu.test(ct))throw Error("ICC_NEWS_LISTING_MIME_INVALID");
-   const links=discoverIccArticleUrls(text,{limit:1});
-   if(!links.length)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
-   const article=await get(links[0],"text/html");
+   let articleUrl=null;
+   try{articleUrl=discoverIccArticleUrls(text,{limit:1})[0]??null}catch{}
+   if(!articleUrl){
+    const rss=await get(ICC_OFFICIAL_NEWS_RSS,"application/rss+xml,application/xml,text/xml");
+    if(!rss.ok)throw Error("ICC_OFFICIAL_RSS_HTTP_"+rss.status);
+    if(!/xml|rss/iu.test(rss.headers.get("content-type")??""))throw Error("ICC_OFFICIAL_RSS_MIME_INVALID");
+    const feedBytes=new Uint8Array(await rss.arrayBuffer());
+    if(feedBytes.length>2*1024*1024)throw Error("ICC_OFFICIAL_RSS_TOO_LARGE");
+    const feedText=new TextDecoder().decode(feedBytes);
+    parseIccOfficialNewsRss(feedText);
+    articleUrl=extractIccOfficialNewsLinks(feedText,{limit:1})[0]??null;
+   }
+   if(!articleUrl)throw Error("ICC_NEWS_LISTING_PARSE_FAILED");
+   const article=await get(articleUrl,"text/html");
    if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int")throw Error("ICC_ARTICLE_HTTP_"+article.status);
    const articleType=article.headers.get("content-type")??"";
    if(!/html/iu.test(articleType))throw Error("ICC_ARTICLE_MIME_INVALID");
    const articleBytes=new Uint8Array(await article.arrayBuffer());
    if(articleBytes.length>2*1024*1024)throw Error("ICC_ARTICLE_TOO_LARGE");
-   const parsed=parseIccArticleHtml(new TextDecoder().decode(articleBytes),{url:article.url,retrievedAt:observedAt});
+   const parsed=parseIccArticleHtml(new TextDecoder().decode(articleBytes),{url:articleUrl,retrievedAt:observedAt});
    result.extraction_count=1;result.native_publication_time_verified=parsed.published_at!==null;
    result.publisher_release_at_utc=parsed.published_at;
    schemaPass=parsed.published_at!==null&&requiredPass;
   }else if(res.ok&&id==="unctadstat_global"){
    if(!/html/iu.test(ct))throw Error("UNCTAD_RELEASE_CALENDAR_MIME_INVALID");
-   const clock=parseUnctadPublisherReleaseCalendarHtml(text);
+   const clock=parseUnctadPublisherReleaseCalendarHtml(text,{asOf:new Date(observedAt)});
    result.extraction_count=1;result.native_publication_time_verified=true;
    result.publisher_release_at_utc=clock.published_at;
    schemaPass=requiredPass;
