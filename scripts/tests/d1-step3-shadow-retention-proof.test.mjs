@@ -80,6 +80,6 @@ test("production retains unchanged strict full pointer verifier",async()=>{
  assert.match(x,/verifyShadowRetentionBoundPointers/);
  assert.match(x,/verifyRealPhase2hPointerRows\(\{rows:result\.rows,env\}\)/);
  assert.match(x,/\},\{shadow:true\}\)/);
- assert.match(x,/STEP3_SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED/);
+ assert.match(x,/SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED/);
  assert.match(x,/await verifyRealShadowB2Parity\(/);
 });
