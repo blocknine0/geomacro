@@ -258,3 +258,33 @@ test("timeout is classified, but native timeout details cannot be returned",asyn
  assert.deepEqual(r.failure_codes,["WEBHOOK_FETCH_TIMEOUT"]);
  assert.doesNotMatch(JSON.stringify(r),/private\.example|sensitive/);
 });
+
+
+test("non-200 ACK yields bounded HTTP code and preserves requeue semantics",async()=>{
+ for(const status of [400,401,403,404,413,429,502,503]){
+  const f=dispatchFailureFixture();await f.setEnvelope();
+  const result=await dispatchLicensedCommercialOutbox(f.env,{
+   now,max:1,jobId:f.outbox.job_id,
+   fetcher:async()=>new Response("sensitive target https://customer.invalid/token=abc",
+    {status})
+  });
+  assert.equal(result.status,"RETRY_SCHEDULED");
+  assert.equal(result.retry,1);
+  assert.deepEqual(result.failure_codes,["WEBHOOK_ACK_HTTP_"+status]);
+  assert.equal(result.last_failure_code,"WEBHOOK_ACK_HTTP_"+status);
+  assert.equal(result.last_failure_stage,"WEBHOOK_ACK_HTTP");
+  assert.equal(f.stats().state,"PENDING");
+  assert.equal(f.stats().requeued,1);
+  assert.doesNotMatch(JSON.stringify(result),/customer|token|sensitive/);
+ }
+});
+test("redirected ACK is denied and cannot be mistaken for customer acceptance",async()=>{
+ const f=dispatchFailureFixture();await f.setEnvelope();
+ const result=await dispatchLicensedCommercialOutbox(f.env,{
+  now,max:1,jobId:f.outbox.job_id,
+  fetcher:async()=>Response.redirect("https://somewhere.example/other",302)
+ });
+ assert.deepEqual(result.failure_codes,["WEBHOOK_ACK_HTTP_302"]);
+ assert.equal(result.last_failure_stage,"WEBHOOK_ACK_HTTP");
+ assert.equal(result.sent,0);
+});
