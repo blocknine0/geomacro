@@ -20,6 +20,8 @@ const requireShadow=(env,ackUrl)=>{
     env.STREAM_INGESTION_ENABLED!=="false"||
     env.GEOMACRO_COMMERCIAL_STREAM_RELEASE==="1"||
     env.RISK_STREAM_CANARY_HOLD_CLEARED==="1"||
+    typeof env.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64!=="string"||
+    typeof env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64!=="string"||
     !env.DB?.prepare||!env.DB?.batch||
     typeof env.STREAM_SHADOW_ACK_TOKEN!=="string"||
     env.STREAM_SHADOW_ACK_TOKEN.length<32)
@@ -45,9 +47,9 @@ export async function runIsolatedCommercialE2E(env,{
   await licensedSha("shadow-original-a\n"+id),
   await licensedSha("shadow-original-b\n"+id)
  ];
- const [groKeys,licenseKeys,reviewKeys]=await Promise.all([pair(),pair(),pair()]);
+ const [groKeys,reviewKeys]=await Promise.all([pair(),pair()]);
  const groPub=await spki(groKeys.publicKey);
- const licensePub=await spki(licenseKeys.publicKey);
+ const licensePub=env.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64;
  const reviewPub=await spki(reviewKeys.publicKey);
  const gro={schema:"geomacro.event-stream-gro.v1",
   subject:{type:"COUNTRY",id:"USA"},category:"GEOPOLITICS",
@@ -86,7 +88,7 @@ export async function runIsolatedCommercialE2E(env,{
  const license=await issueGeoMacroCommercialLicense({
   record:{gro_id:id,payload_json:groJson,payload_sha256:groHash,signature_b64:groSig},
   groPublicSpkiB64:groPub,
-  licensePrivatePkcs8B64:await pkcs8(licenseKeys.privateKey),
+  licensePrivatePkcs8B64:env.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64,
   licensePublicSpkiB64:licensePub,
   releasePublicSpkiB64:reviewPub,
   eligibleDerivedScore:score,approval,now
