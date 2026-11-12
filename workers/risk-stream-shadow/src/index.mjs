@@ -7,7 +7,7 @@ import {enqueueRiskStreamEvents,processRiskStreamBatch}
   from "../../control-plane/src/risk-stream-pipeline.mjs";
 import {registerUntrustedShadowIndexSources}
   from "./untrusted-index-source-registry.mjs";
-import {runIsolatedCommercialE2E} from "./commercial-e2e.mjs";
+import {runIsolatedCommercialE2E,sanitizedShadowCommercialError} from "./commercial-e2e.mjs";
 
 const encoder=new TextEncoder();
 const hex=async value=>Array.from(new Uint8Array(await crypto.subtle.digest(
@@ -96,8 +96,10 @@ export default {
      ackUrl:body.ack_url,runId:body.run_id});
     return json(receipt);
    }catch(e){
-    console.error("SHADOW_COMMERCIAL_E2E_HELD");
-    return json({ok:false,error:String(e?.message??"E2E_HOLD").slice(0,120)},503);
+    const code=sanitizedShadowCommercialError(e);
+    // No native exception strings, URL, authorization headers or stack traces.
+    console.error("SHADOW_COMMERCIAL_E2E_HELD",code);
+    return json({ok:false,error:code,error_code:code},503);
    }
   }
   if(request.method==="POST"&&url.pathname==="/v1/internal/shadow/events"&&!url.search){
