@@ -41,6 +41,12 @@ const configs={
   target:"derived-risk-gate-discovery-20m.yml",
   inputs:{}
  },
+ "bounded-hot50-recovery-audit":{
+  authorization:"OWNER_AUTHORIZE_BOUNDED_HOT50_RECOVERY_AUDIT_NO_FUNDS",
+  verify_hot50:false,
+  target:"hot50-production-activation-proof.yml",
+  inputs:{}
+ },
  "candidate-upload":{
   authorization:"OWNER_AUTHORIZE_ZERO_TRAFFIC_EXACT_MAIN_WORKER_CANDIDATE_NO_FUNDS",
   verify_hot50:false,
@@ -70,7 +76,8 @@ function fixture(intent){
  const request={
   schema:OWNER_ISSUE_CANARY_SCHEMA,intent,source_sha:SHA,
   authorization:c.authorization,verify_hot50:c.verify_hot50,
-  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake","isolated-discovery-consumer-deploy","derived-five-lane-discovery"].includes(intent)?{}:
+  ...(["candidate-upload","minimum-risk-facts-backup","registered-original-source-intake","isolated-discovery-consumer-deploy","derived-five-lane-discovery",
+    "bounded-hot50-recovery-audit"].includes(intent)?{}:
    {baseline_version_id:BASELINE,candidate_version_id:CANDIDATE,
     stage2_run_id:"42860000010"}),
   ...(intent==="canary-hold-review"?
@@ -218,4 +225,40 @@ test("canonical protected workflows keep external signed proof, SLO, no-funds an
  assert.equal((source.match(/node scripts\/ops\/verify-owner-protected-source-main\.mjs/gu)??[]).length,2);
  assert.match(source,/check-d1-paid-monthly-headroom\.mjs --hot50-source/u);
  assert.match(source,/B2_ACCOUNT_QUOTA_WORKFLOW_ID: registered_original_archive/u);
+});
+
+test("owner-only bounded recovery proof preserves existing live queue, quota and evidence holds",()=>{
+ const approved=plan("bounded-hot50-recovery-audit");
+ assert.equal(approved.target,"hot50-production-activation-proof.yml");
+ assert.deepEqual(approved.inputs,{});
+ assert.equal(approved.target_protected_admission_required,true);
+ const flow=readFileSync(".github/workflows/hot50-production-activation-proof.yml","utf8");
+ const worker=readFileSync("scripts/ops/redrive-hot50-ingestion.mjs","utf8");
+ const accept=readFileSync("scripts/ops/verify-hot50-production-activation.mjs","utf8");
+ for(const token of [
+  /workflow_dispatch:\s*\{\}/, /github.ref == 'refs\/heads\/main'/,
+  /environment: production/,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/,
+  /B2_REQUEST_BUDGET: "250"/,
+  /redrive-hot50-ingestion.mjs/,/audit-hot50-b2-d1-parity.mjs/,
+  /verify-hot50-production-activation.mjs/
+ ])assert.match(flow,token);
+ for(const token of [
+  /maxRounds=60/, /maxDurationMs=480000/,
+  /TRANSPORT_UNCERTAIN_LEASES_PRESERVED/,
+  /provider_budget_overrides:false/,/zero_backlog_not_inferred:true/
+ ])assert.match(worker,token);
+ assert.match(accept,/provider\.verified===true&&provider\.zero===true/);
+ assert.match(accept,/blocked_production_dependencies_must_not_be_inferred_pass|certification_never_synthesized:true/);
+ const invalid=fixture("bounded-hot50-recovery-audit");
+ for(const edit of [
+  r=>{r.authorization="OWNER_AUTHORIZE_HOT50_BYPASS"},
+  r=>{r.verify_hot50=true},
+  r=>{r.workflows=["evil.yml"]},
+  r=>{r.source_sha=OTHER},
+  r=>{r.force_pass=true}
+ ]){
+  const copy=structuredClone(invalid.event),data=JSON.parse(copy.issue.body);
+  edit(data);copy.issue.body=JSON.stringify(data);
+  assert.throws(()=>planOwnerIssueDispatch({event:copy,env:env(),now:NOW}),/OWNER_DISPATCH_/);
+ }
 });
