@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-12T12:01:52.522Z",
+  "checked_at": "2026-11-12T13:01:17.862Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 47,
+  "item_count": 46,
   "counts": {
     "geopolitics": 5,
     "macro": 27,
-    "rare_earth": 15
+    "rare_earth": 14
   },
-  "source_native_ids_sha256": "8f5c9e72029b8d270ff49653db47a8a8dee01fe199ca15bab5bc40d831b4cda5",
+  "source_native_ids_sha256": "74a7915d704aaa245f074dc2bd1de459c7b7c8f4114e0ddb9d5753329d6e3eb1",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -898,25 +898,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.miningweekly.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-7f00a2bd",
-      "category": "rare_earth",
-      "title": "Geomacro finds United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory",
-      "what_changed": "A monitored source feed reports: United States urged China to uphold rare earth exports set out in Busan trade deal - Digital Watch Observatory. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T12:39:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
