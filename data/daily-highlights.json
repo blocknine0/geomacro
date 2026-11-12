@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-12T10:01:16.182Z",
+  "generated_at": "2026-11-12T11:17:55.019Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -11,6 +11,25 @@
   "source_urls_returned": false,
   "mandatory_source_credits_preserved": true,
   "signals": [
+    {
+      "id": "geopolitics-886d2cd1",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Ukraine's armed forces are lawful combatants · United Kingdom",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Ukraine's armed forces are lawful combatants. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-12T10:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-07f157f3",
       "category": "geopolitics",
@@ -243,25 +262,6 @@
       "development_type": "security",
       "topic": "security and diplomacy",
       "published_at": "2026-10-30T15:56:54.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Contains public sector information licensed under the Open Government Licence v3.0."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-7ea1c49a",
-      "category": "geopolitics",
-      "title": "Geomacro finds United Kingdom issued a statement concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia · United Kingdom",
-      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
-      "what_changed": "United Kingdom issued a statement at the UN Security Council concerning The Peace Agreement remains central to tackling the factors that sustain conflict in Colombia. Country or region mentioned: United Kingdom.",
-      "geography": "United Kingdom",
-      "development_type": "agreement",
-      "topic": "security and diplomacy",
-      "published_at": "2026-10-30T15:45:47.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [

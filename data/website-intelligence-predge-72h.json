@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-12T10:01:16.182Z",
+  "checked_at": "2026-11-12T11:17:55.019Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 50,
+  "item_count": 49,
   "counts": {
-    "geopolitics": 5,
-    "macro": 29,
+    "geopolitics": 6,
+    "macro": 27,
     "rare_earth": 16
   },
-  "source_native_ids_sha256": "de6b91f74b190eac49fd5c54c77d089e2a1dc6c446c390a3fda7b59896644efa",
+  "source_native_ids_sha256": "6ff31aea763f15faf1475084128b250c89525a227900ae15149eaa01eed624f2",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-886d2cd1",
+      "category": "geopolitics",
+      "title": "Geomacro finds United Kingdom issued a statement concerning Ukraine's armed forces are lawful combatants · United Kingdom",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "United Kingdom issued a statement to the OSCE concerning Ukraine's armed forces are lawful combatants. Country or region mentioned: United Kingdom.",
+      "geography": "United Kingdom",
+      "development_type": "announcement",
+      "topic": "foreign policy",
+      "published_at": "2026-11-12T10:09:19.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-8990266b",
       "category": "rare_earth",
@@ -934,44 +953,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ac2fe0f3",
-      "category": "macro",
-      "title": "Geomacro finds Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette",
-      "what_changed": "A monitored source feed reports: Sisi called for sustaining safe forex reserves as holdings hit record $57.5b - Egyptian Gazette. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "official economic statistics",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T10:23:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1a2ebf39",
-      "category": "macro",
-      "title": "Geomacro finds Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project",
-      "what_changed": "A monitored source feed reports: Torrent Gold agreed to buy New Mexico’s Sunrise Tungsten Project. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T10:15:27.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: www.mining-technology.com"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
