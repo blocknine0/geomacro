@@ -18,6 +18,24 @@ import {riskStreamOriginalClaims}
 import {preflight} from "../ops/provision-risk-stream-shadow-attester-keys.mjs";
 import {B2_DAILY_LIMITS} from "../../workers/control-plane/src/b2-account-quota.mjs";
 
+const isGdeltDocumentApi = input => {
+ const url=new URL(String(input));
+ return url.origin==="https://api.gdeltproject.org" &&
+  url.pathname==="/api/v2/doc/doc" &&
+  !url.username && !url.password;
+};
+
+test("GDELT endpoint routing rejects hostname suffixes, query injection and insecure schemes",()=>{
+ assert.equal(isGdeltDocumentApi("https://api.gdeltproject.org/api/v2/doc/doc"),true);
+ for(const url of [
+  "https://api.gdeltproject.org.evil.invalid/api/v2/doc/doc",
+  "https://evil.invalid/?to=https://api.gdeltproject.org/api/v2/doc/doc",
+  "https://api.gdeltproject.org@evil.invalid/api/v2/doc/doc",
+  "http://api.gdeltproject.org/api/v2/doc/doc",
+  "https://api.gdeltproject.org/other/path"
+ ])assert.equal(isGdeltDocumentApi(url),false,url);
+});
+
 const live=()=>({ok:true,schema:"geomacro.b2-account-quota-status.v1",
  day_utc:new Date().toISOString().slice(0,10),used:{
  total:602,GET:100,PUT:450,HEAD:40,NATIVE_AUTH:12},
@@ -54,6 +72,18 @@ test("RSS parser emits only explicit country-associated index metadata",()=>{
  assert.deepEqual(items[0].countries,["USA"]);
  assert.equal(items[0].feed_origin,"RSS");
 });
+test("RSS XML entities decode exactly once; CDATA remains literal",()=>{
+ const xml='<rss><channel><item><title>'+
+  'US &amp;lt;sanctions&amp;gt; &amp;amp; &lt;b&gt; <![CDATA[&amp; untouched]]>'+
+  '</title><link>https://www.bbc.com/news/?q=US&amp;lang=en</link>'+
+  '<pubDate>Wed, 11 Nov 2026 12:00:00 GMT</pubDate></item></channel></rss>';
+ const rows=parseIndexRss(xml,{now:()=>Date.parse("2026-11-11T18:00:00Z")});
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].title,"US &lt;sanctions&gt; &amp; <b> &amp; untouched");
+ assert.equal(new URL(rows[0].url).searchParams.get("lang"),"en");
+ assert.deepEqual(rows[0].countries,["USA"]);
+});
+
 test("after GDELT 429 RSS fallback happens before any GDELT reattempt",async()=>{
  let gdeltCalls=0,requests=[];
  const xml="<rss><channel>"+Array.from({length:20},(_,i)=>'<item><title>'+
@@ -63,12 +93,12 @@ test("after GDELT 429 RSS fallback happens before any GDELT reattempt",async()=>
  const records=await discoverShadowArticles({
   fetchImpl:async url=>{
    const str=String(url);requests.push(str);
-   if(str.includes("gdeltproject.org")){gdeltCalls++;return new Response("",{status:429})}
+   if(isGdeltDocumentApi(url)){gdeltCalls++;return new Response("",{status:429})}
    return new Response(xml,{status:200});
   },sleep:async()=>{},now:()=>Date.parse('2026-11-11T18:00:00Z'),log:()=>{}});
  assert.equal(gdeltCalls,1);
- assert.equal(requests[0].includes("gdeltproject.org"),true);
- assert.equal(requests[1].includes("reutersagency.com"),true);
+ assert.equal(isGdeltDocumentApi(requests[0]),true);
+ assert.equal(new URL(requests[1]).hostname,"www.reutersagency.com");
  assert.ok(records.length>=20);
  assert.ok(records.every(x=>x.feed_origin==="RSS"));
 });
@@ -113,7 +143,7 @@ test("provider Retry-After beyond diagnostic budget defers GDELT, does not hamme
  let calls=0,logLines=[];
  const observations=await discoverShadowArticles({
   fetchImpl:async url=>{
-   if(String(url).includes("gdeltproject.org")){
+   if(isGdeltDocumentApi(url)){
     calls++;return new Response("",{status:429,headers:{"Retry-After":"35"}});
    }
    return new Response("",{status:503});
