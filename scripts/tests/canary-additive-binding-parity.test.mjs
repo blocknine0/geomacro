@@ -17,7 +17,7 @@ test("reviewed exact-name secret addition is accepted, never wildcard",()=>{
 });
 test("unreviewed addition, changing DB binding, or removal is blocked",()=>{
  assert.throws(()=>assessReviewedAdditiveBindingParity(
-  version([db]),version([db,added])),/UNREVIEWED_ADDITION/);
+  version([db]),version([db,added])),/UNREVIEWED_SECRET_ADDITION/);
  assert.throws(()=>assessReviewedAdditiveBindingParity(
   version([db]),version([{...db,type:"kv_namespace"}])),
   /REMOVAL_OR_TYPE_CHANGE/);
@@ -28,14 +28,14 @@ test("unknown review names or plaintext vars cannot bypass parity",()=>{
  const unknown={name:"CONTROL_PLANE_TOKEN",type:"secret_text"};
  assert.throws(()=>assessReviewedAdditiveBindingParity(
   version([db]),version([db,unknown]),[unknown.name]),
-  /ADDITIVE_SECRET_TYPE_OR_SCOPE/);
+  /REVIEWED_NAME_INVALID_OR_DUPLICATE/);
  const plaintext={...added,type:"plain_text"};
  assert.throws(()=>assessReviewedAdditiveBindingParity(
   version([db]),version([db,plaintext]),[added.name]),
-  /ADDITIVE_SECRET_TYPE_OR_SCOPE/);
+  /UNREVIEWED_SECRET_ADDITION/);
  assert.throws(()=>assessReviewedAdditiveBindingParity(
   version([db]),version([db,added]),[added.name,added.name]),
-  /DUPLICATE_REVIEWED_NAME/);
+  /REVIEWED_NAME_INVALID_OR_DUPLICATE/);
 });
 
 const SHA="a".repeat(40);
