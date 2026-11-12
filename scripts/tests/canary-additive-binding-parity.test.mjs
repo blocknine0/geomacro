@@ -104,3 +104,18 @@ test("additional metadata on newly approved secret cannot bypass type or identit
   version(bad),sha,REVIEWABLE_ADDITIVE_SECRETS),
   /REVIEWED_SECRET_TYPE_OR_METADATA/);
 });
+
+test("canonical six-stage canary signs Hot50 owner review even when secret additions are empty",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const flow=readFileSync(new URL("../../.github/workflows/canary-promotion.yml",import.meta.url),"utf8");
+ const review=readFileSync(new URL("../ops/attest-canary-additive-secrets.mjs",import.meta.url),"utf8");
+ const promoter=readFileSync(new URL("../canary-promoter.ts",import.meta.url),"utf8");
+ assert.match(flow,/reviewed_hot50_runtime:/);
+ assert.match(flow,/ENABLE_HOT50_RESEARCH_NO_FUNDS/);
+ assert.match(flow,/CANARY_OWNER_REVIEWED_HOT50_RUNTIME:/);
+ assert.match(review,/reviewed_hot50_runtime:"ENABLE_HOT50_RESEARCH_NO_FUNDS"/);
+ assert.match(review,/no_funds:true,commercial_release_authorized:false,hold_cleared:false/);
+ assert.match(promoter,/CANARY_HOT50_SIGNED_OWNER_REVIEW_MISSING/);
+ assert.match(promoter,/review\.reviewed_hot50_runtime==='ENABLE_HOT50_RESEARCH_NO_FUNDS'/);
+ assert.match(promoter,/CANARY_ROLLBACK_BASELINE_100_VERIFIED/);
+});
