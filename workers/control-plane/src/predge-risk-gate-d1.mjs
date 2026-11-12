@@ -197,28 +197,40 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
  const terms=predgePaidRiskGateTerms(tier),billable=entry_status==="DELIVERED";
  const ledger_id=await digest("geomacro:predge-paid-risk-gate-ledger:v2:"+verdict_id);
  const response_sha256=await digest(canonical(response));
+ const createdClock=Date.parse(created_at);
+ if(!Number.isFinite(createdClock))return false;
+ const createdDate=new Date(createdClock);
+ const nextMonth=new Date(Date.UTC(createdDate.getUTCFullYear(),createdDate.getUTCMonth()+1,1));
+ const nextMonthPrefix=nextMonth.toISOString().slice(0,7);
+ const usageReportDueDate=nextMonthPrefix+"-05";
+ const settlementDueDate=nextMonthPrefix+"-10";
  try{
   await db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
    (ledger_id,verdict_id,request_id,channel,tier,structure_type,
     customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
     contract_predge_share_usdc_cents,geomacro_fee_usdc_cents,
     predge_share_usdc_cents,billable,entry_status,request_hash,response_sha256,
-    created_at,usage_month,collection_status,settlement_status)
-   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
+    created_at,usage_month,usage_report_due_date,settlement_due_date,
+    collection_status,settlement_status)
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
    ON CONFLICT(request_id) DO NOTHING`)
     .bind(ledger_id,verdict_id,request_id,"predge_b2b",tier,terms.structure_type,
       terms.customer_price_usdc_cents,terms.geomacro_fee_usdc_cents,
       terms.predge_share_usdc_cents,billable?terms.geomacro_fee_usdc_cents:0,
       billable?terms.predge_share_usdc_cents:0,billable?1:0,entry_status,
-      request_hash,response_sha256,created_at,created_at.slice(0,7)).run();
+      request_hash,response_sha256,created_at,created_at.slice(0,7),
+      usageReportDueDate,settlementDueDate).run();
   const saved=await db.prepare(`SELECT verdict_id,request_hash,response_sha256,
-      entry_status,billable,geomacro_fee_usdc_cents
+      entry_status,billable,geomacro_fee_usdc_cents,
+      usage_report_due_date,settlement_due_date
     FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1`)
     .bind(request_id).first();
   return Boolean(saved&&saved.verdict_id===verdict_id&&
     saved.request_hash===request_hash&&saved.response_sha256===response_sha256&&
     saved.entry_status===entry_status&&saved.billable===(billable?1:0)&&
-    saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0));
+    saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0)&&
+    saved.usage_report_due_date===usageReportDueDate&&
+    saved.settlement_due_date===settlementDueDate);
  }catch{return false;}
 }
 async function hotRow(db,subject,now){

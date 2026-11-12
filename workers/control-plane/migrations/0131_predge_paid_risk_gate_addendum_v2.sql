@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS predge_paid_risk_gate_usage_ledger (
   response_sha256 TEXT NOT NULL CHECK(length(response_sha256)=64),
   created_at TEXT NOT NULL,
   usage_month TEXT NOT NULL CHECK(length(usage_month)=7 AND substr(usage_month,5,1)='-'),
+  usage_report_due_date TEXT NOT NULL CHECK(length(usage_report_due_date)=10),
+  settlement_due_date TEXT NOT NULL CHECK(length(settlement_due_date)=10),
   settlement_rail TEXT NOT NULL DEFAULT 'circle_arc' CHECK(settlement_rail='circle_arc'),
   settlement_network TEXT NOT NULL DEFAULT 'arc' CHECK(settlement_network='arc'),
   settlement_asset TEXT NOT NULL DEFAULT 'USDC' CHECK(settlement_asset='USDC'),
@@ -70,6 +72,7 @@ CREATE VIEW IF NOT EXISTS predge_paid_risk_gate_monthly_usage_report AS
 SELECT verdict_id,request_id,usage_month,created_at,channel,tier,structure_type,
   customer_price_usdc_cents,entry_status,billable,geomacro_fee_usdc_cents,
   predge_share_usdc_cents,collection_status,collected_revenue_usdc_cents,
+  usage_report_due_date,settlement_due_date,
   settlement_rail,settlement_network,settlement_asset,settlement_status,
   settlement_tx_hash,settled_at
 FROM predge_paid_risk_gate_usage_ledger
@@ -86,6 +89,8 @@ WHEN NEW.ledger_id<>OLD.ledger_id OR NEW.verdict_id<>OLD.verdict_id OR
   NEW.contract_predge_share_usdc_cents<>OLD.contract_predge_share_usdc_cents OR
   NEW.request_hash<>OLD.request_hash OR NEW.response_sha256<>OLD.response_sha256 OR
   NEW.created_at<>OLD.created_at OR NEW.usage_month<>OLD.usage_month OR
+  NEW.usage_report_due_date<>OLD.usage_report_due_date OR
+  NEW.settlement_due_date<>OLD.settlement_due_date OR
   NEW.settlement_rail<>OLD.settlement_rail OR NEW.settlement_network<>OLD.settlement_network OR
   NEW.settlement_asset<>OLD.settlement_asset
 BEGIN

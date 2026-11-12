@@ -41,15 +41,16 @@ test("D1 usage ledger rejects charges on insufficient, undelivered, and refunded
   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
    geomacro_fee_usdc_cents,predge_share_usdc_cents,billable,entry_status,
-   request_hash,response_sha256,created_at,usage_month)
-  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+   request_hash,response_sha256,created_at,usage_month,usage_report_due_date,
+   settlement_due_date)
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
  const common=["a".repeat(64),"123e4567-e89b-52d3-a456-426614174000","req-1",
   "predge_b2b","standard","STANDARD_DUAL_ORIGINAL_GRO_V1",20,15];
- put.run(...common,0,0,0,"INSUFFICIENT_EVIDENCE","b".repeat(64),"c".repeat(64),"2026-11-12T00:00:00Z","2026-11");
+ put.run(...common,0,0,0,"INSUFFICIENT_EVIDENCE","b".repeat(64),"c".repeat(64),"2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10");
  for(const status of ["INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"]){
   assert.throws(()=>put.run("d".repeat(64),"123e4567-e89b-52d3-a456-426614174001",`req-${status}`,
    "predge_b2b","standard","STANDARD_DUAL_ORIGINAL_GRO_V1",20,15,15,5,1,status,
-   "b".repeat(64),"c".repeat(64),"2026-11-12T00:00:00Z","2026-11"));
+   "b".repeat(64),"c".repeat(64),"2026-11-12T00:00:00Z","2026-11","2026-12-05","2026-12-10"));
  }
  assert.equal(db.prepare("SELECT billable,geomacro_fee_usdc_cents FROM predge_paid_risk_gate_usage_ledger").get().geomacro_fee_usdc_cents,0);
  db.close();
