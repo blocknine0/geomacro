@@ -85,12 +85,14 @@
         }
       },
       "tier_locked_before_processing": true,
+      "paid_traffic_enabled": false,
       "zero_fee_statuses": [
         "INSUFFICIENT_EVIDENCE",
         "UNDELIVERED",
         "REFUNDED"
       ],
       "traffic_start_requires_confirmed_go_live_email": true,
+      "paid_start_crosscheck_hours": 72,
       "paid_traffic_enabled": false
     },
     "direct_store_intelligence": {

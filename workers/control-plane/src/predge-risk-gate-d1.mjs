@@ -31,7 +31,8 @@ const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
 function fail(error,status=503,extra={}){
  return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
   tier:null,structure_type:null,customer_price_usdc:"0.00",
-  geomacro_fee_usdc:"0.00",billable:false,entry_status:"UNDELIVERED",
+  geomacro_fee_usdc:"0.00",billable:false,billing_mode:"PILOT_FREE",
+  entry_status:"UNDELIVERED",
   advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
 }
 function constantEqual(a,b){
@@ -184,6 +185,11 @@ export function parseRequest(obj,now=Date.now()){
  }
  return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier};
 }
+export function predgePaidTrafficEnabled(env,policy){
+ return env?.PREDGE_PAID_TRAFFIC_ENABLED==="YES"&&
+   env?.PREDGE_PAID_GO_LIVE_CROSSCHECK==="PASS"&&
+   policy?.policy_id==="predge-paid-traffic-addendum-v2";
+}
 async function deterministicVerdictId(requestHash){
  const digestBytes=new Uint8Array(await crypto.subtle.digest("SHA-256",
    encoder.encode("geomacro:predge-paid-risk-gate-addendum-v2:"+requestHash)));
@@ -193,8 +199,8 @@ async function deterministicVerdictId(requestHash){
  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_hash,
- response,entry_status,created_at}){
- const terms=predgePaidRiskGateTerms(tier),billable=entry_status==="DELIVERED";
+ response,entry_status,billing_mode,created_at}){
+ const terms=predgePaidRiskGateTerms(tier),billable=entry_status==="DELIVERED"&&billing_mode==="PAID_ADDENDUM_V2";
  const ledger_id=await digest("geomacro:predge-paid-risk-gate-ledger:v2:"+verdict_id);
  const response_sha256=await digest(canonical(response));
  const createdClock=Date.parse(created_at);
@@ -209,24 +215,25 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
    (ledger_id,verdict_id,request_id,channel,tier,structure_type,
     customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
     contract_predge_share_usdc_cents,geomacro_fee_usdc_cents,
-    predge_share_usdc_cents,billable,entry_status,request_hash,response_sha256,
+    predge_share_usdc_cents,billable,billing_mode,entry_status,request_hash,response_sha256,
     created_at,usage_month,usage_report_due_date,settlement_due_date,
     collection_status,settlement_status)
-   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
    ON CONFLICT(request_id) DO NOTHING`)
     .bind(ledger_id,verdict_id,request_id,"predge_b2b",tier,terms.structure_type,
       terms.customer_price_usdc_cents,terms.geomacro_fee_usdc_cents,
       terms.predge_share_usdc_cents,billable?terms.geomacro_fee_usdc_cents:0,
-      billable?terms.predge_share_usdc_cents:0,billable?1:0,entry_status,
+      billable?terms.predge_share_usdc_cents:0,billable?1:0,billing_mode,entry_status,
       request_hash,response_sha256,created_at,created_at.slice(0,7),
       usageReportDueDate,settlementDueDate).run();
   const saved=await db.prepare(`SELECT verdict_id,request_hash,response_sha256,
-      entry_status,billable,geomacro_fee_usdc_cents,
+      billing_mode,entry_status,billable,geomacro_fee_usdc_cents,
       usage_report_due_date,settlement_due_date
     FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1`)
     .bind(request_id).first();
   return Boolean(saved&&saved.verdict_id===verdict_id&&
     saved.request_hash===request_hash&&saved.response_sha256===response_sha256&&
+    saved.billing_mode===billing_mode&&
     saved.entry_status===entry_status&&saved.billable===(billable?1:0)&&
     saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0)&&
     saved.usage_report_due_date===usageReportDueDate&&
@@ -287,6 +294,8 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  // determines billability; it may never change the requested tier.
  const lockedTier=parsed.tier;
  const lockedTerms=predgePaidRiskGateTerms(lockedTier);
+ const paidTrafficEnabled=predgePaidTrafficEnabled(env,parsed.policy);
+ const billingMode=paidTrafficEnabled?"PAID_ADDENDUM_V2":"PILOT_FREE";
  // Three independent read-only probes. No waiting on a GRO-producing queue,
  // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
  // D1 schema or transport failure is an infrastructure error, not missing proof.
@@ -368,8 +377,10 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
       observation_count:facts.distinct_events,
       latest_observation_clock:facts.latest_event_clock
    };
-   const billable=tierReady&&result.reason_codes?.includes("INSUFFICIENT_EVIDENCE")!==true;
-   const entryStatus=billable?"DELIVERED":"INSUFFICIENT_EVIDENCE";
+   const evidenceSufficient=tierReady&&result.reason_codes?.includes("INSUFFICIENT_EVIDENCE")!==true;
+   const billable=paidTrafficEnabled&&evidenceSufficient;
+   const entryStatus=!evidenceSufficient?"INSUFFICIENT_EVIDENCE":
+     paidTrafficEnabled?"DELIVERED":"PILOT_FREE";
    const geomacroFeeUsdc=billable?contractGeomacroFeeUsdc:"0.00";
    // Ed25519 signs the immutable decision and tier matrix. HMAC audit
    // receipts remain separate and are never mislabeled as Ed25519.
@@ -378,7 +389,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
-     predge_share_usdc:billable?"0.05":"0.00",billable,entry_status,
+     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode,entry_status,
      tier_activation_matrix:tierActivationMatrix,
      execution_authorized:false
    };
@@ -398,7 +409,7 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    response.audit_receipt_signature_scope=receipt.signature_scope;
    if(!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
-      response,entry_status:entryStatus,created_at:nowIso}))
+      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso}))
      return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests

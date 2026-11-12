@@ -71,6 +71,7 @@
       "collected_revenue_only": true,
       "paid_traffic_enabled": false,
       "go_live_email_confirmation_required": true,
+      "paid_start_crosscheck_hours": 72,
       "expires_at": null,
       "tiers": {
         "basic_focused": {

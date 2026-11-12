@@ -13,8 +13,10 @@ const terms={
 } as const;
 function envelope(tier:keyof typeof terms,{
  standard,gro,history,billable=true,fee=terms[tier].fee,
+ billingMode="PAID_ADDENDUM_V2",entryStatus=billable?"DELIVERED":"INSUFFICIENT_EVIDENCE",
  active=standard&&gro&&history
-}:{standard:boolean;gro:boolean;history:boolean;billable?:boolean;fee?:string;active?:boolean}){
+}:{standard:boolean;gro:boolean;history:boolean;billable?:boolean;fee?:string;
+  billingMode?:"PILOT_FREE"|"PAID_ADDENDUM_V2";entryStatus?:string;active?:boolean}){
  const matrix={
   basic:{active:true,status:"ACTIVE"},
   standard:{active:standard,status:standard?"ACTIVE":"PENDING",corroboration_sources_count:standard?2:0},
@@ -24,7 +26,7 @@ function envelope(tier:keyof typeof terms,{
   channel:"predge_b2b",tier,structure_type:terms[tier].structure,
   customer_price_usdc:terms[tier].price,geomacro_fee_usdc:billable?fee:"0.00",
   predge_share_usdc:billable?"0.05":"0.00",billable,
-  entry_status:billable?"DELIVERED":"INSUFFICIENT_EVIDENCE",execution_authorized:false,
+  billing_mode:billingMode,entry_status:entryStatus,execution_authorized:false,
   risk_gate:{decision:billable?"REQUIRE_APPROVAL":"PAUSE",execution_authorized:false},
   context:{verified_signed_gro:tier==="complex_full"&&billable,payment_authorized:false},
   tier_activation_matrix:matrix,
@@ -47,6 +49,12 @@ describe("signed Predge paid Risk Gate Addendum v2 at SSR boundary",()=>{
  it("accepts the explicitly locked tier with zero fee when its evidence is insufficient",()=>{
   expect(validateSignedProgressiveResponse(envelope("complex_full",{
    standard:true,gro:true,history:false,billable:false
+  }),publicSpki,id)).toBe(true);
+ });
+ it("keeps delivered pilot traffic zero-fee until the signed go-live cross-check is enabled",()=>{
+  expect(validateSignedProgressiveResponse(envelope("basic_focused",{
+   standard:false,gro:false,history:false,billable:false,billingMode:"PILOT_FREE",
+   entryStatus:"PILOT_FREE"
   }),publicSpki,id)).toBe(true);
  });
  it("rejects billable claims without evidence, pricing drift, or post-signature tampering",()=>{

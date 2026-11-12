@@ -15,6 +15,8 @@ export const PREDGE_PAID_RISK_GATE_V2 = Object.freeze({
   fixed_monthly_fees: false,
   term: "INDEFINITE_UNTIL_TERMINATED",
   termination_notice_days: 30,
+  paid_traffic_default_enabled: false,
+  paid_traffic_enablement_requires_go_live_and_72h_crosscheck: true,
   tiers: Object.freeze({
     basic_focused: Object.freeze({
       structure_type: "BASIC_FOCUSED_FACTS_DERIVED_V1",

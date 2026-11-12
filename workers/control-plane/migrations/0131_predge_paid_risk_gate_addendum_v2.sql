@@ -21,8 +21,9 @@ CREATE TABLE IF NOT EXISTS predge_paid_risk_gate_usage_ledger (
   geomacro_fee_usdc_cents INTEGER NOT NULL CHECK(geomacro_fee_usdc_cents IN (0,10,15,25)),
   predge_share_usdc_cents INTEGER NOT NULL CHECK(predge_share_usdc_cents IN (0,5)),
   billable INTEGER NOT NULL CHECK(billable IN (0,1)),
+  billing_mode TEXT NOT NULL CHECK(billing_mode IN ('PILOT_FREE','PAID_ADDENDUM_V2')),
   entry_status TEXT NOT NULL CHECK(entry_status IN (
-    'DELIVERED','INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED'
+    'DELIVERED','PILOT_FREE','INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED'
   )),
   request_hash TEXT NOT NULL CHECK(length(request_hash)=64),
   response_sha256 TEXT NOT NULL CHECK(length(response_sha256)=64),
@@ -51,7 +52,8 @@ CREATE TABLE IF NOT EXISTS predge_paid_risk_gate_usage_ledger (
     (tier='complex_full' AND structure_type='COMPLEX_7D_CORRIDOR_SYNTHESIS_V1' AND customer_price_usdc_cents=30 AND contract_geomacro_fee_usdc_cents=25)
   ),
   CHECK(
-    (entry_status='DELIVERED' AND billable=1 AND geomacro_fee_usdc_cents=contract_geomacro_fee_usdc_cents AND predge_share_usdc_cents=contract_predge_share_usdc_cents) OR
+    (entry_status='DELIVERED' AND billing_mode='PAID_ADDENDUM_V2' AND billable=1 AND geomacro_fee_usdc_cents=contract_geomacro_fee_usdc_cents AND predge_share_usdc_cents=contract_predge_share_usdc_cents) OR
+    (entry_status='PILOT_FREE' AND billing_mode='PILOT_FREE' AND billable=0 AND geomacro_fee_usdc_cents=0 AND predge_share_usdc_cents=0) OR
     (entry_status IN ('INSUFFICIENT_EVIDENCE','UNDELIVERED','REFUNDED') AND billable=0 AND geomacro_fee_usdc_cents=0 AND predge_share_usdc_cents=0)
   ),
   CHECK((collection_status IN ('UNREPORTED','NO_COLLECTION') AND collected_revenue_usdc_cents=0) OR collection_status IN ('PARTIAL','COLLECTED')),
@@ -70,13 +72,13 @@ CREATE INDEX IF NOT EXISTS idx_predge_paid_risk_gate_collection
 -- state visible so settlement cannot be represented as prepaid revenue.
 CREATE VIEW IF NOT EXISTS predge_paid_risk_gate_monthly_usage_report AS
 SELECT verdict_id,request_id,usage_month,created_at,channel,tier,structure_type,
-  customer_price_usdc_cents,entry_status,billable,geomacro_fee_usdc_cents,
+  customer_price_usdc_cents,billing_mode,entry_status,billable,geomacro_fee_usdc_cents,
   predge_share_usdc_cents,collection_status,collected_revenue_usdc_cents,
   usage_report_due_date,settlement_due_date,
   settlement_rail,settlement_network,settlement_asset,settlement_status,
   settlement_tx_hash,settled_at
 FROM predge_paid_risk_gate_usage_ledger
-WHERE entry_status IN ('DELIVERED','REFUNDED');
+WHERE entry_status='REFUNDED' OR (entry_status='DELIVERED' AND billable=1);
 
 -- Contract identity and tier terms cannot be rewritten after a verdict exists.
 CREATE TRIGGER IF NOT EXISTS predge_paid_risk_gate_usage_identity_immutable
@@ -87,6 +89,7 @@ WHEN NEW.ledger_id<>OLD.ledger_id OR NEW.verdict_id<>OLD.verdict_id OR
   NEW.customer_price_usdc_cents<>OLD.customer_price_usdc_cents OR
   NEW.contract_geomacro_fee_usdc_cents<>OLD.contract_geomacro_fee_usdc_cents OR
   NEW.contract_predge_share_usdc_cents<>OLD.contract_predge_share_usdc_cents OR
+  NEW.billing_mode<>OLD.billing_mode OR
   NEW.request_hash<>OLD.request_hash OR NEW.response_sha256<>OLD.response_sha256 OR
   NEW.created_at<>OLD.created_at OR NEW.usage_month<>OLD.usage_month OR
   NEW.usage_report_due_date<>OLD.usage_report_due_date OR

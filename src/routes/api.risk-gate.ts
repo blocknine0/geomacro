@@ -31,7 +31,8 @@ export function validateSignedProgressiveResponse(json:Record<string,unknown>,tr
     obj.customer_price_usdc!==json.customer_price_usdc||
     obj.geomacro_fee_usdc!==json.geomacro_fee_usdc||
     obj.predge_share_usdc!==json.predge_share_usdc||
-    obj.billable!==json.billable||obj.entry_status!==json.entry_status||
+    obj.billable!==json.billable||obj.billing_mode!==json.billing_mode||
+    obj.entry_status!==json.entry_status||
     !["basic_focused","standard","complex_full"].includes(String(obj.tier)))return false;
  const paidTerms={
    basic_focused:{structure:"BASIC_FOCUSED_FACTS_DERIVED_V1",price:"0.15",fee:"0.10"},
@@ -43,9 +44,12 @@ export function validateSignedProgressiveResponse(json:Record<string,unknown>,tr
     typeof obj.verdict_id!=="string"||
     !/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(obj.verdict_id)||
     obj.structure_type!==terms.structure||obj.customer_price_usdc!==terms.price||
-    !["DELIVERED","INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||
-    (obj.billable===true&&(obj.entry_status!=="DELIVERED"||obj.geomacro_fee_usdc!==terms.fee||obj.predge_share_usdc!=="0.05"))||
-    (obj.billable===false&&(!["INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||obj.geomacro_fee_usdc!=="0.00"||obj.predge_share_usdc!=="0.00")))return false;
+    !["PILOT_FREE","DELIVERED","INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||
+    !["PILOT_FREE","PAID_ADDENDUM_V2"].includes(String(obj.billing_mode))||
+    (obj.billable===true&&(obj.billing_mode!=="PAID_ADDENDUM_V2"||obj.entry_status!=="DELIVERED"||obj.geomacro_fee_usdc!==terms.fee||obj.predge_share_usdc!=="0.05"))||
+    (obj.billable===false&&(!["PILOT_FREE","INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||obj.geomacro_fee_usdc!=="0.00"||obj.predge_share_usdc!=="0.00"))||
+    (obj.entry_status==="PILOT_FREE"&&obj.billing_mode!=="PILOT_FREE")||
+    (obj.entry_status==="DELIVERED"&&obj.billing_mode!=="PAID_ADDENDUM_V2"))return false;
  const matrix=obj.tier_activation_matrix as Record<string,Record<string,unknown>>|undefined;
  if(!matrix||matrix.basic?.status!=="ACTIVE"||matrix.basic?.active!==true||
     !["ACTIVE","PENDING"].includes(String(matrix.standard?.status))||

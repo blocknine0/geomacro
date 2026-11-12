@@ -143,6 +143,7 @@
       "production_funds_authorized": false,
       "paid_traffic_enabled": false,
       "go_live_confirmation_required": true,
+        "paid_start_crosscheck_hours": 72,
       "term": {
         "type": "indefinite_until_terminated",
         "expires_at": null,
