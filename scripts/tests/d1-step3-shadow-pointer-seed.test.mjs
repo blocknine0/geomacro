@@ -254,3 +254,35 @@ test("offline: bounded Shadow R2 GET transport retries preserve strict fail-clos
  /STEP3_SHADOW_SEED_R2_PROVIDER_UNAVAILABLE/u);
  assert.equal(writes,1,"unknown PUT acknowledgement MUST NEVER be retried");
 });
+
+
+test("Step3 rejects missing real shadow B2 ACK before provider checkpoint or DDL",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const {step3ShadowB2AcknowledgedCandidateSql}=await import(
+  "../ops/run-step3-protected-d1-migrations.mjs");
+ const fixed=Date.parse("2026-11-12T14:30:00.000Z");
+ const sql=step3ShadowB2AcknowledgedCandidateSql(fixed);
+ assert.match(sql,/SELECT record_id,b2_object_sha256,b2_archived_at FROM phase2h_private_raw_news/u);
+ assert.match(sql,/INDEXED BY idx_phase2h_retention_first_ingested/u);
+ assert.match(sql,/b2_object_sha256 IS NOT NULL AND b2_archived_at IS NOT NULL/u);
+ assert.match(sql,/first_ingested_at >= '2026-11-09T16:30:00.000Z'/u);
+ assert.match(sql,/ORDER BY first_ingested_at DESC,record_id DESC LIMIT 1/u);
+ assert.doesNotMatch(sql,/\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|REPLACE)\b/u);
+ assert.throws(()=>step3ShadowB2AcknowledgedCandidateSql(Number.NaN),
+  /PREFLIGHT_CLOCK_INVALID/u);
+ const code=readFileSync("scripts/ops/run-step3-protected-d1-migrations.mjs","utf8");
+ const start=code.indexOf('export async function rehearseStep3Shadow');
+ const section=code.slice(start);
+ const scan=section.indexOf('step3ShadowB2AcknowledgedCandidateSql()');
+ const stop=section.indexOf('fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED")');
+ const checkpoint=section.indexOf('captureDurableD1Checkpoint(');
+ const ddl=section.indexOf('migrateOne(base,config,m,report,shadow,ledger)');
+ assert(scan>=0&&stop>scan&&checkpoint>stop&&ddl>checkpoint,
+  "Missing B2-ACK source MUST fail before any Shadow checkpoint or DDL");
+ assert.match(section,/original_b2_bytes_verified:false/u);
+ assert.match(section,/shadow_pointer_hmac_verified:false/u);
+ assert.match(section,/NO_REAL_B2_ACKNOWLEDGED_SHADOW_RECORD/u);
+ assert.match(section,/await seedShadowArchivedPointer/u);
+ assert.match(section,/await verifyRealShadowB2Parity/u);
+ assert.match(section,/await verifyRealShadowDualWorkers/u);
+});
