@@ -1,0 +1,81 @@
+name: Risk Stream Commercial Shadow E2E (NO FUNDS)
+on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/risk-stream-commercial-issuer.mjs"
+      - "workers/control-plane/src/risk-stream-commercial-outbox.mjs"
+      - "workers/control-plane/migrations/0217_risk_stream_commercial_issuer_jobs.sql"
+      - "workers/risk-stream-shadow/**"
+      - "workers/risk-stream-shadow-ack/**"
+      - "scripts/ops/run-risk-stream-commercial-staging.mjs"
+      - "scripts/tests/risk-stream-commercial-issuer.test.mjs"
+      - "scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs"
+      - ".github/workflows/risk-stream-commercial-staging.yml"
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type RUN_SHADOW_COMMERCIAL_E2E_NO_FUNDS"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-commercial-shadow-staging
+  cancel-in-progress: false
+jobs:
+  static-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Syntax and zero-funds staging contracts
+        run: |
+          set -euo pipefail
+          node --check workers/control-plane/src/risk-stream-commercial-issuer.mjs
+          node --check workers/control-plane/src/risk-stream-commercial-outbox.mjs
+          node --check workers/risk-stream-shadow/src/commercial-e2e.mjs
+          node --check workers/risk-stream-shadow-ack/src/index.mjs
+          node --check scripts/ops/run-risk-stream-commercial-staging.mjs
+          node --test scripts/tests/risk-stream-commercial-issuer.test.mjs \
+            scripts/tests/risk-stream-commercial-shadow-e2e.test.mjs
+  remote-shadow:
+    needs: static-contract
+    if: >-
+      github.repository == 'blocknine0/geomacro' &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.approval == 'RUN_SHADOW_COMMERCIAL_E2E_NO_FUNDS'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GEOMACRO_COMMERCE_LEDGER_TOKEN: ${{ secrets.GEOMACRO_COMMERCE_LEDGER_TOKEN }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      RISK_STREAM_MACHINE_FACTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_FACTS_SPKI_B64 }}
+      RISK_STREAM_MACHINE_RIGHTS_SPKI_B64: ${{ secrets.RISK_STREAM_MACHINE_RIGHTS_SPKI_B64 }}
+      COMMERCIAL_STAGING_APPROVAL: ${{ inputs.approval }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Isolated shadow provisioning and current-main SHA lock
+        run: node scripts/ops/run-risk-stream-shadow-provider-audit.mjs provision
+      - name: Protected real D1 and mock HTTPS commercial E2E
+        run: node --experimental-strip-types scripts/ops/run-risk-stream-commercial-staging.mjs
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-shadow-commercial-e2e
+          path: artifacts/release/shadow-commercial-e2e.json
+          retention-days: 14
+          if-no-files-found: warn
