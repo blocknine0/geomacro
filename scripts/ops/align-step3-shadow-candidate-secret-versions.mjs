@@ -102,11 +102,18 @@ function matchBindings(bindings,w,prior=null){
  }
  return true;
 }
-function deployedOnlyOld(deploy,w){
+function liveDeploymentSnapshot(deploy){
  const v=deploy?.deployments?.[0]?.versions;
  if(!Array.isArray(v)||v.length!==1||
-  v[0]?.version_id!==w.old||Number(v[0]?.percentage)!==100)
+  !UUID.test(String(v[0]?.version_id??""))||Number(v[0]?.percentage)!==100)
+  fail("LIVE_DEPLOYMENT_NOT_SINGLE_VERSION_100_PERCENT");
+ return {version_id:v[0].version_id,percentage:100};
+}
+function deployedUnchanged(deploy,expected){
+ const actual=liveDeploymentSnapshot(deploy);
+ if(expected&&stable(actual)!==stable(expected))
   fail("LIVE_DEPLOYMENT_NOT_UNCHANGED");
+ return actual;
 }
 export function providerVersionHost(urls,w){
  scopedWorker(w);
@@ -154,19 +161,18 @@ async function probe(host,w,kind,secret,fetchImpl){
   error_category:status===expected.s&&d?.error===expected.e?
     expected.e:"UNEXPECTED_JSON"};
 }
-async function baseline(e,w,fetchImpl){
+async function baseline(e,w,fetchImpl,expectedLive=null){
  scopedWorker(w);
  const base="/workers/scripts/"+w.name;
- const [list,deploy,ver,vurl]=await Promise.all([
-  cf(e,base+"/versions?deployable=true",fetchImpl),
+ const [deploy,ver,vurl]=await Promise.all([
   cf(e,base+"/deployments",fetchImpl),
   cf(e,base+"/versions/"+w.staged,fetchImpl),
   cf(e,"/workers/workers/"+w.name+"/versions/"+w.staged,fetchImpl)
  ]);
- deployedOnlyOld(deploy,w);
- if(list.items?.[0]?.id!==w.staged||ver.id!==w.staged||
+ const live=deployedUnchanged(deploy,expectedLive);
+ if(ver.id!==w.staged||
   vurl.id!==w.staged||vurl.main_module!=="index.js")
-  fail("LATEST_UPLOADED_NOT_PINNED_CANONICAL_CANDIDATE");
+  fail("PINNED_CANONICAL_CANDIDATE_NOT_FOUND");
  matchBindings(ver.resources?.bindings,w);
  const oldHost=providerVersionHost(vurl.urls,w);
  if(!oldHost.ok)fail("ORIGINAL_CANONICAL_CANDIDATE_URL_MISSING");
@@ -179,6 +185,7 @@ async function baseline(e,w,fetchImpl){
      actual.error_category==="UNEXPECTED_JSON"))
   fail("EXPECTED_SHADOW_BEARER_MISMATCH_NOT_PROVEN");
  return {bindings:ver.resources.bindings,runtime:ver.resources.script_runtime,
+  live_deployment:live,
   original_ver:w.staged,original_main:vurl.main_module};
 }
 function versionsSecretPut(run,w,secret,sha){
@@ -202,7 +209,7 @@ async function checkAfter(e,w,before,fetchImpl){
   cf(e,base+"/versions?deployable=true",fetchImpl),
   cf(e,base+"/deployments",fetchImpl)
  ]);
- deployedOnlyOld(deploy,w);
+ deployedUnchanged(deploy,before.live_deployment);
  const newId=list.items?.[0]?.id;
  if(!UUID.test(newId??"")||newId===w.staged||newId===w.old)
   fail("NEW_UNPROMOTED_VERSION_UNVERIFIED");
@@ -251,13 +258,15 @@ export async function alignShadowCandidateSecrets({env=process.env,fetchImpl=fet
   if(ids[0].uuid?.toLowerCase()!==PROD||ids[0].name!=="geomacro-control-plane"||
    ids[1].uuid?.toLowerCase()!==SHADOW||
    ids[1].name!=="geomacro-d1-publisher-shadow")fail("DB_IDENTITY_UNVERIFIED");
-  // Two full independent preflights before the first secret-version upload.
+  // Capture the exact already-live Shadow deployment after bearer sync. We
+  // preserve that snapshot for every later pre/post write guard; do not pin
+  // it to the stale pre-sync deployment UUID from a previous rehearsal.
   const base=[];
   for(const w of WORKERS)base.push(await baseline(env,w,fetchImpl));
   for(let i=0;i<WORKERS.length;i++){
    const w=WORKERS[i];
-   // Pre-upload race guard: original candidate still most recent, old still deployed.
-   await baseline(env,w,fetchImpl);
+   // Pre-upload race guard: same candidate and same deployment observed at start.
+   await baseline(env,w,fetchImpl,base[i].live_deployment);
    versionsSecretPut(run,w,env.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN,
     SOURCE_SHA);
    // A secret-version write may have succeeded even if physical proof fails.

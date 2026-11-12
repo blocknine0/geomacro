@@ -42,5 +42,73 @@
     "commercially_ineligible_is_not_payable": true,
     "raw_upstream_redistribution": false,
     "state_continuity_preferred_over_warehouse_growth": true
+  },
+  "partner_channels": {
+    "predge_b2b_risk_gate": {
+      "contract_id": "predge-paid-customer-traffic-addendum-v2",
+      "signed_date": "2026-11-11",
+      "channel": "predge_b2b",
+      "configuration_scope": "PREDGE_B2B_RISK_GATE_ONLY",
+      "term": "INDEFINITE_UNTIL_TERMINATED",
+      "expires_at": null,
+      "settlement": {
+        "rail": "circle_arc",
+        "network": "arc",
+        "asset": "USDC",
+        "usage_report_due_day": 5,
+        "usage_report_line_item": "ONE_LINE_PER_DELIVERED_PAID_CHECK_WITH_VERDICT_ID",
+        "payment_due_day": 10,
+        "basis": "COLLECTED_REVENUE_ONLY",
+        "prepayments": false,
+        "minimums": false,
+        "fixed_monthly_fees": false
+      },
+      "termination_notice_days": 30,
+      "tiers": {
+        "basic_focused": {
+          "customer_price_usdc": "0.15",
+          "geomacro_fee_usdc": "0.10",
+          "predge_share_usdc": "0.05",
+          "structure_type": "BASIC_FOCUSED_FACTS_DERIVED_V1"
+        },
+        "standard": {
+          "customer_price_usdc": "0.20",
+          "geomacro_fee_usdc": "0.15",
+          "predge_share_usdc": "0.05",
+          "structure_type": "STANDARD_DUAL_ORIGINAL_GRO_V1"
+        },
+        "complex_full": {
+          "customer_price_usdc": "0.30",
+          "geomacro_fee_usdc": "0.25",
+          "predge_share_usdc": "0.05",
+          "structure_type": "COMPLEX_7D_CORRIDOR_SYNTHESIS_V1"
+        }
+      },
+      "tier_locked_before_processing": true,
+      "paid_traffic_enabled": false,
+      "zero_fee_statuses": [
+        "INSUFFICIENT_EVIDENCE",
+        "UNDELIVERED",
+        "REFUNDED"
+      ],
+      "traffic_start_requires_confirmed_go_live_email": true,
+      "paid_start_crosscheck_hours": 72,
+      "paid_traffic_enabled": false
+    },
+    "direct_store_intelligence": {
+      "channel": "direct_store",
+      "catalog_owner": "config/commercial-launch-manifest.json",
+      "per_call_usdc": [
+        "0.02",
+        "0.03",
+        "0.05"
+      ],
+      "plans_usd": [
+        "9",
+        "29",
+        "99"
+      ],
+      "inherits_predge_b2b_prices": false
+    }
   }
 }

@@ -9,6 +9,7 @@ import {readCachedSignedGro} from "./signed-gro-read-cache.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
 import {readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
+import {predgePaidRiskGateTerms,usdcFromCents} from "./predge-paid-risk-gate-contract.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
 const ISO3=/^[A-Z]{3}$/;
@@ -28,7 +29,11 @@ const HARD_CEILING=500;
 const headers={"Cache-Control":"private, no-store","Vary":"Authorization",
  "X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"};
 function fail(error,status=503,extra={}){
- return Response.json({ok:false,error,advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
+ return Response.json({ok:false,error,channel:"predge_b2b",verdict_id:null,
+  tier:null,structure_type:null,customer_price_usdc:"0.00",
+  geomacro_fee_usdc:"0.00",billable:false,billing_mode:"PILOT_FREE",
+  entry_status:"UNDELIVERED",
+  advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
 }
 function constantEqual(a,b){
  const left=encoder.encode(String(a??"")),right=encoder.encode(String(b??""));
@@ -125,9 +130,10 @@ export async function verifyHotGRO(row,env,subject,now=Date.now(),authority=DEFA
 }
 function finite(v,min,max){return typeof v==="number"&&Number.isFinite(v)&&v>=min&&v<=max;}
 export function parseRequest(obj,now=Date.now()){
- if(!record(obj)||!keysOnly(obj,["request_id","country_iso3","subject","policy","evaluated_at","action_context"]))
+ if(!record(obj)||!keysOnly(obj,["request_id","country_iso3","subject","policy","evaluated_at","action_context","tier"]))
    return null;
  if(typeof obj.request_id!=="string"||obj.request_id.length<1||obj.request_id.length>256)return null;
+ if(!["basic_focused","standard","complex_full"].includes(obj.tier))return null;
  let subject;
  if(obj.subject!==undefined){
    if(obj.country_iso3!==undefined||!record(obj.subject))return null;
@@ -177,7 +183,62 @@ export function parseRequest(obj,now=Date.now()){
       (a.destination!==undefined&&(typeof a.destination!=="string"||a.destination.length>256))||
       (a.metadata!==undefined&&!record(a.metadata)))return null;
  }
- return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context};
+ return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier};
+}
+export function predgePaidTrafficEnabled(env,policy){
+ return env?.PREDGE_PAID_TRAFFIC_ENABLED==="YES"&&
+   env?.PREDGE_PAID_GO_LIVE_CROSSCHECK==="PASS"&&
+   policy?.policy_id==="predge-paid-traffic-addendum-v2";
+}
+async function deterministicVerdictId(requestHash){
+ const digestBytes=new Uint8Array(await crypto.subtle.digest("SHA-256",
+   encoder.encode("geomacro:predge-paid-risk-gate-addendum-v2:"+requestHash)));
+ digestBytes[6]=(digestBytes[6]&0x0f)|0x50;
+ digestBytes[8]=(digestBytes[8]&0x3f)|0x80;
+ const hex=Array.from(digestBytes.slice(0,16),x=>x.toString(16).padStart(2,"0")).join("");
+ return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_hash,
+ response,entry_status,billing_mode,created_at}){
+ const terms=predgePaidRiskGateTerms(tier),billable=entry_status==="DELIVERED"&&billing_mode==="PAID_ADDENDUM_V2";
+ const ledger_id=await digest("geomacro:predge-paid-risk-gate-ledger:v2:"+verdict_id);
+ const response_sha256=await digest(canonical(response));
+ const createdClock=Date.parse(created_at);
+ if(!Number.isFinite(createdClock))return false;
+ const createdDate=new Date(createdClock);
+ const nextMonth=new Date(Date.UTC(createdDate.getUTCFullYear(),createdDate.getUTCMonth()+1,1));
+ const nextMonthPrefix=nextMonth.toISOString().slice(0,7);
+ const usageReportDueDate=nextMonthPrefix+"-05";
+ const settlementDueDate=nextMonthPrefix+"-10";
+ try{
+  await db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
+   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
+    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
+    contract_predge_share_usdc_cents,geomacro_fee_usdc_cents,
+    predge_share_usdc_cents,billable,billing_mode,entry_status,request_hash,response_sha256,
+    created_at,usage_month,usage_report_due_date,settlement_due_date,
+    collection_status,settlement_status)
+   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
+   ON CONFLICT(request_id) DO NOTHING`)
+    .bind(ledger_id,verdict_id,request_id,"predge_b2b",tier,terms.structure_type,
+      terms.customer_price_usdc_cents,terms.geomacro_fee_usdc_cents,
+      terms.predge_share_usdc_cents,billable?terms.geomacro_fee_usdc_cents:0,
+      billable?terms.predge_share_usdc_cents:0,billable?1:0,billing_mode,entry_status,
+      request_hash,response_sha256,created_at,created_at.slice(0,7),
+      usageReportDueDate,settlementDueDate).run();
+  const saved=await db.prepare(`SELECT verdict_id,request_hash,response_sha256,
+      billing_mode,entry_status,billable,geomacro_fee_usdc_cents,
+      usage_report_due_date,settlement_due_date
+    FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1`)
+    .bind(request_id).first();
+  return Boolean(saved&&saved.verdict_id===verdict_id&&
+    saved.request_hash===request_hash&&saved.response_sha256===response_sha256&&
+    saved.billing_mode===billing_mode&&
+    saved.entry_status===entry_status&&saved.billable===(billable?1:0)&&
+    saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0)&&
+    saved.usage_report_due_date===usageReportDueDate&&
+    saved.settlement_due_date===settlementDueDate);
+ }catch{return false;}
 }
 async function hotRow(db,subject,now){
  if(subject.type==="country"){
@@ -229,6 +290,12 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
+ // Lock the requested commercial tier before any evidence reads. Evidence
+ // determines billability; it may never change the requested tier.
+ const lockedTier=parsed.tier;
+ const lockedTerms=predgePaidRiskGateTerms(lockedTier);
+ const paidTrafficEnabled=predgePaidTrafficEnabled(env,parsed.policy);
+ const billingMode=paidTrafficEnabled?"PAID_ADDENDUM_V2":"PILOT_FREE";
  // Three independent read-only probes. No waiting on a GRO-producing queue,
  // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
  // D1 schema or transport failure is an infrastructure error, not missing proof.
@@ -245,10 +312,15 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
  const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(gro),sevenDayRollupReady);
  const complexReady=tierActivationMatrix.complex.active===true;
  const standardReady=tierActivationMatrix.standard.active===true;
- const tier=complexReady?"COMPLEX_0_25":standardReady?"STANDARD_0_15":"BASIC_0_10";
- const pricePerCallUsd=complexReady?0.25:standardReady?0.15:0.10;
+ const tierReady=lockedTier==="basic_focused"?facts.distinct_events>0:
+   lockedTier==="standard"?standardReady:complexReady;
+ const channel="predge_b2b";
+ const structureType=lockedTerms.structure_type;
+ const customerPriceUsdc=usdcFromCents(lockedTerms.customer_price_usdc_cents);
+ const contractGeomacroFeeUsdc=usdcFromCents(lockedTerms.geomacro_fee_usdc_cents);
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
  const requestHash=await digest(canonical(body));
+ const verdictId=await deterministicVerdictId(requestHash);
  const nowIso=new Date(now).toISOString();
  const client="predge-risk-gate-v1",day=nowIso.slice(0,10);
  try{
@@ -282,7 +354,12 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;
-   if(complexReady){
+   if(!tierReady){
+     result=provisionalRiskGate(parsed,facts,now);
+     result={...result,decision:"PAUSE",recommended_action:"BLOCK",
+       reason_codes:["INSUFFICIENT_EVIDENCE"],primary_driver:"INSUFFICIENT_EVIDENCE",
+       execution_authorized:false};
+   }else if(lockedTier==="complex_full"){
      const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
      result=evaluateRiskGate(parsed,gro,new Date(now));
      const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
@@ -292,20 +369,29 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    }
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const context={
-      subject:parsed.subject,source:complexReady?"cloudflare-d1-verified-hot":"derived-fact-index",
-      verified_signed_gro:complexReady,commercial_eligible:complexReady,
+      subject:parsed.subject,source:lockedTier==="complex_full"?"cloudflare-d1-verified-hot":"derived-fact-index",
+      verified_signed_gro:lockedTier==="complex_full"&&tierReady,
+      commercial_eligible:lockedTier==="complex_full"&&tierReady,
       payment_authorized:false,
-      risk_metric_semantics:complexReady?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
+      risk_metric_semantics:lockedTier==="complex_full"&&tierReady?"VERIFIED_GRO_RISK_SCORE":result.risk_metric_semantics,
       observation_count:facts.distinct_events,
       latest_observation_clock:facts.latest_event_clock
    };
+   const evidenceSufficient=tierReady&&result.reason_codes?.includes("INSUFFICIENT_EVIDENCE")!==true;
+   const billable=paidTrafficEnabled&&evidenceSufficient;
+   const entryStatus=!evidenceSufficient?"INSUFFICIENT_EVIDENCE":
+     paidTrafficEnabled?"DELIVERED":"PILOT_FREE";
+   const geomacroFeeUsdc=billable?contractGeomacroFeeUsdc:"0.00";
    // Ed25519 signs the immutable decision and tier matrix. HMAC audit
    // receipts remain separate and are never mislabeled as Ed25519.
    const signedPayload={
      schema:"geomacro.progressive-risk-gate-decision.v1",
      request_hash:requestHash,risk_gate:result,context,
-     tier,tier_activation_matrix:tierActivationMatrix,
-     price_per_call_usd:pricePerCallUsd,execution_authorized:false
+     verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
+     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode,entry_status,
+     tier_activation_matrix:tierActivationMatrix,
+     execution_authorized:false
    };
    const decisionSignature=await signProgressiveDecision(signedPayload,env);
    const response={ok:true,...signedPayload,
@@ -321,6 +407,10 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
    response.audit_receipt_signature_key_id=receipt.signature_key_id;
    response.audit_receipt_signature_scheme=receipt.signature_scheme;
    response.audit_receipt_signature_scope=receipt.signature_scope;
+   if(!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
+      request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
+      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso}))
+     return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?

@@ -26,8 +26,30 @@ export function validateSignedProgressiveResponse(json:Record<string,unknown>,tr
  if(obj.schema!=="geomacro.progressive-risk-gate-decision.v1"||
     obj.execution_authorized!==false||
     obj.tier!==json.tier||
-    obj.price_per_call_usd!==json.price_per_call_usd||
-    !["BASIC_0_10","STANDARD_0_15","COMPLEX_0_25"].includes(String(obj.tier)))return false;
+    obj.channel!==json.channel||obj.verdict_id!==json.verdict_id||
+    obj.structure_type!==json.structure_type||
+    obj.customer_price_usdc!==json.customer_price_usdc||
+    obj.geomacro_fee_usdc!==json.geomacro_fee_usdc||
+    obj.predge_share_usdc!==json.predge_share_usdc||
+    obj.billable!==json.billable||obj.billing_mode!==json.billing_mode||
+    obj.entry_status!==json.entry_status||
+    !["basic_focused","standard","complex_full"].includes(String(obj.tier)))return false;
+ const paidTerms={
+   basic_focused:{structure:"BASIC_FOCUSED_FACTS_DERIVED_V1",price:"0.15",fee:"0.10"},
+   standard:{structure:"STANDARD_DUAL_ORIGINAL_GRO_V1",price:"0.20",fee:"0.15"},
+   complex_full:{structure:"COMPLEX_7D_CORRIDOR_SYNTHESIS_V1",price:"0.30",fee:"0.25"},
+ } as Record<string,{structure:string;price:string;fee:string}>;
+ const terms=paidTerms[String(obj.tier)];
+ if(obj.channel!=="predge_b2b"||
+    typeof obj.verdict_id!=="string"||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(obj.verdict_id)||
+    obj.structure_type!==terms.structure||obj.customer_price_usdc!==terms.price||
+    !["PILOT_FREE","DELIVERED","INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||
+    !["PILOT_FREE","PAID_ADDENDUM_V2"].includes(String(obj.billing_mode))||
+    (obj.billable===true&&(obj.billing_mode!=="PAID_ADDENDUM_V2"||obj.entry_status!=="DELIVERED"||obj.geomacro_fee_usdc!==terms.fee||obj.predge_share_usdc!=="0.05"))||
+    (obj.billable===false&&(!["PILOT_FREE","INSUFFICIENT_EVIDENCE","UNDELIVERED","REFUNDED"].includes(String(obj.entry_status))||obj.geomacro_fee_usdc!=="0.00"||obj.predge_share_usdc!=="0.00"))||
+    (obj.entry_status==="PILOT_FREE"&&obj.billing_mode!=="PILOT_FREE")||
+    (obj.entry_status==="DELIVERED"&&obj.billing_mode!=="PAID_ADDENDUM_V2"))return false;
  const matrix=obj.tier_activation_matrix as Record<string,Record<string,unknown>>|undefined;
  if(!matrix||matrix.basic?.status!=="ACTIVE"||matrix.basic?.active!==true||
     !["ACTIVE","PENDING"].includes(String(matrix.standard?.status))||
@@ -44,12 +66,8 @@ export function validateSignedProgressiveResponse(json:Record<string,unknown>,tr
  if(matrix.standard.status!==(standardActive?"ACTIVE":"PENDING")||
     matrix.complex.active!==complexReady||
     matrix.complex.status!==(complexReady?"ACTIVE":"LOCKED")||
-    (obj.tier==="COMPLEX_0_25")!==complexReady||
-    (obj.tier==="STANDARD_0_15")!==(standardActive&&!complexReady)||
-    (obj.tier==="BASIC_0_10")!==( !standardActive )||
-    obj.price_per_call_usd!==({
-      BASIC_0_10:0.10,STANDARD_0_15:0.15,COMPLEX_0_25:0.25
-    } as Record<string,number>)[String(obj.tier)])
+    (obj.billable===true&&obj.tier==="standard"&&!standardActive)||
+    (obj.billable===true&&obj.tier==="complex_full"&&!complexReady))
     return false;
  // Never publish a proxy-modified decision outside the signed bytes.
  for(const field of ["risk_gate","context","tier_activation_matrix"]){
