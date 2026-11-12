@@ -33,7 +33,7 @@ test('same binding names cannot conceal resource changes or payment activation',
  const changed=candidate();changed.resources.script_runtime.compatibility_date='2026-11-07';
  assert.throws(()=>verifyCandidateBindings(baseline,changed,sha),/SCRIPT_RUNTIME_CHANGED/);
  const duplicate=candidate();duplicate.resources.bindings.push(duplicate.resources.bindings[0]);
- assert.throws(()=>verifyCandidateBindings(baseline,duplicate,sha),/COUNT_CHANGED/);
+ assert.throws(()=>verifyCandidateBindings(baseline,duplicate,sha),/INVALID_OR_DUPLICATE/);
 });
 test('candidate cannot upload from unprotected branch before provider access',async()=>{
  let calls=0;
