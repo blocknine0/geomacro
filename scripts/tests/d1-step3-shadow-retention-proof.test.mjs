@@ -41,15 +41,25 @@ test("real expiration requires authenticated 410 PLUS exact HMAC and R2 bytes; f
  assert.equal(classifyShadowPointerRetention(old.pointer,now),"EXPIRED");
  assert.equal(classifyShadowPointerRetention(live.pointer,now),"ACTIVE");
  let workerReads=0,r2Reads=0;
- const makeFetch=(badCode=410,badBytes=false)=>async(url,request)=>{
-  if(url.includes(".workers.dev/")){
+ const makeFetch=(badCode=410,badExpiredBytes=false,badActiveBytes=false)=>async(url,request)=>{
+  const u=new URL(String(url));
+  if(u.origin==="https://"+HOST){
    workerReads++;
-   if(url.endsWith(old.record.record_id))return new Response(null,{status:badCode});
+   if(u.searchParams.get("record_id")===old.record.record_id)
+    return new Response(null,{status:badCode});
    return Response.json({ok:true,schema:"geomacro.phase2h.private-r2-reference-readback.v1",
     pointer_and_object_verified:true,legacy_fallback:false,
     paid_eligible:false,b2_archive_verified:false,record:live.record});
   }
-  r2Reads++;return new Response(badBytes?Buffer.from("wrong"):old.bundle,{status:200});
+  assert.equal(u.origin,"https://api.cloudflare.com");
+  assert.equal(request.method,"GET");
+  r2Reads++;
+  const key=decodeURIComponent(u.pathname.split("/objects/")[1]??"");
+  if(key===old.pointer.object_key)
+   return new Response(badExpiredBytes?Buffer.from("wrong"):old.bundle,{status:200});
+  if(key===live.pointer.object_key)
+   return new Response(badActiveBytes?Buffer.from("wrong"):live.bundle,{status:200});
+  throw Error("UNEXPECTED_R2_OBJECT");
  };
  const args={rows:[old.pointer,live.pointer],env,now,sleepImpl:async()=>{}};
  const p=await verifyShadowRetentionBoundPointers({...args,fetchImpl:makeFetch()});
@@ -58,13 +68,20 @@ test("real expiration requires authenticated 410 PLUS exact HMAC and R2 bytes; f
  assert.equal(p.cryptographic_readback_verified,true);
  assert.equal(p.b2_physical_parity,"NOT_YET_VERIFIED");
  assert.equal(p.all_step3_acceptance_proven,false);
- assert.equal(r2Reads,1);assert.equal(workerReads,2);
+ assert.equal(r2Reads,2);assert.equal(workerReads,2);
+ assert.equal(p.authenticated_active_r2_gets,1);
+ assert.equal(p.authenticated_expired_r2_gets,1);
+ assert.equal(p.independent_full_object_r2_gets,2);
+ assert.equal(p.all_pointers_independent_full_r2_byte_readback_verified,true);
  await assert.rejects(verifyShadowRetentionBoundPointers({
   ...args,fetchImpl:makeFetch(403)
  }),/EXPIRED_WORKER_EXPECTED_410_GOT_403/);
  await assert.rejects(verifyShadowRetentionBoundPointers({
   ...args,fetchImpl:makeFetch(410,true)
  }),/EXPIRED_R2_BUNDLE_BYTES_OR_SHA_INVALID/);
+ await assert.rejects(verifyShadowRetentionBoundPointers({
+  ...args,fetchImpl:makeFetch(410,false,true)
+ }),/ACTIVE_R2_BUNDLE_BYTES_OR_SHA_INVALID/);
  old.pointer.pointer_hmac_sha256="0".repeat(64);
  await assert.rejects(verifyShadowRetentionBoundPointers({
   ...args,fetchImpl:makeFetch()
