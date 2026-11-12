@@ -36,6 +36,16 @@ test("shadow host is an independent binding, R2 key is secret, and receipt is re
  assert.match(y,/step3-shadow-rehearsal-receipt\.json/u);
 });
 
+test("physical B2 parity receives the exact governed read-only credential pair",()=>{
+ assert.match(y,/B2_ARCHIVE_READ_KEY_ID: \$\{\{ secrets\.B2_ARCHIVE_READ_KEY_ID \}\}/u);
+ assert.match(y,/B2_ARCHIVE_READ_APPLICATION_KEY: \$\{\{ secrets\.B2_ARCHIVE_READ_APPLICATION_KEY \}\}/u);
+ assert.match(y,/B2_ACCOUNT_QUOTA_REQUIRED: "1"/u);
+ assert.match(y,/B2_ACCOUNT_QUOTA_WORKFLOW_ID: "step3_shadow_rehearsal"/u);
+ assert.match(y,/B2_REQUEST_BUDGET: "12"/u);
+ assert.doesNotMatch(y,/B2_KEY_ID: \$\{\{ secrets\.B2_KEY_ID \}\}/u);
+ assert.doesNotMatch(y,/B2_APPLICATION_KEY: \$\{\{ secrets\.B2_APPLICATION_KEY \}\}/u);
+});
+
 test("manual eligibility check always logs a specific failure instead of an unexplained skipped job",()=>{
  assert.match(y,/eligibility-preflight:\s*\n/u);
  assert.match(y,/needs: eligibility-preflight/u);
