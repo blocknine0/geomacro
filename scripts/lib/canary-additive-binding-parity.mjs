@@ -40,3 +40,60 @@ export function assessReviewedAdditiveBindingParity(base,candidate,reviewed=[]){
   return Object.freeze({status:"PASS_BINDING_PARITY",additions,
     baseline_count:a.size,candidate_count:b.size});
 }
+
+// Strict reviewed transition for zero-traffic Hot50 research Workers.
+// This does not authorize payment, certified Risk Indices or release-hold removal.
+export const REVIEWED_HOT50_RUNTIME_VARS=Object.freeze({
+ RISK_GATE_COUNTRY_SCOPE:"HOT50",
+ RISK_STREAM_ACTIVE:"1",
+ STREAM_INGESTION_ENABLED:"true",
+ RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1",
+ GEOMACRO_COMMERCIAL_STREAM_RELEASE:"0",
+ RISK_STREAM_CANARY_HOLD_CLEARED:"0",
+ RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED:"0"
+});
+export function reviewedHot50CandidateVars(sha){
+ if(!/^[a-f0-9]{40}$/.test(sha))deny("SOURCE_SHA_INVALID");
+ return {...REVIEWED_HOT50_RUNTIME_VARS,GEOMACRO_SOURCE_SHA:sha};
+}
+const bindingText=row=>typeof row?.text==="string"?row.text:
+ typeof row?.value==="string"?row.value:null;
+const canonical=x=>JSON.stringify(x,(_,v)=>
+ v&&typeof v==="object"&&!Array.isArray(v)?
+ Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+// Caller must explicitly provide the four source-controlled secret names when
+// these are newly introduced. A version with hidden/unknown text is a HOLD.
+export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecrets=[]){
+ const required=reviewedHot50CandidateVars(sha);
+ const a=bindingInventory(base),b=bindingInventory(candidate);
+ if(!Array.isArray(reviewedSecrets)||reviewedSecrets.length!==new Set(reviewedSecrets).size||
+    reviewedSecrets.some(n=>!REVIEWABLE_ADDITIVE_SECRETS.includes(n)))
+  deny("UNREVIEWED_SECRET_NAME");
+ const rowsA=base.resources.bindings,rowsB=candidate.resources.bindings;
+ if(!Array.isArray(rowsA)||!Array.isArray(rowsB))deny("UNREADABLE");
+ const old=new Map(rowsA.map(x=>[x.name,x]));
+ const current=new Map(rowsB.map(x=>[x.name,x]));
+ for(const [name,type] of a){
+  if(b.get(name)!==type)deny("REMOVAL_OR_TYPE_CHANGE_"+name);
+  if(!Object.hasOwn(required,name)&&type!=="secret_text"&&
+     canonical(old.get(name))!==canonical(current.get(name)))
+   deny("UNREVIEWED_RESOURCE_CHANGE_"+name);
+ }
+ for(const [name,wanted] of Object.entries(required)){
+  const row=current.get(name);
+  if(row?.type!=="plain_text"||bindingText(row)!==wanted)
+   deny("REVIEWED_FLAG_NOT_VERIFIED_"+name);
+ }
+ const additions=[...b.keys()].filter(n=>!a.has(n)).sort();
+ const expected=[...Object.keys(required).filter(n=>!a.has(n)),
+   ...reviewedSecrets.filter(n=>!a.has(n))].sort();
+ if(canonical(additions)!==canonical(expected))deny("UNREVIEWED_ADDITION");
+ for(const name of reviewedSecrets){
+  if(current.get(name)?.type!=="secret_text")deny("REVIEWED_SECRET_TYPE_"+name);
+ }
+ // Hidden secret values are never logged. A pre-existing secret cannot be
+ // proven identical by a binding-name check; type and presence only are asserted.
+ return Object.freeze({status:"PASS_REVIEWED_HOT50_PARITY",additions,
+  reviewed_secret_names:[...reviewedSecrets].sort(),
+  baseline_count:a.size,candidate_count:b.size,source_sha:sha});
+}
