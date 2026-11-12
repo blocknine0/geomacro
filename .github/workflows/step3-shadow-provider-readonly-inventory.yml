@@ -6,11 +6,15 @@ on:
     paths:
       - .github/workflows/step3-shadow-provider-readonly-inventory.yml
       - scripts/ops/audit-step3-shadow-provider-readonly.mjs
+      - scripts/ops/diagnose-step3-shadow-pointer-http.mjs
+      - scripts/tests/diagnose-step3-shadow-pointer-http.test.mjs
   pull_request:
     paths:
       - .github/workflows/step3-shadow-provider-readonly-inventory.yml
       - scripts/ops/audit-step3-shadow-provider-readonly.mjs
       - scripts/tests/audit-step3-shadow-provider-readonly.test.mjs
+      - scripts/ops/diagnose-step3-shadow-pointer-http.mjs
+      - scripts/tests/diagnose-step3-shadow-pointer-http.test.mjs
 permissions:
   contents: read
 concurrency:
@@ -29,7 +33,7 @@ jobs:
         with:
           node-version: '24'
       - run: node --check scripts/ops/audit-step3-shadow-provider-readonly.mjs
-      - run: node --test scripts/tests/audit-step3-shadow-provider-readonly.test.mjs
+      - run: node --test scripts/tests/audit-step3-shadow-provider-readonly.test.mjs scripts/tests/diagnose-step3-shadow-pointer-http.test.mjs
   provider-readonly:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
@@ -44,6 +48,7 @@ jobs:
       GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST: ${{ vars.GEOMACRO_STEP3_SHADOW_LEGACY_WORKER_HOST }}
       GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET: ${{ vars.GEOMACRO_STEP3_SHADOW_PRIVATE_R2_BUCKET }}
       GEOMACRO_D1_RECOVERY_R2_BUCKET: ${{ vars.GEOMACRO_D1_RECOVERY_R2_BUCKET }}
+      GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN: ${{ secrets.GEOMACRO_STEP3_SHADOW_CONTROL_PLANE_TOKEN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -54,11 +59,15 @@ jobs:
           node-version: '24'
       - name: Shadow-only bounded D1 schema/index inventory and private R2 Worker metadata
         run: node scripts/ops/audit-step3-shadow-provider-readonly.mjs
+      - name: Diagnose bounded shadow-only pointer HTTP and 72h retention (no B2/SQL mutation)
+        run: node scripts/ops/diagnose-step3-shadow-pointer-http.mjs
       - name: Preserve sanitized HOLD or inventory receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: geomacro-step3-shadow-provider-inventory-${{ github.run_id }}
-          path: artifacts/release/step3-shadow-provider-readonly-inventory.json
+          path: |
+            artifacts/release/step3-shadow-provider-readonly-inventory.json
+            artifacts/release/step3-shadow-pointer-http-diagnostic.json
           retention-days: 14
           if-no-files-found: warn
