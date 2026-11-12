@@ -73,10 +73,22 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
  if(!Array.isArray(rowsA)||!Array.isArray(rowsB))deny("UNREADABLE");
  const old=new Map(rowsA.map(x=>[x.name,x]));
  const current=new Map(rowsB.map(x=>[x.name,x]));
+ // Existing secret bindings MUST be preserved, not silently rotated by
+ // a newly uploaded secrets file. Only actually missing names may be reviewed.
+ for(const name of reviewedSecrets)
+  if(a.has(name))deny("REVIEWED_SECRET_ALREADY_EXISTS_"+name);
  for(const [name,type] of a){
   if(b.get(name)!==type)deny("REMOVAL_OR_TYPE_CHANGE_"+name);
-  if(!Object.hasOwn(required,name)&&type!=="secret_text"&&
-     canonical(old.get(name))!==canonical(current.get(name)))
+  const before=old.get(name),after=current.get(name);
+  if(Object.hasOwn(required,name)){
+   // Only the reviewed plain-text value may change; resource metadata cannot.
+   if(type!=="plain_text")deny("REVIEWED_FLAG_TYPE_CHANGED_"+name);
+   const stripped=row=>{
+    const copy={...row};delete copy.text;delete copy.value;return copy;
+   };
+   if(canonical(stripped(before))!==canonical(stripped(after)))
+    deny("REVIEWED_FLAG_RESOURCE_CHANGED_"+name);
+  }else if(canonical(before)!==canonical(after))
    deny("UNREVIEWED_RESOURCE_CHANGE_"+name);
  }
  for(const [name,wanted] of Object.entries(required)){
@@ -89,7 +101,10 @@ export function assessReviewedHot50BindingParity(base,candidate,sha,reviewedSecr
    ...reviewedSecrets.filter(n=>!a.has(n))].sort();
  if(canonical(additions)!==canonical(expected))deny("UNREVIEWED_ADDITION");
  for(const name of reviewedSecrets){
-  if(current.get(name)?.type!=="secret_text")deny("REVIEWED_SECRET_TYPE_"+name);
+  const row=current.get(name);
+  if(row?.type!=="secret_text"||
+     Object.keys(row).some(k=>!["name","type"].includes(k)))
+   deny("REVIEWED_SECRET_TYPE_OR_METADATA_"+name);
  }
  // Hidden secret values are never logged. A pre-existing secret cannot be
  // proven identical by a binding-name check; type and presence only are asserted.

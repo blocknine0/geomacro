@@ -79,32 +79,27 @@ async function checkSource(candidate:string,expectedSha:string){
  const b=await response.json().catch(()=>null);
  need(response.status===200&&b?.ok===true&&b?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
 }
-async function checkVersionParity(base:string,candidate:string,headSha:string){
+async function checkVersionParity(base:string,candidate:string,headSha:string,{requireFreshReview=true}={}){
  const [a,b]=await Promise.all([api(info(base)),api(info(candidate))]);
  need(a.id===base&&b.id===candidate,'CANARY_VERSIONS_NOT_VERIFIED');
- // With no differences, no additional owner review is needed.
- let reviewed:string[]=[];
- let result;
- try{
-  result=assessReviewedHot50BindingParity(a,b,headSha,[]);
- }catch(e){
-  const file='artifacts/release/canary-reviewed-additive-bindings.json';
-  need(existsSync(file),'CANARY_ADDITIVE_SECRET_SIGNED_REVIEW_MISSING');
-  const review=verifySignedEnvelopeFile(file);
-  need(review.schema==='geomacro.canary.additive-secret-review.v1'&&
-   review.status==='PASS'&&review.source_sha===headSha&&
-   review.baseline_version===base&&review.candidate_version===candidate&&
-   review.no_funds===true&&
-   Array.isArray(review.reviewed_secret_names)&&
-   review.reviewed_secret_names.length>0&&
-   Number.isFinite(Date.parse(String(review.reviewed_at)))&&
-   Date.now()-Date.parse(String(review.reviewed_at))<3_600_000&&
-   Date.now()>=Date.parse(String(review.reviewed_at)),
-   'CANARY_ADDITIVE_SECRET_REVIEW_NOT_EXACT_OR_FRESH');
-  reviewed=review.reviewed_secret_names;
-  result=assessReviewedHot50BindingParity(a,b,headSha,reviewed);
- }
- return result;
+ // Flag opt-in is always reviewed, including when no new secrets were needed.
+ // The owner signature is bound to both immutable version UUIDs and exact main.
+ const file='artifacts/release/canary-reviewed-additive-bindings.json';
+ need(existsSync(file),'CANARY_HOT50_SIGNED_OWNER_REVIEW_MISSING');
+ const review=verifySignedEnvelopeFile(file);
+ need(review.schema==='geomacro.canary.additive-secret-review.v1'&&
+  review.status==='PASS'&&review.source_sha===headSha&&
+  review.baseline_version===base&&review.candidate_version===candidate&&
+  review.no_funds===true&&review.commercial_release_authorized===false&&
+  review.hold_cleared===false&&
+  review.reviewed_hot50_runtime==='ENABLE_HOT50_RESEARCH_NO_FUNDS'&&
+  review.owner_workflow_confirmation==='PROMOTE_HOT50_NO_FUNDS'&&
+  Array.isArray(review.reviewed_secret_names)&&
+  Number.isFinite(Date.parse(String(review.reviewed_at)))&&
+  (!requireFreshReview||Date.now()-Date.parse(String(review.reviewed_at))<3_600_000)&&
+  Date.now()>=Date.parse(String(review.reviewed_at)),
+  'CANARY_HOT50_REVIEW_NOT_EXACT_OR_FRESH');
+ return assessReviewedHot50BindingParity(a,b,headSha,review.reviewed_secret_names);
 }
 
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
@@ -426,7 +421,7 @@ async function main(){
    baseline:base,candidate,stage2RunId:run});
   const active=await liveCurrent();
   verifyDistribution(active,[{version_id:candidate,percentage:100}]);
-  await checkVersionParity(base,candidate,mainSha);
+  await checkVersionParity(base,candidate,mainSha,{requireFreshReview:false});
   await checkSource(candidate,mainSha);
   const response=await fetch(ORIGIN+'/health',{
    redirect:'error',cache:'no-store',signal:AbortSignal.timeout(12000)});

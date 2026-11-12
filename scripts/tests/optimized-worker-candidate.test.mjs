@@ -154,11 +154,30 @@ test('zero-traffic candidate requires explicit separate Hot50 review and secrets
  assert.match(flow,/RISK_STREAM_INDEX_LEAD_BEARER/);
 });
 
-test('reviewed secrets-file replaces baseline secret binding without unsafe duplication',()=>{
+test('already-provisioned secret inherits unchanged and cannot be re-reviewed as additive',()=>{
  const live=structuredClone(baseline);
  live.resources.bindings.push({name:REVIEWABLE_ADDITIVE_SECRETS[0],type:'secret_text'});
  const config=candidateConfig(live,sha);
  assert.equal(config.unsafe.bindings.some(x=>
-  x.name===REVIEWABLE_ADDITIVE_SECRETS[0]),false);
+  x.name===REVIEWABLE_ADDITIVE_SECRETS[0]),true);
+ assert.throws(()=>candidateConfig(live,sha,[REVIEWABLE_ADDITIVE_SECRETS[0]]),
+  /REVIEWED_SECRET_NOT_ADDITIVE/);
  assert.equal(config.unsafe.bindings.some(x=>x.name==='DB'),true);
+});
+
+test('candidate requires exact missing secret names in one upload and keeps existing secrets intact',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const code=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
+ const flow=readFileSync(new URL('../../.github/workflows/geomacro-optimized-worker-candidate.yml',import.meta.url),'utf8');
+ assert.match(code,/CANDIDATE_EXACT_ADDITIVE_SECRET_REVIEW_REQUIRED/);
+ assert.match(code,/REVIEWABLE_ADDITIVE_SECRETS\.filter/);
+ assert.match(code,/if\(reviewedSecrets\.length\)/);
+ assert.match(flow,/reviewed_additive_secret_names:/);
+ assert.match(flow,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES:/);
+ const live=structuredClone(baseline);
+ live.resources.bindings.push({name:REVIEWABLE_ADDITIVE_SECRETS[0],type:'secret_text'});
+ const missing=REVIEWABLE_ADDITIVE_SECRETS.slice(1);
+ const config=candidateConfig(live,sha,missing);
+ assert(config.unsafe.bindings.some(x=>x.name===REVIEWABLE_ADDITIVE_SECRETS[0]));
+ assert.equal(config.unsafe.bindings.filter(x=>missing.includes(x.name)).length,0);
 });
