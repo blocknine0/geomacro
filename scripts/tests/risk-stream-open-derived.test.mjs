@@ -85,7 +85,10 @@ test("targeted search on single-source RSS offers discovery leads, never origina
   '<pubDate>Wed, 11 Nov 2026 22:30:00 GMT</pubDate>'+
   '<source url="https://cbc.ca">CBC News</source></item></channel></rss>';
  const r=await runSingleSourceOpenProbe(seed,{now:NOW,
-  fetcher:async()=>new Response(rss,{status:200,headers:{"content-type":"application/xml"}})});
+  fetcher:async(_url,request)=>{
+   assert.equal(Object.hasOwn(request,"cache"),false);
+   return new Response(rss,{status:200,headers:{"content-type":"application/xml"}});
+  }});
  assert.equal(r.status,"DISCOVERY_LEADS_FOUND");
  assert.equal(r.original_publications_verified,0);
  assert.equal(r.paid_delivery_authorized,false);

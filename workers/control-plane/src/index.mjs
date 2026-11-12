@@ -42,6 +42,8 @@ import {dispatchRiskStreamOutbox,consumeRiskStreamDelivery} from "./risk-stream-
 import {dispatchLicensedCommercialOutbox} from "./risk-stream-commercial-outbox.mjs";
 import {runCommercialIssuerTick} from "./risk-stream-commercial-issuer.mjs";
 import {acceptScopedUntrustedRiskStreamLeads} from "./risk-stream-index-listener.mjs";
+import {runHot50AutonomousStreamTick} from "./risk-stream-autonomous-hot50.mjs";
+import {runCommercialRiskHistoryAppendTick} from "./risk-stream-seven-day-chain.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
 import {getAutomatedFinds,putAutomatedFinds} from "./automated-finds.ts";
@@ -1323,6 +1325,22 @@ async function getPublicThreeDomain30MinSourcePulse(env) {
 
 export default {
   async scheduled(controller,env,ctx){
+    // Independent 150-cell, three-category, metadata-only discovery rotation.
+    // Cannot promote indexed/unverified sources to a signed original or
+    // authorize paid delivery. Runs on the existing one-minute Worker cron.
+    if(env?.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1")
+      ctx.waitUntil(runHot50AutonomousStreamTick(env,{
+        now:controller?.scheduledTime??Date.now()}).then(r=>{
+        if(r.status!=="HOT50_RESEARCH_TICK_D1_READBACK_PASS")
+          console.warn("RISK_STREAM_HOT50_GAPFILL_HELD",r.status);
+      }).catch(()=>console.error("RISK_STREAM_HOT50_GAPFILL_UNAVAILABLE")));
+    // Append ONLY previously reviewed, already licensed customer GROs to
+    // a private verified D1/R2 seven-day history; no synthetic backfill.
+    if(env?.GEOMACRO_COMMERCIAL_STREAM_RELEASE==="1"&&
+       env?.RISK_STREAM_SEVEN_DAY_ARCHIVE_APPROVED==="1")
+      ctx.waitUntil(runCommercialRiskHistoryAppendTick(env).then(r=>{
+        if(r.held)console.warn("RISK_STREAM_HISTORY_PENDING",r.status);
+      }).catch(()=>console.error("RISK_STREAM_HISTORY_UNAVAILABLE")));
     // Protected commercial-derivative outbox. A separate signed release
     // certificate, verified client entitlement and GeoMacro signing key are
     // REQUIRED. No cron flag or index hit alone grants redistribution rights.

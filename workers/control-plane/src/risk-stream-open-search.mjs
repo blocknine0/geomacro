@@ -37,7 +37,7 @@ export async function runSingleSourceOpenProbe(seed,{
  if(!Number.isSafeInteger(maxHits)||maxHits<1||maxHits>10)
   throw Error("OPEN_OSINT_SEARCH_HIT_LIMIT_INVALID");
  const response=await fetcher(plan.url,{
-  method:"GET",redirect:"manual",cache:"no-store",
+  method:"GET",redirect:"manual",
   headers:{"Accept":"application/rss+xml,application/xml;q=0.9"},
   signal:AbortSignal.timeout(8000)});
  if(response?.status!==200||response.redirected||

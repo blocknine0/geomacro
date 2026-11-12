@@ -154,3 +154,53 @@ export async function verifyGeoMacroSevenDayHistory(env,{country_iso3,category,
   complete_utc_days_are_not_fabricated:true,
   customer_delivery_authorized_by_history_alone:false};
 }
+
+/**
+ * Existing one-minute cron: append previously independently reviewed,
+ * GeoMacro-licensed real GROs to the immutable, private signed history.
+ * Query is bounded and never backfills synthetic/stale calendar days.
+ * A licence, source signature and private R2 readback are verified again for
+ * every append; any failure leaves the source job independently retryable.
+ */
+export async function runCommercialRiskHistoryAppendTick(env,{
+ now=Date.now(),max=5
+}={}){
+ if(!guarded(env)||
+    typeof env?.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64!=="string")
+  return {status:"HOLD_HISTORY_BINDINGS_UNAVAILABLE",appended:0,held:0};
+ if(!Number.isSafeInteger(max)||max<1||max>10)
+  fail("INVALID_APPEND_BATCH");
+ const midnight=iso(Date.parse(today(now)+"T00:00:00.000Z"));
+ const due=await env.DB.prepare(
+  "SELECT o.gro_id,o.license_envelope_json FROM risk_stream_commercial_outbox o "+
+  "LEFT JOIN risk_stream_commercial_risk_chain h ON h.gro_id=o.gro_id "+
+  "WHERE h.gro_id IS NULL AND o.created_at>=? AND o.created_at<=? "+
+  "ORDER BY o.created_at,o.job_id LIMIT ?"
+ ).bind(midnight,iso(now),max).all();
+ if(!Array.isArray(due?.results)||due.results.length>max)
+  fail("D1_HISTORY_DUE_READBACK_INVALID");
+ let appended=0,held=0;
+ const handled=new Set();
+ for(const row of due.results){
+  // Multiple customer deliveries can reference the same immutable GRO.
+  if(handled.has(row.gro_id))continue;
+  handled.add(row.gro_id);
+  try{
+   if(!HEX.test(row.gro_id??""))fail("SOURCE_GRO_INVALID");
+   const envelope=JSON.parse(row.license_envelope_json);
+   const result=await appendGeoMacroSignedRiskHistory(env,{
+    envelope,groId:row.gro_id,now
+   });
+   if(!["SIGNED_D1_R2_HASH_CHAIN_ENTRY_VERIFIED","HISTORY_IDEMPOTENT"]
+    .includes(result.status))fail("APPEND_READBACK_INVALID");
+   appended++;
+  }catch{
+   // Neither free-form native exception nor client/source details are logged.
+   console.warn("GEOMACRO_RISK_HISTORY_APPEND_HELD","LICENSE_OR_R2_RETRY");
+   held++;
+  }
+ }
+ return {status:held?"HISTORY_PENDING_VERIFIED_RETRY":"HISTORY_APPEND_TICK_PASS",
+  attempted:handled.size,appended,held,raw_source_text_stored:false,
+  forged_history_days:0,customer_delivery_authorized_by_history_alone:false};
+}
