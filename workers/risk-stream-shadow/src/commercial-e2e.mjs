@@ -154,7 +154,7 @@ export async function runIsolatedCommercialE2E(env,{
    if(destination!==url.toString())deny("DESTINATION_CHANGED");
    return env.SHADOW_COMMERCIAL_ACK.fetch(destination,{...options,headers:{
     ...options.headers,
-    "X-GeoMacro-Shadow-ACK":env.STREAM_SHADOW_ACK_TOKEN
+    "X-GeoMacro-Shadow-ACK":env.STREAM_SHADOW_ACK_TOKEN.replace(/[\r\n]+$/u,"")
    }});
   }
  });
