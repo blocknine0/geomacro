@@ -36,6 +36,8 @@ import {inspectPointerProofCount,verifyRealPhase2hPointerRows}
  from "../lib/d1-step3-crypto-proof.mjs";
 import {seedShadowArchivedPointer}
  from "../lib/d1-step3-shadow-pointer-seed.mjs";
+import {verifyShadowRetentionBoundPointers}
+ from "../lib/d1-step3-shadow-retention-proof.mjs";
 import {shadowArchivedSourceQuery,verifyRealShadowB2Parity,
  verifyRealShadowDualWorkers} from "../lib/d1-step3-real-shadow-proofs.mjs";
 import {
@@ -689,7 +691,7 @@ function migrateOne(privateDir,config,manifest,report,dbId,ledger){
  return {id:manifest.id,applied_now:action==="APPLY_REVIEWED_SQL",
   migration_history_and_schema_valid:true,ledger_status:"VERIFIED"};
 }
-async function verifyHmacNewPointers(config,env){
+async function verifyHmacNewPointers(config,env,{shadow=false}={}){
  // 10 real R2 pointers max. Never COUNT the full growing pointer table.
  const sql="SELECT record_id,category,original_published_at,"+
   "first_ingested_at,raw_sha256,object_sha256,object_key,"+
@@ -709,7 +711,13 @@ async function verifyHmacNewPointers(config,env){
  // a shadow key, a rotated value, or fake cryptographic readback.
  if(!/^[a-f0-9]{64}$/iu.test(env.PHASE2H_R2_REFERENCE_HMAC_KEY??""))
   fail("NONEMPTY_PRODUCTION_POINTER_REQUIRES_EXISTING_HMAC");
- const proof=await verifyRealPhase2hPointerRows({rows:result.rows,env});
+ // Production retains its original strict all-Worker-200 verifier.
+ // Shadow alone additionally verifies expired pointers with authenticated
+ // Worker 410 PLUS exact private-R2 bytes and the original pointer HMAC.
+ // No pointer is skipped and the fresh B2-ACK source remains mandatory.
+ const proof=shadow?
+  await verifyShadowRetentionBoundPointers({rows:result.rows,env}):
+  await verifyRealPhase2hPointerRows({rows:result.rows,env});
  return {...proof,
   all_hmac_and_r2_bytes_verified:
    proof.cryptographic_readback_verified===true};
@@ -1103,7 +1111,7 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   const shadowHost=env.GEOMACRO_STEP3_SHADOW_VERIFIED_WORKER_HOST;
   const pointerProof=await verifyHmacNewPointers(config,{
    ...env,GEOMACRO_STEP3_VERIFIED_WORKER_HOST:shadowHost
-  });
+  },{shadow:true});
   report.post_migration_hmac={...pointerProof,
    b2_physical_parity:report.b2_archive_proof.status};
   report.post_migration_readback_explicit_PASS=
