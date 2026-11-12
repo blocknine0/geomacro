@@ -42,7 +42,9 @@ function attr(tag,name){
  return new RegExp("\\b"+escaped+"\\s*=\\s*(['\"])(.*?)\\1","iu").exec(tag)?.[2]??null;
 }
 function normalizeNativeDate(raw){
- const value=clean(raw);
+ let value=clean(raw);
+ const labeled=value.match(/(?:^|:\s*)(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December),?\s+20\d{2})$/iu);
+ if(labeled)value=labeled[1];
  if(/^20\d{2}-\d{2}-\d{2}$/u.test(value)){
   const d=new Date(value+"T00:00:00.000Z");
   return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?d.toISOString():null;
@@ -55,10 +57,12 @@ function normalizeNativeDate(raw){
   const d=new Date(value);if(Number.isFinite(d.getTime()))return d.toISOString();
  }
  const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
- let match=value.match(/^(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})$/iu);
- if(!match)match=value.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})$/iu);
- if(match){
-  const day=Number(match[1]??match[2]),month=months[(match[2]??match[1]).toLowerCase()],year=Number(match[3]);
+ const dayFirst=value.match(/^(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})$/iu);
+ const monthFirst=value.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})$/iu);
+ const day=dayFirst?Number(dayFirst[1]):monthFirst?Number(monthFirst[2]):null;
+ const month=dayFirst?months[dayFirst[2].toLowerCase()]:monthFirst?months[monthFirst[1].toLowerCase()]:null;
+ const year=dayFirst?Number(dayFirst[3]):monthFirst?Number(monthFirst[3]):null;
+ if(day!==null&&month!==null&&year!==null){
   const iso=year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
   const d=new Date(iso+"T00:00:00.000Z");
   if(Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso)return d.toISOString();
