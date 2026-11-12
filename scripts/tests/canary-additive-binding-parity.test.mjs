@@ -78,3 +78,29 @@ test("non-reviewed changes, false flags and commercial release fail closed",()=>
  assert.throws(()=>assessReviewedHot50BindingParity(baseline,
   version(streamCandidate),sha,["UNKNOWN"]),/UNREVIEWED_SECRET_NAME/);
 });
+
+test("existing secret metadata is immutable and only genuinely additive names may be reviewed",()=>{
+ const already={name:REVIEWABLE_ADDITIVE_SECRETS[0],type:"secret_text"};
+ const old=version([...streamBaseline,already]);
+ const candidate=version(streamCandidate);
+ const missing=REVIEWABLE_ADDITIVE_SECRETS.slice(1);
+ assert.equal(assessReviewedHot50BindingParity(old,candidate,sha,missing)
+  .status,"PASS_REVIEWED_HOT50_PARITY");
+ assert.throws(()=>assessReviewedHot50BindingParity(old,candidate,sha,
+  REVIEWABLE_ADDITIVE_SECRETS),/REVIEWED_SECRET_ALREADY_EXISTS/);
+ const rotated=version(streamCandidate.map(x=>x.name===already.name?
+  {...x,account_id:"changed-provider-binding"}:x));
+ assert.throws(()=>assessReviewedHot50BindingParity(old,rotated,sha,missing),
+  /UNREVIEWED_RESOURCE_CHANGE/);
+ const changedFlag=version(streamCandidate.map(x=>x.name==="RISK_STREAM_ACTIVE"?
+  {...x,security_scope:"unreviewed-change"}:x));
+ assert.throws(()=>assessReviewedHot50BindingParity(old,changedFlag,sha,missing),
+  /REVIEWED_FLAG_RESOURCE_CHANGED/);
+});
+test("additional metadata on newly approved secret cannot bypass type or identity proof",()=>{
+ const bad=streamCandidate.map(x=>x.name===REVIEWABLE_ADDITIVE_SECRETS[0]?
+  {...x,provider_ref:"unreviewed"}:x);
+ assert.throws(()=>assessReviewedHot50BindingParity(version(streamBaseline),
+  version(bad),sha,REVIEWABLE_ADDITIVE_SECRETS),
+  /REVIEWED_SECRET_TYPE_OR_METADATA/);
+});
