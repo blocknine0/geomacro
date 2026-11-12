@@ -156,8 +156,15 @@ export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString
  const publishedAt=nativeDate(input);
  if(title.length<8||!publishedAt)throw Error(title.length<8?"ICC_ARTICLE_TITLE_MISSING":"ICC_NATIVE_PUBLICATION_TIME_MISSING");
  const canonical=/<link\b[^>]*rel=["']canonical["'][^>]*>/iu.exec(input)?.[0];
- if(canonical){const href=absoluteUrl(attr(canonical,"href"),url);let c;try{c=new URL(href)}catch{}
-  if(!c||c.hostname!==ICC_HOST||c.pathname!==article.pathname)throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");}
+ if(canonical){
+  const href=absoluteUrl(attr(canonical,"href"),url);let c;try{c=new URL(href)}catch{}
+  const canonicalNode=c&&/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(c.pathname);
+  const articleNode=/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(article.pathname);
+  const sameNode=Boolean(canonicalNode&&articleNode&&canonicalNode[1]===articleNode[1]);
+  const canonicalNews=Boolean(c&&/^\/news\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*){0,3}\/?$/iu.test(c.pathname));
+  if(!c||c.protocol!=="https:"||c.hostname!==ICC_HOST||c.port||c.search||c.hash||(!sameNode&&!canonicalNews))
+   throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");
+ }
  return normalizeIccNews({id:article.pathname.split("/").filter(Boolean).at(-1),title,publishedAt,url:article.href,retrievedAt,
   summary:"ICC first-party article metadata verified.",raw:{source:"ICC_ARTICLE_NATIVE_METADATA",url:article.href,publishedAt}});
 }

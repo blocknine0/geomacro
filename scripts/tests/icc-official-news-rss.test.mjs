@@ -64,6 +64,11 @@ test("ICC native publication clock comes from article metadata, not retrieval or
  const prefixedDate=parseIccArticleHtml('<html><head><title>ICC official announcement</title></head><body>International Criminal Court <div class="news-type-date">Press Release: 2 November 2026</div></body></html>',
   {url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
  assert.equal(prefixedDate.published_at,"2026-11-02T00:00:00.000Z");
+ const canonicalAlias=parseIccArticleHtml('<html><head><title>ICC official announcement</title><link rel="canonical" href="/news/official-announcement"><meta property="article:published_time" content="2026-11-12"></head><body>International Criminal Court</body></html>',
+  {url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
+ assert.equal(canonicalAlias.published_at,"2026-11-12T00:00:00.000Z");
+ assert.throws(()=>parseIccArticleHtml('<html><head><title>ICC official announcement</title><link rel="canonical" href="https://evil.example/news/official-announcement"><meta property="article:published_time" content="2026-11-12"></head><body>International Criminal Court</body></html>',
+  {url:"https://www.icc-cpi.int/node/241777"}),/ICC_ARTICLE_CANONICAL_MISMATCH/);
  assert.throws(()=>parseIccArticleHtml('<html>International Criminal Court</html>',{url:"https://www.icc-cpi.int/node/241777"}),/ICC_ARTICLE_TITLE_MISSING/);
 });
 test("DTD, shape spoofing, off-issuer, empty and oversized feeds fail closed",()=>{
