@@ -1,6 +1,5 @@
 {
   "request_id": "predge-pilot-integration-fixture-001",
-  "tier": "basic_focused",
   "subject": {
     "type": "country",
     "country_iso3": "USA"

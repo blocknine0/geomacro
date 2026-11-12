@@ -7,7 +7,7 @@ import {
 
 const NOW=Date.parse("2026-10-20T17:00:00.000Z");
 const TOKEN="f".repeat(64),RESEARCH_TOKEN="a".repeat(64);
-const base=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
+const base=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
 const corridor=JSON.parse(readFileSync("docs/partners/predge/risk-gate-corridor-request.json","utf8"));
 const signedTest=JSON.parse(readFileSync("docs/partners/predge/gro-signed-test-vector.json","utf8"));
 const canonical=v=>v===null||typeof v!=="object"?JSON.stringify(v):
@@ -60,11 +60,11 @@ const req=(payload=base,token=TOKEN)=>new Request(
 describe("Supabase-free Predge Risk Gate v1 migration",()=>{
  it("accepts exact supported external parser shapes, excludes spoofed hashes",()=>{
    expect(parseRequest(base,NOW)?.subject).toEqual({type:"country",id:"USA"});
-   expect(parseRequest(corridor,NOW)?.subject).toEqual({type:"corridor",id:"IND>ARE"});
+   expect(parseRequest({...corridor,tier:"standard"},NOW)?.subject).toEqual({type:"corridor",id:"IND>ARE"});
    expect(parseRequest({...base,subject:{type:"country",id:"USA"}},NOW)).toBeNull();
    expect(parseRequest({...base,content_hash:"a".repeat(64)},NOW)).toBeNull();
    expect(parseRequest({...base,context_sha256:"a".repeat(64)},NOW)).toBeNull();
-   expect(parseRequest(({tier:undefined,...base} as unknown) as typeof base,NOW)).toBeNull();
+   expect(parseRequest({...base,tier:undefined} as unknown as typeof base,NOW)).toBeNull();
    expect(parseRequest({...base,policy:{...base.policy,continue_max_score:80}},NOW)).toBeNull();
  });
  it("rejects absent/reused/exposed/wrong tokens before any DB access",async()=>{

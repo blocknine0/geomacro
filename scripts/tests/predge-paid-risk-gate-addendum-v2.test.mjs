@@ -30,7 +30,7 @@ test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
 });
 
 test("Predge request parser requires an explicit pre-processing tier",()=>{
- const request=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
+ const request=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  const paidRequest=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  assert.equal(parseRequest(request)?.tier,"basic_focused");
  assert.equal(parseRequest(paidRequest)?.tier,"basic_focused");
