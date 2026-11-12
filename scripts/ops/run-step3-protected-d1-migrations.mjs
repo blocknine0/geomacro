@@ -957,6 +957,18 @@ export async function applyStep3Migrations({env=process.env}={}){
  * Finishes NOT_YET_VERIFIED until two actually deployed shadow-bound Worker
  * versions have completed authenticated legacy/new read/write/rollback tests.
  */
+/** Read-only bounded gate. A candidate is NOT a B2 verification: it only
+ * prevents costly shadow DDL/checkpoint work when the required source is absent.
+ * The actual seed still enforces original bytes, B2 GET, HMAC and R2 readback.
+ */
+export function step3ShadowB2AcknowledgedCandidateSql(now=Date.now()){
+ if(!Number.isFinite(now)||now<0)throw Error("STEP3_SHADOW_PREFLIGHT_CLOCK_INVALID");
+ return "SELECT record_id,b2_object_sha256,b2_archived_at FROM "+
+  "phase2h_private_raw_news INDEXED BY idx_phase2h_retention_first_ingested "+
+  "WHERE b2_object_sha256 IS NOT NULL AND b2_archived_at IS NOT NULL "+
+  "AND first_ingested_at >= '"+new Date(now-70*3600_000).toISOString()+"' "+
+  "ORDER BY first_ingested_at DESC,record_id DESC LIMIT 1";
+}
 export async function rehearseStep3Shadow({env=process.env}={}){
  const report=receipt(),manifests=step3SqlManifests();
  report.operation_kind="shadow";
@@ -1014,6 +1026,22 @@ export async function rehearseStep3Shadow({env=process.env}={}){
   report.real_shadow_database_identity_verified=true;
   for(const m of manifests)boundedInputs(config,m,report);
   report.original_immutable_sample_sha256=baseline(config);
+  // FAIL-CLOSED BEFORE any recovery R2 checkpoint or shadow DDL; merely
+  // finding a row does NOT replace the separate real original/B2 proof.
+  await refreshedGate(report,"SHADOW_BEFORE_REAL_ARCHIVED_ORIGINAL_PREFLIGHT");
+  const archivedCandidate=q(config,
+   step3ShadowB2AcknowledgedCandidateSql(),{maxRows:1});
+  report.shadow_archived_original_preflight={
+   status:archivedCandidate.rows.length===1?
+    "CANDIDATE_METADATA_PRESENT_NOT_B2_PROOF":"NO_ELIGIBLE_B2_ACKNOWLEDGED_ROW",
+   rows_read:archivedCandidate.readRows,shadow_only:true,production_sql_mutated:false,
+   original_b2_bytes_verified:false,shadow_pointer_hmac_verified:false
+  };
+  if(archivedCandidate.rows.length!==1){
+   report.real_archived_pointer_seed={
+    status:"NOT_YET_VERIFIED",code:"NO_REAL_B2_ACKNOWLEDGED_SHADOW_RECORD",r2_puts:0};
+   fail("SHADOW_REAL_ARCHIVED_POINTER_NOT_VERIFIED");
+  }
   const checkpoint=await captureDurableD1Checkpoint({
    env,dbId:shadow,migrationSha:sha256MigrationSet(manifests)
   });
