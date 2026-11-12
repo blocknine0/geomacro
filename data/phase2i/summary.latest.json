@@ -5,8 +5,8 @@
   "registered_sources": 453,
   "new_http_requests": 18,
   "statuses": {
-    "WORKING": 164,
-    "NO_NEW_EVENT": 28,
+    "WORKING": 167,
+    "NO_NEW_EVENT": 25,
     "SOURCE_UNAVAILABLE": 14,
     "UNSUPPORTED_FORMAT": 21,
     "RIGHTS_PENDING": 0,
@@ -39,7 +39,7 @@
       "commercially_eligible_country_events": 0
     }
   },
-  "phase2ib_archive_cycle_status": "ARCHIVE_FAILED_NO_POSITIVE_RECEIPT",
+  "phase2ib_archive_cycle_status": "ARCHIVE_POSITIVE_PROOF_NOT_AVAILABLE",
   "phase2ib_per_country_original_events_verified": 0,
   "phase2ib_d1_census": null
 }
