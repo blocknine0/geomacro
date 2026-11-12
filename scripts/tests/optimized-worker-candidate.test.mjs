@@ -153,3 +153,12 @@ test('zero-traffic candidate requires explicit separate Hot50 review and secrets
  assert.match(flow,/GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64/);
  assert.match(flow,/RISK_STREAM_INDEX_LEAD_BEARER/);
 });
+
+test('reviewed secrets-file replaces baseline secret binding without unsafe duplication',()=>{
+ const live=structuredClone(baseline);
+ live.resources.bindings.push({name:REVIEWABLE_ADDITIVE_SECRETS[0],type:'secret_text'});
+ const config=candidateConfig(live,sha);
+ assert.equal(config.unsafe.bindings.some(x=>
+  x.name===REVIEWABLE_ADDITIVE_SECRETS[0]),false);
+ assert.equal(config.unsafe.bindings.some(x=>x.name==='DB'),true);
+});
