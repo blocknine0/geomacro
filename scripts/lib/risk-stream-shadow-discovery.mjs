@@ -40,11 +40,12 @@ export function countryHints(title){
  if(/\bUS\b/u.test(title)&&!identified.includes("USA"))identified.unshift("USA");
  return identified;
 }
+// Decode XML entities exactly once. CDATA is literal text, and must not be
+// entity-decoded. Multiple sequential replacements can turn &amp;lt; into <.
 function decodeXml(s){
- return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gu,"$1")
- .replace(/&amp;/giu,"&").replace(/&lt;/giu,"<")
- .replace(/&gt;/giu,">").replace(/&quot;/giu,"\"")
- .replace(/&#39;|&apos;/giu,"'").trim();
+ const entities={amp:"&",lt:"<",gt:">",quot:'"',apos:"'","#39":"'"};
+ return s.replace(/<!\[CDATA\[([\s\S]*?)\]\]>|&(amp|lt|gt|quot|apos|#39);/giu,
+  (_match,cdata,name)=>cdata!==undefined?cdata:entities[name.toLowerCase()]).trim();
 }
 const tag=(body,name)=>{
  const m=body.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)<\\/"+name+">","iu"));
