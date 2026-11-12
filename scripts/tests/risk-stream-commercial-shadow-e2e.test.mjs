@@ -36,6 +36,9 @@ function mockDatabase(){
      if(sql.includes("SET state='LEASED'")){
       state.outbox.state="LEASED";return {success:true,meta:{changes:1}};
      }
+     if(sql.includes("SET state='PENDING'")){
+      state.outbox.state="PENDING";return {success:true,meta:{changes:1}};
+     }
      if(sql.includes("INSERT OR IGNORE INTO risk_stream_commercial_delivery_receipts")){
       state.receipt={provider_ack_sha256:args[4],received_at:args[5]};
       return {success:true,meta:{changes:1}};
