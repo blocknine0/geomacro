@@ -9,7 +9,7 @@ describe("public intelligence preview route failure boundary", () => {
     expect(route).toContain("const verified = await fetchVerifiedIntelligenceEdge()");
     expect(route).toContain("buildVerifiedIntelligenceApiPayload(verified)");
     expect(route.indexOf("fetchVerifiedIntelligenceEdge()")).toBeLessThan(route.indexOf("await import("));
-    expect(route).toContain('await import(\n      "../../../src/lib/public-intelligence-production.server"');
+    expect(route).toMatch(/await import\([\s\S]*?public-intelligence-production\.server/u);
   });
 
   it("fails closed without validated signals and never caches an error envelope", () => {

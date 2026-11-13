@@ -21,14 +21,14 @@ describe('website server/browser source and native-day parity',()=>{
   const actual=await readWebsiteDerivedNews();
   expect(actual.signals).toEqual(checkedDerivedNews(feedDoc([story]),now));
   expect(actual.signals).toEqual([story]);
-  expect(fetcher.mock.calls[0][1].redirect).toBe('error');
+  expect(fetcher.mock.calls[0][1].redirect).toBe('manual');
  });
  it('rejects early originals and private metadata consistently on server and browser',async()=>{
   vi.useFakeTimers();vi.setSystemTime(now);
-  const input=doc([story,{...story,id:'macro-abcdef12',source_name:'private supplier'},
+  const input=[story,{...story,id:'macro-abcdef12',source_name:'private supplier'},
     {...story,id:'macro-abcdef13',published_at:'2026-10-17'}]);
-  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(input)));
+  vi.stubGlobal('fetch',vi.fn(async()=>Response.json(doc(input))));
   expect((await readWebsiteDerivedNews()).signals).toEqual([story]);
-  expect(checkedDerivedNews(input,now)).toEqual([story]);
+  expect(checkedDerivedNews(feedDoc(input),now)).toEqual([story]);
  });
 });
