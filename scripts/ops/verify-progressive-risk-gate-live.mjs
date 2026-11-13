@@ -4,14 +4,14 @@
  * Emits ONLY stable booleans and symbolic errors; never response body or bearer.
  */
 import {readFileSync} from "node:fs";
-import {createHash,createPublicKey,verify} from "node:crypto";
+import {createHash,createPublicKey,randomUUID,verify} from "node:crypto";
 const root=String(process.env.DEPLOYMENT_URL??"").replace(/\/+$/,"");
 const token=String(process.env.PREDGE_RISK_GATE_TOKEN??"");
 if(!/^https:\/\/[a-z0-9.-]+\.workers\.dev$/i.test(root)||
    !/^[a-f0-9]{64}$/.test(token))
   throw Error("PROGRESSIVE_SMOKE_PROTECTED_CONFIG_UNAVAILABLE");
 const req=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
-req.request_id="progressive-no-funds-"+String(process.env.GITHUB_SHA??"").slice(0,40);
+req.request_id="progressive-no-funds-"+String(process.env.GITHUB_RUN_ID??"").slice(0,20)+"-"+randomUUID();
 delete req.evaluated_at;
 const payload=JSON.stringify(req);
 const call=async(expectedStatus=200)=>{
