@@ -171,16 +171,16 @@ function paidRiskGateFixtureDb(){
     if(sql.includes("FROM risk_gate_d1_requests")&&sql.includes("client_id=? AND request_id=?")){
      const row=requests.get(key(values[0],values[1]));return row?{...row}:null;
     }
-    if(sql.includes("client_id='predge-paid-license-scope-v1'")){
-     const row=requests.get(key("predge-paid-license-scope-v1",values[0]));
-     return row?{request_id:values[0]}:null;
-    }
     if(sql.includes("INSERT OR IGNORE INTO risk_gate_d1_requests")&&sql.includes("predge-paid-license-scope-v1")){
      const [id,hash,subjectType,subjectId,createdAt]=values;
      const k=key("predge-paid-license-scope-v1",id);
      if(requests.has(k))return null;
      requests.set(k,{request_id:id,request_hash:hash,subject_type:subjectType,subject_id:subjectId,created_at:createdAt,state:"CLAIMED"});
      return {request_id:id};
+    }
+    if(sql.includes("client_id='predge-paid-license-scope-v1'")){
+     const row=requests.get(key("predge-paid-license-scope-v1",values[0]));
+     return row?{request_id:values[0]}:null;
     }
     if(sql.includes("UPDATE risk_gate_d1_requests SET state='CLAIMED'")){
      const row=requests.get(key(values[0],values[1]));
@@ -194,7 +194,8 @@ function paidRiskGateFixtureDb(){
     }
     if(sql.includes("INSERT INTO risk_gate_d1_quota"))return {used:1};
     if(sql.includes("FROM predge_paid_risk_gate_usage_ledger")){
-     const row=ledger.get(values[0])||[...ledger.values()].find(item=>item.verdict_id===values[1]);
+     const row=ledger.get(values[0])||[...ledger.values()].find(item=>
+      values.includes(item.request_id)||values.includes(item.verdict_id));
      return row?{verdict_id:row.verdict_id,request_hash:row.request_hash,
       response_sha256:row.response_sha256,billing_mode:row.billing_mode,
       entry_status:row.entry_status,billable:row.billable,
