@@ -13,10 +13,11 @@ test("removed IDs and exact feed URL aliases cannot re-enter any replacement reg
   if(old.url)assert.ok(isRetiredPrivateOsintSource({id:"alias",url:old.url}));
  }
  const result=applyRetiredSourceReplacements(doc.retired);
- assert.equal(result.length,7);
+ assert.equal(result.length,6);
  assert.equal(doc.unadmitted_candidates.length,5);
  assert.ok(doc.unadmitted_candidates.every(x=>x.github_runner_http_status===406&&x.same_article_url_hashes.length>0));
  assert.ok(result.every(x=>!isRetiredPrivateOsintSource(x)));
+ assert.equal(result.some(x=>x.id==="private_replacement_27ebe75f65657dad8865"),false);
  assert.equal(new Set(result.map(x=>x.url)).size,result.length);
  assert.ok(result.every(x=>x.publisher_native_dates_required&&
   x.rights_verified===false&&x.commercial_eligible===false&&
