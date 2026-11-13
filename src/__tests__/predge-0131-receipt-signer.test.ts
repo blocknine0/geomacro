@@ -11,6 +11,11 @@ describe("Predge 0131 migration receipt signer",()=>{
   const signer=loadPredge0131ReceiptSigner({privateKeyPkcs8B64,publicKeySpkiB64});
   expect(signer.keyId).toMatch(/^geomacro-license-ed25519:[a-f0-9]{64}$/);
  });
+ it("accepts the configured Ed25519 SIGNING_JWK when the key pair is supplied as JWK",()=>{
+  const signingJwk=pair.privateKey.export({format:"jwk"});
+  const signer=loadPredge0131ReceiptSigner({signingJwk});
+  expect(signer.keyId).toMatch(/^geomacro-license-ed25519:[a-f0-9]{64}$/);
+ });
  it("signs exact receipt bytes with Ed25519 and publishes its key fingerprint",()=>{
   const payload={schema:"geomacro.predge-addendum-v2-migration-receipt.v1",status:"PASS"};
   const receipt=signPredge0131Receipt(payload,{privateKeyPkcs8B64,publicKeySpkiB64});
