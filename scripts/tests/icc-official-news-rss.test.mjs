@@ -143,7 +143,7 @@ test("ICC listing requests negotiate HTML and parse canonical Drupal node links"
  }});
  const row=receipt.results.find(item=>item.source_id==="icc_news");
  const listing=seen.find(item=>item.url==="https://www.icc-cpi.int/news");
- assert.match(listing.headers.accept,/text\\/html/u);
+ assert.match(listing.headers.accept,/text\/html/u);
  assert.match(listing.headers["user-agent"],/GeoMacro-P0-Source-Discovery/u);
  assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
  assert.equal(row.native_publication_at_utc,"2026-11-12T08:00:00.000Z");
