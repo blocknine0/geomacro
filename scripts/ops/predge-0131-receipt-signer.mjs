@@ -32,12 +32,12 @@ export function loadPredge0131ReceiptSigner({privateKeyPkcs8B64,publicKeySpkiB64
   fail("SIGNING_ALGORITHM_INVALID");
  const derived=createPublicKey(privateKey).export({format:"der",type:"spki"}).toString("base64");
  if(pub&&derived!==pub)fail("KEY_PAIR_MISMATCH");
- const publicKeySpkiB64=derived;
- const keyId="geomacro-license-ed25519:"+createHash("sha256").update(b64(publicKeySpkiB64)).digest("hex");
+ const normalizedPublicKeySpkiB64=derived;
+ const keyId="geomacro-license-ed25519:"+createHash("sha256").update(b64(normalizedPublicKeySpkiB64)).digest("hex");
  const challenge=Buffer.from("geomacro-predge-addendum-v2-migration-0131-receipt-key-check-v1");
  const signature=sign(null,challenge,privateKey);
  if(!verify(null,challenge,publicKey,signature))fail("SIGNING_SELF_TEST_FAILED");
- return Object.freeze({privateKey,publicKey,keyId,publicKeySpkiB64});
+ return Object.freeze({privateKey,publicKey,keyId,publicKeySpkiB64:normalizedPublicKeySpkiB64});
 }
 export function signPredge0131Receipt(unsigned,{privateKeyPkcs8B64,publicKeySpkiB64,signingJwk}={}){
  if(!unsigned||typeof unsigned!=="object"||Array.isArray(unsigned))fail("PAYLOAD_INVALID");
