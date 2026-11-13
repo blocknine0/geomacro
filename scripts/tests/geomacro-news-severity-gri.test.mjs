@@ -218,9 +218,9 @@ test("self-certified news severity remains separate; public Risk Indices require
  assert.match(hook,/readGeoMacroCertifiedNewsRisk\(\)/u);
  assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh\)/u);
  assert.match(hook,/body\.meta\.signature_verified!==true/u);
- assert.match(view,/A GeoMacro self-certified calculation/u);
- assert.match(view,/not independently certified event facts/u);
- assert.doesNotMatch(view,/Authentic independent reviewer certificates/u);
+ assert.match(view,/Reviewer-gated GRI v1.2/u);
+ assert.match(view,/Authentic independent reviewer certificates/u);
+ assert.doesNotMatch(view,/GeoMacro self-certified|Monitored, unverified observations contribute at 0.22/u);
 });
 
 test("real 24H/48H/72H journal backfill stays source-native and never invents old GRI scores",async()=>{

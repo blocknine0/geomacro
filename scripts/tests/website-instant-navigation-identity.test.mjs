@@ -35,11 +35,11 @@ test("internal destination headings are accessible client links", () => {
   assert.doesNotMatch(home, /LiveIntelligenceShowcase/);
   assert.doesNotMatch(home, /What GeoMacro is finding now/);
 });
-test("client transitions do not block on 9s intelligence publisher request", () => {
-  assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
-  assert.match(intelligence, /stateless: null, statelessFeeds: \{\}, journal: \[\]/);
-  assert.match(intelligence, /const statelessResults = await Promise\.allSettled\(domains\.map/);
-  assert.match(intelligence, /const \[history\] = await Promise\.allSettled/);
+test("approved intelligence route isolates bounded source reads across all three categories", () => {
+  assert.match(intelligence, /const domains = \["geopolitics", "macro", "rare_earth"\] as const/);
+  assert.match(intelligence, /const \[geopolitics, macro, minerals, history\] = await Promise\.allSettled/);
+  assert.match(intelligence, /fetchDirectDerivedNews\(\)/);
+  assert.match(intelligence, /Original publisher Intelligence source check timed out\./);
   assert.match(intelligence, /getStatelessIntelligence/);
 });
 test("premium CSS identity respects accessibility and mobile performance", () => {
