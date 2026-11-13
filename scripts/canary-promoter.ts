@@ -3,7 +3,7 @@
 import {existsSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,sha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
+import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,canonicalContentSha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
 import {
  checkD1PaidMonthlyHeadroom,paidD1BillingCycle
 } from './lib/d1-workers-paid-monthly-governor.mjs';
@@ -463,7 +463,7 @@ async function main(){
    schema:'geomacro.canary.hold-review.v2',status:'PASS',
    source_sha:mainSha,completed_canary_run_id:promotionRun,
    approved_stage2_run:run,
-   signed_promotion_payload_sha256:sha256(canonical(promotion)),
+   signed_promotion_payload_sha256:canonicalContentSha256(canonical(promotion)),
    signed_stages_verified:admitted.fully_verified_stages,
    actual_candidate_version:admitted.candidate_version,
    remote_candidate_100_percent_verified:true,
