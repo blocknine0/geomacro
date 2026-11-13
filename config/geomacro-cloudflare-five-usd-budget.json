@@ -83,6 +83,10 @@
     "provider_telemetry_is_delayed": true,
     "account_wide_atomic_hard_cap_guaranteed": false,
     "emergency_writes_auto_eligible": false,
-    "remarks": "The 30% emergency allocation is monthly, not an extra daily extension. Distinct per-hour read/write pacing. Real provider usage required for admission."
+    "remarks": "The 30% emergency allocation is monthly, not an extra daily extension. Distinct per-hour read/write pacing. Real provider usage required for admission. Early UTC carry-forward adds at most 100k normal rows only when provider-observed headroom exceeds 50% of the daily cap; it cannot cross the 1.1M daily ceiling or open monthly reserve.",
+    "early_utc_carry_forward_enabled": true,
+    "early_utc_carry_forward_window_hours": 6,
+    "early_utc_carry_forward_min_daily_headroom_fraction": 0.5,
+    "early_utc_carry_forward_max_rows_written": 100000
   }
 }
