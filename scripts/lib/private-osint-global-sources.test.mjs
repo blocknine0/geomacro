@@ -36,6 +36,9 @@ const normalize=x=>({schema:"geomacro.reusable-news-json.v1",category:x.category
  delivery:{raw_article_included:false},usage_rights:{commercial_reuse_authorized:false}});
 test("accepted global source inventory has distinct pinned feeds in six continents and 195x3 routing",()=>{
  const sources=privateOsintGlobalSources();
+ for(const disabled of ["private_mesh_iefimerida","private_mesh_ziarul_de_gard",
+  "private_repo_54feb551db5f8ef14a35","private_repo_b10aaa3ef8a489ce47fb"])
+  assert.equal(sources.some(source=>source.id===disabled),false,"disabled live-failure feed is excluded");
  assert.ok(sources.length>100);
  assert.equal(new Set(sources.map(s=>s.url)).size,sources.length);
  assert.ok(sources.every(s=>s.supported));
