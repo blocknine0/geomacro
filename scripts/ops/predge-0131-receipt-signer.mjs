@@ -5,6 +5,9 @@ const fail=code=>{throw Error("PREDGE_0131_RECEIPT_"+code)};
 export function loadPredge0131ReceiptSigner({privateKeyPkcs8B64,publicKeySpkiB64,signingJwk}={}){
  let privateKey,publicKey;
  const priv=String(privateKeyPkcs8B64??"").trim(),pub=String(publicKeySpkiB64??"").trim();
+ if(!signingJwk&&priv&&!pub)fail("PUBLIC_KEY_REQUIRED");
+ if(!signingJwk&&!priv&&!pub)fail("PRIVATE_KEY_REQUIRED");
+ if(!signingJwk&&!priv&&pub)fail("PRIVATE_KEY_REQUIRED");
  if(priv&&pub){
   if(!/^[A-Za-z0-9+/]+={0,2}$/.test(priv)||!/^[A-Za-z0-9+/]+={0,2}$/.test(pub))
    fail("KEY_ENCODING_INVALID");
