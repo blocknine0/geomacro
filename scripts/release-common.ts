@@ -1,5 +1,5 @@
 /** Shared, non-mocking production release primitives. Node 24+ --experimental-strip-types. */
-import {createHash,createHmac,createPrivateKey,createPublicKey,sign as nodeSign,verify as nodeVerify,randomUUID} from 'node:crypto';
+import {createHash,createHmac,pbkdf2Sync,createPrivateKey,createPublicKey,sign as nodeSign,verify as nodeVerify,randomUUID} from 'node:crypto';
 import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -22,8 +22,12 @@ export function envString(name:string,min=1):string {const value=process.env[nam
 // Secret credentials must use a keyed HMAC/KDF, never this content digest.
 export const canonicalContentSha256=(canonicalContent:string|Uint8Array):string=>
  createHash('sha256').update(canonicalContent).digest('hex');
-export const providerUsageHmacSha256=(key:string|Uint8Array,canonicalUsage:string|Uint8Array):string=>
- createHmac('sha256',key).update(canonicalUsage).digest('hex');
+// Cloudflare usage receipts can carry provider-derived credential taint in
+// static analysis. Use an intentionally expensive deterministic PBKDF2-HMAC
+// fingerprint for that evidence; never use bare SHA-256 for credentials.
+export const providerUsagePbkdf2Sha256=(key:string|Uint8Array,canonicalUsage:string|Uint8Array):string=>
+ pbkdf2Sync(Buffer.concat([Buffer.from(key),Buffer.from("\\0"),Buffer.from(canonicalUsage)]),
+  Buffer.from("geomacro-provider-usage-fingerprint-v1"),310_000,32,"sha256").toString("hex");
 function normalized(value:unknown,depth=0):unknown{
  need(depth<24,'RELEASE_CANONICAL_DEPTH');
  if(value===null||typeof value==='string'||typeof value==='boolean')return value;
