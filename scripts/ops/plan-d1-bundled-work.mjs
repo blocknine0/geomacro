@@ -229,7 +229,7 @@ const held=(reason,now)=>Object.freeze({
   d1_queries:0,d1_rows_written:0,b2_requests:0,paid_calls:0,
   budget_is_nonatomic_provider_snapshot:true,
 });
-export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
+export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null,ownerPaidAdmission=false}={}){
   if(!(now instanceof Date)||!Number.isFinite(now.getTime()))
     throw Error("D1_BUNDLE_NOW_INVALID");
   if(!snapshot||snapshot.schema!=="geomacro.d1-account-daily-quota-readonly.v1"||
@@ -259,7 +259,7 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     Number.isFinite(Date.parse(paidProof.observed_at))&&
     Date.parse(paidProof.observed_at)<=now.getTime()&&
     now.getTime()-Date.parse(paidProof.observed_at)<=5*60_000;
-  if(paid){
+  if(paid||ownerPaidAdmission===true){
     const elapsed=(now.getTime()-Date.parse(snapshot.day_utc+"T00:00:00.000Z"))/DAY_MS;
     const progress=Math.max(0,Math.min(1,elapsed));
     // Pace owner paid daily ceilings; the separate monthly reserve cannot
@@ -301,7 +301,8 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
     return Object.freeze({
       schema:"geomacro.d1-free-bundled-work-admission.v1",
       day_utc:snapshot.day_utc,state:admitted?"CRITICAL_ONLY":"HELD",
-      reason:admitted?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
+      reason:admitted?(paid?"PROVIDER_VERIFIED_WORKERS_PAID_SOFT_BUDGET":
+        "OWNER_D1_PAID_ENVELOPE_SOURCE_ADMISSION"):
         "WORKERS_PAID_CONSERVATIVE_SOFT_BUDGET_REACHED",
       critical:admitted,research:false,maintenance:false,
       phase2h_raw_archive:archive,retention_cleanup:false,retention_cleanup_max_rows:0,
@@ -339,8 +340,10 @@ export function planD1BundledWork(snapshot,{now=new Date(),paidProof=null}={}){
       predge_account_headroom_planning_reserve:PREDGE_D1_FREE_HEADROOM,
       predge_account_headroom_is_hard_partition:false,
       predge_request_governor_is_separate_and_unchanged:true,
-      paid_capacity_verified_by_provider:true,
-      free_plan_5m_cap_not_applied_only_with_verified_subscription:true,
+      paid_capacity_verified_by_provider:paid,
+      workers_paid_subscription_verified:paid,
+      owner_d1_paid_envelope_admission:!paid&&ownerPaidAdmission===true,
+      free_plan_5m_cap_not_applied_only_with_verified_subscription:paid,
       daily_account_soft_limit_read:dailyReads,
       daily_account_soft_limit_write:dailyWrites,
       paid_subscription_change_performed:false,
@@ -561,17 +564,19 @@ export function phase2fQuotaDiagnostic(plan){
   const readReserve=D1_BUNDLE_LANES.critical.read_reserve;
   const writeReserve=D1_BUNDLE_LANES.critical.write_reserve;
   const paidSubscription=plan?.workers_paid_subscription_verified===true;
-  const physical=valid&&!paidSubscription&&
+  const paidCapacity=paidSubscription||plan?.owner_d1_paid_envelope_admission===true;
+  const physical=valid&&!paidCapacity&&
     (plan.remaining_rows_read===0||plan.remaining_rows_written===0);
-  const protectedReserve=valid&&!paidSubscription&&
+  const protectedReserve=valid&&!paidCapacity&&
     (plan.remaining_rows_read<=readReserve||plan.remaining_rows_written<=writeReserve);
-  const pacing=valid&&!paidSubscription&&
+  const pacing=valid&&!paidCapacity&&
     (plan.observed_rows_read>=plan.paced_ceiling_by_lane?.critical?.rows_read||
      plan.observed_rows_written>=plan.paced_ceiling_by_lane?.critical?.rows_written);
   const cause=!valid?"PROVIDER_USAGE_UNVERIFIED":
     plan?.owner_d1_utc_budget_held===true?"GEOMACRO_OWNER_DAILY_BUDGET_REACHED":
     paidSubscription&&plan?.reason==="WORKERS_PAID_SPEND_POLICY_UNVERIFIED"?
       "WORKERS_PAID_SPEND_POLICY_UNVERIFIED":
+    plan?.paid_derived_news_source_lane===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
     physical?"PHYSICAL_FREE_LIMIT_REACHED":
     protectedReserve?"PROTECTED_CRITICAL_AND_PREDGE_RESERVE_HELD":
     plan.research===true?"THREE_CATEGORY_DERIVED_PUBLISHER_ADMITTED":
@@ -601,7 +606,8 @@ export function phase2fQuotaDiagnostic(plan){
     predge_read_reserve_unchanged:PREDGE_D1_FREE_HEADROOM.rows_read,
     predge_write_reserve_unchanged:PREDGE_D1_FREE_HEADROOM.rows_written,
     bounded_original_intake_admitted:plan?.source_intake===true,
-    derived_three_category_d1_publisher_admitted:plan?.research===true,
+    derived_three_category_d1_publisher_admitted:
+      plan?.research===true||plan?.paid_derived_news_source_lane===true,
     billing_or_quota_change_performed:false,
     extra_d1_reads:0,d1_writes:0,b2_requests:0,payments:0,
     // Only a diagnosis, not license, original-source admission or product proof.
@@ -663,12 +669,28 @@ export async function checkD1BundledWork({env=process.env,fetchImpl=fetch,now=ne
       observedRowsWritten:quota.observed_rows_written,
       now,policy:FIVE_USD_BUDGET.d1_budget_policy,
     });
+    const ownerNormalHeadroomWritten=Math.max(0,
+      ownerBudget.normal_rows_written-quota.observed_rows_written);
+    const d1Id=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(
+      env.D1_DATABASE_ID??"");
+    // The owner envelope independently carries the reviewed Workers Paid
+    // 1.1M/day paced budget. If optional subscription/billing reads are denied,
+    // allow only this bounded source-ingestion lane with a pinned production
+    // D1 binding and >=50k owner-normal write headroom. This does not set the
+    // provider subscription proof, admit migrations/canaries, or bypass the
+    // separate monthly 30%-reserve governor used before writes.
+    const ownerPaidSourceAdmission=!paidSubscriptionVerified&&d1Id&&
+      ownerEnvelope.schema==="geomacro.owner-d1-paid-utc-envelope.v2"&&
+      ownerEnvelope.held===false&&
+      ownerEnvelope.reason==="OWNER_D1_PAID_PACED_ADMISSION_READY"&&
+      ownerNormalHeadroomWritten>=50_000;
     const ownerNormalHold=ownerEnvelope.held||quota.day_utc!==now.toISOString().slice(0,10);
     const result=ownerNormalHold?
       held(ownerEnvelope.reason==="OWNER_D1_HOURLY_BURN_RATE_HELD"?
         "GEOMACRO_OWNER_D1_PACED_BURN_RATE_HELD":
         "GEOMACRO_OWNER_D1_NORMAL_DAILY_BUDGET_HELD",now):
-      planD1BundledWork(quota,{now,paidProof,spendGuardProof});
+      planD1BundledWork(quota,{now,paidProof,spendGuardProof,
+        ownerPaidAdmission:ownerPaidSourceAdmission});
     // All writes, including recovery, belong to the same 140k owner target.
     // Emergency restoration requires separate explicit authorization; this
     // read-only receipt does NOT grant any emergency query or write.
