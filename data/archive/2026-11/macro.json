@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-13T15:42:22.594Z",
+  "updated_at": "2026-11-13T16:50:01.490Z",
   "signals": [
+    {
+      "id": "macro-269214aa",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs cut year-end gold price target to $4,150/oz, 2027 target to $4,800/oz - Kitco",
+      "what_changed": "A monitored source feed reports: Goldman Sachs cut year-end gold price target to $4,150/oz, 2027 target to $4,800/oz - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T15:25:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-838336b9",
+      "category": "macro",
+      "title": "Geomacro finds Streamex Corp. announced Additional Independent Monthly Reserve Attestations for Gold-Backed GLDY Token - Quiver Quantitative",
+      "what_changed": "A monitored source feed reports: Streamex Corp. announced Additional Independent Monthly Reserve Attestations for Gold-Backed GLDY Token - Quiver Quantitative. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T12:41:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-783b2c22",
       "category": "macro",

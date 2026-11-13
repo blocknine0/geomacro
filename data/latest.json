@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-13T15:42:22.594Z",
+  "checked_at": "2026-11-13T16:50:01.490Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,82 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "rare_earth-42ecaee8",
+      "category": "rare_earth",
+      "title": "Geomacro finds Nouveau Monde Graphite reported Q3 Progress as Matawinie Mine Construction Advances - TipRanks",
+      "what_changed": "A monitored source feed reports: Nouveau Monde Graphite reported Q3 Progress as Matawinie Mine Construction Advances - TipRanks. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T16:21:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-269214aa",
+      "category": "macro",
+      "title": "Geomacro finds Goldman Sachs cut year-end gold price target to $4,150/oz, 2027 target to $4,800/oz - Kitco",
+      "what_changed": "A monitored source feed reports: Goldman Sachs cut year-end gold price target to $4,150/oz, 2027 target to $4,800/oz - Kitco. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T15:25:53.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-838336b9",
+      "category": "macro",
+      "title": "Geomacro finds Streamex Corp. announced Additional Independent Monthly Reserve Attestations for Gold-Backed GLDY Token - Quiver Quantitative",
+      "what_changed": "A monitored source feed reports: Streamex Corp. announced Additional Independent Monthly Reserve Attestations for Gold-Backed GLDY Token - Quiver Quantitative. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T12:41:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-da273a4d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Sigma Lithium reported 3Q 26 Results: Resilient Profitability and Cash Flow: 32% Net Revenue Margin, Strengthened Balance Sheet - TradingView",
+      "what_changed": "A monitored source feed reports: Sigma Lithium reported 3Q 26 Results: Resilient Profitability and Cash Flow: 32% Net Revenue Margin, Strengthened Balance Sheet - TradingView. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T12:27:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-2bf68f19",
       "category": "geopolitics",
@@ -24,6 +100,25 @@
       "observed_release_count": 1,
       "sources_credited": [],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-f8821a0e",
+      "category": "rare_earth",
+      "title": "Geomacro finds Goldman Sachs projected Copper Prices at $15,600 per Tonne by December 2027 Amid Supply Constraints - Yahoo Finance UK",
+      "what_changed": "A monitored source feed reports: Goldman Sachs projected Copper Prices at $15,600 per Tonne by December 2027 Amid Supply Constraints - Yahoo Finance UK. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T10:13:20.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
