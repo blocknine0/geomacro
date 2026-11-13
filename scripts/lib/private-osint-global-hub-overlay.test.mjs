@@ -41,7 +41,7 @@ test("retired old feeds replaced by three hub candidates without increasing requ
   const sources=privateOsintRuntimeSources(now,base,COUNTRIES_195,{includeLocalGapLane:true});
   assert.ok(sources.length<=512);
   assert.equal(new Set(sources.map(x=>x.url)).size,sources.length);
-  assert.equal(sources.filter(x=>x.private_country_local_candidate).length,70);
+  assert.equal(sources.filter(x=>x.private_country_local_candidate).length,69);
   const perTick=sources.filter(x=>x.private_discovery_index_only&&x.discovery_country_iso3).length;
   assert.ok(perTick>=1&&perTick<=25);
   for(const hub of hubs)assert.equal(sources.filter(s=>s.url===hub.url).length,1);

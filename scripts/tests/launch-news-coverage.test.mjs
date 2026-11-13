@@ -42,7 +42,7 @@ test('global watches replace five existing slots and retain 195-country/512 endp
  const base=privateOsintGlobalSources(),at=new Date('2026-10-28T07:00:00Z');
  const result=privateOsintRuntimeSources(at,base,undefined,{includeLocalGapLane:true});
  const eligible=privateLocalPublisherCandidates().filter(s=>!isRetiredPrivateOsintSource(s));
- assert.equal(eligible.length,70); // owner removed 26 historical local candidates
+ assert.equal(eligible.length,69); // 26 retired feeds plus one pending live verification
  assert.deepEqual(new Set(result.filter(x=>x.private_country_local_candidate).map(x=>x.id)),
   new Set(eligible.map(x=>x.id))); // no remaining native publisher is displaced by index hints
  assert.ok(result.length<=512);
