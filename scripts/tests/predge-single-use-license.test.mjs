@@ -129,6 +129,9 @@ for(const paid of [false,true]){
   assert.equal(saved.transferable,0);
   assert.equal(saved.market_id,fixture.action_context.metadata.market_id);
   assert.equal(saved.condition_id,fixture.action_context.metadata.condition_id);
+  assert.equal(saved.subject_json,canonical(body.redistribution_lock.subject));
+  assert.equal(saved.action_context_json,canonical(fixture.action_context));
+  assert.equal(saved.license_payload_sha256,body.decision_payload_sha256);
   if(paid){
    const row=db.paid.get(fixture.request_id);
    assert.equal(row.licensee_id,"predge");
@@ -138,6 +141,9 @@ for(const paid of [false,true]){
    assert.equal(row.market_id,fixture.action_context.metadata.market_id);
    assert.equal(row.condition_id,fixture.action_context.metadata.condition_id);
    assert.equal(row.downstream_caller,"predge");
+   assert.equal(row.subject_json,canonical(body.redistribution_lock.subject));
+   assert.equal(row.action_context_json,canonical(fixture.action_context));
+   assert.equal(row.license_payload_sha256,body.decision_payload_sha256);
   }
   for(const attempted of [
    fixture,
