@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-12T19:57:31.931Z",
+  "checked_at": "2026-11-13T01:30:55.567Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 48,
+  "item_count": 45,
   "counts": {
-    "geopolitics": 5,
-    "macro": 27,
-    "rare_earth": 16
+    "geopolitics": 4,
+    "macro": 26,
+    "rare_earth": 15
   },
-  "source_native_ids_sha256": "37efca7077fb69137c1adae92f57d908f26dea0af780c8134e91e64737dccedc",
+  "source_native_ids_sha256": "f7256f7426b689199dced90a6ee526418151d5b6347032121b2f643b35d22033",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -875,63 +875,6 @@
       "geography": null,
       "development_type": "unverified OSINT feed observation",
       "published_at": "2026-11-10T03:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "geopolitics-2fde2d37",
-      "category": "geopolitics",
-      "title": "Geomacro finds Members: welcomed the progress achieved while noting that further work is needed before the accession process can be concluded · Ethiopia",
-      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
-      "what_changed": "Members welcomed the progress achieved while noting that further work is needed before the accession process can be concluded. Country or region mentioned: Ethiopia.",
-      "geography": "Ethiopia",
-      "development_type": "official update",
-      "topic": "foreign policy",
-      "published_at": "2026-11-10T00:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "World Trade Organization; attribution required; no article-text redistribution approval."
-      ],
-      "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-cb981acd",
-      "category": "rare_earth",
-      "title": "Geomacro finds Army launched critical minerals consortium - Metal Tech News",
-      "what_changed": "A monitored source feed reports: Army launched critical minerals consortium - Metal Tech News. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "rare-earth supply",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T23:25:53.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-84f9d2c3",
-      "category": "macro",
-      "title": "Geomacro finds Shafaq News..Iraq held third spot in Arab Gold reserves - شفق نيوز",
-      "what_changed": "A monitored source feed reports: Shafaq News..Iraq held third spot in Arab Gold reserves - شفق نيوز. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-09T22:30:44.000Z",
       "date_precision": "exact",
       "observed_release_count": 1,
       "sources_credited": [
