@@ -447,18 +447,18 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    response.audit_receipt_signature_key_id=receipt.signature_key_id;
    response.audit_receipt_signature_scheme=receipt.signature_scheme;
    response.audit_receipt_signature_scope=receipt.signature_scope;
-   if(paidEndpoint&&!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
-      request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
-      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso,
-      subject:parsed.subject,action_context:parsed.action_context,
-      market_id:parsed.market_id,condition_id:parsed.condition_id}))
-     return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
    if(!await persistSingleUseLicense(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,client_id:client,request_hash:requestHash,
       signed_payload:signedPayload,subject:parsed.subject,
       action_context:parsed.action_context,market_id:parsed.market_id,
       condition_id:parsed.condition_id,created_at:nowIso}))
      return failRedistribution();
+   if(paidEndpoint&&!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
+      request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
+      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso,
+      subject:parsed.subject,action_context:parsed.action_context,
+      market_id:parsed.market_id,condition_id:parsed.condition_id}))
+     return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?
