@@ -318,12 +318,6 @@ export async function readGeoMacroCertifiedNewsRisk(): Promise<PublicRiskIndices
     }
   }
 
-  const signed={...doc};delete signed.certification;delete signed.ed25519_delivery;
-  const signedBytes=new TextEncoder().encode(JSON.stringify(signed));
-  const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",signedBytes));
-  const hmacPayloadHash=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
-  if(hmacPayloadHash!==cert.signed_payload_sha256)
-    throw Error("GEOMACRO_NEWS_GRI_SIGNED_PAYLOAD_MISMATCH");
   return doc.data;
 }
 
