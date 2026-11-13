@@ -147,7 +147,34 @@ test("existing continuously polled news index produces Basic without a signed GR
    assert.ok(Number.isFinite(provisional.risk.score));
    assert.equal(provisional.execution_authorized,false);
    assert.equal(provisional.risk_metric_semantics,"OBSERVATION_DENSITY_PROXY");
+   assert.equal(provisional.affected_domain,"geopolitics");
+   assert.equal(provisional.risk.confidence,0.35);
+   assert.ok(provisional.top_drivers.length>0);
  }finally{sqlite.close()}
+});
+test("progressive proxy maps domains, confidence, drivers, and customer policy ladder",()=>{
+ const base={request_id:"policy-proxy-1",subject:{type:"country",id:"CHE"},
+  policy:{policy_id:"p",policy_version:"1",continue_max_score:20,
+   reduce_limit_max_score:40,require_approval_max_score:70,
+   minimum_confidence_for_auto_continue:0.5,
+   require_commercial_verification_for_continue:false}};
+ const facts={distinct_events:2,corroboration_sources_count:0,
+  corroborated_events:0,standard_ready:false,category_coverage:[]};
+ const basic=provisionalRiskGate({...base,category:"macro"},facts,NOW);
+ assert.equal(basic.affected_domain,"macro_fx");
+ assert.equal(basic.risk.confidence,0.4);
+ assert.deepEqual(basic.top_drivers.map(x=>x.driver),["macro_stress"]);
+ assert.equal(basic.decision,"REDUCE_LIMIT");
+ assert.equal(basic.execution_authorized,false);
+ const standard=provisionalRiskGate({...base,category:"rare_earth",policy:{...base.policy,
+  require_commercial_verification_for_continue:true}},
+  {...facts,distinct_events:1,corroboration_sources_count:2,
+   corroborated_events:1,standard_ready:true},NOW);
+ assert.equal(standard.affected_domain,"critical_minerals");
+ assert.equal(standard.risk.confidence,0.72);
+ assert.deepEqual(standard.top_drivers.map(x=>x.driver),["critical_minerals"]);
+ assert.equal(standard.decision,"REQUIRE_APPROVAL");
+ assert.equal(standard.risk_metric_semantics,"CORROBORATED_OBSERVATION_PROXY");
 });
 test("native original-page corroboration from the existing 20m collector auto-promotes Standard",async()=>{
  const {sqlite,env}=fixture();

@@ -6,14 +6,16 @@ import {handleCustomerRuntime} from '../../workers/control-plane/src/customer-ru
 import {readFileSync} from 'node:fs';
 import {
  CUSTOMER_CREDIT_COSTS,CUSTOMER_CREDIT_CONTRACT,CUSTOMER_ENABLED_CAPABILITIES,
- CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
+ CUSTOMER_RISK_GATE_USAGE_USD_CENTS,CUSTOMER_RISK_GATE_USAGE_CREDITS,
+ CUSTOMER_RISK_GATE_PRICE_USD_CENTS,
  customerPaidKeyDigest,authorizeCanonicalCustomerPaid,
  consumeCanonicalCustomerPaid,mintCanonicalCustomerPaidKey,readCanonicalCustomerPaidAccount
 } from '../../workers/control-plane/src/customer-paid-ledger.mjs';
 const migrations=['0090_customer_canonical_d1.sql','0091_customer_canonical_integrity_triggers.sql',
  '0092_customer_resend_otp_sessions.sql','0093_customer_email_provider_quota.sql',
  '0094_customer_login_runtime.sql','0095_customer_grant_scoped_usage.sql',
- '0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql'];
+ '0096_customer_prepaid_pack_spend.sql','0097_customer_paypal_checkout_intents.sql',
+ '0133_customer_store_risk_gate_metering.sql'];
 const pepper='a-verified-server-pepper-with-at-least-32-characters-and-no-fallback';
 const contract=CUSTOMER_CREDIT_CONTRACT;
 function fixture(){
@@ -61,7 +63,7 @@ test('new D1 credential HMAC exactly matches Node canonical commercial-bearer na
  await errCode(customerPaidKeyDigest({},key),'CUSTOMER_PAID_CREDENTIAL_PEPPER_REQUIRED');
 });
 
-test('tier/cost shares central pricing and prohibits unavailable risk authorization',()=>{
+test('tier/cost shares central pricing and keeps public checkout separately locked',()=>{
  const ts=readFileSync('src/lib/credit-metering-policy.mjs','utf8');
  for(const [name,cost] of Object.entries(CUSTOMER_CREDIT_COSTS)){
   assert.match(ts,new RegExp(name+':\\s*'+cost+'[,}]'));
@@ -70,17 +72,28 @@ test('tier/cost shares central pricing and prohibits unavailable risk authorizat
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('gri_read'));
  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes('risk_gate_bundle'));
  for(const tier of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full'])
-  assert.ok(!CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
+  assert.ok(CUSTOMER_ENABLED_CAPABILITIES.includes(tier));
+ assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_CREDITS,
+  {basic_focused:3,standard:4,complex_full:6});
+ assert.deepEqual(CUSTOMER_RISK_GATE_PRICE_USD_CENTS,
+  {basic_focused:15,standard:20,complex_full:30});
  assert.deepEqual(CUSTOMER_RISK_GATE_USAGE_USD_CENTS,
   {risk_gate_basic_focused:10,risk_gate_standard:15,risk_gate_complex_full:25});
 });
 
-test('D1 customer authorize rejects risk tiers that cannot be debited',async()=>{
+test('D1 customer authorize and debit honor only existing prepaid credits per Risk Gate tier',async()=>{
  const f=fixture();f.user(alice,'alice@example.com');f.fund(alice,{tier:'business_pilot',credits:100});
  const key=await mintCanonicalCustomerPaidKey(f.db,f.env,alice);
- for(const capability of ['risk_gate_basic_focused','risk_gate_standard','risk_gate_complex_full','risk_gate_bundle','gri_read'])
+ for(const capability of ['risk_gate_bundle','gri_read'])
   await errCode(authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,capability),'CUSTOMER_PAID_CAPABILITY_NOT_LIVE');
- assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM customer_usage_receipts").get().n,0);
+ for(const [capability,cost] of [['risk_gate_basic_focused',3],['risk_gate_standard',4],['risk_gate_complex_full',6]]){
+  const proof=await authorizeCanonicalCustomerPaid(f.db,f.env,key.api_key,capability);
+  assert.equal(proof.credit_cost,cost);
+  await consumeCanonicalCustomerPaid(f.db,f.env,{apiKey:key.api_key,capability,requestId:'gate-'+capability+'-receipt'});
+ }
+ assert.equal(f.sql.prepare("SELECT COUNT(*) n FROM customer_usage_receipts").get().n,3);
+ assert.equal((await readCanonicalCustomerPaidAccount(f.db,alice)).credits.remaining,87);
+ f.sql.close();
 });
 
 test('unverified, zero-funded, or wrong-person keys cannot be issued',async()=>{

@@ -124,6 +124,11 @@ on:
       - "workers/control-plane/migrations/0202_hot50_activation_audit_views.sql"
       - "scripts/tests/hot50-production-activation.test.mjs"
       - "workers/control-plane/src/progressive-risk-gate.mjs"
+      - "workers/control-plane/src/store-risk-gate.mjs"
+      - "workers/control-plane/src/customer-paid-ledger.mjs"
+      - "workers/control-plane/migrations/0133_customer_store_risk_gate_metering.sql"
+      - "src/lib/credit-metering-policy.mjs"
+      - "src/lib/risk-gate-contract.ts"
       - "workers/control-plane/migrations/0201_progressive_risk_gate_facts.sql"
       - "scripts/tests/progressive-risk-gate.test.mjs"
       - "scripts/ops/verify-predge-risk-gate-d1-live.mjs"
@@ -340,6 +345,7 @@ jobs:
       PREDGE_PAID_TRAFFIC_ENABLED: ${{ vars.PREDGE_PAID_TRAFFIC_ENABLED || 'NO' }}
       PREDGE_PAID_GO_LIVE_CROSSCHECK: ${{ vars.PREDGE_PAID_GO_LIVE_CROSSCHECK || '' }}
       PREDGE_MUTUAL_TRIAL_STARTED_AT: ${{ vars.PREDGE_MUTUAL_TRIAL_STARTED_AT || '' }}
+      GEOMACRO_STORE_CHECKOUT_ENABLED: ${{ vars.GEOMACRO_STORE_CHECKOUT_ENABLED || 'NO' }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_SPOOL_ENCRYPTION_KEY: ${{ secrets.B2_SPOOL_ENCRYPTION_KEY }}
@@ -501,6 +507,7 @@ jobs:
       PREDGE_PAID_TRAFFIC_ENABLED: ${{ vars.PREDGE_PAID_TRAFFIC_ENABLED || 'NO' }}
       PREDGE_PAID_GO_LIVE_CROSSCHECK: ${{ vars.PREDGE_PAID_GO_LIVE_CROSSCHECK || '' }}
       PREDGE_MUTUAL_TRIAL_STARTED_AT: ${{ vars.PREDGE_MUTUAL_TRIAL_STARTED_AT || '' }}
+      GEOMACRO_STORE_CHECKOUT_ENABLED: ${{ vars.GEOMACRO_STORE_CHECKOUT_ENABLED || 'NO' }}
       GEOMACRO_API_CREDENTIAL_PEPPER: ${{ secrets.GEOMACRO_API_CREDENTIAL_PEPPER }}
       RISK_GATE_OBSERVATION_HMAC_KEY: ${{ secrets.RISK_GATE_OBSERVATION_HMAC_KEY }}
       RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
@@ -714,6 +721,9 @@ jobs:
           const paidTrafficEnabled = String(process.env.PREDGE_PAID_TRAFFIC_ENABLED || 'NO').trim();
           const paidGoLiveCrosscheck = String(process.env.PREDGE_PAID_GO_LIVE_CROSSCHECK || '').trim();
           const mutualTrialStartedAt = String(process.env.PREDGE_MUTUAL_TRIAL_STARTED_AT || '').trim();
+          const storeCheckoutEnabled = String(process.env.GEOMACRO_STORE_CHECKOUT_ENABLED || 'NO').trim();
+          if (!['YES','NO'].includes(storeCheckoutEnabled)) throw new Error('INVALID_GEOMACRO_STORE_CHECKOUT_ENABLED');
+          config.vars.GEOMACRO_STORE_CHECKOUT_ENABLED = storeCheckoutEnabled;
           config.vars.PREDGE_PAID_TRAFFIC_ENABLED = paidTrafficEnabled;
           if (paidGoLiveCrosscheck) config.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK = paidGoLiveCrosscheck;
           else delete config.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK;

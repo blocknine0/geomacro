@@ -78,7 +78,7 @@ async function main(){
      risk.risk.verification_status!=="INCOMPLETE"||
      risk.risk.commercial_eligibility_status!=="UNVERIFIED"||
      data.context?.verified_signed_gro!==false||
-     !["OBSERVATION_DENSITY_PROXY","NO_DATA_POLICY_SENTINEL"].includes(
+     !["OBSERVATION_DENSITY_PROXY","CORROBORATED_OBSERVATION_PROXY","NO_DATA_POLICY_SENTINEL"].includes(
        data.context?.risk_metric_semantics)||
      !["PAUSE","REQUIRE_APPROVAL"].includes(risk.decision)
    ))throw Error("PROGRESSIVE_PROVENANCE_BOUNDARY_INVALID");
