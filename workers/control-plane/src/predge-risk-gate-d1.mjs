@@ -495,6 +495,28 @@ export async function predgePaidRiskGateD1(request,env,now=Date.now(),authority=
  return runPredgeRiskGateD1(request,env,now,authority,true);
 }
 
+/** A delivered Addendum v2 verdict is single-use; verification attempts after issuance are denied. */
+export async function verifyPredgePaidVerdictD1(request,env){
+ const auth=serviceCredential(request,env,true);
+ if(auth)return fail(auth.error,auth.status);
+ if(request.method!=="POST")return fail("METHOD_NOT_ALLOWED",405);
+ if(!env?.DB?.prepare)return fail("RISK_GATE_D1_UNAVAILABLE",503);
+ if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
+   return fail("UNSUPPORTED_MEDIA_TYPE",415);
+ let body;
+ try{body=await request.json()}catch{return fail("INVALID_JSON",400);}
+ if(!record(body)||!keysOnly(body,["verdict_id"])||
+    typeof body.verdict_id!=="string"||!/^[0-9a-f-]{36}$/iu.test(body.verdict_id))
+   return fail("INVALID_VERDICT_ID",400);
+ try{
+   const used=await env.DB.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
+     WHERE verdict_id=? LIMIT 1`).bind(body.verdict_id).first();
+   if(used)return redistributionDenied();
+   return Response.json({ok:false,error:"VERDICT_NOT_FOUND",execution_authorized:false},
+     {status:404,headers});
+ }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+}
+
 /** Coarse source-safe operational readiness, never a paid-launch verdict. */
 export async function predgeRiskGateD1Readiness(env,now=Date.now()){
  const configured=/^[a-f0-9]{64}$/.test(String(env?.PREDGE_RISK_GATE_TOKEN??""))&&
