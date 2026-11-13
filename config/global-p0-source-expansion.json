@@ -110,13 +110,13 @@
         ]
       },
       "australia_critical_minerals": {
-        "provider": "Australian Government",
+        "provider": "Geoscience Australia (Australian Government)",
         "category": "CRITICAL_MINERALS",
         "transport_candidate": "OFFICIAL_CRITICAL_MINERALS",
         "discovery_url": "https://www.industry.gov.au/mining-oil-and-gas/minerals/critical-minerals",
         "adapter_status": "IMPLEMENTED_FIXTURE_CERTIFIED",
         "enabled": false,
-        "machine_endpoint": "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list",
+        "machine_endpoint": "https://www.ga.gov.au/scientific-topics/minerals/critical-minerals/critical-minerals-in-australia",
         "machine_formats": [
           "HTML"
         ]
