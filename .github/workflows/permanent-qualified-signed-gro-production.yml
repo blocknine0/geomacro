@@ -4,7 +4,12 @@ name: Permanent Qualified Signed GRO Production
 # Only independently qualified immutable inputs are signed; no funds.
 on:
   workflow_run:
-    workflows: ["Deploy D1 Control Plane", "Machine Dual-Authority Intelligence Publication"]
+    workflows:
+      - "Deploy D1 Control Plane"
+      - "Machine Dual-Authority Intelligence Publication"
+      - "Hot-50 Direct Original News (20-Minute Cron)"
+      - "Three-Domain 30-Minute Original Publisher Pulse"
+      - "Derived Risk Gate Discovery 20m"
     types: [completed]
   schedule:
     - cron: "3,23,43 * * * *"
