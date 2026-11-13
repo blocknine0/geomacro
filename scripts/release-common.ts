@@ -119,7 +119,7 @@ export function classifyGraphQLFailure(body:unknown):string{
  return 'RELEASE_GRAPHQL_PROVIDER_ERRORS';
 }
 export type VerifiedGraphQLCredential='CLOUDFLARE_BILLING_READ_TOKEN'|'CLOUDFLARE_API_TOKEN';
-export async function graphql(
+export async function queryCloudflareAnalytics(
  query:string,variables:Record<string,unknown>,
  credential:VerifiedGraphQLCredential='CLOUDFLARE_BILLING_READ_TOKEN',
 ){
