@@ -386,11 +386,13 @@ export async function hot50DailySignalInputs(target,pool,now=Date.now()){
    original_verified:eligibleOriginal,corroborated_signed_original:eligibleOriginal&&signed,
    derived});
  }
- // Rotate backlog fairly instead of continuously reprocessing only newest events.
- inputs.sort((a,b)=>a.event_fingerprint.localeCompare(b.event_fingerprint));
- if(inputs.length<=6)return inputs;
- const offset=(Math.floor(now/60000)*6)%inputs.length;
- return Array.from({length:6},(_,i)=>inputs[(offset+i)%inputs.length]);
+ // The caller uses the immutable signed-D1 completion census to choose
+ // pending events. A clock-derived modulo can starve specific event hashes.
+ return [...new Map(inputs.sort((a,b)=>
+  a.event_fingerprint.localeCompare(b.event_fingerprint))
+  .map(x=>[x.event_fingerprint+"|"+
+   (x.corroborated_signed_original?"CORROBORATED_INTERNAL_GRO":
+    x.original_verified?"DUAL_ATTESTED_ORIGINAL":"UNVERIFIED_SIGNAL"),x])).values()];
 }
 
 export async function runHot50AutonomousStreamTick(env,{
@@ -426,7 +428,23 @@ export async function runHot50AutonomousStreamTick(env,{
   // Continuous 1-minute bounded recovery across all five discovery lanes,
   // the event Queue and global-search leads. News GROs never authorize funds.
   try{
-   const events=await hot50DailySignalInputs(target,pool,now);
+   const candidates=await hot50DailySignalInputs(target,pool,now);
+   let events=[];
+   if(candidates.length){
+    const complete=await retryD1(()=>env.DB.prepare(
+     "SELECT event_fingerprint,evidence_status,COUNT(DISTINCT tier) AS tier_count "+
+     "FROM risk_stream_daily_news_gro WHERE country_iso3=? AND category=? "+
+     "AND day_utc=? GROUP BY event_fingerprint,evidence_status "+
+     "HAVING COUNT(DISTINCT tier)=3 LIMIT 401"
+    ).bind(target.country_iso3,target.category,iso(now).slice(0,10)).all());
+    if(!Array.isArray(complete?.results)||complete.results.length>400)
+     fail("DAILY_COMPLETION_CENSUS_INVALID");
+    const completed=new Set(complete.results.map(x=>
+     x.event_fingerprint+"|"+x.evidence_status));
+    events=candidates.filter(x=>!completed.has(x.event_fingerprint+"|"+
+     (x.corroborated_signed_original?"CORROBORATED_INTERNAL_GRO":
+      x.original_verified?"DUAL_ATTESTED_ORIGINAL":"UNVERIFIED_SIGNAL"))).slice(0,6);
+   }
    const receipt=await issueDailyNewsBatch(env,events,{now,limit:6});
    dailyNewsSigned+=receipt.signed;
    dailyNewsState=receipt.status;
