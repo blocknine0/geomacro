@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+const deployWorkflow=readFileSync(new URL("../../.github/workflows/deploy-d1-control-plane.yml",import.meta.url),"utf8");
 import {assessWorkerPromotion,readBindings,verifyCanaryPaidMonthQuota}
  from "../ops/verify-protected-worker-promotion.mjs";
 import {assessD1PaidMonthlyAdmission}
@@ -199,4 +200,22 @@ test("provider canary preflight accepts reviewed additions and rejects unreviewe
   assert.equal(check(1,0,{candidateVersion:modified,
    reviewedAdditiveSecretNames:names}).reason,"VERSION_BINDING_PARITY_MISMATCH");
  }
+});
+
+test("held D1 deployment stays fail-closed and offers only exact-main signed versioned promotion",()=>{
+ const heldJob=deployWorkflow.slice(deployWorkflow.indexOf("  held-versioned-canary-rollout:"),deployWorkflow.indexOf("  p0-1-offline-regression:"));
+ assert.match(deployWorkflow,/test -f config\/d1-hotspot-v2-canary\.hold/);
+ assert.match(deployWorkflow,/allow_deploy=false/);
+ assert.match(deployWorkflow,/held-versioned-canary-rollout:/);
+ assert.match(deployWorkflow,/outputs\.hold_present == 'true'/);
+ assert.match(deployWorkflow,/uses: actions\/download-artifact@/);
+ assert.match(deployWorkflow,/admitSignedStep3ProductionFile\(\)/);
+ assert.match(deployWorkflow,/prepare-optimized-worker-candidate\.mjs/);
+ assert.match(deployWorkflow,/canary-promoter\.ts --promote/);
+ assert.match(deployWorkflow,/PROMOTE_HOT50_NO_FUNDS/);
+ assert.match(deployWorkflow,/ENABLE_HOT50_RESEARCH_NO_FUNDS/);
+ assert.match(deployWorkflow,/CANDIDATE_UPLOADED_NOT_DEPLOYED/);
+ assert.match(deployWorkflow,/hold_present.*'true'/s);
+ assert.match(deployWorkflow,/allow_deploy == 'true'/);
+ assert.doesNotMatch(heldJob,/wrangler(?:@[^\s]+)?\s+deploy|wrangler.*secret put/u);
 });
