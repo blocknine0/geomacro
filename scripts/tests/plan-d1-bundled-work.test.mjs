@@ -85,6 +85,18 @@ test("stale partial impossible or forged counter state cannot authorize D1",()=>
   assert.equal(p.critical,false);
  }
 });
+test("provider-observed Paid usage bypasses only Free physical counters for bounded intake",()=>{
+ const at=new Date("2026-10-27T12:00:00.000Z");
+ const paidUsage=quota(8_000_000,296_438);
+ const p=planD1BundledWork(paidUsage,{now:at,ownerPaidAdmission:true});
+ assert.equal(p.source_intake,true);
+ assert.equal(p.owner_d1_paid_envelope_admission,true);
+ assert.equal(p.paid_capacity_verified_by_provider,false);
+ assert.equal(p.paid_subscription_change_performed,false);
+ assert.equal(p.workers_paid_subscription_verified,false);
+ const held=planD1BundledWork(paidUsage,{now:at,ownerPaidAdmission:false});
+ assert.equal(held.state,"HELD");
+});
 test("UTC paced watermarks bound early-day spikes without paying or minting new requests",()=>{
  const morning=new Date("2026-10-27T06:45:00.000Z");
  const early=planD1BundledWork(quota(1_720_587,17_836),{now:morning});
@@ -133,6 +145,27 @@ test("provider error or denied GraphQL is safe HOLD with no writes",async()=>{
  assert.equal(x.state,"HELD");
  assert.equal(x.reason,"D1_ACCOUNT_QUOTA_PROBE_FAILED");
  assert.equal(x.d1_rows_written,0);
+});
+test("Workers Paid usage evidence keeps optional billing 403/404 from applying Free write lockout",async()=>{
+ const at=new Date("2026-10-27T12:00:00.000Z");
+ for(const billingStatus of [403,404]){
+  const x=await checkD1BundledWork({
+   env:{CLOUDFLARE_API_TOKEN:"x".repeat(24),CLOUDFLARE_ACCOUNT_ID:"a".repeat(32),D1_DATABASE_ID:"123e4567-e89b-42d3-a456-426614174000",CLOUDFLARE_BILLING_READ_TOKEN:"b".repeat(24)},
+   now:at,
+   fetchImpl:async url=>{
+    if(url.endsWith("/graphql"))return {ok:true,status:200,json:async()=>({data:{viewer:{accounts:[{d1AnalyticsAdaptiveGroups:[{dimensions:{databaseId:"db-"+"d".repeat(32),date:at.toISOString().slice(0,10)},sum:{rowsRead:8_000_000,rowsWritten:296_438}}]}]}}})};
+    return {ok:false,status:billingStatus};
+   },
+  });
+  assert.equal(x.owner_d1_normal_envelope.held,false);
+  assert.equal(x.owner_d1_normal_headroom_rows_written,803_562);
+  assert.equal(x.owner_d1_paid_envelope_admission,true);
+  assert.equal(x.paid_capacity_verified_by_provider,false);
+  assert.equal(x.workers_paid_subscription_verified,false);
+  assert.equal(x.source_intake,true);
+  assert.equal(x.remaining_rows_written,0); // legacy Free counter stays diagnostic only
+  assert.equal(x.d1_rows_written,0);
+ }
 });
 test('observed production pacing hold still admits only a full-day budgeted small source bundle',()=>{
  const at=new Date('2026-10-27T09:17:28.000Z');

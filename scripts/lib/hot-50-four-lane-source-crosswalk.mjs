@@ -18,6 +18,7 @@ const FILES=[
  "config/private-osint-local-rss-candidates.v1.json",
  "config/private-osint-macro-minerals-additions.v1.json",
  "config/hot-50-new-official-atom-sources.v1.json",
+ "config/hot50-pinned-backup-sources.v1.json",
 ];
 const CATEGORIES=["geopolitics","macro","rare_earth"];
 const HTTP_GOOD=new Set(["OBSERVED","EMPTY_OR_OUTSIDE_WINDOW"]);
@@ -80,8 +81,11 @@ export function hot50FourLaneSourceCrosswalk(){
   for(const source of row.direct_news_osint_feeds){
    const pin=pinned.get(source.id);
    if(!pin||pin.url!==source.url||
-      pin.publisher_country_iso3!==row.country_iso3||
+      (pin.publisher_country_iso3!==row.country_iso3&&
+       !(pin.publisher_country_iso3===null&&pin.target_country_iso3===row.country_iso3))||
       JSON.stringify(pin.categories)!==JSON.stringify(source.categories)||
+      JSON.stringify(pin.fallback_for_source_ids??[])!==JSON.stringify(source.fallback_for_source_ids??[])||
+      (source.target_country_iso3!==undefined&&source.target_country_iso3!==row.country_iso3)||
       source.current_transport_verified!==false||
       !["official_or_public_primary_candidate","editorial_osint_candidate"].includes(source.kind)||
       !["rss","rdf","atom","xml","json"].includes(source.feed_format)||
@@ -100,11 +104,21 @@ export function hot50FourLaneSourceCrosswalk(){
    seenChannelIds.add(t.candidate_key);telegram++;
   }
  }
- if(direct!==124||telegram!==139)
+ if(direct!==225||telegram!==139)
   throw Error("HOT50_FOUR_LANE_SOURCE_COUNT_DRIFT");
+ const failoverPins=snapshot.countries.flatMap(x=>x.direct_news_osint_feeds)
+  .filter(x=>Array.isArray(x.fallback_for_source_ids)&&x.fallback_for_source_ids.length>0);
+ for(const row of snapshot.countries){
+  const ids=new Set(row.direct_news_osint_feeds.map(x=>x.id));
+  for(const source of row.direct_news_osint_feeds)
+   if((source.fallback_for_source_ids??[]).some(id=>!ids.has(id)))
+    throw Error("HOT50_FALLBACK_PRIMARY_PIN_MISSING:"+source.id);
+ }
  return Object.freeze({snapshot,inventory:{
   countries:50,categories:3,google_news_category_variants:150,
   pinned_direct_feed_country_entries:direct,
+  pinned_backup_feed_candidates:failoverPins.length,
+  added_feed_candidate_pins:direct-124,
   first_party_or_public_original_candidates:primaries,
   telegram_discovery_candidates:telegram,
   telegram_authorized_active:0,
@@ -145,15 +159,15 @@ export function observedHot50FourLaneSourceState(registry,checks,items){
  if(!Array.isArray(registry)||!Array.isArray(checks)||!Array.isArray(items))
   throw Error("HOT50_FOUR_LANE_OBSERVATION_INPUT_INVALID");
  const {snapshot,inventory}=hot50FourLaneSourceCrosswalk();
- const sourceByUrl=new Map(registry.map(s=>[s.url,s]));
+ const sourceById=new Map(registry.flatMap(s=>(s.source_ids??[s.id]).map(id=>[id,s])));
  const healthyRefs=new Set(checks.filter(c=>HTTP_GOOD.has(c.state))
   .map(c=>c.source_ref));
  let configured=0,healthy=0,hotCountryWorking=0;
  for(const row of snapshot.countries){
   let hasHealthy=false;
   for(const pin of row.direct_news_osint_feeds){
-   const s=sourceByUrl.get(pin.url);
-   if(!s)continue;
+   const s=sourceById.get(pin.id);
+   if(!s||s.url!==pin.url)continue;
    configured++;
    if(s.categories.some(cat=>healthyRefs.has(sourceRef(s,cat)))){
     healthy++;hasHealthy=true;

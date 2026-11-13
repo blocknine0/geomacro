@@ -18,7 +18,9 @@ const domains=["geopolitics","macro","rare_earth"];
 test("full Hot-50 crosswalk reflects 50 local source countries, disabled Telegram, 3 Google categories",()=>{
  const {inventory,snapshot}=hot50FourLaneSourceCrosswalk();
  assert.equal(inventory.countries,50);
- assert.equal(inventory.pinned_direct_feed_country_entries,124);
+ assert.equal(inventory.pinned_direct_feed_country_entries,225);
+ assert.equal(inventory.pinned_backup_feed_candidates,96);
+ assert.equal(inventory.added_feed_candidate_pins,101);
  assert.equal(inventory.telegram_discovery_candidates,139);
  assert.equal(inventory.telegram_authorized_active,0);
  assert.equal(inventory.google_news_category_variants,150);

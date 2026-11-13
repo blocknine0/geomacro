@@ -214,6 +214,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_chn_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHN",
+          "fallback_for_source_ids": [
+            "private_state_globaltimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_chn_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHN",
+          "fallback_for_source_ids": [
+            "private_state_globaltimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_chn_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHN",
+          "fallback_for_source_ids": [
+            "private_state_globaltimes"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -385,6 +427,58 @@
           "kind": "official_or_public_primary_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_backup_ru_un_security_council",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "RUS",
+          "fallback_for_source_ids": []
+        },
+        {
+          "id": "private_hot50_backup_ru_usgs_minerals",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "RUS",
+          "fallback_for_source_ids": []
+        },
+        {
+          "id": "private_hot50_failover_rus_geopolitics_un_geneva_press_rss",
+          "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "RUS",
+          "fallback_for_source_ids": [
+            "private_hot50_backup_ru_un_security_council"
+          ]
+        },
+        {
+          "id": "private_unified_fallback_rus_rareearth_doe_critical_materials",
+          "url": "https://www.energy.gov/rss/energygov/2193718",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "RUS",
+          "fallback_for_source_ids": [
+            "private_hot50_backup_ru_usgs_minerals"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -476,6 +570,20 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_gbr_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "GBR",
+          "fallback_for_source_ids": [
+            "private_expansion_uk_fcdo_atom"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -541,6 +649,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_fra_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "FRA",
+          "fallback_for_source_ids": [
+            "private_mesh_rfi_afrique"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_fra_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "FRA",
+          "fallback_for_source_ids": [
+            "private_mesh_rfi_afrique"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_fra_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "FRA",
+          "fallback_for_source_ids": [
+            "private_mesh_rfi_afrique"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -578,6 +728,34 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_jpn_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "JPN",
+          "fallback_for_source_ids": [
+            "private_mesh_asahi_shimbun"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_jpn_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "JPN",
+          "fallback_for_source_ids": [
+            "private_mesh_asahi_shimbun"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -615,6 +793,34 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_kor_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "KOR",
+          "fallback_for_source_ids": [
+            "private_mesh_yonhap_news"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_kor_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "KOR",
+          "fallback_for_source_ids": [
+            "private_mesh_yonhap_news"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -641,6 +847,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_bel_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BEL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bel_2"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bel_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BEL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bel_2"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bel_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BEL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bel_2"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -865,6 +1113,20 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_aus_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "AUS",
+          "fallback_for_source_ids": [
+            "private_mesh_abc_news_australia"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -941,6 +1203,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_mex_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MEX",
+          "fallback_for_source_ids": [
+            "private_mesh_mexico_news_daily"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mex_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MEX",
+          "fallback_for_source_ids": [
+            "private_mesh_mexico_news_daily"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mex_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MEX",
+          "fallback_for_source_ids": [
+            "private_mesh_mexico_news_daily"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -1006,6 +1310,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_esp_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ESP",
+          "fallback_for_source_ids": [
+            "private_mesh_el_mundo"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_esp_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ESP",
+          "fallback_for_source_ids": [
+            "private_mesh_el_mundo"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_esp_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ESP",
+          "fallback_for_source_ids": [
+            "private_mesh_el_mundo"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -1102,6 +1448,58 @@
           "kind": "official_or_public_primary_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_backup_che_geneva_press",
+          "url": "https://www.ungeneva.org/news-media/press-releases-list/rss.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHE",
+          "fallback_for_source_ids": []
+        },
+        {
+          "id": "private_unified_fallback_che_mining_com",
+          "url": "https://www.energy.gov/rss/energygov/2193718",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHE",
+          "fallback_for_source_ids": []
+        },
+        {
+          "id": "private_hot50_failover_che_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHE",
+          "fallback_for_source_ids": [
+            "private_hot50_backup_che_geneva_press"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_che_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "CHE",
+          "fallback_for_source_ids": [
+            "private_unified_fallback_che_mining_com"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -1139,6 +1537,34 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_nor_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "NOR",
+          "fallback_for_source_ids": [
+            "private_mesh_aftenposten"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_nor_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "NOR",
+          "fallback_for_source_ids": [
+            "private_mesh_aftenposten"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -1215,6 +1641,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_pol_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "POL",
+          "fallback_for_source_ids": [
+            "private_mesh_polsat_news"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_pol_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "POL",
+          "fallback_for_source_ids": [
+            "private_mesh_polsat_news"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_pol_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "POL",
+          "fallback_for_source_ids": [
+            "private_mesh_polsat_news"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2332,6 +2800,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_tur_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "TUR",
+          "fallback_for_source_ids": [
+            "private_mesh_hurriyet"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_tur_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "TUR",
+          "fallback_for_source_ids": [
+            "private_mesh_hurriyet"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_tur_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "TUR",
+          "fallback_for_source_ids": [
+            "private_mesh_hurriyet"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2358,6 +2868,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_sau_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SAU",
+          "fallback_for_source_ids": [
+            "private_gap_sau_arabnews"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_sau_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SAU",
+          "fallback_for_source_ids": [
+            "private_gap_sau_arabnews"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_sau_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SAU",
+          "fallback_for_source_ids": [
+            "private_gap_sau_arabnews"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2384,6 +2936,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_are_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ARE",
+          "fallback_for_source_ids": [
+            "private_gaplane_are_22"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_are_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ARE",
+          "fallback_for_source_ids": [
+            "private_gaplane_are_22"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_are_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ARE",
+          "fallback_for_source_ids": [
+            "private_gaplane_are_22"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2449,6 +3043,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_isr_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ISR",
+          "fallback_for_source_ids": [
+            "private_mesh_ynetnews"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_isr_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ISR",
+          "fallback_for_source_ids": [
+            "private_mesh_ynetnews"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_isr_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ISR",
+          "fallback_for_source_ids": [
+            "private_mesh_ynetnews"
+          ]
         }
       ],
       "telegram_discovery_candidates": [
@@ -2492,6 +3128,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_egy_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "EGY",
+          "fallback_for_source_ids": [
+            "private_mesh_egypt_independent"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_egy_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "EGY",
+          "fallback_for_source_ids": [
+            "private_mesh_egypt_independent"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_egy_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "EGY",
+          "fallback_for_source_ids": [
+            "private_mesh_egypt_independent"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2518,6 +3196,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_qat_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "QAT",
+          "fallback_for_source_ids": [
+            "private_gap_qat_gulftimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_qat_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "QAT",
+          "fallback_for_source_ids": [
+            "private_gap_qat_gulftimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_qat_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "QAT",
+          "fallback_for_source_ids": [
+            "private_gap_qat_gulftimes"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2544,6 +3264,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_omn_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "OMN",
+          "fallback_for_source_ids": [
+            "private_mesh_oman_observer"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_omn_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "OMN",
+          "fallback_for_source_ids": [
+            "private_mesh_oman_observer"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_omn_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "OMN",
+          "fallback_for_source_ids": [
+            "private_mesh_oman_observer"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2570,6 +3332,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_irq_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IRQ",
+          "fallback_for_source_ids": [
+            "private_gaplane_irq_supplement"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_irq_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IRQ",
+          "fallback_for_source_ids": [
+            "private_gaplane_irq_supplement"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_irq_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IRQ",
+          "fallback_for_source_ids": [
+            "private_gaplane_irq_supplement"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2674,6 +3478,20 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_zaf_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ZAF",
+          "fallback_for_source_ids": [
+            "private_sa_news"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2817,6 +3635,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_zmb_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ZMB",
+          "fallback_for_source_ids": [
+            "private_local_candidate_zm_lusakatimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_zmb_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ZMB",
+          "fallback_for_source_ids": [
+            "private_local_candidate_zm_lusakatimes"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_zmb_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "ZMB",
+          "fallback_for_source_ids": [
+            "private_local_candidate_zm_lusakatimes"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2893,6 +3753,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_per_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PER",
+          "fallback_for_source_ids": [
+            "private_local_candidate_pe_andina"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_per_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PER",
+          "fallback_for_source_ids": [
+            "private_local_candidate_pe_andina"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_per_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PER",
+          "fallback_for_source_ids": [
+            "private_local_candidate_pe_andina"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2958,6 +3860,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_bol_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BOL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bol_14"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bol_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BOL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bol_14"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bol_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BOL",
+          "fallback_for_source_ids": [
+            "private_gaplane_bol_14"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -2984,6 +3928,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_idn_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IDN",
+          "fallback_for_source_ids": [
+            "private_local_candidate_id_antara"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_idn_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IDN",
+          "fallback_for_source_ids": [
+            "private_local_candidate_id_antara"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_idn_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "IDN",
+          "fallback_for_source_ids": [
+            "private_local_candidate_id_antara"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3010,6 +3996,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_vnm_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "VNM",
+          "fallback_for_source_ids": [
+            "private_mesh_vnexpress"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_vnm_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "VNM",
+          "fallback_for_source_ids": [
+            "private_mesh_vnexpress"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_vnm_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "VNM",
+          "fallback_for_source_ids": [
+            "private_mesh_vnexpress"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3035,6 +4063,60 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_unified_fallback_th_mining_com",
+          "url": "https://www.energy.gov/rss/energygov/2193718",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "official_or_public_primary_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "THA",
+          "fallback_for_source_ids": []
+        },
+        {
+          "id": "private_hot50_failover_tha_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "THA",
+          "fallback_for_source_ids": [
+            "private_expansion_th_mdes_news"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_tha_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "THA",
+          "fallback_for_source_ids": [
+            "private_expansion_th_mdes_news"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_tha_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "THA",
+          "fallback_for_source_ids": [
+            "private_unified_fallback_th_mining_com"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3061,6 +4143,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_mys_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MYS",
+          "fallback_for_source_ids": [
+            "private_gap_mys_malaymail"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mys_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MYS",
+          "fallback_for_source_ids": [
+            "private_gap_mys_malaymail"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mys_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MYS",
+          "fallback_for_source_ids": [
+            "private_gap_mys_malaymail"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3087,6 +4211,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_sgp_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SGP",
+          "fallback_for_source_ids": [
+            "private_mesh_cna"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_sgp_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SGP",
+          "fallback_for_source_ids": [
+            "private_mesh_cna"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_sgp_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "SGP",
+          "fallback_for_source_ids": [
+            "private_mesh_cna"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3124,6 +4290,34 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_phl_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PHL",
+          "fallback_for_source_ids": [
+            "private_mesh_rappler"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_phl_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PHL",
+          "fallback_for_source_ids": [
+            "private_mesh_rappler"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3150,6 +4344,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_pak_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PAK",
+          "fallback_for_source_ids": [
+            "private_mesh_dawn"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_pak_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PAK",
+          "fallback_for_source_ids": [
+            "private_mesh_dawn"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_pak_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "PAK",
+          "fallback_for_source_ids": [
+            "private_mesh_dawn"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3176,6 +4412,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_bgd_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BGD",
+          "fallback_for_source_ids": [
+            "private_local_candidate_bd_dailystar"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bgd_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BGD",
+          "fallback_for_source_ids": [
+            "private_local_candidate_bd_dailystar"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_bgd_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "BGD",
+          "fallback_for_source_ids": [
+            "private_local_candidate_bd_dailystar"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3202,6 +4480,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": true,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_kaz_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "KAZ",
+          "fallback_for_source_ids": [
+            "private_mesh_the_astana_times"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_kaz_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "KAZ",
+          "fallback_for_source_ids": [
+            "private_mesh_the_astana_times"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_kaz_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "KAZ",
+          "fallback_for_source_ids": [
+            "private_mesh_the_astana_times"
+          ]
         }
       ],
       "telegram_discovery_candidates": [
@@ -3261,6 +4581,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_mng_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MNG",
+          "fallback_for_source_ids": [
+            "private_gaplane_mng_25"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mng_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MNG",
+          "fallback_for_source_ids": [
+            "private_gaplane_mng_25"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mng_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MNG",
+          "fallback_for_source_ids": [
+            "private_gaplane_mng_25"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],
@@ -3287,6 +4649,48 @@
           "kind": "editorial_osint_candidate",
           "historical_probe_accepted": false,
           "current_transport_verified": false
+        },
+        {
+          "id": "private_hot50_failover_mmr_geopolitics_un_security_council_docs_rss",
+          "url": "https://docs.un.org/rss/scdocs.xml",
+          "categories": [
+            "geopolitics"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MMR",
+          "fallback_for_source_ids": [
+            "private_gaplane_mmr_17"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mmr_macro_bis_rss_media_releases",
+          "url": "https://www.bis.org/doclist/all_pressrels.rss",
+          "categories": [
+            "macro"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MMR",
+          "fallback_for_source_ids": [
+            "private_gaplane_mmr_17"
+          ]
+        },
+        {
+          "id": "private_hot50_failover_mmr_rareearth_usgs_minerals_news_rss",
+          "url": "https://www.usgs.gov/news/minerals/feed",
+          "categories": [
+            "rare_earth"
+          ],
+          "feed_format": "rss",
+          "kind": "editorial_osint_candidate",
+          "current_transport_verified": false,
+          "target_country_iso3": "MMR",
+          "fallback_for_source_ids": [
+            "private_gaplane_mmr_17"
+          ]
         }
       ],
       "telegram_discovery_candidates": [],

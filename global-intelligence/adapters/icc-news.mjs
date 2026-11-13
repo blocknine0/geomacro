@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 export const ICC_NEWS_URL = "https://www.icc-cpi.int/news";
+export const ICC_NEWS_RSS_URL = "https://www.icc-cpi.int/rss.xml";
 export const ICC_NEWS_REQUEST_HEADERS = Object.freeze({
   "user-agent": "Mozilla/5.0 (compatible; GeomacroBot/1.0; +https://geomacro.live)",
   "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -212,12 +213,56 @@ export function parseIccNewsHtml(html, { retrievedAt = new Date().toISOString(),
   return unique;
 }
 
+/** Parse ICC's first-party RSS metadata, retaining only title, permalink and
+ * publisher-native pubDate/dc:date. No description/body is copied. */
+export function parseIccNewsRss(xml,{retrievedAt=new Date().toISOString()}={}){
+ const input=String(xml??"");
+ if(input.length>2*1024*1024||/<!DOCTYPE|<!ENTITY/iu.test(input)||
+    !/<rss(?:\s|>)/iu.test(input)||
+    !/International Criminal Court|\bICC\b/iu.test(input.slice(0,12000)))
+  throw Error("ICC_RSS_SHAPE_INVALID");
+ const items=[...input.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item>/giu)];
+ if(!items.length||items.length>120)throw Error("ICC_RSS_ITEM_BUDGET");
+ const result=[],seen=new Set();
+ const value=(item,tag)=>{
+  const escaped=tag.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
+  const m=new RegExp("<(?:[A-Za-z0-9_-]+:)?"+escaped+"(?:\\s[^>]*)?>([\\s\\S]{0,2600}?)<\\/(?:[A-Za-z0-9_-]+:)?"+escaped+">","iu").exec(item);
+  return m?m[1].replace(/^<!\[CDATA\[|\]\]>$/gu,"").replace(/<[^>]*>/gu," ").replace(/&(?:#x[0-9a-f]{1,6}|#[0-9]{1,7}|amp|lt|gt|quot|apos);/giu,(entity)=>{
+   const body=entity.slice(1,-1);
+   if(body.toLowerCase()==="amp")return "&";
+   if(body.toLowerCase()==="lt")return "<";
+   if(body.toLowerCase()==="gt")return ">";
+   if(body.toLowerCase()==="quot")return '"';
+   if(body.toLowerCase()==="apos")return "'";
+   const codePoint=body[1]?.toLowerCase()==="x"?Number.parseInt(body.slice(2),16):Number.parseInt(body.slice(1),10);
+   return codePoint>0&&codePoint<=0x10ffff&&!(codePoint>=0xd800&&codePoint<=0xdfff)?String.fromCodePoint(codePoint):entity;
+  }).replace(/\s+/gu," ").trim():"";
+ };
+ for(const [,item] of items){
+  const title=value(item,"title"),rawLink=value(item,"link"),rawDate=value(item,"pubDate")||value(item,"date");
+  let url;try{url=new URL(rawLink)}catch{continue}
+  if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||url.password||url.hash||
+    url.pathname==="/rss.xml"||title.length<8||title.length>360||!rawDate)continue;
+  const publishedAt=new Date(rawDate);
+  if(!Number.isFinite(publishedAt.getTime())||publishedAt.getTime()>Date.parse(retrievedAt)+60_000)continue;
+  if(seen.has(url.href))continue;seen.add(url.href);
+  const id=url.pathname.split("/").filter(Boolean).at(-1)||createHash("sha256").update(url.href).digest("hex").slice(0,24);
+  result.push(normalizeIccNews({id,title,publishedAt:publishedAt.toISOString(),url:url.href,
+   retrievedAt,summary:"ICC official RSS metadata; publication date is publisher supplied.",
+   raw:{source:"ICC_OFFICIAL_RSS_METADATA",url:url.href,publishedAt:publishedAt.toISOString()}}));
+ }
+ if(!result.length)throw Error("ICC_RSS_NO_NATIVE_DATED_ITEMS");
+ return result;
+}
+
 export function normalizeIccNews({ id, title, publishedAt = null, url = ICC_NEWS_URL, summary = "", retrievedAt = new Date().toISOString(), raw = null }) {
   if (!id || !title) throw new Error("Invalid ICC news observation");
   const rawPayload = raw ?? { id, title, publishedAt, url, summary };
   const published = publishedAt && !Number.isNaN(Date.parse(publishedAt)) ? new Date(publishedAt).toISOString() : null;
   return {
     source_id: "icc_news",
+    rights_verified:false,
+    commercial_eligible:false,
     source_record_id: "ICC:" + clean(id).replace(/\s+/g, "_"),
     category: "GEOPOLITICS",
     country_iso3: null,
@@ -237,7 +282,3 @@ export function normalizeIccNews({ id, title, publishedAt = null, url = ICC_NEWS
     raw_hash: createHash("sha256").update(JSON.stringify(rawPayload)).digest("hex")
   };
 }
-
-// Official first-party RSS fallback: feed-native dates are metadata only and
-// never confer article-rights verification or commercial eligibility.
-export {parseIccOfficialNewsItems as parseIccNewsRss} from "../../scripts/lib/icc-official-news-rss.mjs";

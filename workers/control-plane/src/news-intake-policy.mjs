@@ -71,6 +71,21 @@ export async function admitProgressiveRiskFacts(env,facts,now=Date.now()){
    ].join('|'))
  })));
  const observedAt=new Date(now).toISOString();
+ // Keep the legacy tier reader in sync with the progressive fact store.
+ // These rows carry only publisher metadata and a caller-supplied digest;
+ // SEARCH_TITLE_ONLY plus original_page_fetched=0 can never satisfy the
+ // native-original-page corroboration rule for Standard.
+ const legacyValues=rows.map(()=>'(?,?,?,?,?,?,?,?,?,?,?,?)').join(',');
+ const legacyBinds=rows.flatMap(f=>[
+   f.observation_id,f.event_fingerprint,'COUNTRY',f.country_iso3,
+   f.category==='macro'?'MACRO_FX':f.category==='rare_earth'?'CRITICAL_MINERALS':'GEOPOLITICS',
+   f.event_clock,f.publisher_domain,f.publisher_domain,f.event_fingerprint,
+   'SEARCH_TITLE_ONLY',0,observedAt
+ ]);
+ await env.DB.prepare(`INSERT OR IGNORE INTO unverified_observations
+   (observation_id,event_id,entity_type,entity_id,category,event_at,source_id,
+    source_host,title_sha256,fact_basis,original_page_fetched,discovered_at)
+   VALUES ${legacyValues}`).bind(...legacyBinds).run();
  const values=rows.map(()=>'(?,?,?,?,?,?,?,?,?,?)').join(',');
  const binds=rows.flatMap(f=>[f.observation_id,f.country_iso3,f.category,
    f.event_fingerprint,f.publisher_domain,f.canonical_source_url,
