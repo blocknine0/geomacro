@@ -192,8 +192,15 @@ const stage=await stagePhase2iOsintFairRaw({
 });
 if(stage.selected_count>0&&stage.d1_readback_verified!==true)
  throw Error("PHASE2I_SOURCE_ONLY_RAW_D1_RECEIPT_UNVERIFIED");
-const newlyAcknowledged=candidatesWithD1Receipts.filter((candidate,index)=>
- candidate.d1Acknowledged===true&&queue.candidates[index].d1Acknowledged!==true);
+const verifiedStageIds=new Set(stage.verified_record_ids??[]);
+const newlyAcknowledged=queue.candidates.filter(candidate=>{
+ if(candidate.d1Acknowledged===true)return false;
+ const native=candidate.datePrecision==="day"?
+  candidate.publishedAt.slice(0,10):candidate.publishedAt;
+ const id=createHash("sha256").update(
+  candidate.category+"\\n"+candidate.articleUrl+"\\n"+native).digest("hex");
+ return verifiedStageIds.has(id);
+});
 const projectedByKey=new Map();
 for(const candidate of newlyAcknowledged){
  const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
