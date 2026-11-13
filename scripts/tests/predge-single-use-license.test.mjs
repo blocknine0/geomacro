@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {generateKeyPairSync} from "node:crypto";
+import {generateKeyPairSync,verify} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {parseRequest,predgePaidRiskGateD1,predgeRiskGateD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
@@ -12,6 +12,9 @@ const {privateKey,publicKey}=generateKeyPairSync("ed25519");
 const privateB64=privateKey.export({format:"der",type:"pkcs8"}).toString("base64");
 const publicB64=publicKey.export({format:"der",type:"spki"}).toString("base64");
 const MESSAGE="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Permission from Geomacro's end is required. Contact: contact@geomacro.live";
+const canonical=v=>v===null||typeof v!=="object"?JSON.stringify(v):
+ Array.isArray(v)?"["+v.map(canonical).join(",")+"]":
+ "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canonical(v[k])).join(",")+"}";
 
 class MemoryD1 {
  constructor(){this.claims=new Map();this.licenses=new Map();this.audit=new Map();this.paid=new Map();this.used=0;}
@@ -109,6 +112,9 @@ for(const paid of [false,true]){
   assert.equal(body.message,undefined);
   assert.equal(body.execution_authorized,false);
   assert.equal(body.decision_signature_scheme,"Ed25519");
+  assert.equal(body.decision_payload_sha256,require("node:crypto").createHash("sha256").update(canonical(body.decision_signed_payload)).digest("hex"));
+  assert.equal(verify(null,Buffer.from(canonical(body.decision_signed_payload)),publicKey,
+   Buffer.from(body.decision_signature_b64,"base64")),true);
   assert.deepEqual(body.redistribution_lock,{
    licensee_id:"predge",max_commercial_uses:1,consumption_count:1,
    resale_permitted:false,transferable:false,subject:body.redistribution_lock.subject,
