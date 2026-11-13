@@ -244,7 +244,7 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  const {publicKey,privateKey}=generateKeyPairSync("ed25519");
  const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:"b".repeat(64),
-  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",PREDGE_TEST_DEBUG:"1",
   RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
   RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
