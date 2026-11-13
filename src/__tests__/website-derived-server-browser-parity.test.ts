@@ -26,7 +26,7 @@ describe('website server/browser source and native-day parity',()=>{
  it('rejects early originals and private metadata consistently on server and browser',async()=>{
   vi.useFakeTimers();vi.setSystemTime(now);
   const input=[story,{...story,id:'macro-abcdef12',source_name:'private supplier'},
-    {...story,id:'macro-abcdef13',published_at:'2026-10-17'}]);
+    {...story,id:'macro-abcdef13',published_at:'2026-10-17'}];
   vi.stubGlobal('fetch',vi.fn(async()=>Response.json(doc(input))));
   expect((await readWebsiteDerivedNews()).signals).toEqual([story]);
   expect(checkedDerivedNews(feedDoc(input),now)).toEqual([story]);

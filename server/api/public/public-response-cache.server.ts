@@ -2,7 +2,9 @@ import {createHash} from "node:crypto";
 import {getHeader,setResponseHeaders,setResponseStatus,type H3Event} from "h3";
 
 type Entry={body:unknown;etag:string;freshUntil:number;hardUntil:number;pending?:Promise<void>};
+type BuildResult={entry:Entry}|{body:unknown};
 const entries=new Map<string,Entry>();
+const builds=new Map<string,Promise<BuildResult>>();
 const MAX_ENTRIES=32,SOFT_MS=60_000,HARD_MS=300_000;
 const cacheControl="public, max-age=60, stale-while-revalidate=300";
 
@@ -46,12 +48,17 @@ export async function publicResponseCache(event:H3Event,key:string,
   }
   return reply(event,cached);
  }
- if(cached?.pending){await cached.pending;cached=entries.get(key);if(cached&&now<cached.hardUntil)return reply(event,cached)}
- const body=await produce();
- if(body&&typeof body==="object"&&(body as {ok?:unknown}).ok===true){
-  const entry=remember(key,body,now);return reply(event,entry);
+ let build=builds.get(key);
+ if(!build){
+  build=produce().then(body=>body&&typeof body==="object"&&
+    (body as {ok?:unknown}).ok===true?{entry:remember(key,body,now)}:{body});
+  builds.set(key,build);
  }
+ let result:BuildResult;
+ try{result=await build}
+ finally{if(builds.get(key)===build)builds.delete(key)}
+ if("entry" in result)return reply(event,result.entry);
  setResponseHeaders(event,{"Content-Type":"application/json; charset=utf-8",
   "Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
- return body;
+ return result.body;
 }
