@@ -2,8 +2,25 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "geopolitics",
-  "updated_at": "2026-11-13T11:03:16.064Z",
+  "updated_at": "2026-11-13T15:42:22.594Z",
   "signals": [
+    {
+      "id": "geopolitics-2bf68f19",
+      "category": "geopolitics",
+      "title": "Geomacro finds Humanitarians: called for swift entry of winter supplies in Gaza · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Humanitarians called for swift entry of winter supplies in Gaza. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-13T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-62e077e5",
       "category": "geopolitics",

@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.website-derived-news-feed.v1",
-  "checked_at": "2026-11-13T11:03:16.064Z",
+  "checked_at": "2026-11-13T15:42:22.594Z",
   "original_release_delay_minutes": 0,
   "retention_days": 3,
   "retention_hours": 72,
@@ -10,6 +10,80 @@
   "chargeable": false,
   "supabase_dependency": false,
   "signals": [
+    {
+      "id": "geopolitics-2bf68f19",
+      "category": "geopolitics",
+      "title": "Geomacro finds Humanitarians: called for swift entry of winter supplies in Gaza · Palestinian territories",
+      "why_it_matters": "Policy statements can change jurisdictional or diplomatic context, but implementation and effects require separate corroboration.",
+      "what_changed": "Humanitarians called for swift entry of winter supplies in Gaza. Country or region mentioned: Palestinian territories.",
+      "geography": "Palestinian territories",
+      "development_type": "official update",
+      "topic": "foreign policy",
+      "published_at": "2026-11-13T12:00:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-d8a642a1",
+      "category": "rare_earth",
+      "title": "Geomacro finds Goldman Sachs forecast Copper Prices to Reach $15,600 per Tonne by December 2027 - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: Goldman Sachs forecast Copper Prices to Reach $15,600 per Tonne by December 2027 - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T10:12:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-783b2c22",
+      "category": "macro",
+      "title": "Geomacro finds Aris Mining released PFS for Toroparu Gold Project in Guyana",
+      "what_changed": "A monitored source feed reports: Aris Mining released PFS for Toroparu Gold Project in Guyana. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T09:53:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b3ffd152",
+      "category": "macro",
+      "title": "Geomacro finds Aris Mining confirmed extended operational timeline of Toroparu gold project in PFS",
+      "what_changed": "A monitored source feed reports: Aris Mining confirmed extended operational timeline of Toroparu gold project in PFS. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T09:21:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-5087e34c",
       "category": "rare_earth",
@@ -410,6 +484,25 @@
       "severity": null
     },
     {
+      "id": "macro-d3f6681b",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for October 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-12",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
       "id": "rare_earth-2ad99f49",
       "category": "rare_earth",
       "title": "Geomacro finds USA Rare Earth launched Commercial Rare Earth Shipments From Brazil to US Government-Backed Entity - NAI500",
@@ -672,253 +765,6 @@
         "Contains public sector information licensed under the Open Government Licence v3.0."
       ],
       "status": "official_release_observed_unscored",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-ac97f6fd",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo Finance",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo Finance. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T15:00:38.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "rare_earth-2ac416f6",
-      "category": "rare_earth",
-      "title": "Geomacro finds Lumen Technologies announced plans to mine its old copper network as it pivots to AI - Crypto Briefing",
-      "what_changed": "A monitored source feed reports: Lumen Technologies announced plans to mine its old copper network as it pivots to AI - Crypto Briefing. This report has not been independently verified.",
-      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
-      "topic": "critical-mineral inputs",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T13:44:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-0db59c71",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Millio - GuruFocus",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Millio - GuruFocus. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T13:40:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-239e65bc",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining reported 28% Increase in Segovia Gold Reserves - TipRanks",
-      "what_changed": "A monitored source feed reports: Aris Mining reported 28% Increase in Segovia Gold Reserves - TipRanks. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:27:37.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-468371dd",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining reported 28% increase in Segovia gold reserves By Investing.com - Investing.com India",
-      "what_changed": "A monitored source feed reports: Aris Mining reported 28% increase in Segovia gold reserves By Investing.com - Investing.com India. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:20:14.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-62e875fa",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining reported 28% increase in Segovia gold reserves By Investing.com - Investing.com Canada",
-      "what_changed": "A monitored source feed reports: Aris Mining reported 28% increase in Segovia gold reserves By Investing.com - Investing.com Canada. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:11:21.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-13d14675",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - 巴士的報",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - 巴士的報. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:07:33.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-25daa5dc",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - The Joplin Globe",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - The Joplin Globe. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:04:17.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-b69ad5e8",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining raised Segovia gold reserves 28% to 1.9 million oz - StreetInsider",
-      "what_changed": "A monitored source feed reports: Aris Mining raised Segovia gold reserves 28% to 1.9 million oz - StreetInsider. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:03:10.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-8b552c74",
-      "category": "macro",
-      "title": "Geomacro finds US Midterms lowered Spending Expectations: Why Policy Risk Supports Gold - Crux Investor",
-      "what_changed": "A monitored source feed reports: US Midterms lowered Spending Expectations: Why Policy Risk Supports Gold - Crux Investor. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:02:58.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1f79d079",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo! Finance Canada",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo! Finance Canada. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-458b1e7e",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo Finance Singapore",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Yahoo Finance Singapore. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-e678acbe",
-      "category": "macro",
-      "title": "Geomacro finds Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Morningstar",
-      "what_changed": "A monitored source feed reports: Aris Mining increased Segovia Gold Reserves by 28% to 1.9 Million Ounces - Morningstar. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T12:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     }

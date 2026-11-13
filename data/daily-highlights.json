@@ -1,7 +1,7 @@
 {
   "ok": true,
   "schema": "geomacro.public-daily-official-finds.v1",
-  "generated_at": "2026-11-13T11:03:16.064Z",
+  "generated_at": "2026-11-13T15:42:22.594Z",
   "selection_window_days": 30,
   "source_window": "archived_original_release",
   "official_only": true,
@@ -44,6 +44,25 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Contains public sector information licensed under the Open Government Licence v3.0."
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d3f6681b",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for October 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-12",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
       ],
       "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,

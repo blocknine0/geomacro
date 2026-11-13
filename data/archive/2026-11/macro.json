@@ -2,8 +2,46 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-13T11:03:16.064Z",
+  "updated_at": "2026-11-13T15:42:22.594Z",
   "signals": [
+    {
+      "id": "macro-783b2c22",
+      "category": "macro",
+      "title": "Geomacro finds Aris Mining released PFS for Toroparu Gold Project in Guyana",
+      "what_changed": "A monitored source feed reports: Aris Mining released PFS for Toroparu Gold Project in Guyana. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T09:53:45.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-b3ffd152",
+      "category": "macro",
+      "title": "Geomacro finds Aris Mining confirmed extended operational timeline of Toroparu gold project in PFS",
+      "what_changed": "A monitored source feed reports: Aris Mining confirmed extended operational timeline of Toroparu gold project in PFS. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T09:21:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.miningweekly.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-552fc73a",
       "category": "macro",
@@ -96,6 +134,25 @@
         "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-d3f6681b",
+      "category": "macro",
+      "title": "Geomacro finds Statistics Canada published employment figures for October 2026 · Canada",
+      "why_it_matters": "Official economic and labour statistics can inform macroeconomic demand, income and currency-risk context. Data values and period-specific direction require the underlying published table.",
+      "what_changed": "Statistics Canada published employment figures for October 2026. The available metadata does not establish the numerical value or change. Country or region mentioned: Canada.",
+      "geography": "Canada",
+      "development_type": "official update",
+      "topic": "official economic statistics",
+      "published_at": "2026-11-12",
+      "date_precision": "day",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Statistics Canada"
+      ],
+      "status": "official_release_observed_unscored",
       "same_event_corrob_verified": false,
       "severity": null
     },
