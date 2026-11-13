@@ -5,7 +5,7 @@ import {createHash,randomUUID} from 'node:crypto';
 import {isIP} from 'node:net';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {HOT50,CATEGORIES,SHA_RE,need,canonical,sha256,signedReport,holdError} from '../../scripts/release-common.ts';
+import {HOT50,CATEGORIES,SHA_RE,need,canonical,canonicalContentSha256,signedReport,holdError} from '../../scripts/release-common.ts';
 import {verifyPinnedFactsOnlyGriV12Proof} from '../../scripts/lib/facts-only-gri-v12-dual-attestation.mjs';
 
 type Publisher={url:string;issuer_hostname:string;publisher_org_id:string;original_published_at:string;
@@ -49,7 +49,7 @@ async function checkOriginal(source:Publisher,event:Event,now:number){
  need(res.status===200&&!res.redirected&&/text\/html|application\/xhtml\+xml/.test(res.headers.get('content-type')||''),
   'HOT50_ORIGINAL_SOURCE_NOT_READABLE');
  const bytes=Buffer.from(await res.arrayBuffer());need(bytes.length>0&&bytes.length<=MAX_BYTES,'HOT50_ORIGINAL_TOO_LARGE');
- need(sha256(bytes)===source.page_sha256,'HOT50_ORIGINAL_SHA256_MISMATCH');
+ need(canonicalContentSha256(bytes)===source.page_sha256,'HOT50_ORIGINAL_SHA256_MISMATCH');
  const html=bytes.toString('utf8');
  need(!/<!DOCTYPE\s+[^>]*\[/iu.test(html)&&publishedInPage(html,source.original_published_at),'HOT50_ORIGINAL_NATIVE_DATE_UNVERIFIED');
  const normalized=html.replace(/<[^>]+>/gu,' ').replace(/\s+/gu,' ').toLocaleLowerCase('en');
@@ -127,8 +127,8 @@ async function main(){
   cells.push({country_iso3:event.country_iso3,category:event.category,event_fingerprint:event.event_fingerprint,
    factual_record_sha256:event.factual_record_sha256,
    original_primary_sources:sourceReceipts.length,
-   independent_issuer_set_sha256:sha256(canonical(sourceReceipts.map(s=>s.publisher_org_id).sort())),
-   source_hashes_sha256:sha256(canonical(sourceReceipts)),
+   independent_issuer_set_sha256:canonicalContentSha256(canonical(sourceReceipts.map(s=>s.publisher_org_id).sort())),
+   source_hashes_sha256:canonicalContentSha256(canonical(sourceReceipts)),
    verified_dual_facts_rights_attestation:true,independent_native_fetch:true});
  }
  need(expected.size===0&&cells.length===150,'HOT50_NOT_ALL_CELLS_CERTIFIED');
@@ -138,7 +138,7 @@ async function main(){
   generated_at:generated.toISOString(),expires_at:expires.toISOString(),nonce:randomUUID(),
   scope_countries:50,scope_categories:3,cells:150,three_independent_originals_per_cell:true,
   original_hashes_verified:true,existing_dual_fact_and_rights_signatures_verified:true,
-  exact_150cell_manifest_sha256:sha256(canonical(cells)),cell_proofs:cells,
+  exact_150cell_manifest_sha256:canonicalContentSha256(canonical(cells)),cell_proofs:cells,
   signer_is_not_an_independent_news_source:true,
   external_human_reviewer_certification_not_inferred:true,no_funds:true};
  signedReport('artifacts/release/hot50-risk-gate-proof.json',proof);
