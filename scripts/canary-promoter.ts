@@ -3,7 +3,7 @@
 import {existsSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,canonicalContentSha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
+import {api,queryCloudflareAnalytics,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,canonicalContentSha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
 import {
  checkD1PaidMonthlyHeadroom,paidD1BillingCycle
 } from './lib/d1-workers-paid-monthly-governor.mjs';
@@ -104,7 +104,7 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
 
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
  const account=envString('CLOUDFLARE_ACCOUNT_ID',32),zone=envString('CLOUDFLARE_ZONE_ID',32);
- const graph=await graphql(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
+ const graph=await queryCloudflareAnalytics(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
  const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
  const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
