@@ -14,7 +14,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain('import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";');
     expect(desk).toContain("getStatelessIntelligence({ data: { category } }),\n            9_000");
     expect(desk).toContain("fetchPermanentDerivedNews()");
-    expect(desk).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:false})");
+    expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).not.toContain("fetchAllDerivedNews()");
     expect(desk).not.toContain("getWebsiteDerivedNews");
     expect(desk).not.toContain("@/lib/website-derived-news.functions");
@@ -30,7 +30,7 @@ describe("Intelligence browser RPC stall recovery", () => {
     // Static archive plus a separately published R2-only JSON snapshot, neither
     // of which requires a browser D1 read, an RPC or a website-code rebuild.
     expect(desk).toContain("Historical findings come from the static archive");
-    expect(desk).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:false})");
+    expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).toContain("without a website rebuild or D1 browser reads");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
