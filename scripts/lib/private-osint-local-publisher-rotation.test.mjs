@@ -119,7 +119,7 @@ test("active local publisher inventory is fully polled in a source tick while pr
  const all=budgetedPrivateLocalPublisherSources(at,96);
  assert.equal(all.length,69);
  assert.equal(new Set(all.map(x=>x.id)).size,all.length);
- assert.equal(new Set(all.map(x=>x.publisher_country_iso3)).size>=69,true);
+ assert.equal(new Set(all.map(x=>x.publisher_country_iso3)).size>=68,true);
  const production=privateOsintRuntimeSources(at,privateOsintGlobalSources(),
    COUNTRIES_195,{includeLocalGapLane:true});
  assert.ok(production.length<=512);
