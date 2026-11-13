@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {hot50Direct20mPublisherRegistry,HOT50_DIRECT_20M_FREQUENCY_MINUTES,HOT50_RETIRED_REPROBES_PER_SLOT}
+import {hot50Direct20mPublisherRegistry,hot50Direct20mFailoverCategories,HOT50_DIRECT_20M_FREQUENCY_MINUTES,HOT50_RETIRED_REPROBES_PER_SLOT}
  from "./hot-50-direct-20m-sources.mjs";
 import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {PRIVATE_OSINT_RETIRED_SOURCE_IDS} from "./private-osint-retired-sources.mjs";
@@ -60,6 +60,18 @@ test("all Hot50 country-category discovery cells have non-retired configured lan
  // first-party publisher status, country-event attribution, rights or delivery.
 });
 
+test("empty or failed Hot50 primaries request existing global hub backups without rights promotion",()=>{
+ const {registry,fallback_registry,cell_failover_plan}=hot50Direct20mPublisherRegistry();
+ assert.equal(cell_failover_plan.length,150);
+ assert.equal(fallback_registry.length,6);
+ assert.ok(fallback_registry.every(x=>x.private_hot50_backup===true&&
+  x.rights_verified===false&&x.commercial_eligible===false&&
+  x.transport_verified_at_registration===false));
+ const categories=hot50Direct20mFailoverCategories(cell_failover_plan,registry,[]);
+ assert.ok(categories.includes("geopolitics"));
+ assert.ok(categories.includes("rare_earth"));
+ assert.deepEqual(hot50Direct20mFailoverCategories([],registry,[]),[]);
+});
 test("three consecutive 20m slots never re-probe any permanently removed endpoint",()=>{
  const seen=new Set();
  const start=Date.parse("2026-11-04T00:00:00Z");
