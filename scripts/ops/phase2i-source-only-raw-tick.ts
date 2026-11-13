@@ -216,9 +216,9 @@ for(const candidate of newlyAcknowledged){
  if(!Number.isFinite(time)||time>now.getTime()+60000||
     time<now.getTime()-72*3600000)continue;
  const normalizedTitle=String(candidate.title??"").normalize("NFKC")
-  .toLocaleLowerCase("en").replace(/\\s+/gu," ").trim();
+  .toLocaleLowerCase("en").replace(/\s+/gu," ").trim();
  if(normalizedTitle.length<8||normalizedTitle.length>1200)continue;
- const domain=article.hostname.toLowerCase().replace(/^www\\./u,"");
+ const domain=article.hostname.toLowerCase().replace(/^www\./u,"");
  const fingerprint=createHash("sha256").update([
   countryIso3,candidate.category,eventClock,normalizedTitle
  ].join("|")).digest("hex");
@@ -230,7 +230,7 @@ for(const candidate of newlyAcknowledged){
   event_fingerprint:fingerprint,publisher_domain:domain,
   canonical_source_url:article.href,event_clock:new Date(time).toISOString(),
   clock_basis:"INDEX_OBSERVED",extracted_entities:[],
-  source_id:source.hostname.toLowerCase().replace(/^www\\./u,""),
+  source_id:source.hostname.toLowerCase().replace(/^www\./u,""),
   title_sha256,fact_basis:"SEARCH_TITLE_ONLY",original_page_fetched:false,
   rights_verified:false,commercial_eligible:false,
  });
