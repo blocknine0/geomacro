@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {generateKeyPairSync} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {PREDGE_PAID_RISK_GATE_V2,predgePaidRiskGateTerms,usdcFromCents}
  from "../../workers/control-plane/src/predge-paid-risk-gate-contract.mjs";
-import {parseRequest,predgePaidTrafficEnabled,predgePaidRiskGateD1,predgeRiskGateD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
+import {parseRequest,predgePaidTrafficEnabled,predgePaidRiskGateD1,predgeRiskGateD1,verifyPredgePaidVerdictD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
 test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
  assert.equal(PREDGE_PAID_RISK_GATE_V2.channel,"predge_b2b");
@@ -157,4 +158,124 @@ test("paid partner terms do not replace direct Store / Intelligence API pricing 
 test("Stage 3 rehearsal reads account billing through its dedicated token binding",()=>{
  const workflow=readFileSync(".github/workflows/d1-step3-v2-shadow-only-rehearsal.yml","utf8");
  assert.match(workflow,/CLOUDFLARE_BILLING_READ_TOKEN:\s*\$\{\{ secrets\.CLOUDFLARE_BILLING_READ_TOKEN \}\}/u);
+});
+
+
+function paidRiskGateFixtureDb(){
+ const requests=new Map(),ledger=new Map(),receipts=new Map();
+ const key=(client,id)=>client+"|"+id;
+ return {prepare(sql){
+  let values=[];
+  return {bind(...args){values=args;return this;},
+   async first(){
+    if(sql.includes("FROM risk_gate_d1_requests")&&sql.includes("client_id=? AND request_id=?")){
+     const row=requests.get(key(values[0],values[1]));return row?{...row}:null;
+    }
+    if(sql.includes("client_id='predge-paid-license-scope-v1'")){
+     const row=requests.get(key("predge-paid-license-scope-v1",values[0]));
+     return row?{request_id:values[0]}:null;
+    }
+    if(sql.includes("INSERT OR IGNORE INTO risk_gate_d1_requests")&&sql.includes("predge-paid-license-scope-v1")){
+     const [id,hash,subjectType,subjectId,createdAt]=values;
+     const k=key("predge-paid-license-scope-v1",id);
+     if(requests.has(k))return null;
+     requests.set(k,{request_id:id,request_hash:hash,subject_type:subjectType,subject_id:subjectId,created_at:createdAt,state:"CLAIMED"});
+     return {request_id:id};
+    }
+    if(sql.includes("UPDATE risk_gate_d1_requests SET state='CLAIMED'")){
+     const row=requests.get(key(values[0],values[1]));
+     if(!row||row.state!=="PENDING")return null;
+     row.state="CLAIMED";return {request_id:values[1]};
+    }
+    if(sql.includes("UPDATE risk_gate_d1_requests")&&sql.includes("SET state='DONE'")){
+     const row=requests.get(key(values[4],values[5]));
+     if(!row||row.state!=="CLAIMED")return null;
+     row.state="DONE";row.response_json=values[0];row.finished_at=values[1];return {request_id:values[5]};
+    }
+    if(sql.includes("INSERT INTO risk_gate_d1_quota"))return {used:1};
+    if(sql.includes("FROM predge_paid_risk_gate_usage_ledger")){
+     const row=ledger.get(values[0])||[...ledger.values()].find(item=>item.verdict_id===values[1]);
+     return row?{verdict_id:row.verdict_id,request_hash:row.request_hash,
+      response_sha256:row.response_sha256,billing_mode:row.billing_mode,
+      entry_status:row.entry_status,billable:row.billable,
+      geomacro_fee_usdc_cents:row.geomacro_fee_usdc_cents,
+      usage_report_due_date:row.usage_report_due_date,
+      settlement_due_date:row.settlement_due_date}:null;
+    }
+    if(sql.includes("FROM risk_gate_audit_receipts")){
+     return receipts.get(values[0])??null;
+    }
+    return null;
+   },
+   async run(){
+    if(sql.includes("INSERT OR IGNORE INTO risk_gate_d1_requests")&&!sql.includes("predge-paid-license-scope-v1")){
+     const [client,requestId,requestHash,subjectType,subjectId,createdAt]=values;
+     const k=key(client,requestId);
+     if(!requests.has(k))requests.set(k,{request_hash:requestHash,subject_type:subjectType,subject_id:subjectId,created_at:createdAt,state:"PENDING"});
+     return {success:true};
+    }
+    if(sql.includes("INSERT INTO predge_paid_risk_gate_usage_ledger")){
+     const [ledgerId,verdictId,requestId,channel,tier,structureType,price,contractFee,contractPredge,
+       geomacroFee,predgeShare,billable,billingMode,status,requestHash,responseHash,createdAt,usageMonth,reportDate,settlementDate]=values;
+     ledger.set(requestId,{ledger_id:ledgerId,verdict_id:verdictId,request_id:requestId,channel,tier,
+      structure_type:structureType,customer_price_usdc_cents:price,
+      contract_geomacro_fee_usdc_cents:contractFee,contract_predge_share_usdc_cents:contractPredge,
+      geomacro_fee_usdc_cents:geomacroFee,predge_share_usdc_cents:predgeShare,billable,
+      billing_mode:billingMode,entry_status:status,request_hash:requestHash,response_sha256:responseHash,
+      created_at:createdAt,usage_month:usageMonth,usage_report_due_date:reportDate,settlement_due_date:settlementDate});
+     return {success:true};
+    }
+    if(sql.includes("INSERT OR IGNORE INTO risk_gate_audit_receipts")){
+     const names=["receipt_id","client_id","request_id","request_hash","subject_type","subject_id","decision",
+      "policy_id","policy_version","evaluated_at","response_hash","execution_authorized","audit_receipt_hash",
+      "created_at","signature_key_id","signature_scheme","audit_receipt_signature"];
+     receipts.set(values[0],Object.fromEntries(names.map((name,i)=>[name,values[i]])));
+     return {success:true};
+    }
+    return {success:true};
+   }};
+ }};
+}
+
+test("paid Risk Gate verdict is signed for one use and rejects replay or resale",async()=>{
+ const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ const {publicKey,privateKey}=generateKeyPairSync("ed25519");
+ const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:"b".repeat(64),
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
+  RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:paidRiskGateFixtureDb()};
+ const makeRequest=(body,path="/v2/partner/predge/paid-risk-gate")=>new Request("https://worker.example"+path,{
+  method:"POST",headers:{authorization:"Bearer "+"b".repeat(64),"content-type":"application/json"},
+  body:JSON.stringify(body)});
+ const now=Date.parse("2026-11-12T00:00:00Z");
+ const first=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
+ const firstBody=await first.json();
+ assert.equal(first.status,200);
+ assert.equal(firstBody.ok,true);
+ assert.equal(Object.hasOwn(firstBody,"error"),false);
+ assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
+  licensee:"predge",max_uses:1,resale_permitted:false,bound_subject_id:"USA",
+  bound_market_id:"123456789",
+  bound_condition_id:"0x0000000000000000000000000000000000000000000000000000000000000000"});
+ assert.equal(firstBody.decision_signature_scheme,"Ed25519");
+ const expectedError="REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED";
+ const expectedMessage="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
+ for(const reused of [fixture,{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,market_id:"different-market"}}},
+   {...fixture,request_id:"paid-resale-new-request"}]){
+  const response=await predgePaidRiskGateD1(makeRequest(reused),env,now);
+  const body=await response.json();
+  assert.equal(response.status,403);
+  assert.equal(body.error,expectedError);
+  assert.equal(body.execution_authorized,false);
+  assert.equal(body.message,expectedMessage);
+ }
+ const verify=await verifyPredgePaidVerdictD1(makeRequest({verdict_id:firstBody.verdict_id,
+  request_id:undefined,subject:undefined,policy:undefined,tier:undefined,action_context:undefined},
+  "/v2/partner/predge/verify-verdict"),env);
+ const verifyBody=await verify.json();
+ assert.equal(verify.status,403);
+ assert.equal(verifyBody.error,expectedError);
+ assert.equal(verifyBody.message,expectedMessage);
 });
