@@ -237,3 +237,7 @@ export function normalizeIccNews({ id, title, publishedAt = null, url = ICC_NEWS
     raw_hash: createHash("sha256").update(JSON.stringify(rawPayload)).digest("hex")
   };
 }
+
+// Official first-party RSS fallback: feed-native dates are metadata only and
+// never confer article-rights verification or commercial eligibility.
+export {parseIccOfficialNewsItems as parseIccNewsRss} from "../../scripts/lib/icc-official-news-rss.mjs";
