@@ -167,7 +167,7 @@ export async function projectUnverifiedProgressiveObservations(env,observations,
  }
  const factReceipt=await admitProgressiveRiskFacts(env,facts,now);
  const observedAt=new Date(now).toISOString();
- const values=obsRows.map(()=>"(?,?,?,?,?,?,?,?,?,NULL,0,?,?,?,?)").join(",");
+ const values=obsRows.map(()=>"(?,?,?,?,?,?,?,?,?,NULL,?,?,?,?,?)").join(",");
  const binds=obsRows.flatMap(x=>[
   x.observation_id,x.event_id,x.entity_type,x.entity_id,x.category,
   x.event_at,x.source_id,x.source_host,x.title_sha256,
