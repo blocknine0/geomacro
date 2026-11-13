@@ -102,14 +102,18 @@ export async function makeDailyNewsGro(signal,tier,{now=Date.now()}={}){
  return {gro_id:groId,payload};
 }
 
-async function verifySaved(row,publicKey){
+async function verifySaved(row,publicKey,expected=null){
  if(!row||!HEX.test(row.payload_sha256??"")||
   typeof row.payload_json!=="string"||row.payload_json.length>9000||
   await progressiveSha(row.payload_json)!==row.payload_sha256)return false;
  let stored;try{stored=JSON.parse(row.payload_json)}catch{return false}
- if(stored.raw_source_disclosed!==false||stored.billable!==false||
-  stored.commercial_sale_authorized!==false||
-  stored.schema!=="geomacro.hot50-news-daily-gro.v1")return false;
+ if(stored.raw_source_disclosed!==false||stored.raw_upstream_text_included!==false||
+  stored.billable!==false||stored.commercial_sale_authorized!==false||
+  stored.schema!=="geomacro.hot50-news-daily-gro.v1"||
+  canonicalProgressiveJson(stored)!==row.payload_json)return false;
+ if(expected&&[
+  "country_iso3","category","tier","day_utc","event_fingerprint","evidence_status"
+ ].some(k=>stored[k]!==expected[k]))return false;
  try{return await crypto.subtle.verify("Ed25519",publicKey,
   decode(row.signature_b64),new TextEncoder().encode(row.payload_json));
  }catch{return false}
@@ -126,7 +130,7 @@ export async function issueDailyNewsGro(env,signal,tier,{now=Date.now()}={}){
  const existing=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
   "FROM risk_stream_daily_news_gro WHERE gro_id=? LIMIT 1").bind(gro_id).first();
  if(existing){
-  if(!await verifySaved(existing,key))fail("EXISTING_SIGNATURE_INVALID");
+  if(!await verifySaved(existing,key,payload))fail("EXISTING_SIGNATURE_INVALID");
   return {gro_id,status:"IDEMPOTENT_SIGNED_READBACK",evidence_status:payload.evidence_status};
  }
  const signed=await signProgressiveDecision(payload,env);
@@ -146,7 +150,7 @@ export async function issueDailyNewsGro(env,signal,tier,{now=Date.now()}={}){
   payload.generated_at,payload.expires_at).run();
  const saved=await env.DB.prepare("SELECT payload_json,payload_sha256,signature_b64 "+
   "FROM risk_stream_daily_news_gro WHERE gro_id=? LIMIT 1").bind(gro_id).first();
- if(!await verifySaved(saved,key))fail("D1_SIGNED_READBACK_INVALID");
+ if(!await verifySaved(saved,key,payload))fail("D1_SIGNED_READBACK_INVALID");
  return {gro_id,status:"SIGNED_D1_READBACK",evidence_status:payload.evidence_status};
 }
 
@@ -176,4 +180,61 @@ export async function issueDailyNewsBatch(env,signals,{now=Date.now(),limit=12}=
   status:"GRO_SIGNATURE_READBACK_PASS",
   processed_events:seen.size,signed:issued,idempotent:existing,skipped,
   commercial_deliveries_performed:0,raw_sources_disclosed:false};
+}
+
+/** Root-admin ONLY; no customer path, payment, source URL or article bytes. */
+export async function readDailyNewsGros(request,env,now=Date.now()){
+ const noStore={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"};
+ const bad=(error,status=400)=>Response.json({ok:false,error,
+  commercial_delivery:false},{status,headers:noStore});
+ if(request.method!=="GET")return bad("METHOD_NOT_ALLOWED",405);
+ const url=new URL(request.url);
+ if([...url.searchParams.keys()].some(x=>
+  !["country_iso3","category","tier","limit"].includes(x)))
+  return bad("NEWS_GRO_QUERY_INVALID");
+ const country=url.searchParams.get("country_iso3");
+ const category=url.searchParams.get("category");
+ const tier=url.searchParams.get("tier");
+ const limitRaw=url.searchParams.get("limit")??"12";
+ const limit=Number(limitRaw);
+ if(!isHot50RiskCountry(country)||!CATEGORIES.has(category)||
+  (tier!==null&&!Object.hasOwn(TIER_PRICES,tier))||
+  !/^[1-9][0-9]?$/u.test(limitRaw)||limit>24||
+  !env?.DB?.prepare||!env?.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64)
+  return bad("NEWS_GRO_QUERY_OR_BINDING_INVALID",503);
+ try{
+  const verifier=await crypto.subtle.importKey("spki",
+   decode(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64),
+   {name:"Ed25519"},false,["verify"]);
+  const expectedKeyId=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
+  const sql="SELECT gro_id,payload_json,payload_sha256,signature_b64,signing_key_id "+
+   "FROM risk_stream_daily_news_gro WHERE country_iso3=? AND category=? "+
+   "AND day_utc=? "+(tier?"AND tier=? ":"")+
+   "ORDER BY generated_at DESC,gro_id DESC LIMIT ?";
+  const bound=tier?[country,category,day(now),tier,limit]:
+   [country,category,day(now),limit];
+  const response=await env.DB.prepare(sql).bind(...bound).all();
+  if(!Array.isArray(response?.results)||response.results.length>limit)
+   return bad("NEWS_GRO_READBACK_INVALID",503);
+  const items=[];
+  for(const row of response.results){
+   const p=JSON.parse(row.payload_json);
+   const recomputed=await progressiveSha(canonicalProgressiveJson([
+    p.country_iso3,p.category,p.day_utc,p.event_fingerprint,
+    p.tier,p.evidence_status
+   ]));
+   if(row.gro_id!==recomputed||row.signing_key_id!==expectedKeyId||
+    p.country_iso3!==country||p.category!==category||
+    p.day_utc!==day(now)||(tier!==null&&p.tier!==tier)||
+    !await verifySaved(row,verifier))
+    return bad("NEWS_GRO_SIGNATURE_OR_SCOPE_INVALID",503);
+   items.push({gro_id:row.gro_id,payload:p,
+    signature_algorithm:"Ed25519",signature_key_id:row.signing_key_id,
+    payload_sha256:row.payload_sha256,signature_b64:row.signature_b64});
+  }
+  return Response.json({ok:true,schema:"geomacro.hot50-news-gro-owner-readback.v1",
+   country_iso3:country,category,day_utc:day(now),
+   signed_count:items.length,signature_readback_verified:true,
+   commercial_delivery:false,items},{headers:noStore});
+ }catch{return bad("NEWS_GRO_PROVIDER_READBACK_UNAVAILABLE",503)}
 }
