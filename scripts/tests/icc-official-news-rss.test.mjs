@@ -151,6 +151,8 @@ test("ICC listing requests negotiate HTML and parse canonical Drupal node links"
  assert.equal(listing.headers["user-agent"],ICC_NEWS_REQUEST_HEADERS["user-agent"]);
  assert.match(listing.headers["user-agent"],/Mozilla\/5\.0.*GeomacroBot/u);
  assert.equal(listing.headers["accept-language"],"en-US,en;q=0.9");
+ const article=seen.find(item=>item.url==="https://www.icc-cpi.int/node/241777");
+ assert.equal(article.headers["user-agent"],ICC_NEWS_REQUEST_HEADERS["user-agent"]);
  assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
  assert.equal(row.native_publication_at_utc,"2026-11-12T08:00:00.000Z");
  assert.equal(row.commercial_eligible,false);
