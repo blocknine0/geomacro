@@ -54,8 +54,18 @@ function safeFailure(error,prefix){
    (error?.name==="TypeError"?"UPSTREAM_NETWORK_ERROR":"SOURCE_SCHEMA_INVALID"));
 }
 async function get(url,accept="*/*"){
- return fetch(url,{redirect:"follow",signal:AbortSignal.timeout(timeoutMs),
-  headers:{"user-agent":"GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)",accept}});
+ let lastError;
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   return await fetch(url,{redirect:"follow",signal:AbortSignal.timeout(timeoutMs),
+    headers:{"user-agent":"GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)",accept}});
+  }catch(error){
+   lastError=error;
+   if(attempt===1||!["TimeoutError","TypeError"].includes(error?.name))throw error;
+   await new Promise(resolve=>setTimeout(resolve,250));
+  }
+ }
+ throw lastError;
 }
 async function run(id,source){
  const url=id==="icc_news"?source.discovery_url:(source.machine_endpoint??source.dataset_surface??source.discovery_url);
