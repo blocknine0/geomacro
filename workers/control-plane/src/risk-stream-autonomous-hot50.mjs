@@ -8,6 +8,7 @@
 import {RISK_GATE_HOT50,hot50RiskGateEnabled} from "./risk-gate-hot50-scope.mjs";
 import {phase2hCountry} from "../../../scripts/lib/phase2h-country-originals-195.mjs";
 import {riskPublisherSearchPlan} from "./risk-gate-global-news-search.mjs";
+import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 import {parseGoogleRiskRss} from "./daily-risk-gate-generator.mjs";
 import {verifyGeoMacroSevenDayHistory} from "./risk-stream-seven-day-chain.mjs";
 
@@ -205,7 +206,7 @@ async function loadPulse(db,targets,now){
    "AND source_clock_at<=? LIMIT 401",[countries,cutoff,until]),
   boundedRead(db,"SELECT e.observation_id,e.country_iso3,e.category,e.event_fingerprint,"+
    "e.source_id,e.publisher_root_domain,e.parent_media_entity,e.source_role,"+
-   "e.original_verified,e.published_at,s.enabled,s.commercial_rights_approved,"+
+   "e.original_verified,e.published_at,e.derived_json,s.enabled,s.commercial_rights_approved,"+
    "s.rights_expire_at FROM risk_stream_evidence e "+
    "LEFT JOIN risk_stream_sources s ON e.source_id=s.source_id "+
    "WHERE e.country_iso3 IN (SELECT value FROM json_each(?)) "+
@@ -348,6 +349,50 @@ export async function verifyHot50ComplexCell(env,target,{currentGroId,now=Date.n
    proof.status:"HOLD_SEVEN_DAY_PROVIDER_PROOF";
  }catch{return "HOLD_SEVEN_DAY_PROVIDER_PROOF"}
 }
+/** Only today's real news signals can create a daily assessment. Nothing is
+ * rolled over from prior UTC dates. Hashes identify events, not publisher URLs. */
+export async function hot50DailySignalInputs(target,pool,now=Date.now()){
+ const today=iso(now).slice(0,10);
+ const same=r=>r.country_iso3===target.country_iso3&&
+  (LEGACY[r.category]??r.category)===target.category;
+ const current=at=>typeof at==="string"&&at.slice(0,10)===today&&
+  Number.isFinite(Date.parse(at))&&Date.parse(at)<=now+60000;
+ const inputs=[];
+ for(const r of pool.discovery??[]){
+  if(!same(r)||!current(r.source_clock_at))continue;
+  inputs.push({country_iso3:target.country_iso3,category:target.category,
+   event_fingerprint:await hash("discovery\n"+r.signal_id),
+   published_at:r.source_clock_at,original_verified:false});
+ }
+ for(const r of pool.search??[]){
+  if(!same(r)||!current(r.published_at))continue;
+  inputs.push({country_iso3:target.country_iso3,category:target.category,
+   event_fingerprint:await hash("search\n"+r.lead_id),
+   published_at:r.published_at,original_verified:false});
+ }
+ for(const r of pool.evidence??[]){
+  if(!same(r)||!current(r.published_at))continue;
+  let derived=null;
+  try{derived=JSON.parse(r.derived_json??"null")}catch{/* private fallback */}
+  const eligibleOriginal=r.original_verified===1&&r.enabled===1&&
+   r.commercial_rights_approved===1&&
+   Number.isFinite(Date.parse(r.rights_expire_at))&&
+   Date.parse(r.rights_expire_at)>now;
+  const signed=(pool.signed??[]).some(x=>x.signature_verified===true&&
+   x.country_iso3===target.country_iso3&&x.category===target.category&&
+   x.event_fingerprint===r.event_fingerprint);
+  inputs.push({country_iso3:target.country_iso3,category:target.category,
+   event_fingerprint:r.event_fingerprint,published_at:r.published_at,
+   original_verified:eligibleOriginal,corroborated_signed_original:eligibleOriginal&&signed,
+   derived});
+ }
+ // Rotate backlog fairly instead of continuously reprocessing only newest events.
+ inputs.sort((a,b)=>a.event_fingerprint.localeCompare(b.event_fingerprint));
+ if(inputs.length<=6)return inputs;
+ const offset=(Math.floor(now/60000)*6)%inputs.length;
+ return Array.from({length:6},(_,i)=>inputs[(offset+i)%inputs.length]);
+}
+
 export async function runHot50AutonomousStreamTick(env,{
  now=Date.now(),fetcher=fetch,perTick=2
 }={}){
@@ -359,6 +404,7 @@ export async function runHot50AutonomousStreamTick(env,{
  const storedGroRows=pool.signed.length;
  pool.signed=await verifyHot50SignedGroReadbacks(pool.signed,env,now);
  let basic=0,internalStandard=0,searches=0,leads=0,held=0,complexReady=0;
+ let dailyNewsSigned=0,dailyNewsState="GRO_SIGNING_PENDING";
  for(const target of targets){
   const projection=projectHot50StreamCell(target,pool,now);
   const earlier=pool.prior.get(key(target));
@@ -377,6 +423,17 @@ export async function runHot50AutonomousStreamTick(env,{
   basic+=Number(signalCount>0);
   internalStandard+=Number(projection.source_gro_id!==null);
   held+=Number(projection.standard_status.startsWith("HOLD_"));
+  // Continuous 1-minute bounded recovery across all five discovery lanes,
+  // the event Queue and global-search leads. News GROs never authorize funds.
+  try{
+   const events=await hot50DailySignalInputs(target,pool,now);
+   const receipt=await issueDailyNewsBatch(env,events,{now,limit:6});
+   dailyNewsSigned+=receipt.signed;
+   dailyNewsState=receipt.status;
+  }catch{
+   dailyNewsState="GRO_SIGNING_OR_D1_READBACK_HELD";
+   console.error("HOT50_DAILY_NEWS_GRO_RECOVERY_HELD");
+  }
  }
  return {status:"HOT50_RESEARCH_TICK_D1_READBACK_PASS",
   cells_checked:targets.length,total_cells:150,categories:HOT50_STREAM_CATEGORIES,
@@ -384,6 +441,7 @@ export async function runHot50AutonomousStreamTick(env,{
   standard_hold_cells:held,complex_verified_cells:complexReady,
   rejected_unsigned_or_tampered_gro_rows:storedGroRows-pool.signed.length,
   global_search_probes:searches,index_leads_saved:leads,
+  daily_news_gro_signed:dailyNewsSigned,daily_news_gro_state:dailyNewsState,
   licensed_deliveries_performed:0,commercial_release_unchanged:true,
   certification_from_index_hits:false,raw_publisher_text_stored:false};
 }
