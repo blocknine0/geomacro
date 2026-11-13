@@ -26,13 +26,16 @@ function splitCells(row) {
 
 export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Date().toISOString() } = {}) {
   const input = String(html ?? "");
-  const industryList = /Critical Minerals List/i.test(input) && /Strategic Materials List/i.test(input);\n  const geoscienceAustraliaPage = /Critical minerals in Australia/i.test(input) && /<table\\b[\\s\\S]*?Critical mineral/i.test(input);\n  if (!industryList && !geoscienceAustraliaPage) {
+  const industryList = /Critical Minerals List/i.test(input) && /Strategic Materials List/i.test(input);
+  const geoscienceAustraliaPage = /Critical minerals in Australia/i.test(input) && /<table\b[\s\S]*?Critical mineral/i.test(input);
+  if (!industryList && !geoscienceAustraliaPage) {
     throw new Error("Australian critical minerals list markers not found");
   }
 
   const records = [];
   const tableRe = /<table\b[^>]*>[\s\S]*?<\/table>/gi;
   for (const tableMatch of input.matchAll(tableRe)) {
+    if (!/Critical\s+mineral/i.test(tableMatch[0])) continue;
     const rows = [...tableMatch[0].matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)];
     for (const row of rows) {
       const cells = splitCells(row[0]);
