@@ -27,9 +27,9 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("initialJournal = []");
     expect(desk).toContain("Previously received in-tab findings may be out of date");
     expect(desk).not.toContain("website-derived-news-html");
-    // Static archive plus a separately published R2-only JSON snapshot, neither
-    // of which requires a browser D1 read, an RPC or a website-code rebuild.
-    expect(desk).toContain("Historical findings come from the static archive");
+    // The locked presentation uses the library readers for its permanent and rolling feeds.
+    expect(desk).toContain("const historical = await fetchPermanentDerivedNews()");
+    expect(desk).toContain("const recent = await fetchDirectDerivedNews()");
     expect(desk).toContain("fetchDirectDerivedNews()");
     expect(desk).toContain("without a website rebuild or D1 browser reads");
     expect(desk).not.toContain("localStorage");

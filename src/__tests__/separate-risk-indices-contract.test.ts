@@ -12,7 +12,7 @@ describe("separate public risk indices contract", () => {
     const worker = read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
     const hook = read("src/lib/use-risk-indices.ts");
     expect(workspace).toContain('<ObservedBars index={index} window={window} snapshotAsOf={data.snapshotAsOf} />');
-    expect(workspace).not.toContain('index.observedSeverity?.[window]');
+    expect(workspace).toContain('index.observedSeverity?.[window]');
     expect(worker).toContain('observedSeveritySeries(news,now,"72H")');
     expect(worker).toContain('observedSeveritySeries(news,now,"48H")');
     expect(hook).toContain("readCurrentReviewedSignedIndices()");
