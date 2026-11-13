@@ -41,7 +41,7 @@ export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Dat
       const cells = splitCells(row[0]);
       if (!cells.length) continue;
       const mineral = cells[0];
-      if (!mineral || /^(mineral|commodity|material|name)$/i.test(mineral)) continue;
+      if (!mineral || /^(?:critical\\s+)?(?:mineral|commodity|material|name)$/i.test(mineral)) continue;
       if (mineral.length > 80 || !/[A-Za-z]/.test(mineral)) continue;
       records.push(normalizeAustraliaCriticalMineral({
         mineral,
