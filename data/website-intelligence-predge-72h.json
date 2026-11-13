@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-13T01:30:55.567Z",
+  "checked_at": "2026-11-13T01:51:55.966Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 45,
+  "item_count": 46,
   "counts": {
-    "geopolitics": 4,
+    "geopolitics": 5,
     "macro": 26,
     "rare_earth": 15
   },
-  "source_native_ids_sha256": "f7256f7426b689199dced90a6ee526418151d5b6347032121b2f643b35d22033",
+  "source_native_ids_sha256": "78f0d70dcf956a9f98bc3ae9c29ae5fdaf3a92136b6f5dcc3e3fa2cd96b13c8e",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,25 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "geopolitics-62e077e5",
+      "category": "geopolitics",
+      "title": "Geomacro finds Security Council: extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026) · Africa",
+      "why_it_matters": "Security and diplomatic developments may change country or corridor operating assumptions; this release alone does not establish a change in conflict risk.",
+      "what_changed": "Security Council extended Mandate of Stabilization Mission in Central African Republic for One Year, Unanimously Adopting Resolution 2836 (2026). Country or region mentioned: Africa.",
+      "geography": "Africa",
+      "development_type": "security",
+      "topic": "security and diplomacy",
+      "published_at": "2026-11-12T22:52:23.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "United Nations"
+      ],
+      "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-8b707965",
       "category": "rare_earth",
