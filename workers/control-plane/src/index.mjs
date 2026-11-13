@@ -43,6 +43,7 @@ import {dispatchLicensedCommercialOutbox} from "./risk-stream-commercial-outbox.
 import {runCommercialIssuerTick} from "./risk-stream-commercial-issuer.mjs";
 import {acceptScopedUntrustedRiskStreamLeads} from "./risk-stream-index-listener.mjs";
 import {runHot50AutonomousStreamTick} from "./risk-stream-autonomous-hot50.mjs";
+import {readDailyNewsGros} from "./risk-stream-news-gro.mjs";
 import {runCommercialRiskHistoryAppendTick} from "./risk-stream-seven-day-chain.mjs";
 import {scheduledUnifiedRisk,unifiedRiskGateEvaluate,generateUnifiedSnapshot,syncUnifiedRiskSupabase,cleanupUnifiedRiskSupabase,runUnifiedRiskAssessmentTick,verifyUnifiedRiskDailyRemoteCensus,runUnifiedRiskSevenDayRollup} from "./unified-risk-gate.mjs";
 import {predgePilotCheckV2,publishPredgePilotCheckV2} from "./predge-pilot-check-v2.mjs";
@@ -1883,6 +1884,10 @@ export default {
     if(url.pathname==='/v1/internal/source-handoffs')return handlePrivateSourceHandoffs(request,env);
     const auth = authorized(request, env);
     if (!auth.ok) return json({ ok: false, error: auth.error }, auth.status);
+    // Owner-only, signed and signature-verified today-news GRO feed.
+    // No public/Predge route or payment can read this private evidence ledger.
+    if(url.pathname==="/v1/internal/risk-stream/daily-news-gros"&&
+       request.method==="GET")return readDailyNewsGros(request,env);
     // Private event stream producer; root-admin authenticates BEFORE Queue
     // send. Only the independently signed originals may reach GRO signing.
     if(url.pathname==='/v1/internal/risk-stream/events'&&
