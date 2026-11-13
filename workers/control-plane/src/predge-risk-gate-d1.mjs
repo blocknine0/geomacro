@@ -355,6 +355,30 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const paidTrafficEnabled=paidEndpoint&&predgePaidTrafficEnabled(env,parsed.policy);
  if(paidEndpoint&&!paidTrafficEnabled)return fail("PAID_TRAFFIC_NOT_ENABLED",403);
  const billingMode=paidEndpoint?"PAID_ADDENDUM_V2":"PILOT_FREE";
+ const requestHash=await digest(canonical(body));
+ const verdictId=await deterministicVerdictId(requestHash);
+ const nowIso=new Date(now).toISOString();
+ const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
+ // Claim request identity and reject prior licensing use before slower evidence reads.
+ try{
+   await env.DB.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
+     (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
+     VALUES(?,?,?,?,?,?,'PENDING')`)
+      .bind(client,parsed.request_id,requestHash,parsed.subject.type,parsed.subject.id,nowIso).run();
+   const claim=await env.DB.prepare(`SELECT request_hash,state,response_json
+     FROM risk_gate_d1_requests WHERE client_id=? AND request_id=? LIMIT 1`)
+      .bind(client,parsed.request_id).first();
+   if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
+   if(claim.request_hash!==requestHash||claim.state==="DONE"||claim.state==="CLAIMED")
+      return failRedistribution();
+   const existing=await env.DB.prepare("SELECT verdict_id FROM predge_risk_gate_verdict_license "+
+      "WHERE request_id=? LIMIT 1").bind(parsed.request_id).first();
+   if(existing)return failRedistribution();
+   const owned=await env.DB.prepare(`UPDATE risk_gate_d1_requests SET state='CLAIMED'
+      WHERE client_id=? AND request_id=? AND state='PENDING'
+      RETURNING request_id`).bind(client,parsed.request_id).first();
+   if(!owned)return failRedistribution();
+ }catch{return fail("RISK_GATE_LEDGER_UNAVAILABLE",503);}
  // Three independent read-only probes. No waiting on a GRO-producing queue,
  // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
  // D1 schema or transport failure is an infrastructure error, not missing proof.
@@ -378,27 +402,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const customerPriceUsdc=usdcFromCents(lockedTerms.customer_price_usdc_cents);
  const contractGeomacroFeeUsdc=usdcFromCents(lockedTerms.geomacro_fee_usdc_cents);
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
- const requestHash=await digest(canonical(body));
- const verdictId=await deterministicVerdictId(requestHash);
- const nowIso=new Date(now).toISOString();
- const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
  try{
-   await env.DB.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
-     (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
-     VALUES(?,?,?,?,?,?,'PENDING')`)
-      .bind(client,parsed.request_id,requestHash,parsed.subject.type,parsed.subject.id,nowIso).run();
-   const claim=await env.DB.prepare(`SELECT request_hash,state,response_json
-     FROM risk_gate_d1_requests WHERE client_id=? AND request_id=? LIMIT 1`)
-      .bind(client,parsed.request_id).first();
-   if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
-   if(claim.request_hash!==requestHash||claim.state==="DONE"||claim.state==="CLAIMED")
-      return failRedistribution();
-   // PENDING claim must belong to the current request: older claims cannot
-   // run concurrently or replay unless already durably finalized.
-   const owned=await env.DB.prepare(`UPDATE risk_gate_d1_requests SET state='CLAIMED'
-      WHERE client_id=? AND request_id=? AND state='PENDING'
-      RETURNING request_id`).bind(client,parsed.request_id).first();
-   if(!owned)return failRedistribution();
    const quota=await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
      VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
