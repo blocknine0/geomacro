@@ -119,7 +119,10 @@ test("ICC runtime fetches official RSS once and keeps article/right claims false
  const row=result.results.find(x=>x.source_id==="icc_news");
  assert.equal(requests.length,10);assert.equal(result.http_requests,10);
  assert.equal(requests.filter(url=>url===ICC_OFFICIAL_NEWS_RSS).length,1);
- assert.equal(requests.includes("https://www.icc-cpi.int/news"),false);
+ assert.equal(requests.some(url=>{
+  try{const parsed=new URL(url);return parsed.origin==="https://www.icc-cpi.int"&&parsed.pathname==="/news";}
+  catch{return false;}
+ }),false);
  assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
  assert.equal(row.official_first_party_rss_verified,true);
  assert.equal(row.current_original_publication_verified,false);

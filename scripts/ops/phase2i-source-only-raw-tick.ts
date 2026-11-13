@@ -241,7 +241,7 @@ const newlyAcknowledged=queue.candidates.filter(candidate=>{
  const native=candidate.datePrecision==="day"?
   candidate.publishedAt.slice(0,10):candidate.publishedAt;
  const id=createHash("sha256").update(
-  candidate.category+"\n+candidate.articleUrl+"\n+native).digest("hex");
+  candidate.category+"\n"+candidate.articleUrl+"\n"+native).digest("hex");
  return verifiedStageIds.has(id);
 });
 const projectedByKey=new Map();

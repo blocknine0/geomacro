@@ -73,11 +73,22 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
    let mayUseRelatedMinistryIndex=false;
    let mayUseCourtRss=false;
    try{
-     totalHttpRequests++;
-     const response=await fetchImpl(source.url,{method:'GET',redirect:'error',
-       signal:AbortSignal.timeout(15000),headers:source.id==='icc_news'?{
-        ...ICC_NEWS_REQUEST_HEADERS,accept:'application/rss+xml,application/xml;q=0.9,text/xml;q=0.8'
-       }:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'*/*'}});
+     const isUnctad=source.id==='unctadstat_global';
+     const timeoutMs=isUnctad?25000:15000;
+     const maxAttempts=isUnctad?2:1;
+     let response;
+     for(let attempt=0;attempt<maxAttempts;attempt++){
+       totalHttpRequests++;
+       try{
+         response=await fetchImpl(source.url,{method:'GET',redirect:'error',
+           signal:AbortSignal.timeout(timeoutMs),headers:source.id==='icc_news'?{
+            ...ICC_NEWS_REQUEST_HEADERS,accept:'application/rss+xml,application/xml;q=0.9,text/xml;q=0.8'
+           }:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'*/*'}});
+         break;
+       }catch(error){
+         if(!(isUnctad&&attempt+1<maxAttempts&&error?.name==='TimeoutError'))throw error;
+       }
+     }
      if(!response.ok){
        row.reason='HTTP_'+response.status;
        mayUseRelatedMinistryIndex=[500,502,503,504].includes(response.status);

@@ -18,7 +18,12 @@ export const D1_HOURLY_WRITE_CEILING=45_000;
 
 export function need(condition:boolean,code:string):asserts condition {if(!condition)throw Error(code)}
 export function envString(name:string,min=1):string {const value=process.env[name]??'';need(value.length>=min,`RELEASE_ENV_${name}_MISSING`);return value}
-export const sha256=(s:string|Uint8Array):string=>createHash('sha256').update(s).digest('hex');
+// This SHA-256 helper is for canonical content and envelope integrity only.
+// Secret credentials must use a keyed HMAC/KDF, never this content digest.
+export const canonicalContentSha256=(canonicalContent:string|Uint8Array):string=>
+ createHash('sha256').update(canonicalContent).digest('hex');
+// Backwards-compatible name for existing non-credential content digest call sites.
+export const sha256=canonicalContentSha256;
 function normalized(value:unknown,depth=0):unknown{
  need(depth<24,'RELEASE_CANONICAL_DEPTH');
  if(value===null||typeof value==='string'||typeof value==='boolean')return value;

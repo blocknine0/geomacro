@@ -90,6 +90,9 @@ jobs:
       - name: Verify committed integrity-pinned public npm tarball registry before network
         run: node --test scripts/tests/bun-locked-registry-integrity.test.mjs
 
+      - name: Bun syntax check for production source-only intake (offline)
+        run: bun --check scripts/ops/phase2i-source-only-raw-tick.ts
+
       - name: Verify committed lockfile and install dependencies
         # GitHub runners can inherit Lovable's npm mirror, which returned
         # provider HTTP 429 in production CI on 2026-10-23. Force the public
