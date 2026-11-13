@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {generateKeyPairSync,verify} from "node:crypto";
+import {createHash,generateKeyPairSync,verify} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
 import {parseRequest,predgePaidRiskGateD1,predgeRiskGateD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
@@ -112,7 +112,7 @@ for(const paid of [false,true]){
   assert.equal(body.message,undefined);
   assert.equal(body.execution_authorized,false);
   assert.equal(body.decision_signature_scheme,"Ed25519");
-  assert.equal(body.decision_payload_sha256,require("node:crypto").createHash("sha256").update(canonical(body.decision_signed_payload)).digest("hex"));
+  assert.equal(body.decision_payload_sha256,createHash("sha256").update(canonical(body.decision_signed_payload)).digest("hex"));
   assert.equal(verify(null,Buffer.from(canonical(body.decision_signed_payload)),publicKey,
    Buffer.from(body.decision_signature_b64,"base64")),true);
   assert.deepEqual(body.redistribution_lock,{
