@@ -21,10 +21,9 @@ describe("Predge 0131 migration receipt signer",()=>{
   const payload={schema:"geomacro.predge-addendum-v2-migration-receipt.v1",status:"PASS"};
   const receipt=signPredge0131Receipt(payload,{keySource,keyId:"test-key",
    expectedKeyId:"test-key",trustedPublicSpkiB64:publicB64});
-  const {signature_base64,...signedPayload}=receipt;
   const signer=loadPredge0131ReceiptSigner({keySource,keyId:"test-key",
    expectedKeyId:"test-key",trustedPublicSpkiB64:publicB64});
-  expect(verify(null,Buffer.from(JSON.stringify(signedPayload)),
+  expect(verify(null,Buffer.from(JSON.stringify(payload)),
    createPublicKey({key:Buffer.from(publicB64,"base64"),format:"der",type:"spki"}),
    Buffer.from(signature_base64,"base64"))).toBe(true);
  });
