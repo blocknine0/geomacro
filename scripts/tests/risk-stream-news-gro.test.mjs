@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {DatabaseSync} from "node:sqlite";
 import {generateKeyPairSync,webcrypto} from "node:crypto";
-import {makeDailyNewsGro,issueDailyNewsBatch,issueDailyNewsGro,validateDailyNewsSignal}
+import {makeDailyNewsGro,issueDailyNewsBatch,issueDailyNewsGro,readDailyNewsGros,validateDailyNewsSignal}
  from "../../workers/control-plane/src/risk-stream-news-gro.mjs";
 globalThis.crypto??=webcrypto;
 const NOW=Date.parse("2026-11-14T12:00:00.000Z");
@@ -82,4 +82,25 @@ test("feature-off never issues, signer missing fails closed",async()=>{
   [src],{now:NOW})).status,"NEWS_GRO_AUTOMATION_HELD");
  await assert.rejects(issueDailyNewsGro({...env,RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:""},
   src,"basic_focused",{now:NOW}),/SIGNER_INVALID/u);
+});
+
+test("owner-only retrieval verifies pinned Ed25519 signature and excludes raw content",async()=>{
+ const {env}=database();
+ await issueDailyNewsBatch(env,[src],{now:NOW});
+ const request=new Request("https://internal.example/v1/internal/risk-stream/daily-news-gros?"+
+  "country_iso3=IND&category=GEOPOLITICS&limit=12");
+ const reply=await readDailyNewsGros(request,env,NOW);
+ assert.equal(reply.status,200);
+ assert.equal(reply.headers.get("cache-control"),"private, no-store");
+ const body=await reply.json();
+ assert.equal(body.signed_count,3);
+ assert.equal(body.signature_readback_verified,true);
+ assert.equal(body.commercial_delivery,false);
+ assert.ok(body.items.every(x=>x.payload.billable===false&&
+  x.signature_algorithm==="Ed25519"));
+ assert.doesNotMatch(JSON.stringify(body.items),/source_url|publisher_root_domain|original_title|raw_payload/iu);
+ const invalid=await readDailyNewsGros(new Request(
+  "https://internal.example/v1/internal/risk-stream/daily-news-gros?country_iso3=ZZZ&category=MACRO_FX"
+ ),env,NOW);
+ assert.notEqual(invalid.status,200);
 });
