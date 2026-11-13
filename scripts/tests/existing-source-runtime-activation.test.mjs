@@ -102,7 +102,10 @@ test('reuses actual existing UK parser; malformed provider pages remain unavaila
  assert.equal(uk.status,'PRIVATE_CANDIDATES_PARSED');assert.equal(uk.parsed_candidate_count,1);
  assert.equal(uk.current_original_publication_verified,false);
  assert.equal(r.results.find(s=>s.source_id==='opcw_news').status,'UNAVAILABLE');
- assert.equal(r.results.find(s=>s.source_id==='unctadstat_global').status,'HTML_CONTEXT_ONLY');
+ const unctad=r.results.find(s=>s.source_id==='unctadstat_global');
+ assert.equal(unctad.status,'UNAVAILABLE');
+ assert.equal(unctad.reason,'UNCTAD_RELEASE_CALENDAR_MARKER_MISSING');
+ assert.equal(unctad.commercial_eligible,false);
  assert.ok(!JSON.stringify(r).includes('Example'));
 });
 test('enforces byte bound from headers and streams and isolates failures without leaking error details',async()=>{
@@ -116,14 +119,53 @@ test('enforces byte bound from headers and streams and isolates failures without
  assert.equal(r.results[0].reason,'BODY_SIZE_LIMIT');assert.equal(r.results[1].reason,'BODY_SIZE_LIMIT');assert.equal(r.results[2].reason,'BODY_SIZE_LIMIT');
  assert.equal(r.unavailable,10);assert.ok(!JSON.stringify(r).includes('secret-token'));
 });
-test('dataset ZIP and HTML transport are never promoted to parsed observations or current events',async()=>{
+test('workbook transport without publisher-native release metadata stays unavailable',async()=>{
  const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
-   if(new URL(url).hostname==='thedocs.worldbank.org'){const b=Buffer.alloc(120);b[0]=0x50;b[1]=0x4b;return new Response(b);}
+   if(new URL(url).hostname==='thedocs.worldbank.org'){
+     const b=Buffer.alloc(120);b[0]=0x50;b[1]=0x4b;
+     return new Response(b,{headers:{'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}});
+   }
+   if(new URL(url).hostname==='www.worldbank.org')
+     return new Response('<html>World Bank Commodity Markets</html>',{headers:{'content-type':'text/html'}});
    return new Response('<html>context</html>',{headers:{'content-type':'text/html'}});
  }});
  const wb=r.results.find(s=>s.source_id==='world_bank_commodity_prices');
- assert.equal(wb.status,'DATASET_TRANSPORT_ONLY');assert.equal(wb.parsed_candidate_count,null);
+ assert.equal(wb.status,'UNAVAILABLE');assert.equal(wb.reason,'WORLD_BANK_PINK_SHEET_RELEASE_LABEL_MISSING');
+ assert.equal(wb.parsed_candidate_count,null);assert.equal(wb.native_release_clock_verified,undefined);
+ assert.equal(wb.commercial_eligible,false);
  assert.equal(r.source_publication_clocks_requalified,false);assert.equal(r.signed_intelligence_published,false);
+ assert.equal(r.raw_publisher_content_persisted,false);assert.equal(r.d1_writes+r.b2_requests+r.payments,0);
+});
+
+test('UNCTAD and World Bank publisher release clocks parse as metadata only and remain noncommercial',async()=>{
+ const unctadSource=existingPrivateP0Sources().find(s=>s.id==='unctadstat_global');
+ const wbSource=existingPrivateP0Sources().find(s=>s.id==='world_bank_commodity_prices');
+ const workbook=Buffer.alloc(128);workbook[0]=0x50;workbook[1]=0x4b;
+ const releaseCalendar='<html><title>UNCTADstat</title><h2>1 October 2026</h2>'+
+  '<p>Commodity prices: UNCTAD Commodity Price Index - Monthly</p><span>Published</span></html>';
+ const wbRelease='<html><h1>World Bank Commodity Markets</h1>'+
+  '<p>Latest Commodity Prices Published (10/03/2026)</p></html>';
+ const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
+   if(url===unctadSource.url)return new Response(releaseCalendar,{headers:{'content-type':'text/html'}});
+   if(url===wbSource.url)return new Response(workbook,{headers:{
+    'content-type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}});
+   if(url===wbSource.publisherMetadataUrl)return new Response(wbRelease,{headers:{'content-type':'text/html'}});
+   return new Response('',{status:403});
+ }});
+ const unctad=r.results.find(s=>s.source_id==='unctadstat_global');
+ const wb=r.results.find(s=>s.source_id==='world_bank_commodity_prices');
+ assert.equal(unctad.status,'MACHINE_DATA_METADATA_PARSED');
+ assert.equal(unctad.native_release_clock_verified,true);
+ assert.equal(unctad.publisher_release_at_utc,'2026-10-01T00:00:00.000Z');
+ assert.equal(wb.status,'MACHINE_DATA_METADATA_PARSED');
+ assert.equal(wb.dataset_transport_verified,true);
+ assert.equal(wb.native_release_clock_verified,true);
+ assert.equal(wb.publisher_release_at_utc,'2026-10-03T00:00:00.000Z');
+ assert.equal(unctad.commercial_eligible,false);assert.equal(wb.commercial_eligible,false);
+ assert.equal(r.source_rights_approved,false);assert.equal(r.source_publication_clocks_requalified,false);
+ assert.equal(r.signed_intelligence_published,false);assert.equal(r.commercial_eligible,false);
+ assert.equal(r.raw_publisher_content_persisted,false);
+ assert.equal(r.supabase_requests+r.b2_requests+r.d1_writes+r.payments,0);
 });
 
 test('the exact large UK dataset gets its own bound, all other sources retain 2 MiB',async()=>{
