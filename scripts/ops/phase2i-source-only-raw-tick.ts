@@ -28,6 +28,7 @@ import {mergePrivatePhase2iSourceBacklog,sealPrivatePhase2iSourceBacklog}
 import {appendAndLeasePhase2i,acknowledgePhase2i,phase2iDurableStatus,
  durableCandidateId} from "../lib/phase2i-durable-queue-client.mjs";
 import {COUNTRIES_195} from "../../src/lib/canonical-country-registry-195.ts";
+import {HOT50_COUNTRY_SET} from "../lib/hot-50-country-watch.mjs";
 import {normalizeReusableNewsJson} from "../../src/lib/reusable-news-json.ts";
 import {deriveStatelessSignals} from "../../src/lib/stateless-intelligence-model.ts";
 
@@ -155,6 +156,64 @@ const stage=await stagePhase2iOsintFairRaw({
 });
 if(stage.selected_count>0&&stage.d1_readback_verified!==true)
  throw Error("PHASE2I_SOURCE_ONLY_RAW_D1_RECEIPT_UNVERIFIED");
+const newlyAcknowledged=candidatesWithD1Receipts.filter((candidate,index)=>
+ candidate.d1Acknowledged===true&&queue.candidates[index].d1Acknowledged!==true);
+const projectedByKey=new Map();
+for(const candidate of newlyAcknowledged){
+ const countryIso3=privateOsintCountryMention(candidate.title,COUNTRIES_195);
+ if(!countryIso3||!HOT50_COUNTRY_SET.has(countryIso3))continue;
+ let article,source;
+ try{article=new URL(candidate.articleUrl);source=new URL(candidate.sourceUrl)}catch{continue}
+ if(article.protocol!=="https:"||source.protocol!=="https:"||
+    article.username||article.password||article.port||article.hash||
+    source.username||source.password||source.port)continue;
+ const eventClock=candidate.datePrecision==="day"?
+  candidate.publishedAt.slice(0,10)+"T00:00:00.000Z":candidate.publishedAt;
+ const time=Date.parse(eventClock);
+ if(!Number.isFinite(time)||time>now.getTime()+60000||
+    time<now.getTime()-72*3600000)continue;
+ const normalizedTitle=String(candidate.title??"").normalize("NFKC")
+  .toLocaleLowerCase("en").replace(/\\s+/gu," ").trim();
+ if(normalizedTitle.length<8||normalizedTitle.length>1200)continue;
+ const domain=article.hostname.toLowerCase().replace(/^www\\./u,"");
+ const fingerprint=createHash("sha256").update([
+  countryIso3,candidate.category,eventClock,normalizedTitle
+ ].join("|")).digest("hex");
+ const title_sha256=createHash("sha256").update(candidate.title).digest("hex");
+ const key=[countryIso3,candidate.category,fingerprint,domain].join("|");
+ if(projectedByKey.has(key))continue;
+ projectedByKey.set(key,{
+  country_iso3:countryIso3,derived_category:candidate.category,
+  event_fingerprint:fingerprint,publisher_domain:domain,
+  canonical_source_url:article.href,event_clock:new Date(time).toISOString(),
+  clock_basis:"INDEX_OBSERVED",extracted_entities:[],
+  source_id:source.hostname.toLowerCase().replace(/^www\\./u,""),
+  title_sha256,fact_basis:"SEARCH_TITLE_ONLY",original_page_fetched:false,
+  rights_verified:false,commercial_eligible:false,
+ });
+}
+const progressiveProjection=[...projectedByKey.values()];
+let progressiveProjectionAccepted=0;
+for(let offset=0;offset<progressiveProjection.length;offset+=25){
+ const observations=progressiveProjection.slice(offset,offset+25);
+ const response=await fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-observations",{
+  method:"POST",redirect:"error",cache:"no-store",
+  headers:{"Authorization":"Bearer "+controlToken,"Accept":"application/json",
+   "Content-Type":"application/json","Cache-Control":"no-store"},
+  body:JSON.stringify({schema:"geomacro.progressive-observation-projection-request.v1",observations}),
+  signal:AbortSignal.timeout(12000),
+ });
+ if(!response.ok)throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_HTTP_"+response.status);
+ const receipt=await response.json();
+ if(receipt?.ok!==true||receipt.schema!=="geomacro.progressive-observation-projection.v1"||
+    receipt.accepted!==observations.length||
+    receipt.unverified_observations!==observations.length||
+    receipt.rights_verified!==false||receipt.commercial_eligible!==false||
+    receipt.standard_corroboration_admitted!==false||receipt.raw_news_text_stored!==false)
+  throw Error("PROGRESSIVE_OBSERVATION_PROJECTION_RECEIPT_INVALID");
+ progressiveProjectionAccepted+=receipt.accepted;
+}
+
 // A healthy, genuinely checked feed is a check heartbeat even with zero
 // new native-dated stories. Persist three sanitized category checks in D1
 // and independently read them back; never create an article or renew clocks
