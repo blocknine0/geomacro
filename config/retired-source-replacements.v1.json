@@ -782,7 +782,9 @@
       "checked_at": "2026-11-07T22:51:45.242Z",
       "native_72h_items_at_probe": 70,
       "same_article_url_hashes": [],
-      "full_duplicate_news_coverage_verified": false
+      "full_duplicate_news_coverage_verified": false,
+      "activation_state": "disabled_pending_live_verification",
+      "disabled_reason_code": "LIVE_PROBE_FAILURE_2026_11_13_RUN_43368311767"
     },
     {
       "id": "private_replacement_36c61c32f0d69c1cd2e7",
