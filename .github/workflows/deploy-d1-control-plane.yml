@@ -356,6 +356,9 @@ jobs:
       GEOMACRO_LOW_REVIEW_PUBLIC_SHA256: ${{ secrets.GEOMACRO_LOW_REVIEW_PUBLIC_SHA256 }}
       # Separate protected credential: never reuse the research or root/admin token.
       PREDGE_RISK_GATE_TOKEN: ${{ secrets.PREDGE_RISK_GATE_TOKEN }}
+      PREDGE_PAID_RISK_GATE_TOKEN: ${{ secrets.PREDGE_PAID_RISK_GATE_TOKEN }}
+      PREDGE_PAID_TRAFFIC_ENABLED: ${{ vars.PREDGE_PAID_TRAFFIC_ENABLED || 'NO' }}
+      PREDGE_PAID_GO_LIVE_CROSSCHECK: ${{ vars.PREDGE_PAID_GO_LIVE_CROSSCHECK || '' }}
       GEOMACRO_API_CREDENTIAL_PEPPER: ${{ secrets.GEOMACRO_API_CREDENTIAL_PEPPER }}
       RISK_GATE_OBSERVATION_HMAC_KEY: ${{ secrets.RISK_GATE_OBSERVATION_HMAC_KEY }}
       RISK_GATE_TIERED_TOKEN: ${{ secrets.RISK_GATE_TIERED_TOKEN }}
@@ -564,6 +567,13 @@ jobs:
           if (!/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error('INVALID_DEPLOY_SOURCE_SHA');
           const config = JSON.parse(output);
           config.vars = { ...(config.vars ?? {}), GEOMACRO_SOURCE_SHA: sourceSha };
+          // Paid Addendum v2 is fail-closed unless an owner sets both the
+          // protected environment flag and its explicit go-live cross-check.
+          const paidTrafficEnabled = String(process.env.PREDGE_PAID_TRAFFIC_ENABLED || 'NO').trim();
+          const paidGoLiveCrosscheck = String(process.env.PREDGE_PAID_GO_LIVE_CROSSCHECK || '').trim();
+          config.vars.PREDGE_PAID_TRAFFIC_ENABLED = paidTrafficEnabled;
+          if (paidGoLiveCrosscheck) config.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK = paidGoLiveCrosscheck;
+          else delete config.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK;
           if(config.vars.RISK_GATE_COUNTRY_SCOPE !== process.env.RISK_GATE_COUNTRY_SCOPE)
             throw new Error('RISK_GATE_DEPLOY_SCOPE_MISMATCH');
           // Existing production jobs remain unchanged until B2 activation.
@@ -939,6 +949,22 @@ jobs:
             echo "PREDGE_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
             echo "::warning::PREDGE_RISK_GATE_TOKEN missing; new endpoint fails closed until protected secret provisioned"
           fi
+          # Paid Addendum v2 uses a separate credential; absence is valid and
+          # leaves the endpoint inaccessible. Never print the credential.
+          if test -n "${PREDGE_PAID_RISK_GATE_TOKEN:-}"; then
+            if ! [[ "$PREDGE_PAID_RISK_GATE_TOKEN" =~ ^[a-f0-9]{64}$ ]] ||
+               test "$PREDGE_PAID_RISK_GATE_TOKEN" = "$CONTROL_PLANE_TOKEN" ||
+               test "$PREDGE_PAID_RISK_GATE_TOKEN" = "$PREDGE_RISK_GATE_TOKEN" ||
+               test "$PREDGE_PAID_RISK_GATE_TOKEN" = "$PREDGE_RESEARCH_NEWS_TOKEN" ||
+               test "$PREDGE_PAID_RISK_GATE_TOKEN" = "$ROOT_LEDGER_TOKEN"; then
+              echo "::error::PREDGE_PAID_RISK_GATE_SECRET_INVALID_OR_REUSED"; exit 5;
+            fi
+            echo "::add-mask::$PREDGE_PAID_RISK_GATE_TOKEN"
+            echo "PREDGE_PAID_RISK_GATE_TOKEN_CONFIGURED=true" >> "$GITHUB_ENV"
+          else
+            echo "PREDGE_PAID_RISK_GATE_TOKEN_CONFIGURED=false" >> "$GITHUB_ENV"
+            echo "::notice::PREDGE_PAID_RISK_GATE_TOKEN_ABSENT_PAID_ENDPOINT_FAILS_CLOSED"
+          fi
           if test -n "${RISK_OBJECT_VERIFY_KEYS_JSON:-}"; then
             node -e 'const d=JSON.parse(process.env.RISK_OBJECT_VERIFY_KEYS_JSON); if(!d||typeof d!=="object"||Array.isArray(d))process.exit(3)'
             echo "RISK_GATE_VERIFY_KEYS_CONFIGURED=true" >> "$GITHUB_ENV"
@@ -1002,6 +1028,10 @@ jobs:
           console.log("ASK_PUBLIC_MODEL_CACHE_AUTH_D1_WRITE_READBACK_PASS=true");
           NODE
           printf '%s' "$PREDGE_RESEARCH_NEWS_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_RESEARCH_NEWS_TOKEN --config wrangler.runtime.jsonc >/tmp/predge-research-secret-put.log
+          if test "${PREDGE_PAID_RISK_GATE_TOKEN_CONFIGURED:-}" = "true"; then
+            printf '%s' "$PREDGE_PAID_RISK_GATE_TOKEN" | npx -y "wrangler@${WRANGLER_VERSION}" secret put PREDGE_PAID_RISK_GATE_TOKEN --config wrangler.runtime.jsonc >/dev/null
+            echo "PREDGE_PAID_RISK_GATE_TOKEN_PROVISIONED=true"
+          fi
           # Install an approved ReliefWeb appname only if provisioned.
           # Never silently substitute an unapproved catalogue identifier.
           if test -n "${RELIEFWEB_APPROVED_APPNAME:-}"; then
