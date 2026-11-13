@@ -2,7 +2,7 @@
 /** Complete CLOSED UTC calendar day, across every D1 DB in the account. */
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING,ACCOUNT_RE,envString,graphql,need,providerUsageHmacSha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
+import {D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING,ACCOUNT_RE,envString,queryCloudflareAnalytics,need,providerUsageHmacSha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
 const QUERY=`query GeoMacroD1Day($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
@@ -18,7 +18,7 @@ export async function observedD1Day(day:string){
  let data:any,credential_source:'BILLING_READ_TOKEN'|'EXISTING_ACCOUNT_API_TOKEN'='BILLING_READ_TOKEN';
  let credentialName:'CLOUDFLARE_BILLING_READ_TOKEN'|'CLOUDFLARE_API_TOKEN'='CLOUDFLARE_BILLING_READ_TOKEN';
  try{
-  data=await graphql(QUERY,variables);
+  data=await queryCloudflareAnalytics(QUERY,variables);
  }catch(error){
   // Only access-denial permits ONE read-only attempt with the existing
   // protected Cloudflare API token. Never invent an account, reuse a stale
@@ -30,7 +30,7 @@ export async function observedD1Day(day:string){
   need(secondary.length>=20&&secondary!==primary,
    'D1_PROOF_NO_DISTINCT_EXISTING_CREDENTIAL');
   try{
-   data=await graphql(QUERY,variables,'CLOUDFLARE_API_TOKEN');
+   data=await queryCloudflareAnalytics(QUERY,variables,'CLOUDFLARE_API_TOKEN');
   }catch(secondError){
    if(secondError instanceof Error&&secondError.message==='RELEASE_GRAPHQL_ACCESS_DENIED')
     throw Error('D1_PROOF_BOTH_EXISTING_CREDENTIALS_DENIED');
