@@ -2,7 +2,7 @@
 /** Complete CLOSED UTC calendar day, across every D1 DB in the account. */
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING,ACCOUNT_RE,envString,graphql,need,sha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
+import {D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING,ACCOUNT_RE,envString,graphql,need,canonicalContentSha256,canonical,signedReport,holdError,freshUtcDay} from './release-common.ts';
 const QUERY=`query GeoMacroD1Day($accountTag:string!,$start:Date!,$end:Date!){
  viewer{accounts(filter:{accountTag:$accountTag}){
   d1AnalyticsAdaptiveGroups(limit:1000,filter:{date_geq:$start,date_leq:$end}){
@@ -55,7 +55,8 @@ export async function observedD1Day(day:string){
  databaseReceipts.sort((a,b)=>a.database_id.localeCompare(b.database_id));
  return {day,rows_read:rowsRead,rows_written:rowsWritten,database_count:seen.size,database_receipts:databaseReceipts,
   analytics_credential_source:credential_source,
-  provider_query_result_sha256:sha256(canonical(data)),observed_at:new Date().toISOString()};
+  provider_query_result_sha256:canonicalContentSha256(canonical({day,rows_read:rowsRead,rows_written:rowsWritten,
+   database_count:seen.size,database_receipts:databaseReceipts})),observed_at:new Date().toISOString()};
 }
 export async function main(args=process.argv.slice(2)){
  const selected=args.find(x=>/^\d{4}-\d{2}-\d{2}$/.test(x));
