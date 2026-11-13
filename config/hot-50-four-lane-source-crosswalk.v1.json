@@ -3313,9 +3313,9 @@
       "commercial_eligible": false
     },
     {
-      "id": "private_global_hub_un_security_council",
-      "registry_name": "un_security_council_docs_rss",
-      "url": "https://docs.un.org/rss/scdocs.xml",
+      "id": "private_global_hub_un_hq_press",
+      "registry_name": "un_hq_official_press_rss",
+      "url": "https://press.un.org/en/rss.xml",
       "categories": [
         "geopolitics"
       ],
