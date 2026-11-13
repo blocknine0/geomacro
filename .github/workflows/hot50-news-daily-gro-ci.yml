@@ -1,0 +1,42 @@
+name: Hot50 Daily News Signed GRO CI
+on:
+  pull_request:
+    paths:
+      - "workers/control-plane/src/risk-stream-news-gro.mjs"
+      - "workers/control-plane/src/risk-stream-pipeline.mjs"
+      - "workers/control-plane/src/risk-stream-autonomous-hot50.mjs"
+      - "workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql"
+      - "scripts/tests/risk-stream-news-gro.test.mjs"
+      - "scripts/tests/hot50-daily-news-stream-wiring.test.mjs"
+      - ".github/workflows/hot50-news-daily-gro-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "workers/control-plane/src/risk-stream-news-gro.mjs"
+      - "workers/control-plane/src/risk-stream-pipeline.mjs"
+      - "workers/control-plane/src/risk-stream-autonomous-hot50.mjs"
+      - "workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql"
+      - "scripts/tests/risk-stream-news-gro.test.mjs"
+      - "scripts/tests/hot50-daily-news-stream-wiring.test.mjs"
+      - ".github/workflows/hot50-news-daily-gro-ci.yml"
+permissions:
+  contents: read
+jobs:
+  signed-news-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify all three-category GRO and queue contracts
+        run: |
+          set -euo pipefail
+          node --check workers/control-plane/src/risk-stream-news-gro.mjs
+          node --check workers/control-plane/src/risk-stream-pipeline.mjs
+          node --check workers/control-plane/src/risk-stream-autonomous-hot50.mjs
+          node --test scripts/tests/risk-stream-news-gro.test.mjs scripts/tests/hot50-daily-news-stream-wiring.test.mjs
+          node --test scripts/tests/risk-stream-pipeline.test.mjs scripts/tests/risk-stream-autonomous-hot50.test.mjs

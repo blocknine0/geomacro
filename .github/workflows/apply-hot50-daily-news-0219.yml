@@ -1,0 +1,155 @@
+name: Protected Hot50 Daily News GRO Migration 0219
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: preflight is read-only; apply runs additive 0219 only
+        type: choice
+        options: [preflight, apply]
+        required: true
+      expected_main_sha:
+        description: Exact reviewed current-main SHA
+        type: string
+        required: true
+      approval:
+        description: APPLY_HOT50_NEWS_0219_PRODUCTION required for apply
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: geomacro-hot50-daily-news-migration-0219-production
+  cancel-in-progress: false
+jobs:
+  protected-migration:
+    if: github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      MODE: ${{ inputs.mode }}
+      EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+      APPROVAL: ${{ inputs.approval }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Verify exact-main, provider D1 identity and paid quota
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$MODE" = preflight -o "$MODE" = apply
+          test "$EXPECTED_MAIN_SHA" = "$(git rev-parse HEAD)"
+          test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",x=>s+=x).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
+          if [ "$MODE" = apply ]; then
+            test "$APPROVAL" = APPLY_HOT50_NEWS_0219_PRODUCTION
+            test "${#SIGNING_JWK}" -ge 40
+          fi
+          test -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
+          mkdir -p "$RUNNER_TEMP/geomacro-hot50-0219" artifacts/hot50-daily-news-gro
+          npm install --prefix "$RUNNER_TEMP/wrangler-bin" --no-save --ignore-scripts --no-audit --no-fund wrangler@4.136.3
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {assertD1DatabaseIdentity} from './scripts/ops/predge-addendum-v2-d1-identity.mjs';
+          const r=await fetch(
+           `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/d1/database/${process.env.D1_DATABASE_ID}`,
+           {headers:{Authorization:'Bearer '+process.env.CLOUDFLARE_API_TOKEN},
+            redirect:'error',signal:AbortSignal.timeout(15000)});
+          if(!r.ok)throw Error('HOT50_0219_D1_IDENTITY_HTTP_'+r.status);
+          assertD1DatabaseIdentity(await r.json(),{databaseId:process.env.D1_DATABASE_ID,
+           databaseName:'geomacro-control-plane'});
+          const cfg=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8')
+           .replace(/^\s*\/\/.*$/gm,''));
+          cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:process.env.D1_DATABASE_ID}));
+          writeFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/wrangler.json',JSON.stringify(cfg));
+          NODE
+          node --input-type=module <<'NODE'
+          import {checkD1PaidMonthlyHeadroom} from './scripts/lib/d1-workers-paid-monthly-governor.mjs';
+          const r=await checkD1PaidMonthlyHeadroom({env:process.env,lane:'migration',
+            estimatedMigrationRowsRead:1000000,estimatedMigrationRowsWritten:10000});
+          if(r.status!=='PASS')throw Error(r.code??'HOT50_0219_QUOTA_NOT_VERIFIED');
+          console.log(JSON.stringify({schema:r.schema,status:r.status,
+           code:r.code,remaining_rows_read:r.remaining_rows_read,
+           remaining_rows_written:r.remaining_rows_written}));
+          NODE
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('d1_migrations','risk_stream_evidence','risk_stream_signed_gro','risk_stream_hot50_cell_snapshots','risk_stream_daily_news_gro','idx_risk_stream_daily_news_country_day','idx_risk_stream_daily_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0219_hot50_daily_news_signed_gro.sql' LIMIT 2" > "$RUNNER_TEMP/geomacro-hot50-0219/before.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const result=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/before.json','utf8'));
+          const rows=result.flatMap(x=>x.results??[]);
+          for(const name of ['d1_migrations','risk_stream_evidence','risk_stream_signed_gro',
+            'risk_stream_hot50_cell_snapshots']){
+           if(!rows.some(r=>r.name===name))throw Error('HOT50_0219_BASE_SCHEMA_MISSING_'+name);
+          }
+          const already=rows.some(r=>r.name==='0219_hot50_daily_news_signed_gro.sql');
+          const objects=['risk_stream_daily_news_gro','idx_risk_stream_daily_news_country_day',
+           'idx_risk_stream_daily_news_event'];
+          if(already||objects.some(n=>rows.some(r=>r.name===n))){
+           throw Error('HOT50_0219_ALREADY_PRESENT_REVIEW_REQUIRED');
+          }
+          console.log(JSON.stringify({schema:'geomacro.hot50-news-0219-preflight.v1',
+            result:'PASS',main_sha:process.env.EXPECTED_MAIN_SHA,quota_and_db_verified:true,
+            migration_applied:false,commercial_release:false}));
+          NODE
+      - name: Apply only protected additive 0219
+        if: inputs.mode == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" --file workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" --command "INSERT INTO d1_migrations(name) SELECT '0219_hot50_daily_news_signed_gro.sql' WHERE NOT EXISTS (SELECT 1 FROM d1_migrations WHERE name='0219_hot50_daily_news_signed_gro.sql')"
+      - name: Verify physical provider schema and sign immutable migration receipt
+        if: inputs.mode == 'apply'
+        shell: bash
+        run: |
+          set -euo pipefail
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --json --config "$RUNNER_TEMP/geomacro-hot50-0219/wrangler.json" --command "SELECT type,name,sql FROM sqlite_schema WHERE name IN ('risk_stream_daily_news_gro','idx_risk_stream_daily_news_country_day','idx_risk_stream_daily_news_event') ORDER BY name; SELECT name FROM d1_migrations WHERE name='0219_hot50_daily_news_signed_gro.sql'" > "$RUNNER_TEMP/geomacro-hot50-0219/after.json"
+          node --input-type=module <<'NODE'
+          import {readFileSync,writeFileSync} from 'node:fs';
+          import {createPrivateKey,createPublicKey,createHash,sign,verify} from 'node:crypto';
+          const r=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-hot50-0219/after.json','utf8'));
+          const rows=r.flatMap(x=>x.results??[]);
+          const required=['risk_stream_daily_news_gro','idx_risk_stream_daily_news_country_day',
+           'idx_risk_stream_daily_news_event','0219_hot50_daily_news_signed_gro.sql'];
+          if(JSON.stringify([...new Set(rows.map(x=>x.name))].sort())!==JSON.stringify([...required].sort()))
+           throw Error('HOT50_0219_PROVIDER_READBACK_DIVERGED');
+          const table=rows.find(x=>x.name==='risk_stream_daily_news_gro')?.sql??'';
+          if(!table.includes('commercial_sale_authorized=0')||!table.includes('raw_source_disclosed=0'))
+           throw Error('HOT50_0219_SAFETY_SCHEMA_INVALID');
+          const unsigned={schema:'geomacro.hot50-daily-news-gro-migration-receipt.v1',
+           status:'PASS',database_id:process.env.D1_DATABASE_ID,
+           main_sha:process.env.EXPECTED_MAIN_SHA,
+           migration:'0219_hot50_daily_news_signed_gro.sql',
+           sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0219_hot50_daily_news_signed_gro.sql')).digest('hex'),
+           objects:required,provider_readback_verified:true,
+           commercial_release_unchanged:true,no_funds:true,verified_at:new Date().toISOString()};
+          const jwk=JSON.parse(process.env.SIGNING_JWK);
+          const privateKey=createPrivateKey({key:jwk,format:'jwk'});
+          if(privateKey.asymmetricKeyType!=='ed25519')throw Error('HOT50_0219_SIGNER_INVALID');
+          const pub=createPublicKey(privateKey);
+          const data=Buffer.from(JSON.stringify(unsigned));
+          const signature=sign(null,data,privateKey);
+          if(!verify(null,data,pub,signature))throw Error('HOT50_0219_SIGNATURE_SELF_CHECK_FAILED');
+          const receipt={...unsigned,signature_scheme:'Ed25519',
+           receipt_public_key_sha256:createHash('sha256').update(pub.export({format:'der',type:'spki'})).digest('hex'),
+           signature_b64:signature.toString('base64')};
+          writeFileSync('artifacts/hot50-daily-news-gro/migration-0219-receipt.json',
+           JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
+          NODE
+      - name: Archive signed provider receipt
+        if: inputs.mode == 'apply' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: hot50-news-daily-0219-${{ github.run_id }}
+          path: artifacts/hot50-daily-news-gro/migration-0219-receipt.json
+          if-no-files-found: error
+          retention-days: 30
