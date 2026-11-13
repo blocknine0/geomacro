@@ -4,7 +4,7 @@ import {
  ICC_OFFICIAL_NEWS_RSS,pinnedIccOriginalNewsLink,parseIccOfficialNewsRss
 } from "../lib/icc-official-news-rss.mjs";
 import {observeExistingPrivateP0Sources} from "../ops/observe-p0-private-source-runtime.mjs";
-import {parseIccArticleHtml,discoverIccArticleUrls} from "../../global-intelligence/adapters/icc-news.mjs";
+import {parseIccArticleHtml,discoverIccArticleUrls,ICC_NEWS_REQUEST_HEADERS} from "../../global-intelligence/adapters/icc-news.mjs";
 const now=new Date("2026-10-24T12:20:00Z");
 const url="https://www.icc-cpi.int/news/high-representative/vice-president-kaja-kallas-visits-international-criminal-court";
 const item='<item><title><![CDATA[High Representative visits the International Criminal Court]]></title>'+
@@ -35,6 +35,7 @@ test("server-rendered ICC news listing yields only pinned first-party story URLs
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court</html>'),[]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a HREF="/node/241777">Latest release</a></html>'),["https://www.icc-cpi.int/node/241777"]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a data-drupal-link-system-path="node/241778">Latest release</a></html>'),["https://www.icc-cpi.int/node/241778"]);
+ assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <article data-drupal-link-system-path="node/241780"><h2>ICC listing card</h2></article></html>'),["https://www.icc-cpi.int/node/241780"]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a href="/node/241779?ln=en&amp;page=1">Latest release</a></html>'),["https://www.icc-cpi.int/node/241779"]);
 });
 test("RSS feed dates never verify original publication or grant licensing",()=>{
@@ -147,7 +148,11 @@ test("ICC listing requests negotiate HTML and parse canonical Drupal node links"
  const row=receipt.results.find(item=>item.source_id==="icc_news");
  const listing=seen.find(item=>item.url==="https://www.icc-cpi.int/news");
  assert.match(listing.headers.accept,/text\/html/u);
- assert.match(listing.headers["user-agent"],/GeoMacro-P0-Source-Discovery/u);
+ assert.equal(listing.headers["user-agent"],ICC_NEWS_REQUEST_HEADERS["user-agent"]);
+ assert.match(listing.headers["user-agent"],/Mozilla\/5\.0.*GeomacroBot/u);
+ assert.equal(listing.headers["accept-language"],"en-US,en;q=0.9");
+ const article=seen.find(item=>item.url==="https://www.icc-cpi.int/node/241777");
+ assert.equal(article.headers["user-agent"],ICC_NEWS_REQUEST_HEADERS["user-agent"]);
  assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
  assert.equal(row.native_publication_at_utc,"2026-11-12T08:00:00.000Z");
  assert.equal(row.commercial_eligible,false);

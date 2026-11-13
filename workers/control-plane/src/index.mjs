@@ -33,7 +33,7 @@ import {publicSharedDerivedNewsFeed} from "./shared-derived-news-feed.mjs";
 import {projectPublicMachineDomainResponse} from "./public-machine-domain-reuse.mjs";
 import {readNewsIntakePolicy,storeNewsIntakePolicy,admitProgressiveRiskFacts} from "./news-intake-policy.mjs";
 import {predgeResearchDerivedNewsFeed} from "./predge-research-derived-news.mjs";
-import {predgePaidRiskGateD1,predgeRiskGateD1,predgeRiskGateD1Readiness} from "./predge-risk-gate-d1.mjs";
+import {predgePaidRiskGateD1,predgeRiskGateD1,predgeRiskGateD1Readiness,verifyPredgePaidVerdictD1} from "./predge-risk-gate-d1.mjs";
 import {controlledRiskGateEvaluate} from "./risk-gate-controlled-bypass.mjs";
 import {DAILY_RG_CORRIDORS,runDailyRiskGates,syncDailyRiskToSupabase,cleanupDailyRiskSupabase,getDailyRiskGate} from "./daily-risk-gate-generator.mjs";
 import {readGroAutoSigningHealth} from "./gro-auto-signing-health.mjs";
@@ -1743,6 +1743,8 @@ export default {
       return predgeRiskGateD1(request,env);
     if(url.pathname==="/v2/partner/predge/paid-risk-gate")
       return predgePaidRiskGateD1(request,env);
+    if(url.pathname==="/v2/partner/predge/verify-verdict")
+      return verifyPredgePaidVerdictD1(request,env);
     if(url.pathname==="/v1/risk-gate/unified/evaluate")
       return unifiedRiskGateEvaluate(request,env);
     if(url.pathname==="/v1/risk-gate/commercial/evaluate")

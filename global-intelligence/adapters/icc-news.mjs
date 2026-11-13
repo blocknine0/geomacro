@@ -1,6 +1,11 @@
 import { createHash } from "node:crypto";
 
 export const ICC_NEWS_URL = "https://www.icc-cpi.int/news";
+export const ICC_NEWS_REQUEST_HEADERS = Object.freeze({
+  "user-agent": "Mozilla/5.0 (compatible; GeomacroBot/1.0; +https://geomacro.live)",
+  "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  "accept-language": "en-US,en;q=0.9"
+});
 const ICC_HOST = "www.icc-cpi.int";
 
 function clean(value) {
@@ -127,8 +132,11 @@ export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
  if(!Number.isInteger(limit)||limit<1||limit>10)
   throw Error("ICC_NEWS_ARTICLE_LINK_LIMIT_INVALID");
  const links=[],seen=new Set();
- for(const match of input.matchAll(/<a\b[^>]*>/giu)){
-  const tag=match[0],systemPath=attr(match[0],"data-drupal-link-system-path");
+ // Drupal occasionally puts its system-path link metadata on a card wrapper
+ // rather than the nested anchor. Read only explicit first-party href/system-path
+ // values; never synthesize article URLs from titles or IDs.
+ for(const match of input.matchAll(/<[^>]+>/giu)){
+  const tag=match[0],systemPath=attr(tag,"data-drupal-link-system-path");
   const href=attr(tag,"href")??(systemPath&&/^node\/[1-9][0-9]{2,8}$/u.test(systemPath)?"/"+systemPath:null);
   if(!href)continue;
   const resolved=absoluteUrl(href,baseUrl);if(!resolved)continue;

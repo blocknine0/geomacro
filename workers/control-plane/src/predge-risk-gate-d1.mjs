@@ -240,6 +240,44 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
     saved.settlement_due_date===settlementDueDate);
  }catch{return false;}
 }
+const REDISTRIBUTION_MESSAGE="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
+function redistributionDenied(){
+ return Response.json({ok:false,error:"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED",
+  execution_authorized:false,message:REDISTRIBUTION_MESSAGE},{status:403,headers});
+}
+function paidLicenseActionContext(parsed){
+ const metadata=parsed.action_context?.metadata;
+ const market=metadata?.market_id,condition=metadata?.condition_id;
+ if((typeof market!=="string"&&typeof market!=="number")||
+    (typeof condition!=="string"&&typeof condition!=="number"))return null;
+ const marketId=String(market).trim(),conditionId=String(condition).trim();
+ if(!marketId||marketId.length>256||!conditionId||conditionId.length>256)return null;
+ return {marketId,conditionId};
+}
+async function paidScopeLockId(parsed,{marketId,conditionId}){
+ return digest(canonical({client:"predge",subject_id:parsed.subject.id,tier:parsed.tier,
+  market_id:marketId,condition_id:conditionId}));
+}
+async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdictId,scopeLockId}){
+ const request=await db.prepare(`SELECT request_hash,state FROM risk_gate_d1_requests
+   WHERE client_id=? AND request_id=? LIMIT 1`).bind(client,requestId).first();
+ if(request)return true;
+ const ledger=await db.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
+   WHERE request_id=? OR verdict_id=? LIMIT 1`).bind(requestId,verdictId).first();
+ if(ledger)return true;
+ const lock=await db.prepare(`SELECT request_id FROM risk_gate_d1_requests
+   WHERE client_id='predge-paid-license-scope-v1' AND request_id=? LIMIT 1`)
+   .bind(scopeLockId).first();
+ return Boolean(lock);
+}
+async function claimPaidScopeOnce(db,{parsed,scopeLockId,nowIso}){
+ return db.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
+   (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
+   VALUES('predge-paid-license-scope-v1',?,?,?,?,?,'CLAIMED')
+   RETURNING request_id`).bind(scopeLockId,scopeLockId,parsed.subject.type,
+    parsed.subject.id,nowIso).first();
+}
+
 async function hotRow(db,subject,now){
  if(subject.type==="country"){
    return db.prepare("SELECT * FROM country_gro_verified_hot WHERE country_iso3=? AND generated_at<=? AND expires_at>? LIMIT 1")
@@ -302,6 +340,20 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const paidTrafficEnabled=paidEndpoint&&predgePaidTrafficEnabled(env,parsed.policy);
  if(paidEndpoint&&!paidTrafficEnabled)return fail("PAID_TRAFFIC_NOT_ENABLED",403);
  const billingMode=paidEndpoint?"PAID_ADDENDUM_V2":"PILOT_FREE";
+ const requestHash=await digest(canonical(body));
+ const verdictId=await deterministicVerdictId(requestHash);
+ const nowIso=new Date(now).toISOString();
+ const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
+ let paidContext=null,scopeLockId=null;
+ if(paidEndpoint){
+   paidContext=paidLicenseActionContext(parsed);
+   if(!paidContext)return fail("PAID_ACTION_CONTEXT_REQUIRED",400);
+   try{
+     scopeLockId=await paidScopeLockId(parsed,paidContext);
+     if(await paidReplayAlreadyConsumed(env.DB,{client,requestId:parsed.request_id,
+       requestHash,verdictId,scopeLockId}))return redistributionDenied();
+   }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+ }
  // Three independent read-only probes. No waiting on a GRO-producing queue,
  // no unsigned object masquerading as a signed GRO, and no unbounded rollup read.
  // D1 schema or transport failure is an infrastructure error, not missing proof.
@@ -325,11 +377,11 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
  const customerPriceUsdc=usdcFromCents(lockedTerms.customer_price_usdc_cents);
  const contractGeomacroFeeUsdc=usdcFromCents(lockedTerms.geomacro_fee_usdc_cents);
  // Only server-provisioned Predge pilot may call this route. No payment endpoint.
- const requestHash=await digest(canonical(body));
- const verdictId=await deterministicVerdictId(requestHash);
- const nowIso=new Date(now).toISOString();
- const client=paidEndpoint?"predge-paid-risk-gate-addendum-v2":"predge-risk-gate-v1",day=nowIso.slice(0,10);
  try{
+   if(paidEndpoint){
+     const scopeClaim=await claimPaidScopeOnce(env.DB,{parsed,scopeLockId,nowIso});
+     if(!scopeClaim)return redistributionDenied();
+   }
    await env.DB.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
      (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
      VALUES(?,?,?,?,?,?,'PENDING')`)
@@ -338,8 +390,10 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      FROM risk_gate_d1_requests WHERE client_id=? AND request_id=? LIMIT 1`)
       .bind(client,parsed.request_id).first();
    if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
-   if(claim.request_hash!==requestHash)return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
+   if(claim.request_hash!==requestHash)
+     return paidEndpoint?redistributionDenied():fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
    if(claim.state==="DONE"&&claim.response_json){
+      if(paidEndpoint)return redistributionDenied();
       let saved;
       try{saved=JSON.parse(claim.response_json)}catch{return fail("RISK_GATE_REPLAY_INVALID");}
       if(saved?.ok!==true||saved?.execution_authorized!==false||
@@ -353,7 +407,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    const owned=await env.DB.prepare(`UPDATE risk_gate_d1_requests SET state='CLAIMED'
       WHERE client_id=? AND request_id=? AND state='PENDING'
       RETURNING request_id`).bind(client,parsed.request_id).first();
-   if(!owned)return fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
+   if(!owned)return paidEndpoint?redistributionDenied():fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
    const quota=await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
      VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
@@ -394,8 +448,11 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      schema:"geomacro.progressive-risk-gate-decision.v1",
      request_hash:requestHash,risk_gate:result,context,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
+     ...(paidEndpoint?{license_scope:{licensee:"predge",max_uses:1,resale_permitted:false,
+       bound_subject_id:parsed.subject.id,bound_market_id:paidContext.marketId,
+       bound_condition_id:paidContext.conditionId}}:{}),
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
-     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode,entry_status,
+     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status:entryStatus,
      tier_activation_matrix:tierActivationMatrix,
      execution_authorized:false
    };
@@ -436,6 +493,28 @@ export async function predgeRiskGateD1(request,env,now=Date.now(),authority=DEFA
 // Addendum v2 has its own versioned, fail-closed paid endpoint and billing lane.
 export async function predgePaidRiskGateD1(request,env,now=Date.now(),authority=DEFAULT_AUTHORITY){
  return runPredgeRiskGateD1(request,env,now,authority,true);
+}
+
+/** A delivered Addendum v2 verdict is single-use; verification attempts after issuance are denied. */
+export async function verifyPredgePaidVerdictD1(request,env){
+ const auth=serviceCredential(request,env,true);
+ if(auth)return fail(auth.error,auth.status);
+ if(request.method!=="POST")return fail("METHOD_NOT_ALLOWED",405);
+ if(!env?.DB?.prepare)return fail("RISK_GATE_D1_UNAVAILABLE",503);
+ if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
+   return fail("UNSUPPORTED_MEDIA_TYPE",415);
+ let body;
+ try{body=await request.json()}catch{return fail("INVALID_JSON",400);}
+ if(!record(body)||!keysOnly(body,["verdict_id"])||
+    typeof body.verdict_id!=="string"||!/^[0-9a-f-]{36}$/iu.test(body.verdict_id))
+   return fail("INVALID_VERDICT_ID",400);
+ try{
+   const used=await env.DB.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
+     WHERE verdict_id=? LIMIT 1`).bind(body.verdict_id).first();
+   if(used)return redistributionDenied();
+   return Response.json({ok:false,error:"VERDICT_NOT_FOUND",execution_authorized:false},
+     {status:404,headers});
+ }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
 }
 
 /** Coarse source-safe operational readiness, never a paid-launch verdict. */
