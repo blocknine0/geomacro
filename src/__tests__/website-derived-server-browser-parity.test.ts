@@ -21,7 +21,7 @@ describe('website server/browser source and native-day parity',()=>{
   const actual=await readWebsiteDerivedNews();
   expect(actual.signals).toEqual(checkedDerivedNews(feedDoc([story]),now));
   expect(actual.signals).toEqual([story]);
-  expect(fetcher.mock.calls[0][1].redirect).toBe('error');
+  expect(fetcher.mock.calls[0][1].redirect).toBe('manual');
  });
  it('rejects early originals and private metadata consistently on server and browser',async()=>{
   vi.useFakeTimers();vi.setSystemTime(now);
