@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {generateKeyPairSync} from "node:crypto";
-import {predgePaidRiskGateD1,predgeRiskGateD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
+import {DatabaseSync} from "node:sqlite";
+import {parseRequest,predgePaidRiskGateD1,predgeRiskGateD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
 const now=Date.parse("2026-11-12T00:00:00Z");
 const freeRequest=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
@@ -42,7 +43,7 @@ class MemoryD1 {
     return {success:true};
    },
    async first(){
-    if(sql.includes("SELECT request_hash,state,response_json FROM risk_gate_d1_requests")){
+    if(sql.includes("SELECT request_hash,state,response_json")&&sql.includes("FROM risk_gate_d1_requests")){
       return db.claims.get(args[0]+"|"+args[1])??null;
     }
     if(sql.includes("UPDATE risk_gate_d1_requests SET state='CLAIMED'")){
@@ -138,5 +139,24 @@ for(const paid of [false,true]){
 }
 test("request parser requires immutable market and condition binding",()=>{
  const invalid=structuredClone(freeRequest);delete invalid.action_context.metadata.condition_id;
- assert.equal((await import("../../workers/control-plane/src/predge-risk-gate-d1.mjs")).parseRequest(invalid,now),null);
+ assert.equal(parseRequest(invalid,now),null);
+});
+test("0132 schema persists one-use nontransferable Predge bindings",()=>{
+ const db=new DatabaseSync(":memory:");
+ db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
+ db.exec(readFileSync("workers/control-plane/migrations/0132_predge_risk_gate_single_use_license.sql","utf8"));
+ const columns=new Set(db.prepare("PRAGMA table_info(predge_paid_risk_gate_usage_ledger)").all().map(x=>x.name));
+ for(const name of ["licensee_id","max_commercial_uses","consumption_count","resale_permitted",
+  "transferable","subject_json","action_context_json","market_id","condition_id",
+  "downstream_caller","license_payload_sha256"])assert.ok(columns.has(name),name);
+ const table=db.prepare("SELECT name FROM sqlite_schema WHERE name='predge_risk_gate_verdict_license'").get();
+ assert.equal(table.name,"predge_risk_gate_verdict_license");
+ assert.throws(()=>db.prepare("INSERT INTO predge_risk_gate_verdict_license "+
+  "(verdict_id,request_id,client_id,licensee_id,max_commercial_uses,consumption_count,"+
+  "resale_permitted,transferable,subject_json,action_context_json,market_id,condition_id,"+
+  "downstream_caller,request_hash,license_payload_sha256,created_at) "+
+  "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(
+   "123e4567-e89b-52d3-a456-426614174000","request","predge-risk-gate-v1","predge",1,2,0,0,
+   "{}", "{}", "123", "0x0", "predge","a".repeat(64),"b".repeat(64),new Date(now).toISOString()));
+ db.close();
 });
