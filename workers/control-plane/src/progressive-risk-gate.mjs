@@ -57,7 +57,15 @@ export async function signProgressiveDecision(payload, env) {
     decision_signature_b64:btoa(String.fromCharCode(...signature)),
   };
 }
-export async function readProgressiveFacts(db, subject, now=Date.now()) {
+export async function readProgressiveFacts(db, subject, now=Date.now(), requestedCategory=null) {
+  const categoryMap={geopolitics:"geopolitics",macro:"macro",macro_fx:"macro",
+    critical_minerals:"rare_earth",rare_earth:"rare_earth"};
+  const category=typeof requestedCategory==="string"?
+    categoryMap[requestedCategory.toLowerCase()]:null;
+  if(requestedCategory!==null&&requestedCategory!==undefined&&!category)
+    throw Error("PROGRESSIVE_CATEGORY_INVALID");
+  const observationCategory=category==="geopolitics"?"GEOPOLITICS":
+    category==="macro"?"MACRO_FX":category==="rare_earth"?"CRITICAL_MINERALS":null;
   const ids = subject.type === "country" ? [subject.id] :
     subject.type === "corridor" ? subject.id.split(">") : [];
   if (!ids.length || ids.length > 2 || ids.some(x => !ISO3.test(x)))
@@ -79,31 +87,33 @@ export async function readProgressiveFacts(db, subject, now=Date.now()) {
         MAX(event_clock) AS last_event_clock
       FROM progressive_risk_gate_facts
       WHERE country_iso3 IN (${whereIds}) AND event_clock>=? AND event_clock<=?
+        ${category?"AND category=?":""}
       GROUP BY country_iso3,category,event_fingerprint
     )`;
   // Existing continuously refreshed Google/Reuters/ANI/AP discovery index
   // supplies Basic without a second writer, queue or a new publisher pull.
   // Those Google-index observations are NOT independent original proof.
   const [row,indexRow] = await Promise.all([
-    db.prepare(query).bind(...ids,cutoff,ceiling).first(),
+    db.prepare(query).bind(...ids,cutoff,ceiling,...(category?[category]:[])).first(),
     // A single row's independent_source_count is not proof of two originals.
     // Count two ACTUAL independently fetched publisher pages for the SAME
     // event_id; never let Google index copies or a forged counter grant Standard.
     db.prepare(`WITH native_events AS (
-      SELECT event_id,MAX(event_at) AS latest_event_clock,
+      SELECT event_id,entity_id,category,MAX(event_at) AS latest_event_clock,
         COUNT(DISTINCT CASE WHEN status='CORROBORATED'
           AND fact_basis='ARTICLE_FULL_TEXT' AND original_page_fetched=1
           THEN source_host END) AS native_original_hosts
       FROM unverified_observations
       WHERE entity_type='COUNTRY' AND entity_id IN (${whereIds})
         AND event_at>=? AND event_at<=?
-      GROUP BY event_id
+        ${observationCategory?"AND category=?":""}
+      GROUP BY entity_id,category,event_id
     )
     SELECT COUNT(*) AS index_events,MAX(latest_event_clock) AS latest_index_clock,
       COALESCE(MAX(CASE WHEN native_original_hosts>=2
         THEN native_original_hosts ELSE 0 END),0) AS native_corroborated_publisher_count
     FROM native_events`)
-      .bind(...ids,cutoff,ceiling).first()
+      .bind(...ids,cutoff,ceiling,...(observationCategory?[observationCategory]:[])).first()
   ]);
   const events = Math.max(0,Number(row?.unique_events ?? 0),
     Number(indexRow?.index_events ?? 0));
@@ -191,6 +201,21 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
     corroboration_sources_count:facts.corroboration_sources_count,
     execution_authorized:false
   };
+}
+/** Shared Basic/Standard decision builder used by partner and Store adapters.
+ * It consumes only admitted fact counts; it never promotes raw source rights. */
+export function generateProgressiveRiskGateDecision(parsed,facts,tier,
+ signedGroReady=false,sevenDayRollupReady=false,now=Date.now()){
+ const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(signedGroReady),
+  Boolean(sevenDayRollupReady));
+ const tierReady=tier==="basic_focused"?facts.distinct_events>0:
+  tier==="standard"?tierActivationMatrix.standard.active===true:
+  tier==="complex_full"?tierActivationMatrix.complex.active===true:false;
+ let result=provisionalRiskGate(parsed,facts,now);
+ if(!tierReady)result={...result,decision:"PAUSE",recommended_action:"BLOCK",
+  reason_codes:["INSUFFICIENT_EVIDENCE"],primary_driver:"INSUFFICIENT_EVIDENCE",
+  execution_authorized:false};
+ return {result,tierReady,tierActivationMatrix};
 }
 export async function sevenDayRollupIsReady(env, subject, now=Date.now(),fetcher=fetch) {
   if(subject?.type!=="country"||!ISO3.test(subject.id)||

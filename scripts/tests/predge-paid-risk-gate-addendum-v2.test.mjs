@@ -43,6 +43,14 @@ test("Predge request parser requires an explicit pre-processing tier",()=>{
  assert.equal(parseRequest(withoutTier),null);
 });
 
+test("optional Hot50 category selection normalizes the three supported cells",()=>{
+ const request=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ for(const [input,expected] of [["geopolitics","geopolitics"],["macro","macro"],
+  ["critical_minerals","critical_minerals"],["rare_earth","critical_minerals"]])
+  assert.equal(parseRequest({...request,category:input})?.category,expected);
+ assert.equal(parseRequest({...request,category:"unverified_category"}),null);
+});
+
 test("paid billing stays off until protected go-live cross-check and paid policy are all present",()=>{
  assert.equal(predgePaidTrafficEnabled({}, {policy_id:"predge-paid-traffic-addendum-v2"}),false);
  assert.equal(predgePaidTrafficEnabled({PREDGE_PAID_TRAFFIC_ENABLED:"YES"},

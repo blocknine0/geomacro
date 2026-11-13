@@ -8,7 +8,7 @@
 import {readCachedSignedGro} from "./signed-gro-read-cache.mjs";
 import {persistRiskGateAuditReceipt} from "./risk-gate-audit-receipt.mjs";
 import {readIntradayFlashOverride,applyIntradayFlashDecision} from "./risk-gate-flash-override.mjs";
-import {readProgressiveFacts,progressiveTierMatrix,provisionalRiskGate,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
+import {readProgressiveFacts,generateProgressiveRiskGateDecision,sevenDayRollupIsReady,signProgressiveDecision} from "./progressive-risk-gate.mjs";
 import {predgePaidRiskGateTerms,usdcFromCents} from "./predge-paid-risk-gate-contract.mjs";
 
 const HASH=/^[a-f0-9]{64}$/;
@@ -130,10 +130,15 @@ export async function verifyHotGRO(row,env,subject,now=Date.now(),authority=DEFA
 }
 function finite(v,min,max){return typeof v==="number"&&Number.isFinite(v)&&v>=min&&v<=max;}
 export function parseRequest(obj,now=Date.now()){
- if(!record(obj)||!keysOnly(obj,["request_id","country_iso3","subject","policy","evaluated_at","action_context","tier"]))
+ if(!record(obj)||!keysOnly(obj,["request_id","country_iso3","subject","policy","evaluated_at","action_context","tier","category"]))
    return null;
  if(typeof obj.request_id!=="string"||obj.request_id.length<1||obj.request_id.length>256)return null;
  if(!["basic_focused","standard","complex_full"].includes(obj.tier))return null;
+ const categoryMap={geopolitics:"geopolitics",macro:"macro",macro_fx:"macro",
+   critical_minerals:"critical_minerals",rare_earth:"critical_minerals"};
+ const category=obj.category===undefined?null:
+   typeof obj.category==="string"?categoryMap[obj.category.toLowerCase()]:null;
+ if(obj.category!==undefined&&!category)return null;
  let subject;
  if(obj.subject!==undefined){
    if(obj.country_iso3!==undefined||!record(obj.subject))return null;
@@ -183,7 +188,7 @@ export function parseRequest(obj,now=Date.now()){
       (a.destination!==undefined&&(typeof a.destination!=="string"||a.destination.length>256))||
       (a.metadata!==undefined&&!record(a.metadata)))return null;
  }
- return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier};
+ return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier,category};
 }
 export function predgePaidTrafficEnabled(env,policy){
  return env?.PREDGE_PAID_TRAFFIC_ENABLED==="YES"&&
@@ -363,15 +368,15 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      readCachedSignedGro(env,parsed.subject,now,
         ()=>hotRow(env.DB,parsed.subject,now),
         row=>row?verifyHotGRO(row,env,parsed.subject,now,authority):null),
-     readProgressiveFacts(env.DB,parsed.subject,now),
+     readProgressiveFacts(env.DB,parsed.subject,now,parsed.category),
      sevenDayRollupIsReady(env,parsed.subject,now),
    ]);
  }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
- const tierActivationMatrix=progressiveTierMatrix(facts,Boolean(gro),sevenDayRollupReady);
+ const sharedDecision=generateProgressiveRiskGateDecision(parsed,facts,lockedTier,
+   Boolean(gro),sevenDayRollupReady,now);
+ const tierActivationMatrix=sharedDecision.tierActivationMatrix;
  const complexReady=tierActivationMatrix.complex.active===true;
- const standardReady=tierActivationMatrix.standard.active===true;
- const tierReady=lockedTier==="basic_focused"?facts.distinct_events>0:
-   lockedTier==="standard"?standardReady:complexReady;
+ const tierReady=sharedDecision.tierReady;
  const channel="predge_b2b";
  const structureType=lockedTerms.structure_type;
  const customerPriceUsdc=usdcFromCents(lockedTerms.customer_price_usdc_cents);
@@ -414,18 +419,13 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(!quota)return fail("RISK_GATE_DAILY_LIMIT",429,{daily_limit:DAY_LIMIT});
 
    let result;
-   if(!tierReady){
-     result=provisionalRiskGate(parsed,facts,now);
-     result={...result,decision:"PAUSE",recommended_action:"BLOCK",
-       reason_codes:["INSUFFICIENT_EVIDENCE"],primary_driver:"INSUFFICIENT_EVIDENCE",
-       execution_authorized:false};
-   }else if(lockedTier==="complex_full"){
+   if(lockedTier==="complex_full"&&tierReady){
      const {evaluateRiskGate}=await import("../../../src/lib/risk-gate-engine.ts");
      result=evaluateRiskGate(parsed,gro,new Date(now));
      const flash=await readIntradayFlashOverride(env.DB,gro,parsed.subject,now);
      applyIntradayFlashDecision(result,flash);
    }else{
-     result=provisionalRiskGate(parsed,facts,now);
+     result=sharedDecision.result;
    }
    if(result.execution_authorized!==false)throw Error("EXECUTION_BOUNDARY");
    const context={

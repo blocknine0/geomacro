@@ -36,7 +36,7 @@ function fixture(){
    all:async()=>({results:stmt.all(...args)})
  };}}}}}};
 }
-function insertLegacyObservation(sqlite,event,host,{status="OBSERVED",factBasis="SEARCH_TITLE_ONLY",pageFetched=false,sourceCount=1}={}){
+function insertLegacyObservation(sqlite,event,host,{status="OBSERVED",factBasis="SEARCH_TITLE_ONLY",pageFetched=false,sourceCount=1,category="GEOPOLITICS"}={}){
  const eventId=createHash("sha256").update(event).digest("hex");
  const observationId=createHash("sha256").update(event+"\n"+host).digest("hex");
  const titleSha=createHash("sha256").update(event+"\n"+host+"\ntitle-metadata").digest("hex");
@@ -45,7 +45,7 @@ function insertLegacyObservation(sqlite,event,host,{status="OBSERVED",factBasis=
    title_sha256,impact_factor,fact_basis,original_page_fetched,status,
    independent_source_count,discovered_at)
   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(observationId,eventId,"COUNTRY","IND",
-   "GEOPOLITICS",at,host,host,titleSha,null,factBasis,pageFetched?1:0,status,sourceCount,at);
+   category,at,host,host,titleSha,null,factBasis,pageFetched?1:0,status,sourceCount,at);
 }
 function fact(publisher,clock_basis="ORIGINAL_PUBLICATION"){
  return {
@@ -71,6 +71,37 @@ test("two publisher-native observations promote one event without duplicate writ
    const matrix=progressiveTierMatrix(observed,false,false);
    assert.equal(matrix.standard.status,"ACTIVE");
    assert.equal(matrix.complex.status,"LOCKED");
+ }finally{sqlite.close()}
+});
+test("country category filters isolate all three Hot50 facts lanes",async()=>{
+ const {sqlite,env}=fixture();
+ try{
+  const macro={...fact("statistics.example"),derived_category:"macro",
+   event_fingerprint:"b".repeat(64),canonical_source_url:"https://statistics.example/release"};
+  await admitProgressiveRiskFacts(env,[fact("reuters.com"),fact("aninews.in"),macro],NOW);
+  const geo=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"geopolitics");
+  const critical=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"critical_minerals");
+  const macroFacts=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"macro");
+  assert.equal(geo.distinct_events,1);
+  assert.equal(geo.standard_ready,true);
+  assert.equal(critical.distinct_events,0);
+  assert.equal(critical.standard_ready,false);
+  assert.equal(macroFacts.distinct_events,1);
+  await assert.rejects(()=>readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"unknown"),/PROGRESSIVE_CATEGORY_INVALID/u);
+ }finally{sqlite.close()}
+});
+test("native publisher pairs split across categories cannot satisfy the same-cell Standard gate",async()=>{
+ const {sqlite,env}=fixture();
+ try{
+  insertLegacyObservation(sqlite,"same-event-id","reuters.com",{
+   status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,category:"GEOPOLITICS"});
+  insertLegacyObservation(sqlite,"same-event-id","aninews.in",{
+   status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,category:"MACRO_FX"});
+  const unscoped=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
+  const geo=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW,"geopolitics");
+  assert.equal(unscoped.standard_ready,false);
+  assert.equal(geo.standard_ready,false);
+  assert.equal(geo.corroboration_sources_count,0);
  }finally{sqlite.close()}
 });
 test("Complex cannot become active or billable without Standard, current signed GRO and verified seven-day history",()=>{
