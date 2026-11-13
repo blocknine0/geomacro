@@ -11,8 +11,8 @@ export function parseWorldBankPinkSheetReleaseMetadata(html){
  if(input.length>2*1024*1024)throw Error("WORLD_BANK_RELEASE_METADATA_TOO_LARGE");
  if(!/World Bank|Commodity Markets/iu.test(input))
   throw Error("WORLD_BANK_RELEASE_METADATA_MARKER_MISSING");
- const text=input.replace(/<script\b[\s\S]*?<\/script>/giu," ")
-  .replace(/<style\b[\s\S]*?<\/style>/giu," ")
+ const text=input.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ")
   .replace(/<[^>]+>/gu," ").replace(/&nbsp;|&#160;/giu," ")
   .replace(/&amp;/giu,"&").replace(/\s+/gu," ").trim();
  const label=text.search(/Latest Commodity Prices Published/iu);
