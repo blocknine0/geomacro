@@ -20,9 +20,13 @@ export function retiredSourceReplacements(doc=JSON.parse(readFileSync(new URL(".
      !Array.isArray(row.categories)||!row.categories.length||row.categories.some(c=>!CATS.has(c))||
      row.type!=="rss"||!Number.isSafeInteger(row.native_72h_items_at_probe)||row.native_72h_items_at_probe<1||
      !Number.isFinite(Date.parse(row.checked_at))||row.full_duplicate_news_coverage_verified!==false||
-     !Array.isArray(row.same_article_url_hashes)||row.same_article_url_hashes.some(h=>! /^[a-f0-9]{64}$/u.test(h)))
+     !Array.isArray(row.same_article_url_hashes)||row.same_article_url_hashes.some(h=>! /^[a-f0-9]{64}$/u.test(h))||
+     (row.activation_state!==undefined&&row.activation_state!=="disabled_pending_live_verification")||
+     (row.activation_state==="disabled_pending_live_verification"&&
+       !/^LIVE_PROBE_FAILURE_[A-Z0-9_]+$/u.test(row.disabled_reason_code??"")))
    throw Error("SOURCE_REPLACEMENT_UNVERIFIED_OR_SCOPE_INVALID:"+row.retired_source_id);
   ids.add(row.id);urls.add(row.url);
+  if(row.activation_state==="disabled_pending_live_verification")return null;
   return Object.freeze({id:row.id,url:row.url,type:row.type,categories:Object.freeze([...row.categories]),
    continent:row.continent??"global",publisher_country_iso3:row.publisher_country_iso3??null,
    supported:true,replaces_retired_source_ids:Object.freeze([row.retired_source_id]),
@@ -33,7 +37,7 @@ export function retiredSourceReplacements(doc=JSON.parse(readFileSync(new URL(".
    publisher_native_dates_required:true,private_discovery_index_only:false,
    transport_verified_at_registration:false,original_article_verified:false,
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false});
- }));
+ }).filter(Boolean));
 }
 
 export function applyRetiredSourceReplacements(sources){

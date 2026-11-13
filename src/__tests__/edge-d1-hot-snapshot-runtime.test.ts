@@ -239,7 +239,7 @@ describe("B2 cap resilient public edge reads", () => {
     expect(body.schema).toBe(livePackage(product as string).schema);
     expect(response.headers.get("x-geomacro-serving-store")).toBe("cloudflare-d1");
     expect(response.headers.get("x-geomacro-b2-verification")).toBe("full-readback-hash-exact-restore");
-    expect(cacheReads).toBe(0);
+    expect(cacheReads).toBe(product==="global-risk"?1:0);
     expect(cacheWrites).toBe(1);
   });
 

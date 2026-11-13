@@ -34,6 +34,9 @@ test("server-rendered ICC news listing yields only pinned first-party story URLs
  assert.deepEqual(discoverIccArticleUrls(page),[url]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court</html>'),[]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a HREF="/node/241777">Latest release</a></html>'),["https://www.icc-cpi.int/node/241777"]);
+ assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a href="/news/2026/11/12/official-press-release?ln=en">Latest release</a></html>'),
+  ["https://www.icc-cpi.int/news/2026/11/12/official-press-release"]);
+ assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a href="/news/2026/11/12/official-press-release?ln=en&redirect=https://evil.example">bad</a></html>'),[]);
 });
 test("RSS feed dates never verify original publication or grant licensing",()=>{
  const x=parseIccOfficialNewsRss(rss(item+item+

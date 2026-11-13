@@ -41,7 +41,9 @@ export function privateLocalPublisherCandidates(manifest=sourceManifest()){
      !["rss","atom"].includes(s.type)||!Array.isArray(s.categories)||
      s.categories.length!==3||new Set(s.categories).size!==3||
      s.categories.some(c=>!ALLOWED_CATEGORIES.includes(c))||
-     s.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     !(s.activation_state==="RUNTIME_PROBE_REQUIRED"||s.activation_state==="disabled_pending_live_verification")||
+     (s.activation_state==="disabled_pending_live_verification"&&
+      !/^LIVE_PROBE_FAILURE_[A-Z0-9_]+$/u.test(s.disabled_reason_code??""))||
      s.publisher_native_dates_required!==true||
      s.transport_verified_at_registration!==false||
      s.commercial_eligible!==false||s.publicly_deliverable!==false)
@@ -56,7 +58,8 @@ export function privateLocalPublisherCandidates(manifest=sourceManifest()){
    private_country_local_candidate:true,
    publisher_native_dates_required:true,
    transport_verified_at_registration:false,
-   activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+   activation_state:s.activation_state==="disabled_pending_live_verification"?"disabled_pending_live_verification":"PRIVATE_UNVERIFIED_OBSERVATION",
+   ...(s.disabled_reason_code?{disabled_reason_code:s.disabled_reason_code}:{}),
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
   });
  });
@@ -75,7 +78,7 @@ export function rotatingPrivateLocalPublisherSources(now=new Date(),all=privateL
  // original slots from the remaining validated candidate registry; never
  // enlarge the 512 GET budget. A shorter eligible catalogue naturally causes
  // some healthy candidates to repeat across the four nominal tick slots.
- const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source)&&source.activation_state!=="disabled_pending_live_verification");
  if(live.length<PRIVATE_LOCAL_FEEDS_PER_TICK)
   throw Error("PRIVATE_LOCAL_PUBLISHER_ACTIVE_CAPACITY_INSUFFICIENT");
  const slot=Math.floor(now.getTime()/PERIOD_MS)%4;
@@ -98,7 +101,7 @@ export function budgetedPrivateLocalPublisherSources(
     new Set(all.map(x=>x?.id)).size!==96||
     new Set(all.map(x=>x?.url)).size!==96)
   throw Error("PRIVATE_LOCAL_PUBLISHER_BUDGET_INVALID");
- const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source)&&source.activation_state!=="disabled_pending_live_verification");
  const count=Math.min(maxSources,live.length);
  if(!count)return Object.freeze([]);
  const slot=Math.floor(now.getTime()/PERIOD_MS);

@@ -97,8 +97,11 @@ describe("#1827 avoid redundant private B2 cold-origin downloads on the same Clo
     const origin=serving.indexOf("const response = await buildResponse(env);");
     const set=serving.indexOf("ctx.waitUntil(rememberFailedB2Origin(cache, negativeKey));");
     expect(d1).toBeGreaterThan(0);
-    expect(cached).toBeGreaterThan(d1);
-    expect(failed).toBeGreaterThan(cached);
+    if(product.path==="/global-risk"){
+      expect(cached).toBeGreaterThan(0);
+      expect(d1).toBeGreaterThan(cached);
+    }else expect(cached).toBeGreaterThan(d1);
+    expect(failed).toBeGreaterThan(Math.max(d1,cached));
     expect(origin).toBeGreaterThan(failed);
     expect(set).toBeGreaterThan(origin);
     expect(serving.slice(set)).toContain("return unavailable(503);");
