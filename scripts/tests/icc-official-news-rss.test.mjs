@@ -64,7 +64,10 @@ test("ICC official RSS native pubDate and dc:date become dated first-party items
  assert.equal(receipt.feed_date_assertion_count,2);
  assert.deepEqual(items.map(x=>x.publishedAt),
   ["2026-10-23T08:00:00.000Z","2026-10-22T09:30:00.000Z"]);
- assert.ok(items.every(x=>x.url.startsWith("https://www.icc-cpi.int/")));
+ assert.ok(items.every(x=>{
+  const itemUrl=new URL(x.url);
+  return itemUrl.protocol==="https:"&&itemUrl.hostname==="www.icc-cpi.int";
+ }));
 });
 test("ICC RSS XML entities are decoded once",()=>{
  const escaped='<item><title>International Criminal Court &amp;lt;literal&amp;gt; &amp; news item</title>'+
