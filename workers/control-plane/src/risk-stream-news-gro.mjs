@@ -27,6 +27,46 @@ const WATCH=Object.freeze({
  MACRO_FX:"Look for a dated primary monetary or statistical release and independent confirmation.",
  CRITICAL_MINERALS:"Look for a dated original trade, customs or minerals announcement."
 });
+/**
+ * Three genuinely different levels of deterministic, event-driven analysis.
+ * These are conditional hypotheses, never unsupported assertions of impact.
+ * Complex remains non-billable without the separate reviewed product policy.
+ */
+const DEPTH=Object.freeze({
+ GEOPOLITICS:{
+  drivers:["sovereign policy transmission","security and border exposure","trade or sanctions restrictions"],
+  exposure:["cross-border counterparties","sovereign and trade-sensitive operations"],
+  scenarios:["further official escalation","independent confirmation without escalation","formal correction or withdrawal"],
+  mitigation:["review affected jurisdictions","require human policy approval before action"]},
+ MACRO_FX:{
+  drivers:["policy expectation transmission","macro release sensitivity","currency or rate repricing risk"],
+  exposure:["FX-denominated obligations","interest-rate-sensitive balances"],
+  scenarios:["follow-up official tightening signal","neutral or unchanged policy confirmation","revision or contradictory release"],
+  mitigation:["check relevant exposure limits","monitor the next dated primary release"]},
+ CRITICAL_MINERALS:{
+  drivers:["physical supply concentration","export or customs friction","critical-input substitution risk"],
+  exposure:["mineral-dependent supply chains","import or processing bottlenecks"],
+  scenarios:["verified export restriction","unaffected flow confirmation","restriction reversal or correction"],
+  mitigation:["review critical input dependencies","require verified customs or ministry confirmation"] }
+});
+const depth=(tier,category,proof)=>{
+ const d=DEPTH[category];
+ if(tier==="basic_focused")return {
+  analysis_depth:"FOCUSED_SIGNAL",event_observation_only:true,
+  watch_channel:d.exposure[0]};
+ if(tier==="standard")return {
+  analysis_depth:"EVENT_CAUSAL_HYPOTHESES",
+  potential_drivers:d.drivers,exposure_channels:d.exposure,
+  qualified_for_verified_claim:proof==="CORROBORATED_INTERNAL_GRO",
+  observed_market_reaction_verified:false};
+ return {analysis_depth:"DEEP_CONDITIONAL_SCENARIOS",
+  causal_hypotheses:d.drivers,
+  scenarios:d.scenarios.map((hypothesis,i)=>({
+   scenario_id:"S"+(i+1),hypothesis,occurrence_probability:null,
+   status:"CONDITIONAL_NOT_OBSERVED"})),
+  exposure_channels:d.exposure,mitigation_options:d.mitigation,
+  seven_day_signed_history_verified:false,market_movement_asserted:false};
+};
 const fail=x=>{throw Error("HOT50_DAILY_GRO_"+x)};
 const iso=n=>new Date(n).toISOString();
 const day=n=>iso(n).slice(0,10);
@@ -84,6 +124,7 @@ export async function makeDailyNewsGro(signal,tier,{now=Date.now()}={}){
     "A fresh event signal was observed; its specific impact cannot yet be established.":
     "This event class warrants assessment; source confirmation and measured impacts remain separate.",
    market_relevance:MARKET[s.category],watch:WATCH[s.category],
+   tier_analysis:depth(tier,s.category,s.evidence_status),
    previous_day_state_used:false,market_price_movement_asserted:false
   },
   tier_status:state,commercial_sale_authorized:false,
