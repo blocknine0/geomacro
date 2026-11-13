@@ -36,6 +36,9 @@ jobs:
       - name: Predge D1 0131 identity and P0 publisher metadata contracts (offline)
         run: node --test scripts/tests/predge-addendum-v2-d1-identity.test.mjs scripts/tests/existing-source-runtime-activation.test.mjs
 
+      - name: Predge single-use verdict license and replay denial (offline)
+        run: node --test scripts/tests/predge-single-use-license.test.mjs
+
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)
         run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
 
