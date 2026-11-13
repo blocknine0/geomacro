@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {generateKeyPairSync} from "node:crypto";
+import {generateKeyPairSync,verify as verifySignature} from "node:crypto";
 import {DatabaseSync} from "node:sqlite";
-import {PREDGE_PAID_RISK_GATE_V2,predgePaidRiskGateTerms,usdcFromCents}
+import {PREDGE_PAID_RISK_GATE_V2,PREDGE_SINGLE_END_BUYER_LICENSE,
+ predgeSingleEndBuyerBinding,predgePaidRiskGateTerms,usdcFromCents}
  from "../../workers/control-plane/src/predge-paid-risk-gate-contract.mjs";
+import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 import {parseRequest,predgePaidTrafficEnabled,predgePaidRiskGateD1,predgeRiskGateD1,verifyPredgePaidVerdictD1} from "../../workers/control-plane/src/predge-risk-gate-d1.mjs";
 
 test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
@@ -31,6 +33,18 @@ test("Predge Addendum v2 fee split and Arc settlement are explicit",()=>{
   assert.equal(row.structure_type,structure);
   assert.equal(usdcFromCents(price),({15:"0.15",20:"0.20",30:"0.30"})[price]);
  }
+});
+
+test("Predge license contract requires exactly one bounded end-buyer identifier",()=>{
+ assert.deepEqual(PREDGE_SINGLE_END_BUYER_LICENSE,{single_end_buyer_only:true,
+  max_end_buyers:1,max_uses:1,further_resale_permitted:false});
+ assert.deepEqual(predgeSingleEndBuyerBinding({end_buyer_id:" buyer-1 "}),
+  {ok:true,end_buyer_id:"buyer-1"});
+ for(const metadata of [{},{end_buyer_id:"  "},{end_buyer_id:"x".repeat(257)}])
+  assert.equal(predgeSingleEndBuyerBinding(metadata).error,"SINGLE_END_BUYER_ID_REQUIRED");
+ for(const metadata of [{end_buyer_ids:["a","b"]},{end_buyer_id:["a"]},
+  {end_buyer_id:"a,b"},{end_buyer_id:"a",buyer_id:"b"}])
+  assert.equal(predgeSingleEndBuyerBinding(metadata).error,"MULTIPLE_END_BUYERS_FORBIDDEN");
 });
 
 test("Predge request parser requires an explicit pre-processing tier",()=>{
@@ -267,11 +281,27 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(firstBody.ok,true);
  assert.equal(Object.hasOwn(firstBody,"error"),false);
  assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
-  licensee:"predge",max_uses:1,resale_permitted:false,bound_subject_id:"USA",
+  licensee:"predge",single_end_buyer_only:true,max_end_buyers:1,max_uses:1,
+  bound_end_buyer_id:"customer-001",bound_subject_id:"USA",bound_category:"geopolitics",
   bound_market_id:"123456789",
-  bound_condition_id:"0x0000000000000000000000000000000000000000000000000000000000000000"});
+  bound_condition_id:"0x0000000000000000000000000000000000000000000000000000000000000000",
+  further_resale_permitted:false});
  assert.equal(firstBody.decision_signature_scheme,"Ed25519");
- const expectedError="REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED";
+ assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(firstBody.decision_signed_payload)),
+  publicKey,Buffer.from(firstBody.decision_signature_b64,"base64")),true);
+ assert.equal(firstBody.audit_receipt_hash.length,64);
+ const limitMessage="Authorization failed: Predge license permits resale/delivery to at most 1 end-buyer. Multi-buyer resale or redistribution is strictly prohibited. Contact: contact@geomacro.live";
+ for(const reused of [fixture,{...fixture,request_id:"paid-second-buyer-request",
+   action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,
+    end_buyer_id:"customer-002"}}}]){
+  const response=await predgePaidRiskGateD1(makeRequest(reused),env,now);
+  const body=await response.json();
+  assert.equal(response.status,403);
+  assert.equal(body.error,"SINGLE_END_BUYER_LIMIT_EXCEEDED");
+  assert.equal(body.authorization_error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
+  assert.equal(body.message,limitMessage);
+ }
+ const expectedError="SINGLE_END_BUYER_LIMIT_EXCEEDED";
  const expectedMessage="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
  for(const reused of [fixture,{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,market_id:"different-market"}}},
    {...fixture,request_id:"paid-resale-new-request"}]){
@@ -279,16 +309,35 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
   const body=await response.json();
   assert.equal(response.status,403);
   assert.equal(body.error,expectedError);
+  assert.equal(body.authorization_error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
   assert.equal(body.execution_authorized,false);
-  assert.equal(body.message,expectedMessage);
+  assert.equal(body.message,limitMessage);
  }
  const verify=await verifyPredgePaidVerdictD1(makeRequest({verdict_id:firstBody.verdict_id,
   request_id:undefined,subject:undefined,policy:undefined,tier:undefined,action_context:undefined},
   "/v2/partner/predge/verify-verdict"),env);
  const verifyBody=await verify.json();
  assert.equal(verify.status,403);
- assert.equal(verifyBody.error,expectedError);
+ assert.equal(verifyBody.error,"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED");
  assert.equal(verifyBody.message,expectedMessage);
+});
+
+test("paid endpoint rejects missing and multi-buyer IDs before touching D1",async()=>{
+ const token="b".repeat(64),fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ const env={PREDGE_PAID_RISK_GATE_TOKEN:token,PREDGE_PAID_TRAFFIC_ENABLED:"YES",
+  PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",DB:{prepare(){throw Error("validation must precede D1");}}};
+ const make=body=>new Request("https://worker.example/v2/partner/predge/paid-risk-gate",{
+  method:"POST",headers:{authorization:"Bearer "+token,"content-type":"application/json"},body:JSON.stringify(body)});
+ for(const [body,error] of [
+  [{...fixture,action_context:{...fixture.action_context,metadata:{market_id:"m",condition_id:"c"}}},"SINGLE_END_BUYER_ID_REQUIRED"],
+  [{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,end_buyer_id:""}}},"SINGLE_END_BUYER_ID_REQUIRED"],
+  [{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,end_buyer_ids:["a","b"]}}},"MULTIPLE_END_BUYERS_FORBIDDEN"],
+  [{...fixture,action_context:{...fixture.action_context,metadata:{...fixture.action_context.metadata,end_buyer_id:["a","b"]}}},"MULTIPLE_END_BUYERS_FORBIDDEN"],
+ ]){
+  const response=await predgePaidRiskGateD1(make(body),env,Date.parse("2026-11-12T00:00:00Z"));
+  assert.equal(response.status,400);
+  assert.equal((await response.json()).error,error);
+ }
 });
 
 test("paid deployment bindings default to the fail-closed 403 path",()=>{

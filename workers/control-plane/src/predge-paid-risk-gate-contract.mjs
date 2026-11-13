@@ -42,6 +42,35 @@ export const PREDGE_PAID_RISK_GATE_V2 = Object.freeze({
   }),
 });
 
+export const PREDGE_SINGLE_END_BUYER_LICENSE = Object.freeze({
+  single_end_buyer_only: true,
+  max_end_buyers: 1,
+  max_uses: 1,
+  further_resale_permitted: false,
+});
+
+/** Validate the one end-buyer binding before any paid request can claim D1. */
+export function predgeSingleEndBuyerBinding(metadata) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return { ok: false, error: "SINGLE_END_BUYER_ID_REQUIRED" };
+  }
+  const buyerFields = Object.keys(metadata).filter(key =>
+    /^(?:end_)?buyer_?ids?$/iu.test(key));
+  if (buyerFields.length > 1 || buyerFields.includes("buyer_ids") ||
+      buyerFields.includes("end_buyer_ids")) {
+    return { ok: false, error: "MULTIPLE_END_BUYERS_FORBIDDEN" };
+  }
+  const value = metadata.end_buyer_id;
+  if (Array.isArray(value) || typeof value === "string" && /[,;]/u.test(value)) {
+    return { ok: false, error: "MULTIPLE_END_BUYERS_FORBIDDEN" };
+  }
+  if (typeof value !== "string") return { ok: false, error: "SINGLE_END_BUYER_ID_REQUIRED" };
+  const endBuyerId = value.trim();
+  if (!endBuyerId) return { ok: false, error: "SINGLE_END_BUYER_ID_REQUIRED" };
+  if (endBuyerId.length > 256) return { ok: false, error: "SINGLE_END_BUYER_ID_REQUIRED" };
+  return { ok: true, end_buyer_id: endBuyerId };
+}
+
 export function predgePaidRiskGateTerms(tier) {
   const terms = PREDGE_PAID_RISK_GATE_V2.tiers[tier];
   if (!terms) throw new Error("PREDGE_RISK_GATE_TIER_INVALID");
