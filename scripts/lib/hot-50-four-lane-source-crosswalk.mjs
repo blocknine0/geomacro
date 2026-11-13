@@ -121,11 +121,11 @@ export function hot50CellFeedFailoverPlan(){
     feed.categories.includes(category));
   const primary=local[0]??global.find(feed=>feed.categories.includes(category));
   if(!primary)throw Error("HOT50_FAILOVER_PRIMARY_MISSING");
-  const primaryHost=new URL(primary.url).hostname.toLowerCase().replace(/^www\\./u,"");
+  const primaryHost=new URL(primary.url).hostname.toLowerCase().replace(/^www\./u,"");
   const backup=(local.length>1?local.slice(1):[])
     .concat(global.filter(feed=>feed.categories.includes(category)))
     .find(feed=>feed.id!==primary.id&&
-      new URL(feed.url).hostname.toLowerCase().replace(/^www\\./u,"")!==primaryHost);
+      new URL(feed.url).hostname.toLowerCase().replace(/^www\./u,"")!==primaryHost);
   if(!backup)throw Error("HOT50_FAILOVER_BACKUP_MISSING");
   plan.push(Object.freeze({
    country_iso3:country.country_iso3,category,
