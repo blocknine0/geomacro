@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 8276)
-Total output lines: 574
-
 /**
  * Predge Risk Gate on existing Cloudflare D1. No Supabase, no x402 charges.
  * Separate purpose-scoped bearer, bounded request, D1 atomic quota, idempotent
@@ -245,7 +242,89 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
     saved.billing_mode===billing_mode&&
     saved.entry_status===entry_status&&saved.billable===(billable?1:0)&&
     saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0)&&
-    saved.usage_repor…1276 tokens truncated…;
+    saved.usage_report_due_date===usageReportDueDate&&
+    saved.settlement_due_date===settlementDueDate);
+ }catch{return false;}
+}
+const REDISTRIBUTION_MESSAGE="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Explicit permission from Geomacro's end is required. Contact: contact@geomacro.live";
+const SINGLE_END_BUYER_LIMIT_MESSAGE="Authorization failed: Predge license permits resale/delivery to at most 1 end-buyer. Multi-buyer resale or redistribution is strictly prohibited. Contact: contact@geomacro.live";
+function redistributionDenied(){
+ return Response.json({ok:false,error:"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED",
+  execution_authorized:false,message:REDISTRIBUTION_MESSAGE},{status:403,headers});
+}
+function singleEndBuyerLimitExceeded(){
+ return Response.json({ok:false,error:"SINGLE_END_BUYER_LIMIT_EXCEEDED",
+  authorization_error:"REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED",
+  execution_authorized:false,message:SINGLE_END_BUYER_LIMIT_MESSAGE},{status:403,headers});
+}
+function paidLicenseActionContext(parsed){
+ const metadata=parsed.action_context?.metadata;
+ const buyer=predgeSingleEndBuyerBinding(metadata);
+ if(!buyer.ok)return {error:buyer.error};
+ const market=metadata?.market_id,condition=metadata?.condition_id;
+ if((typeof market!=="string"&&typeof market!=="number")||
+    (typeof condition!=="string"&&typeof condition!=="number"))return null;
+ const marketId=String(market).trim(),conditionId=String(condition).trim();
+ if(!marketId||marketId.length>256||!conditionId||conditionId.length>256)return null;
+ return {marketId,conditionId,endBuyerId:buyer.end_buyer_id};
+}
+async function paidScopeLockId(parsed,{marketId,conditionId}){
+ return digest(canonical({client:"predge",subject_id:parsed.subject.id,tier:parsed.tier,
+  category:parsed.category,market_id:marketId,condition_id:conditionId}));
+}
+async function paidReplayAlreadyConsumed(db,{client,requestId,requestHash,verdictId,scopeLockId}){
+ const request=await db.prepare(`SELECT request_hash,state FROM risk_gate_d1_requests
+   WHERE client_id=? AND request_id=? LIMIT 1`).bind(client,requestId).first();
+ if(request)return true;
+ const ledger=await db.prepare(`SELECT verdict_id FROM predge_paid_risk_gate_usage_ledger
+   WHERE request_id=? OR verdict_id=? LIMIT 1`).bind(requestId,verdictId).first();
+ if(ledger)return true;
+ const lock=await db.prepare(`SELECT request_id FROM risk_gate_d1_requests
+   WHERE client_id='predge-paid-license-scope-v1' AND request_id=? LIMIT 1`)
+   .bind(scopeLockId).first();
+ return Boolean(lock);
+}
+async function claimPaidScopeOnce(db,{parsed,scopeLockId,endBuyerId,nowIso}){
+ const endBuyerIdHash=await digest(endBuyerId);
+ const buyerClaimHash=await digest(canonical({scope_lock_id:scopeLockId,
+  end_buyer_id_sha256:endBuyerIdHash}));
+ return db.prepare(`INSERT OR IGNORE INTO risk_gate_d1_requests
+   (client_id,request_id,request_hash,subject_type,subject_id,created_at,state)
+   VALUES('predge-paid-license-scope-v1',?,?,?,?,?,'CLAIMED')
+   RETURNING request_id`).bind(scopeLockId,buyerClaimHash,parsed.subject.type,
+    parsed.subject.id,nowIso).first();
+}
+
+async function hotRow(db,subject,now){
+ if(subject.type==="country"){
+   return db.prepare("SELECT * FROM country_gro_verified_hot WHERE country_iso3=? AND generated_at<=? AND expires_at>? LIMIT 1")
+     .bind(subject.id,new Date(now).toISOString(),new Date(now).toISOString()).first();
+ }
+ return db.prepare("SELECT * FROM corridor_gro_verified_hot WHERE corridor_id=? AND generated_at<=? AND expires_at>? LIMIT 1")
+   .bind(subject.id,new Date(now).toISOString(),new Date(now).toISOString()).first();
+}
+function serviceCredential(request,env,paidEndpoint=false){
+ const expected=String((paidEndpoint?env?.PREDGE_PAID_RISK_GATE_TOKEN:env?.PREDGE_RISK_GATE_TOKEN)??"");
+ if(!HASH.test(expected)||constantEqual(expected,env?.CONTROL_PLANE_TOKEN)||
+    constantEqual(expected,env?.PREDGE_RESEARCH_NEWS_TOKEN)||
+    (paidEndpoint&&constantEqual(expected,env?.PREDGE_RISK_GATE_TOKEN)))
+   return {error:"RISK_GATE_CREDENTIAL_NOT_CONFIGURED",status:503};
+ const token=request.headers.get("authorization");
+ if(typeof token!=="string"||!/^Bearer [a-f0-9]{64}$/.test(token)||
+    !constantEqual(token.slice(7),expected))return {error:"RISK_GATE_UNAUTHORIZED",status:401};
+ return null;
+}
+// Production entry passes only request/env/time; HTTP and env cannot choose this pin.
+// The optional code-level authority permits isolated signed staging fixtures.
+async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
+ if(!Number.isSafeInteger(now)||now<0)return fail("RISK_GATE_CLOCK_UNAVAILABLE");
+ const auth=serviceCredential(request,env,paidEndpoint);
+ if(auth)return fail(auth.error,auth.status);
+ if(request.method!=="POST")return fail("METHOD_NOT_ALLOWED",405);
+ if(!env?.DB?.prepare)return fail("RISK_GATE_D1_UNAVAILABLE");
+ if((request.headers.get("content-type")??"").split(";")[0].trim().toLowerCase()!=="application/json")
+   return fail("UNSUPPORTED_MEDIA_TYPE",415);
+ const length=Number(request.headers.get("content-length")??"0");
  if(!Number.isFinite(length)||length>MAX_BYTES)return fail("BODY_TOO_LARGE",413);
  // Bound actual streamed body even when Content-Length is absent or forged.
  let raw="";
