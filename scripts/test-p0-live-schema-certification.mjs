@@ -24,7 +24,7 @@ const checks = {
   world_bank_commodity_prices: { type:"xlsx", required:[] },
   unctadstat_global: { type:"html", required:["UNCTAD"] },
   china_mofcom_trade_controls: { type:"html", required:["exportcontrol.mofcom.gov.cn"] },
-  australia_critical_minerals: { type:"html", required:["Critical Minerals List","Strategic Materials List"] },
+  australia_critical_minerals: { type:"html", required:["Critical minerals in Australia"] },
   cochilco_minerals: { type:"html", required:["Anuario de Estadísticas del Cobre y Otros Minerales"] },
   opcw_news: { type:"html", required:["News","OPCW"] },
   icj_cases: { type:"html", required:["Cases","International Court of Justice"] },
