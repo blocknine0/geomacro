@@ -51,8 +51,8 @@ export function parseUnctadPublisherReleaseCalendarHtml(html,{reportLabel="Commo
  if(input.length>2*1024*1024)throw Error("UNCTAD_RELEASE_CALENDAR_TOO_LARGE");
  if(!(asOf instanceof Date)||!Number.isFinite(asOf.getTime()))throw Error("UNCTAD_RELEASE_CALENDAR_CLOCK_INVALID");
  if(!/UNCTADstat|UNCTAD Data Hub/iu.test(input))throw Error("UNCTAD_RELEASE_CALENDAR_MARKER_MISSING");
- const text=input.replace(/<script\b[\s\S]*?<\/script>/giu," ")
-  .replace(/<style\b[\s\S]*?<\/style>/giu," ")
+ const text=input.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu," ")
+  .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu," ")
   .replace(/<[^>]+>/gu," ").replace(/&nbsp;|&#160;/giu," ")
   .replace(/&amp;/giu,"&").replace(/\s+/gu," ").trim();
  const dateRe=/\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})\b/giu;
