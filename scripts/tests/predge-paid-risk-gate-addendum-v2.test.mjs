@@ -164,9 +164,9 @@ test("Stage 3 rehearsal reads account billing through its dedicated token bindin
 
 
 function paidRiskGateFixtureDb(){
- const requests=new Map(),ledger=new Map(),receipts=new Map(),trace=[];
+ const requests=new Map(),ledger=new Map(),receipts=new Map();
  const key=(client,id)=>client+"|"+id;
- return {trace,prepare(sql){trace.push(sql.replace(/\\s+/gu," ").slice(0,120));
+ return {prepare(sql){
   let values=[];
   return {bind(...args){values=args;return this;},
    async first(){
@@ -244,7 +244,7 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
  const {publicKey,privateKey}=generateKeyPairSync("ed25519");
  const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:"b".repeat(64),
-  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",PREDGE_TEST_DEBUG:"1",
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
   RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
   RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
   RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
@@ -255,7 +255,7 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  const now=Date.parse("2026-11-12T00:00:00Z");
  const first=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
  const firstBody=await first.json();
- assert.equal(first.status,200,JSON.stringify({body:firstBody,trace:env.DB.trace}));
+ assert.equal(first.status,200,JSON.stringify(firstBody));
  assert.equal(firstBody.ok,true);
  assert.equal(Object.hasOwn(firstBody,"error"),false);
  assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
