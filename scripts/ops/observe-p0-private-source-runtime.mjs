@@ -95,7 +95,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
          totalHttpRequests++;
          let metadataResponse;
          try{metadataResponse=await fetchImpl(source.publisherMetadataUrl,{method:'GET',redirect:'error',
-           signal:AbortSignal.timeout(12000),headers:ICC_NEWS_REQUEST_HEADERS});}
+           signal:AbortSignal.timeout(12000),headers:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'}});}
          catch{throw Error('WORLD_BANK_PUBLISHER_METADATA_NETWORK_FAILED')}
          if(!metadataResponse.ok||metadataResponse.redirected===true||
             (metadataResponse.url&&metadataResponse.url!==source.publisherMetadataUrl)){
@@ -138,7 +138,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
            const articleUrl=links[0];totalHttpRequests++;
            let article;
            try{article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',
-             signal:AbortSignal.timeout(12000),headers:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'}});}
+             signal:AbortSignal.timeout(12000),headers:ICC_NEWS_REQUEST_HEADERS});}
            catch{throw Error('ICC_ARTICLE_NETWORK_FAILED')}
            if(!article.ok||article.redirected===true||
               new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
@@ -203,7 +203,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        const [articleUrl]=extractIccOfficialNewsLinks(text,{limit:1});
        totalHttpRequests++;
        const article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
-         headers:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'} });
+         headers:ICC_NEWS_REQUEST_HEADERS });
        if(!article.ok||article.redirected===true||new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
          try{await article.body?.cancel();}catch{}
          row.reason=`ICC_ARTICLE_HTTP_${Number.isInteger(article.status)?article.status:0}`;
