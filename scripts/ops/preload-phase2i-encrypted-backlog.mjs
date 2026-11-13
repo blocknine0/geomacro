@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Protected main-only GitHub Actions queue restore. Only AEAD-authenticated,
+ * Protected main-only GitHub Actions queue restore (cron, upstream wakeup, or explicit owner dispatch). Only AEAD-authenticated,
  * first-party metadata is ever written in the ephemeral runner filesystem.
  * Never print original titles/URLs, secret keys or decrypted contents.
  * A GitHub inventory outage fails closed; prior encrypted artifacts survive.
@@ -17,7 +17,7 @@ if(env.GITHUB_REPOSITORY!=="blocknine0/geomacro"||
    env.GITHUB_REF!=="refs/heads/main"||
    env.GEOMACRO_SOURCE_INTAKE_ONLY!=="1"||
    env.PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"||
-   !["schedule","workflow_run"].includes(env.GITHUB_EVENT_NAME??""))
+   !["schedule","workflow_run","workflow_dispatch"].includes(env.GITHUB_EVENT_NAME??""))
  throw Error("PHASE2I_BACKLOG_PROTECTED_SOURCE_ONLY");
 const token=env.GH_TOKEN??"";
 if(token.length<20||typeof env.GEOMACRO_COMMERCE_LEDGER_TOKEN!=="string"||
