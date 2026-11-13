@@ -865,11 +865,12 @@
         "rare_earth"
       ],
       "type": "rss",
-      "activation_state": "RUNTIME_PROBE_REQUIRED",
+      "activation_state": "disabled_pending_live_verification",
       "publisher_native_dates_required": true,
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "disabled_reason_code": "LIVE_PROBE_FAILURE_2026_11_13_RUN_43368311767"
     },
     {
       "id": "private_gaplane_gin_new",
