@@ -104,7 +104,7 @@ function annotation(version){
 export function assessWorkerPromotion({
  deployment,baselineVersion,candidateVersion,baselineId,candidateId,
  targetPercent,sourceSha,quota,reviewedAdditiveSecretNames=[],
- now=new Date(),spendPolicyEnforced=SPEND_POLICY_VERIFICATION_ENFORCED
+ reviewedPredgeRuntimeVars={},now=new Date(),spendPolicyEnforced=SPEND_POLICY_VERIFICATION_ENFORCED
 }){
  const refuse=(reason,detail={})=>Object.freeze({
   schema:"geomacro.hot50.protected-worker-promotion.v1",
@@ -138,7 +138,7 @@ export function assessWorkerPromotion({
   const newBindings=readBindings(candidateVersion);
   try{
    assessReviewedHot50BindingParity(baselineVersion,candidateVersion,
-    sourceSha,reviewedAdditiveSecretNames);
+    sourceSha,reviewedAdditiveSecretNames,reviewedPredgeRuntimeVars);
   }catch{
    return refuse("VERSION_BINDING_PARITY_MISMATCH");
   }

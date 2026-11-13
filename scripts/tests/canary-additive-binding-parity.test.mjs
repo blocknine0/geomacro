@@ -41,6 +41,9 @@ test("unknown review names or plaintext vars cannot bypass parity",()=>{
 
 const sha="f".repeat(40);
 const streamBaseline=[db,
+ {name:"PREDGE_PAID_TRAFFIC_ENABLED",type:"plain_text",text:"NO"},
+ {name:"PREDGE_PAID_GO_LIVE_CROSSCHECK",type:"plain_text",text:""},
+ {name:"PREDGE_MUTUAL_TRIAL_STARTED_AT",type:"plain_text",text:""},
  {name:"RISK_STREAM_ACTIVE",type:"plain_text",text:"0"},
  {name:"STREAM_INGESTION_ENABLED",type:"plain_text",text:"false"},
  {name:"RISK_STREAM_HOT50_AUTONOMOUS_ENABLED",type:"plain_text",text:"0"},
@@ -55,12 +58,41 @@ const streamCandidate=[
   ({name,type:"plain_text",text})),
  ...REVIEWABLE_ADDITIVE_SECRETS.map(name=>({name,type:"secret_text"}))
 ];
-test("reviewed Hot50 flags and exact four additive secrets pass without broadening review",()=>{
+test("reviewed Hot50 flags and exact five additive secrets pass without broadening review",()=>{
  const result=assessReviewedHot50BindingParity(version(streamBaseline),
   version(streamCandidate),sha,REVIEWABLE_ADDITIVE_SECRETS);
  assert.equal(result.status,"PASS_REVIEWED_HOT50_PARITY");
  assert.equal(result.source_sha,sha);
- assert.equal(result.additions.length,4);
+ assert.equal(result.additions.length,5);
+});
+test("Predge vars default fail-closed and explicitly reviewed trial vars are validated",()=>{
+ const defaults=reviewedHot50CandidateVars(sha);
+ assert.equal(defaults.PREDGE_PAID_TRAFFIC_ENABLED,"NO");
+ assert.equal(defaults.PREDGE_PAID_GO_LIVE_CROSSCHECK,"");
+ assert.equal(defaults.PREDGE_MUTUAL_TRIAL_STARTED_AT,"");
+ const explicit=reviewedHot50CandidateVars(sha,{
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
+  PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-13T10:00:00Z"});
+ assert.equal(explicit.PREDGE_PAID_TRAFFIC_ENABLED,"YES");
+ assert.equal(explicit.PREDGE_PAID_GO_LIVE_CROSSCHECK,"PASS");
+ assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_PAID_TRAFFIC_ENABLED:"true"}),
+  /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
+ assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_MUTUAL_TRIAL_STARTED_AT:"yesterday"}),
+  /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
+});
+test("Predge paid token is additive only when named for review; it remains optional otherwise",()=>{
+ const token="PREDGE_PAID_RISK_GATE_TOKEN";
+ const existingLegacy=REVIEWABLE_ADDITIVE_SECRETS.filter(name=>name!==token)
+  .map(name=>({name,type:"secret_text"}));
+ const base=version([...streamBaseline,...existingLegacy]);
+ const candidateRows=[...streamCandidate.filter(x=>x.name!==token),{name:token,type:"secret_text"}];
+ assert.equal(assessReviewedHot50BindingParity(base,version(candidateRows),sha,[token])
+  .status,"PASS_REVIEWED_HOT50_PARITY");
+ assert.throws(()=>assessReviewedHot50BindingParity(base,version(candidateRows),sha,[]),
+  /UNREVIEWED_ADDITION/);
+ const noToken=version(streamCandidate.filter(x=>x.name!==token));
+ assert.equal(assessReviewedHot50BindingParity(base,noToken,sha,[])
+  .status,"PASS_REVIEWED_HOT50_PARITY");
 });
 test("non-reviewed changes, false flags and commercial release fail closed",()=>{
  const baseline=version(streamBaseline);

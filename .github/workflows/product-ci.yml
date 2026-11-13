@@ -52,7 +52,7 @@ jobs:
         run: node --test scripts/tests/cloudflare-five-usd-spend-guard.test.mjs scripts/tests/cloudflare-workers-paid-plan-proof.test.mjs scripts/tests/plan-d1-bundled-work.test.mjs scripts/tests/p1-source-queue-budget.test.mjs scripts/tests/p1-source-fanout.test.mjs
 
       - name: Protected canary candidate imports and Workers Paid monthly release contract (offline)
-        run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/canonical-canary-stage2-only.test.mjs scripts/tests/d1-step3-headroom.test.mjs
+        run: node --test scripts/tests/optimized-worker-candidate.test.mjs scripts/tests/canary-additive-binding-parity.test.mjs scripts/tests/predge-mutual-trial-migration-0132.test.mjs scripts/tests/verify-protected-worker-promotion.test.mjs scripts/tests/canonical-canary-stage2-only.test.mjs scripts/tests/d1-step3-headroom.test.mjs
 
       - name: Owner-dispatch production exact-SHA review authority and anti-replay (offline)
         run: |

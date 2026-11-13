@@ -165,19 +165,26 @@ test('already-provisioned secret inherits unchanged and cannot be re-reviewed as
  assert.equal(config.unsafe.bindings.some(x=>x.name==='DB'),true);
 });
 
-test('candidate requires exact missing secret names in one upload and keeps existing secrets intact',async()=>{
+test('candidate carries Predge vars fail-closed and adds the paid token only when explicitly reviewed',async()=>{
  const {readFileSync}=await import('node:fs');
  const code=readFileSync(new URL('../ops/prepare-optimized-worker-candidate.mjs',import.meta.url),'utf8');
- const flow=readFileSync(new URL('../../.github/workflows/geomacro-optimized-worker-candidate.yml',import.meta.url),'utf8');
- assert.match(code,/CANDIDATE_EXACT_ADDITIVE_SECRET_REVIEW_REQUIRED/);
- assert.match(code,/REVIEWABLE_ADDITIVE_SECRETS\.filter/);
- assert.match(code,/if\(reviewedSecrets\.length\)/);
- assert.match(flow,/reviewed_additive_secret_names:/);
- assert.match(flow,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES:/);
- const live=structuredClone(baseline);
- live.resources.bindings.push({name:REVIEWABLE_ADDITIVE_SECRETS[0],type:'secret_text'});
- const missing=REVIEWABLE_ADDITIVE_SECRETS.slice(1);
- const config=candidateConfig(live,sha,missing);
- assert(config.unsafe.bindings.some(x=>x.name===REVIEWABLE_ADDITIVE_SECRETS[0]));
- assert.equal(config.unsafe.bindings.filter(x=>missing.includes(x.name)).length,0);
+ const flow=readFileSync(new URL('../../.github/workflows/deploy-d1-control-plane.yml',import.meta.url),'utf8');
+ assert.match(code,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID/);
+ for(const name of ['PREDGE_PAID_RISK_GATE_TOKEN','PREDGE_PAID_TRAFFIC_ENABLED',
+  'PREDGE_PAID_GO_LIVE_CROSSCHECK','PREDGE_MUTUAL_TRIAL_STARTED_AT'])
+  assert.match(flow,new RegExp(name));
+ const defaults=candidateConfig(baseline,sha);
+ assert.equal(defaults.vars.PREDGE_PAID_TRAFFIC_ENABLED,'NO');
+ assert.equal(defaults.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK,'');
+ assert.equal(defaults.vars.PREDGE_MUTUAL_TRIAL_STARTED_AT,'');
+ const trial=candidateConfig(baseline,sha,[],{PREDGE_PAID_TRAFFIC_ENABLED:'YES',
+  PREDGE_PAID_GO_LIVE_CROSSCHECK:'',PREDGE_MUTUAL_TRIAL_STARTED_AT:'2026-11-13T10:00:00Z'});
+ assert.equal(trial.vars.PREDGE_PAID_TRAFFIC_ENABLED,'YES');
+ assert.equal(trial.vars.PREDGE_MUTUAL_TRIAL_STARTED_AT,'2026-11-13T10:00:00Z');
+ assert.throws(()=>candidateConfig(baseline,sha,[],{PREDGE_PAID_TRAFFIC_ENABLED:'1'}),
+  /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
+ const token='PREDGE_PAID_RISK_GATE_TOKEN';
+ assert.equal(candidateConfig(baseline,sha,[token]).vars.PREDGE_PAID_TRAFFIC_ENABLED,'NO');
+ assert.throws(()=>candidateConfig(baseline,sha,['UNKNOWN_SECRET']),
+  /REVIEWED_SECRET_NOT_ADDITIVE/);
 });

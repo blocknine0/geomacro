@@ -109,11 +109,12 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
   review.reviewed_hot50_runtime==='ENABLE_HOT50_RESEARCH_NO_FUNDS'&&
   review.owner_workflow_confirmation==='PROMOTE_HOT50_NO_FUNDS'&&
   Array.isArray(review.reviewed_secret_names)&&
+  review.reviewed_predge_runtime_vars&&typeof review.reviewed_predge_runtime_vars==='object'&&
   Number.isFinite(Date.parse(String(review.reviewed_at)))&&
   (!requireFreshReview||Date.now()-Date.parse(String(review.reviewed_at))<3_600_000)&&
   Date.now()>=Date.parse(String(review.reviewed_at)),
   'CANARY_HOT50_REVIEW_NOT_EXACT_OR_FRESH');
- return assessReviewedHot50BindingParity(a,b,headSha,review.reviewed_secret_names);
+ return assessReviewedHot50BindingParity(a,b,headSha,review.reviewed_secret_names,review.reviewed_predge_runtime_vars);
 }
 
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
