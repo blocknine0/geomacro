@@ -41,7 +41,9 @@ export function privateLocalPublisherCandidates(manifest=sourceManifest()){
      !["rss","atom"].includes(s.type)||!Array.isArray(s.categories)||
      s.categories.length!==3||new Set(s.categories).size!==3||
      s.categories.some(c=>!ALLOWED_CATEGORIES.includes(c))||
-     s.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     !(s.activation_state==="RUNTIME_PROBE_REQUIRED"||s.activation_state==="disabled_pending_live_verification")||
+     (s.activation_state==="disabled_pending_live_verification"&&
+      !/^LIVE_PROBE_FAILURE_[A-Z0-9_]+$/u.test(s.disabled_reason_code??""))||
      s.publisher_native_dates_required!==true||
      s.transport_verified_at_registration!==false||
      s.commercial_eligible!==false||s.publicly_deliverable!==false)
@@ -75,7 +77,7 @@ export function rotatingPrivateLocalPublisherSources(now=new Date(),all=privateL
  // original slots from the remaining validated candidate registry; never
  // enlarge the 512 GET budget. A shorter eligible catalogue naturally causes
  // some healthy candidates to repeat across the four nominal tick slots.
- const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source)&&source.activation_state!=="disabled_pending_live_verification");
  if(live.length<PRIVATE_LOCAL_FEEDS_PER_TICK)
   throw Error("PRIVATE_LOCAL_PUBLISHER_ACTIVE_CAPACITY_INSUFFICIENT");
  const slot=Math.floor(now.getTime()/PERIOD_MS)%4;
