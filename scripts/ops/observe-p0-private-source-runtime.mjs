@@ -13,7 +13,7 @@ import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mj
 import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls,ICC_NEWS_REQUEST_HEADERS} from '../../global-intelligence/adapters/icc-news.mjs';
 import {parseWorldBankPinkSheetReleaseMetadata} from '../../global-intelligence/adapters/world-bank-commodity-prices.mjs';
 import {parseUnctadPublisherReleaseMetadata,parseUnctadPublisherReleaseCalendarHtml} from '../../global-intelligence/adapters/unctadstat.mjs';
-import {ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss}
+import {ICC_OFFICIAL_NEWS_RSS,parseIccOfficialNewsRss,parseIccOfficialNewsItems}
  from '../lib/icc-official-news-rss.mjs';
 import {MOFCOM_MINISTRY_ANNOUNCEMENTS_2026,
  parseMofcomMinistryMineralAnnouncementIndex}
@@ -200,28 +200,22 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        const bytes=await boundedBody(alt,P0_MAX_BYTES);
        const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
        const receipt=parseIccOfficialNewsRss(text);
-       const [articleUrl]=extractIccOfficialNewsLinks(text,{limit:1});
-       totalHttpRequests++;
-       const article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',signal:AbortSignal.timeout(12000),
-         headers:ICC_NEWS_REQUEST_HEADERS });
-       if(!article.ok||article.redirected===true||new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
-         try{await article.body?.cancel();}catch{}
-         row.reason=`ICC_ARTICLE_HTTP_${Number.isInteger(article.status)?article.status:0}`;
-         throw Error('ICC_ARTICLE_HTTP_UNAVAILABLE');
-       }
-       if(!/html/iu.test(article.headers.get('content-type')??'')){
-         try{await article.body?.cancel();}catch{}
-         row.reason='ICC_ARTICLE_MIME_INVALID';throw Error('ICC_ARTICLE_MIME_INVALID');
-       }
-       const articleBytes=await boundedBody(article,P0_MAX_BYTES);
-       const articleHtml=new TextDecoder('utf-8',{fatal:true}).decode(articleBytes);
-       const parsedArticle=parseIccArticleHtml(articleHtml,{url:articleUrl,retrievedAt:now.toISOString()});
-       row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=1;
-       row.reason=null;row.original_article_html_readback_verified=true;
-       row.primary_news_html_parser_still_unverified=false;
-       row.current_original_publication_verified=parsedArticle.published_at!==null;
-       row.native_publication_at_utc=parsedArticle.published_at;
+       const items=parseIccOfficialNewsItems(text);
+       if(!receipt.first_party_official_rss_verified||
+          receipt.publisher_native_feed_clock_verified!==true||
+          items.length<1)
+         throw Error('ICC_OFFICIAL_RSS_NATIVE_DATES_UNAVAILABLE');
+       row.status='PRIVATE_CANDIDATES_PARSED';
+       row.parsed_candidate_count=items.length;
+       row.reason=null;
+       row.official_rss_alternate_available=true;
+       row.primary_news_html_parser_still_unverified=true;
+       row.original_article_html_readback_verified=false;
+       row.current_original_publication_verified=false;
+       row.publisher_native_feed_clock_verified=true;
+       row.native_publication_at_utc=items[0].publishedAt;
        row.official_first_party_rss_leads=receipt.first_party_original_link_leads;
+       row.feed_date_assertion_count=receipt.feed_date_assertion_count;
        row.commercial_eligible=false;
      }catch(error){
        row.official_rss_alternate_unavailable=true;
