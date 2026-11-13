@@ -277,7 +277,7 @@ export function admitSignedClosedD1DayForCanary(proof:any,now=new Date()){
   proof.analytics_provider_observation_not_provider_signed_ledger===true&&
   proof.account_wide_atomic_hard_cap_guaranteed===false&&
   proof.no_funds===true&&
-  /^[a-f0-9]{64}$/.test(proof.provider_query_result_sha256??'')&&
+  /^[a-f0-9]{64}$/.test(proof.provider_query_result_hmac_sha256??'')&&
   ['BILLING_READ_TOKEN','EXISTING_ACCOUNT_API_TOKEN'].includes(proof.analytics_credential_source)&&
   proof.budget_rows_read===D1_DAILY_READ_CEILING&&
   proof.budget_rows_written===D1_DAILY_WRITE_CEILING&&
