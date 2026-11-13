@@ -71,6 +71,27 @@ describe("#1827 account-wide public Global Risk B2 quota guard",()=>{
       .toThrow("GLOBAL_RISK_QUOTA_BASE_CONFIG_INVALID");
   });
 
+  it("returns a validated fresh cache hit before waiting for the D1 hot snapshot",async()=>{
+    const asOf=new Date().toISOString();
+    const cached=new Response(JSON.stringify({
+      schema:"geomacro.public-global-risk-live.v1",
+      source_project:"ldpwajisioljyjtojvfx",
+      data:{verificationStatus:"verified",snapshotAsOf:asOf},
+    }),{headers:{
+      "content-type":"application/json",
+      "x-geomacro-source-as-of":asOf,
+      "x-geomacro-b2-verification":"full-readback-hash-exact-restore",
+    }});
+    const match=vi.fn(async()=>cached.clone());
+    vi.stubGlobal("caches",{default:{match,put:async()=>undefined}});
+    const d1=vi.fn(async()=>{throw Error("D1_SHOULD_NOT_BE_WAITED_FOR");});
+    vi.stubGlobal("fetch",vi.fn(async()=>{throw Error("UNEXPECTED_B2_NETWORK");}));
+    const response=await worker.fetch(request(),{...env(),CONTROL_PLANE:{fetch:d1}},ctx);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-geomacro-b2-verification")).toBe("full-readback-hash-exact-restore");
+    expect(d1).not.toHaveBeenCalled();
+  });
+
   it("does not make even a single B2 GET if production quota D1 is absent",async()=>{
     noCache();
     const b2=vi.fn(async()=>{throw Error("UNEXPECTED_B2_NETWORK");});
@@ -120,8 +141,8 @@ describe("#1827 account-wide public Global Risk B2 quota guard",()=>{
   it("D1 hot and existing verified Workers cache bypass B2 quota and remain unchanged",()=>{
     const code=readFileSync("workers/global-risk-edge/src/index.mjs","utf8");
     const start=code.slice(code.indexOf("export default"));
-    expect(start.indexOf("const hotSnapshot = await readD1HotSnapshot(env)"))
-      .toBeLessThan(start.indexOf("const cached = await cache.match(cacheKey)"));
+    expect(start.indexOf("const cached = await cache.match(cacheKey)"))
+      .toBeLessThan(start.indexOf("const hotSnapshot = await readD1HotSnapshot(env)"));
     expect(start.indexOf("const cached = await cache.match(cacheKey)"))
       .toBeLessThan(start.indexOf("const response = await buildResponse(env)"));
     expect(code.indexOf("reserveB2AccountQuota(env.B2_QUOTA_DB"))
