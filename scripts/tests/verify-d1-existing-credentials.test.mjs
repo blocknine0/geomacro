@@ -59,8 +59,9 @@ test('access denied primary tries existing secondary, requires real complete sam
   assert.equal(proof.analytics_credential_source,'EXISTING_ACCOUNT_API_TOKEN');
   assert.equal(proof.rows_read,100);
   assert.equal(proof.rows_written,10);
-  assert.deepEqual(calls,['Bearer '+PRIMARY,'Bearer '+SECONDARY]);
+  assert.match(proof.provider_query_result_hmac_sha256,/^[a-f0-9]{64}$/u);
   assert.doesNotMatch(JSON.stringify(proof),/p{20}|s{20}/u);
+  assert.deepEqual(calls,['Bearer '+PRIMARY,'Bearer '+SECONDARY]);
  });
 });
 
