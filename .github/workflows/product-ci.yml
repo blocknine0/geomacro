@@ -91,7 +91,7 @@ jobs:
         run: node --test scripts/tests/bun-locked-registry-integrity.test.mjs
 
       - name: Bun syntax check for production source-only intake (offline)
-        run: bun --check scripts/ops/phase2i-source-only-raw-tick.ts
+        run: bun build --target=bun --no-bundle --outdir /tmp/phase2i-source-only-syntax-check scripts/ops/phase2i-source-only-raw-tick.ts
 
       - name: Verify committed lockfile and install dependencies
         # GitHub runners can inherit Lovable's npm mirror, which returned
