@@ -71,7 +71,9 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
      reference.protocol!=="https:"||reference.username||reference.password||
      reference.port||reference.hash||!reference.hostname.includes(".")||
      !/^[A-Z]{3}$/u.test(source.publisher_country_iso3??"")||
-     source.activation_state!=="RUNTIME_PROBE_REQUIRED"||
+     !(source.activation_state==="RUNTIME_PROBE_REQUIRED"||source.activation_state==="disabled_pending_live_verification")||
+     (source.activation_state==="disabled_pending_live_verification"&&
+      !/^LIVE_PROBE_FAILURE_[A-Z0-9_]+$/u.test(source.disabled_reason_code??""))||
      source.publisher_native_dates_required!==true||
      source.transport_verified_at_registration!==false||
      source.commercial_eligible!==false||source.publicly_deliverable!==false||
@@ -80,6 +82,7 @@ export function privateUnverifiedOsintRegistry(raw=JSON.parse(readFileSync(sourc
      source.categories.some(c=>!Object.hasOwn(domains,c))||
      !["rss","atom"].includes(source.type))
    throw Error("UNVERIFIED_OSINT_LOCAL_GAP_CANDIDATE_UNSAFE:"+source?.id);
+  if(source.activation_state==="disabled_pending_live_verification")continue;
   ids.add(source.id);urls.add(url.href);
   items.push(Object.freeze({
    ...source,access:"rss",supported:true,
