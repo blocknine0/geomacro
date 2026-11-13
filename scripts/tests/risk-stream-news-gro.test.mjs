@@ -18,7 +18,8 @@ function database(){
  const {privateKey,publicKey}=generateKeyPairSync("ed25519");
  const env={DB:{prepare(sql){const stmt=db.prepare(sql);return {
   bind(...values){return {first:async()=>stmt.get(...values)??null,
-   run:async()=>stmt.run(...values)}}
+   run:async()=>stmt.run(...values),
+   all:async()=>({results:stmt.all(...values)})}}
  }}},RISK_STREAM_ACTIVE:"1",STREAM_INGESTION_ENABLED:"true",
  RISK_STREAM_HOT50_AUTONOMOUS_ENABLED:"1",
  RISK_GATE_DECISION_ED25519_KEY_ID:"test-news-key-v1",
