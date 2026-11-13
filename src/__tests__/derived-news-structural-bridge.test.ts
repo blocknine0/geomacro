@@ -63,23 +63,26 @@ describe("source-neutral three-domain 72h news -> structural output bridge",()=>
    expect(()=>buildDerivedNewsStructural([good,{...good,topic:"foreign policy"}],NOW))
      .toThrow("DERIVED_NEWS_ID_COLLISION");
  });
- it("keeps the one-query D1 journal internal but serves public structural data from static latest.json",async()=>{
+ it("reuses the same cached immediate-feed pages while serving public structural data from static latest.json",async()=>{
    const signals=Array.from({length:520},(_,i)=>story(i));
    const internalMock=vi.fn(async (input:RequestInfo|URL,init?:RequestInit)=>{
-     expect(String(input)).toContain("/v1/public/website-derived-news-bundle");
+     expect(String(input)).toContain("/v1/public/website-derived-news-immediate");
      expect(new Headers(init?.headers).get("cache-control")).toBe("no-cache");
+     const url=new URL(String(input));
+     const offset=Number(url.searchParams.get("offset")??0);
+     const page=signals.slice(offset,offset+250);
      return Response.json({
-       ok:true,schema:"geomacro.website-derived-news-bundle.v1",
+       ok:true,schema:"geomacro.website-derived-news-feed.v1",
        checked_at:new Date(NOW).toISOString(),
        original_release_delay_minutes:0,retention_days:3,retention_hours:72,
-       delivery_scope:"free_website_only",complete:true,item_cap:600,
-       returned_rows:signals.length,signals,
-       first_ingest:signals.map(item=>({id:item.id,first_seen_at:new Date(NOW-60_000).toISOString()})),
+       delivery_scope:"free_website_only",page_offset:offset,page_size:250,
+       has_more:offset+250<signals.length,next_offset:offset+250<signals.length?offset+250:null,
+       signals:page,
      });
    });
    const all=await fetchAllDerivedNews(internalMock as typeof fetch,NOW);
    expect(all).toHaveLength(520);
-   expect(internalMock).toHaveBeenCalledTimes(1);
+   expect(internalMock).toHaveBeenCalledTimes(3);
    const mock=vi.fn(async (input:RequestInfo|URL)=>{
      expect(String(input)).toBe("https://geomacro-public-finds-archive.daspallab202391.workers.dev/latest.json");
      return Response.json(feed(signals.slice(0,250)));

@@ -77,7 +77,8 @@ describe("verified Global Risk edge serving boundary", () => {
     expect(publicApi).not.toContain("readB2PublicRisk");
     expect(publicApi).not.toContain("b2-live.server");
 
-    expect(publicIndicesApi).toContain("readRiskIndicesEdge");
+    expect(publicIndicesApi).toContain("readGeoMacroNewsSeverityRiskIndices");
+    expect(publicIndicesApi).toContain("self_certified_not_independently_reviewed");
     expect(publicIndicesApi).not.toContain("readGlobalRiskEdge");
     expect(publicIndicesApi).not.toContain("riskIndicesFromGlobalRisk");
     expect(publicIndicesApi).not.toContain('authority: "backblaze-b2-verified-edge"');

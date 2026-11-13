@@ -7,7 +7,7 @@ import {relayTelegramFlashWebhook} from './telegram-flash-relay.mjs';
 import {syncCorridorSevenDay,pruneCorridorSevenDay,corridorSevenDayStatus} from './corridor-seven-day-cache.mjs';
 import {corridorWatchTick,corridorWatchRead} from './corridor-pipeline-health.mjs';
 import {readNewsProductFactory} from './news-product-factory.mjs';
-import {serveSelfCertifiedNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
+import {serveSelfCertifiedNewsSeverityGri,serveSnapshotNewsSeverityGri} from "./geomacro-news-severity-gri.mjs";
 import {readPublicMacro,loadMacroState,storeMacroState,runMacroReleaseTick} from "./macro-fastlane.mjs";
 import {publicSignedNews} from './public-signed-news.mjs';
 import {authorizePrivateNewsProof} from './private-news-proof-auth.mjs';
@@ -75,6 +75,7 @@ import {threeDomainEvidenceContinuity} from "./three-domain-evidence-continuity.
 import {deliverThreeDomainStructuredWithCacheRecovery} from "./three-domain-structured-delivery.mjs";
 import {readPublicFreeD1Cached,eligiblePublicFreeD1CacheRequest,
   eligiblePublicFreeD1MaterializedNewsPageRequest} from "./public-free-d1-cache.mjs";
+import {withPublicEtag} from "./public-http-etag.mjs";
 import {readPublicNewsR2Snapshot,publishPublicNewsR2Snapshot,PUBLIC_NEWS_R2_MAX_BYTES}
   from "./public-news-r2-offload.mjs";
 import { makeGriHistoricalContinuityMetadata } from "./global-risk-historical-status.mjs";
@@ -1626,6 +1627,34 @@ export default {
       waitUntil:typeof ctx?.waitUntil==="function"?task=>ctx.waitUntil(task):null,
       swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
     });
+    const readCachedImmediateJournal=async(now)=>{
+      const signals=[];let first=null;
+      for(const offset of [0,250,500]){
+        const pageUrl=new URL(request.url);
+        pageUrl.pathname="/v1/public/website-derived-news-immediate";
+        pageUrl.search=offset?"?offset="+offset:"";
+        const pageRequest=new Request(pageUrl.toString(),{
+          method:"GET",headers:{Accept:"application/json"}});
+        const page=await publicReadCache(async()=>
+          await readPublicNewsR2Snapshot(pageRequest,env,now) ??
+          await readDerivedStories(env,now,offset,0,
+            eligiblePublicFreeD1MaterializedNewsPageRequest(pageRequest)||
+            env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"),pageRequest);
+        if(page.status!==200)return page;
+        const doc=await page.json();
+        if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-feed.v1"||
+          !Array.isArray(doc.signals)||doc.signals.length>250)
+          return Response.json({ok:false,error:"DERIVED_NEWS_FEED_SCHEMA_INVALID"},{status:503});
+        if(!first)first=doc;
+        signals.push(...doc.signals);
+        if(signals.length>600)return Response.json({ok:false,error:"DERIVED_NEWS_FEED_TOO_LARGE"},{status:503});
+        if(doc.has_more!==true||doc.next_offset!==offset+250)break;
+      }
+      return Response.json({...first,signals,page_offset:0,page_size:signals.length,
+        has_more:false,next_offset:null},{status:200,headers:{
+          "Content-Type":"application/json; charset=utf-8",
+          "Cache-Control":"public, max-age=60, stale-while-revalidate=300"}});
+    };
     // Authenticated, SHA-keyed, public-format-only Ask cache; never expose
     // endpoint or any cache entry to unauthenticated visitors.
     if(url.pathname==="/v1/internal/ask/public-model-cache"){
@@ -1776,12 +1805,25 @@ export default {
             swr:env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1",
           })));
     }
-    if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-certified-news-severity-gri"&&!url.search)
-      return publicReadCache(()=>serveSelfCertifiedNewsSeverityGri(env,{now:Date.now()}));
+    if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-certified-news-severity-gri"&&!url.search){
+      // Reuse the exact immediate journal pages consumed by /intelligence;
+      // the report calculation is memory-only and never reads retained D1 state.
+      const source=async(_runtimeEnv,now)=>readCachedImmediateJournal(now);
+      return withPublicEtag(request,await publicReadCache(()=>
+        serveSelfCertifiedNewsSeverityGri(env,{now:Date.now(),source})));
+    }
+    if(request.method==="GET"&&url.pathname==="/v1/public/geomacro-news-severity-risk-indices"&&!url.search){
+      // Same immediate journal pages as /intelligence; no D1 continuity read
+      // or write is performed when calculating/signing these indicators.
+      const source=async(_runtimeEnv,now)=>readCachedImmediateJournal(now);
+      return withPublicEtag(request,await publicReadCache(()=>
+        serveSnapshotNewsSeverityGri(env,{now:Date.now(),source})));
+    }
     if(request.method==="GET"&&url.pathname==="/v1/public/website-derived-news-bundle"&&!url.search)
-      return publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
+      return withPublicEtag(request,await publicReadCache(async()=>await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStoriesBundle(env,Date.now(),
-          eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1"));
+          eligiblePublicFreeD1CacheRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1")),{
+            cacheControl:"public, max-age=60, stale-while-revalidate=300"});
     // Retired: this public URL exposed private original-page verdicts,
     // source-review clocks and issuer envelopes. Neither browsers, agents
     // nor PREDGE may read internal qualification state.
@@ -1801,17 +1843,18 @@ export default {
       // journal. No arbitrary SQL offsets or raw publisher payloads.
       const q=url.searchParams;
       const allowMaterialized=eligiblePublicFreeD1MaterializedNewsPageRequest(request)||env?.GEOMACRO_D1_READ_HOTSPOT_V2==="1";
-      if(q.size===0)return publicReadCache(async()=>
+      if(q.size===0)return withPublicEtag(request,await publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),0,legacyDelay,
-          allowMaterialized));
+          allowMaterialized)),{
+            cacheControl:"public, max-age=60, stale-while-revalidate=300"});
       if(q.size!==1||q.getAll("offset").length!==1||
          !["250","500"].includes(q.get("offset")))
         return json({ok:false,error:"DERIVED_NEWS_PAGE_INVALID",chargeable:false},400);
-      return publicReadCache(async()=>
+      return withPublicEtag(request,await publicReadCache(async()=>
         await readPublicNewsR2Snapshot(request,env) ??
         await readDerivedStories(env,Date.now(),Number(q.get("offset")),legacyDelay,
-          allowMaterialized));
+          allowMaterialized)));
     }
     if (request.method === "GET" && url.pathname === "/v1/public/source-pulse-30m") {
       return publicReadCache(()=>getPublicThreeDomain30MinSourcePulse(env));

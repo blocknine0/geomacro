@@ -38,7 +38,8 @@ test("internal destination headings are accessible client links", () => {
 test("client transitions do not block on 9s intelligence publisher request", () => {
   assert.match(intelligence, /if \(typeof window !== "undefined"\)/);
   assert.match(intelligence, /stateless: null, statelessFeeds: \{\}, journal: \[\]/);
-  assert.match(intelligence, /const \[geopolitics, macro, minerals, history\]/);
+  assert.match(intelligence, /const statelessResults = await Promise\.allSettled\(domains\.map/);
+  assert.match(intelligence, /const \[history\] = await Promise\.allSettled/);
   assert.match(intelligence, /getStatelessIntelligence/);
 });
 test("premium CSS identity respects accessibility and mobile performance", () => {

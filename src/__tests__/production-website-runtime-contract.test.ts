@@ -34,7 +34,7 @@ describe("production website runtime contract", () => {
     expect(hook).not.toContain("GLOBAL_RISK_EDGE_URL");
     expect(edgeReader).toContain("backblaze-b2-risk-indices-edge");
     expect(edgeReader).toContain("geomacro-risk-indices.daspallab202391.workers.dev/risk-indices");
-    expect(api).toContain("readRiskIndicesEdge");
+    expect(api).toContain("readGeoMacroNewsSeverityRiskIndices");
     expect(api).not.toContain("readGlobalRiskEdge");
     expect(api).not.toContain("riskIndicesFromGlobalRisk");
     expect(api).not.toContain("readB2PublicRisk");
@@ -117,7 +117,7 @@ describe("production website runtime contract", () => {
     expect(intelligence).toContain("stateless: accepted[0]");
     expect(intelligence).toContain("statelessFeeds:");
     expect(intelligence).toContain('const domains = ["geopolitics", "macro", "rare_earth"] as const');
-    expect(intelligence).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value)');
+    expect(intelligence).toContain('journal: history.status === "fulfilled" && Array.isArray(history.value?.signals)');
     expect(intelligence).toContain("Promise.allSettled");
     expect(intelligence).toContain("initialJournal={loader.journal}");
     expect(intelligence).toContain("component: StatelessWebsiteIntelligencePage");

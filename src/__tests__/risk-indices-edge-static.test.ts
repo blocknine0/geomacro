@@ -122,7 +122,7 @@ describe("independent verified Risk Indices edge", () => {
     expect(serverReader).toContain("geomacro-risk-indices.daspallab202391.workers.dev/risk-indices");
     expect(serverReader).toContain("backblaze-b2-risk-indices-edge");
     expect(serverReader).not.toContain("geomacro-global-risk");
-    expect(api).toContain("readRiskIndicesEdge");
+    expect(api).toContain("readGeoMacroNewsSeverityRiskIndices");
     expect(api).not.toContain("readGlobalRiskEdge");
     expect(hook).toContain("RISK_INDICES_EDGE_URL");
     expect(hook).toContain('{ kind: "edge", url: RISK_INDICES_EDGE_URL }');
