@@ -10,7 +10,7 @@ import {parseAustraliaCriticalMineralsHtml} from '../../global-intelligence/adap
 import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochilco-minerals.mjs';
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
-import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls} from '../../global-intelligence/adapters/icc-news.mjs';
+import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls,ICC_NEWS_REQUEST_HEADERS} from '../../global-intelligence/adapters/icc-news.mjs';
 import {parseWorldBankPinkSheetReleaseMetadata} from '../../global-intelligence/adapters/world-bank-commodity-prices.mjs';
 import {parseUnctadPublisherReleaseMetadata,parseUnctadPublisherReleaseCalendarHtml} from '../../global-intelligence/adapters/unctadstat.mjs';
 import {ICC_OFFICIAL_NEWS_RSS,extractIccOfficialNewsLinks,parseIccOfficialNewsRss}
@@ -75,7 +75,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
    try{
      totalHttpRequests++;
      const response=await fetchImpl(source.url,{method:'GET',redirect:'error',
-       signal:AbortSignal.timeout(15000),headers:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':source.id==='icc_news'?'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8':'*/*'}});
+       signal:AbortSignal.timeout(15000),headers:source.id==='icc_news'?ICC_NEWS_REQUEST_HEADERS:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'*/*'}});
      if(!response.ok){
        row.reason='HTTP_'+response.status;
        mayUseRelatedMinistryIndex=[500,502,503,504].includes(response.status);
@@ -95,7 +95,7 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
          totalHttpRequests++;
          let metadataResponse;
          try{metadataResponse=await fetchImpl(source.publisherMetadataUrl,{method:'GET',redirect:'error',
-           signal:AbortSignal.timeout(12000),headers:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'}});}
+           signal:AbortSignal.timeout(12000),headers:ICC_NEWS_REQUEST_HEADERS});}
          catch{throw Error('WORLD_BANK_PUBLISHER_METADATA_NETWORK_FAILED')}
          if(!metadataResponse.ok||metadataResponse.redirected===true||
             (metadataResponse.url&&metadataResponse.url!==source.publisherMetadataUrl)){
