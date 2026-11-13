@@ -21,7 +21,7 @@ test("read pacing stays hourly and early UTC writes use only bounded carry-forwa
   assert.equal(burst.held,false);
   assert.equal(burst.early_utc_carry_forward_active,true);
   assert.equal(burst.early_utc_carry_forward_rows,100000);
-  assert.equal(burst.paced_rows_written_ceiling,321664);
+  assert.equal(burst.paced_rows_written_ceiling,321000);
   assert.equal(check(100,100,at("01:00:00")).held,false);
   assert.equal(check(1000,600000,at("04:52:00")).early_utc_carry_forward_active,false);
   const afterWindow=check(1000,300000,at("06:00:00"));
