@@ -128,9 +128,15 @@ export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
   throw Error("ICC_NEWS_ARTICLE_LINK_LIMIT_INVALID");
  const links=[],seen=new Set();
  for(const match of input.matchAll(/<a\b[^>]*>/giu)){
-  const href=attr(match[0],"href");if(!href)continue;
-  const resolved=absoluteUrl(href,baseUrl);if(!resolved)continue;
+  const href=attr(match[0],"href")??attr(match[0],"data-drupal-link-system-path");if(!href)continue;
+  const resolved=absoluteUrl(href.startsWith("/")?href:"/"+href,baseUrl);if(!resolved)continue;
   let url;try{url=new URL(resolved)}catch{continue}
+  // ICC's Drupal listing appends ?ln=en to first-party story links. Accept
+  // only this locale selector and strip it before fetching/canonicalizing.
+  const localeOnly=[...url.searchParams.entries()];
+  if(localeOnly.length>0&&
+     !(localeOnly.length===1&&["ln","lang"].includes(localeOnly[0][0])&&localeOnly[0][1]==="en"))continue;
+  url.search="";url.hash="";
   if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
      url.password||url.search||url.hash||
      !(/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(url.pathname))||
