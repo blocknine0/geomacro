@@ -86,6 +86,16 @@ test("R2 GET SHA mismatch prevents Durable Object state cursor advance",async()=
   root:ROOT,env:ENV,fetchImpl:f.fetchImpl}),/503/);
  assert.equal(f.storage.data.size,0);
 });
+test("operator dispatch is allowed only through the existing protected main preload gate",()=>{
+ const preload=readFileSync("scripts/ops/preload-phase2i-encrypted-backlog.mjs","utf8");
+ assert.match(preload,/GITHUB_REPOSITORY!=="blocknine0\/geomacro"/);
+ assert.match(preload,/GITHUB_REF!=="refs\/heads\/main"/);
+ assert.match(preload,/GEOMACRO_SOURCE_INTAKE_ONLY!=="1"/);
+ assert.match(preload,/PHASE2I_PROVIDER_SOURCE_INTAKE!=="true"/);
+ assert.match(preload,/\["schedule","workflow_run","workflow_dispatch"\]/);
+ assert.match(preload,/unsealPrivatePhase2iSourceBacklog/);
+});
+
 test("workflows preserve D1 quota mutual exclusion and durable opt-in",()=>{
  const source=readFileSync("scripts/ops/phase2i-source-only-raw-tick.ts","utf8");
  for(const p of [".github/workflows/private-global-osint-15m.yml",
