@@ -86,7 +86,7 @@ jobs:
           NODE
           $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT name FROM d1_migrations WHERE name='0132_predge_risk_gate_single_use_license.sql' LIMIT 2" > "$RUNNER_TEMP/geomacro-0132/history-before.json"
           node -e 'const d=require(process.argv[1]);const rows=d.flatMap(x=>x.results??[]);if(rows.length)throw Error("MIGRATION_0132_ALREADY_APPLIED");' "$RUNNER_TEMP/geomacro-0132/history-before.json"
-          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT name FROM sqlite_schema WHERE name IN ('predge_paid_risk_gate_usage_ledger','idx_predge_paid_risk_gate_usage_month','idx_predge_paid_risk_gate_collection','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_refund_terminal')" > "$RUNNER_TEMP/geomacro-0132/objects-before.json"
+          $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0132/wrangler.json" --json --command "SELECT name FROM sqlite_schema WHERE name IN ('predge_risk_gate_verdict_license','idx_predge_risk_gate_license_created')" > "$RUNNER_TEMP/geomacro-0132/objects-before.json"
           node -e 'const d=require(process.argv[1]);const rows=d.flatMap(x=>x.results??[]);if(rows.length)throw Error("PREDGE_SINGLE_USE_SCHEMA_ALREADY_PRESENT_WITH_UNKNOWN_ORIGIN");' "$RUNNER_TEMP/geomacro-0132/objects-before.json"
       - name: Apply only migration 0132 and record native migration history
         if: inputs.mode == 'apply'
