@@ -11,7 +11,8 @@ export function retiredSourceReplacements(doc=JSON.parse(readFileSync(new URL(".
   throw Error("SOURCE_REPLACEMENT_MANIFEST_INVALID");
  const retired=new Map(doc.retired.map(x=>[x.id,x]));
  const urls=new Set(),ids=new Set();
- return Object.freeze(doc.replacements.map(row=>{
+ const disabled=new Set(doc.disabled_pending_live_verification??[]);
+ return Object.freeze(doc.replacements.filter(row=>!disabled.has(row.id)).map(row=>{
   const old=retired.get(row.retired_source_id);
   let url;try{url=new URL(row.url)}catch{throw Error("SOURCE_REPLACEMENT_URL_INVALID")}
   if(!old?.url||!/^private_replacement_[a-f0-9]{20}$/u.test(row.id)||ids.has(row.id)||urls.has(row.url)||

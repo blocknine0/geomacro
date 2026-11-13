@@ -869,7 +869,8 @@
       "publisher_native_dates_required": true,
       "transport_verified_at_registration": false,
       "commercial_eligible": false,
-      "publicly_deliverable": false
+      "publicly_deliverable": false,
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_gaplane_gin_new",

@@ -377,14 +377,14 @@ export default {
 
     const cache = caches.default;
     const cacheKey = new Request(`${url.origin}/global-risk`, { method: "GET" });
+    const cached = await cache.match(cacheKey);
+    if (await validatedCachedLiveResponse(cached,"global-risk")) return cached;
+
     const hotSnapshot = await readD1HotSnapshot(env);
     if (hotSnapshot) {
       ctx.waitUntil(cache.put(cacheKey, hotSnapshot.clone()));
       return hotSnapshot;
     }
-
-    const cached = await cache.match(cacheKey);
-    if (await validatedCachedLiveResponse(cached,"global-risk")) return cached;
 
     // Only after D1 hot and verified positive POP cache miss. A short private
     // failure marker prevents repeated B2 GETs for the same unavailable state.

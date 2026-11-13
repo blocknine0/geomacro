@@ -26,7 +26,7 @@ function extractTextFragment(value) {
   return clean(output);
 }
 function absoluteUrl(href, baseUrl = ICC_NEWS_URL) {
-  try { return new URL(href, baseUrl).toString(); } catch { return null; }
+  try { return new URL(String(href ?? "").replace(/&amp;/giu, "&"), baseUrl).toString(); } catch { return null; }
 }
 
 function dateFromText(value) {
@@ -128,11 +128,16 @@ export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
   throw Error("ICC_NEWS_ARTICLE_LINK_LIMIT_INVALID");
  const links=[],seen=new Set();
  for(const match of input.matchAll(/<a\b[^>]*>/giu)){
-  const href=attr(match[0],"href");if(!href)continue;
+  const tag=match[0],systemPath=attr(match[0],"data-drupal-link-system-path");
+  const href=attr(tag,"href")??(systemPath&&/^node\/[1-9][0-9]{2,8}$/u.test(systemPath)?"/"+systemPath:null);
+  if(!href)continue;
   const resolved=absoluteUrl(href,baseUrl);if(!resolved)continue;
   let url;try{url=new URL(resolved)}catch{continue}
+  // Drupal listing links may carry language or pager parameters; the pinned
+  // first-party article path remains canonical after those are discarded.
+  url.search="";url.hash="";
   if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
-     url.password||url.search||url.hash||
+     url.password||
      !(/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(url.pathname))||
      /\/(?:subscribe|rss|search|filter)(?:\/|$)/iu.test(url.pathname))continue;
   const canonicalHref=url.href;if(seen.has(canonicalHref))continue;

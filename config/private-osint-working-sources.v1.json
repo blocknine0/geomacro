@@ -1273,7 +1273,8 @@
           "path": "scripts/rss-feeds-report.csv",
           "tree_sha": "618099f896b58b4d83492bf06081533af64afdd7"
         }
-      ]
+      ],
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_mesh_ta_nea",
@@ -1537,7 +1538,8 @@
         "feed_parsed": true,
         "native_publication_clock_present": true,
         "bounded_feed_bytes": 12894
-      }
+      },
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_mesh_irna",
@@ -3816,7 +3818,8 @@
           "path": "scripts/rss-feeds-report.csv",
           "tree_sha": "618099f896b58b4d83492bf06081533af64afdd7"
         }
-      ]
+      ],
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_repo_4359bb4a3387d403201c",
@@ -8733,7 +8736,8 @@
           "path": "scripts/rss-feeds-report.csv",
           "tree_sha": "618099f896b58b4d83492bf06081533af64afdd7"
         }
-      ]
+      ],
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_repo_199d5190dbbb48eb99ec",
