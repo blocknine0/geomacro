@@ -31,8 +31,12 @@ class MemoryD1 {
     }
     if(sql.includes("INSERT INTO predge_risk_gate_verdict_license")){
       if([...db.licenses.values()].some(x=>x.request_id===args[1])||db.licenses.has(args[0]))throw Error("UNIQUE_SINGLE_USE_LICENSE");
-      const keys=["verdict_id","request_id","client_id","licensee_id","max_commercial_uses","consumption_count","resale_permitted","transferable","subject_json","action_context_json","market_id","condition_id","downstream_caller","request_hash","license_payload_sha256","created_at"];
-      db.licenses.set(args[0],Object.fromEntries(keys.map((k,i)=>[k,args[i]??({licensee_id:"predge",max_commercial_uses:1,consumption_count:1,resale_permitted:0,transferable:0}[k]) ])));
+      const row={verdict_id:args[0],request_id:args[1],client_id:args[2],
+       licensee_id:"predge",max_commercial_uses:1,consumption_count:1,resale_permitted:0,
+       transferable:0,subject_json:args[3],action_context_json:args[4],market_id:args[5],
+       condition_id:args[6],downstream_caller:args[7],request_hash:args[8],
+       license_payload_sha256:args[9],created_at:args[10]};
+      db.licenses.set(args[0],row);
       return {success:true};
     }
     if(sql.includes("INSERT INTO predge_paid_risk_gate_usage_ledger")){
@@ -59,6 +63,8 @@ class MemoryD1 {
         corroborated_countries:0,latest_event_clock:new Date(now-60000).toISOString(),categories:"geopolitics"};
     }
     if(sql.includes("WITH native_events"))return {index_events:0,latest_index_clock:null,native_corroborated_publisher_count:0};
+    if(sql.includes("FROM predge_risk_gate_verdict_license")&&sql.includes("WHERE verdict_id=? LIMIT 1"))return db.licenses.get(args[0])??null;
+    if(sql.includes("FROM predge_risk_gate_verdict_license")&&sql.includes("WHERE verdict_id=? OR request_id=?"))return [...db.licenses.values()].find(x=>x.verdict_id===args[0]||x.request_id===args[1])??null;
     if(sql.includes("FROM risk_gate_audit_receipts WHERE receipt_id"))return db.audit.get(args[0])??null;
     if(sql.includes("FROM predge_paid_risk_gate_usage_ledger WHERE request_id"))return db.paid.get(args[0])??null;
     if(sql.includes("UPDATE risk_gate_d1_requests")){
