@@ -298,6 +298,8 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    raw=new TextDecoder("utf-8",{fatal:true}).decode(buf);
  }catch{return fail("INVALID_RISK_GATE_REQUEST",400);}
  let body;try{body=JSON.parse(raw)}catch{return fail("INVALID_JSON",400);}
+ if(record(body)&&(body.verdict_id!==undefined||body.decision_signed_payload!==undefined||
+    body.redistribution_lock!==undefined))return failRedistribution();
  const parsed=parseRequest(body,now);
  if(!parsed)return fail("INVALID_RISK_GATE_REQUEST",400);
  if(paidEndpoint&&parsed.policy.policy_id!=="predge-paid-traffic-addendum-v2")
@@ -347,22 +349,14 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      FROM risk_gate_d1_requests WHERE client_id=? AND request_id=? LIMIT 1`)
       .bind(client,parsed.request_id).first();
    if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
-   if(claim.request_hash!==requestHash)return fail("RISK_GATE_IDEMPOTENCY_CONFLICT",409);
-   if(claim.state==="DONE"&&claim.response_json){
-      let saved;
-      try{saved=JSON.parse(claim.response_json)}catch{return fail("RISK_GATE_REPLAY_INVALID");}
-      if(saved?.ok!==true||saved?.execution_authorized!==false||
-         saved?.risk_gate?.execution_authorized!==false||
-         !["CONTINUE","REDUCE_LIMIT","REQUIRE_APPROVAL","PAUSE"].includes(saved.risk_gate.decision))
-        return fail("RISK_GATE_REPLAY_INVALID");
-      return Response.json({...saved,idempotent_replay:true},{status:200,headers});
-   }
+   if(claim.request_hash!==requestHash||claim.state==="DONE"||claim.state==="CLAIMED")
+      return failRedistribution();
    // PENDING claim must belong to the current request: older claims cannot
    // run concurrently or replay unless already durably finalized.
    const owned=await env.DB.prepare(`UPDATE risk_gate_d1_requests SET state='CLAIMED'
       WHERE client_id=? AND request_id=? AND state='PENDING'
       RETURNING request_id`).bind(client,parsed.request_id).first();
-   if(!owned)return fail("RISK_GATE_REQUEST_IN_PROGRESS",409);
+   if(!owned)return failRedistribution();
    const quota=await env.DB.prepare(`INSERT INTO risk_gate_d1_quota (client_id,usage_day,used)
      VALUES(?,?,1) ON CONFLICT(client_id,usage_day) DO UPDATE SET used=used+1
      WHERE used < ? RETURNING used`).bind(client,day,Math.min(DAY_LIMIT,HARD_CEILING)).first();
@@ -399,9 +393,15 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    const geomacroFeeUsdc=billable?contractGeomacroFeeUsdc:"0.00";
    // Ed25519 signs the immutable decision and tier matrix. HMAC audit
    // receipts remain separate and are never mislabeled as Ed25519.
+   const redistributionLock={
+     licensee_id:"predge",max_commercial_uses:1,consumption_count:1,
+     resale_permitted:false,transferable:false,subject:parsed.subject,
+     action_context:parsed.action_context,market_id:parsed.market_id,
+     condition_id:parsed.condition_id,downstream_caller:"predge"
+   };
    const signedPayload={
      schema:"geomacro.progressive-risk-gate-decision.v1",
-     request_hash:requestHash,risk_gate:result,context,
+     request_hash:requestHash,risk_gate:result,context,redistribution_lock:redistributionLock,
      verdict_id:verdictId,channel,tier:lockedTier,structure_type:structureType,
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
      predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode,entry_status,
