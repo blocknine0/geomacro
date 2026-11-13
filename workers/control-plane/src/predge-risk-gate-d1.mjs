@@ -35,6 +35,11 @@ function fail(error,status=503,extra={}){
   entry_status:"UNDELIVERED",
   advisory_decision:"PAUSE",execution_authorized:false,...extra},{status,headers});
 }
+const REDISTRIBUTION_ERROR="REDISTRIBUTION_OR_RESELL_AUTHORIZATION_FAILED";
+const REDISTRIBUTION_MESSAGE="Authorization failed: Single-use Risk Gate license already consumed or unauthorized resale/redistribution detected. Permission from Geomacro's end is required. Contact: contact@geomacro.live";
+function failRedistribution(){
+ return fail(REDISTRIBUTION_ERROR,403,{message:REDISTRIBUTION_MESSAGE});
+}
 function constantEqual(a,b){
  const left=encoder.encode(String(a??"")),right=encoder.encode(String(b??""));
  if(left.length!==right.length||left.length<32)return false;
@@ -174,16 +179,20 @@ export function parseRequest(obj,now=Date.now()){
      if(!DRIVER.has(k)||!finite(v,0,100))return null;
    }
  }
- if(obj.action_context!==undefined){
-   const a=obj.action_context;
-   if(!record(a)||!keysOnly(a,["action_type","amount","currency","destination","metadata"])||
-      (a.amount!==undefined&&!finite(a.amount,0,Number.MAX_SAFE_INTEGER))||
-      (a.action_type!==undefined&&(typeof a.action_type!=="string"||a.action_type.length>128))||
-      (a.currency!==undefined&&(typeof a.currency!=="string"||a.currency.length>32))||
-      (a.destination!==undefined&&(typeof a.destination!=="string"||a.destination.length>256))||
-      (a.metadata!==undefined&&!record(a.metadata)))return null;
- }
- return {request_id:obj.request_id,subject,policy:p,action_context:obj.action_context,tier:obj.tier};
+ if(obj.action_context===undefined)return null;
+ const a=obj.action_context;
+ if(!record(a)||!keysOnly(a,["action_type","amount","currency","destination","metadata"])||
+    (a.amount!==undefined&&!finite(a.amount,0,Number.MAX_SAFE_INTEGER))||
+    (a.action_type!==undefined&&(typeof a.action_type!=="string"||a.action_type.length>128))||
+    (a.currency!==undefined&&(typeof a.currency!=="string"||a.currency.length>32))||
+    (a.destination!==undefined&&(typeof a.destination!=="string"||a.destination.length>256))||
+    !record(a.metadata)||
+    typeof a.metadata.market_id!=="string"||!a.metadata.market_id||
+    a.metadata.market_id.length>256||
+    typeof a.metadata.condition_id!=="string"||!a.metadata.condition_id||
+    a.metadata.condition_id.length>256)return null;
+ return {request_id:obj.request_id,subject,policy:p,action_context:a,
+   market_id:a.metadata.market_id,condition_id:a.metadata.condition_id,tier:obj.tier};
 }
 export function predgePaidTrafficEnabled(env,policy){
  return env?.PREDGE_PAID_TRAFFIC_ENABLED==="YES"&&
