@@ -40,6 +40,30 @@ export function hot50FourLaneSourceCrosswalk(){
    pinned.set(s.id,s);
   }
  }
+ const globalRegistry=JSON.parse(readFileSync(
+  new URL("config/unified-rss-feed-registry.v1.json",ROOT),"utf8"));
+ if(!Array.isArray(globalRegistry.sources)||
+    !Array.isArray(snapshot.global_category_failover_candidates))
+  throw Error("HOT50_GLOBAL_FAILOVER_REGISTRY_INVALID");
+ const globalByName=new Map(globalRegistry.sources.map(x=>[x.name,x]));
+ const globalCandidates=snapshot.global_category_failover_candidates;
+ const globalIds=new Set();
+ for(const candidate of globalCandidates){
+  const registered=globalByName.get(candidate.registry_name);
+  if(!registered||registered.url!==candidate.url||
+     typeof candidate.id!=="string"||!/^private_global_hub_[a-z0-9_]+$/u.test(candidate.id)||
+     !Array.isArray(candidate.categories)||candidate.categories.length!==1||
+     !CATEGORIES.includes(candidate.categories[0])||
+     candidate.transport_verified!==false||candidate.rights_verified!==false||
+     candidate.commercial_eligible!==false||
+     candidate.kind!=="official_global_hub_candidate"||globalIds.has(candidate.id))
+   throw Error("HOT50_GLOBAL_FAILOVER_SOURCE_DRIFT:"+candidate?.id);
+  globalIds.add(candidate.id);
+ }
+ for(const category of CATEGORIES){
+  if(globalCandidates.filter(x=>x.categories.includes(category)).length<2)
+   throw Error("HOT50_GLOBAL_FAILOVER_CATEGORY_UNCOVERED:"+category);
+ }
  let direct=0,telegram=0,primaries=0;
  for(let i=0;i<50;i++){
   const row=snapshot.countries[i];
@@ -88,6 +112,35 @@ export function hot50FourLaneSourceCrosswalk(){
  }});
 }
 const sourceRef=(s,c)=>sha([s.id,s.url,c].join("\n"));
+export function hot50CellFeedFailoverPlan(){
+ const {snapshot}=hot50FourLaneSourceCrosswalk();
+ const global=snapshot.global_category_failover_candidates;
+ const plan=[];
+ for(const country of snapshot.countries)for(const category of CATEGORIES){
+  const local=country.direct_news_osint_feeds.filter(feed=>
+    feed.categories.includes(category));
+  const primary=local[0]??global.find(feed=>feed.categories.includes(category));
+  if(!primary)throw Error("HOT50_FAILOVER_PRIMARY_MISSING");
+  const primaryHost=new URL(primary.url).hostname.toLowerCase().replace(/^www\\./u,"");
+  const backup=(local.length>1?local.slice(1):[])
+    .concat(global.filter(feed=>feed.categories.includes(category)))
+    .find(feed=>feed.id!==primary.id&&
+      new URL(feed.url).hostname.toLowerCase().replace(/^www\\./u,"")!==primaryHost);
+  if(!backup)throw Error("HOT50_FAILOVER_BACKUP_MISSING");
+  plan.push(Object.freeze({
+   country_iso3:country.country_iso3,category,
+   primary_source_id:primary.id,primary_url:primary.url,
+   backup_source_ids:Object.freeze([backup.id]),
+   backup_urls:Object.freeze([backup.url]),
+   primary_scope:local.length?"COUNTRY_PINNED":"GLOBAL_TITLE_MATCH",
+   rights_verified:false,commercial_eligible:false,
+   primary_transport_verified:false,backup_transport_verified:false,
+  }));
+ }
+ if(plan.length!==150||new Set(plan.map(x=>x.country_iso3+":"+x.category)).size!==150)
+  throw Error("HOT50_FAILOVER_COVERAGE_INCOMPLETE");
+ return Object.freeze(plan);
+}
 export function observedHot50FourLaneSourceState(registry,checks,items){
  if(!Array.isArray(registry)||!Array.isArray(checks)||!Array.isArray(items))
   throw Error("HOT50_FOUR_LANE_OBSERVATION_INPUT_INVALID");
