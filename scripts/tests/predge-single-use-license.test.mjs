@@ -164,7 +164,7 @@ test("request parser requires immutable market and condition binding",()=>{
  const invalid=structuredClone(freeRequest);delete invalid.action_context.metadata.condition_id;
  assert.equal(parseRequest(invalid,now),null);
 });
-test("0132 schema persists one-use nontransferable Predge bindings",()=>{
+test("0132 schema persists immutable one-use nontransferable Predge bindings",()=>{
  const db=new DatabaseSync(":memory:");
  db.exec(readFileSync("workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql","utf8"));
  db.exec(readFileSync("workers/control-plane/migrations/0132_predge_risk_gate_single_use_license.sql","utf8"));
@@ -172,14 +172,27 @@ test("0132 schema persists one-use nontransferable Predge bindings",()=>{
  for(const name of ["licensee_id","max_commercial_uses","consumption_count","resale_permitted",
   "transferable","subject_json","action_context_json","market_id","condition_id",
   "downstream_caller","license_payload_sha256"])assert.ok(columns.has(name),name);
+ const objects=db.prepare("SELECT name FROM sqlite_schema WHERE type='trigger' AND name IN "+
+  "('predge_paid_risk_gate_license_fields_immutable','predge_risk_gate_verdict_license_no_update',"+
+  "'predge_risk_gate_verdict_license_no_delete') ORDER BY name").all().map(x=>x.name);
+ assert.deepEqual(objects,["predge_paid_risk_gate_license_fields_immutable",
+  "predge_risk_gate_verdict_license_no_delete","predge_risk_gate_verdict_license_no_update"]);
  const table=db.prepare("SELECT name FROM sqlite_schema WHERE name='predge_risk_gate_verdict_license'").get();
  assert.equal(table.name,"predge_risk_gate_verdict_license");
- assert.throws(()=>db.prepare("INSERT INTO predge_risk_gate_verdict_license "+
+ const insert=db.prepare("INSERT INTO predge_risk_gate_verdict_license "+
   "(verdict_id,request_id,client_id,licensee_id,max_commercial_uses,consumption_count,"+
   "resale_permitted,transferable,subject_json,action_context_json,market_id,condition_id,"+
   "downstream_caller,request_hash,license_payload_sha256,created_at) "+
-  "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(
-   "123e4567-e89b-52d3-a456-426614174000","request","predge-risk-gate-v1","predge",1,2,0,0,
-   "{}", "{}", "123", "0x0", "predge","a".repeat(64),"b".repeat(64),new Date(now).toISOString()));
+  "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+ assert.throws(()=>insert.run("123e4567-e89b-52d3-a456-426614174000","request-bad",
+   "predge-risk-gate-v1","predge",1,2,0,0,"{}","{}","123","0x0",
+   "predge","a".repeat(64),"b".repeat(64),new Date(now).toISOString()));
+ insert.run("123e4567-e89b-52d3-a456-426614174001","request-good","predge-risk-gate-v1",
+  "predge",1,1,0,0,"{}","{}","123","0x0","predge","a".repeat(64),"b".repeat(64),
+  new Date(now).toISOString());
+ assert.throws(()=>db.prepare("UPDATE predge_risk_gate_verdict_license SET market_id='456' "+
+  "WHERE request_id='request-good'").run());
+ assert.throws(()=>db.prepare("DELETE FROM predge_risk_gate_verdict_license "+
+  "WHERE request_id='request-good'").run());
  db.close();
 });
