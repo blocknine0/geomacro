@@ -1,6 +1,7 @@
 {
   "request_id": "predge-paid-addendum-v2-integration-fixture-001",
   "tier": "basic_focused",
+  "category": "geopolitics",
   "subject": {
     "type": "country",
     "country_iso3": "USA"
@@ -12,6 +13,7 @@
     "metadata": {
       "market_id": "123456789",
       "condition_id": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "end_buyer_id": "customer-001",
       "environment": "TEST_ONLY"
     }
   },
