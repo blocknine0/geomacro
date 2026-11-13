@@ -8,17 +8,20 @@ const story={id:'macro-1234abcd',category:'macro',title:'Geomacro finds official
  topic:'official economic statistics',geography:'Canada',development_type:'release',
  published_at:'2026-10-15',date_precision:'day',observed_release_count:1,sources_credited:[],
  status:'official_release_observed_unscored',same_event_corrob_verified:false,severity:null};
-const doc=(signals:unknown[])=>({ok:true,schema:'geomacro.website-derived-news-feed.v1',checked_at:new Date(now).toISOString(),
+const feedDoc=(signals:unknown[])=>({ok:true,schema:'geomacro.website-derived-news-feed.v1',checked_at:new Date(now).toISOString(),
  original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',signals});
+const doc=(signals:unknown[])=>({ok:true,schema:'geomacro.website-derived-news-bundle.v1',checked_at:new Date(now).toISOString(),
+ original_release_delay_minutes:0,retention_days:3,retention_hours:72,delivery_scope:'free_website_only',
+ complete:true,item_cap:600,returned_rows:signals.length,first_ingest:signals.map((s:any)=>({id:s.id,first_seen_at:null})),signals});
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 describe('website server/browser source and native-day parity',()=>{
  it('retains the same embargo-eligible macro publisher-day as the browser without inventing an hour',async()=>{
   vi.useFakeTimers();vi.setSystemTime(now);
   const fetcher=vi.fn(async()=>Response.json(doc([story])));vi.stubGlobal('fetch',fetcher);
   const actual=await readWebsiteDerivedNews();
-  expect(actual.signals).toEqual(checkedDerivedNews(doc([story]),now));
+  expect(actual.signals).toEqual(checkedDerivedNews(feedDoc([story]),now));
   expect(actual.signals).toEqual([story]);
-  expect(fetcher.mock.calls[0][1].redirect).toBe('manual');
+  expect(fetcher.mock.calls[0][1].redirect).toBe('error');
  });
  it('rejects early originals and private metadata consistently on server and browser',async()=>{
   vi.useFakeTimers();vi.setSystemTime(now);

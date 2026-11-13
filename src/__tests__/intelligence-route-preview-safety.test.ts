@@ -12,10 +12,12 @@ describe("public intelligence preview route failure boundary", () => {
     expect(route).toContain('await import(\n      "../../../src/lib/public-intelligence-production.server"');
   });
 
-  it("fails closed on import/read failures, never returns fabricated intelligence", () => {
-    expect(route).toContain('setResponseStatus(event, 503)');
-    expect(route).toContain('error: "INTELLIGENCE_UNAVAILABLE"');
-    expect(route).toContain("rows: []");
-    expect(route).toContain('"Cache-Control": "no-store, max-age=0"');
+  it("fails closed without validated signals and never caches an error envelope", () => {
+    expect(route).toContain('error:"INTELLIGENCE_UNAVAILABLE"');
+    expect(route).toContain("rows:[]");
+    expect(route).toContain("readWebsiteDerivedNews()");
+    expect(route).toContain("derived_signals");
+    expect(readFileSync("server/api/public/public-response-cache.server.ts","utf8"))
+      .toContain('"Cache-Control":"no-store"');
   });
 });

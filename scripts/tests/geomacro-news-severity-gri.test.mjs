@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createHmac,createHash} from "node:crypto";
+import {createHmac,createHash,generateKeyPairSync,verify as verifySignature} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {
  NEWS_GRI_SCHEMA,NEWS_GRI_METHOD,certifiedNewsSeverityGriFromSignals,
- serveSelfCertifiedNewsSeverityGri,
+ serveSelfCertifiedNewsSeverityGri,serveSnapshotNewsSeverityGri,
 } from "../../workers/control-plane/src/geomacro-news-severity-gri.mjs";
+import {canonicalProgressiveJson} from "../../workers/control-plane/src/progressive-risk-gate.mjs";
 
 const NOW=Date.parse("2026-10-28T16:30:00.000Z");
 const SECRET="geo-macro-news-grading-test-secret-".repeat(2);
@@ -155,15 +156,40 @@ test("public endpoint returns only self-certified, source-neutral report, no raw
  assert.equal(body.certification.issuer,"GeoMacro");
  assert.doesNotMatch(JSON.stringify(body),/source_url|articleUrl|raw_upstream|private_key/);
 });
+test("read-only snapshot projection signs the shared 72h journal without touching D1",async()=>{
+ const {privateKey,publicKey}=generateKeyPairSync("ed25519");
+ const privateB64=privateKey.export({format:"der",type:"pkcs8"}).toString("base64");
+ const publicB64=publicKey.export({format:"der",type:"spki"}).toString("base64");
+ let reads=0;
+ const db=new Proxy({}, {get(){throw Error("unexpected D1 access")}});
+ const out=await serveSnapshotNewsSeverityGri({CONTROL_PLANE_TOKEN:SECRET,DB:db,
+  RISK_GATE_DECISION_ED25519_KEY_ID:"test-news-key",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateB64,
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicB64},{now:NOW,
+  source:async()=>{reads++;return Response.json({ok:true,
+   schema:"geomacro.website-derived-news-bundle.v1",complete:true,
+   retention_hours:72,returned_rows:SOURCE.length,signals:SOURCE})}});
+ assert.equal(out.status,200);assert.equal(reads,1);
+ const {ed25519_delivery:delivery,...payload}=await out.json();
+ assert.equal(payload.data.indices.length,3);
+ assert.equal(payload.data.proofScope,"geomacro-news-severity");
+ assert.equal(payload.data.parentMethodologyVersion,"geomacro-news-severity-v1.1.0");
+ assert.ok(payload.data.indices.every(index=>index.sourceMix.osint_event_facts_verified===false));
+ assert.equal(delivery.independent_third_party_certified,false);
+ assert.equal(verifySignature(null,Buffer.from(canonicalProgressiveJson(payload)),
+  publicKey,Buffer.from(delivery.signature_b64,"base64")),true);
+});
 test("self-certified news severity remains separate; public Risk Indices require genuine reviewed GRI",()=>{
  const worker=readFileSync("workers/control-plane/src/index.mjs","utf8");
  const hook=readFileSync("src/lib/use-risk-indices.ts","utf8");
  const view=readFileSync("src/components/risk-indices/risk-indices-workspace.tsx","utf8");
  assert.match(worker,/serveSelfCertifiedNewsSeverityGri/u);
  assert.match(worker,/\/v1\/public\/geomacro-certified-news-severity-gri/u);
+ assert.match(worker,/\/v1\/public\/geomacro-news-severity-risk-indices/u);
  assert.match(worker,/\/v1\/public\/reviewed-risk-indices/u);
  assert.match(hook,/async function readCurrentReviewedSignedIndices\(\)/u);
- assert.match(hook,/const pending = readCurrentReviewedSignedIndices\(\)\.then\(data =>/u);
+ assert.match(hook,/readCurrentReviewedSignedIndices\(\)/u);
+ assert.match(hook,/readGeoMacroCertifiedNewsRisk\(\)/u);
  assert.match(hook,/readCachedCertifiedNewsRisk\(forceRefresh\)/u);
  assert.match(hook,/body\.meta\.signature_verified!==true/u);
  assert.match(view,/Reviewer-gated GRI v1.2/u);

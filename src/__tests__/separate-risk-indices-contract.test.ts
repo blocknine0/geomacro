@@ -16,7 +16,8 @@ describe("separate public risk indices contract", () => {
     expect(workspace).not.toContain('index.observedSeverity?.[window]');
     expect(worker).toContain('observedSeveritySeries(news,now,"72H")');
     expect(worker).toContain('observedSeveritySeries(news,now,"48H")');
-    expect(hook).toContain('const pending = readCurrentReviewedSignedIndices().then(data => {');
+    expect(hook).toContain("readCurrentReviewedSignedIndices()");
+    expect(hook).toContain("readGeoMacroCertifiedNewsRisk()");
     expect(hook).toContain('GEOMACRO_NEWS_GRI_HISTORY_BUCKET_INVALID');
   });
 
@@ -102,7 +103,7 @@ describe("separate public risk indices contract", () => {
 
     expect(indicesEdgeReader).toContain("geomacro-risk-indices.daspallab202391.workers.dev/risk-indices");
     expect(indicesEdgeReader).toContain("backblaze-b2-risk-indices-edge");
-    expect(publicIndices).toContain("readRiskIndicesEdge");
+    expect(publicIndices).toContain("readGeoMacroNewsSeverityRiskIndices");
     expect(publicIndices).not.toContain("readGlobalRiskEdge");
     expect(publicIndices).not.toContain("riskIndicesFromGlobalRisk");
     expect(indicesHook).toContain("RISK_INDICES_EDGE_URL");
@@ -149,12 +150,13 @@ describe("separate public risk indices contract", () => {
     expect(continuity).toContain("RISK_DOMAIN_${domain.toUpperCase()}_HISTORY_MISSING");
   });
 
-  it("routes public certified Risk Indices through current Ed25519-reviewed GRI, not news triage", () => {
+  it("prefers reviewed GRI and keeps the Ed25519 self-certified proxy explicitly separate", () => {
     const hook=read("src/lib/use-risk-indices.ts");
     const worker=read("workers/control-plane/src/geomacro-news-severity-gri.mjs");
     const signed=read("workers/control-plane/src/reviewed-risk-indices-delivery.mjs");
     const view=read("src/components/risk-indices/risk-indices-workspace.tsx");
-    expect(hook).toContain("const pending = readCurrentReviewedSignedIndices().then(data => {");
+    expect(hook).toContain("readCurrentReviewedSignedIndices()");
+    expect(hook).toContain("readGeoMacroCertifiedNewsRisk()");
     expect(hook).toContain("readCachedCertifiedNewsRisk(forceRefresh)");
     expect(hook).toContain("riskIndicesRefreshDelay(false, refreshMs)");
     expect(hook).toContain("GEOMACRO_CERTIFIED_NEWS_GRI_URL");

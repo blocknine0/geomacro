@@ -358,7 +358,7 @@ describe("website lock governance", () => {
     expect(desk).not.toContain('aria-label="Filter Intelligence by country"');
     expect(desk).not.toContain("COUNTRIES_195");
     expect(desk).toContain("fetchPermanentDerivedNews()");
-    expect(desk).toContain("fetchZeroD1PublicDerivedNews()");
+    expect(desk).toContain("fetchAllDerivedNews(fetch,Date.now(),{fresh:false})");
     expect(desk).not.toContain("fetchAllDerivedNews()");
     expect(desk).not.toContain("getWebsiteDerivedNews");
     expect(desk).toContain("JOURNAL_REFRESH_MS = 2 * 60_000");

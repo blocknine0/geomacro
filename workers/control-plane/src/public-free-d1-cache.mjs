@@ -32,6 +32,8 @@ const PATHS = new Set([
   "/v1/public/source-runtime-context",
   "/v1/public/source-pulse-30m",
   "/v1/public/intelligence-overlay",
+  "/v1/public/geomacro-certified-news-severity-gri",
+  "/v1/public/geomacro-news-severity-risk-indices",
 ]);
 const PAGED_NEWS_PATHS = new Set([
   "/v1/public/website-derived-news",
@@ -54,7 +56,10 @@ const HIGH_READ_DERIVED_PATHS=new Set([
 ]);
 const ttlForPath=pathname=>
   pathname.startsWith("/api/v1/feed/")?60:
-  pathname==="/v1/public/website-derived-news-bundle"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
+  pathname==="/v1/public/website-derived-news-bundle"||
+  pathname==="/v1/public/website-derived-news-immediate"||
+  pathname==="/v1/public/geomacro-certified-news-severity-gri"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
+  pathname==="/v1/public/geomacro-news-severity-risk-indices"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
   HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:
   PUBLIC_FREE_D1_TTL_SECONDS;
 const UNIFIED_EVENT_QUERY=/^category=(conflict|macro_economics|commodities|sanctions|macro|geopolitics|critical_minerals|rare_earth)&min_credibility=(0\.1|0\.5|0\.7|1)$/u;
@@ -109,7 +114,11 @@ export async function readPublicFreeD1Cached(request,calculate,{
   if(swr===true)return withPublicEdgeCache(request,calculate,{
     cache,waitUntil,eligible:eligiblePublicFreeD1CacheRequest,
     ttlSeconds:ttlForPath(new URL(request.url).pathname),
-    staleSeconds:ttlForPath(new URL(request.url).pathname)>=300?60:120,
+    staleSeconds:ttlForPath(new URL(request.url).pathname)>=300?60:
+      ["/v1/public/website-derived-news-immediate",
+       "/v1/public/website-derived-news-bundle",
+       "/v1/public/geomacro-certified-news-severity-gri",
+       "/v1/public/geomacro-news-severity-risk-indices"].includes(new URL(request.url).pathname)?300:120,
     tag:"geomacro-public-d1",
   });
   if(!eligiblePublicFreeD1CacheRequest(request)||!cache)

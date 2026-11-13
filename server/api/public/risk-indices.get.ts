@@ -1,48 +1,23 @@
 import {
   defineEventHandler,
-  setResponseHeaders,
   setResponseStatus,
 } from "h3";
-import { readRiskIndicesEdge } from "../../../src/lib/risk-indices-edge.server";
+import {readGeoMacroNewsSeverityRiskIndices} from "../../../src/lib/news-severity-risk-index.server";
+import {publicResponseCache} from "./public-response-cache.server";
 
 export default defineEventHandler(async (event) => {
-  setResponseHeaders(event, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "public, max-age=15, s-maxage=15, stale-while-revalidate=15",
-    "X-Content-Type-Options": "nosniff",
-    "X-Robots-Tag": "noindex, nofollow",
-  });
-
-  try {
-    const data = await readRiskIndicesEdge();
-    if (!data) {
-      setResponseStatus(event, 503);
-      return {
-        ok: false,
-        code: "RISK_INDICES_UNAVAILABLE",
-        message: "The latest verified risk indices package is temporarily unavailable.",
-      };
-    }
-
-    return {
-      ok: true,
-      data,
-      meta: {
-        authority: "backblaze-b2-risk-indices-edge",
-        transport: "verified-risk-indices-cloudflare-edge",
-        snapshot_as_of: data.snapshotAsOf,
-      },
-    };
-  } catch (error) {
-    console.error(
-      "[api/public/risk-indices] unavailable",
-      error instanceof Error ? error.message : "unknown error",
-    );
-    setResponseStatus(event, 503);
-    return {
-      ok: false,
-      code: "RISK_INDICES_UNAVAILABLE",
-      message: "The latest verified risk indices package is temporarily unavailable.",
-    };
+  try{return await publicResponseCache(event,"public-risk-indices-news-severity-v1",async()=>{
+    const data=await readGeoMacroNewsSeverityRiskIndices();
+    if(!data){setResponseStatus(event,503);return {ok:false,code:"RISK_INDICES_UNAVAILABLE",
+      message:"No current GeoMacro self-certified 72-hour news-severity projection is available."};}
+    return {ok:true,data,meta:{authority:"geomacro-news-severity-ed25519",
+      signature_verified:true,review_status:"self_certified_not_independently_reviewed",
+      snapshot_as_of:data.snapshotAsOf,source_event_facts_independently_verified:false}};
+  });}catch(error){
+    console.error("[api/public/risk-indices] unavailable",
+      error instanceof Error?error.message:"unknown error");
+    setResponseStatus(event,503);
+    return {ok:false,code:"RISK_INDICES_UNAVAILABLE",
+      message:"No current GeoMacro self-certified 72-hour news-severity projection is available."};
   }
 });
