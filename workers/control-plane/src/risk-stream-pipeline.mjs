@@ -7,6 +7,7 @@
  * and NOT authority to charge a customer or to remove a release hold.
  */
 import {enqueueCommercialIssuerCandidate} from "./risk-stream-commercial-issuer.mjs";
+import {issueDailyNewsBatch} from "./risk-stream-news-gro.mjs";
 const HEX=/^[a-f0-9]{64}$/u,ISO3=/^[A-Z]{3}$/u,NAME=/^[A-Z][A-Z0-9_]{2,47}$/u;
 const SOURCE=/^[a-z0-9][a-z0-9_.:-]{2,119}$/u;
 const DOMAIN=/^[a-z0-9.-]{3,253}$/u;
@@ -455,7 +456,7 @@ export async function processRiskStreamBatch(env,items,{
  const archive=await privateArchiveR2(distinct,env);
  await appendCanonical(env.DB,distinct,archive,now,opts);
  const grouped=await loadCorroborated(env.DB,distinct,now,opts);
- const signed=[];
+ const signed=[],signedEventKeys=new Set();
  for(const [key,group] of grouped){
   const [country,category]=key.split("|");
   if(!distinct.some(x=>x.country_iso3===country&&x.category===category&&
@@ -472,6 +473,25 @@ export async function processRiskStreamBatch(env,items,{
    catch{console.error("RISK_STREAM_COMMERCIAL_REVIEW_WORKLIST_HELD")}
   }
   signed.push(gro.id);
+  signedEventKeys.add(key);
+ }
+ // GeoMacro-signed, truth-labelled daily news assessments are distinct from
+ // independently reviewed/commercially licensed original GROs above.
+ // A migration/signing hold does not discard verified intake or forge PASS.
+ let dailyNews={status:"NEWS_GRO_AUTOMATION_HELD",signed:0};
+ if(env.RISK_STREAM_HOT50_AUTONOMOUS_ENABLED==="1"){
+  try{
+   dailyNews=await issueDailyNewsBatch(env,distinct.map(x=>({
+    country_iso3:x.country_iso3,category:x.category,
+    event_fingerprint:x.event_fingerprint,published_at:x.published_at,
+    derived:x.derived,original_verified:x.original_verified===true,
+    corroborated_signed_original:signedEventKeys.has(x.country_iso3+"|"+
+     x.category+"|"+x.event_fingerprint)
+   })),{now,limit:10});
+  }catch{
+   dailyNews={status:"NEWS_GRO_SIGNING_OR_READBACK_HELD",signed:0};
+   console.error("RISK_STREAM_DAILY_NEWS_GRO_HELD");
+  }
  }
  return {status:"PASS",schema:"geomacro.risk-stream-consumer.v1",
   accepted:distinct.length,index_only:distinct.filter(x=>!x.original_verified).length,
@@ -481,7 +501,9 @@ export async function processRiskStreamBatch(env,items,{
   secondary_index_same_entity_hint_count:secondary.same_entity_hints,
   secondary_index_publisher_hints_never_certification:true,
   secondary_index_truncated:secondary.truncated,
-  country_scope_hardcoded:false};
+  country_scope_hardcoded:false,
+  daily_news_gro_state:dailyNews.status,daily_news_gro_signed:dailyNews.signed,
+  daily_news_gro_is_commercial_release:false};
 }
 export async function enqueueRiskStreamEvents(env,body,now=Date.now()){
  if(env?.RISK_STREAM_ACTIVE!=="1"||env?.STREAM_INGESTION_ENABLED!=="true"||
