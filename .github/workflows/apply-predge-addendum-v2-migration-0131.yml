@@ -38,8 +38,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
       D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
-      RISK_OBJECT_SIGNING_KEY_ID: ${{ secrets.RISK_OBJECT_SIGNING_KEY_ID }}
-      RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.RISK_OBJECT_SIGNING_PRIVATE_KEY_PKCS8_B64 }}
+      RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64 }}
+      RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -64,7 +64,15 @@ jobs:
           test "$EXPECTED_MAIN_SHA" = "$(curl --fail --silent --show-error https://api.github.com/repos/blocknine0/geomacro/branches/main | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).commit.sha))')"
           test "$APPROVAL" = APPROVE_PREDGE_ADDENDUM_V2_0131_PRODUCTION
           test -n "$CLOUDFLARE_ACCOUNT_ID" -a -n "$CLOUDFLARE_API_TOKEN" -a -n "$CLOUDFLARE_BILLING_READ_TOKEN"
-          if [ "$MODE" = apply ]; then test "${#RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64}" -ge 80 -a -n "$RISK_OBJECT_SIGNING_KEY_ID"; fi
+          if [ "$MODE" = apply ]; then
+            node --input-type=module <<'NODE'
+            import {loadPredge0131ReceiptSigner} from './scripts/ops/predge-0131-receipt-signer.mjs';
+            loadPredge0131ReceiptSigner({
+              privateKeyPkcs8B64:process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,
+              publicKeySpkiB64:process.env.RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64,
+            });
+            NODE
+          fi
           mkdir -p "$RUNNER_TEMP/geomacro-0131"
           node --input-type=module <<'NODE'
           import {readFileSync,writeFileSync} from 'node:fs';
@@ -103,13 +111,13 @@ jobs:
           set -euo pipefail
           $RUNNER_TEMP/wrangler-bin/node_modules/.bin/wrangler d1 execute geomacro-control-plane --remote --config "$RUNNER_TEMP/geomacro-0131/wrangler.json" --json --command "SELECT type,name FROM sqlite_schema WHERE name IN ('predge_paid_risk_gate_usage_ledger','idx_predge_paid_risk_gate_usage_month','idx_predge_paid_risk_gate_collection','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_refund_terminal') ORDER BY type,name; SELECT name FROM d1_migrations WHERE name='0131_predge_paid_risk_gate_addendum_v2.sql'" > "$RUNNER_TEMP/geomacro-0131/readback.json"
           node --input-type=module <<'NODE'
-          import {readFileSync,writeFileSync} from 'node:fs';import {createPrivateKey,sign,createHash} from 'node:crypto';
+          import {readFileSync,writeFileSync} from 'node:fs';import {createHash} from 'node:crypto';
+          import {signPredge0131Receipt} from './scripts/ops/predge-0131-receipt-signer.mjs';
           const result=JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/geomacro-0131/readback.json','utf8'));
           const rows=result.flatMap(x=>x.results??[]), expected=['idx_predge_paid_risk_gate_collection','idx_predge_paid_risk_gate_usage_month','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_refund_terminal','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_usage_ledger'];
           const names=[...new Set(rows.map(x=>x.name))].sort();if(JSON.stringify(names)!==JSON.stringify([...expected,'0131_predge_paid_risk_gate_addendum_v2.sql'].sort()))throw Error('MIGRATION_0131_SCHEMA_READBACK_FAILED');
           const unsigned={schema:'geomacro.predge-addendum-v2-migration-receipt.v1',status:'PASS',migration:'0131_predge_paid_risk_gate_addendum_v2.sql',database_id:process.env.D1_DATABASE_ID,main_sha:process.env.EXPECTED_MAIN_SHA,applied_at_utc:new Date().toISOString(),objects:expected,history_recorded:true,sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql')).digest('hex'),production_data_rewritten:false,generic_migrations_apply_used:false};
-          const bytes=Buffer.from(JSON.stringify(unsigned));const key=createPrivateKey({key:Buffer.from(process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,'base64'),format:'der',type:'pkcs8'});
-          const receipt={...unsigned,signature_algorithm:'Ed25519',signature_key_id:process.env.RISK_OBJECT_SIGNING_KEY_ID,signature_base64:sign(null,bytes,key).toString('base64')};
+          const receipt=signPredge0131Receipt(unsigned,{privateKeyPkcs8B64:process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,publicKeySpkiB64:process.env.RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64});
           writeFileSync('artifacts/predge-addendum-v2-migration-0131-receipt.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
           NODE
       - name: Upload signed production receipt
