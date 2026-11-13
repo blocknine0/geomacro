@@ -35,7 +35,7 @@ export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Dat
   const records = [];
   const tableRe = /<table\b[^>]*>[\s\S]*?<\/table>/gi;
   for (const tableMatch of input.matchAll(tableRe)) {
-    if (!/Critical\s+mineral/i.test(tableMatch[0])) continue;
+    if (geoscienceAustraliaPage && !/Critical\s+mineral/i.test(tableMatch[0])) continue;
     const rows = [...tableMatch[0].matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)];
     for (const row of rows) {
       const cells = splitCells(row[0]);
