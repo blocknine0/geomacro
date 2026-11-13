@@ -452,7 +452,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
        bound_subject_id:parsed.subject.id,bound_market_id:paidContext.marketId,
        bound_condition_id:paidContext.conditionId}}:{}),
      customer_price_usdc:customerPriceUsdc,geomacro_fee_usdc:geomacroFeeUsdc,
-     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status,
+     predge_share_usdc:billable?"0.05":"0.00",billable,billing_mode:billingMode,entry_status:entryStatus,
      tier_activation_matrix:tierActivationMatrix,
      execution_authorized:false
    };
@@ -481,10 +481,7 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      .bind(serialized,nowIso,gro?.object_id??null,result.decision,client,parsed.request_id).first();
    if(!audit)return fail("RISK_GATE_AUDIT_UNAVAILABLE");
    return Response.json(response,{status:200,headers});
- }catch(error){
-   if(env?.PREDGE_TEST_DEBUG==="1")console.error("PREDGE_TEST_DEBUG",error?.stack??error);
-   return fail("RISK_GATE_D1_UNAVAILABLE",503);
- }
+ }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
 }
 
 // The existing v1 route remains the non-commercial pilot/interoperability lane.
