@@ -34,7 +34,7 @@ export function hot50Direct20mFailoverCategories(cellPlan,registry,checks){
   if(!primary){needed.add(cell.category);continue;}
   const ref=createHash("sha256").update([
    primary.id,primary.url,cell.category
-  ].join("\\n")).digest("hex");
+  ].join("\n")).digest("hex");
   // Only a nonempty successful primary poll suppresses its backup. Empty,
   // denied, malformed or transport-failed primaries all take the failover.
   if(checkByRef.get(ref)!=="OBSERVED")needed.add(cell.category);
@@ -106,6 +106,8 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
   throw Error("HOT50_DIRECT20M_SOURCE_COUNT_DRIFT");
  return Object.freeze({
   registry:Object.freeze([...merged.values()]),
+  fallback_registry:globalFallbackRegistry,
+  cell_failover_plan:cellPlan,
   summary:Object.freeze({
    hot50_countries_configured:HOT50_COUNTRY_ISO3.length,
    categories_configured:CATEGORIES,
