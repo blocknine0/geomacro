@@ -8,7 +8,7 @@
  * Every run independently checks source HTTP/native item clocks; unknown,
  * denied or stale feeds return honest checks and never fabricated news.
  */
-import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.mjs";
+import {hot50FourLaneSourceCrosswalk,hot50CellFeedFailoverPlan} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {HOT50_COUNTRY_ISO3,HOT50_COUNTRY_SET} from "./hot-50-country-watch.mjs";
 import {isRetiredPrivateOsintSource} from "./private-osint-retired-sources.mjs";
 export const HOT50_DIRECT_20M_FREQUENCY_MINUTES=20;
@@ -65,6 +65,16 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    }else merged.set(pin.url,source);
   }
  }
+ const cellPlan=hot50CellFeedFailoverPlan();
+ const globalFallbackRegistry=Object.freeze(snapshot.global_category_failover_candidates.map(feed=>
+  Object.freeze({
+   id:feed.id,url:feed.url,type:"rss",categories:[...feed.categories],
+   continent:"global",supported:true,private_hot50_backup:true,
+   private_hot50_direct_20m:false,private_discovery_index_only:false,
+   private_hub_overlay:true,publisher_native_dates_required:true,
+   transport_verified_at_registration:false,original_article_verified:false,
+   rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
+  })));
  // Permanently removed feeds have no production re-probe lane. Preserve
  // catalogue provenance and expose exclusion counts for operator visibility.
  const nonretiredCount=merged.size;
