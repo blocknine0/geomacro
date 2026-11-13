@@ -41,22 +41,104 @@ function attr(tag,name){
  const escaped=name.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&");
  return new RegExp("\\b"+escaped+"\\s*=\\s*(['\"])(.*?)\\1","iu").exec(tag)?.[2]??null;
 }
-function nativeDate(html){
- const candidates=[];
- for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
-  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??"").toLowerCase();
-  if(["article:published_time","datepublished","date"].includes(key))candidates.push(attr(tag,"content"));
+function normalizeNativeDate(raw){
+ let value=clean(raw);
+ const labeled=value.match(/(?:^|:\s*)(\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December),?\s+20\d{2})$/iu);
+ if(labeled)value=labeled[1];
+ if(/^20\d{2}-\d{2}-\d{2}$/u.test(value)){
+  const d=new Date(value+"T00:00:00.000Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===value?d.toISOString():null;
  }
- for(const m of String(html).matchAll(/<time\b[^>]*>/giu)){
-  const tag=m[0],raw=attr(tag,"datetime");
-  if(raw)candidates.push(raw);
+ if(/^20\d{2}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?$/u.test(value)){
+  const day=value.slice(0,10),d=new Date(day+"T00:00:00.000Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===day?d.toISOString():null;
  }
- for(const m of String(html).matchAll(/"datePublished"\s*:\s*"([^"]{1,80})"/giu))candidates.push(m[1]);
- for(const raw of candidates){
-  if(!raw||!/(?:Z|[+-]\d{2}:?\d{2})$/iu.test(raw))continue;
-  const d=new Date(raw);if(Number.isFinite(d.getTime()))return d.toISOString();
+ if(/(?:Z|[+-]\d{2}:?\d{2}|\bGMT|\bUTC)$/iu.test(value)){
+  const d=new Date(value);if(Number.isFinite(d.getTime()))return d.toISOString();
+ }
+ const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+ const dayFirst=value.match(/^(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+(20\d{2})$/iu);
+ const monthFirst=value.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(20\d{2})$/iu);
+ const day=dayFirst?Number(dayFirst[1]):monthFirst?Number(monthFirst[2]):null;
+ const month=dayFirst?months[dayFirst[2].toLowerCase()]:monthFirst?months[monthFirst[1].toLowerCase()]:null;
+ const year=dayFirst?Number(dayFirst[3]):monthFirst?Number(monthFirst[3]):null;
+ if(day!==null&&month!==null&&year!==null){
+  const iso=year+"-"+String(month).padStart(2,"0")+"-"+String(day).padStart(2,"0");
+  const d=new Date(iso+"T00:00:00.000Z");
+  if(Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===iso)return d.toISOString();
  }
  return null;
+}
+function nativeDateCandidates(html){
+ const candidates=[],keys=[];
+ for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
+  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??attr(tag,"itemprop")??"").toLowerCase();
+  if(/published|publication|date|modified/iu.test(key)){
+   keys.push(key.slice(0,64));
+   const value=attr(tag,"content");if(value)candidates.push(value);
+  }
+ }
+ for(const m of String(html).matchAll(/<time\b[^>]*>([\s\S]{0,240}?)<\/time>/giu)){
+  const tag=m[0],raw=attr(tag,"datetime");
+  keys.push(raw?"time[datetime]":"time[text]");
+  candidates.push(raw??extractTextFragment(m[1]));
+ }
+ for(const m of String(html).matchAll(/<(div|span|p|li)\b([^>]*)>([\s\S]{0,500}?)<\/\1>/giu)){
+  const attrs=m[2],descriptor=(attr(attrs,"class")??"")+" "+(attr(attrs,"id")??"")+" "+(attr(attrs,"itemprop")??"");
+  if(!/published|publication|date|timestamp/iu.test(descriptor)||/modified/iu.test(descriptor))continue;
+  keys.push(clean(descriptor).slice(0,64)||"date-field");
+  candidates.push(extractTextFragment(m[3]));
+ }
+ for(const m of String(html).matchAll(/"(datePublished|dateCreated|dateModified)"\s*:\s*"([^"]{1,100})"/giu)){
+  keys.push("jsonld:"+m[1]);candidates.push(m[2]);
+ }
+ return {candidates,keys:[...new Set(keys)]};
+}
+export function inspectIccArticleNativeClock(html){
+ const {candidates,keys}=nativeDateCandidates(html);
+ const safe=candidates.map(clean).filter(v=>v.length<=80&&/\d/u.test(v)&&/^[0-9A-Za-z ,:+./TZ-]+$/u.test(v));
+ return Object.freeze({metadata_keys:keys,date_candidate_values:[...new Set(safe)].slice(0,8)});
+}
+function nativeDate(html){
+ const candidates=nativeDateCandidates(html).candidates;
+ for(const m of String(html).matchAll(/<meta\b[^>]*>/giu)){
+  const tag=m[0],key=(attr(tag,"property")??attr(tag,"name")??attr(tag,"itemprop")??"").toLowerCase();
+  if(["article:published_time","article:published","datepublished","date","dc.date","dcterms.date",
+      "dc.date.issued","datecreated","publish_date","pubdate"].includes(key)||
+     /published|publication|datecreated|date\.issued/iu.test(key))
+   candidates.push(attr(tag,"content"));
+ }
+ for(const m of String(html).matchAll(/<time\b[^>]*>([\s\S]{0,240}?)<\/time>/giu)){
+  const tag=m[0],raw=attr(tag,"datetime");
+  if(raw)candidates.push(raw);
+  else candidates.push(extractTextFragment(m[1]));
+ }
+ for(const m of String(html).matchAll(/"(?:datePublished|dateCreated)"\s*:\s*"([^"]{1,100})"/giu))candidates.push(m[1]);
+ for(const raw of candidates){const parsed=normalizeNativeDate(raw);if(parsed)return parsed;}
+ return null;
+}
+
+/** Discover first-party ICC story URLs from its current server-rendered press/news listing. */
+export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
+ const input=String(html??"");
+ if(input.length>2*1024*1024)throw Error("ICC_NEWS_LISTING_TOO_LARGE");
+ if(!/International Criminal Court|\bICC\b/iu.test(input))
+  throw Error("ICC_NEWS_LISTING_MARKER_MISSING");
+ if(!Number.isInteger(limit)||limit<1||limit>10)
+  throw Error("ICC_NEWS_ARTICLE_LINK_LIMIT_INVALID");
+ const links=[],seen=new Set();
+ for(const match of input.matchAll(/<a\b[^>]*>/giu)){
+  const href=attr(match[0],"href");if(!href)continue;
+  const resolved=absoluteUrl(href,baseUrl);if(!resolved)continue;
+  let url;try{url=new URL(resolved)}catch{continue}
+  if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
+     url.password||url.search||url.hash||
+     !/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||
+     /\/(?:subscribe|rss|search|filter)(?:\/|$)/iu.test(url.pathname))continue;
+  const canonicalHref=url.href;if(seen.has(canonicalHref))continue;
+  seen.add(canonicalHref);links.push(canonicalHref);if(links.length>=limit)break;
+ }
+ return Object.freeze(links);
 }
 
 /** Parse only an ICC article page's original issuer metadata; no RSS/fetch clock fallback. */
@@ -74,8 +156,15 @@ export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString
  const publishedAt=nativeDate(input);
  if(title.length<8||!publishedAt)throw Error(title.length<8?"ICC_ARTICLE_TITLE_MISSING":"ICC_NATIVE_PUBLICATION_TIME_MISSING");
  const canonical=/<link\b[^>]*rel=["']canonical["'][^>]*>/iu.exec(input)?.[0];
- if(canonical){const href=absoluteUrl(attr(canonical,"href"),url);let c;try{c=new URL(href)}catch{}
-  if(!c||c.hostname!==ICC_HOST||c.pathname!==article.pathname)throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");}
+ if(canonical){
+  const href=absoluteUrl(attr(canonical,"href"),url);let c;try{c=new URL(href)}catch{}
+  const canonicalNode=c&&/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(c.pathname);
+  const articleNode=/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(article.pathname);
+  const sameNode=Boolean(canonicalNode&&articleNode&&canonicalNode[1]===articleNode[1]);
+  const canonicalNews=Boolean(c&&/^\/news\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*){0,3}\/?$/iu.test(c.pathname));
+  if(!c||c.protocol!=="https:"||c.hostname!==ICC_HOST||c.port||c.search||c.hash||(!sameNode&&!canonicalNews))
+   throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");
+ }
  return normalizeIccNews({id:article.pathname.split("/").filter(Boolean).at(-1),title,publishedAt,url:article.href,retrievedAt,
   summary:"ICC first-party article metadata verified.",raw:{source:"ICC_ARTICLE_NATIVE_METADATA",url:article.href,publishedAt}});
 }
