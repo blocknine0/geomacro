@@ -58,7 +58,8 @@ export function privateLocalPublisherCandidates(manifest=sourceManifest()){
    private_country_local_candidate:true,
    publisher_native_dates_required:true,
    transport_verified_at_registration:false,
-   activation_state:"PRIVATE_UNVERIFIED_OBSERVATION",
+   activation_state:s.activation_state==="disabled_pending_live_verification"?"disabled_pending_live_verification":"PRIVATE_UNVERIFIED_OBSERVATION",
+   ...(s.disabled_reason_code?{disabled_reason_code:s.disabled_reason_code}:{}),
    rights_verified:false,commercial_eligible:false,publicly_deliverable:false,
   });
  });
