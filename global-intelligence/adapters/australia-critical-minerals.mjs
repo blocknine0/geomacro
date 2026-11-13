@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export const AU_CRITICAL_MINERALS_URL = "https://www.industry.gov.au/publications/australias-critical-minerals-list-and-strategic-materials-list";
+export const AU_CRITICAL_MINERALS_URL = "https://www.ga.gov.au/scientific-topics/minerals/critical-minerals/critical-minerals-in-australia";
 
 function extractTextFragment(value) {
   const input = String(value ?? "");
@@ -26,19 +26,22 @@ function splitCells(row) {
 
 export function parseAustraliaCriticalMineralsHtml(html, { retrievedAt = new Date().toISOString() } = {}) {
   const input = String(html ?? "");
-  if (!/Critical Minerals List/i.test(input) || !/Strategic Materials List/i.test(input)) {
+  const industryList = /Critical Minerals List/i.test(input) && /Strategic Materials List/i.test(input);
+  const geoscienceAustraliaPage = /Critical minerals in Australia/i.test(input) && /<table\b[\s\S]*?Critical mineral/i.test(input);
+  if (!industryList && !geoscienceAustraliaPage) {
     throw new Error("Australian critical minerals list markers not found");
   }
 
   const records = [];
   const tableRe = /<table\b[^>]*>[\s\S]*?<\/table>/gi;
   for (const tableMatch of input.matchAll(tableRe)) {
+    if (geoscienceAustraliaPage && !/Critical\s+mineral/i.test(tableMatch[0])) continue;
     const rows = [...tableMatch[0].matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/gi)];
     for (const row of rows) {
       const cells = splitCells(row[0]);
       if (!cells.length) continue;
       const mineral = cells[0];
-      if (!mineral || /^(mineral|commodity|material|name)$/i.test(mineral)) continue;
+      if (!mineral || /^(?:critical\s+)?(?:mineral|commodity|material|name)$/i.test(mineral)) continue;
       if (mineral.length > 80 || !/[A-Za-z]/.test(mineral)) continue;
       records.push(normalizeAustraliaCriticalMineral({
         mineral,
@@ -88,7 +91,7 @@ export function normalizeAustraliaCriticalMineral({ mineral, list = "Critical Mi
     commodity:String(mineral),
     event_type:"CRITICAL_MINERAL_POLICY",
     signal_type:"CRITICAL_MINERALS_SUPPLY_CHAIN",
-    provenance:{provider:"Australian Government Department of Industry, Science and Resources",dataset:list,mineral:String(mineral),geological_potential:geologicalPotential,production},
+    provenance:{provider:"Geoscience Australia, Australian Government",dataset:list,mineral:String(mineral),geological_potential:geologicalPotential,production},
     raw_payload:rawPayload,
     raw_hash:createHash("sha256").update(JSON.stringify(rawPayload)).digest("hex")
   };

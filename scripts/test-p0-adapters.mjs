@@ -32,6 +32,9 @@ if (mofcom.country_iso3 !== "CHN" || mofcom.category !== "CRITICAL_MINERALS") th
 const ausHtml = '<html><body><h1>Critical Minerals List</h1><h2>Strategic Materials List</h2><table><tr><th>Mineral</th><th>Potential</th><th>Production</th></tr><tr><td>Lithium</td><td>High</td><td>75 kt</td></tr></table><p>Australia’s strategic materials are:</p><ul><li>aluminium</li><li>copper</li><li>phosphorus</li><li>tin</li><li>zinc</li></ul></body></html>';
 const ausParsed = parseAustraliaCriticalMineralsHtml(ausHtml);
 if (ausParsed.length !== 6 || !ausParsed.some((record) => record.commodity === "Lithium") || !ausParsed.some((record) => record.commodity === "copper" && record.value_text === "Strategic Materials List")) throw new Error("Australia live parser fixture failed");
+const gaAusHtml = '<html><body><h1>Critical minerals in Australia</h1><p>Australia\'s Critical Minerals List commodities</p><table><tr><th>Critical mineral</th><th>Resources (2025)</th><th>Production (2025)</th></tr><tr><td>Lithium</td><td>9,578 kt</td><td>118 kt</td></tr><tr><td>Antimony</td><td>142.6 kt</td><td>0.8 kt</td></tr></table></body></html>';
+const gaAusParsed = parseAustraliaCriticalMineralsHtml(gaAusHtml, {retrievedAt:"2026-11-13T00:00:00.000Z"});
+if (gaAusParsed.length !== 2 || gaAusParsed[0].commodity !== "Lithium" || gaAusParsed[0].source_url !== "https://www.ga.gov.au/scientific-topics/minerals/critical-minerals/critical-minerals-in-australia" || gaAusParsed[1].provenance.provider !== "Geoscience Australia, Australian Government") throw new Error("Geoscience Australia critical minerals fixture failed");
 const aus = normalizeAustraliaCriticalMineral({mineral:"Lithium",geologicalPotential:"High",production:"75 kt"});
 if (aus.country_iso3 !== "AUS" || aus.commodity !== "Lithium") throw new Error("Australia critical minerals normalization failed");
 

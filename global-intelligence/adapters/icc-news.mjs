@@ -133,7 +133,7 @@ export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
   let url;try{url=new URL(resolved)}catch{continue}
   if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
      url.password||url.search||url.hash||
-     !/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||
+     !(/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(url.pathname))||
      /\/(?:subscribe|rss|search|filter)(?:\/|$)/iu.test(url.pathname))continue;
   const canonicalHref=url.href;if(seen.has(canonicalHref))continue;
   seen.add(canonicalHref);links.push(canonicalHref);if(links.length>=limit)break;

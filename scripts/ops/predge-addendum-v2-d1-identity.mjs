@@ -1,4 +1,4 @@
-export const PREDGE_0131_DATABASE_ID="db057ca9-6f9e-4957-ac28-144f3b798f9b";
+export const PREDGE_0131_DATABASE_ID="db057ca9-9f6e-4957-ac28-144f3b798f9b";
 export const PREDGE_0131_DATABASE_NAME="geomacro-control-plane";
 
 export function assertD1DatabaseIdentity(payload,{

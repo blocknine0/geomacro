@@ -24,7 +24,7 @@ const checks = {
   world_bank_commodity_prices: { type:"xlsx", required:[] },
   unctadstat_global: { type:"html", required:["UNCTAD"] },
   china_mofcom_trade_controls: { type:"html", required:["exportcontrol.mofcom.gov.cn"] },
-  australia_critical_minerals: { type:"html", required:["Critical Minerals List","Strategic Materials List"] },
+  australia_critical_minerals: { type:"html", required:["Critical minerals in Australia"] },
   cochilco_minerals: { type:"html", required:["Anuario de Estadísticas del Cobre y Otros Minerales"] },
   opcw_news: { type:"html", required:["News","OPCW"] },
   icj_cases: { type:"html", required:["Cases","International Court of Justice"] },
@@ -54,8 +54,18 @@ function safeFailure(error,prefix){
    (error?.name==="TypeError"?"UPSTREAM_NETWORK_ERROR":"SOURCE_SCHEMA_INVALID"));
 }
 async function get(url,accept="*/*"){
- return fetch(url,{redirect:"follow",signal:AbortSignal.timeout(timeoutMs),
-  headers:{"user-agent":"Geomacro-P0-Live-Certification/1.0",accept}});
+ let lastError;
+ for(let attempt=0;attempt<2;attempt++){
+  try{
+   return await fetch(url,{redirect:"follow",signal:AbortSignal.timeout(timeoutMs),
+    headers:{"user-agent":"GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)",accept}});
+  }catch(error){
+   lastError=error;
+   if(attempt===1||!["TimeoutError","TypeError"].includes(error?.name))throw error;
+   await new Promise(resolve=>setTimeout(resolve,250));
+  }
+ }
+ throw lastError;
 }
 async function run(id,source){
  const url=id==="icc_news"?source.discovery_url:(source.machine_endpoint??source.dataset_surface??source.discovery_url);
@@ -65,7 +75,7 @@ async function run(id,source){
   native_publication_time_verified:false,publisher_release_at_utc:null,latency_ms:0,
   observed_at:observedAt,note:null};
  try{
-  const res=await get(url,id==="unctadstat_global"?"text/html":id==="icc_news"?"text/html":"*/*");
+  const res=await get(url,id==="unctadstat_global"?"text/html":id==="icc_news"?"text/html,application/xhtml+xml;q=0.9,*/*;q=0.8":"*/*");
   const bytes=new Uint8Array(await res.arrayBuffer()),ct=res.headers.get("content-type")??"";
   const text=/xml|csv|json|html|text/i.test(ct)?new TextDecoder().decode(bytes):"";
   Object.assign(result,{status:res.status,ok:res.ok,content_type:ct,bytes:bytes.length,final_url:res.url});
@@ -76,7 +86,7 @@ async function run(id,source){
    let articleUrls=[];
    try{articleUrls=discoverIccArticleUrls(text,{limit:5})}catch{}
    if(!articleUrls.length){
-    const rss=await get(ICC_OFFICIAL_NEWS_RSS,"application/rss+xml,application/xml,text/xml");
+    const rss=await get(ICC_OFFICIAL_NEWS_RSS,"application/rss+xml,application/xml;q=0.9,text/xml;q=0.8");
     if(!rss.ok)throw Error("ICC_OFFICIAL_RSS_HTTP_"+rss.status);
     if(!/xml|rss/iu.test(rss.headers.get("content-type")??""))throw Error("ICC_OFFICIAL_RSS_MIME_INVALID");
     const feedBytes=new Uint8Array(await rss.arrayBuffer());
@@ -90,7 +100,7 @@ async function run(id,source){
    result.first_party_article_candidates_checked=articleUrls.length;
    result.first_party_article_paths=articleUrls.map(value=>new URL(value).pathname).slice(0,5);
    for(const articleUrl of articleUrls){
-    const article=await get(articleUrl,"text/html");
+    const article=await get(articleUrl,"text/html,application/xhtml+xml;q=0.9,*/*;q=0.8");
     if(!article.ok||new URL(article.url).hostname!=="www.icc-cpi.int"){
      lastArticleError="ICC_ARTICLE_HTTP_"+article.status;continue;
     }

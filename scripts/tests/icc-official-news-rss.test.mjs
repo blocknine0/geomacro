@@ -33,6 +33,7 @@ test("server-rendered ICC news listing yields only pinned first-party story URLs
   '<a href="/news/subscribe">subscribe</a></body></html>';
  assert.deepEqual(discoverIccArticleUrls(page),[url]);
  assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court</html>'),[]);
+ assert.deepEqual(discoverIccArticleUrls('<html>International Criminal Court <a HREF="/node/241777">Latest release</a></html>'),["https://www.icc-cpi.int/node/241777"]);
 });
 test("RSS feed dates never verify original publication or grant licensing",()=>{
  const x=parseIccOfficialNewsRss(rss(item+item+
@@ -129,4 +130,23 @@ test("invalid ICC RSS response remains failed without a third retry or entitleme
  assert.equal(row.reason,"ICC_NEWS_LISTING_PARSE_FAILED");
  assert.equal(row.official_rss_alternate_unavailable,true);
  assert.equal(y.commercial_eligible,false);
+});
+
+test("ICC listing requests negotiate HTML and parse canonical Drupal node links",async()=>{
+ const seen=[];
+ const receipt=await observeExistingPrivateP0Sources({now,fetchImpl:async(url,opts)=>{
+  seen.push({url,headers:opts.headers});
+  if(url==="https://www.icc-cpi.int/news")
+   return new Response('<html><body>International Criminal Court News <a href="/node/241777">Latest ICC release</a></body></html>',{headers:{"content-type":"text/html"}});
+  if(url==="https://www.icc-cpi.int/node/241777")
+   return new Response('<html><head><title>Latest ICC release</title><meta property="article:published_time" content="2026-11-12T08:00:00Z"></head><body>International Criminal Court</body></html>',{headers:{"content-type":"text/html"}});
+  return new Response("Denied",{status:403});
+ }});
+ const row=receipt.results.find(item=>item.source_id==="icc_news");
+ const listing=seen.find(item=>item.url==="https://www.icc-cpi.int/news");
+ assert.match(listing.headers.accept,/text\/html/u);
+ assert.match(listing.headers["user-agent"],/GeoMacro-P0-Source-Discovery/u);
+ assert.equal(row.status,"PRIVATE_CANDIDATES_PARSED");
+ assert.equal(row.native_publication_at_utc,"2026-11-12T08:00:00.000Z");
+ assert.equal(row.commercial_eligible,false);
 });
