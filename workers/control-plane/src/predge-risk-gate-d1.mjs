@@ -371,6 +371,9 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    if(!claim)return fail("RISK_GATE_LEDGER_UNAVAILABLE");
    if(claim.request_hash!==requestHash||claim.state==="DONE"||claim.state==="CLAIMED")
       return failRedistribution();
+   const priorClient=await env.DB.prepare("SELECT client_id FROM risk_gate_d1_requests "+
+      "WHERE request_id=? AND client_id<>? LIMIT 1").bind(parsed.request_id,client).first();
+   if(priorClient)return failRedistribution();
    const existing=await env.DB.prepare("SELECT verdict_id FROM predge_risk_gate_verdict_license "+
       "WHERE request_id=? LIMIT 1").bind(parsed.request_id).first();
    if(existing)return failRedistribution();
