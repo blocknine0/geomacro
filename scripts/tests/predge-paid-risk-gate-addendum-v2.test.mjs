@@ -111,6 +111,8 @@ test("paid and legacy free routes are distinct and free traffic cannot touch pai
  assert.ok(router.includes('return predgeRiskGateD1(request,env);'));
  assert.ok(router.includes('url.pathname==="/v2/partner/predge/paid-risk-gate"'));
  assert.ok(router.includes('return predgePaidRiskGateD1(request,env);'));
+ assert.ok(router.includes('url.pathname==="/v2/partner/predge/verify-verdict"'));
+ assert.ok(router.includes('return verifyPredgePaidVerdictD1(request,env);'));
 });
 
 test("D1 refund transition zeroes all fees and cannot be reopened",()=>{
