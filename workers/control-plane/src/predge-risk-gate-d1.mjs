@@ -249,6 +249,20 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
     saved.settlement_due_date===settlementDueDate);
  }catch{return false;}
 }
+async function persistSingleUseLicense(db,{verdict_id,request_id,client_id,request_hash,
+ signed_payload,subject,action_context,market_id,condition_id,created_at}){
+ const licensePayloadSha256=await digest(canonical(signed_payload));
+ try{
+   await db.prepare("INSERT INTO predge_risk_gate_verdict_license "+
+    "(verdict_id,request_id,client_id,licensee_id,max_commercial_uses,consumption_count,"+
+    "resale_permitted,transferable,subject_json,action_context_json,market_id,"+
+    "condition_id,downstream_caller,request_hash,license_payload_sha256,created_at) "+
+    "VALUES(?,?,?,'predge',1,1,0,0,?,?,?,?,?,?,?,?)")
+    .bind(verdict_id,request_id,client_id,canonical(subject),canonical(action_context),
+      market_id,condition_id,"predge",request_hash,licensePayloadSha256,created_at).run();
+   return true;
+ }catch{return false;}
+}
 async function hotRow(db,subject,now){
  if(subject.type==="country"){
    return db.prepare("SELECT * FROM country_gro_verified_hot WHERE country_iso3=? AND generated_at<=? AND expires_at>? LIMIT 1")
