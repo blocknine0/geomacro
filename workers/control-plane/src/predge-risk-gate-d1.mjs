@@ -481,7 +481,10 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
      .bind(serialized,nowIso,gro?.object_id??null,result.decision,client,parsed.request_id).first();
    if(!audit)return fail("RISK_GATE_AUDIT_UNAVAILABLE");
    return Response.json(response,{status:200,headers});
- }catch{return fail("RISK_GATE_D1_UNAVAILABLE",503);}
+ }catch(error){
+   if(env?.PREDGE_TEST_DEBUG==="1")console.error("PREDGE_TEST_DEBUG",error?.stack??error);
+   return fail("RISK_GATE_D1_UNAVAILABLE",503);
+ }
 }
 
 // The existing v1 route remains the non-commercial pilot/interoperability lane.
