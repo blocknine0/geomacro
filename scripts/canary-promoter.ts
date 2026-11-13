@@ -75,9 +75,23 @@ async function deployBaseline(base:string){
  throw Error('CANARY_ROLLBACK_BASELINE_READBACK_FAILED');
 }
 async function checkSource(candidate:string,expectedSha:string){
- const response=await fetch(ORIGIN+'/health',{headers:{'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`},cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
- const b=await response.json().catch(()=>null);
- need(response.status===200&&b?.ok===true&&b?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
+ const headers={'Cloudflare-Workers-Version-Overrides':`${WORKER}="${candidate}"`};
+ const request=async(path:string)=>{
+  const response=await fetch(ORIGIN+path,{headers,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(12000)});
+  return {status:response.status,body:await response.json().catch(()=>null)};
+ };
+ const health=await request('/health');
+ need(health.status===200&&health.body?.ok===true&&
+  health.body?.deployed_source_sha===expectedSha,'CANARY_DIRECTED_HEALTH_SHA_UNVERIFIED');
+ const readiness=await request('/v1/public/risk-gate-d1-readiness');
+ const checks=readiness.body?.checks;
+ need(readiness.status===200&&readiness.body?.status==='ready'&&
+  checks?.database===true&&checks?.audit_store===true&&
+  checks?.isolated_partner_credential===true&&
+  checks?.progressive_decision_ed25519_signer_configured===true&&
+  readiness.body?.paid_launch_approved===false&&
+  readiness.body?.execution_authorized===false,
+  'CANARY_DIRECTED_D1_READINESS_UNVERIFIED');
 }
 async function checkVersionParity(base:string,candidate:string,headSha:string,{requireFreshReview=true}={}){
  const [a,b]=await Promise.all([api(info(base)),api(info(candidate))]);
