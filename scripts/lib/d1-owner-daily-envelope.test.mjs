@@ -14,11 +14,19 @@ test("live provider rows, not SQL calls, govern D1 paid admission",()=>{
   assert.equal(ok.admission_is_global_atomic,false);
   assert.equal(ok.monthly_emergency_reserve_pct,30);
 });
-test("dual read/write hourly pacing 24M/45k detects real UTC spikes",()=>{
+test("read pacing stays hourly and early UTC writes use only bounded carry-forward",()=>{
   assert.equal(check(25000000,1000,at("01:00:00")).reason,
     "OWNER_D1_PAID_HOURLY_PACING_HELD");
-  assert.equal(check(1000,48000,at("01:00:00")).held,true);
+  const burst=check(1000,248380,at("04:52:00"));
+  assert.equal(burst.held,false);
+  assert.equal(burst.early_utc_carry_forward_active,true);
+  assert.equal(burst.early_utc_carry_forward_rows,100000);
+  assert.equal(burst.paced_rows_written_ceiling,321000);
   assert.equal(check(100,100,at("01:00:00")).held,false);
+  assert.equal(check(1000,600000,at("04:52:00")).early_utc_carry_forward_active,false);
+  const afterWindow=check(1000,300000,at("06:00:00"));
+  assert.equal(afterWindow.early_utc_carry_forward_rows,0);
+  assert.equal(afterWindow.held,true);
 });
 test("daily owner caps are 580M reads and 1.1M writes independently",()=>{
   assert.equal(check(580000000,2000,at("23:59:59")).held,true);
