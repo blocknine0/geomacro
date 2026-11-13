@@ -271,8 +271,25 @@ async function persistSingleUseLicense(db,{verdict_id,request_id,client_id,reque
     "VALUES(?,?,?,'predge',1,1,0,0,?,?,?,?,?,?,?,?)")
     .bind(verdict_id,request_id,client_id,canonical(subject),canonical(action_context),
       market_id,condition_id,"predge",request_hash,licensePayloadSha256,created_at).run();
-   return true;
- }catch{return false;}
+   const saved=await db.prepare("SELECT verdict_id,request_id,client_id,licensee_id,"+
+    "max_commercial_uses,consumption_count,resale_permitted,transferable,subject_json,"+
+    "action_context_json,market_id,condition_id,downstream_caller,request_hash,"+
+    "license_payload_sha256,created_at FROM predge_risk_gate_verdict_license "+
+    "WHERE verdict_id=? LIMIT 1").bind(verdict_id).first();
+   return Boolean(saved&&saved.verdict_id===verdict_id&&saved.request_id===request_id&&
+    saved.client_id===client_id&&saved.licensee_id==="predge"&&saved.max_commercial_uses===1&&
+    saved.consumption_count===1&&saved.resale_permitted===0&&saved.transferable===0&&
+    saved.subject_json===canonical(subject)&&saved.action_context_json===canonical(action_context)&&
+    saved.market_id===market_id&&saved.condition_id===condition_id&&
+    saved.downstream_caller==="predge"&&saved.request_hash===request_hash&&
+    saved.license_payload_sha256===licensePayloadSha256&&saved.created_at===created_at);
+ }catch{
+   try{
+     const prior=await db.prepare("SELECT verdict_id FROM predge_risk_gate_verdict_license "+
+       "WHERE verdict_id=? OR request_id=? LIMIT 1").bind(verdict_id,request_id).first();
+     return prior?false:null;
+   }catch{return null;}
+ }
 }
 async function hotRow(db,subject,now){
  if(subject.type==="country"){
@@ -447,12 +464,13 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    response.audit_receipt_signature_key_id=receipt.signature_key_id;
    response.audit_receipt_signature_scheme=receipt.signature_scheme;
    response.audit_receipt_signature_scope=receipt.signature_scope;
-   if(!await persistSingleUseLicense(env.DB,{verdict_id:verdictId,
+   const licenseSaved=await persistSingleUseLicense(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,client_id:client,request_hash:requestHash,
       signed_payload:signedPayload,subject:parsed.subject,
       action_context:parsed.action_context,market_id:parsed.market_id,
-      condition_id:parsed.condition_id,created_at:nowIso}))
-     return failRedistribution();
+      condition_id:parsed.condition_id,created_at:nowIso});
+   if(licenseSaved===false)return failRedistribution();
+   if(licenseSaved!==true)return fail("PREDGE_SINGLE_USE_LICENSE_LEDGER_UNAVAILABLE",503);
    if(paidEndpoint&&!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
       response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso,
