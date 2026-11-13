@@ -69,10 +69,12 @@ jobs:
           node --input-type=module <<'NODE'
           import {readFileSync,writeFileSync} from 'node:fs';
           const account=process.env.CLOUDFLARE_ACCOUNT_ID, token=process.env.CLOUDFLARE_API_TOKEN;
-          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database?per_page=100`,{headers:{authorization:`Bearer ${token}`,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
+          import {assertD1DatabaseIdentity} from './scripts/ops/predge-addendum-v2-d1-identity.mjs';
+          const databaseId=process.env.D1_DATABASE_ID;
+          const r=await fetch(`https://api.cloudflare.com/client/v4/accounts/${account}/d1/database/${encodeURIComponent(databaseId)}`,{headers:{authorization:`Bearer ${token}`,accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(15000)});
           if(!r.ok)throw Error('D1_DATABASE_IDENTITY_API_FAILED');
-          const b=await r.json(), rows=(b.result??[]).filter(x=>x?.name==='geomacro-control-plane'&&x?.uuid==='db057ca9-6f9e-4957-ac28-144f3b798f9b');
-          if(b.success!==true||rows.length!==1)throw Error('D1_DATABASE_IDENTITY_MISMATCH');
+          const b=await r.json();
+          assertD1DatabaseIdentity(b,{databaseId,databaseName:'geomacro-control-plane'});
           const cfg=JSON.parse(readFileSync('workers/control-plane/wrangler.example.jsonc','utf8').replace(/^\s*\/\/.*$/gm,''));
           cfg.d1_databases=cfg.d1_databases.map(x=>({...x,database_id:'db057ca9-6f9e-4957-ac28-144f3b798f9b'}));
           writeFileSync(process.env.RUNNER_TEMP+'/geomacro-0131/wrangler.json',JSON.stringify(cfg));
