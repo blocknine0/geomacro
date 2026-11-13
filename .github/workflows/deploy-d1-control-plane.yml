@@ -10,6 +10,22 @@ on:
         description: "Type DEPLOY_D1_CONTROL_PLANE_MAIN_NO_FUNDS to deploy the production D1 Control Plane"
         required: true
         type: string
+      canary_confirmation:
+        description: "For a held release only, type PROMOTE_HOT50_NO_FUNDS"
+        required: false
+        type: string
+      hot50_runtime_confirmation:
+        description: "For a held release only, type ENABLE_HOT50_RESEARCH_NO_FUNDS"
+        required: false
+        type: string
+      stage2_run_id:
+        description: "Successful exact-main production-rollout-orchestrator Stage2 run ID"
+        required: false
+        type: string
+      reviewed_additive_secret_names:
+        description: "Exact comma-separated additive secrets reviewed for the candidate"
+        required: false
+        type: string
   pull_request:
     paths:
       - "src/lib/news-product-factory.ts"
@@ -260,6 +276,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   # PR offline regression must not occupy the shared protected production
@@ -275,6 +292,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       allow_deploy: ${{ steps.release_guard.outputs.allow_deploy }}
+      hold_present: ${{ steps.release_guard.outputs.hold_present }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -286,10 +304,129 @@ jobs:
           set -euo pipefail
           if test -f config/d1-hotspot-v2-canary.hold; then
             echo "allow_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "hold_present=true" >> "$GITHUB_OUTPUT"
             echo "::notice::D1_V2_CANARY_HOLD_ACTIVE: production deploy skipped until authorized gradual rollout"
           else
             echo "allow_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "hold_present=false" >> "$GITHUB_OUTPUT"
           fi
+
+  held-versioned-canary-rollout:
+    needs: d1-v2-canary-release-hold
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'blocknine0/geomacro' && github.ref == 'refs/heads/main' && needs.d1-v2-canary-release-hold.outputs.hold_present == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 115
+    environment: production
+    permissions:
+      contents: read
+      actions: read
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_BILLING_READ_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_READ_TOKEN }}
+      CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK: ${{ secrets.GEOMACRO_STEP3_TRUSTED_SIGNER_PUBLIC_JWK }}
+      GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID: ${{ inputs.stage2_run_id }}
+      SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
+      RELEASE_CONFIRMATION: ${{ inputs.canary_confirmation }}
+      GEOMACRO_HOT50_CANDIDATE_REVIEWED: ${{ inputs.hot50_runtime_confirmation }}
+      CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES: ${{ inputs.reviewed_additive_secret_names }}
+      GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64 }}
+      GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
+      GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_RELEASE_REVIEW_PUBLIC_KEY_SPKI_B64 }}
+      RISK_STREAM_INDEX_LEAD_BEARER: ${{ secrets.RISK_STREAM_INDEX_LEAD_BEARER }}
+      B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+      B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      B2_SPOOL_ENCRYPTION_KEY: ${{ secrets.B2_SPOOL_ENCRYPTION_KEY }}
+      B2_ACCOUNT_QUOTA_REQUIRED: "1"
+      B2_ACCOUNT_QUOTA_WORKFLOW_ID: "hot50_release_parity"
+      B2_REQUEST_BUDGET: "500"
+      P0B_PRIVATE_R2_BUCKET: ${{ secrets.P0B_PRIVATE_R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      PARITY_MAX_B2_READS: "250"
+      WRANGLER_VERSION: "4.136.3"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Require exact-main hold, explicit no-funds approval, and canonical signed Stage2 identity
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        env:
+          PROOF_RUN_ID: ${{ inputs.stage2_run_id }}
+          CANARY_CONFIRMATION: ${{ inputs.canary_confirmation }}
+          HOT50_CONFIRMATION: ${{ inputs.hot50_runtime_confirmation }}
+        with:
+          script: |
+            const id=String(process.env.PROOF_RUN_ID||'');
+            if(process.env.CANARY_CONFIRMATION!=='PROMOTE_HOT50_NO_FUNDS'||
+               process.env.HOT50_CONFIRMATION!=='ENABLE_HOT50_RESEARCH_NO_FUNDS'||
+               !/^[1-9][0-9]{5,20}$/.test(id)){
+              core.setFailed('HELD_CANARY_EXPLICIT_NO_FUNDS_APPROVAL_REQUIRED');return;
+            }
+            const {owner,repo}=context.repo;
+            const {data:run}=await github.rest.actions.getWorkflowRun({owner,repo,run_id:Number(id)});
+            if(run.path!=='.github/workflows/production-rollout-orchestrator.yml'||
+               run.event!=='workflow_dispatch'||run.head_branch!=='main'||
+               run.head_sha!==context.sha||run.status!=='completed'||run.conclusion!=='success'){
+              core.setFailed('HELD_CANARY_STAGE2_EXACT_MAIN_RUN_UNVERIFIED');return;
+            }
+            const {data:jobs}=await github.rest.actions.listJobsForWorkflowRun({owner,repo,run_id:Number(id),per_page:100});
+            const stage2=jobs.jobs.filter(j=>j.name==='stage2-production');
+            const shadow=jobs.jobs.filter(j=>j.name==='shadow-physical');
+            if(stage2.length!==1||shadow.length!==1||stage2[0].conclusion!=='success'||shadow[0].conclusion!=='success')
+              core.setFailed('HELD_CANARY_SIGNED_STAGE2_AND_SHADOW_REQUIRED');
+      - name: Download signed physical Stage2 evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: geomacro-step3-production
+          path: artifacts/release
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.stage2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Admit real signed Stage2 and unchanged canary hold
+        run: |
+          set -euo pipefail
+          test -f config/d1-hotspot-v2-canary.hold
+          node --input-type=module <<'NODE'
+          import {admitSignedStep3ProductionFile} from './scripts/lib/d1-step3-production-canary-admission.mjs';
+          const a=admitSignedStep3ProductionFile();
+          if(a.status!=='PASS_REAL_PROVIDER_PRODUCTION'||a.canary_traffic_altered!==false)throw Error('HELD_CANARY_SIGNED_STAGE2_REQUIRED');
+          NODE
+      - name: Require provider-observed paid D1 headroom before version upload
+        run: node scripts/ops/check-d1-paid-monthly-headroom.mjs --check
+      - name: Upload exact-main candidate with inherited protected bindings and no traffic change
+        id: candidate
+        run: |
+          set -euo pipefail
+          node scripts/ops/prepare-optimized-worker-candidate.mjs > "$RUNNER_TEMP/candidate.json"
+          node -e 'const fs=require("node:fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(x.status!=="CANDIDATE_UPLOADED_NOT_DEPLOYED"||x.source_sha!==process.env.GITHUB_SHA||x.traffic_promoted!==false||x.payments!==0)throw Error("HELD_CANARY_CANDIDATE_UPLOAD_UNVERIFIED");fs.appendFileSync(process.env.GITHUB_OUTPUT,"baseline="+x.baseline_id+"\ncandidate="+x.candidate_id+"\n")' "$RUNNER_TEMP/candidate.json"
+      - name: Verify physical D1 schema acceptance for exact main
+        run: node --experimental-strip-types scripts/apply-d1-migrations.ts --verify
+      - name: Sign explicit reviewed candidate bindings and Hot50 flags
+        env:
+          BASELINE_VERSION_ID: ${{ steps.candidate.outputs.baseline }}
+          CANDIDATE_VERSION_ID: ${{ steps.candidate.outputs.candidate }}
+          CANARY_OWNER_REVIEWED_ADDITIVE_SECRETS: ${{ inputs.reviewed_additive_secret_names }}
+        run: node --experimental-strip-types scripts/ops/attest-canary-additive-secrets.mjs
+      - name: Promote only through canonical signed six-stage health, readiness, and rollback gate
+        env:
+          BASELINE_VERSION_ID: ${{ steps.candidate.outputs.baseline }}
+          CANDIDATE_VERSION_ID: ${{ steps.candidate.outputs.candidate }}
+        run: node --experimental-strip-types scripts/canary-promoter.ts --promote
+      - name: Keep signed promotion receipts for independent hold review
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: geomacro-deploy-workflow-canary-receipts
+          path: artifacts/release/canary-*.json
+          if-no-files-found: warn
+          retention-days: 14
 
   p0-1-offline-regression:
     if: github.event_name == 'pull_request' && github.repository == 'blocknine0/geomacro'
