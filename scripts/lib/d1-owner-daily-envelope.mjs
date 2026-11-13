@@ -21,6 +21,10 @@ export function evaluateOwnerD1DailyEnvelope({
     policy?.burn_rate_alert_per_hour_write===45_000 &&
     policy?.opening_burst_rows_read===4000 &&
     policy?.opening_burst_rows_written===2000 &&
+    policy?.early_utc_carry_forward_enabled===true &&
+    policy?.early_utc_carry_forward_window_hours===6 &&
+    policy?.early_utc_carry_forward_min_daily_headroom_fraction===0.5 &&
+    policy?.early_utc_carry_forward_max_rows_written===100000 &&
     policy?.enforce_circuit_breaker===true &&
     policy?.provider_telemetry_is_delayed===true &&
     policy?.account_wide_atomic_hard_cap_guaranteed===false &&
@@ -34,9 +38,16 @@ export function evaluateOwnerD1DailyEnvelope({
   const pacedRead=Math.min(policy.normal_daily_reads,
     Math.floor(policy.burn_rate_alert_per_hour_read*elapsed/3_600_000+
        policy.opening_burst_rows_read));
-  const pacedWrite=Math.min(policy.normal_daily_writes,
-    Math.floor(policy.burn_rate_alert_per_hour_write*elapsed/3_600_000+
-       policy.opening_burst_rows_written));
+  const basePacedWrite=Math.floor(policy.burn_rate_alert_per_hour_write*elapsed/3_600_000+
+       policy.opening_burst_rows_written);
+  const dailyWriteHeadroom=Math.max(0,policy.normal_daily_writes-observedRowsWritten);
+  const earlyUtcWindow=elapsed<policy.early_utc_carry_forward_window_hours*3_600_000;
+  const carryForwardActive=earlyUtcWindow &&
+    dailyWriteHeadroom>policy.normal_daily_writes*policy.early_utc_carry_forward_min_daily_headroom_fraction;
+  const carryForwardRows=carryForwardActive?Math.min(
+    policy.early_utc_carry_forward_max_rows_written,
+    Math.max(0,dailyWriteHeadroom-Math.floor(policy.normal_daily_writes*policy.early_utc_carry_forward_min_daily_headroom_fraction))):0;
+  const pacedWrite=Math.min(policy.normal_daily_writes,basePacedWrite+carryForwardRows);
   const dailyHeld=observedRowsRead>=policy.normal_daily_reads ||
     observedRowsWritten>=policy.normal_daily_writes;
   const pacedHeld=observedRowsRead>=pacedRead || observedRowsWritten>=pacedWrite;
