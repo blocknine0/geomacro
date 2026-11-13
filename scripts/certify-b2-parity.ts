@@ -3,7 +3,7 @@
 import {createHash,createHmac,createDecipheriv} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {createB2Client} from './ops/b2-s3-client.mjs';
-import {ORIGIN,need,envString,api,canonicalD1,queryD1,sha256,canonical,signedReport,holdError,SHA_RE} from './release-common.ts';
+import {ORIGIN,need,envString,api,canonicalD1,queryD1,canonicalContentSha256,canonical,signedReport,holdError,SHA_RE} from './release-common.ts';
 const B2_ENDPOINT='https://s3.us-east-005.backblazeb2.com',B2_BUCKET='geomacro-private-archive';
 const QUEUES=['geomacro-ingestion-spool','geomacro-ingestion-dead-letter','geomacro-source-poll','geomacro-source-poll-dlq'];
 const MAX=Number(process.env.PARITY_MAX_B2_READS||'250');
@@ -40,9 +40,9 @@ function verifyEncryptedBatch(bytes:Buffer,batch:string,count:number){
  const decipher=createDecipheriv('aes-256-gcm',key,nonce);
  decipher.setAAD(Buffer.from('p0b.bundle|'+batch));decipher.setAuthTag(cipher.subarray(-16));
  const compressed=Buffer.concat([decipher.update(cipher.subarray(0,-16)),decipher.final()]);
- need(sha256(compressed)===o.compressed_sha256,'PARITY_CIPHERTEXT_HASH_MISMATCH');
+ need(canonicalContentSha256(compressed)===o.compressed_sha256,'PARITY_CIPHERTEXT_HASH_MISMATCH');
  const plain=gunzipSync(compressed,{maxOutputLength:1024*1024});
- need(sha256(plain)===batch,'PARITY_PLAINTEXT_HASH_MISMATCH');
+ need(canonicalContentSha256(plain)===batch,'PARITY_PLAINTEXT_HASH_MISMATCH');
  const inner=JSON.parse(plain.toString('utf8'));
  need(inner.schema==='geomacro.p0b.microbatch.v1'&&inner.index?.length===count&&
   new Set(inner.index.map((x:any)=>x.candidateSha256)).size===count,'PARITY_ITEM_INDEX_INVALID');
@@ -68,7 +68,7 @@ async function r2Request(key:string){
  const endpoint=`https://${account}.r2.cloudflarestorage.com`;
  const access=envString('R2_ACCESS_KEY_ID'),secret=envString('R2_SECRET_ACCESS_KEY');
  const region='auto',date=new Date().toISOString().replace(/[:-]|\.\d{3}/g,'');
- const day=date.slice(0,8),empty=sha256('');
+ const day=date.slice(0,8),empty=canonicalContentSha256('');
  need(/^p0b\/private-fallback\/v1\/[A-Za-z0-9_./-]+$/u.test(key)&&!key.includes('..'),'PARITY_R2_D1_KEY_INVALID');
  const path='/'+bucket+'/'+key.split('/').map(encodeURIComponent).join('/');
  const query='';
@@ -76,7 +76,7 @@ async function r2Request(key:string){
  const header=`host:${host}\nx-amz-content-sha256:${empty}\nx-amz-date:${date}\n`;
  const hNames='host;x-amz-content-sha256;x-amz-date';
  const scope=`${day}/${region}/s3/aws4_request`;
- const toSign=['AWS4-HMAC-SHA256',date,scope,sha256(['GET',path,query,header,hNames,empty].join('\n'))].join('\n');
+ const toSign=['AWS4-HMAC-SHA256',date,scope,canonicalContentSha256(['GET',path,query,header,hNames,empty].join('\n'))].join('\n');
  const signer=hmac(hmac(hmac(hmac('AWS4'+secret,day),region),'s3'),'aws4_request');
  const sig=createHmac('sha256',signer).update(toSign).digest('hex');
  const res=await fetch(endpoint+path+(query?'?'+query:''),{method:'GET',redirect:'error',
@@ -99,7 +99,7 @@ async function verifyR2Physical(){
   need(SHA_RE.test(row.batch_id)&&SHA_RE.test(row.cipher_sha256)&&
    row.object_key.startsWith(prefix),'PARITY_R2_D1_METADATA_INVALID');
   const bytes=await r2Request(row.object_key);
-  need(bytes.length>0&&bytes.length<=1536*1024&&sha256(bytes)===row.cipher_sha256,
+  need(bytes.length>0&&bytes.length<=1536*1024&&canonicalContentSha256(bytes)===row.cipher_sha256,
    'PARITY_R2_CIPHERTEXT_SHA_MISMATCH');
   // Verify AEAD, not merely the object digest: a cached encrypted blob that
   // can no longer be restored is NOT a valid archive recovery path.
@@ -115,16 +115,16 @@ async function verifyR2Physical(){
   dec.setAAD(Buffer.from('p0b-r2-fallback|'+row.batch_id));
   dec.setAuthTag(cipher.subarray(-16));
   const restored=Buffer.concat([dec.update(cipher.subarray(0,-16)),dec.final()]);
-  need(restored.length<=512*1024&&sha256(restored)===envelope.plain_sha256,
+  need(restored.length<=512*1024&&canonicalContentSha256(restored)===envelope.plain_sha256,
     'PARITY_R2_PLAINTEXT_SHA_UNVERIFIED');
   const doc=JSON.parse(restored.toString('utf8'));
   need(Array.isArray(doc.items)&&doc.items.length===row.item_count&&
     doc.items.every((item:any)=>typeof item.sourceId==='string'&&SHA_RE.test(item.candidateSha256))&&
-    sha256(doc.items.map((item:any)=>item.sourceId+'|'+item.candidateSha256).sort().join('\n'))===row.batch_id,
+    canonicalContentSha256(doc.items.map((item:any)=>item.sourceId+'|'+item.candidateSha256).sort().join('\n'))===row.batch_id,
     'PARITY_R2_MEMBER_MANIFEST_UNVERIFIED');
  }
  return {r2_aes_gcm_and_member_manifest_verified:true,objects_verified:rows.length,
-  d1_r2_manifest_sha256:sha256(canonical(rows)),all_r2_objects_physically_enumerated:false,
+  d1_r2_manifest_sha256:canonicalContentSha256(canonical(rows)),all_r2_objects_physically_enumerated:false,
   r2_unindexed_orphans_not_ruled_out:true};
 }
 
@@ -158,7 +158,7 @@ async function main(){
  need((after.backlog?.r2??-1)===0,'PARITY_R2_FALLBACK_NOT_RECONCILED');
  const receipt={schema:'geomacro.b2-d1-physical-parity.v1',status:'HOLD',verified_at:new Date().toISOString(),
   scope:'D1_INDEXED_B2_R2_READBACK_ONLY',scope_prefix:prefix,
-  archive_batch_count:expected.length,d1_manifest_sha256:sha256(canonical(expected)),
+  archive_batch_count:expected.length,d1_manifest_sha256:canonicalContentSha256(canonical(expected)),
   physical_list_complete:false,bidirectional_parity_pass:false,
   b2_unindexed_orphans_not_ruled_out:true,
   each_d1_indexed_b2_get_aes_gcm_sha256_verified:true,ordered_d1_start_end_unchanged:true,

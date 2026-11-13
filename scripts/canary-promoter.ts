@@ -3,7 +3,7 @@
 import {existsSync,readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {api,graphql,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,sha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
+import {api,queryCloudflareAnalytics,need,UUID_RE,envString,assertOfficialMain,signedReport,verifySignedEnvelopeFile,canonical,canonicalContentSha256,holdError,ORIGIN,WORKER,D1_DAILY_READ_CEILING,D1_DAILY_WRITE_CEILING} from './release-common.ts';
 import {
  checkD1PaidMonthlyHeadroom,paidD1BillingCycle
 } from './lib/d1-workers-paid-monthly-governor.mjs';
@@ -104,7 +104,7 @@ async function checkVersionParity(base:string,candidate:string,headSha:string,{r
 
 async function verifiedLiveObservability(start:string,end:string,version:string,requireVolume=true){
  const account=envString('CLOUDFLARE_ACCOUNT_ID',32),zone=envString('CLOUDFLARE_ZONE_ID',32);
- const graph=await graphql(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
+ const graph=await queryCloudflareAnalytics(GRAPH,{accountTag:account,script:WORKER,version,zoneTag:zone,host:'api.geomacro.live',start,end});
  const worker=graph.viewer?.accounts?.[0]?.workersInvocationsAdaptive?.[0];
  const http=graph.viewer?.zones?.[0]?.httpRequestsAdaptiveGroups?.[0];
  const requests=worker?.sum?.requests,errors=worker?.sum?.errors;
@@ -277,7 +277,7 @@ export function admitSignedClosedD1DayForCanary(proof:any,now=new Date()){
   proof.analytics_provider_observation_not_provider_signed_ledger===true&&
   proof.account_wide_atomic_hard_cap_guaranteed===false&&
   proof.no_funds===true&&
-  /^[a-f0-9]{64}$/.test(proof.provider_query_result_sha256??'')&&
+  /^[a-f0-9]{64}$/.test(proof.provider_query_result_hmac_sha256??'')&&
   ['BILLING_READ_TOKEN','EXISTING_ACCOUNT_API_TOKEN'].includes(proof.analytics_credential_source)&&
   proof.budget_rows_read===D1_DAILY_READ_CEILING&&
   proof.budget_rows_written===D1_DAILY_WRITE_CEILING&&
@@ -463,7 +463,7 @@ async function main(){
    schema:'geomacro.canary.hold-review.v2',status:'PASS',
    source_sha:mainSha,completed_canary_run_id:promotionRun,
    approved_stage2_run:run,
-   signed_promotion_payload_sha256:sha256(canonical(promotion)),
+   signed_promotion_payload_sha256:canonicalContentSha256(canonical(promotion)),
    signed_stages_verified:admitted.fully_verified_stages,
    actual_candidate_version:admitted.candidate_version,
    remote_candidate_100_percent_verified:true,

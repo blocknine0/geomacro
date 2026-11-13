@@ -241,7 +241,7 @@ const newlyAcknowledged=queue.candidates.filter(candidate=>{
  const native=candidate.datePrecision==="day"?
   candidate.publishedAt.slice(0,10):candidate.publishedAt;
  const id=createHash("sha256").update(
-  candidate.category+"\n+candidate.articleUrl+"\n+native).digest("hex");
+  candidate.category+"\n"+candidate.articleUrl+"\n"+native).digest("hex");
  return verifiedStageIds.has(id);
 });
 const projectedByKey=new Map();
@@ -322,7 +322,7 @@ if(threeDomainDirect20m&&hotFeedHealthy<hotFeedUrls.size)
 // Acknowledge only exact original IDs returned after authenticated D1 readback.
 // All receipt identities stay in the protected runner and AES-GCM queue.
 const verifiedIds=new Set(stage.verified_record_ids??[]);
-const progressiveProjection=await projectProgressiveFacts(indexed.candidates,verifiedIds);
+const progressiveFactsProjection=await projectProgressiveFacts(indexed.candidates,verifiedIds);
 console.log(JSON.stringify({schema:"geomacro.phase2i-progressive-fact-projection.v1",
  ...progressiveProjection,raw_news_text_stored:false}));
 const candidatesWithD1Receipts=queue.candidates.map(candidate=>{

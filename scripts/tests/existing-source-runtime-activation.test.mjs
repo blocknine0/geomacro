@@ -137,6 +137,26 @@ test('workbook transport without publisher-native release metadata stays unavail
  assert.equal(r.raw_publisher_content_persisted,false);assert.equal(r.d1_writes+r.b2_requests+r.payments,0);
 });
 
+test('UNCTAD retries one bounded request timeout and remains metadata-only',async()=>{
+ const unctadSource=existingPrivateP0Sources().find(s=>s.id==='unctadstat_global');
+ const releaseCalendar='<html><title>UNCTADstat</title><h2>1 October 2026</h2>'+
+  '<p>Commodity prices: UNCTAD Commodity Price Index - Monthly</p><span>Published</span></html>';
+ let attempts=0;
+ const r=await observeExistingPrivateP0Sources({now,fetchImpl:async url=>{
+  if(url===unctadSource.url){
+   attempts++;
+   if(attempts===1){const timeout=new Error('timeout');timeout.name='TimeoutError';throw timeout;}
+   return new Response(releaseCalendar,{headers:{'content-type':'text/html'}});
+  }
+  return new Response('',{status:403});
+ }});
+ const unctad=r.results.find(s=>s.source_id==='unctadstat_global');
+ assert.equal(attempts,2);assert.equal(r.http_requests,11);
+ assert.equal(unctad.status,'MACHINE_DATA_METADATA_PARSED');
+ assert.equal(unctad.commercial_eligible,false);assert.equal(r.commercial_eligible,false);
+ assert.equal(r.source_rights_approved,false);assert.equal(r.signed_intelligence_published,false);
+});
+
 test('UNCTAD and World Bank publisher release clocks parse as metadata only and remain noncommercial',async()=>{
  const unctadSource=existingPrivateP0Sources().find(s=>s.id==='unctadstat_global');
  const wbSource=existingPrivateP0Sources().find(s=>s.id==='world_bank_commodity_prices');
