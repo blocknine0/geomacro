@@ -35,6 +35,32 @@ test("all 124 catalogue pins remain auditable while retired endpoints never re-e
   s.private_discovery_index_only===false&&
   s.private_hot50_direct_20m===true));
 });
+
+test("all Hot50 country-category discovery cells have non-retired configured lanes",()=>{
+ const {snapshot}=hot50FourLaneSourceCrosswalk();
+ const expected=["geopolitics","macro","rare_earth"];
+ assert.equal(snapshot.countries.length,50);
+ const cells=[];
+ for(const country of snapshot.countries){
+  assert.equal(country.google_news_category_watches.length,3,country.country_iso3);
+  for(const category of expected){
+   assert.ok(country.google_news_category_watches.includes(category),
+    `missing search discovery lane: ${country.country_iso3}/${category}`);
+   assert.equal(country.on_demand_gdelt_shared,true,
+    `missing shared GDELT lane: ${country.country_iso3}/${category}`);
+   const direct=country.direct_news_osint_feeds.filter(source=>source.categories.includes(category));
+   assert.ok(direct.every(source=>!PRIVATE_OSINT_RETIRED_SOURCE_IDS.includes(source.id)),
+    `retired source re-entered crosswalk: ${country.country_iso3}/${category}`);
+   cells.push({country:country.country_iso3,category,direct_candidates:direct.length,
+    search_discovery:true,gdelt_discovery:true});
+  }
+ }
+ assert.equal(cells.length,150);
+ assert.ok(cells.every(cell=>cell.search_discovery&&cell.gdelt_discovery));
+ // This is candidate-discovery coverage only; it is not proof of live feed health,
+ // first-party publisher status, country-event attribution, rights or delivery.
+});
+
 test("three consecutive 20m slots never re-probe any permanently removed endpoint",()=>{
  const seen=new Set();
  const start=Date.parse("2026-11-04T00:00:00Z");
