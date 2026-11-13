@@ -46,3 +46,30 @@ CREATE TABLE IF NOT EXISTS predge_risk_gate_verdict_license (
 );
 CREATE INDEX IF NOT EXISTS idx_predge_risk_gate_license_created
   ON predge_risk_gate_verdict_license(created_at,client_id);
+
+CREATE TRIGGER IF NOT EXISTS predge_paid_risk_gate_license_fields_immutable
+BEFORE UPDATE OF licensee_id,max_commercial_uses,consumption_count,resale_permitted,
+  transferable,subject_json,action_context_json,market_id,condition_id,
+  downstream_caller,license_payload_sha256
+ON predge_paid_risk_gate_usage_ledger
+WHEN NEW.licensee_id IS NOT OLD.licensee_id OR
+  NEW.max_commercial_uses IS NOT OLD.max_commercial_uses OR
+  NEW.consumption_count IS NOT OLD.consumption_count OR
+  NEW.resale_permitted IS NOT OLD.resale_permitted OR
+  NEW.transferable IS NOT OLD.transferable OR
+  NEW.subject_json IS NOT OLD.subject_json OR
+  NEW.action_context_json IS NOT OLD.action_context_json OR
+  NEW.market_id IS NOT OLD.market_id OR
+  NEW.condition_id IS NOT OLD.condition_id OR
+  NEW.downstream_caller IS NOT OLD.downstream_caller OR
+  NEW.license_payload_sha256 IS NOT OLD.license_payload_sha256
+BEGIN
+  SELECT RAISE(ABORT,'PREDGE_SINGLE_USE_LICENSE_FIELDS_IMMUTABLE');
+END;
+
+CREATE TRIGGER IF NOT EXISTS predge_risk_gate_verdict_license_no_update
+BEFORE UPDATE ON predge_risk_gate_verdict_license
+BEGIN SELECT RAISE(ABORT,'PREDGE_SINGLE_USE_LICENSE_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS predge_risk_gate_verdict_license_no_delete
+BEFORE DELETE ON predge_risk_gate_verdict_license
+BEGIN SELECT RAISE(ABORT,'PREDGE_SINGLE_USE_LICENSE_IMMUTABLE'); END;
