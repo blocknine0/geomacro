@@ -31,7 +31,9 @@ describe("Intelligence browser RPC stall recovery", () => {
     expect(desk).toContain("const historical = await fetchPermanentDerivedNews()");
     expect(desk).toContain("const recent = await fetchDirectDerivedNews()");
     expect(desk).toContain("fetchDirectDerivedNews()");
-    expect(desk).toContain("without a website rebuild or D1 browser reads");
+    const reader = readFileSync("src/lib/public-derived-news-client.ts", "utf8");
+    expect(reader).toContain("GEOMACRO_PERMANENT_LATEST_URL");
+    expect(reader).toContain("fetchPublicReadWithRetry(fetchImpl,GEOMACRO_PERMANENT_LATEST_URL");
     expect(desk).not.toContain("localStorage");
     expect(desk).toContain("loadReaderPreferences()");
     expect(desk).toContain("saveReaderPreferences({ category: view, savedIds, lastVisit: visitStarted.current })");
