@@ -16,7 +16,7 @@ import {
 } from "@/lib/use-intelligence";
 import { getPublicIntelligenceSeo } from "@/lib/public-intelligence-seo.functions";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchZeroD1PublicDerivedNews } from "@/lib/public-derived-news-client";
+import { getWebsiteDerivedNews } from "@/lib/website-derived-news.functions";
 import { StatelessLiveDesk } from "@/components/intelligence/stateless-live-desk";
 import { useRiskIndices } from "@/lib/use-risk-indices";
 import { withPublicRuntimeTimeout } from "@/lib/public-runtime-timeout";
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/intelligence")({
         "Original publisher Intelligence source check timed out.",
       )),
       withPublicRuntimeTimeout(
-        fetchZeroD1PublicDerivedNews(),
+        getWebsiteDerivedNews(),
         9_000,
         "Derived Intelligence journal read timed out.",
       ),
@@ -76,11 +76,10 @@ export const Route = createFileRoute("/intelligence")({
         ...(accepted[1] ? { macro: accepted[1] } : {}),
         ...(accepted[2] ? { rare_earth: accepted[2] } : {}),
       },
-      // fetchDirectDerivedNews() already returns checked Signal[] directly,
-      // NOT {signals}. A successful journal is combined with actual live
-      // issuer answers; neither supplies a canonical signed risk score.
-      journal: history.status === "fulfilled" && Array.isArray(history.value)
-        ? history.value : [],
+      // The canonical derived journal contains all three categories and
+      // explicitly unverified OSINT. It remains separate from scored GRI.
+      journal: history.status === "fulfilled" && Array.isArray(history.value?.signals)
+        ? history.value.signals : [],
     };
   },
   head: () => ({

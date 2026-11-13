@@ -45,7 +45,10 @@ jobs:
         run: |
           node --check scripts/ops/supplement-hot50-global-search-facts.mjs
           node --check workers/control-plane/src/store-risk-gate.mjs
+          node --check workers/control-plane/src/public-http-etag.mjs
           node --experimental-strip-types --check scripts/ops/phase2i-source-only-raw-tick.ts
+          node --test scripts/tests/public-http-etag.test.mjs
+          node --test scripts/tests/geomacro-news-severity-gri.test.mjs
           node --test scripts/tests/progressive-risk-gate.test.mjs scripts/tests/predge-paid-risk-gate-addendum-v2.test.mjs scripts/tests/hot50-global-search-facts.test.mjs scripts/tests/phase2i-progressive-fact-projection-contract.test.mjs scripts/lib/private-osint-15m-collector.test.mjs scripts/lib/hot-50-direct-20m-sources.test.mjs scripts/lib/hot-50-four-lane-source-crosswalk.test.mjs
 
       - name: Verify $5 Cloudflare paid-capacity guard fails closed before any real billing (offline)

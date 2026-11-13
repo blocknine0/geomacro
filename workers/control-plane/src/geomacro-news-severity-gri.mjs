@@ -8,6 +8,7 @@
  * A domain with no qualified release remains unavailable, NEVER scored zero.
  */
 import {readDerivedStoriesBundle,verifyDerivedStory} from "./website-derived-intelligence.mjs";
+import {canonicalProgressiveJson} from "./progressive-risk-gate.mjs";
 
 export const NEWS_GRI_SCHEMA="geomacro.self-certified-news-severity-gri.v1";
 export const NEWS_GRI_METHOD="geomacro-news-severity-v1.1.0";
@@ -348,7 +349,7 @@ export async function serveSelfCertifiedNewsSeverityGri(env,{
     doc.returned_rows!==doc.signals?.length||
     !Array.isArray(doc.signals)||doc.signals.length>600)
    return bad("QUALIFIED_NEWS_SOURCE_INVALID");
-  // Verify issuer capability before modifying any durable state.
+  // Legacy continuity endpoint preserves its durable last-qualified behavior.
   const fresh=await certifiedNewsSeverityGriFromSignals(doc.signals,{
    now,secret:env.CONTROL_PLANE_TOKEN});
   const retained=await retainLastQualifiedGriByDomain({
@@ -362,6 +363,60 @@ export async function serveSelfCertifiedNewsSeverityGri(env,{
    "Access-Control-Expose-Headers":"X-GeoMacro-Certification,X-GeoMacro-Methodology",
    "X-GeoMacro-Certification":"geomacro-self-certified-news-severity-v1",
    "X-GeoMacro-Methodology":NEWS_GRI_METHOD,
+   "X-Content-Type-Options":"nosniff"
+  }});
+ }catch{return bad("GEOMACRO_NEWS_GRI_UNAVAILABLE")}
+}
+
+/** A read-only 72h projection from an already-cached journal; no continuity D1 query. */
+export async function serveSnapshotNewsSeverityGri(env,{
+ now=Date.now(),source=readDerivedStoriesBundle
+}={}){
+ const bad=code=>Response.json({ok:false,code},{status:503,
+  headers:{"Cache-Control":"no-store","Access-Control-Allow-Origin":"*"}});
+ try{
+  const result=await source(env,now,false);
+  if(result.status!==200)return bad("QUALIFIED_NEWS_SOURCE_UNAVAILABLE");
+  const doc=await result.json();
+  if(doc?.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
+    doc.complete!==true||doc.retention_hours!==72||
+    doc.returned_rows!==doc.signals?.length||
+    !Array.isArray(doc.signals)||doc.signals.length>600)
+   return bad("QUALIFIED_NEWS_SOURCE_INVALID");
+  const report=await certifiedNewsSeverityGriFromSignals(doc.signals,{
+   now,secret:env.CONTROL_PLANE_TOKEN});
+  const keyId=String(env.RISK_GATE_DECISION_ED25519_KEY_ID??"");
+  const privateB64=String(env.RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64??"");
+  const publicB64=String(env.RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64??"");
+  if(!/^[A-Za-z0-9._:-]{4,120}$/.test(keyId)||!privateB64||!publicB64)
+    return bad("GEOMACRO_NEWS_GRI_ED25519_SIGNER_UNAVAILABLE");
+  const bytes=encoder.encode(canonicalProgressiveJson(report));
+  const privateKey=await crypto.subtle.importKey("pkcs8",
+   Uint8Array.from(atob(privateB64),x=>x.charCodeAt(0)),{name:"Ed25519"},false,["sign"]);
+  const publicKey=await crypto.subtle.importKey("spki",
+   Uint8Array.from(atob(publicB64),x=>x.charCodeAt(0)),{name:"Ed25519"},false,["verify"]);
+  const signature=new Uint8Array(await crypto.subtle.sign("Ed25519",privateKey,bytes));
+  if(!await crypto.subtle.verify("Ed25519",publicKey,signature,bytes))
+    return bad("GEOMACRO_NEWS_GRI_SIGNATURE_SELF_CHECK_FAILED");
+  const signatureB64=btoa(String.fromCharCode(...signature));
+  const payloadHash=await digest(bytes);
+  const ed25519_delivery={schema:"geomacro.news-severity-ed25519-delivery.v1",
+   signature_scheme:"Ed25519",signature_key_id:keyId,
+   signature_b64:signatureB64,payload_sha256:payloadHash,
+   proof_scope:"GEOMACRO_SELF_CERTIFIED_NEWS_SEVERITY_CALCULATION_ONLY",
+   independent_third_party_certified:false,
+   source_event_facts_independently_verified:false};
+  return Response.json({...report,ed25519_delivery},{status:200,headers:{
+   "Content-Type":"application/json; charset=utf-8",
+   "Cache-Control":"public, max-age=60, stale-while-revalidate=300",
+   "Access-Control-Allow-Origin":"*",
+   "Access-Control-Expose-Headers":"X-GeoMacro-Certification,X-GeoMacro-Methodology",
+   "X-GeoMacro-Certification":"geomacro-self-certified-news-severity-v1",
+   "X-GeoMacro-Methodology":NEWS_GRI_METHOD,
+   "X-GeoMacro-Signature-Scheme":"Ed25519",
+   "X-GeoMacro-Signing-Key-Id":keyId,
+   "X-GeoMacro-Payload-Sha256":payloadHash,
+   "X-GeoMacro-Signature":signatureB64,
    "X-Content-Type-Options":"nosniff"
   }});
  }catch{return bad("GEOMACRO_NEWS_GRI_UNAVAILABLE")}

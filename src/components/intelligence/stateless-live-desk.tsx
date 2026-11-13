@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchZeroD1PublicDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchAllDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -19,7 +19,7 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Poll the one-minute-cached canonical D1 feed every two minutes. Historical
+// Poll the cached canonical three-category journal every two minutes. Historical
 // shards load from the static archive once; no browser-driven D1 writes.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
@@ -245,6 +245,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     let alive = true;
     let pending = false;
     let archiveLoaded = false;
+    let skipHydratedRead = initialJournal.length > 0;
     const sortSignals = (signals: StatelessIntelligenceSignal[]) =>
       signals.sort((a, b) =>
         b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
@@ -272,9 +273,10 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       try {
         // Fresh 72h static/R2 evidence first. A broken historical shard
         // must never hide currently published Geopolitics findings.
+        if(skipHydratedRead){skipHydratedRead=false;return;}
         let latestRead=false;
         try {
-          const recent = await fetchZeroD1PublicDerivedNews();
+          const recent = await fetchAllDerivedNews(fetch,Date.now(),{fresh:false});
           if (!alive) return;
           setJournal(previous => mergeUnseen(previous, recent));
           latestRead=true;
@@ -312,7 +314,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onReturn);
     };
-  }, []);
+  }, [initialJournal.length]);
 
   // Human-readable timeline across all three categories, newest first.
   // Day-only originals sort by their actual date, never an invented hour.

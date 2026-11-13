@@ -401,7 +401,8 @@ export async function fetchAllDerivedNews(
   if(!canonical&&doc.schema==="geomacro.website-derived-news-feed.v1")
     return fetchAllDerivedNewsLegacy(fetchImpl,now);
   const checkedAt=Date.parse(String(doc.checked_at??""));
-  if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>30_000)
+  const maxBundleAgeMs=options.fresh===false?360_000:30_000;
+  if(!Number.isFinite(checkedAt)||checkedAt>now+5_000||now-checkedAt>maxBundleAgeMs)
     throw Error("DERIVED_NEWS_BUNDLE_STALE_READBACK");
   if(doc.ok!==true||doc.schema!=="geomacro.website-derived-news-bundle.v1"||
      doc.original_release_delay_minutes!==0||doc.retention_days!==3||
