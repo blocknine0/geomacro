@@ -65,7 +65,6 @@ test("ICC official RSS native pubDate and dc:date become dated first-party items
   ["2026-10-23T08:00:00.000Z","2026-10-22T09:30:00.000Z"]);
  assert.ok(items.every(x=>x.url.startsWith("https://www.icc-cpi.int/")));
 });
-});
 test("ICC native publication clock comes from article metadata, not retrieval or RSS time",()=>{
  const page='<html><head><title>ICC official announcement</title><meta property="article:published_time" content="2026-11-12T15:17:17+01:00"></head><body>International Criminal Court</body></html>';
  const row=parseIccArticleHtml(page,{url:"https://www.icc-cpi.int/node/241777",retrievedAt:"2026-11-12T17:00:00Z"});
