@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {planD1BundledWork,checkD1BundledWork,d1LanePacedCeiling,PREDGE_D1_FREE_HEADROOM,phase2fQuotaDiagnostic,planRegisteredAdaptiveFreeOriginals,planPhase2iAdaptiveSourceBudget,REGISTERED_ADAPTIVE_FREE_CAP} from "../ops/plan-d1-bundled-work.mjs";
 import {D1_FREE_DAILY} from "../ops/audit-d1-account-daily-quota-readonly.mjs";
 
@@ -482,4 +483,16 @@ test("owner-paid envelope admits bounded intake when optional billing read is de
  assert.equal(diagnostic.bounded_original_intake_admitted,true);
  assert.equal(diagnostic.derived_three_category_d1_publisher_admitted,true);
  assert.equal(diagnostic.billing_or_quota_change_performed,false);
+});
+
+test("all three source quota jobs resolve the canonical D1 database variable before Free fallback",()=>{
+ const workflows=[
+  "../../.github/workflows/hot50-direct-original-news-20m.yml",
+  "../../.github/workflows/private-global-osint-15m.yml",
+  "../../.github/workflows/three-domain-30m-original-publisher-pulse.yml",
+ ];
+ for(const path of workflows){
+  const source=readFileSync(new URL(path,import.meta.url),"utf8");
+  assert.match(source,/D1_DATABASE_ID:\s*\$\{\{\s*vars\.D1_DATABASE_ID\s*\|\|\s*secrets\.D1_DATABASE_ID\s*\}\}/u,path);
+ }
 });
