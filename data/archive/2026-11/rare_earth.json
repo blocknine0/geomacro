@@ -2,8 +2,103 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "rare_earth",
-  "updated_at": "2026-11-13T01:51:55.966Z",
+  "updated_at": "2026-11-13T08:48:01.371Z",
   "signals": [
+    {
+      "id": "rare_earth-fafa9ade",
+      "category": "rare_earth",
+      "title": "Geomacro finds Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks",
+      "what_changed": "A monitored source feed reports: Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T05:15:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-1d5a004d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Hudbay cut cost outlook as Copper Mountain improves - Mining.com",
+      "what_changed": "A monitored source feed reports: Hudbay cut cost outlook as Copper Mountain improves - Mining.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T22:01:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-db0904ed",
+      "category": "rare_earth",
+      "title": "Geomacro finds LG Energy Solution signed a 10-year lithium supply deal with Standard Lithium (SLI). - Stock Titan",
+      "what_changed": "A monitored source feed reports: LG Energy Solution signed a 10-year lithium supply deal with Standard Lithium (SLI). - Stock Titan. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T21:45:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6e1db3c2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T19:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-eab3e061",
+      "category": "rare_earth",
+      "title": "Geomacro finds USGS projected World Production Capacity for 8 Critical Minerals from 2026 to 2030 - USGS (.gov)",
+      "what_changed": "A monitored source feed reports: USGS projected World Production Capacity for 8 Critical Minerals from 2026 to 2030 - USGS (.gov). This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T18:53:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "rare_earth-8b707965",
       "category": "rare_earth",

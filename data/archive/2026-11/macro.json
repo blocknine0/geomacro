@@ -2,8 +2,84 @@
   "schema": "geomacro.permanent-derived-news-archive-month.v1",
   "month": "2026-11",
   "category": "macro",
-  "updated_at": "2026-11-13T01:51:55.966Z",
+  "updated_at": "2026-11-13T08:48:01.371Z",
   "signals": [
+    {
+      "id": "macro-552fc73a",
+      "category": "macro",
+      "title": "Geomacro finds Cora Gold agreed to conditional demerger of Senegal assets",
+      "what_changed": "A monitored source feed reports: Cora Gold agreed to conditional demerger of Senegal assets. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T07:47:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-607e3ef1",
+      "category": "macro",
+      "title": "Geomacro finds Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters",
+      "what_changed": "A monitored source feed reports: Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T01:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-9d3ccd06",
+      "category": "macro",
+      "title": "Geomacro finds Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T19:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4392b096",
+      "category": "macro",
+      "title": "Geomacro finds KPMG signed Off on Tether Gold Issuer’s 2025 Books, Covering $2.2 Billion in Bullion - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: KPMG signed Off on Tether Gold Issuer’s 2025 Books, Covering $2.2 Billion in Bullion - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T18:10:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "macro-9e596d67",
       "category": "macro",

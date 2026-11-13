@@ -1,7 +1,7 @@
 {
   "schema": "geomacro.website-intelligence-three-category-72h.v1",
   "ok": true,
-  "checked_at": "2026-11-13T01:51:55.966Z",
+  "checked_at": "2026-11-13T08:48:01.371Z",
   "source": "GEOMACRO_PUBLIC_WEBSITE_INTELLIGENCE_ARCHIVE",
   "categories": [
     "geopolitics",
@@ -12,13 +12,13 @@
   "retention_hours": 72,
   "complete": true,
   "max_items": 600,
-  "item_count": 46,
+  "item_count": 50,
   "counts": {
     "geopolitics": 5,
-    "macro": 26,
-    "rare_earth": 15
+    "macro": 25,
+    "rare_earth": 20
   },
-  "source_native_ids_sha256": "78f0d70dcf956a9f98bc3ae9c29ae5fdaf3a92136b6f5dcc3e3fa2cd96b13c8e",
+  "source_native_ids_sha256": "b43b9856d0f3a8dda2dd6b56aa8f3eefe020704a80dd13c5c5b25565e4594a63",
   "free_website_only": true,
   "attributed_research_only": true,
   "scored": false,
@@ -29,6 +29,63 @@
   "raw_upstream_delivered": false,
   "payments": 0,
   "signals": [
+    {
+      "id": "macro-552fc73a",
+      "category": "macro",
+      "title": "Geomacro finds Cora Gold agreed to conditional demerger of Senegal assets",
+      "what_changed": "A monitored source feed reports: Cora Gold agreed to conditional demerger of Senegal assets. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T07:47:42.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: www.mining-technology.com"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-fafa9ade",
+      "category": "rare_earth",
+      "title": "Geomacro finds Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks",
+      "what_changed": "A monitored source feed reports: Tianqi Lithium reported Filing of Cuola Spodumene Mine Resource Report - TipRanks. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T05:15:25.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-607e3ef1",
+      "category": "macro",
+      "title": "Geomacro finds Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters",
+      "what_changed": "A monitored source feed reports: Fed's Williams said central bank has 'work to do' to get inflation back on target - Reuters. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "monetary policy",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-13T01:35:00.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
     {
       "id": "geopolitics-62e077e5",
       "category": "geopolitics",
@@ -45,6 +102,120 @@
         "United Nations"
       ],
       "status": "official_release_observed_unscored",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-1d5a004d",
+      "category": "rare_earth",
+      "title": "Geomacro finds Hudbay cut cost outlook as Copper Mountain improves - Mining.com",
+      "what_changed": "A monitored source feed reports: Hudbay cut cost outlook as Copper Mountain improves - Mining.com. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T22:01:03.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-db0904ed",
+      "category": "rare_earth",
+      "title": "Geomacro finds LG Energy Solution signed a 10-year lithium supply deal with Standard Lithium (SLI). - Stock Titan",
+      "what_changed": "A monitored source feed reports: LG Energy Solution signed a 10-year lithium supply deal with Standard Lithium (SLI). - Stock Titan. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T21:45:31.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-9d3ccd06",
+      "category": "macro",
+      "title": "Geomacro finds Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T19:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-6e1db3c2",
+      "category": "rare_earth",
+      "title": "Geomacro finds Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau",
+      "what_changed": "A monitored source feed reports: Freeport approved $4.5B Arizona Copper Mine Expansion - U.S. Gold Bureau. This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "critical-mineral inputs",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T19:00:50.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "rare_earth-eab3e061",
+      "category": "rare_earth",
+      "title": "Geomacro finds USGS projected World Production Capacity for 8 Critical Minerals from 2026 to 2030 - USGS (.gov)",
+      "what_changed": "A monitored source feed reports: USGS projected World Production Capacity for 8 Critical Minerals from 2026 to 2030 - USGS (.gov). This report has not been independently verified.",
+      "why_it_matters": "A mineral-related source-feed observation can guide checks of supply, export and production exposure. No mine output, shipment volume, price move or actual supply impact has been independently verified.",
+      "topic": "rare-earth supply",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T18:53:18.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
+      "same_event_corrob_verified": false,
+      "severity": null
+    },
+    {
+      "id": "macro-4392b096",
+      "category": "macro",
+      "title": "Geomacro finds KPMG signed Off on Tether Gold Issuer’s 2025 Books, Covering $2.2 Billion in Bullion - Yahoo Finance",
+      "what_changed": "A monitored source feed reports: KPMG signed Off on Tether Gold Issuer’s 2025 Books, Covering $2.2 Billion in Bullion - Yahoo Finance. This report has not been independently verified.",
+      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
+      "topic": "gold fundamentals and positioning",
+      "geography": null,
+      "development_type": "unverified OSINT feed observation",
+      "published_at": "2026-11-12T18:10:35.000Z",
+      "date_precision": "exact",
+      "observed_release_count": 1,
+      "sources_credited": [
+        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
+      ],
+      "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
       "severity": null
     },
@@ -803,101 +974,6 @@
       "observed_release_count": 1,
       "sources_credited": [
         "Monitored feed: www.mining-technology.com"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-aae72941",
-      "category": "macro",
-      "title": "Geomacro finds Singapore launched gold vaulting service for central banks - The Malaysian Reserve",
-      "what_changed": "A monitored source feed reports: Singapore launched gold vaulting service for central banks - The Malaysian Reserve. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T06:19:26.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-5ddf0c5a",
-      "category": "macro",
-      "title": "Geomacro finds Singapore launched gold vaulting service for central banks - The Edge Malaysia",
-      "what_changed": "A monitored source feed reports: Singapore launched gold vaulting service for central banks - The Edge Malaysia. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T03:27:18.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-4fea1783",
-      "category": "macro",
-      "title": "Geomacro finds MAS launched gold vaulting service with 500-tonne capacity, extends GST waiver to some gold services - CNA",
-      "what_changed": "A monitored source feed reports: MAS launched gold vaulting service with 500-tonne capacity, extends GST waiver to some gold services - CNA. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T03:00:05.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-1d27b819",
-      "category": "macro",
-      "title": "Geomacro finds Singapore launched Gold Vaulting Service for Central Banks - Bloomberg.com",
-      "what_changed": "A monitored source feed reports: Singapore launched Gold Vaulting Service for Central Banks - Bloomberg.com. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T03:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
-      ],
-      "status": "osint_feed_observed_unverified",
-      "same_event_corrob_verified": false,
-      "severity": null
-    },
-    {
-      "id": "macro-59013733",
-      "category": "macro",
-      "title": "Geomacro finds Singapore launched central bank gold-vaulting, extends GST waiver to wholesale activities - The Business Times",
-      "what_changed": "A monitored source feed reports: Singapore launched central bank gold-vaulting, extends GST waiver to wholesale activities - The Business Times. This report has not been independently verified.",
-      "why_it_matters": "A macroeconomic or currency-related source-feed observation can guide checks of official figures and FX exposures. No actual rate, figure, market move or direction has been verified from this observation.",
-      "topic": "gold fundamentals and positioning",
-      "geography": null,
-      "development_type": "unverified OSINT feed observation",
-      "published_at": "2026-11-10T03:00:00.000Z",
-      "date_precision": "exact",
-      "observed_release_count": 1,
-      "sources_credited": [
-        "Monitored feed: news.google.com (aggregator; original publisher not verified)"
       ],
       "status": "osint_feed_observed_unverified",
       "same_event_corrob_verified": false,
