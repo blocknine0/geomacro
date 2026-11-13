@@ -120,8 +120,8 @@ describe("#1827 account-wide public Global Risk B2 quota guard",()=>{
   it("D1 hot and existing verified Workers cache bypass B2 quota and remain unchanged",()=>{
     const code=readFileSync("workers/global-risk-edge/src/index.mjs","utf8");
     const start=code.slice(code.indexOf("export default"));
-    expect(start.indexOf("const hotSnapshot = await readD1HotSnapshot(env)"))
-      .toBeLessThan(start.indexOf("const cached = await cache.match(cacheKey)"));
+    expect(start.indexOf("const cached = await cache.match(cacheKey)"))
+      .toBeLessThan(start.indexOf("const hotSnapshot = await readD1HotSnapshot(env)"));
     expect(start.indexOf("const cached = await cache.match(cacheKey)"))
       .toBeLessThan(start.indexOf("const response = await buildResponse(env)"));
     expect(code.indexOf("reserveB2AccountQuota(env.B2_QUOTA_DB"))

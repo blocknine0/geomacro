@@ -13,7 +13,10 @@ test("removed IDs and exact feed URL aliases cannot re-enter any replacement reg
   if(old.url)assert.ok(isRetiredPrivateOsintSource({id:"alias",url:old.url}));
  }
  const result=applyRetiredSourceReplacements(doc.retired);
- assert.equal(result.length,7);
+ assert.equal(result.length,6);
+ assert.equal(doc.disabled_pending_live_verification.length,6);
+ assert.ok(doc.replacements.filter(x=>doc.disabled_pending_live_verification.includes(x.id))
+  .every(x=>x.status==="disabled_pending_live_verification"));
  assert.equal(doc.unadmitted_candidates.length,5);
  assert.ok(doc.unadmitted_candidates.every(x=>x.github_runner_http_status===406&&x.same_article_url_hashes.length>0));
  assert.ok(result.every(x=>!isRetiredPrivateOsintSource(x)));
@@ -31,7 +34,7 @@ test("same-publisher replacement cannot claim unrelated publisher, missing nativ
   r=>r.full_duplicate_news_coverage_verified=true,
   r=>r.same_article_url_hashes=["forged"],
  ]){
-  const doc=document();mutate(doc.replacements[0]);
+  const doc=document();mutate(doc.replacements.find(row=>!doc.disabled_pending_live_verification.includes(row.id)));
   assert.throws(()=>retiredSourceReplacements(doc),/SOURCE_REPLACEMENT_UNVERIFIED/);
  }
 });
@@ -43,5 +46,5 @@ test("an already registered replacement URL is fetched once while category and r
  assert.equal(shared.length,1);
  assert.equal(shared[0].id,"existing_canonical");
  assert.ok(shared[0].categories.includes("macro"));
- assert.ok(shared[0].replaces_retired_source_ids.includes(document().replacements[0].retired_source_id));
+ assert.ok(shared[0].replaces_retired_source_ids.includes(replacement.replaces_retired_source_ids[0]));
 });

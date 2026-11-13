@@ -782,7 +782,8 @@
       "checked_at": "2026-11-07T22:51:45.242Z",
       "native_72h_items_at_probe": 70,
       "same_article_url_hashes": [],
-      "full_duplicate_news_coverage_verified": false
+      "full_duplicate_news_coverage_verified": false,
+      "status": "disabled_pending_live_verification"
     },
     {
       "id": "private_replacement_36c61c32f0d69c1cd2e7",
@@ -1073,5 +1074,13 @@
       "activation_state": "PRODUCTION_TRANSPORT_UNAVAILABLE",
       "github_runner_http_status": 406
     }
+  ],
+  "disabled_pending_live_verification": [
+    "private_replacement_27ebe75f65657dad8865",
+    "private_mesh_iefimerida",
+    "private_gaplane_gab_new",
+    "private_mesh_ziarul_de_gard",
+    "private_repo_54feb551db5f8ef14a35",
+    "private_repo_b10aaa3ef8a489ce47fb"
   ]
 }

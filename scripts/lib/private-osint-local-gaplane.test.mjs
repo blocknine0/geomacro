@@ -32,7 +32,7 @@ test("isolated local-gap intake shares owner retirement policy within its origin
    s.categories.length===3&&s.activation_state==="PRIVATE_UNVERIFIED_OBSERVATION"&&
    s.publisher_country_iso3===s.publisher_countries[0]&&
    s.rights_verified===false&&s.publicly_deliverable===false));
- assert.equal(new Set(gaps.map(s=>s.publisher_country_iso3)).size,69);
+ assert.equal(new Set(gaps.map(s=>s.publisher_country_iso3)).size,68);
  const nonRss=merged.filter(s=>s.id.startsWith("private_official_nonrss_"));
  assert.deepEqual(nonRss.map(s=>s.publisher_country_iso3).sort(),["NRU","PRK"]);
  assert.ok(nonRss.every(s=>s.supported===false&&s.access==="bulk"&&
