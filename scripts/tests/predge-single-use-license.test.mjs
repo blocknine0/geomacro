@@ -65,6 +65,7 @@ class MemoryD1 {
     if(sql.includes("WITH native_events"))return {index_events:0,latest_index_clock:null,native_corroborated_publisher_count:0};
     if(sql.includes("FROM predge_risk_gate_verdict_license")&&sql.includes("WHERE verdict_id=? LIMIT 1"))return db.licenses.get(args[0])??null;
     if(sql.includes("FROM predge_risk_gate_verdict_license")&&sql.includes("WHERE verdict_id=? OR request_id=?"))return [...db.licenses.values()].find(x=>x.verdict_id===args[0]||x.request_id===args[1])??null;
+    if(sql.includes("FROM predge_risk_gate_verdict_license")&&sql.includes("WHERE request_id=? LIMIT 1"))return [...db.licenses.values()].find(x=>x.request_id===args[0])??null;
     if(sql.includes("FROM risk_gate_audit_receipts WHERE receipt_id"))return db.audit.get(args[0])??null;
     if(sql.includes("FROM predge_paid_risk_gate_usage_ledger WHERE request_id"))return db.paid.get(args[0])??null;
     if(sql.includes("UPDATE risk_gate_d1_requests")){
