@@ -208,7 +208,7 @@ async function deterministicVerdictId(requestHash){
  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_hash,
- response,entry_status,billing_mode,created_at}){
+ response,entry_status,billing_mode,created_at,subject,action_context,market_id,condition_id}){
  const terms=predgePaidRiskGateTerms(tier),billable=entry_status==="DELIVERED"&&billing_mode==="PAID_ADDENDUM_V2";
  const ledger_id=await digest("geomacro:predge-paid-risk-gate-ledger:v2:"+verdict_id);
  const response_sha256=await digest(canonical(response));
@@ -220,25 +220,30 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
  const usageReportDueDate=nextMonthPrefix+"-05";
  const settlementDueDate=nextMonthPrefix+"-10";
  try{
-  await db.prepare(`INSERT INTO predge_paid_risk_gate_usage_ledger
-   (ledger_id,verdict_id,request_id,channel,tier,structure_type,
-    customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,
-    contract_predge_share_usdc_cents,geomacro_fee_usdc_cents,
-    predge_share_usdc_cents,billable,billing_mode,entry_status,request_hash,response_sha256,
-    created_at,usage_month,usage_report_due_date,settlement_due_date,
-    collection_status,settlement_status)
-   VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT')
-   ON CONFLICT(request_id) DO NOTHING`)
+  await db.prepare("INSERT INTO predge_paid_risk_gate_usage_ledger "+
+   "(ledger_id,verdict_id,request_id,channel,tier,structure_type,"+
+   "customer_price_usdc_cents,contract_geomacro_fee_usdc_cents,"+
+   "contract_predge_share_usdc_cents,geomacro_fee_usdc_cents,"+
+   "predge_share_usdc_cents,billable,billing_mode,entry_status,request_hash,response_sha256,"+
+   "created_at,usage_month,usage_report_due_date,settlement_due_date,"+
+   "licensee_id,max_commercial_uses,consumption_count,resale_permitted,transferable,"+
+   "subject_json,action_context_json,market_id,condition_id,downstream_caller,license_payload_sha256,"+
+   "collection_status,settlement_status) "+
+   "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'predge',1,1,0,0,?,?,?,?,?,?,'UNREPORTED','AWAITING_COLLECTION_REPORT') "+
+   "ON CONFLICT(request_id) DO NOTHING")
     .bind(ledger_id,verdict_id,request_id,"predge_b2b",tier,terms.structure_type,
       terms.customer_price_usdc_cents,terms.geomacro_fee_usdc_cents,
       terms.predge_share_usdc_cents,billable?terms.geomacro_fee_usdc_cents:0,
       billable?terms.predge_share_usdc_cents:0,billable?1:0,billing_mode,entry_status,
       request_hash,response_sha256,created_at,created_at.slice(0,7),
-      usageReportDueDate,settlementDueDate).run();
-  const saved=await db.prepare(`SELECT verdict_id,request_hash,response_sha256,
-      billing_mode,entry_status,billable,geomacro_fee_usdc_cents,
-      usage_report_due_date,settlement_due_date
-    FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1`)
+      usageReportDueDate,settlementDueDate,canonical(subject),canonical(action_context),
+      market_id,condition_id,"predge",response.decision_payload_sha256).run();
+  const saved=await db.prepare("SELECT verdict_id,request_hash,response_sha256,"+
+      "billing_mode,entry_status,billable,geomacro_fee_usdc_cents,"+
+      "usage_report_due_date,settlement_due_date,licensee_id,max_commercial_uses,"+
+      "consumption_count,resale_permitted,transferable,subject_json,action_context_json,"+
+      "market_id,condition_id,downstream_caller,license_payload_sha256 "+
+    "FROM predge_paid_risk_gate_usage_ledger WHERE request_id=? LIMIT 1")
     .bind(request_id).first();
   return Boolean(saved&&saved.verdict_id===verdict_id&&
     saved.request_hash===request_hash&&saved.response_sha256===response_sha256&&
@@ -246,7 +251,13 @@ async function persistPredgePaidUsage(db,{verdict_id,request_id,tier,request_has
     saved.entry_status===entry_status&&saved.billable===(billable?1:0)&&
     saved.geomacro_fee_usdc_cents===(billable?terms.geomacro_fee_usdc_cents:0)&&
     saved.usage_report_due_date===usageReportDueDate&&
-    saved.settlement_due_date===settlementDueDate);
+    saved.settlement_due_date===settlementDueDate&&saved.licensee_id==="predge"&&
+    saved.max_commercial_uses===1&&saved.consumption_count===1&&
+    saved.resale_permitted===0&&saved.transferable===0&&
+    saved.subject_json===canonical(subject)&&saved.action_context_json===canonical(action_context)&&
+    saved.market_id===market_id&&saved.condition_id===condition_id&&
+    saved.downstream_caller==="predge"&&
+    saved.license_payload_sha256===response.decision_payload_sha256);
  }catch{return false;}
 }
 async function persistSingleUseLicense(db,{verdict_id,request_id,client_id,request_hash,
@@ -438,8 +449,16 @@ async function runPredgeRiskGateD1(request,env,now,authority,paidEndpoint){
    response.audit_receipt_signature_scope=receipt.signature_scope;
    if(paidEndpoint&&!await persistPredgePaidUsage(env.DB,{verdict_id:verdictId,
       request_id:parsed.request_id,tier:lockedTier,request_hash:requestHash,
-      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso}))
+      response,entry_status:entryStatus,billing_mode:billingMode,created_at:nowIso,
+      subject:parsed.subject,action_context:parsed.action_context,
+      market_id:parsed.market_id,condition_id:parsed.condition_id}))
      return fail("PREDGE_PAID_USAGE_LEDGER_UNAVAILABLE",503);
+   if(!await persistSingleUseLicense(env.DB,{verdict_id:verdictId,
+      request_id:parsed.request_id,client_id:client,request_hash:requestHash,
+      signed_payload:signedPayload,subject:parsed.subject,
+      action_context:parsed.action_context,market_id:parsed.market_id,
+      condition_id:parsed.condition_id,created_at:nowIso}))
+     return failRedistribution();
    const serialized=JSON.stringify(response);
    const audit=await env.DB.prepare(`UPDATE risk_gate_d1_requests
      SET state='DONE',response_json=?,finished_at=?,object_id=?,decision=?
