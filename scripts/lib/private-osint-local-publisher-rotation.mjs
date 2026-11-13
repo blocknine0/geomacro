@@ -100,7 +100,7 @@ export function budgetedPrivateLocalPublisherSources(
     new Set(all.map(x=>x?.id)).size!==96||
     new Set(all.map(x=>x?.url)).size!==96)
   throw Error("PRIVATE_LOCAL_PUBLISHER_BUDGET_INVALID");
- const live=all.filter(source=>!isRetiredPrivateOsintSource(source));
+ const live=all.filter(source=>!isRetiredPrivateOsintSource(source)&&source.activation_state!=="disabled_pending_live_verification");
  const count=Math.min(maxSources,live.length);
  if(!count)return Object.freeze([]);
  const slot=Math.floor(now.getTime()/PERIOD_MS);
