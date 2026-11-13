@@ -80,6 +80,15 @@ test("expired lease recovers after crash and only D1 readback record hashes coun
  assert.equal(status.pending_eligible,0);
  assert.equal(status.fully_d1_drained,true);
 });
+test("encrypted backlog restore is restricted to protected main source-only events",()=>{
+ const preload=readFileSync("scripts/ops/preload-phase2i-encrypted-backlog.mjs","utf8");
+ assert.match(preload,/env\.GITHUB_REPOSITORY!==\"blocknine0\\/geomacro\"/);
+ assert.match(preload,/env\.GITHUB_REF!==\"refs\\/heads\\/main\"/);
+ assert.match(preload,/env\.GEOMACRO_SOURCE_INTAKE_ONLY!==\"1\"/);
+ assert.match(preload,/env\.PHASE2I_PROVIDER_SOURCE_INTAKE!==\"true\"/);
+ assert.match(preload,/\[\"schedule\",\"workflow_run\",\"workflow_dispatch\"\]/);
+ assert.match(preload,/PHASE2I_BACKLOG_AUTH_UNAVAILABLE/);
+});
 test("R2 GET SHA mismatch prevents Durable Object state cursor advance",async()=>{
  const f=setup();f.r2.corrupt=true;
  await assert.rejects(()=>appendAndLeasePhase2i({observed:[candidate(9999)],
