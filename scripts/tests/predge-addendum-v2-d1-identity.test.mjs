@@ -28,3 +28,8 @@ test("rejects failed, mismatched, array-shaped, or incomplete D1 identity respon
   });
  }
 });
+
+test("pins the production database UUID used by migration 0131",()=>{
+ assert.equal(PREDGE_0131_DATABASE_ID,"db057ca9-9f6e-4957-ac28-144f3b798f9b");
+ assert.notEqual(PREDGE_0131_DATABASE_ID,"db057ca9-6f9e-4957-ac28-144f3b798f9b");
+});
