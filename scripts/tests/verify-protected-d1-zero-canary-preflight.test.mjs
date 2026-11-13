@@ -96,7 +96,7 @@ test("bad baseline, unverified bookmark or provider 403 never count as canary-re
  assert.equal(stale.reason,"WORKER_DEPLOYED_VERSION_UNVERIFIED");
 });
 
-test("early UTC paid-cap paced spike HOLDS; emergency writes never release",async()=>{
+test("early UTC paid-cap carry-forward admits bounded writes only above 50% headroom",async()=>{
  const early=new Date("2026-11-07T01:00:00.000Z");
  const base={env,now:early,fetchImpl:mockFetch};
  const highReads=await verifyProtectedD1CanaryPreflight({...base,
@@ -105,11 +105,17 @@ test("early UTC paid-cap paced spike HOLDS; emergency writes never release",asyn
  assert.equal(highReads.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
  assert.equal(highReads.pacing_or_daily_ceiling_held,true);
  assert.equal(highReads.account_wide_atomic_paid_cap_guaranteed,false);
- const highWrites=await verifyProtectedD1CanaryPreflight({...base,
+ const boundedWrites=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:48000})
  });
- assert.equal(highWrites.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
- assert.equal(highWrites.emergency_write_reserve,0);
+ assert.equal(boundedWrites.reason,"ZERO_TRAFFIC_PREFLIGHT_READY");
+ assert.equal(boundedWrites.pacing_or_daily_ceiling_held,false);
+ assert.equal(boundedWrites.emergency_write_reserve,0);
+ const belowHeadroomThreshold=await verifyProtectedD1CanaryPreflight({...base,
+  plan:async()=>({...allowedPlan,observed_rows_read:1000,observed_rows_written:1050001})
+ });
+ assert.equal(belowHeadroomThreshold.reason,"CANARY_ACCOUNT_D1_BUDGET_HELD");
+ assert.equal(belowHeadroomThreshold.emergency_write_reserve,0);
  const safe=await verifyProtectedD1CanaryPreflight({...base,
   plan:async()=>({...allowedPlan,observed_rows_read:100,observed_rows_written:100})
  });
