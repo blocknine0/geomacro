@@ -69,6 +69,10 @@ jobs:
       GEOMACRO_STEP3_APPROVED_PRODUCTION_RUN_ID: ${{ inputs.stage2_run_id }}
       SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
       CONTROL_PLANE_TOKEN: ${{ secrets.CONTROL_PLANE_TOKEN }}
+      # These non-secret settings mirror the deploy workflow; unset values keep
+      # the Addendum v2 endpoint fail-closed during the no-funds rollout.
+      PREDGE_PAID_TRAFFIC_ENABLED: ${{ vars.PREDGE_PAID_TRAFFIC_ENABLED || 'NO' }}
+      PREDGE_PAID_GO_LIVE_CROSSCHECK: ${{ vars.PREDGE_PAID_GO_LIVE_CROSSCHECK || '' }}
       B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
       B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
       B2_SPOOL_ENCRYPTION_KEY: ${{ secrets.B2_SPOOL_ENCRYPTION_KEY }}

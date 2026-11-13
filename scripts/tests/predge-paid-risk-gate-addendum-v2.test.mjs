@@ -282,3 +282,19 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  assert.equal(verifyBody.error,expectedError);
  assert.equal(verifyBody.message,expectedMessage);
 });
+
+test("paid deployment bindings default to the fail-closed 403 path",()=>{
+ const deploy=readFileSync(".github/workflows/deploy-d1-control-plane.yml","utf8");
+ const rollout=readFileSync(".github/workflows/geomacro-protected-hot50-worker-rollout.yml","utf8");
+ assert.match(deploy,/PREDGE_PAID_TRAFFIC_ENABLED:\s*\$\{\{\s*vars\.PREDGE_PAID_TRAFFIC_ENABLED\s*\|\|\s*'NO'\s*\}\}/u);
+ assert.match(deploy,/PREDGE_PAID_GO_LIVE_CROSSCHECK:\s*\$\{\{\s*vars\.PREDGE_PAID_GO_LIVE_CROSSCHECK\s*\|\|\s*''\s*\}\}/u);
+ assert.match(deploy,/config\.vars\.PREDGE_PAID_TRAFFIC_ENABLED\s*=\s*paidTrafficEnabled/u);
+ assert.match(deploy,/delete config\.vars\.PREDGE_PAID_GO_LIVE_CROSSCHECK/u);
+ assert.match(deploy,/PREDGE_PAID_RISK_GATE_TOKEN:\s*\$\{\{\s*secrets\.PREDGE_PAID_RISK_GATE_TOKEN\s*\}\}/u);
+ assert.match(deploy,/if test -n "\$\{PREDGE_PAID_RISK_GATE_TOKEN:-\}"; then[\s\S]*?secret put PREDGE_PAID_RISK_GATE_TOKEN[\s\S]*?fi/u);
+ assert.match(rollout,/PREDGE_PAID_TRAFFIC_ENABLED:\s*\$\{\{\s*vars\.PREDGE_PAID_TRAFFIC_ENABLED\s*\|\|\s*'NO'\s*\}\}/u);
+ assert.match(rollout,/PREDGE_PAID_GO_LIVE_CROSSCHECK:\s*\$\{\{\s*vars\.PREDGE_PAID_GO_LIVE_CROSSCHECK\s*\|\|\s*''\s*\}\}/u);
+ assert.equal(predgePaidTrafficEnabled({}, {policy_id:"predge-paid-traffic-addendum-v2"}),false);
+ assert.equal(predgePaidTrafficEnabled({PREDGE_PAID_TRAFFIC_ENABLED:"YES"},
+  {policy_id:"predge-paid-traffic-addendum-v2"}),false);
+});
