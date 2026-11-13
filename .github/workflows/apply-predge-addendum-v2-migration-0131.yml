@@ -40,6 +40,7 @@ jobs:
       D1_DATABASE_ID: db057ca9-9f6e-4957-ac28-144f3b798f9b
       RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PRIVATE_KEY_PKCS8_B64 }}
       RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64: ${{ secrets.GEOMACRO_LICENSE_ED25519_PUBLIC_KEY_SPKI_B64 }}
+      RECEIPT_SIGNING_JWK: ${{ secrets.SIGNING_JWK }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -70,6 +71,7 @@ jobs:
             loadPredge0131ReceiptSigner({
               privateKeyPkcs8B64:process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,
               publicKeySpkiB64:process.env.RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64,
+              signingJwk:process.env.RECEIPT_SIGNING_JWK,
             });
             NODE
           fi
@@ -117,7 +119,7 @@ jobs:
           const rows=result.flatMap(x=>x.results??[]), expected=['idx_predge_paid_risk_gate_collection','idx_predge_paid_risk_gate_usage_month','predge_paid_risk_gate_monthly_usage_report','predge_paid_risk_gate_refund_terminal','predge_paid_risk_gate_usage_identity_immutable','predge_paid_risk_gate_usage_ledger'];
           const names=[...new Set(rows.map(x=>x.name))].sort();if(JSON.stringify(names)!==JSON.stringify([...expected,'0131_predge_paid_risk_gate_addendum_v2.sql'].sort()))throw Error('MIGRATION_0131_SCHEMA_READBACK_FAILED');
           const unsigned={schema:'geomacro.predge-addendum-v2-migration-receipt.v1',status:'PASS',migration:'0131_predge_paid_risk_gate_addendum_v2.sql',database_id:process.env.D1_DATABASE_ID,main_sha:process.env.EXPECTED_MAIN_SHA,applied_at_utc:new Date().toISOString(),objects:expected,history_recorded:true,sql_sha256:createHash('sha256').update(readFileSync('workers/control-plane/migrations/0131_predge_paid_risk_gate_addendum_v2.sql')).digest('hex'),production_data_rewritten:false,generic_migrations_apply_used:false};
-          const receipt=signPredge0131Receipt(unsigned,{privateKeyPkcs8B64:process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,publicKeySpkiB64:process.env.RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64});
+          const receipt=signPredge0131Receipt(unsigned,{privateKeyPkcs8B64:process.env.RECEIPT_SIGNING_PRIVATE_KEY_PKCS8_B64,publicKeySpkiB64:process.env.RECEIPT_SIGNING_PUBLIC_KEY_SPKI_B64,signingJwk:process.env.RECEIPT_SIGNING_JWK});
           writeFileSync('artifacts/predge-addendum-v2-migration-0131-receipt.json',JSON.stringify(receipt,null,2)+'\n',{mode:0o600});
           NODE
       - name: Upload signed production receipt
