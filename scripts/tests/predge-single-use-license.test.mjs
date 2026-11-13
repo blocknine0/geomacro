@@ -21,7 +21,7 @@ class MemoryD1 {
    async run(){
     if(sql.includes("INSERT OR IGNORE INTO risk_gate_d1_requests")){
       const key=args[0]+"|"+args[1];
-      if(!db.claims.has(key))db.claims.set(key,{request_hash:args[2],state:"PENDING",response_json:null});
+      if(!db.claims.has(key))db.claims.set(key,{client_id:args[0],request_id:args[1],request_hash:args[2],state:"PENDING",response_json:null});
       return {success:true};
     }
     if(sql.includes("INSERT INTO risk_gate_audit_receipts")){
@@ -49,6 +49,9 @@ class MemoryD1 {
    async first(){
     if(sql.includes("SELECT request_hash,state,response_json")&&sql.includes("FROM risk_gate_d1_requests")){
       return db.claims.get(args[0]+"|"+args[1])??null;
+    }
+    if(sql.includes("SELECT client_id FROM risk_gate_d1_requests")&&sql.includes("client_id<>?")){
+      return [...db.claims.values()].find(x=>x.request_id===args[0]&&x.client_id!==args[1])??null;
     }
     if(sql.includes("UPDATE risk_gate_d1_requests SET state='CLAIMED'")){
       const row=db.claims.get(args[0]+"|"+args[1]);if(!row||row.state!=="PENDING")return null;
