@@ -207,8 +207,9 @@ test("Stage 3 rehearsal reads account billing through its dedicated token bindin
 });
 
 
-function paidRiskGateFixtureDb(){
+function paidRiskGateFixtureDb(initialQuota=0){
  const requests=new Map(),ledger=new Map(),receipts=new Map();
+ let quotaUsed=initialQuota;
  const key=(client,id)=>client+"|"+id;
  return {prepare(sql){
   let values=[];
@@ -243,7 +244,10 @@ function paidRiskGateFixtureDb(){
      if(!row||row.state!=="CLAIMED")return null;
      row.state="DONE";row.response_json=values[0];row.finished_at=values[1];return {request_id:values[5]};
     }
-    if(sql.includes("INSERT INTO risk_gate_d1_quota"))return {used:1};
+    if(sql.includes("INSERT INTO risk_gate_d1_quota")){
+     if(sql.includes("WHERE used <")&&quotaUsed>=values[2])return null;
+     quotaUsed++;return {used:quotaUsed};
+    }
     if(sql.includes("FROM predge_paid_risk_gate_usage_ledger")){
      const row=ledger.get(values[0])||[...ledger.values()].find(item=>
       values.includes(item.request_id)||values.includes(item.verdict_id));
@@ -288,6 +292,31 @@ function paidRiskGateFixtureDb(){
    }};
  },testLedger:ledger};
 }
+
+test("v1 keeps its 100/day pilot cap while paid v2 quota is uncapped telemetry",async()=>{
+ const paid=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));
+ paid.request_id="uncapped-paid-volume-request-001";
+ const {publicKey,privateKey}=generateKeyPairSync("ed25519");
+ const token="b".repeat(64),db=paidRiskGateFixtureDb(100);
+ const env={PREDGE_RISK_GATE_TOKEN:"a".repeat(64),PREDGE_PAID_RISK_GATE_TOKEN:token,
+  PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
+  RISK_GATE_DECISION_ED25519_KEY_ID:"geomacro-risk-test",
+  RISK_GATE_DECISION_ED25519_PRIVATE_KEY_PKCS8_B64:privateKey.export({format:"der",type:"pkcs8"}).toString("base64"),
+  RISK_GATE_DECISION_ED25519_PUBLIC_KEY_SPKI_B64:publicKey.export({format:"der",type:"spki"}).toString("base64"),
+  RISK_GATE_OBSERVATION_HMAC_KEY:"h".repeat(64),DB:db};
+ const make=(body,path,auth)=>new Request("https://worker.example"+path,{method:"POST",
+  headers:{authorization:"Bearer "+auth,"content-type":"application/json"},body:JSON.stringify(body)});
+ const paidResponse=await predgePaidRiskGateD1(make(paid,"/v2/partner/predge/paid-risk-gate",token),env,
+  Date.parse("2026-11-12T00:00:00Z"));
+ assert.equal(paidResponse.status,200,(await paidResponse.clone().text()));
+ const pilot=JSON.parse(readFileSync("docs/partners/predge/risk-gate-request.json","utf8"));
+ pilot.request_id="v1-pilot-cap-request-001";
+ pilot.tier="basic_focused";
+ const pilotResponse=await predgeRiskGateD1(make(pilot,"/v1/partner/predge/risk-gate",env.PREDGE_RISK_GATE_TOKEN),
+  {...env,DB:paidRiskGateFixtureDb(100)},Date.parse("2026-11-12T00:00:00Z"));
+ assert.equal(pilotResponse.status,429);
+ assert.equal((await pilotResponse.json()).error,"RISK_GATE_DAILY_LIMIT");
+});
 
 test("paid Risk Gate verdict is signed for one use and rejects replay or resale",async()=>{
  const fixture=JSON.parse(readFileSync("docs/partners/predge/risk-gate-paid-request.json","utf8"));

@@ -70,11 +70,16 @@ test("Predge vars default fail-closed and explicitly reviewed trial vars are val
  assert.equal(defaults.PREDGE_PAID_TRAFFIC_ENABLED,"NO");
  assert.equal(defaults.PREDGE_PAID_GO_LIVE_CROSSCHECK,"");
  assert.equal(defaults.PREDGE_MUTUAL_TRIAL_STARTED_AT,"");
+ assert.equal(Object.hasOwn(defaults,"GEOMACRO_STORE_CHECKOUT_ENABLED"),false);
  const explicit=reviewedHot50CandidateVars(sha,{
   PREDGE_PAID_TRAFFIC_ENABLED:"YES",PREDGE_PAID_GO_LIVE_CROSSCHECK:"PASS",
-  PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-13T10:00:00Z"});
+  PREDGE_MUTUAL_TRIAL_STARTED_AT:"2026-11-13T10:00:00Z",
+  GEOMACRO_STORE_CHECKOUT_ENABLED:"YES"});
  assert.equal(explicit.PREDGE_PAID_TRAFFIC_ENABLED,"YES");
  assert.equal(explicit.PREDGE_PAID_GO_LIVE_CROSSCHECK,"PASS");
+ assert.equal(explicit.GEOMACRO_STORE_CHECKOUT_ENABLED,"YES");
+ assert.throws(()=>reviewedHot50CandidateVars(sha,{GEOMACRO_STORE_CHECKOUT_ENABLED:"true"}),
+  /STORE_CHECKOUT_RUNTIME_VAR_INVALID/);
  assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_PAID_TRAFFIC_ENABLED:"true"}),
   /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
  assert.throws(()=>reviewedHot50CandidateVars(sha,{PREDGE_MUTUAL_TRIAL_STARTED_AT:"yesterday"}),

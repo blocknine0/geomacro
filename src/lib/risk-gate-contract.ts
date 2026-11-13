@@ -194,7 +194,7 @@ export type RiskGateResponse = {
     settlement_delay_hours: number;
   };
   tier_activation_matrix?: RiskGateTierActivationMatrix;
-  risk_metric_semantics?: "OBSERVATION_DENSITY_PROXY" | "NO_DATA_POLICY_SENTINEL";
+  risk_metric_semantics?: "OBSERVATION_DENSITY_PROXY" | "CORROBORATED_OBSERVATION_PROXY" | "NO_DATA_POLICY_SENTINEL";
   observation_count?: number;
   corroboration_sources_count?: number;
   execution_authorized: false;

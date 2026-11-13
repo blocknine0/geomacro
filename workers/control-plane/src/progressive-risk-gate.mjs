@@ -166,9 +166,50 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
   // with zero observations is a conservative policy sentinel, not incident severity.
   const proxyScore = hasFacts ?
     Math.min(100,Math.round(100 * (1-Math.exp(-0.20*facts.distinct_events)))):100;
-  const decision = hasFacts?"REQUIRE_APPROVAL":"PAUSE";
-  const action = hasFacts?"REQUIRE_HUMAN_APPROVAL":"BLOCK";
-  const reason = hasFacts?"discovery_only_provisional":"no_current_evidence";
+  const corroborated=facts.standard_ready===true&&facts.corroboration_sources_count>=2;
+  const confidence=!hasFacts?0:corroborated?
+    Math.min(0.85,Number((0.60+0.05*facts.corroboration_sources_count+
+      0.02*(facts.corroborated_events??0)).toFixed(2))):
+    Math.min(0.55,Number((0.30+0.05*facts.distinct_events).toFixed(2)));
+  const category=String(parsed.category??"").toLowerCase();
+  const affectedDomain=({geopolitics:"geopolitics",macro:"macro_fx",macro_fx:"macro_fx",
+    critical_minerals:"critical_minerals",rare_earth:"critical_minerals"})[category]??
+    (category.includes("macro")?"macro_fx":category.includes("mineral")||category.includes("earth")?
+      "critical_minerals":"geopolitics");
+  const driversByDomain={geopolitics:["conflict","sanctions","political_instability"],
+    macro_fx:["monetary_policy","inflation","macro_stress"],
+    critical_minerals:["critical_minerals","rare_earth_supply","shipping_logistics"]};
+  const entityValues=Array.isArray(facts.driver_evidence)?facts.driver_evidence:
+    Array.isArray(facts.extracted_entities)?facts.extracted_entities:[];
+  const entityText=entityValues.join(" ").toLowerCase();
+  const domainDrivers=driversByDomain[affectedDomain];
+  const matched=domainDrivers.filter(driver=>entityText.includes(driver));
+  const driverNames=hasFacts?(matched.length?matched:[domainDrivers[0]]):[];
+  const drivers=driverNames.map(driver=>({driver,
+    score_contribution:Number((proxyScore/driverNames.length).toFixed(2)),
+    delta_contribution:null}));
+  let decision="PAUSE";
+  if(hasFacts){
+    const p=parsed.policy;
+    if(proxyScore<=p.continue_max_score)decision="CONTINUE";
+    else if(proxyScore<=p.reduce_limit_max_score)decision="REDUCE_LIMIT";
+    else if(proxyScore<=p.require_approval_max_score)decision="REQUIRE_APPROVAL";
+    if(decision==="CONTINUE"&&confidence<p.minimum_confidence_for_auto_continue)
+      decision="REQUIRE_APPROVAL";
+    if(decision==="CONTINUE"&&p.require_commercial_verification_for_continue)
+      decision="REQUIRE_APPROVAL";
+  }
+  const actions={CONTINUE:"CONTINUE",REDUCE_LIMIT:"REDUCE_EXPOSURE",
+    REQUIRE_APPROVAL:"REQUIRE_HUMAN_APPROVAL",PAUSE:"BLOCK"};
+  const action=actions[decision];
+  const mitigation=decision==="CONTINUE"?
+    {exposure_cap_ratio:1,settlement_delay_hours:0}:
+    decision==="REDUCE_LIMIT"?{exposure_cap_ratio:0.5,settlement_delay_hours:24}:
+    decision==="REQUIRE_APPROVAL"?{exposure_cap_ratio:0,settlement_delay_hours:24}:
+    {exposure_cap_ratio:0,settlement_delay_hours:0};
+  const reason=!hasFacts?"no_current_evidence":
+    decision==="CONTINUE"?"risk_score_continue":decision==="REDUCE_LIMIT"?
+      "risk_score_reduce_limit":decision==="PAUSE"?"risk_score_pause":"discovery_only_provisional";
   const at = new Date(now).toISOString();
   return {
     schema_version:"risk-gate-1.0",request_id:parsed.request_id,
@@ -185,18 +226,19 @@ export function provisionalRiskGate(parsed,facts,now=Date.now()) {
     risk:{
       object_id:"derived-observation:"+parsed.subject.id+":"+at,
       score:proxyScore,label:hasFacts?"WATCH":"CRITICAL",
-      previous_score:null,delta:null,confidence:0,
+      previous_score:null,delta:null,confidence,
       verification_status:"INCOMPLETE",commercial_eligibility_status:"UNVERIFIED",
       generated_at:at,expires_at:new Date(now+3*3600000).toISOString(),
       methodology_version:"discovery-activity-proxy-v1"
     },
-    top_drivers:[],
+    top_drivers:drivers,
     policy:{policy_id:parsed.policy.policy_id,policy_version:parsed.policy.policy_version},
-    primary_driver:"INSUFFICIENT_VERIFIED_CAUSAL_EVIDENCE",
-    affected_domain:"geopolitics",severity_score:proxyScore,
+    primary_driver:drivers[0]?.driver??"INSUFFICIENT_VERIFIED_CAUSAL_EVIDENCE",
+    affected_domain:affectedDomain,severity_score:proxyScore,
     intraday_override:false,flash_check_available:false,
-    suggested_mitigation:{exposure_cap_ratio:0,settlement_delay_hours:24},
-    risk_metric_semantics:hasFacts?"OBSERVATION_DENSITY_PROXY":"NO_DATA_POLICY_SENTINEL",
+    suggested_mitigation:mitigation,
+    risk_metric_semantics:!hasFacts?"NO_DATA_POLICY_SENTINEL":
+      corroborated?"CORROBORATED_OBSERVATION_PROXY":"OBSERVATION_DENSITY_PROXY",
     observation_count:facts.distinct_events,
     corroboration_sources_count:facts.corroboration_sources_count,
     execution_authorized:false

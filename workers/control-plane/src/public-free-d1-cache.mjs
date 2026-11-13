@@ -57,7 +57,6 @@ const HIGH_READ_DERIVED_PATHS=new Set([
 const ttlForPath=pathname=>
   pathname.startsWith("/api/v1/feed/")?60:
   pathname==="/v1/public/website-derived-news-bundle"||
-  pathname==="/v1/public/website-derived-news-immediate"||
   pathname==="/v1/public/geomacro-certified-news-severity-gri"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
   pathname==="/v1/public/geomacro-news-severity-risk-indices"?PUBLIC_FREE_D1_BUNDLE_TTL_SECONDS:
   HIGH_READ_DERIVED_PATHS.has(pathname)?PUBLIC_FREE_D1_DERIVED_TTL_SECONDS:

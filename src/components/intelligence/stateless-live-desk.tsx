@@ -2,7 +2,7 @@ import {MacroFastlanePanel} from "./macro-fastlane-panel";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Bookmark, Clock3, RefreshCw, Search, Globe2, TrendingUp, Gem } from "lucide-react";
 import { getStatelessIntelligence } from "@/lib/stateless-intelligence.functions";
-import { fetchAllDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
+import { fetchDirectDerivedNews, fetchPermanentDerivedNews } from "@/lib/public-derived-news-client";
 import {isConcretePublicIntelligence,concreteGeomacroAnalysis,concreteIntelligenceHeadline,intelligenceRequiredSourceCredits} from "@/lib/intelligence-concrete-publication";
 import {dedupeIntelligenceStories} from "@/lib/intelligence-news-dedupe";
 import {intelligenceActorHeadline,intelligenceActorChange} from "@/lib/public-intelligence-actor-copy";
@@ -19,8 +19,8 @@ const DOMAINS: readonly { key: StatelessCategory; label: string }[] = [
 ];
 const displayProse = (text: string) => text.replace(/\s*\u2014\s*/gu, "; ");
 const REFRESH_MS = 2 * 60_000;
-// Poll the cached canonical three-category journal every two minutes. Historical
-// shards load from the static archive once; no browser-driven D1 writes.
+// Poll the small static rolling snapshot every two minutes. Historical shards
+// are loaded from the permanent static archive once per desk visit; neither path uses D1.
 const JOURNAL_REFRESH_MS = 2 * 60_000;
 type FeedState = Partial<Record<StatelessCategory, StatelessIntelligenceResult>>;
 // Stable default avoids restarting fetch effects when legacy callers omit this prop.
@@ -239,13 +239,13 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
     };
   }, [initial, initialFeeds]);
 
-  // Historical findings come from the static archive. The R2-only latest JSON
-  // adds source-derived new items without a website rebuild or D1 browser reads.
+  // Historical findings come from the append-only static archive. The rolling
+  // static snapshot adds new findings between archive publications. No website
+  // read has a D1 or server-function fallback.
   useEffect(() => {
     let alive = true;
     let pending = false;
     let archiveLoaded = false;
-    let skipHydratedRead = initialJournal.length > 0;
     const sortSignals = (signals: StatelessIntelligenceSignal[]) =>
       signals.sort((a, b) =>
         b.published_at.localeCompare(a.published_at) || a.id.localeCompare(b.id));
@@ -271,19 +271,6 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       if (pending) return;
       pending = true;
       try {
-        // Fresh 72h static/R2 evidence first. A broken historical shard
-        // must never hide currently published Geopolitics findings.
-        if(skipHydratedRead){skipHydratedRead=false;return;}
-        let latestRead=false;
-        try {
-          const recent = await fetchAllDerivedNews(fetch,Date.now(),{fresh:false});
-          if (!alive) return;
-          setJournal(previous => mergeUnseen(previous, recent));
-          latestRead=true;
-          setJournalUnavailable(false);
-        } catch {
-          // The optional archive below independently protects history.
-        }
         if (!archiveLoaded) {
           try {
             const historical = await fetchPermanentDerivedNews();
@@ -292,11 +279,17 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
             archiveLoaded = true;
             setJournalUnavailable(false);
           } catch {
-            if (alive && !latestRead) setJournalUnavailable(true);
+            if (alive) setJournalUnavailable(true);
           }
         }
-        if (!latestRead && !archiveLoaded && alive)
-          setJournalUnavailable(true);
+        try {
+          const recent = await fetchDirectDerivedNews();
+          if (!alive) return;
+          setJournal(previous => mergeUnseen(previous, recent));
+          if (archiveLoaded) setJournalUnavailable(false);
+        } catch {
+          if (alive) setJournalUnavailable(true);
+        }
       } finally {
         pending = false;
       }
@@ -314,7 +307,7 @@ export function StatelessLiveDesk({ initial, initialFeeds = EMPTY_FEEDS, initial
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onReturn);
     };
-  }, [initialJournal.length]);
+  }, []);
 
   // Human-readable timeline across all three categories, newest first.
   // Day-only originals sort by their actual date, never an invented hour.

@@ -171,16 +171,20 @@ test('candidate carries Predge vars fail-closed and adds the paid token only whe
  const flow=readFileSync(new URL('../../.github/workflows/deploy-d1-control-plane.yml',import.meta.url),'utf8');
  assert.match(code,/CANDIDATE_REVIEWED_ADDITIVE_SECRET_NAMES_INVALID/);
  for(const name of ['PREDGE_PAID_RISK_GATE_TOKEN','PREDGE_PAID_TRAFFIC_ENABLED',
-  'PREDGE_PAID_GO_LIVE_CROSSCHECK','PREDGE_MUTUAL_TRIAL_STARTED_AT'])
+  'PREDGE_PAID_GO_LIVE_CROSSCHECK','PREDGE_MUTUAL_TRIAL_STARTED_AT',
+  'GEOMACRO_STORE_CHECKOUT_ENABLED'])
   assert.match(flow,new RegExp(name));
  const defaults=candidateConfig(baseline,sha);
  assert.equal(defaults.vars.PREDGE_PAID_TRAFFIC_ENABLED,'NO');
  assert.equal(defaults.vars.PREDGE_PAID_GO_LIVE_CROSSCHECK,'');
  assert.equal(defaults.vars.PREDGE_MUTUAL_TRIAL_STARTED_AT,'');
+ assert.equal(Object.hasOwn(defaults.vars,'GEOMACRO_STORE_CHECKOUT_ENABLED'),false);
  const trial=candidateConfig(baseline,sha,[],{PREDGE_PAID_TRAFFIC_ENABLED:'YES',
   PREDGE_PAID_GO_LIVE_CROSSCHECK:'',PREDGE_MUTUAL_TRIAL_STARTED_AT:'2026-11-13T10:00:00Z'});
  assert.equal(trial.vars.PREDGE_PAID_TRAFFIC_ENABLED,'YES');
  assert.equal(trial.vars.PREDGE_MUTUAL_TRIAL_STARTED_AT,'2026-11-13T10:00:00Z');
+ const store=candidateConfig(baseline,sha,[],{GEOMACRO_STORE_CHECKOUT_ENABLED:'YES'});
+ assert.equal(store.vars.GEOMACRO_STORE_CHECKOUT_ENABLED,'YES');
  assert.throws(()=>candidateConfig(baseline,sha,[],{PREDGE_PAID_TRAFFIC_ENABLED:'1'}),
   /PREDGE_TRIAL_RUNTIME_VAR_INVALID/);
  const token='PREDGE_PAID_RISK_GATE_TOKEN';
