@@ -36,6 +36,17 @@ function fixture(){
    all:async()=>({results:stmt.all(...args)})
  };}}}}}};
 }
+function insertLegacyObservation(sqlite,event,host,{status="OBSERVED",factBasis="SEARCH_TITLE_ONLY",pageFetched=false,sourceCount=1}={}){
+ const eventId=createHash("sha256").update(event).digest("hex");
+ const observationId=createHash("sha256").update(event+"\n"+host).digest("hex");
+ const titleSha=createHash("sha256").update(event+"\n"+host+"\ntitle-metadata").digest("hex");
+ sqlite.prepare(`INSERT INTO unverified_observations
+  (observation_id,event_id,entity_type,entity_id,category,event_at,source_id,source_host,
+   title_sha256,impact_factor,fact_basis,original_page_fetched,status,
+   independent_source_count,discovered_at)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(observationId,eventId,"COUNTRY","IND",
+   "GEOPOLITICS",at,host,host,titleSha,null,factBasis,pageFetched?1:0,status,sourceCount,at);
+}
 function fact(publisher,clock_basis="ORIGINAL_PUBLICATION"){
  return {
    country_iso3:"IND",derived_category:"geopolitics",event_fingerprint:fprint,
@@ -95,8 +106,7 @@ test("Google-index attribution never becomes verified source corroboration",asyn
 test("existing continuously polled news index produces Basic without a signed GRO",async()=>{
  const {sqlite,env}=fixture();
  try{
-   sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)")
-     .run("index-event-1","COUNTRY","IND",at,"reuters.com","OBSERVED","SEARCH_TITLE_ONLY",0,1,"reuters.com");
+   insertLegacyObservation(sqlite,"index-event-1","reuters.com");
    const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
    assert.equal(observed.distinct_events,1);
    const provisional=provisionalRiskGate({
@@ -111,9 +121,8 @@ test("existing continuously polled news index produces Basic without a signed GR
 test("native original-page corroboration from the existing 20m collector auto-promotes Standard",async()=>{
  const {sqlite,env}=fixture();
  try{
-   const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)");
-   add.run("native-event-1","COUNTRY","IND",at,"reuters.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
-   add.run("native-event-1","COUNTRY","IND",at,"aninews.in","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"aninews.in");
+   insertLegacyObservation(sqlite,"native-event-1","reuters.com",{status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,sourceCount:2});
+   insertLegacyObservation(sqlite,"native-event-1","aninews.in",{status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,sourceCount:2});
    const observed=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
    assert.equal(observed.corroboration_sources_count,2);
    assert.equal(observed.standard_ready,true);
@@ -123,23 +132,22 @@ test("native original-page corroboration from the existing 20m collector auto-pr
 test("a single claimed two-publisher counter never promotes Standard without two true page rows for the same event",async()=>{
  const {sqlite,env}=fixture();
  try{
-  const add=sqlite.prepare("INSERT INTO unverified_observations(event_id,entity_type,entity_id,event_at,source_id,status,fact_basis,original_page_fetched,independent_source_count,source_host) VALUES (?,?,?,?,?,?,?,?,?,?)");
   // One real original page with a forged or stale second-publisher count.
-  add.run("shared-event","COUNTRY","IND",at,"reuters.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"reuters.com");
+  insertLegacyObservation(sqlite,"shared-event","reuters.com",{status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,sourceCount:2});
   let r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.distinct_events,1);
   assert.equal(r.standard_ready,false);
   assert.equal(r.corroboration_sources_count,0);
   // An index-only repost from another host is not an original-page proof.
-  add.run("shared-event","COUNTRY","IND",at,"index.example","CORROBORATED","SEARCH_TITLE_ONLY",0,2,"index.example");
+  insertLegacyObservation(sqlite,"shared-event","index.example",{status:"CORROBORATED",sourceCount:2});
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,false);
   // A real page from a different event still cannot corroborate this event.
-  add.run("other-event","COUNTRY","IND",at,"bbc.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"bbc.com");
+  insertLegacyObservation(sqlite,"other-event","bbc.com",{status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,sourceCount:2});
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,false);
   // Only a second genuine page FROM ANOTHER publisher for the SAME event.
-  add.run("shared-event","COUNTRY","IND",at,"apnews.com","CORROBORATED","ARTICLE_FULL_TEXT",1,2,"apnews.com");
+  insertLegacyObservation(sqlite,"shared-event","apnews.com",{status:"CORROBORATED",factBasis:"ARTICLE_FULL_TEXT",pageFetched:true,sourceCount:2});
   r=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(r.standard_ready,true);
   assert.equal(r.corroboration_sources_count,2);

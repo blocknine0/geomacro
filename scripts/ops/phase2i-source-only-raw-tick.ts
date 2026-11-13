@@ -48,6 +48,49 @@ if(env.GITHUB_ACTIONS!=="true"||
 // D1 collision-isolation batch cap, NOT an authority to exceed a 3-row slot.
 const providerRows=Number(env.PHASE2I_PROVIDER_MAX_NEW_ROWS);
 
+async function projectProgressiveFacts(candidates,verifiedIds){
+ const selected=candidates.filter(c=>{
+  const clocks=[c.publishedAt,c.publishedAt.slice(0,10)];
+  return clocks.some(clock=>verifiedIds.has(createHash("sha256").update(
+   c.category+"\n"+c.articleUrl+"\n"+clock).digest("hex")));
+ });
+ const facts=[];
+ for(const c of selected){
+  const iso=privateOsintCountryMention(c.title,COUNTRIES_195);
+  if(!iso)continue; // Publisher location is never used as event attribution.
+  const article=new URL(c.articleUrl),clock=/^\d{4}-\d{2}-\d{2}$/u.test(c.publishedAt)?
+   c.publishedAt+"T00:00:00.000Z":new Date(c.publishedAt).toISOString();
+  if(!Number.isFinite(Date.parse(clock))||Date.parse(clock)<Date.now()-72*3600000||
+     Date.parse(clock)>Date.now()+60000)continue;
+  const fingerprint=createHash("sha256").update(
+   [iso,c.category,c.title.normalize("NFKC").toLocaleLowerCase("en")
+    .replace(/[^\\p{L}\\p{N}]+/gu," ").trim()].join("\\n")).digest("hex");
+  facts.push({country_iso3:iso,derived_category:c.category,
+   event_fingerprint:fingerprint,publisher_domain:article.hostname.replace(/^www\\./u,""),
+   canonical_source_url:article.href,event_clock:clock,
+   clock_basis:"ORIGINAL_PUBLICATION",extracted_entities:[iso,c.category],
+   rights_verified:false,commercial_eligible:false});
+ }
+ let accepted=0;
+ for(let offset=0;offset<facts.length;offset+=25){
+  const batch=facts.slice(offset,offset+25);
+  const response=await fetch("https://geomacro-control-plane.daspallab202391.workers.dev/v1/internal/risk-gate/progressive-facts",{
+   method:"POST",redirect:"error",cache:"no-store",signal:AbortSignal.timeout(15000),
+   headers:{Authorization:"Bearer "+controlToken,"Content-Type":"application/json",
+    Accept:"application/json","Cache-Control":"no-store"},
+   body:JSON.stringify({schema:"geomacro.progressive-fact-batch.v1",facts:batch})
+  });
+  if(response.status!==200)throw Error("PROGRESSIVE_FACT_PROJECTION_HTTP_"+response.status);
+  const receipt=await response.json();
+  if(receipt?.ok!==true||receipt.schema!=="geomacro.progressive-fact-admission.v1"||
+     receipt.raw_news_text_stored!==false||receipt.accepted!==batch.length)
+   throw Error("PROGRESSIVE_FACT_PROJECTION_RECEIPT_INVALID");
+  accepted+=receipt.accepted;
+ }
+ return {selected:selected.length,projected:accepted,unattributed:selected.length-facts.length,
+  source_text_sent:false,rights_verified:false,commercial_eligible:false};
+}
+
 const root=String(env.GEOMACRO_COMMERCE_LEDGER_TOKEN??"").trim();
 // Opt into durable R2/DO only after its protected endpoint is provisioned.
 const durableMode=Boolean(env.GEOMACRO_PHASE2I_DURABLE_URL);
@@ -279,6 +322,9 @@ if(threeDomainDirect20m&&hotFeedHealthy<hotFeedUrls.size)
 // Acknowledge only exact original IDs returned after authenticated D1 readback.
 // All receipt identities stay in the protected runner and AES-GCM queue.
 const verifiedIds=new Set(stage.verified_record_ids??[]);
+const progressiveProjection=await projectProgressiveFacts(indexed.candidates,verifiedIds);
+console.log(JSON.stringify({schema:"geomacro.phase2i-progressive-fact-projection.v1",
+ ...progressiveProjection,raw_news_text_stored:false}));
 const candidatesWithD1Receipts=queue.candidates.map(candidate=>{
  const native=candidate.datePrecision==="day"
   ?candidate.publishedAt.slice(0,10):candidate.publishedAt;

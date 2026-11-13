@@ -83,6 +83,23 @@ test("DENIED and unsupported channels do not create unverifiable publications",a
  assert.equal(doc.items[0].country_iso3,null);
  assert.equal(doc.summary.source_original_page_independently_verified,false);
 });
+test("a pinned backup is fetched only after its primary fails or yields no attributed item",async()=>{
+ const backupTitle="India central bank announces inflation monetary policy change";
+ const backupRss="<rss><channel><item><title>"+backupTitle+"</title><pubDate>Sun, 25 Oct 2026 11:52:00 GMT</pubDate></item></channel></rss>";
+ const registry=[
+  {id:"primary_ind",source_ids:["primary_ind"],url:"https://primary.example.org/rss",type:"rss",supported:true,categories:["macro"]},
+  {id:"backup_ind",source_ids:["backup_ind"],url:"https://backup.example.org/rss",type:"rss",supported:true,categories:["macro"],target_country_iso3:"IND",target_country_iso3s:["IND"],fallback_for_source_ids:["primary_ind"]},
+ ];
+ const calls=[];
+ const out=await collectPrivateOsint15m({now,registry,normalize,
+  resolveCountry:title=>title.includes("India")?"IND":null,
+  fetchImpl:async url=>{calls.push(url);return url.includes("primary.")?
+   new Response("Denied",{status:403}):new Response(backupRss,{status:200});}});
+ assert.deepEqual(calls,[registry[0].url,registry[1].url]);
+ assert.equal(out.items.length,1);assert.equal(out.items[0].country_iso3,"IND");
+ assert.equal(out.summary.source_endpoints_attempted,2);
+ assert.equal(out.summary.rights_verified,false);
+});
 test("actual registry remains fixed, three-domain and does not activate Telegram or claim every country",()=>{
  const sources=registeredReusableNewsSources();
  assert.ok(sources.length>=30);

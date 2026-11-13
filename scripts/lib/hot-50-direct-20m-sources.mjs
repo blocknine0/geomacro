@@ -59,10 +59,14 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    ids.add(pin.id);
    const source=Object.freeze({
     id:pin.id,url:pin.url,
+    source_ids:[pin.id],
     type:pin.feed_format,
     categories:[...pin.categories],
     continent:"global",
-    publisher_country_iso3:country.country_iso3,
+    publisher_country_iso3:pin.publisher_country_iso3??null,
+    target_country_iso3:pin.target_country_iso3??country.country_iso3,
+    target_country_iso3s:[pin.target_country_iso3??country.country_iso3],
+    fallback_for_source_ids:[...(pin.fallback_for_source_ids??[])],
     supported:true,
     private_hot50_original_candidate:pin.kind==="official_or_public_primary_candidate",
     private_hot50_direct_20m:true,
@@ -78,10 +82,13 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
    if(prev){
     // Two catalogues can point at the same publisher endpoint. Preserve one
     // GET, union topics, never claim separate corroborating publishers.
-    if(prev.publisher_country_iso3!==country.country_iso3)
-     throw Error("HOT50_DIRECT20M_CONFLICTING_PUBLISHER_COUNTRY");
+   if(prev.publisher_country_iso3!==source.publisher_country_iso3)
+    throw Error("HOT50_DIRECT20M_CONFLICTING_PUBLISHER_COUNTRY");
     merged.set(pin.url,Object.freeze({...prev,
-     categories:[...new Set([...prev.categories,...pin.categories])]}));
+     source_ids:[...new Set([...prev.source_ids,pin.id])],
+     target_country_iso3s:[...new Set([...prev.target_country_iso3s,source.target_country_iso3])],
+     categories:[...new Set([...prev.categories,...pin.categories])],
+     fallback_for_source_ids:[...new Set([...prev.fallback_for_source_ids,...(pin.fallback_for_source_ids??[])])]}));
    }else merged.set(pin.url,source);
   }
  }
@@ -101,7 +108,7 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
  const n=retired.length;
  const count=0;
  const reprobed=[];
- if(snapshot.countries.length!==50||ids.size!==124||
+ if(snapshot.countries.length!==50||ids.size!==225||
     merged.size===0||merged.size>512)
   throw Error("HOT50_DIRECT20M_SOURCE_COUNT_DRIFT");
  return Object.freeze({
@@ -111,7 +118,7 @@ export function hot50Direct20mPublisherRegistry(now=new Date()){
   summary:Object.freeze({
    hot50_countries_configured:HOT50_COUNTRY_ISO3.length,
    categories_configured:CATEGORIES,
-   direct_pinned_country_entries:124,
+   direct_pinned_country_entries:225,
    distinct_nonretired_direct_endpoints:nonretiredCount,
    previously_retired_excluded:retired.length-reprobed.length,
    retired_source_ids:Object.freeze(retired.map(s=>s.id)),

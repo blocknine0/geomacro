@@ -6,13 +6,13 @@ import {hot50Direct20mPublisherRegistry,hot50Direct20mFailoverCategories,HOT50_D
 import {hot50FourLaneSourceCrosswalk} from "./hot-50-four-lane-source-crosswalk.mjs";
 import {PRIVATE_OSINT_RETIRED_SOURCE_IDS} from "./private-osint-retired-sources.mjs";
 
-test("all 124 catalogue pins remain auditable while retired endpoints never re-enter polling",()=>{
+test("all 225 catalogue pins remain auditable while retired endpoints never re-enter polling",()=>{
  const {registry,summary}=hot50Direct20mPublisherRegistry(new Date("2026-11-04T00:00:00Z"));
  const {snapshot}=hot50FourLaneSourceCrosswalk();
  assert.equal(HOT50_DIRECT_20M_FREQUENCY_MINUTES,20);
  assert.equal(snapshot.countries.length,50);
- assert.equal(summary.direct_pinned_country_entries,124);
- assert.ok(registry.length>0&&registry.length<=124);
+ assert.equal(summary.direct_pinned_country_entries,225);
+ assert.ok(registry.length>0&&registry.length<=225);
  assert.equal(new Set(registry.map(s=>s.url)).size,registry.length);
  assert.equal(new Set(registry.map(s=>s.id)).size,registry.length);
  assert.equal(summary.distinct_nonretired_direct_endpoints,
@@ -54,6 +54,7 @@ test("all Hot50 country-category discovery cells have non-retired configured lan
   }
  }
  assert.equal(cells.length,150);
+ assert.equal(cells.filter(cell=>cell.direct_candidates===0).length,0);
  assert.ok(cells.every(cell=>cell.search_discovery&&cell.gdelt_discovery));
  // Historical crosswalk pins remain auditable, but the runtime registry above
  // excludes retired URLs. This discovery matrix is not proof of live feed health,

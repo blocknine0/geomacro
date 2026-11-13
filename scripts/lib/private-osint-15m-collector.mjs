@@ -121,7 +121,7 @@ export async function collectPrivateOsint15m({
   // Check every accepted endpoint, with eight global and two per-host slots.
   // A large news-index catalogue must not block unrelated original publishers.
   const responses=Array(registry.length),running=new Set(),hosts=new Map();
-  const pending=orderHot50PrivateFetchJobs(registry.map((source,index)=>({source,index,host:publisherFetchKey(source.url)})));
+  let fallbackAttempted=0;
   // A finite spare-request pool permits ONE recovery for genuinely transient
   // original-feed failures without exceeding the existing 512-source GET
   // budget. Never retry 401/403/404/429, index scrapes or malformed bodies.
@@ -150,7 +150,8 @@ export async function collectPrivateOsint15m({
     if(recovered.status===200)transientRecovered++;
     return recovered;
   };
-  try{
+  const runIndices=async indices=>{
+    const pending=orderHot50PrivateFetchJobs(indices.map(index=>({source:registry[index],index,host:publisherFetchKey(registry[index].url)})));
     while(pending.length||running.size){
       while(running.size<concurrency){
         const next=pending.findIndex(p=>(hosts.get(p.host)??0)<(p.host==="euronews.com"?1:2));
@@ -171,6 +172,29 @@ export async function collectPrivateOsint15m({
       }
       if(running.size)await Promise.race(running);
     }
+  };
+  try{
+    // Explicit backups are held until the configured primary was checked.
+    // Try them only after transport failure or when the primary yielded no
+    // item attributed to this country/category. Registration is not health.
+    const primaryIndices=registry.map((s,i)=>s.fallback_for_source_ids?.length?null:i)
+      .filter(Number.isInteger);
+    await runIndices(primaryIndices);
+    const sourceIndex=new Map();
+    registry.forEach((s,i)=>{for(const id of s.source_ids??[s.id])sourceIndex.set(id,i)});
+    const fallbackIndices=[];
+    registry.forEach((source,index)=>{
+      if(!source.fallback_for_source_ids?.length)return;
+      const needs=source.fallback_for_source_ids.some(id=>{
+        const primary=sourceIndex.get(id),response=Number.isInteger(primary)?responses[primary]:null;
+        if(!response)return true;
+        return !response.items.some(item=>item.category&&source.categories.includes(item.category)&&
+          (source.target_country_iso3s??[source.target_country_iso3]).includes(item.country_iso3));
+      });
+      if(needs)fallbackIndices.push(index);
+    });
+    fallbackAttempted=fallbackIndices.length;
+    await runIndices(fallbackIndices);
   }catch(error){await Promise.allSettled(running);throw error}
   const dedup=new Map(),checks=new Map(),count={};
   let collectorExcluded=0;
@@ -218,6 +242,8 @@ export async function collectPrivateOsint15m({
     summary:{
       configured_country_routes:195,configured_categories:3,configured_country_category_routes:585,
       registered_source_endpoints:registry.length,source_endpoints_attempted:registry.length,
+      registered_fallback_candidates:registry.filter(s=>s.fallback_for_source_ids?.length).length,
+      fallback_candidates_attempted_after_primary_failure_or_empty:fallbackAttempted,
       rotating_country_index_sources_this_tick:registry.filter(s=>s.private_discovery_index_only===true).length,
       rotating_country_index_nominal_full_cycle_minutes:
         nominalPrivateCountryIndexCycleMinutes(registry),

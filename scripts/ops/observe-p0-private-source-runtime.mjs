@@ -10,7 +10,7 @@ import {parseAustraliaCriticalMineralsHtml} from '../../global-intelligence/adap
 import {parseCochilcoAnuarioHtml} from '../../global-intelligence/adapters/cochilco-minerals.mjs';
 import {parseOpcwNewsHtml} from '../../global-intelligence/adapters/opcw-news.mjs';
 import {parseIcjCasesHtml} from '../../global-intelligence/adapters/icj-cases.mjs';
-import {parseIccArticleHtml,parseIccNewsHtml,discoverIccArticleUrls,ICC_NEWS_REQUEST_HEADERS} from '../../global-intelligence/adapters/icc-news.mjs';
+import {parseIccNewsRss,ICC_NEWS_RSS_URL,ICC_NEWS_REQUEST_HEADERS} from '../../global-intelligence/adapters/icc-news.mjs';
 import {parseWorldBankPinkSheetReleaseMetadata} from '../../global-intelligence/adapters/world-bank-commodity-prices.mjs';
 import {parseUnctadPublisherReleaseMetadata,parseUnctadPublisherReleaseCalendarHtml} from '../../global-intelligence/adapters/unctadstat.mjs';
 import {ICC_OFFICIAL_NEWS_RSS,parseIccOfficialNewsRss,parseIccOfficialNewsItems}
@@ -24,7 +24,7 @@ const PARSERS=Object.freeze({uk_sanctions_list:parseUkSanctionsXml,
  china_mofcom_trade_controls:parseMofcomExportControlHtml,
  australia_critical_minerals:parseAustraliaCriticalMineralsHtml,
  cochilco_minerals:parseCochilcoAnuarioHtml,opcw_news:parseOpcwNewsHtml,
- icj_cases:parseIcjCasesHtml,icc_news:parseIccNewsHtml});
+ icj_cases:parseIcjCasesHtml,icc_news:parseIccNewsRss});
 const DOMAINS=['GEOPOLITICS','MACRO','CRITICAL_MINERALS'];
 export const P0_MAX_BYTES=2*1024*1024;
 // Protected live readback observed the exact UK XML at 22,051,272 bytes.
@@ -45,7 +45,7 @@ export function existingPrivateP0Sources(){
    if(metadataUrl&&(metadataUrl.protocol!=='https:'||metadataUrl.hostname!=='www.worldbank.org'||
       metadataUrl.username||metadataUrl.password||metadataUrl.port))
      throw Error('P0_PRIVATE_METADATA_ENDPOINT_INVALID');
-   return {id,category:s.category,url:url.href,publisherMetadataUrl:metadataUrl?.href??null};
+   return {id,category:s.category,url:id==='icc_news'?ICC_NEWS_RSS_URL:url.href,publisherMetadataUrl:metadataUrl?.href??null};
  });
 }
 async function boundedBody(response,maxBytes=P0_MAX_BYTES){
@@ -75,7 +75,9 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
    try{
      totalHttpRequests++;
      const response=await fetchImpl(source.url,{method:'GET',redirect:'error',
-       signal:AbortSignal.timeout(15000),headers:source.id==='icc_news'?ICC_NEWS_REQUEST_HEADERS:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'*/*'}});
+       signal:AbortSignal.timeout(15000),headers:source.id==='icc_news'?{
+        ...ICC_NEWS_REQUEST_HEADERS,accept:'application/rss+xml,application/xml;q=0.9,text/xml;q=0.8'
+       }:{'user-agent':'GeoMacro-P0-Source-Discovery/1.0 (+https://geomacro.live)','accept':'*/*'}});
      if(!response.ok){
        row.reason='HTTP_'+response.status;
        mayUseRelatedMinistryIndex=[500,502,503,504].includes(response.status);
@@ -115,9 +117,9 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
        }else{
          const xml=source.id==='uk_sanctions_list'||source.id==='eu_sanctions_consolidated';
          const unctad=source.id==='unctadstat_global';
-         const icc=source.id==='icc_news';
+       const icc=source.id==='icc_news';
          if(unctad&&!/json|html/iu.test(type))throw Error('UNCTAD_MACHINE_METADATA_MIME_INVALID');
-         if(icc&&!/html/iu.test(type))throw Error('ICC_NEWS_LISTING_MIME_INVALID');
+         if(icc&&!/(?:rss|xml)/iu.test(type))throw Error('ICC_OFFICIAL_RSS_MIME_INVALID');
          if(xml&&!/xml/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
          if(!xml&&!unctad&&!icc&&!/html/iu.test(type))throw Error('FORMAT_NOT_VERIFIED');
          const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
@@ -131,31 +133,12 @@ export async function observeExistingPrivateP0Sources({fetchImpl=fetch,now=new D
            row.native_release_clock_verified=true;row.publisher_release_at_utc=clock.published_at;
            row.reason=null;
          }else if(icc){
-           let links=[];
-           try{links=discoverIccArticleUrls(text,{limit:1})}
-           catch{mayUseCourtRss=true;throw Error('ICC_NEWS_LISTING_PARSE_FAILED')}
-           if(!links.length){mayUseCourtRss=true;throw Error('ICC_NEWS_LISTING_PARSE_FAILED')}
-           const articleUrl=links[0];totalHttpRequests++;
-           let article;
-           try{article=await fetchImpl(articleUrl,{method:'GET',redirect:'error',
-             signal:AbortSignal.timeout(12000),headers:ICC_NEWS_REQUEST_HEADERS});}
-           catch{throw Error('ICC_ARTICLE_NETWORK_FAILED')}
-           if(!article.ok||article.redirected===true||
-              new URL(article.url||articleUrl).hostname!=='www.icc-cpi.int'){
-             try{await article.body?.cancel();}catch{}
-             throw Error('ICC_ARTICLE_HTTP_'+(Number.isInteger(article.status)?article.status:0));
-           }
-           if(!/html/iu.test(article.headers.get('content-type')??'')){
-             try{await article.body?.cancel();}catch{}
-             throw Error('ICC_ARTICLE_MIME_INVALID');
-           }
-           const articleBytes=await boundedBody(article,P0_MAX_BYTES);
-           const articleHtml=new TextDecoder('utf-8',{fatal:true}).decode(articleBytes);
-           const parsedArticle=parseIccArticleHtml(articleHtml,{url:articleUrl,retrievedAt:now.toISOString()});
-           row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=1;
-           row.reason=null;row.first_party_article_fetch_verified=true;
-           row.current_original_publication_verified=parsedArticle.published_at!==null;
-           row.native_publication_at_utc=parsedArticle.published_at;
+           const parsed=parseIccNewsRss(text,{retrievedAt:now.toISOString()});
+           row.status='PRIVATE_CANDIDATES_PARSED';row.parsed_candidate_count=parsed.length;
+           row.reason=null;row.official_first_party_rss_verified=true;
+           row.current_original_publication_verified=false;
+           row.publisher_native_rss_dates_observed=parsed.filter(x=>x.published_at).length;
+           row.commercial_eligible=false;
          }else{
            if(xml&&/<!DOCTYPE|<!ENTITY/iu.test(text))throw Error('FORMAT_NOT_VERIFIED');
            let parsed;

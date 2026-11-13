@@ -17,6 +17,8 @@ on:
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - ".github/workflows/derived-risk-gate-discovery-20m.yml"
   pull_request:
     paths:
@@ -30,6 +32,8 @@ on:
       - "scripts/tests/derived-discovery-collector-integration.test.mjs"
       - "workers/control-plane/src/derived-discovery-queue.mjs"
       - "workers/control-plane/src/derived-risk-gate-website-raw.mjs"
+      - "scripts/ops/plan-d1-bundled-work.mjs"
+      - "scripts/tests/plan-d1-bundled-work.test.mjs"
       - ".github/workflows/derived-risk-gate-discovery-20m.yml"
 
 permissions:
