@@ -139,7 +139,7 @@ export function discoverIccArticleUrls(html,{baseUrl=ICC_NEWS_URL,limit=5}={}){
   url.search="";url.hash="";
   if(url.protocol!=="https:"||url.hostname!==ICC_HOST||url.port||url.username||
      url.password||url.search||url.hash||
-     !(/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(url.pathname)||/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(url.pathname))||
+     !(/^\/news\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})(?:\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})){0,4}\/?$/iu.test(url.pathname)||/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(url.pathname))||
      /\/(?:subscribe|rss|search|filter)(?:\/|$)/iu.test(url.pathname))continue;
   const canonicalHref=url.href;if(seen.has(canonicalHref))continue;
   seen.add(canonicalHref);links.push(canonicalHref);if(links.length>=limit)break;
@@ -153,7 +153,7 @@ export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString
  let article;
  try{article=new URL(url)}catch{throw Error("ICC_ARTICLE_URL_INVALID")}
  if(article.protocol!=="https:"||article.hostname!==ICC_HOST||article.port||
-    (!/^\/news\/[a-z0-9][a-z0-9-]{2,160}(?:\/[a-z0-9][a-z0-9-]{2,160}){0,3}\/?$/iu.test(article.pathname)&&
+    (!/^\/news\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})(?:\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})){0,4}\/?$/iu.test(article.pathname)&&
      !/^\/node\/[1-9][0-9]{2,8}\/?$/u.test(article.pathname)))
   throw Error("ICC_ARTICLE_URL_NOT_FIRST_PARTY");
  if(!/International Criminal Court|\bICC\b/iu.test(input))throw Error("ICC_ARTICLE_MARKER_MISSING");
@@ -167,7 +167,7 @@ export function parseIccArticleHtml(html,{url,retrievedAt=new Date().toISOString
   const canonicalNode=c&&/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(c.pathname);
   const articleNode=/^\/node\/([1-9][0-9]{2,8})\/?$/u.exec(article.pathname);
   const sameNode=Boolean(canonicalNode&&articleNode&&canonicalNode[1]===articleNode[1]);
-  const canonicalNews=Boolean(c&&/^\/news\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9-]*){0,3}\/?$/iu.test(c.pathname));
+  const canonicalNews=Boolean(c&&/^\/news\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})(?:\/(?:[a-z0-9][a-z0-9-]{2,160}|[0-9]{1,4})){0,4}\/?$/iu.test(c.pathname));
   if(!c||c.protocol!=="https:"||c.hostname!==ICC_HOST||c.port||c.search||c.hash||(!sameNode&&!canonicalNews))
    throw Error("ICC_ARTICLE_CANONICAL_MISMATCH");
  }
