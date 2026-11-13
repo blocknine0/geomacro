@@ -164,9 +164,9 @@ test("Stage 3 rehearsal reads account billing through its dedicated token bindin
 
 
 function paidRiskGateFixtureDb(){
- const requests=new Map(),ledger=new Map(),receipts=new Map();
+ const requests=new Map(),ledger=new Map(),receipts=new Map(),trace=[];
  const key=(client,id)=>client+"|"+id;
- return {prepare(sql){
+ return {trace,prepare(sql){trace.push(sql.replace(/\\s+/gu," ").slice(0,120));
   let values=[];
   return {bind(...args){values=args;return this;},
    async first(){
@@ -255,7 +255,7 @@ test("paid Risk Gate verdict is signed for one use and rejects replay or resale"
  const now=Date.parse("2026-11-12T00:00:00Z");
  const first=await predgePaidRiskGateD1(makeRequest(fixture),env,now);
  const firstBody=await first.json();
- assert.equal(first.status,200);
+ assert.equal(first.status,200,JSON.stringify({body:firstBody,trace:env.DB.trace}));
  assert.equal(firstBody.ok,true);
  assert.equal(Object.hasOwn(firstBody,"error"),false);
  assert.deepEqual(firstBody.decision_signed_payload.license_scope,{
