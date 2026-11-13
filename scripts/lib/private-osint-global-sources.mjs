@@ -86,8 +86,12 @@ export function privateOsintGlobalSources(){
     (s.publisher_country_iso3!==null&&!Object.values(CONTINENT_COUNTRIES_195).flat().includes(s.publisher_country_iso3))||
     !["rss","atom","rdf","xml","json"].includes(s.type)||
     !Array.isArray(s.categories)||!s.categories.length||s.categories.some(c=>!PRIVATE_OSINT_CATEGORIES.includes(c))||
-    s.acceptance?.http_status!==200||s.acceptance?.feed_parsed!==true||s.acceptance?.native_publication_clock_present!==true)
+    s.acceptance?.http_status!==200||s.acceptance?.feed_parsed!==true||s.acceptance?.native_publication_clock_present!==true||
+    (s.activation_state!==undefined&&s.activation_state!=="disabled_pending_live_verification")||
+    (s.activation_state==="disabled_pending_live_verification"&&
+      !/^LIVE_PROBE_FAILURE_[A-Z0-9_]+$/u.test(s.disabled_reason_code??"")))
    throw Error("PRIVATE_OSINT_GLOBAL_SOURCE_NOT_ACCEPTED");
+  if(s.activation_state==="disabled_pending_live_verification")continue;
   const old=map.get(s.url)??existing.get(s.url);
   map.set(s.url,old?{...old,categories:[...new Set([...old.categories,...s.categories])],
    continent:s.continent,publisher_country_iso3:s.publisher_country_iso3}:
