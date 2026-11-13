@@ -21,7 +21,7 @@ function fixture(){
    event_id TEXT NOT NULL CHECK(length(event_id)=64),
    entity_type TEXT NOT NULL CHECK(entity_type IN ('COUNTRY','CORRIDOR')),
    entity_id TEXT NOT NULL,
-   category TEXT NOT NULL CHECK(category IN ('GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS')),
+   category TEXT NOT NULL DEFAULT 'GEOPOLITICS' CHECK(category IN ('GEOPOLITICS','MACRO_FX','CRITICAL_MINERALS')),
    event_at TEXT NOT NULL,source_id TEXT NOT NULL,source_host TEXT NOT NULL,
    title_sha256 TEXT NOT NULL CHECK(length(title_sha256)=64),
    impact_factor REAL CHECK(impact_factor IS NULL OR impact_factor BETWEEN 0 AND 100),
@@ -263,7 +263,7 @@ test("D1 projection persists unverified metadata but cannot satisfy Standard rig
   assert.equal(receipt.commercial_eligible,false);
   assert.equal(receipt.standard_corroboration_admitted,false);
   const row=sqlite.prepare("SELECT status,fact_basis,original_page_fetched,independent_source_count FROM unverified_observations").get();
-  assert.deepEqual(row,{status:"OBSERVED",fact_basis:"SEARCH_TITLE_ONLY",
+  assert.deepEqual({...row},{status:"OBSERVED",fact_basis:"SEARCH_TITLE_ONLY",
    original_page_fetched:0,independent_source_count:1});
   const facts=await readProgressiveFacts(env.DB,{type:"country",id:"IND"},NOW);
   assert.equal(facts.distinct_events,1);
